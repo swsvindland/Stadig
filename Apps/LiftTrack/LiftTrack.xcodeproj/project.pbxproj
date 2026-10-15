@@ -1,0 +1,940 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4C1F00000000000000000001 /* LiftTrackWidgets.appex in Embed */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000002 /* LiftTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F00000000000000000003 /* LiftTrackWatch.app in Embed */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000004 /* LiftTrackWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F00000000000000000005 /* LiftTrackWatchWidgets.appex in Embed */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F00000000000000000007 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000008 /* SystemCore */; };
+		4C1F00000000000000000009 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000A /* ExerciseLibrary */; };
+		4C1F0000000000000000000B /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000C /* SystemStore */; };
+		4C1F0000000000000000000D /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000E /* HealthBridge */; };
+		4C1F0000000000000000000F /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000010 /* LiftEngine */; };
+		4C1F00000000000000000011 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000012 /* SystemCore */; };
+		4C1F00000000000000000013 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000014 /* SystemCore */; };
+		4C1F00000000000000000015 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000016 /* ExerciseLibrary */; };
+		4C1F00000000000000000017 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000018 /* HealthBridge */; };
+		4C1F00000000000000000019 /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000001A /* LiftEngine */; };
+		4C1F0000000000000000001B /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000001C /* SystemCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4C1F0000000000000000001D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1F0000000000000000001E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1F0000000000000000001F;
+			remoteInfo = LiftTrackWidgets;
+		};
+		4C1F00000000000000000020 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1F0000000000000000001E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1F00000000000000000021;
+			remoteInfo = LiftTrackWatch;
+		};
+		4C1F00000000000000000022 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1F0000000000000000001E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1F00000000000000000023;
+			remoteInfo = LiftTrackWatchWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4C1F00000000000000000024 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4C1F00000000000000000001 /* LiftTrackWidgets.appex in Embed */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000025 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				4C1F00000000000000000003 /* LiftTrackWatch.app in Embed */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000026 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4C1F00000000000000000005 /* LiftTrackWatchWidgets.appex in Embed */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4C1F00000000000000000027 /* LiftTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F00000000000000000002 /* LiftTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = LiftTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F00000000000000000004 /* LiftTrackWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrackWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = LiftTrackWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F00000000000000000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4C1F00000000000000000029 /* Watch-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Watch-Info.plist; sourceTree = "<group>"; };
+		4C1F0000000000000000002A /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Widgets-Info.plist; sourceTree = "<group>"; };
+		4C1F0000000000000000002B /* LiftTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiftTrack.entitlements; sourceTree = "<group>"; };
+		4C1F0000000000000000002C /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		4C1F0000000000000000002D /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
+		4C1F0000000000000000002E /* WatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchWidgets.entitlements; sourceTree = "<group>"; };
+		4C1F0000000000000000002F /* LiftTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = LiftTrack.storekit; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4C1F00000000000000000030 /* iOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		4C1F00000000000000000031 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		4C1F00000000000000000032 /* Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		4C1F00000000000000000033 /* Watch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Watch;
+			sourceTree = "<group>";
+		};
+		4C1F00000000000000000034 /* WatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4C1F00000000000000000035 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C1F00000000000000000007 /* SystemCore in Frameworks */,
+				4C1F00000000000000000009 /* ExerciseLibrary in Frameworks */,
+				4C1F0000000000000000000B /* SystemStore in Frameworks */,
+				4C1F0000000000000000000D /* HealthBridge in Frameworks */,
+				4C1F0000000000000000000F /* LiftEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000036 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C1F00000000000000000011 /* SystemCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000037 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C1F00000000000000000013 /* SystemCore in Frameworks */,
+				4C1F00000000000000000015 /* ExerciseLibrary in Frameworks */,
+				4C1F00000000000000000017 /* HealthBridge in Frameworks */,
+				4C1F00000000000000000019 /* LiftEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000038 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C1F0000000000000000001B /* SystemCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4C1F00000000000000000039 = {
+			isa = PBXGroup;
+			children = (
+				4C1F00000000000000000030 /* iOS */,
+				4C1F00000000000000000031 /* Shared */,
+				4C1F00000000000000000032 /* Widgets */,
+				4C1F00000000000000000033 /* Watch */,
+				4C1F00000000000000000034 /* WatchWidgets */,
+				4C1F0000000000000000003A /* Config */,
+				4C1F0000000000000000002F /* LiftTrack.storekit */,
+				4C1F0000000000000000003B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4C1F0000000000000000003B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4C1F00000000000000000027 /* LiftTrack.app */,
+				4C1F00000000000000000002 /* LiftTrackWidgets.appex */,
+				4C1F00000000000000000004 /* LiftTrackWatch.app */,
+				4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4C1F0000000000000000003A /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				4C1F00000000000000000028 /* Info.plist */,
+				4C1F00000000000000000029 /* Watch-Info.plist */,
+				4C1F0000000000000000002A /* Widgets-Info.plist */,
+				4C1F0000000000000000002B /* LiftTrack.entitlements */,
+				4C1F0000000000000000002C /* Widgets.entitlements */,
+				4C1F0000000000000000002D /* Watch.entitlements */,
+				4C1F0000000000000000002E /* WatchWidgets.entitlements */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4C1F00000000000000000040 /* LiftTrack */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F00000000000000000041;
+			buildPhases = (
+				4C1F0000000000000000003C /* Sources */,
+				4C1F00000000000000000035 /* Frameworks */,
+				4C1F0000000000000000003D /* Resources */,
+				4C1F00000000000000000024 /* Embed Foundation Extensions */,
+				4C1F00000000000000000025 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C1F0000000000000000003E /* PBXTargetDependency */,
+				4C1F0000000000000000003F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F00000000000000000030 /* iOS */,
+				4C1F00000000000000000031 /* Shared */,
+			);
+			name = LiftTrack;
+			packageProductDependencies = (
+				4C1F00000000000000000008 /* SystemCore */,
+				4C1F0000000000000000000A /* ExerciseLibrary */,
+				4C1F0000000000000000000C /* SystemStore */,
+				4C1F0000000000000000000E /* HealthBridge */,
+				4C1F00000000000000000010 /* LiftEngine */,
+			);
+			productName = LiftTrack;
+			productReference = 4C1F00000000000000000027 /* LiftTrack.app */;
+			productType = com.apple.product-type.application;
+		};
+		4C1F0000000000000000001F /* LiftTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F00000000000000000044;
+			buildPhases = (
+				4C1F00000000000000000042 /* Sources */,
+				4C1F00000000000000000036 /* Frameworks */,
+				4C1F00000000000000000043 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F00000000000000000032 /* Widgets */,
+				4C1F00000000000000000031 /* Shared */,
+			);
+			name = LiftTrackWidgets;
+			packageProductDependencies = (
+				4C1F00000000000000000012 /* SystemCore */,
+			);
+			productName = LiftTrackWidgets;
+			productReference = 4C1F00000000000000000002 /* LiftTrackWidgets.appex */;
+			productType = com.apple.product-type.app-extension;
+		};
+		4C1F00000000000000000021 /* LiftTrackWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F00000000000000000048;
+			buildPhases = (
+				4C1F00000000000000000045 /* Sources */,
+				4C1F00000000000000000037 /* Frameworks */,
+				4C1F00000000000000000046 /* Resources */,
+				4C1F00000000000000000026 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C1F00000000000000000047 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F00000000000000000033 /* Watch */,
+				4C1F00000000000000000031 /* Shared */,
+			);
+			name = LiftTrackWatch;
+			packageProductDependencies = (
+				4C1F00000000000000000014 /* SystemCore */,
+				4C1F00000000000000000016 /* ExerciseLibrary */,
+				4C1F00000000000000000018 /* HealthBridge */,
+				4C1F0000000000000000001A /* LiftEngine */,
+			);
+			productName = LiftTrackWatch;
+			productReference = 4C1F00000000000000000004 /* LiftTrackWatch.app */;
+			productType = com.apple.product-type.application;
+		};
+		4C1F00000000000000000023 /* LiftTrackWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F0000000000000000004B;
+			buildPhases = (
+				4C1F00000000000000000049 /* Sources */,
+				4C1F00000000000000000038 /* Frameworks */,
+				4C1F0000000000000000004A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F00000000000000000034 /* WatchWidgets */,
+				4C1F00000000000000000031 /* Shared */,
+			);
+			name = LiftTrackWatchWidgets;
+			packageProductDependencies = (
+				4C1F0000000000000000001C /* SystemCore */,
+			);
+			productName = LiftTrackWatchWidgets;
+			productReference = 4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */;
+			productType = com.apple.product-type.app-extension;
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4C1F0000000000000000001E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					4C1F00000000000000000040 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					4C1F0000000000000000001F = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					4C1F00000000000000000021 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					4C1F00000000000000000023 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 4C1F00000000000000000051;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4C1F00000000000000000039;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
+				4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */,
+				4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
+				4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4C1F0000000000000000003B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4C1F00000000000000000040 /* LiftTrack */,
+				4C1F0000000000000000001F /* LiftTrackWidgets */,
+				4C1F00000000000000000021 /* LiftTrackWatch */,
+				4C1F00000000000000000023 /* LiftTrackWatchWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4C1F0000000000000000003D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000043 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000046 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F0000000000000000004A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4C1F0000000000000000003C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000042 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000045 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F00000000000000000049 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4C1F0000000000000000003E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1F0000000000000000001F /* LiftTrackWidgets */;
+			targetProxy = 4C1F0000000000000000001D /* PBXContainerItemProxy */;
+		};
+		4C1F0000000000000000003F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1F00000000000000000021 /* LiftTrackWatch */;
+			targetProxy = 4C1F00000000000000000020 /* PBXContainerItemProxy */;
+		};
+		4C1F00000000000000000047 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1F00000000000000000023 /* LiftTrackWatchWidgets */;
+			targetProxy = 4C1F00000000000000000022 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4C1F00000000000000000052 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = -Onone;
+			};
+			name = Debug;
+		};
+		4C1F00000000000000000053 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf-with-dsym;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = -O;
+			};
+			name = Release;
+		};
+		4C1F00000000000000000054 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/LiftTrack.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C1F00000000000000000055 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/LiftTrack.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4C1F00000000000000000056 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C1F00000000000000000057 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4C1F00000000000000000058 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Watch-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.lifttrack;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		4C1F00000000000000000059 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Watch-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.lifttrack;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
+		4C1F0000000000000000005A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		4C1F0000000000000000005B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4C1F00000000000000000051 /* Build configuration list for PBXProject "LiftTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F00000000000000000052 /* Debug */,
+				4C1F00000000000000000053 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1F00000000000000000041 /* Build configuration list for PBXNativeTarget "LiftTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F00000000000000000054 /* Debug */,
+				4C1F00000000000000000055 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1F00000000000000000044 /* Build configuration list for PBXNativeTarget "LiftTrackWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F00000000000000000056 /* Debug */,
+				4C1F00000000000000000057 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1F00000000000000000048 /* Build configuration list for PBXNativeTarget "LiftTrackWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F00000000000000000058 /* Debug */,
+				4C1F00000000000000000059 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1F0000000000000000004B /* Build configuration list for PBXNativeTarget "LiftTrackWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F0000000000000000005A /* Debug */,
+				4C1F0000000000000000005B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemCore;
+		};
+		4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/ExerciseLibrary;
+		};
+		4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemStore;
+		};
+		4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/HealthBridge;
+		};
+		4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/LiftEngine;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4C1F00000000000000000008 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4C1F0000000000000000000A /* ExerciseLibrary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
+			productName = ExerciseLibrary;
+		};
+		4C1F0000000000000000000C /* SystemStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			productName = SystemStore;
+		};
+		4C1F0000000000000000000E /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4C1F00000000000000000010 /* LiftEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
+			productName = LiftEngine;
+		};
+		4C1F00000000000000000012 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4C1F00000000000000000014 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4C1F00000000000000000016 /* ExerciseLibrary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
+			productName = ExerciseLibrary;
+		};
+		4C1F00000000000000000018 /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4C1F0000000000000000001A /* LiftEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
+			productName = LiftEngine;
+		};
+		4C1F0000000000000000001C /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4C1F0000000000000000001E /* Project object */;
+}

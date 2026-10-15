@@ -1,0 +1,300 @@
+import Foundation
+import ExerciseLibrary
+import SystemCore
+
+/// One exercise (or drill, or conditioning piece) in today's session, every set prescribed.
+public struct PlannedItem: Codable, Hashable, Sendable, Identifiable {
+    public var id: UUID
+    public var slotID: UUID?
+    public var block: SessionBlockKind
+    public var exerciseID: String
+    public var role: SlotRole
+    /// Ramp-up sets first, then the work.
+    public var sets: [SetPrescription]
+    public var repRange: RepRange
+    public var rest: RestPlan
+    public var seconds: Int?
+    public var conditioning: ConditioningPlan?
+    public var supersetGroup: Int?
+    public var restFiller: String?
+    /// Why the slot exists.
+    public var reason: String?
+    /// How today's numbers were chosen.
+    public var note: String?
+    public var mode: ProgressionMode?
+    public var substitutedFor: String?
+
+    public init(id: UUID = UUID(), slotID: UUID?, block: SessionBlockKind, exerciseID: String, role: SlotRole, sets: [SetPrescription],
+                repRange: RepRange, rest: RestPlan, seconds: Int? = nil, conditioning: ConditioningPlan? = nil, supersetGroup: Int? = nil,
+                restFiller: String? = nil, reason: String? = nil, note: String? = nil, mode: ProgressionMode? = nil, substitutedFor: String? = nil) {
+        self.id = id
+        self.slotID = slotID
+        self.block = block
+        self.exerciseID = exerciseID
+        self.role = role
+        self.sets = sets
+        self.repRange = repRange
+        self.rest = rest
+        self.seconds = seconds
+        self.conditioning = conditioning
+        self.supersetGroup = supersetGroup
+        self.restFiller = restFiller
+        self.reason = reason
+        self.note = note
+        self.mode = mode
+        self.substitutedFor = substitutedFor
+    }
+
+    public var isStrength: Bool { role == .main || role == .accessory }
+    public var workSets: [SetPrescription] { sets.filter { $0.kind != .warmup } }
+}
+
+/// Today's session, ready to start.
+public struct SessionPlan: Codable, Hashable, Sendable, Identifiable {
+    public var id: UUID
+    public var day: Day
+    public var title: String
+    public var mesocycleID: UUID?
+    public var dayID: UUID?
+    /// Zero-based loading week, nil in a deload.
+    public var week: Int?
+    public var deload: Bool
+    public var checkIn: Bool
+    public var assessment: Bool
+    public var minimumEffectiveDose: Bool
+    public var items: [PlannedItem]
+    public var notes: [String]
+    public var quests: [Quest]
+
+    public init(id: UUID = UUID(), day: Day, title: String, mesocycleID: UUID?, dayID: UUID?, week: Int?, deload: Bool, checkIn: Bool,
+                assessment: Bool, minimumEffectiveDose: Bool, items: [PlannedItem], notes: [String], quests: [Quest]) {
+        self.id = id
+        self.day = day
+        self.title = title
+        self.mesocycleID = mesocycleID
+        self.dayID = dayID
+        self.week = week
+        self.deload = deload
+        self.checkIn = checkIn
+        self.assessment = assessment
+        self.minimumEffectiveDose = minimumEffectiveDose
+        self.items = items
+        self.notes = notes
+        self.quests = quests
+    }
+
+    /// A rough length in minutes.
+    public var estimatedMinutes: Int {
+        let seconds = items.map { item -> Int in
+            if let c = item.conditioning { return c.minutes * 60 }
+            let work = item.seconds ?? (item.repRange.middle * 3 + 15)
+            return item.sets.map { $0.kind == .warmup ? 60 : work + item.rest.target }.reduce(0, +) + (item.isStrength ? 45 : 0)
+        }.reduce(0, +)
+        return max(5, Int((Double(seconds) / 60).rounded()))
+    }
+}
+
+/// What the planner needs to know about the person today.
+public struct PlanningContext: Sendable {
+    public var catalog: ExerciseCatalog
+    public var gym: Gym
+    public var profile: SharedProfile
+    public var settings: LiftSettings
+    public var trust: TrustState
+    public var phase: NutritionPhase
+    public var life: LifeModeEffects
+    /// Every logged set by exercise, oldest first.
+    public var history: [String: [LoggedSet]]
+    public var bodyweightKg: Double?
+    public var enduranceScore: Double?
+    /// Planned sessions already done this week, to space rep-outs.
+    public var sessionIndexInWeek: Int
+
+    public init(catalog: ExerciseCatalog, gym: Gym, profile: SharedProfile, settings: LiftSettings, trust: TrustState, phase: NutritionPhase,
+                life: LifeModeEffects, history: [String: [LoggedSet]], bodyweightKg: Double?, enduranceScore: Double?, sessionIndexInWeek: Int) {
+        self.catalog = catalog
+        self.gym = gym
+        self.profile = profile
+        self.settings = settings
+        self.trust = trust
+        self.phase = phase
+        self.life = life
+        self.history = history
+        self.bodyweightKg = bodyweightKg
+        self.enduranceScore = enduranceScore
+        self.sessionIndexInWeek = sessionIndexInWeek
+    }
+
+    /// The gym for today: crunch mode turns the equipment down.
+    public var todaysGym: Gym {
+        guard let access = life.equipment, access != gym.access else { return gym }
+        var temporary = Gym.preset(access, unit: gym.unit)
+        temporary.name = "\(access.label) (crunch)"
+        return temporary
+    }
+}
+
+public enum SessionPlanner {
+    public static func plan(_ day: PlannedDay, of mesocycle: Mesocycle, on date: Day, context: PlanningContext) -> SessionPlan {
+        let block = mesocycle.block
+        let blockWeek = block.week(of: date)
+        let assessment = block.kind == .assessment
+        var deload = blockWeek == .deload
+        let checkIn = deload && date.days(until: block.end) <= 2
+        let life = context.life
+        let med = life.minimumEffectiveDose || block.kind == .minimumEffective
+        let light = life.lightOnly
+        if light { deload = true }
+        let week: Int = switch blockWeek {
+        case .loading(let w): w
+        case .before: 0
+        case .after, .deload: block.loadingWeeks - 1
+        }
+        let gym = context.todaysGym
+        let availability = gym.availability
+        let catalog = context.catalog
+        let experience = context.profile.experience
+
+        var notes: [String] = []
+        if assessment {
+            notes.append(week < 2
+                ? "Assessment week \(week + 1): for anything new, pick a weight you think you can do for 10 and rate it. The next set adjusts."
+                : "Assessment week \(week + 1): progressive sets to check your ratings and spot imbalances.")
+        }
+        if blockWeek == .deload && !light { notes.append("Deload: fewer sets, lighter, nowhere near failure. Mobility and Zone 2 stay.") }
+        if checkIn { notes.append("Check-in: you're fresh, so rep-outs and tests land today.") }
+        if med { notes.append("Crunch mode: the minimum effective dose. Short, few sets, the big lifts kept.") }
+        if light { notes.append("Head cold: light work only. Stop if you feel worse.") }
+        if life.reentry { notes.append("First week back: easing in.") }
+        for injury in life.injuries { notes.append("\(injury.summary): exercises that load it are swapped or skipped.") }
+        for ramp in life.injuryRamps { notes.append("Ramping \(ramp.injury.parts.map(\.label).joined(separator: ", ").lowercased()) work back in at \(Int(ramp.loadFactor * 100))% of normal load.") }
+
+        // Rep-outs: where and how many.
+        let wantsRepOuts = (!deload || checkIn) && !med && !light && !life.reentry
+            && FailurePolicy.wantsRepOut(trust: context.trust, assessment: assessment, checkIn: checkIn, sessionIndexInWeek: context.sessionIndexInWeek)
+        var repOutsLeft = wantsRepOuts ? FailurePolicy.capPerSession(experience: experience, assessment: assessment || checkIn) : 0
+
+        var used = Set<String>()
+        var items: [PlannedItem] = []
+        var quests: [Quest] = []
+        var droppedConditioning = false
+
+        let strengthSlots = day.blocks.filter { $0.kind == .main || $0.kind == .accessory }.flatMap { b in b.slots.map { (b.kind, $0) } }
+        // Rep-out picks: safe-to-fail anchors first, then scored lifts that have earned it (never deadlifts outside a check-in).
+        var repOutSlots = Set<UUID>()
+        if repOutsLeft > 0 {
+            let ranked = strengthSlots.compactMap { kind, slot -> (UUID, Int)? in
+                let exercise = catalog.resolve(slot.exerciseID)
+                guard FailurePolicy.allowsRepOut(exercise, trust: context.trust, experience: experience, hasSafeties: gym.hasSafeties),
+                      exercise.pattern != .hinge || checkIn, !exercise.timed, !(context.history[exercise.id] ?? []).isEmpty else { return nil }
+                let rank = exercise.safetyTier == .safeToFail ? 0 : (kind == .main ? 1 : 2)
+                return (slot.id, rank)
+            }.sorted { $0.1 < $1.1 }
+            for (id, _) in ranked where repOutsLeft > 0 {
+                repOutSlots.insert(id)
+                repOutsLeft -= 1
+            }
+        }
+
+        for planBlock in day.blocks {
+            if med, planBlock.kind != .main { if planBlock.kind == .conditioning { droppedConditioning = true }; continue }
+            if light, planBlock.kind == .conditioning || planBlock.kind == .accessory { continue }
+            for slot in planBlock.slots {
+                var exercise = catalog.resolve(slot.exerciseID)
+                var substitutedFor: String?
+                if !availability.allows(exercise) || life.excludes(exercise) || context.settings.avoid.contains(exercise.id) {
+                    let options = Substitutions.candidates(for: exercise, in: catalog.all, availability: availability, injuries: life.injuries,
+                                                           avoid: context.settings.avoid.union(used))
+                    guard let replacement = options.first else {
+                        notes.append("\(exercise.name) skipped today: nothing suitable with this equipment.")
+                        continue
+                    }
+                    substitutedFor = exercise.id
+                    exercise = replacement
+                }
+                used.insert(exercise.id)
+
+                switch slot.role {
+                case .main, .accessory:
+                    let rir: Double = assessment ? (week < 2 ? 3 : 2) : (med ? 2 : Progression.targetRIR(week: week, of: block.loadingWeeks))
+                    var sets = slot.sets(week: week)
+                    if med { sets = 2 }
+                    if life.reentry { sets = max(slot.role == .main ? 2 : 1, sets - 1) }
+                    let target = SlotTarget(sets: sets, repRange: slot.repRange, targetRIR: rir, deload: deload,
+                                            repOut: repOutSlots.contains(slot.id))
+                    let progression = ProgressionContext(
+                        exercise: exercise, increments: gym.increments(for: exercise.equipment), trust: context.trust,
+                        phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),
+                        bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
+                    let prescription = Progression.prescribe(target, progression)
+                    var all = prescription.sets
+                    if slot.role == .main, let first = all.first, let load = first.loadKg, first.kind != .findingWeight {
+                        all = Progression.rampUp(to: load, reps: first.targetReps, exercise: exercise,
+                                                 increments: gym.increments(for: exercise.equipment), bodyweightKg: context.bodyweightKg) + all
+                    }
+                    let rest = Rest.plan(role: exercise.restRole, reps: prescription.sets.first?.targetReps ?? slot.repRange.middle,
+                                         defaultSeconds: slot.restSeconds, enduranceScore: context.enduranceScore,
+                                         hrGuidance: context.settings.heartRateGuidedRest)
+                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: planBlock.kind, exerciseID: exercise.id, role: slot.role, sets: all,
+                                             repRange: slot.repRange, rest: rest, seconds: slot.seconds, supersetGroup: med ? nil : slot.supersetGroup,
+                                             restFiller: slot.restFiller, reason: slot.reason, note: prescription.reason, mode: prescription.mode,
+                                             substitutedFor: substitutedFor))
+                case .mobility, .warmup, .stretch:
+                    let count = max(1, slot.sets(week: week))
+                    let sets = (0..<count).map { _ in
+                        SetPrescription(kind: .working, loadKg: nil, targetReps: slot.repRange.middle, targetRIR: 5, seconds: slot.seconds)
+                    }
+                    // Warm-ups, drills and stretches flow straight on: no rest timer.
+                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: planBlock.kind, exerciseID: exercise.id, role: slot.role, sets: sets,
+                                             repRange: slot.repRange, rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
+                                             seconds: slot.seconds, reason: slot.reason))
+                case .conditioning:
+                    var plan = slot.conditioning ?? ConditioningPlan(minutes: 15, zones: 2...3, style: .steady)
+                    if deload {
+                        // Zone 2 stays in a deload; intervals don't.
+                        plan.style = .steady
+                        plan.zones = 2...2
+                        plan.workSeconds = nil
+                        plan.restSeconds = nil
+                    }
+                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: .conditioning, exerciseID: exercise.id, role: .conditioning,
+                                             sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 3, seconds: plan.minutes * 60)],
+                                             repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
+                                             seconds: plan.minutes * 60, conditioning: plan, reason: slot.reason))
+                }
+            }
+        }
+
+        let questDay = date
+        for overflow in day.overflow where !med || overflow.kind != .conditioning {
+            quests.append(Quest(id: "lift-\(questDay.iso)-\(overflow.kind.rawValue)", title: "\(overflow.title) this evening",
+                                detail: "It didn't fit in today's session.", stat: overflow.stat, source: .liftTrack, minutes: overflow.minutes,
+                                day: questDay, timeOfDay: .evening, priority: overflow.stat == .agility ? 2 : 1))
+        }
+        if droppedConditioning {
+            quests.append(Quest(id: "lift-\(questDay.iso)-conditioning", title: "A 20-minute walk", detail: "Conditioning is off the plan while things are busy.",
+                                stat: .endurance, source: .liftTrack, minutes: 20, day: questDay, priority: 0.5))
+        }
+
+        var title = day.name
+        if med { title += " · minimum dose" } else if blockWeek == .deload { title += " · deload" }
+        return SessionPlan(id: UUID(day.id, salt: date.ordinal), day: date, title: title, mesocycleID: mesocycle.id, dayID: day.id,
+                           week: blockWeek == .deload ? nil : week,
+                           deload: deload, checkIn: checkIn, assessment: assessment, minimumEffectiveDose: med, items: items, notes: notes, quests: quests)
+    }
+}
+
+extension UUID {
+    /// A stable id derived from another and a number, so planning the same day twice gives the
+    /// same ids (the Watch's copy only changes when the plan does).
+    init(_ base: UUID, salt: Int) {
+        var bytes = base.uuid
+        withUnsafeMutableBytes(of: &bytes) { raw in
+            var s = UInt64(bitPattern: Int64(salt)).littleEndian
+            withUnsafeBytes(of: &s) { saltBytes in
+                for i in 0..<8 { raw[8 + i] ^= saltBytes[i] }
+            }
+        }
+        self.init(uuid: bytes)
+    }
+}

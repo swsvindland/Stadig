@@ -1,0 +1,116 @@
+#if DEBUG
+import Foundation
+import ExerciseLibrary
+import LiftEngine
+import SystemCore
+
+/// `-seedSampleData`: a lifter three weeks into the assessment, every session run through the
+/// real engine (plan, live session, autoregulation), so the screens show realistic data.
+@MainActor
+enum SampleData {
+    static func seedIfEmpty(_ model: AppModel) {
+        guard model.profile == nil else { return }
+        let start = Day.today.adding(days: -20)
+        let profile = SharedProfile(goals: [.biggerAndStronger, .leaner], schedule: TrainingSchedule(daysPerWeek: 4, minutesPerSession: 60),
+                                    equipment: .fullGym, experience: .intermediate,
+                                    recurring: [RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 75, intensity: 7)],
+                                    sex: .male, birthYear: 1991, heightCm: 180, units: UnitPreference(weight: .kg, length: .cm), createdBy: .liftTrack)
+        var settings = LiftSettings(selfReportedPhase: .maintaining, saveToHealth: false)
+        let gym = Gym.preset(.fullGym, unit: .kg)
+        settings.gymID = gym.id
+        model.completeOnboarding(profile: profile, settings: settings, gym: gym,
+                                 measurements: BodyMeasurements(day: start, weightKg: 82, neckCm: 39, shouldersCm: 116, waistCm: 86, armCm: 36))
+        // Move the assessment back three weeks.
+        if var assessment = model.mesocycles.last {
+            assessment.block.start = start
+            model.save(assessment)
+            var s = model.settings
+            s.assessmentStart = start
+            model.save(settings: s)
+        }
+        let truth: [String: Double] = ["barbell-back-squat": 140, "conventional-deadlift": 165, "barbell-bench-press": 92,
+                                       "barbell-incline-bench-press": 78, "barbell-overhead-press": 55, "pull-up": 108, "barbell-row": 80]
+        var day = start
+        var sessionsDone = 0
+        while day < .today {
+            if profile.schedule.trainingDays.contains(day.weekday), let analysis = model.analysis, let next = analysis.next, let mesocycle = analysis.mesocycle {
+                let context = PlanningContext(catalog: model.catalog, gym: gym, profile: profile, settings: model.settings, trust: analysis.trust,
+                                              phase: analysis.phase, life: analysis.life, history: analysis.history, bodyweightKg: 82,
+                                              enduranceScore: analysis.endurance.score, sessionIndexInWeek: next.doneThisWeek)
+                let plan = SessionPlanner.plan(next.day, of: mesocycle, on: day, context: context)
+                let begin = day.date().addingTimeInterval(17.5 * 3600)
+                var live = LiveSession(plan: plan, device: "iPhone", now: begin)
+                let environment = SessionEnvironment(catalog: model.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
+                                                     bodyweightKg: 82, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
+                perform(&live, truth: truth, growth: 1 + 0.004 * Double(sessionsDone), environment: environment, begin: begin)
+                model.keep(live.record(feedback: SessionFeedback(soreness: sessionsDone % 3 == 0 ? 2 : 1, energy: 3 + sessionsDone % 2),
+                                       now: begin.addingTimeInterval(62 * 60)))
+                sessionsDone += 1
+            }
+            if [.tuesday, .thursday].contains(day.weekday), day < .today {
+                model.save(activity: ActivityLog(type: .bjj, start: day.date().addingTimeInterval(19 * 3600), minutes: 75, intensity: 7,
+                                                 martialArts: MartialArtsDetails(classType: .sparring, sparringRounds: 5, roundsBeforeGassed: 4)))
+            }
+            day = day.adding(days: 1)
+        }
+        model.save(mobility: [
+            MobilityResult(test: .hip9090, day: start.adding(days: 3), value: 1),
+            MobilityResult(test: .deepSquatHold, day: start.adding(days: 3), value: 35),
+            MobilityResult(test: .kneeToWall, day: start.adding(days: 3), value: 9),
+            MobilityResult(test: .sitAndReach, day: start.adding(days: 3), value: -4),
+            MobilityResult(test: .overheadReach, day: start.adding(days: 3), value: 2),
+        ])
+        model.save(benchmark: BenchmarkResult(benchmark: .stairs10min, day: start.adding(days: 4), value: 52))
+    }
+
+    /// Performs a session the way a consistent, honest lifter would.
+    private static func perform(_ live: inout LiveSession, truth: [String: Double], growth: Double, environment: SessionEnvironment, begin: Date) {
+        var clock = begin
+        var guardCount = 0
+        while let (i, s) = live.current, guardCount < 300 {
+            guardCount += 1
+            clock = clock.addingTimeInterval(100)
+            let item = live.items[i]
+            let prescription = item.sets[s].prescription
+            if item.plan.role == .conditioning {
+                live.logConditioning(item: i, minutes: item.plan.conditioning?.minutes ?? 10, averageHeartRate: 128, zoneMinutes: [2: 10], now: clock)
+                continue
+            }
+            guard item.plan.isStrength else {
+                live.log(item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
+                         environment: environment, now: clock)
+                continue
+            }
+            let exercise = environment.catalog.resolve(item.exerciseID)
+            let fresh = (truth[exercise.id] ?? defaultTruth(exercise)) * growth
+            let e1rm = fresh * (1 - 0.02 * Double(item.loggedSets.filter { $0.kind.countsAsWork }.count))
+            let guess = OneRepMax.loggedLoad(forEffective: OneRepMax.load(e1rm: fresh, reps: 10, rir: 3), basis: exercise.loadBasis, bodyweightKg: 82)
+            let load = prescription.loadKg ?? environment.increments(for: exercise).round(max(0, guess), down: true)
+            let effective = OneRepMax.effectiveLoad(load, basis: exercise.loadBasis, bodyweightKg: 82)
+            let capacity = effective > 0 ? Int(OneRepMax.repsToFailure(e1rm: e1rm, at: effective)) : 15
+            switch prescription.kind {
+            case .warmup:
+                live.log(item: i, set: s, reps: prescription.targetReps, loadKg: load, rating: nil, environment: environment, now: clock)
+            case .repOut:
+                live.log(item: i, set: s, reps: capacity, loadKg: load, rating: nil, environment: environment, now: clock)
+            default:
+                if capacity < prescription.targetReps {
+                    live.log(item: i, set: s, reps: capacity, loadKg: load, rating: .red, environment: environment, now: clock)
+                } else {
+                    let rating: SetRating = capacity - prescription.targetReps >= 3 ? .green : .orange
+                    live.log(item: i, set: s, reps: prescription.targetReps, loadKg: load, rating: rating, environment: environment, now: clock)
+                }
+            }
+        }
+    }
+
+    private static func defaultTruth(_ exercise: Exercise) -> Double {
+        switch exercise.loadBasis {
+        case .perHand: 32
+        case .bodyweightPlus: 100
+        case .assisted: 90
+        default: exercise.isCompound ? 110 : 60
+        }
+    }
+}
+#endif

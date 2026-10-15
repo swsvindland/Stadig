@@ -1,0 +1,34 @@
+{
+  "identifier" : "4C1F57D0",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [
+    {
+      "displayPrice" : "29.99",
+      "familyShareable" : true,
+      "internalID" : "4C1F57D1",
+      "localizations" : [
+        {
+          "description" : "Lift Track, unlocked for good. No subscription.",
+          "displayName" : "Lift Track",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "dev.svindland.lifttrack.unlock",
+      "referenceName" : "Lift Track unlock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [ ]
+  },
+  "subscriptionGroups" : [ ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

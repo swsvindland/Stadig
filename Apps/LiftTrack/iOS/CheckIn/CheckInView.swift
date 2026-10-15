@@ -1,0 +1,106 @@
+import SwiftUI
+import LiftEngine
+import SystemCore
+
+/// The plain, low-key check-in at the end of a deload: mobility tests and a conditioning
+/// benchmark. No boss fights.
+struct CheckInView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var values: [MobilityTest: Double] = [:]
+    @State private var painful: Set<MobilityTest> = []
+    @State private var benchmark: EnduranceBenchmark = .stairs10min
+    @State private var benchmarkValue: Double?
+    @State private var minutes = 8
+    @State private var seconds = 0
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Take them fresh, the same way every time. Pain during a test means a physio, not more stretching.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                ForEach(MobilityTest.allCases) { test in
+                    Section(test.label) {
+                        Text(test.instructions).font(.caption).foregroundStyle(.secondary)
+                        switch test.measure {
+                        case .quality:
+                            Picker("Result", selection: Binding(get: { Int(values[test] ?? -1) }, set: { values[test] = Double($0) })) {
+                                Text("—").tag(-1)
+                                ForEach(0..<4) { Text(MobilityTest.qualityLabels[$0]).tag($0) }
+                            }
+                        case .seconds, .centimetres:
+                            HStack {
+                                Text(test.measure == .seconds ? "Held" : "Distance")
+                                Spacer()
+                                TextField("—", value: Binding(get: { values[test] }, set: { values[test] = $0 }),
+                                          format: .number.precision(.fractionLength(0...1)))
+                                    .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 80)
+                                Text(test.unit).foregroundStyle(.secondary)
+                            }
+                        }
+                        Toggle("It hurt", isOn: Binding(get: { painful.contains(test) }, set: { on in
+                            if on { painful.insert(test) } else { painful.remove(test) }
+                        }))
+                    }
+                }
+                Section {
+                    Picker("Test", selection: $benchmark) {
+                        ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
+                    }
+                    Text(benchmark.instructions).font(.caption).foregroundStyle(.secondary)
+                    switch benchmark.measure {
+                    case .timeSeconds:
+                        HStack {
+                            Text("Time")
+                            Spacer()
+                            Picker("Minutes", selection: $minutes) { ForEach(3..<30) { Text("\($0) min").tag($0) } }.labelsHidden()
+                            Picker("Seconds", selection: $seconds) { ForEach(0..<60) { Text("\($0) s").tag($0) } }.labelsHidden()
+                        }
+                    case .distanceMeters, .floors:
+                        HStack {
+                            Text(benchmark.measure == .floors ? "Floors" : "Metres")
+                            Spacer()
+                            TextField("—", value: $benchmarkValue, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                        }
+                    }
+                    Toggle("Record it", isOn: Binding(get: { benchmarkValue != nil || benchmark.measure == .timeSeconds && recordTime },
+                                                       set: { recordTime = $0; if !$0 { benchmarkValue = nil } }))
+                } header: {
+                    Text("Conditioning benchmark")
+                } footer: {
+                    Text("Every four weeks or so, the same test. A stalled benchmark puts intervals in the post-lift block.")
+                }
+            }
+            .navigationTitle("Check-in")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(values.isEmpty && !hasBenchmark) }
+            }
+            .onAppear { benchmark = model.settings.benchmark }
+        }
+    }
+
+    @State private var recordTime = false
+
+    private var hasBenchmark: Bool { benchmark.measure == .timeSeconds ? recordTime : benchmarkValue != nil }
+
+    private func save() {
+        let results = values.compactMap { test, value -> MobilityResult? in
+            value < 0 ? nil : MobilityResult(test: test, day: .today, value: value, painful: painful.contains(test))
+        }
+        if !results.isEmpty { model.save(mobility: results) }
+        if hasBenchmark {
+            let value = benchmark.measure == .timeSeconds ? Double(minutes * 60 + seconds) : (benchmarkValue ?? 0)
+            model.save(benchmark: BenchmarkResult(benchmark: benchmark, day: .today, value: value))
+            if benchmark != model.settings.benchmark {
+                var s = model.settings
+                s.benchmark = benchmark
+                model.save(settings: s)
+            }
+        }
+        dismiss()
+    }
+}
