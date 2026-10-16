@@ -127,7 +127,7 @@ struct GymFloorTests {
         gym.apparatus.insert(.sauna)
         let plan = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(profile, gym: gym))
         let last = try #require(plan.items.last)
-        #expect(last.block == .recovery && last.exerciseID == "sauna" && last.seconds == 900)
+        #expect(last.block == .recovery && last.exerciseID == "sauna" && last.seconds == 600, "a first time is ten minutes")
         #expect(plan.estimatedMinutes == plain.estimatedMinutes)
         gym.apparatus = gym.apparatus.subtracting([.sauna]).union([.steamRoom])
         let steam = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(profile, gym: gym))
@@ -147,5 +147,66 @@ struct GymFloorTests {
         let minutes = live.zoneMinutes(from: start, to: start.addingTimeInterval(600), zones: zones)
         #expect(abs((minutes[2] ?? 0) - 5) < 0.2 && abs((minutes[4] ?? 0) - 5) < 0.2, "\(minutes)")
         #expect(live.averageHeartRate(from: start, to: start.addingTimeInterval(600)) == 155)
+    }
+
+    @Test("a hotter room means fewer minutes for the same heat, and 10 at 190 °F is more than 20 at 175 °F")
+    func heatDose() {
+        func c(_ f: Double) -> Double { (f - 32) * 5 / 9 }
+        #expect(HeatDose.dose(minutes: 10, temperatureC: c(190), room: "sauna") > HeatDose.dose(minutes: 20, temperatureC: c(175), room: "sauna"))
+        let last = HeatLog(exerciseID: "sauna", date: Date(), minutes: 20, temperatureC: c(175), rating: .orange)
+        let plan = HeatDose.plan([last], room: "sauna")
+        #expect(plan.change == .same && plan.minutes(at: c(175), room: "sauna") == 20)
+        let hot = plan.minutes(at: c(190), room: "sauna")
+        #expect((6...10).contains(hot), "\(hot) min at 190 °F")
+        #expect(plan.minutes(at: c(160), room: "sauna") == 25, "never past what's sensible, however cool")
+        #expect(plan.minutes(at: 100, room: "sauna") <= 12)
+        #expect(HeatDose.plan([], room: "sauna").minutes(at: 95, room: "sauna") == 5, "a first time in a very hot room is short")
+    }
+
+    @Test("how the last session felt moves the next, like a set's rating")
+    func heatProgression() {
+        let base = HeatLog(exerciseID: "sauna", date: Date(), minutes: 10, temperatureC: 80, rating: .orange)
+        let dose = HeatDose.dose(minutes: 10, temperatureC: 80, room: "sauna")
+        var easy = base; easy.rating = .green
+        var hard = base; hard.rating = .red
+        #expect(abs(HeatDose.plan([easy], room: "sauna").dose - dose * 1.15) < 0.01)
+        #expect(abs(HeatDose.plan([hard], room: "sauna").dose - dose * 0.8) < 0.01)
+        var earlier = base; earlier.date = base.date.addingTimeInterval(-86_400 * 3)
+        #expect(HeatDose.plan([earlier, base], room: "sauna").change == .more, "two just-rights in a row creep up")
+        #expect(HeatDose.plan([base], room: "steam-room").change == .first, "rooms are counted apart")
+        var long = base; long.minutes = 25; long.rating = .green
+        #expect(HeatDose.plan([long], room: "sauna").dose == 25, "past twenty minutes' worth, easy holds rather than grows")
+    }
+
+    @Test("the sauna is kept apart from the lifting")
+    func heatRecord() throws {
+        let profile = Fixture.profile()
+        let m = ProgramGenerator.generate(Fixture.input(profile))
+        var gym = Gym.preset(.fullGym, unit: .kg)
+        gym.apparatus.insert(.sauna)
+        var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(profile, gym: gym)), device: "Test")
+        let index = try #require(live.items.firstIndex { $0.plan.role == .recovery })
+        live.logHeat(item: index, minutes: 12, temperatureC: 88, rating: .orange)
+        #expect(live.items[index].isDone)
+        let record = live.record(feedback: nil)
+        #expect(record.heat?.first?.minutes == 12 && record.heat?.first?.temperatureC == 88)
+        #expect(!record.exercises.contains { $0.exerciseID == "sauna" } && !record.mobility.contains("sauna"))
+    }
+
+    @Test("spare time never buys sets the recovery budget can't pay for, and a short day says why")
+    func fatigueFirst() throws {
+        let bjj = RecurringActivity(activity: .bjj, weekdays: [.monday, .tuesday, .thursday, .saturday], minutes: 90, intensity: 8)
+        let busy = Fixture.profile(days: 4, minutes: 90, recurring: [bjj])
+        let calm = Fixture.profile(days: 4, minutes: 90)
+        func sets(_ profile: SharedProfile) -> Int {
+            ProgramGenerator.generate(Fixture.input(profile)).days.flatMap(\.strengthSlots).map { $0.sets(week: 0) }.reduce(0, +)
+        }
+        #expect(sets(busy) < sets(calm), "four BJJ sessions a week leave less room for lifting")
+        let m = ProgramGenerator.generate(Fixture.input(busy))
+        #expect(m.days.flatMap(\.strengthSlots).allSatisfy { $0.sets(week: 0) >= 2 })
+        let plan = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(busy))
+        if plan.estimatedMinutes <= 80 {
+            #expect(plan.notes.contains { $0.contains("under your 90") && $0.contains("outside the gym") }, "\(plan.notes)")
+        }
     }
 }

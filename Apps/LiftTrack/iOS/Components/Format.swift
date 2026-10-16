@@ -45,6 +45,11 @@ enum Format {
         return "\(load(set.loadKg, unit: unit, basis: exercise.loadBasis)) × \(set.reps)"
     }
 
+    /// "190°F" or "88°C".
+    static func temperature(_ celsius: Double, fahrenheit: Bool) -> String {
+        fahrenheit ? "\(Int((celsius * 9 / 5 + 32).rounded()))°F" : "\(Int(celsius.rounded()))°C"
+    }
+
     static func duration(_ seconds: Int) -> String {
         if seconds >= 60 {
             let m = seconds / 60, s = seconds % 60

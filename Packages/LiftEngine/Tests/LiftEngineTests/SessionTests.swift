@@ -68,7 +68,10 @@ struct SessionTests {
         let plan = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(profile))
         let strength = plan.items.filter(\.isStrength)
         #expect(!strength.isEmpty)
-        #expect(strength.allSatisfy { $0.sets.allSatisfy { $0.kind == .findingWeight && $0.loadKg == nil } })
+        #expect(strength.allSatisfy { $0.workSets.allSatisfy { $0.kind == .findingWeight && $0.loadKg == nil } })
+        // Heavy lifts still warm up, toward a guess at the working weight.
+        let squat = strength.first { Fixture.catalog.resolve($0.exerciseID).equipment == .barbell && $0.role == .main }
+        #expect(squat.map { $0.sets.contains { $0.kind == .warmup && ($0.loadKg ?? 0) > 0 } } ?? true)
         #expect(plan.assessment)
         #expect(plan.notes.first?.contains("pick a weight") == true)
     }

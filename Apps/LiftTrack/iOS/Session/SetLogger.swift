@@ -24,6 +24,8 @@ struct SetLogger: View {
                 header(item: item, set: set, exercise: exercise)
                 if let conditioning = item.plan.conditioning {
                     conditioningControls(conditioning)
+                } else if item.plan.role == .recovery {
+                    HeatControls(itemIndex: itemIndex, room: item.exerciseID)
                 } else if !item.plan.isStrength || exercise.timed {
                     timedControls(set: set, exercise: exercise)
                 } else {
@@ -516,5 +518,151 @@ struct HeartRateLine: View {
                 .accessibilityLabel("Heart rate \(Int(bpm)), zone \(zone)\(inside ? "" : aim.map { ", aim zone \($0.lowerBound) to \($0.upperBound)" } ?? "")")
             }
         }
+    }
+}
+
+/// The sauna or steam room: read the thermometer, and the time follows from the last session and
+/// how it felt; afterwards, how this one felt.
+struct HeatControls: View {
+    @Environment(AppModel.self) private var model
+    let itemIndex: Int
+    let room: String
+    @State private var temperatureC: Double?
+    @State private var started: Date?
+    @State private var finished: Date?
+
+    var body: some View {
+        let plan = HeatDose.plan(model.environment?.heat ?? [], room: room)
+        let celsius = temperatureC ?? plan.temperatureC
+        let minutes = plan.minutes(at: celsius, room: room)
+        let fahrenheit = model.fahrenheit
+        VStack(spacing: 10) {
+            HeartRateLine(aim: nil)
+            if finished == nil {
+                VStack(spacing: 10) {
+                    Thermometer(celsius: celsius, fahrenheit: fahrenheit) { temperatureC = $0 }
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Aim for").font(.subheadline).foregroundStyle(.secondary)
+                        Text("\(minutes) min").font(.title2.weight(.semibold).monospacedDigit())
+                        Spacer()
+                    }
+                }
+                Text(explanation(plan, today: celsius, minutes: minutes, fahrenheit: fahrenheit))
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let started {
+                    let end = started.addingTimeInterval(TimeInterval(minutes * 60))
+                    Text(timerInterval: Date()...max(Date(), end), countsDown: true)
+                        .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+                    Button { finished = Date() } label: { Text("Done").font(.headline).frame(maxWidth: .infinity) }
+                        .primaryAction().controlSize(.large)
+                } else {
+                    Button { started = Date() } label: { Label("Start \(minutes) min", systemImage: "timer").font(.headline).frame(maxWidth: .infinity) }
+                        .primaryAction().controlSize(.large)
+                }
+                Text("Leave whenever you feel dizzy or unwell, and drink water afterwards.").font(.caption2).foregroundStyle(.tertiary)
+            } else {
+                Text("How was it?").font(.headline)
+                HStack(spacing: 10) {
+                    rating(.green, "Easy", "Could stay longer")
+                    rating(.orange, "Just right", "Ready to leave")
+                    rating(.red, "Too much", "Left early or felt rough")
+                }
+            }
+        }
+    }
+
+    func rating(_ value: SetRating, _ label: String, _ detail: String) -> some View {
+        Button {
+            let end = finished ?? Date()
+            let spent = started.map { max(1, end.timeIntervalSince($0) / 60) }
+                ?? Double(HeatDose.plan(model.environment?.heat ?? [], room: room).minutes(at: temperatureC ?? HeatDose.reference(room), room: room))
+            let reading = temperatureC ?? HeatDose.plan(model.environment?.heat ?? [], room: room).temperatureC
+            model.update { $0.logHeat(item: itemIndex, minutes: (spent * 2).rounded() / 2, temperatureC: reading, rating: value, now: end) }
+        } label: {
+            VStack(spacing: 4) {
+                Text(label).font(.subheadline.weight(.semibold))
+                Text(detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).lineLimit(2)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(value.color.gradient, in: .rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label): \(detail)")
+    }
+
+    /// Where today's minutes come from, in a line.
+    func explanation(_ plan: HeatDose.Plan, today: Double, minutes: Int, fahrenheit: Bool) -> String {
+        guard let last = plan.last else {
+            return "First time: about ten minutes at \(Format.temperature(HeatDose.reference(room), fahrenheit: fahrenheit)), less when it's hotter."
+        }
+        let then = "\(Int(last.minutes.rounded())) min at \(last.temperatureC.map { Format.temperature($0, fahrenheit: fahrenheit) } ?? "an unknown heat")"
+        let felt = switch plan.change {
+        case .more: "felt easy, so a little more"
+        case .less: "was too much, so a little less"
+        default: "was right, so the same"
+        }
+        let hotter = last.temperatureC.map { today - $0 >= 2 ? " Hotter today, so shorter." : ($0 - today >= 2 ? " Cooler today, so longer." : "") } ?? ""
+        return "Last time \(then) \(felt).\(hotter)"
+    }
+
+}
+
+/// The room's thermometer: − and + in 5 °F or 2 °C steps, or tap to type the reading.
+struct Thermometer: View {
+    let celsius: Double
+    let fahrenheit: Bool
+    let set: (Double) -> Void
+    @State private var typing = false
+    @State private var typed = ""
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("Thermometer").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Button { set(step(by: -1)) } label: { Image(systemName: "minus").frame(width: 36, height: 36) }
+                    .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                    .accessibilityLabel("Cooler")
+                Spacer()
+                Button {
+                    typed = Format.temperature(celsius, fahrenheit: fahrenheit).filter(\.isNumber)
+                    typing = true
+                } label: {
+                    Text(Format.temperature(celsius, fahrenheit: fahrenheit))
+                        .font(.system(size: 34, weight: .semibold, design: .rounded).monospacedDigit())
+                        .fixedSize()
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Type the reading")
+                Spacer()
+                Button { set(step(by: 1)) } label: { Image(systemName: "plus").frame(width: 36, height: 36) }
+                    .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                    .accessibilityLabel("Hotter")
+            }
+        }
+        .padding(8)
+        .background(.insetBackground, in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Thermometer")
+        .accessibilityValue(Format.temperature(celsius, fahrenheit: fahrenheit))
+        .alert("Thermometer", isPresented: $typing) {
+            TextField(fahrenheit ? "°F" : "°C", text: $typed).keyboardType(.numberPad)
+            Button("Set") {
+                guard let value = Double(typed) else { return }
+                set(min(120, max(30, fahrenheit ? (value - 32) * 5 / 9 : value)))
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(fahrenheit ? "In °F" : "In °C")
+        }
+    }
+
+    func step(by direction: Double) -> Double {
+        if fahrenheit {
+            let f = (celsius * 9 / 5 + 32) / 5
+            return (((f.rounded() + direction) * 5) - 32) * 5 / 9
+        }
+        return (celsius / 2).rounded() * 2 + 2 * direction
     }
 }

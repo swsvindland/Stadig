@@ -43,6 +43,16 @@ struct SessionSummaryView: View {
                         }
                         .card()
                     }
+                    ForEach(Array((record.heat ?? []).enumerated()), id: \.offset) { _, heat in
+                        HStack {
+                            Label(model.catalog.resolve(heat.exerciseID).name, systemImage: "heat.waves").font(.headline)
+                            Spacer()
+                            Text("\(Format.number(heat.minutes)) min\(heat.temperatureC.map { " at \(Format.temperature($0, fahrenheit: model.fahrenheit))" } ?? "")")
+                                .font(.subheadline.monospacedDigit())
+                            RatingMark(rating: heat.rating)
+                        }
+                        .card()
+                    }
                 }
                 .padding()
                 .readableWidth()

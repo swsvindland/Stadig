@@ -1,5 +1,7 @@
 import SwiftUI
+import ExerciseLibrary
 import HealthBridge
+import LiftEngine
 import SystemCore
 
 @main
@@ -20,6 +22,12 @@ struct LiftTrackApp: App {
             case "body": .body
             default: .today
             }
+        }
+        // -gymSauna gives the gym a sauna, for the recovery screen.
+        if arguments.contains("-gymSauna") {
+            var gym = AppModel.shared.gym
+            gym.apparatus.insert(.sauna)
+            AppModel.shared.save(gym: gym)
         }
         if arguments.contains("-startSession"), AppModel.shared.live == nil, let plan = AppModel.shared.plan() { AppModel.shared.start(plan) }
         #endif

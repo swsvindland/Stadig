@@ -19,7 +19,6 @@ public final class WorkoutMirror: NSObject {
     public func activate() {
         guard let store = HealthBridge.shared.store else { return }
         store.workoutSessionMirroringStartHandler = { [weak self] session in
-            nonisolated(unsafe) let session = session
             Task { @MainActor in self?.attach(session) }
         }
     }
@@ -61,19 +60,16 @@ extension WorkoutMirror: HKWorkoutSessionDelegate {
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                                            from fromState: HKWorkoutSessionState, date: Date) {
         guard toState == .ended || toState == .stopped else { return }
-        nonisolated(unsafe) let workoutSession = workoutSession
         Task { @MainActor in self.detach(workoutSession) }
     }
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: any Error) {}
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
-        nonisolated(unsafe) let workoutSession = workoutSession
         Task { @MainActor in self.received(data, from: workoutSession) }
     }
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didDisconnectFromRemoteDeviceWithError error: (any Error)?) {
-        nonisolated(unsafe) let workoutSession = workoutSession
         Task { @MainActor in self.detach(workoutSession) }
     }
 }

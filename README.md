@@ -161,7 +161,7 @@ The program generator works like this:
   - **30 minutes:** ramp-up sets are the warm-up, the limiter drill happens in the rests, two compounds are supersetted, and conditioning becomes a quest.
   - **60 minutes:** five easy minutes on a bike or rower and three drills, the limiter slot, the main lifts, a few accessories and brief conditioning.
   - **90 minutes:** a fuller warm-up, more sets and a 20–30 minute conditioning finisher.
-  - Time the lifting doesn't use goes to more sets first (main lifts up to four work sets, accessories up to three), then to conditioning; no lift is ever a single set.
+  - Time the lifting doesn't use goes to more sets first (main lifts up to four work sets, accessories up to three), but only as far as the week's recovery budget allows, then to conditioning; no lift is ever a single set. When the budget is what keeps a session short, it says so ("About 45 minutes today, under your 60…") rather than leaving the hour feeling unfinished.
 - **"Short on time today?"** refits the day to 30, 45, 60 or 90 minutes.
 
 **Session planning** turns a day into exact sets:
@@ -172,7 +172,7 @@ The program generator works like this:
 - crunch mode gives the minimum effective dose, with equipment stand-ins
 - injuries swap out what they must, and injury ramps ease lifts back in
 - a head cold means light work only
-- a gym with a sauna or steam room gets an optional 15 (or 10) minutes at the end, outside the session's time (Settings → Gym → Recovery)
+- a gym with a sauna or steam room gets an optional session at the end, outside the session's time (Settings → Gym → Recovery). Rooms run hot and cold, so you read the thermometer and the minutes follow: the dose is minutes weighted by heat (twice as hard every 6 °C / 11 °F hotter, so 10 minutes at 190 °F is more than 20 at 175 °F), starting at ten minutes' worth at 80 °C (176 °F), capped by how hot the room is, and moved by how the last one felt (easy +15%, too much −20%, two just-rights in a row +5%). Time, temperature, rating and heart rate are kept apart from the lifting, so they never count as sets or calibrate ratings.
 
 **Analysis** produces the "Do this next" actions. Each one ends in a concrete step, e.g. "Next session, 82.5 kg for 3×5" for a stall. When Macro Track data exists, it adds cross-app context such as "Protein was under target 4 of the last 7 logged days." It also produces the day's quests (three at most), the training discipline score, and the summary published for the hub.
 
@@ -257,6 +257,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 - `-inMemoryStore` keeps nothing between launches.
 - `-resetData` erases the store first.
 - `-unlocked` skips the purchase.
+- `-gymSauna` gives the gym a sauna, for the recovery screen.
 - `-startSession` starts today's session.
 - `-tab plan|progress|body` opens a tab.
 
@@ -283,10 +284,11 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
   - A **plateaued veteran** gets a stall that reads as a programming problem at maintenance, expected in a cut, and a recovery problem when beat up.
   - A **growing lifter** is never flagged as stalled.
   - Also covered: strength standards, autoregulation for every rating, assisted exercises, finding weights, deloads, injury ramps, vacation reflow, early deloads, life-mode effects, the discipline band, Fatigue Budget states, physique, agility, rest rules and quests.
-- **LiftEngine (28 tests).**
+- **LiftEngine (32 tests).**
   - Every day count from 1 to 6, and every scored lift covered each week.
   - The easy bike gets its five minutes and the drills fit the rest; no lift gets a single set at 45 to 90 minutes, and an hour and a half is more lifting than an hour.
   - "Do this now" (with superset partners), a mistyped weight or rating corrected with the next sets following it, starting weights in range for leg press, dumbbell bench, pulldown and squat, the sauna or steam room only where the gym has one, and minutes per heart-rate zone.
+  - Sauna dose: 10 minutes at 190 °F outweighs 20 at 175 °F, today's minutes follow today's thermometer within sensible caps, each rating moves the next session, and heat is recorded apart from sets. Four BJJ sessions a week mean fewer lifting sets, and a short day says why.
   - 30, 60 and 90-minute budgets. Endurance goals rank conditioning higher.
   - Hotel gyms, injuries, "legs ahead means upper body first", and beat-up-and-stalled swaps.
   - Physique gaps, declared classes, crunch mode, swaps, gym loads and CSV export.

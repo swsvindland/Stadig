@@ -12,6 +12,8 @@ public struct SessionEnvironment: Sendable {
     public var history: [String: [LoggedSet]]
     public var enduranceScore: Double?
     public var heartRateGuidedRest: Bool
+    /// Past sauna and steam sessions, for today's time.
+    public var heat: [HeatLog] = []
 
     public init(catalog: ExerciseCatalog, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
                 history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool) {
@@ -58,6 +60,8 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     public var skipped: Bool
     public var verified: Bool
     public var conditioning: ConditioningLog?
+    /// The sauna or steam room, as it went.
+    public var heat: HeatLog?
 
     public init(plan: PlannedItem) {
         id = plan.id
@@ -348,6 +352,22 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         updatedAt = now
     }
 
+    /// Logs the sauna or steam room: minutes, the thermometer, and how it felt.
+    public mutating func logHeat(item index: Int, minutes: Double, temperatureC: Double?, rating: SetRating?, now: Date = Date()) {
+        guard items.indices.contains(index) else { return }
+        let start = now.addingTimeInterval(-minutes * 60)
+        let readings = heartRateSamples.filter { $0.date >= start && $0.date <= now }.map(\.bpm)
+        items[index].heat = HeatLog(exerciseID: items[index].exerciseID, date: now, minutes: minutes, temperatureC: temperatureC,
+                                    rating: rating, averageHeartRate: readings.isEmpty ? nil : readings.reduce(0, +) / Double(readings.count),
+                                    peakHeartRate: readings.max())
+        for s in items[index].sets.indices where items[index].sets[s].isOpen {
+            items[index].sets[s].logged = LoggedSet(exerciseID: items[index].exerciseID, date: now, kind: .working, loadKg: 0, reps: 1,
+                                                    rating: nil, seconds: Int(minutes * 60))
+        }
+        rest = nil
+        updatedAt = now
+    }
+
     // MARK: Rest
 
     public mutating func startRest(after index: Int, environment: SessionEnvironment, now: Date = Date()) {
@@ -432,8 +452,16 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             exercises.append(ExerciseLog(slotID: item.plan.slotID, exerciseID: item.exerciseID, sets: sets, substitutedFor: item.plan.substitutedFor))
         }
         let average = samples.isEmpty ? nil : samples.map(\.bpm).reduce(0, +) / Double(samples.count)
+        // Heat is kept apart from lifting: it isn't a set, and its rating isn't a rating of strength.
+        let heat = items.filter { $0.plan.role == .recovery }.compactMap { item -> HeatLog? in
+            if let heat = item.heat { return heat }
+            // Timed on the Watch, without a thermometer reading.
+            guard let done = item.loggedSets.last, let seconds = done.seconds, seconds > 0 else { return nil }
+            return HeatLog(exerciseID: item.exerciseID, date: done.date, minutes: Double(seconds) / 60, temperatureC: nil, rating: nil)
+        }
         return SessionRecord(id: id, start: startedAt, end: now, title: plan.title, mesocycleID: plan.mesocycleID, dayID: plan.dayID,
                              planned: plan.mesocycleID != nil, deload: plan.deload, exercises: exercises, conditioning: conditioning,
-                             mobility: mobilityDone, feedback: feedback, device: device, averageHeartRate: average, updatedAt: now)
+                             mobility: mobilityDone.filter { id in !items.contains { $0.exerciseID == id && $0.plan.role == .recovery } },
+                             feedback: feedback, device: device, averageHeartRate: average, heat: heat.isEmpty ? nil : heat, updatedAt: now)
     }
 }

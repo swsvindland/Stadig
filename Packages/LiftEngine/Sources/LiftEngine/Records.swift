@@ -296,6 +296,32 @@ public struct ConditioningLog: Codable, Hashable, Sendable {
     }
 }
 
+/// A sauna or steam room after a session: how hot, how long, and how it felt. Rooms vary, so the
+/// temperature is what makes one session comparable with the next.
+public struct HeatLog: Codable, Hashable, Sendable {
+    /// "sauna" or "steam-room".
+    public var exerciseID: String
+    public var date: Date
+    public var minutes: Double
+    /// The room's thermometer, when it was read.
+    public var temperatureC: Double?
+    /// Easy, just right, or too much.
+    public var rating: SetRating?
+    public var averageHeartRate: Double?
+    public var peakHeartRate: Double?
+
+    public init(exerciseID: String, date: Date, minutes: Double, temperatureC: Double?, rating: SetRating?,
+                averageHeartRate: Double? = nil, peakHeartRate: Double? = nil) {
+        self.exerciseID = exerciseID
+        self.date = date
+        self.minutes = minutes
+        self.temperatureC = temperatureC
+        self.rating = rating
+        self.averageHeartRate = averageHeartRate
+        self.peakHeartRate = peakHeartRate
+    }
+}
+
 /// A finished Lift Track session.
 public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
@@ -314,11 +340,14 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var feedback: SessionFeedback?
     public var device: String
     public var averageHeartRate: Double?
+    /// The sauna or steam room afterwards (nil in sessions saved before it was kept).
+    public var heat: [HeatLog]?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), start: Date, end: Date, title: String, mesocycleID: UUID? = nil, dayID: UUID? = nil, planned: Bool = true,
                 deload: Bool = false, exercises: [ExerciseLog] = [], conditioning: [ConditioningLog] = [], mobility: [String] = [],
-                feedback: SessionFeedback? = nil, device: String = "iPhone", averageHeartRate: Double? = nil, updatedAt: Date = Date()) {
+                feedback: SessionFeedback? = nil, device: String = "iPhone", averageHeartRate: Double? = nil, heat: [HeatLog]? = nil,
+                updatedAt: Date = Date()) {
         self.id = id
         self.start = start
         self.end = end
@@ -333,6 +362,7 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
         self.feedback = feedback
         self.device = device
         self.averageHeartRate = averageHeartRate
+        self.heat = heat
         self.updatedAt = updatedAt
     }
 

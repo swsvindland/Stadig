@@ -107,6 +107,8 @@ public struct LiftAnalysis: Sendable {
     public var quests: [Quest]
     public var calendar: SystemCalendar
     public var adherence: [AdherenceItem]
+    /// Every sauna and steam session, oldest first.
+    public var heat: [HeatLog] = []
 }
 
 public enum Analyst {
@@ -201,6 +203,7 @@ public enum Analyst {
                                     physique: physique, agility: agility, endurance: endurance, phase: phase, life: life, mesocycle: mesocycle,
                                     block: block, next: next, assessment: assessment, actions: [], quests: [], calendar: calendar,
                                     adherence: adherence)
+        analysis.heat = sessions.flatMap { $0.heat ?? [] }.sorted { $0.date < $1.date }
         analysis.actions = actions(state, analysis)
         analysis.quests = quests(state, analysis)
         return analysis

@@ -177,7 +177,13 @@ public enum ProgramGenerator {
         var lifting = day
         lifting.blocks = day.blocks.filter { $0.kind == .main || $0.kind == .accessory }
         lifting.overflow = []
-        return builder.fitTime(lifting, minutes: minutes)
+        // A longer day today adds only what a day's share of the recovery budget has room for.
+        let budget = FatigueBudget.weeklySystemicBudget(experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
+                                                        phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
+                                                        assessment: input.fatigue, outside: .zero)
+        let cost = lifting.strengthSlots.map { Double($0.sets(week: 0)) * input.catalog.resolve($0.exerciseID).fatigue.systemic }.reduce(0, +)
+        let allowance = max(0, budget / Double(max(1, input.profile.schedule.daysPerWeek)) - cost)
+        return builder.fitTime(lifting, minutes: minutes, allowance: allowance)
     }
 }
 
@@ -188,6 +194,8 @@ struct Builder {
     var reasons: [String] = []
     var priorities: [TrainingPriority] = []
     var used: [String: Int] = [:]
+    /// Weekly recovery budget left after the plan, for sets added to fill spare time.
+    var fatigueHeadroom: Double = .infinity
 
     init(input: GeneratorInput) {
         self.input = input
@@ -393,7 +401,9 @@ struct Builder {
         }
         addPhysiqueVolume(&days)
         applyFatigueBudget(&days)
-        days = days.map { fitTime($0, minutes: minutes) }
+        // Spare time can only add sets the recovery budget has room for, shared across the week.
+        let allowance = fatigueHeadroom / Double(max(1, days.count))
+        days = days.map { fitTime($0, minutes: minutes, allowance: allowance) }
 
         let block = TrainingBlock(kind: input.kind, start: input.start, loadingWeeks: input.loadingWeeks,
                                   deloadWeeks: input.kind == .assessment ? 0 : 1)
@@ -522,8 +532,8 @@ struct Builder {
                 for b in days[d].blocks.indices {
                     for s in days[d].blocks[b].slots.indices {
                         let slot = days[d].blocks[b].slots[s]
-                        let minimum = slot.role == .main ? 2 : 1
-                        guard slot.sets(week: 0) > minimum else { continue }
+                        // Two sets at least: a lone set isn't worth walking over to the equipment for.
+                        guard slot.sets(week: 0) > 2 else { continue }
                         if slot.role == .main, input.phase.effects.protectCompounds { continue }
                         let c = input.catalog.resolve(slot.exerciseID).fatigue.systemic * (slot.role == .main ? 0.7 : 1)
                         if c > (best?.3 ?? 0) { best = (d, b, s, c) }
@@ -531,9 +541,28 @@ struct Builder {
                 }
             }
             guard let (d, b, s, _) = best else { break }
-            days[d].blocks[b].slots[s].sets = days[d].blocks[b].slots[s].sets.map { max(1, $0 - 1) }
+            days[d].blocks[b].slots[s].sets = days[d].blocks[b].slots[s].sets.map { max(2, $0 - 1) }
         }
-        if guardCount > 1 { reasons.append("Some sets trimmed to stay within your recovery budget.") }
+        // Everything at two sets and still over: the costliest accessory goes, rather than lifts at one set.
+        var dropped: [String] = []
+        while cost() > budget, dropped.count < 6 {
+            var best: (Int, Int, Int, Double)?
+            for d in days.indices {
+                for b in days[d].blocks.indices where days[d].blocks[b].kind == .accessory {
+                    for s in days[d].blocks[b].slots.indices {
+                        let c = input.catalog.resolve(days[d].blocks[b].slots[s].exerciseID).fatigue.systemic
+                        if c > (best?.3 ?? 0) { best = (d, b, s, c) }
+                    }
+                }
+            }
+            guard let (d, b, s, _) = best else { break }
+            dropped.append(input.catalog.resolve(days[d].blocks[b].slots[s].exerciseID).name)
+            days[d].blocks[b].slots.remove(at: s)
+        }
+        if guardCount > 1 || !dropped.isEmpty {
+            reasons.append("Some sets trimmed\(dropped.isEmpty ? "" : " (and \(dropped.joined(separator: ", ")) left out)") to stay within your recovery budget, so sessions can come in under your time.")
+        }
+        fatigueHeadroom = max(0, budget - cost())
     }
 
     // MARK: Time
@@ -554,7 +583,7 @@ struct Builder {
 
     /// Fits a day into the time available. Every block has a minimum, a desired length and a
     /// priority; goals reorder the priorities. Blocks that don't fit become quests for a free block.
-    func fitTime(_ day: PlannedDay, minutes: Int) -> PlannedDay {
+    func fitTime(_ day: PlannedDay, minutes: Int, allowance: Double = .infinity) -> PlannedDay {
         var day = day
         let short = minutes <= 35
         var main = day.blocks.first { $0.kind == .main }?.slots ?? []
@@ -636,15 +665,18 @@ struct Builder {
             if given > wanted.desired { allocation[.conditioning] = wanted.desired }
         }
         var growing = true
+        var recovery = allowance
         while growing, spareSeconds > 0, !short {
             growing = false
             for (list, cap) in [(0, 4), (1, 3)] {
                 var slots = list == 0 ? main : accessory
                 for i in slots.indices where slots[i].sets(week: 0) < cap {
                     let cost = Self.seconds(for: slots[i], exercise: resolve(slots[i])) / max(1, slots[i].sets(week: 0))
-                    guard cost <= spareSeconds else { continue }
+                    let fatigue = resolve(slots[i]).fatigue.systemic
+                    guard cost <= spareSeconds, fatigue <= recovery else { continue }
                     slots[i].sets = slots[i].sets.map { min(cap, $0 + 1) }
                     spareSeconds -= cost
+                    recovery -= fatigue
                     growing = true
                     break
                 }

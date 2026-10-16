@@ -347,10 +347,15 @@ final class AppModel {
 
     var environment: SessionEnvironment? {
         guard let analysis else { return nil }
-        return SessionEnvironment(catalog: catalog, gym: gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
-                                  bodyweightKg: state?.effectiveBodyweight, history: analysis.history,
-                                  enduranceScore: analysis.endurance.score, heartRateGuidedRest: settings.heartRateGuidedRest)
+        var environment = SessionEnvironment(catalog: catalog, gym: gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
+                                             bodyweightKg: state?.effectiveBodyweight, history: analysis.history,
+                                             enduranceScore: analysis.endurance.score, heartRateGuidedRest: settings.heartRateGuidedRest)
+        environment.heat = analysis.heat
+        return environment
     }
+
+    /// Thermometers read in Fahrenheit where weights are in pounds.
+    var fahrenheit: Bool { (profile?.units.weight ?? gym.unit) == .lb }
 
     var gymForToday: Gym {
         guard let profile, let analysis else { return gym }
@@ -374,10 +379,11 @@ final class AppModel {
             input.profile.schedule.minutesPerSession = minutesAvailable
             day = ProgramGenerator.refit(next.day, minutes: minutesAvailable, input: input)
         }
-        let context = PlanningContext(catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
+        var context = PlanningContext(catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
                                       phase: analysis.phase, life: analysis.life, history: analysis.history,
                                       bodyweightKg: state?.effectiveBodyweight, enduranceScore: analysis.endurance.score,
                                       sessionIndexInWeek: next.doneThisWeek)
+        context.heat = analysis.heat
         return SessionPlanner.plan(day, of: next.mesocycle, on: today, context: context)
     }
 

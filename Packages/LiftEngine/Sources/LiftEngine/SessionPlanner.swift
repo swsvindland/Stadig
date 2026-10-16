@@ -109,6 +109,8 @@ public struct PlanningContext: Sendable {
     public var enduranceScore: Double?
     /// Planned sessions already done this week, to space rep-outs.
     public var sessionIndexInWeek: Int
+    /// Past sauna and steam sessions, for today's time.
+    public var heat: [HeatLog] = []
 
     public init(catalog: ExerciseCatalog, gym: Gym, profile: SharedProfile, settings: LiftSettings, trust: TrustState, phase: NutritionPhase,
                 life: LifeModeEffects, history: [String: [LoggedSet]], bodyweightKg: Double?, enduranceScore: Double?, sessionIndexInWeek: Int) {
@@ -228,9 +230,16 @@ public enum SessionPlanner {
                         bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
                     let prescription = Progression.prescribe(target, progression)
                     var all = prescription.sets
+                    let increments = gym.increments(for: exercise.equipment)
                     if slot.role == .main, let first = all.first, let load = first.loadKg, first.kind != .findingWeight {
-                        all = Progression.rampUp(to: load, reps: first.targetReps, exercise: exercise,
-                                                 increments: gym.increments(for: exercise.equipment), bodyweightKg: context.bodyweightKg) + all
+                        all = Progression.rampUp(to: load, reps: first.targetReps, exercise: exercise, increments: increments,
+                                                 bodyweightKg: context.bodyweightKg) + all
+                    } else if slot.role == .main, let first = all.first, first.kind == .findingWeight,
+                              let guess = StartingLoad.estimate(exercise, reps: first.targetReps, bodyweightKg: context.bodyweightKg,
+                                                                sex: context.profile.sex, experience: context.profile.experience) {
+                        // No working weight yet, but still a heavy lift: warm up toward a guess at it, on the light side.
+                        all = Progression.rampUp(to: increments.round(guess * 0.9, down: true), reps: first.targetReps, exercise: exercise,
+                                                 increments: increments, bodyweightKg: context.bodyweightKg) + all
                     }
                     let rest = Rest.plan(role: exercise.restRole, reps: prescription.sets.first?.targetReps ?? slot.repRange.middle,
                                          defaultSeconds: slot.restSeconds, enduranceScore: context.enduranceScore,
@@ -267,15 +276,17 @@ public enum SessionPlanner {
 
         // Heat afterwards where the gym has it: offered, never required, and not on a sick day.
         if !light, let room = Drills.recovery(in: catalog.all, availability: availability).first {
-            let minutes = (room.seconds ?? 900) / 60
+            // From the last session's heat and how it felt, at its temperature; today's reading adjusts it.
+            let heat = HeatDose.plan(context.heat, room: room.id)
+            let minutes = heat.minutes(at: heat.temperatureC, room: room.id)
             items.append(PlannedItem(id: UUID(day.id, salt: date.ordinal + 7_000_000), slotID: nil, block: .recovery, exerciseID: room.id,
                                      role: .recovery,
                                      sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: minutes * 60)],
                                      repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
                                      seconds: minutes * 60,
                                      reason: room.id == "sauna"
-                                         ? "Optional. Regular sauna use goes with better heart health, and it's a good way to wind down. Skip it if you're short on time."
-                                         : "Optional: a warm, humid wind-down. Skip it if you're short on time."))
+                                         ? "Optional. Regular sauna use goes with better heart health. Read the thermometer and the time follows."
+                                         : "Optional: a warm, humid wind-down. Read the thermometer and the time follows."))
         }
 
         let questDay = date
@@ -287,6 +298,15 @@ public enum SessionPlanner {
         if droppedConditioning {
             quests.append(Quest(id: "lift-\(questDay.iso)-conditioning", title: "A 20-minute walk", detail: "Conditioning is off the plan while things are busy.",
                                 stat: .endurance, source: .liftTrack, minutes: 20, day: questDay, priority: 0.5))
+        }
+
+        // Shorter than the time set aside on purpose: say why, rather than leave an hour feeling short.
+        let planned = SessionPlan(id: UUID(), day: date, title: "", mesocycleID: nil, dayID: nil, week: nil, deload: deload, checkIn: false,
+                                  assessment: assessment, minimumEffectiveDose: med, items: items, notes: [], quests: []).estimatedMinutes
+        let budgetMinutes = mesocycle.minutesPerSession
+        if !med, !light, !deload, planned <= budgetMinutes - 10 {
+            let outside = context.profile.recurring.isEmpty ? "" : " Your training outside the gym spends the same recovery."
+            notes.append("About \(planned) minutes today, under your \(budgetMinutes): the lifting is what you can recover from this week.\(outside) Spare time is good for an easy walk, stretching or the sauna.")
         }
 
         var title = day.name
