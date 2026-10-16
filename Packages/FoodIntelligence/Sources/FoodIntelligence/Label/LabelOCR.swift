@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreVideo
 import Foundation
 import ImageIO
 import FoodDatabase
@@ -19,6 +20,37 @@ public enum LabelOCR {
         level(try await recognize(image))
     }
 
+    /// One frame of a live scan, read once as it comes (upright: the camera turns it). Several a
+    /// second on a phone; `LiveLabel` and `LiveSupplementLabel` put the frames together.
+    public static func frame(_ pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation = .up) async throws -> FrameText {
+        let request = textRequest()
+        let observations = try await request.perform(on: pixelBuffer, orientation: orientation)
+        let aspect = Double(CVPixelBufferGetWidth(pixelBuffer)) / Double(max(1, CVPixelBufferGetHeight(pixelBuffer)))
+        return FrameText(textBoxes(observations, aspect: aspect))
+    }
+
+    /// The same for a still frame, as a recorded scan or a test replays it.
+    public static func frame(_ image: CGImage) async throws -> FrameText {
+        let observations = try await textRequest().perform(on: image, orientation: .up)
+        return FrameText(textBoxes(observations, aspect: Double(image.width) / Double(max(1, image.height))))
+    }
+
+    private static func textRequest() -> RecognizeTextRequest {
+        var request = RecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+        return request
+    }
+
+    private static func textBoxes(_ observations: [RecognizedTextObservation], aspect: Double) -> [TextBox] {
+        observations.compactMap { observation -> TextBox? in
+            guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { return nil }
+            func point(_ p: NormalizedPoint) -> (x: Double, y: Double) { (Double(p.x) * aspect, 1 - Double(p.y)) }
+            return TextBox(text: text, topLeft: point(observation.topLeft), topRight: point(observation.topRight),
+                           bottomLeft: point(observation.bottomLeft), bottomRight: point(observation.bottomRight), aspect: aspect)
+        }
+    }
+
     /// Text boxes in the orientation that reads most like a label: a label photographed sideways
     /// is read again turned each way.
     static func recognize(_ image: CGImage) async throws -> [TextBox] {
@@ -26,19 +58,11 @@ public enum LabelOCR {
         var best: [TextBox] = []
         var bestHits = -1
         for orientation in [CGImagePropertyOrientation.up, .right, .left] {
-            var request = RecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = false
-            let observations = try await request.perform(on: picture, orientation: orientation)
+            let observations = try await textRequest().perform(on: picture, orientation: orientation)
             // Sideways, the upright image is the other way round.
             let sideways = orientation != .up
             let aspect = Double(sideways ? picture.height : picture.width) / Double(max(1, sideways ? picture.width : picture.height))
-            let boxes = observations.compactMap { observation -> TextBox? in
-                guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { return nil }
-                func point(_ p: NormalizedPoint) -> (x: Double, y: Double) { (Double(p.x) * aspect, 1 - Double(p.y)) }
-                return TextBox(text: text, topLeft: point(observation.topLeft), topRight: point(observation.topRight),
-                               bottomLeft: point(observation.bottomLeft), bottomRight: point(observation.bottomRight), aspect: aspect)
-            }
+            let boxes = textBoxes(observations, aspect: aspect)
             let hits = boxes.filter { keywords.matches($0.text) }.count
             if hits > bestHits { (best, bestHits) = (boxes, hits) }
             if bestHits >= 4 { break }
@@ -145,5 +169,41 @@ enum ImageScaling {
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage() ?? image
+    }
+}
+
+/// One live frame's text: levelled boxes for the nutrition panel, printed rows for a Supplement
+/// Facts panel and the model, and the frame's largest words, which on a package's front are
+/// usually its name.
+public struct FrameText: Sendable {
+    public var boxes: [LabelTextBox]
+    public var lines: [String]
+    public var headline: String?
+    /// Where each piece of text sits, 0–1 of the frame with a top-left origin, for showing what's
+    /// being read.
+    public var regions: [CGRect]
+
+    init(_ boxes: [LabelOCR.TextBox]) {
+        self.boxes = LabelOCR.level(boxes)
+        lines = LabelOCR.rows(boxes)
+        regions = self.boxes.map { CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height) }
+        headline = Self.headline(self.boxes)
+    }
+
+    private static let panelWords = Pattern(
+        "nutrition|facts|serving|calories|daily value|total fat|protein|carb|sodium|sugar|fiber|ingredients|amount per|contains|net wt|vitamin")
+
+    /// The tallest text with a few letters that isn't a panel's or a claim's, when it stands out.
+    static func headline(_ boxes: [LabelTextBox]) -> String? {
+        let words = boxes.filter { box in
+            box.text.unicodeScalars.filter(CharacterSet.letters.contains).count >= 3
+                && !panelWords.matches(box.text.lowercased()) && box.text.filter(\.isNumber).count <= 2
+        }
+        guard let tallest = words.max(by: { $0.height < $1.height }) else { return nil }
+        let heights = boxes.map(\.height).sorted()
+        let median = heights[heights.count / 2]
+        guard tallest.height >= 1.5 * median else { return nil }
+        let text = tallest.text.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        return text.isEmpty ? nil : String(text.prefix(60))
     }
 }

@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import FoodDatabase
 import FoodIntelligence
+import SystemCore
 
 /// Photo, description and label logging through Apple's models: on device first, Private Cloud
 /// Compute when allowed. The models name foods and amounts; nutrients always come from the catalog.
@@ -59,6 +60,21 @@ final class MealAIService {
         }
         let lines = try await LabelOCR.lines(in: photo)
         return SupplementLabelResult(facts: SupplementLabel.parse(lines: lines), lines: lines, suggestedName: nil, brand: nil)
+    }
+
+    /// A panel read live: the model names it from all the text seen, when it can.
+    func nameLabel(reading: LabelReading?, lines: [String]) async throws -> LabelResult {
+        if #available(iOS 27.0, *), let ai = engine as? MealAI {
+            return try await ai.nameLabel(reading: reading, lines: lines)
+        }
+        return LabelResult(reading: reading, lines: lines, suggestedName: nil, brand: nil)
+    }
+
+    func nameSupplement(facts: SupplementFacts?, lines: [String]) async throws -> SupplementLabelResult {
+        if #available(iOS 27.0, *), let ai = engine as? MealAI {
+            return try await ai.nameSupplement(facts: facts, lines: lines)
+        }
+        return SupplementLabelResult(facts: facts, lines: lines, suggestedName: nil, brand: nil)
     }
 
     func readLabel(photo: CGImage) async throws -> LabelResult {

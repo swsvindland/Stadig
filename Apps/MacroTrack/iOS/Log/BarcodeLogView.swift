@@ -3,10 +3,10 @@ import FoodDatabase
 import FoodIntelligence
 import NutritionEngine
 import SystemCore
-import Vision
 
 /// Point at a barcode; the food opens with the usual portion ready to add. Codes the catalog
-/// doesn't know become a food from a photo of the label, kept for next time.
+/// doesn't know become a food from the label, read live as the camera moves over it (or from a
+/// photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
     @Binding var portion: PortionRequest?
@@ -20,6 +20,8 @@ struct BarcodeLogView: View {
     @State private var error: String?
     /// A supplement the scan found: taken from here, or added to the stack.
     @State private var supplement: Supplement?
+    /// A fresh live scan each time one is returned to.
+    @State private var scanID = UUID()
 
     var body: some View {
         Group {
@@ -36,19 +38,28 @@ struct BarcodeLogView: View {
                 ProgressView("Reading the label…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let missing {
                 notFound(missing)
-            } else if BarcodeScanner.isAvailable && scanning {
-                BarcodeScanner { code, symbology in handle(code, symbology: Self.symbology(symbology)) }
-                    .ignoresSafeArea(edges: .bottom)
-                    .overlay(alignment: .bottom) {
-                        Button("Type the number instead") { scanning = false }
-                            .secondaryAction()
-                            .padding(.bottom, 32)
+            } else if LiveLabelScanner.isAvailable && scanning {
+                LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
+                    .id(scanID)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Menu {
+                                Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                                Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
+                                Button("Search by name", systemImage: "magnifyingglass") { mode = .search }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                            }
+                            .accessibilityLabel("Other ways")
+                        }
                     }
             } else {
                 manualEntry
             }
         }
         .navigationTitle("Scan")
+        // Back from the portion: scan the next thing.
+        .onChange(of: portion) { _, now in if now == nil { scanID = UUID() } }
         .fullScreenCover(isPresented: $capturingLabel) {
             CameraPicker { image in
                 capturingLabel = false
@@ -67,7 +78,7 @@ struct BarcodeLogView: View {
                     .onSubmit { handle(manual) }
                 Button("Look up") { handle(manual) }.disabled(manual.count < 6)
             } footer: {
-                if !BarcodeScanner.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
+                if !LiveCamera.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
             }
         }
     }
@@ -93,27 +104,34 @@ struct BarcodeLogView: View {
     func handle(_ code: String, symbology: Barcode.Symbology? = nil) {
         let digits = code.filter(\.isNumber)
         guard !digits.isEmpty else { return }
-        let food = model.food(barcode: digits, symbology: symbology)
-        if let own = model.ownSupplement(barcode: digits, symbology: symbology) {
-            supplement = own
-        } else if let facts = model.supplementFacts(barcode: digits, symbology: symbology), model.isSupplement(facts, food: food) {
-            supplement = Supplement(facts: facts)
-        } else if let food {
-            portion = PortionRequest(food: food, source: .barcode, closeAfterAdd: true)
-            scanning = BarcodeScanner.isAvailable
+        if let outcome = lookup(digits, symbology) {
+            finish(outcome)
         } else {
             missing = digits
         }
     }
 
-    static func symbology(_ vision: VNBarcodeSymbology?) -> Barcode.Symbology? {
-        switch vision {
-        case .ean13?: .ean13
-        case .ean8?: .ean8
-        case .upce?: .upcE
-        case .itf14?: .itf14
-        case nil: nil
-        default: .other
+    /// What a barcode is: the person's supplement, a supplement label, or a food.
+    func lookup(_ digits: String, _ symbology: Barcode.Symbology?) -> LiveScanOutcome? {
+        let food = model.food(barcode: digits, symbology: symbology)
+        if let own = model.ownSupplement(barcode: digits, symbology: symbology) { return .supplement(own) }
+        if let facts = model.supplementFacts(barcode: digits, symbology: symbology), model.isSupplement(facts, food: food) {
+            return .supplement(Supplement(facts: facts))
+        }
+        return food.map(LiveScanOutcome.food)
+    }
+
+    func finish(_ outcome: LiveScanOutcome) {
+        switch outcome {
+        case .food(let food):
+            portion = PortionRequest(food: food, source: .barcode, closeAfterAdd: true)
+        case .supplement(let found):
+            supplement = found
+        case .label(let result, let barcode):
+            missing = barcode
+            label = result
+        case .supplementLabel(let facts, _):
+            supplement = Supplement(facts: facts)
         }
     }
 

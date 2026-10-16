@@ -526,7 +526,7 @@ struct PortionView: View {
         case .off: "Open Food Facts"
         case .custom: "My food"
         case .recipe: "Recipe"
-        case .label: "From a label photo"
+        case .label: "From its label"
         }
     }
 }

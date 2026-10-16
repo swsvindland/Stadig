@@ -26,7 +26,7 @@ struct SupplementsList: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your supplements").font(.headline)
-                        Text("Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Photograph the Supplement Facts. Then say when you take it.")
+                        Text("Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Keep the camera on the Supplement Facts and it's read as you move. Then say when you take it.")
                             .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 4)
@@ -69,17 +69,17 @@ struct SupplementsList: View {
 
     @ViewBuilder
     var menuItems: some View {
-        Button("Scan the barcode", systemImage: "barcode.viewfinder") { adding = .scan }
+        Button("Scan the bottle", systemImage: "barcode.viewfinder") { adding = .scan }
         Button("Search", systemImage: "magnifyingglass") { adding = .search }
-        Button("Photograph the label", systemImage: "camera") { adding = .label }
+        Button("Choose a photo of the label", systemImage: "photo") { adding = .label }
         Button("Type it in", systemImage: "square.and.pencil") { adding = .manual }
     }
 
     @ViewBuilder
     var addButtons: some View {
-        Button { adding = .scan } label: { Label("Scan the barcode", systemImage: "barcode.viewfinder") }
+        Button { adding = .scan } label: { Label("Scan the bottle: barcode or label", systemImage: "barcode.viewfinder") }
         Button { adding = .search } label: { Label("Search by name", systemImage: "magnifyingglass") }
-        Button { adding = .label } label: { Label("Photograph the label", systemImage: "camera") }
+        Button { adding = .label } label: { Label("Choose a photo of the label", systemImage: "photo") }
         Button { adding = .manual } label: { Label("Type it in", systemImage: "square.and.pencil") }
     }
 
@@ -164,6 +164,7 @@ struct AddSupplementView: View {
     @State private var picked: PhotosPickerItem?
     @State private var reading = false
     @State private var error: String?
+    @State private var scanID = UUID()
 
     var body: some View {
         Group {
@@ -177,6 +178,8 @@ struct AddSupplementView: View {
         .navigationDestination(item: $found) { supplement in
             SupplementEditor(supplement: supplement, isNew: !model.supplements.contains { $0.id == supplement.id })
         }
+        // Back from the editor without adding: scan again.
+        .onChange(of: found) { _, now in if now == nil { scanID = UUID() } }
         .fullScreenCover(isPresented: $capturing) {
             CameraPicker { image in
                 capturing = false
@@ -217,13 +220,26 @@ struct AddSupplementView: View {
                 if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
             }
             .overlay { if reading { ProgressView("Reading the label…").padding().background(.regularMaterial, in: .rect(cornerRadius: 12)) } }
-        } else if BarcodeScanner.isAvailable && scanning {
-            BarcodeScanner { code, symbology in handle(code, symbology: BarcodeLogView.symbology(symbology)) }
-                .ignoresSafeArea(edges: .bottom)
-                .overlay(alignment: .bottom) {
-                    Button("Type the number instead") { scanning = false }.secondaryAction().padding(.bottom, 32)
+        } else if LiveLabelScanner.isAvailable && scanning {
+            LiveLabelScanner(kind: .supplement, lookup: lookup) { outcome in
+                switch outcome {
+                case .supplement(let supplement): found = supplement
+                case .supplementLabel(let facts, _): found = Supplement(facts: facts)
+                case .food, .label: break
                 }
-                .navigationTitle("Scan")
+            }
+            .id(scanID)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                        Button("Choose a photo of the label", systemImage: "photo") { mode = .label }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                    .accessibilityLabel("Other ways")
+                }
+            }
         } else {
             Form {
                 Section {
@@ -233,7 +249,7 @@ struct AddSupplementView: View {
                         .onSubmit { handle(manual) }
                     Button("Look up") { handle(manual) }.disabled(manual.count < 6)
                 } footer: {
-                    if !BarcodeScanner.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
+                    if !LiveCamera.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
                 }
             }
             .navigationTitle("Scan")
@@ -243,14 +259,18 @@ struct AddSupplementView: View {
     func handle(_ code: String, symbology: Barcode.Symbology? = nil) {
         let digits = code.filter(\.isNumber)
         guard !digits.isEmpty else { return }
-        if let own = model.ownSupplement(barcode: digits, symbology: symbology) {
-            found = own
-        } else if let facts = model.supplementFacts(barcode: digits, symbology: symbology) {
-            found = Supplement(facts: facts)
+        if case .supplement(let supplement)? = lookup(digits, symbology) {
+            found = supplement
         } else {
             missing = digits
             scanning = false
         }
+    }
+
+    /// A supplement in the stack, or one the NIH labels know.
+    func lookup(_ digits: String, _ symbology: Barcode.Symbology?) -> LiveScanOutcome? {
+        if let own = model.ownSupplement(barcode: digits, symbology: symbology) { return .supplement(own) }
+        return model.supplementFacts(barcode: digits, symbology: symbology).map { .supplement(Supplement(facts: $0)) }
     }
 
     // MARK: Search

@@ -1,7 +1,5 @@
 import SwiftUI
 import UIKit
-import Vision
-import VisionKit
 
 /// The system camera, returning one photo.
 struct CameraPicker: UIViewControllerRepresentable {
@@ -43,53 +41,5 @@ extension UIImage {
         format.scale = 1
         format.opaque = true
         return UIGraphicsImageRenderer(size: target, format: format).image { _ in draw(in: CGRect(origin: .zero, size: target)) }.cgImage
-    }
-}
-
-/// Live barcode scanning with VisionKit. Reports the first code it reads, once, with its symbology.
-struct BarcodeScanner: UIViewControllerRepresentable {
-    let found: (String, VNBarcodeSymbology?) -> Void
-
-    static var isAvailable: Bool { DataScannerViewController.isSupported && DataScannerViewController.isAvailable }
-
-    func makeUIViewController(context: Context) -> DataScannerViewController {
-        let scanner = DataScannerViewController(
-            recognizedDataTypes: [.barcode(symbologies: [.ean13, .ean8, .upce, .code128, .itf14])],
-            qualityLevel: .balanced, recognizesMultipleItems: false, isHighFrameRateTrackingEnabled: true,
-            isPinchToZoomEnabled: true, isGuidanceEnabled: true, isHighlightingEnabled: true)
-        scanner.delegate = context.coordinator
-        return scanner
-    }
-
-    func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
-        if !context.coordinator.started {
-            context.coordinator.started = true
-            try? scanner.startScanning()
-        }
-    }
-
-    static func dismantleUIViewController(_ scanner: DataScannerViewController, coordinator: Coordinator) {
-        scanner.stopScanning()
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(found: found) }
-
-    final class Coordinator: NSObject, DataScannerViewControllerDelegate {
-        let found: (String, VNBarcodeSymbology?) -> Void
-        var started = false
-        var reported = false
-        init(found: @escaping (String, VNBarcodeSymbology?) -> Void) { self.found = found }
-
-        func dataScanner(_ dataScanner: DataScannerViewController, didAdd addedItems: [RecognizedItem], allItems: [RecognizedItem]) {
-            guard !reported else { return }
-            for item in addedItems {
-                if case .barcode(let barcode) = item, let payload = barcode.payloadStringValue, !payload.isEmpty {
-                    reported = true
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    found(payload, barcode.observation.symbology)
-                    return
-                }
-            }
-        }
     }
 }

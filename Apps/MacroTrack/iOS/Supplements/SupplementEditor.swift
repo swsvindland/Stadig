@@ -26,7 +26,7 @@ struct SupplementEditor: View {
                 if supplement.facts.source == .dsld {
                     Text("Label from the NIH Dietary Supplement Label Database. Check it against your bottle; recipes change.")
                 } else if supplement.facts.source == .label {
-                    Text("Read from your photo. Check each line against the label.")
+                    Text("Read from the label. Check each line against it.")
                 }
             }
 

@@ -134,14 +134,51 @@ public enum NutritionLabel {
         }
     }
 
+    /// What one camera frame shows of a panel: whatever values it reads, even one, with no
+    /// calories worked out from the macros. Frames of a label too big for one photo are read one by
+    /// one and put together by ``LiveLabel``.
+    public static func frame(boxes: [LabelTextBox]) -> LabelFrame {
+        let ordered = order(boxes)
+        var values = scan(ordered)
+        readServing(ordered, &values)
+        let panel = values.amounts.count >= 2 || ordered.contains { panelWords.test($0.text) }
+        return LabelFrame(amounts: values.amounts, servingLabel: values.servingLabel.isEmpty ? nil : values.servingLabel,
+                          servingGrams: values.servingUnit == "g" ? values.servingAmount : nil,
+                          servingMilliliters: values.servingUnit == "ml" ? values.servingAmount : nil, isPanel: panel)
+    }
+
+    /// A panel's own words, which a package's front doesn't print.
+    private static let panelWords = Pattern(
+        #"nutrition\s*facts|serv(?:ing)?\.?\s*size|daily\s*value|amount\s*per\s*serving|valeur\s*nutritive|informaci[oó]n\s*nutricional"#,
+        ignoringCase: true)
+
     /// Values found on a label; missing nutrients stay unknown rather than zero.
     static func read(_ boxes: [LabelTextBox]) -> Values {
-        let ordered = boxes.enumerated().sorted { a, b in
+        let ordered = order(boxes)
+        var values = scan(ordered)
+        check(&values)
+        readServing(ordered, &values)
+        return values
+    }
+
+    /// Boxes top to bottom, then left to right.
+    static func order(_ boxes: [LabelTextBox]) -> [LabelTextBox] {
+        boxes.enumerated().sorted { a, b in
             a.element.y != b.element.y ? a.element.y < b.element.y : a.element.x != b.element.x ? a.element.x < b.element.x : a.offset < b.offset
         }.map(\.element)
+    }
+
+    /// Each nutrient's value, where the boxes give one.
+    static func scan(_ ordered: [LabelTextBox]) -> Values {
         var values = Values()
         for field in fields { if let value = readField(field, ordered) { values.amounts[field.key] = value } }
         if let added = readAddedSugar(ordered) { values.amounts["addedSugar"] = added }
+        return values
+    }
+
+    /// A part over its total, and calories that don't match the macros, flagged; calories worked
+    /// out from the macros when the label didn't give them.
+    static func check(_ values: inout Values) {
         let amounts = values.amounts
         func over(_ part: Double?, _ whole: Double?) -> Bool {
             guard let part, let whole else { return false }
@@ -159,8 +196,6 @@ public enum NutritionLabel {
         } else if let calories = amounts["kcal"], let energy, abs(calories - energy) > max(25, calories * 0.25) {
             values.warnings.append(.caloriesMismatch)
         }
-        readServing(ordered, &values)
-        return values
     }
 
     private struct Field {

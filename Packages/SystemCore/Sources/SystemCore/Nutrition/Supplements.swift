@@ -300,7 +300,7 @@ public enum SupplementIngredients {
     private static let tail = try! NSRegularExpression(pattern: #"\s+(?:as|from)\s.*$|,.*$"#)
 
     /// The name as matched: lowercased, brackets and "as …"/"from …" dropped.
-    static func clean(_ name: String) -> String {
+    public static func clean(_ name: String) -> String {
         var text = name.lowercased()
         text = brackets.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: " ")
         text = tail.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")

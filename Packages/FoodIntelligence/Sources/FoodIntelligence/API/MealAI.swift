@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import FoodDatabase
 import FoundationModels
+import SystemCore
 
 /// Logs a meal from a photo, a typed or dictated description, or a nutrition label, with Apple's
 /// models only: the on-device model first, Private Cloud Compute when allowed and the device
@@ -98,7 +99,14 @@ public actor MealAI {
         let boxes = try await LabelOCR.recognize(photo)
         let lines = LabelOCR.rows(boxes)
         // Positions read two-column panels; the lines are the fallback for anything else.
-        var reading = NutritionLabel.parse(boxes: LabelOCR.level(boxes)) ?? NutritionLabel.parse(lines: lines)
+        return try await nameLabel(reading: NutritionLabel.parse(boxes: LabelOCR.level(boxes)) ?? NutritionLabel.parse(lines: lines),
+                                   lines: lines)
+    }
+
+    /// A panel already read (live, from many frames) → its name and brand from all the text seen,
+    /// the package's front included, and gaps in a thin read filled with values printed there.
+    public func nameLabel(reading: LabelReading?, lines: [String]) async throws -> LabelResult {
+        var reading = reading
         guard !lines.isEmpty, let engine = MealEngines.engine(photo: false, in: state()) else {
             return LabelResult(reading: reading, lines: lines, suggestedName: nil, brand: nil)
         }
@@ -120,7 +128,12 @@ public actor MealAI {
     /// parser reads the panel; the model only suggests the product's name and brand.
     public func readSupplementLabel(photo: CGImage) async throws -> SupplementLabelResult {
         let lines = LabelOCR.rows(try await LabelOCR.recognize(photo))
-        let facts = SupplementLabel.parse(lines: lines)
+        return try await nameSupplement(facts: SupplementLabel.parse(lines: lines), lines: lines)
+    }
+
+    /// A Supplement Facts panel already read (live) → the product's name and brand from all the
+    /// text seen.
+    public func nameSupplement(facts: SupplementFacts?, lines: [String]) async throws -> SupplementLabelResult {
         guard !lines.isEmpty, let engine = MealEngines.engine(photo: false, in: state()) else {
             return SupplementLabelResult(facts: facts, lines: lines, suggestedName: nil, brand: nil)
         }
