@@ -4,54 +4,16 @@ import SystemCore
 // Macro Track's own records. Each is stored whole and synced; trends, estimates, targets and
 // scores are recomputed from them, so two devices can never disagree.
 
-public enum MealSlot: String, CaseIterable, Codable, Sendable, Identifiable, Comparable {
-    case breakfast, lunch, dinner, snacks
-
-    public var id: String { rawValue }
-
-    public var label: String {
-        switch self {
-        case .breakfast: "Breakfast"
-        case .lunch: "Lunch"
-        case .dinner: "Dinner"
-        case .snacks: "Snacks"
-        }
-    }
-
-    public var symbol: String {
-        switch self {
-        case .breakfast: "sunrise"
-        case .lunch: "sun.max"
-        case .dinner: "moon.stars"
-        case .snacks: "takeoutbag.and.cup.and.straw"
-        }
-    }
-
-    /// The slot people most likely mean at a time of day, so logging needs no choice.
-    public static func guess(for date: Date, calendar: Calendar = .current) -> MealSlot {
-        let hour = calendar.component(.hour, from: date)
-        switch hour {
-        case 4..<11: return .breakfast
-        case 11..<15: return .lunch
-        case 17..<22: return .dinner
-        default: return .snacks
-        }
-    }
-
-    public static func < (a: MealSlot, b: MealSlot) -> Bool { allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)! }
-}
-
 /// How an entry got into the log, which says how far its numbers can be trusted.
 public enum EntrySource: String, Codable, Sendable {
     case search, barcode, recent, favorite, copied, quickAdd, recipe, photo, description, label, shortcut
 }
 
-/// One thing eaten.
+/// One thing eaten, at a time. There are no meal slots: a day is a timeline, three meals or five.
 public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     public var id: UUID
     public var date: Date
     public var day: Day
-    public var meal: MealSlot
     public var name: String
     public var brand: String?
     /// The library or custom food it came from, when there is one.
@@ -69,13 +31,12 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     public var confidence: Double?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), date: Date = Date(), day: Day? = nil, meal: MealSlot, name: String, brand: String? = nil,
+    public init(id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
                 foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
                 nutrients: Nutrients, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.date = date
         self.day = day ?? Day(date)
-        self.meal = meal
         self.name = name
         self.brand = brand
         self.foodID = foodID

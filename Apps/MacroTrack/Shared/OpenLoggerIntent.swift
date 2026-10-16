@@ -3,7 +3,7 @@ import Foundation
 
 /// Where logging opens.
 nonisolated enum LoggerEntryPoint: String, AppEnum {
-    case search, camera, scan, describe
+    case search, camera, scan, describe, weigh
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Logging"
     static let caseDisplayRepresentations: [LoggerEntryPoint: DisplayRepresentation] = [
@@ -11,6 +11,7 @@ nonisolated enum LoggerEntryPoint: String, AppEnum {
         .camera: DisplayRepresentation(title: "Photo", image: .init(systemName: "camera")),
         .scan: DisplayRepresentation(title: "Barcode", image: .init(systemName: "barcode.viewfinder")),
         .describe: DisplayRepresentation(title: "Describe", image: .init(systemName: "text.bubble")),
+        .weigh: DisplayRepresentation(title: "Weigh in", image: .init(systemName: "scalemass")),
     ]
 }
 
@@ -39,12 +40,13 @@ struct OpenLoggerIntent: AppIntent {
         let model = AppModel.shared
         guard model.onboarded else { return .result() }
         model.selectedDay = model.today
-        model.loggerMeal = nil
-        model.logger = switch entry {
-        case .search: .search
-        case .camera: .camera
-        case .scan: .scan
-        case .describe: .describe
+        model.loggerTime = nil
+        switch entry {
+        case .search: model.logger = .search
+        case .camera: model.logger = .camera
+        case .scan: model.logger = .scan
+        case .describe: model.logger = .describe
+        case .weigh: model.showWeighIn = true
         }
         #endif
         return .result()

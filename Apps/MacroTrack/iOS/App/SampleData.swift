@@ -20,14 +20,15 @@ enum SampleData {
         model.store.save(ProfileRecord(profile))
         model.store.save(MacroSettings(onboardedAt: start.date(), assessmentStart: start, dietHistory: .none))
 
-        let menu: [(MealSlot, String, Double, Double)] = [
-            (.breakfast, "oats", 80, 8), (.breakfast, "greek yogurt", 170, 8.5), (.breakfast, "banana", 120, 8.6),
-            (.lunch, "chicken breast", 150, 12.5), (.lunch, "white rice cooked", 200, 12.6), (.lunch, "broccoli", 90, 12.7),
-            (.dinner, "salmon", 160, 19), (.dinner, "potato", 250, 19.1), (.dinner, "olive oil", 12, 19.2),
-            (.snacks, "almonds", 30, 15.5), (.snacks, "apple", 180, 16),
+        // What, how much, and when (hours): three meals and a couple of snacks on most days.
+        let menu: [(String, Double, Double)] = [
+            ("oats", 80, 8), ("greek yogurt", 170, 8.05), ("banana", 120, 8.1),
+            ("chicken breast", 150, 12.5), ("white rice cooked", 200, 12.55), ("broccoli", 90, 12.6),
+            ("salmon", 160, 19), ("potato", 250, 19.05), ("olive oil", 12, 19.1),
+            ("almonds", 30, 15.5), ("apple", 180, 16.5),
         ]
         var foods: [String: Food] = [:]
-        for (_, query, _, _) in menu where foods[query] == nil {
+        for (query, _, _) in menu where foods[query] == nil {
             if let food = model.catalog.search(query, limit: 1).first?.food { foods[query] = food }
         }
 
@@ -44,20 +45,20 @@ enum SampleData {
             }
             var eaten = 0.0
             if Double.random(in: 0...1, using: &rng) < 0.85 {
-                for (slot, query, grams, hour) in menu where Double.random(in: 0...1, using: &rng) < 0.85 {
+                for (query, grams, hour) in menu where Double.random(in: 0...1, using: &rng) < 0.85 {
                     let date = day.date().addingTimeInterval(hour * 3600)
                     let scale = Double.random(in: 0.8...1.25, using: &rng)
                     if let food = foods[query] {
                         let unit = PortionUnit(id: "g", label: "g", kind: .mass, amount: 1)
                         let n = food.nutrients(for: grams * scale)
                         eaten += n.kcal
-                        entries.append(FoodEntry(date: date, meal: slot, name: food.name, brand: food.brand, foodID: food.id,
+                        entries.append(FoodEntry(date: date, name: food.name, brand: food.brand, foodID: food.id,
                                                  amountLabel: FoodUnits.label(count: (grams * scale).rounded(), unit: unit), grams: grams * scale,
                                                  nutrients: n, source: .search, updatedAt: date))
                     } else {
                         let n = Nutrients(kcal: 220 * scale, protein: 15 * scale, carbs: 22 * scale, fat: 7 * scale)
                         eaten += n.kcal
-                        entries.append(FoodEntry(date: date, meal: slot, name: query.capitalized, amountLabel: "\(Int(grams)) g",
+                        entries.append(FoodEntry(date: date, name: query.capitalized, amountLabel: "\(Int(grams)) g",
                                                  grams: grams, nutrients: n, source: .search, updatedAt: date))
                     }
                 }

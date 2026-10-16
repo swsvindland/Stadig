@@ -38,8 +38,8 @@ struct RootView: View {
     }
 }
 
-/// The ways to log, above the tab bar: search, camera, barcode and description. Collapses to
-/// icons when the tab bar minimises.
+/// The ways to log, above the tab bar: search, camera, barcode, description and a weigh-in.
+/// Collapses to icons when the tab bar minimises.
 struct QuickLogBar: View {
     @Environment(AppModel.self) private var model
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -62,7 +62,13 @@ struct QuickLogBar: View {
             icon("camera", "Log a photo", .camera)
             icon("barcode.viewfinder", "Scan a barcode", .scan)
             icon("text.bubble", "Describe a meal", .describe)
-                .padding(.trailing, 6)
+            Button {
+                model.showWeighIn = true
+            } label: {
+                Image(systemName: "scalemass").frame(width: 44, height: 40).contentShape(.rect)
+            }
+            .accessibilityLabel("Weigh in")
+            .padding(.trailing, 6)
         }
         .buttonStyle(.plain)
         .font(.body.weight(.medium))
@@ -78,7 +84,7 @@ struct QuickLogBar: View {
     }
 
     func open(_ mode: LogMode) {
-        model.loggerMeal = nil
+        model.loggerTime = nil
         model.logger = mode
     }
 }

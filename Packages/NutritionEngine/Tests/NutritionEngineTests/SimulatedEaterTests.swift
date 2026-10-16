@@ -39,7 +39,7 @@ struct SimulatedEater {
             let logged = rng.uniform() < logging
             if logged {
                 for (n, share) in [0.25, 0.35, 0.3, 0.1].enumerated() {
-                    run.entries.append(FoodEntry(date: date.addingTimeInterval(Double(n) * 3600), meal: MealSlot.allCases[n], name: "Food \(n)",
+                    run.entries.append(FoodEntry(date: date.addingTimeInterval(Double(n) * 3600), name: "Food \(n)",
                                                  amountLabel: "1", nutrients: Nutrients(kcal: eaten * share, protein: eaten * share * 0.05,
                                                                                          carbs: eaten * share * 0.11, fat: eaten * share * 0.035),
                                                  source: .search, updatedAt: date))
@@ -47,7 +47,7 @@ struct SimulatedEater {
                 run.statuses.append(DayStatus(day: day, state: .complete))
             } else if rng.uniform() < 0.5 {
                 // A partial day: some entries, marked partial, so it doesn't teach the estimate.
-                run.entries.append(FoodEntry(date: date, meal: .lunch, name: "Partial", amountLabel: "1",
+                run.entries.append(FoodEntry(date: date, name: "Partial", amountLabel: "1",
                                              nutrients: Nutrients(kcal: eaten * 0.4, protein: 20, carbs: 40, fat: 15), source: .search, updatedAt: date))
                 run.statuses.append(DayStatus(day: day, state: .partial))
             }
@@ -336,13 +336,37 @@ struct AnalysisTests {
         var entries: [FoodEntry] = []
         for d in 1...10 {
             let morning = now.addingTimeInterval(-Double(d) * 86400)
-            entries.append(FoodEntry(date: morning, meal: .breakfast, name: "Oats", foodID: "usda:1", amountLabel: "80 g",
+            entries.append(FoodEntry(date: morning, name: "Oats", foodID: "usda:1", amountLabel: "80 g",
                                      nutrients: Nutrients(kcal: 300, protein: 10, carbs: 50, fat: 6), source: .search))
-            entries.append(FoodEntry(date: morning.addingTimeInterval(11 * 3600), meal: .dinner, name: "Pasta", foodID: "usda:2", amountLabel: "1 plate",
+            entries.append(FoodEntry(date: morning.addingTimeInterval(11 * 3600), name: "Pasta", foodID: "usda:2", amountLabel: "1 plate",
                                      nutrients: Nutrients(kcal: 700, protein: 25, carbs: 100, fat: 20), source: .search))
         }
         let ranked = LogAgain.rank(entries, now: now, calendar: calendar)
         #expect(ranked.first?.template.name == "Oats")
-        #expect(LogAgain.usual(.breakfast, entries: entries, before: Day(now, calendar: calendar))?.entries.first?.name == "Oats")
+        // A single food isn't a moment worth copying whole; oats with coffee is.
+        #expect(LogAgain.usualMoment(near: now, entries: entries, calendar: calendar) == nil)
+        let coffee = (1...3).map { d in
+            FoodEntry(date: now.addingTimeInterval(-Double(d) * 86400 + 300), name: "Coffee", amountLabel: "1 cup",
+                      nutrients: Nutrients(kcal: 5, protein: 0, carbs: 0, fat: 0), source: .search)
+        }
+        let usual = LogAgain.usualMoment(near: now, entries: entries + coffee, calendar: calendar)
+        #expect(usual?.entries.map(\.name) == ["Oats", "Coffee"])
+        #expect(usual?.start == now.addingTimeInterval(-86400), "yesterday's, the most recent")
+        // Not at dinner time.
+        #expect(LogAgain.usualMoment(near: now.addingTimeInterval(5 * 3600), entries: entries + coffee, calendar: calendar) == nil)
+    }
+
+    @Test func aDayIsMomentsHoweverManyThereAre() {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        func at(_ minutes: Double) -> FoodEntry {
+            FoodEntry(date: start.addingTimeInterval(minutes * 60), name: "F\(Int(minutes))", amountLabel: "1",
+                      nutrients: Nutrients(kcal: 100, protein: 5, carbs: 10, fat: 3), source: .search)
+        }
+        // Three foods at breakfast, a snack, lunch, two more snacks and a late dinner: five moments.
+        let day = [at(0), at(5), at(20), at(150), at(300), at(310), at(420), at(600), at(605)].shuffled()
+        let moments = Timeline.moments(day)
+        #expect(moments.map(\.entries.count) == [3, 1, 2, 1, 2])
+        #expect(moments.first?.nutrients.kcal == 300)
+        #expect(moments.map(\.start) == moments.map(\.start).sorted())
     }
 }

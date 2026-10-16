@@ -65,8 +65,8 @@ final class AppModel {
     // Presentation.
     var tab: AppTab = .today
     var logger: LogMode?
-    /// The meal a logger adds to; nil guesses from the time.
-    var loggerMeal: MealSlot?
+    /// When a logger's foods were eaten; nil is now (or this time of day, on a past day).
+    var loggerTime: Date?
     var showSettings = false
     var showPaywall = false
     var showWeighIn = false
@@ -283,27 +283,25 @@ final class AppModel {
 
     // MARK: Logging
 
-    /// When and in which meal something logged now lands: now for today; a typical time of the
-    /// meal on a past day being caught up.
-    func logSlot(_ meal: MealSlot? = nil) -> (date: Date, meal: MealSlot) {
-        if selectedDay == today {
-            return (Date(), meal ?? loggerMeal ?? MealSlot.guess(for: Date()))
-        }
-        let slot = meal ?? loggerMeal ?? .snacks
-        let hour: Double = switch slot {
-        case .breakfast: 8
-        case .lunch: 12.5
-        case .dinner: 19
-        case .snacks: 15.5
-        }
-        return (selectedDay.date().addingTimeInterval(hour * 3600), slot)
+    /// When something logged now was eaten: the time picked in the logger, else now; on a past
+    /// day being caught up, the same time of day there.
+    func logDate() -> Date {
+        if let loggerTime { return loggerTime }
+        let now = Date()
+        guard selectedDay != today else { return now }
+        return selectedDay.date().addingTimeInterval(now.timeIntervalSince(Calendar.current.startOfDay(for: now)))
+    }
+
+    /// The selected day at a time of day, for the logger's time choices.
+    func onSelectedDay(_ time: Date) -> Date {
+        let calendar = Calendar.current
+        let parts = calendar.dateComponents([.hour, .minute], from: time)
+        return calendar.date(bySettingHour: parts.hour ?? 12, minute: parts.minute ?? 0, second: 0, of: selectedDay.date()) ?? time
     }
 
     /// A ready-to-save entry for a food and portion, timed for the selected day.
-    func entry(for food: Food, count: Double, unit: PortionUnit, meal: MealSlot? = nil, source: EntrySource,
-               confidence: Double? = nil) -> FoodEntry {
-        let slot = logSlot(meal)
-        return FoodEntry(date: slot.date, meal: slot.meal, name: food.name, brand: food.brand, foodID: food.id,
+    func entry(for food: Food, count: Double, unit: PortionUnit, source: EntrySource, confidence: Double? = nil) -> FoodEntry {
+        FoodEntry(date: logDate(), name: food.name, brand: food.brand, foodID: food.id,
                          amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
                          grams: FoodUnits.amount(count, unit),
                          unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit), source: source,
@@ -342,25 +340,27 @@ final class AppModel {
     }
 
     /// One tap from the Log again row: the same food and amount, now.
-    func logAgain(_ item: LogAgainItem, meal: MealSlot? = nil) {
-        let slot = logSlot(meal)
-        log([LogAgain.copy(item.template, to: slot.date, meal: slot.meal)])
+    func logAgain(_ item: LogAgainItem) {
+        log([LogAgain.copy(item.template, to: logDate())])
     }
 
-    /// The meal as it was last logged, copied to the selected day.
-    func copyUsual(_ meal: MealSlot) {
-        guard let usual = LogAgain.usual(meal, entries: entries, before: selectedDay) else { return }
-        let slot = logSlot(meal)
-        let copies = usual.entries.enumerated().map { i, e in
-            LogAgain.copy(e, to: slot.date.addingTimeInterval(Double(i)), meal: meal, source: .copied)
-        }
-        log(copies, message: "Copied \(meal.label.lowercased()) from \(Format.relative(usual.day, today: today))")
+    /// A whole moment eaten again: yesterday's breakfast, or what was just logged an hour ago.
+    func logAgain(_ moment: Moment, at date: Date? = nil) {
+        let copies = LogAgain.copy(moment, to: date ?? logDate())
+        log(copies, message: moment.entries.count == 1 ? nil : "Logged \(moment.entries.count) foods again")
     }
 
-    func quickAdd(name: String, nutrients: Nutrients, meal: MealSlot? = nil) {
-        let slot = logSlot(meal)
-        log([FoodEntry(date: slot.date, meal: slot.meal, name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving",
-                       nutrients: nutrients, source: .quickAdd)])
+    /// What was eaten around now on a recent day, while nothing's logged near now today.
+    var usualNow: Moment? {
+        guard selectedDay == today else { return nil }
+        let now = Date()
+        let nearby = Timeline.moments(entries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
+        return nearby ? nil : LogAgain.usualMoment(near: now, entries: entries)
+    }
+
+    func quickAdd(name: String, nutrients: Nutrients) {
+        log([FoodEntry(date: logDate(), name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving", nutrients: nutrients,
+                       source: .quickAdd)])
     }
 
     static func healthFood(_ e: FoodEntry) -> HealthFood {

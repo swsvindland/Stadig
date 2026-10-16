@@ -104,10 +104,7 @@ struct EntryEditor: View {
                     NutrientSummary(nutrients: nutrients)
                 }
                 Section {
-                    Picker("Meal", selection: $entry.meal) {
-                        ForEach(MealSlot.allCases) { Text($0.label).tag($0) }
-                    }
-                    DatePicker("Time", selection: $entry.date)
+                    DatePicker("Eaten", selection: $entry.date)
                 }
                 Section {
                     Button("Delete", role: .destructive) {
@@ -166,7 +163,8 @@ struct EntryEditor: View {
     }
 }
 
-/// A weigh-in, with the last few to check or ignore.
+/// A weigh-in, ready with the last weight so most mornings it's a nudge and Save, with the last
+/// few to check or ignore.
 struct WeighInSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -178,13 +176,20 @@ struct WeighInSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    HStack {
-                        TextField(model.latestWeighIn.map { Format.number(model.units.weight.fromKilograms($0.kg)) } ?? "0.0", text: $value)
-                            .keyboardType(.decimalPad)
-                            .font(.largeTitle.weight(.semibold).monospacedDigit())
-                            .focused($focused)
-                        Text(model.units.weight.symbol).font(.title2).foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        nudge(-1)
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            TextField("0.0", text: $value)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.center)
+                                .font(.largeTitle.weight(.semibold).monospacedDigit())
+                                .focused($focused)
+                            Text(model.units.weight.symbol).font(.title3).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        nudge(1)
                     }
+                    .padding(.vertical, 4)
                     DatePicker("When", selection: $date, in: ...Date())
                 } footer: {
                     Text("Daily, first thing, after the bathroom and before eating. Single readings are mostly water; the trend is what counts.")
@@ -223,9 +228,38 @@ struct WeighInSheet: View {
                     .disabled(kg == nil)
                 }
             }
-            .onAppear { focused = true }
+            .onAppear(perform: prefill)
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// One step lighter or heavier: 0.1 kg, or 0.2 lb.
+    func nudge(_ direction: Double) -> some View {
+        Button {
+            let unit = model.units.weight
+            let step = unit == .kg ? 0.1 : 0.2
+            let current = Double(value.replacingOccurrences(of: ",", with: ".")) ?? 0
+            value = Format.number(max(0, current + direction * step))
+        } label: {
+            Image(systemName: direction < 0 ? "minus" : "plus")
+                .font(.title2.weight(.semibold))
+                .frame(width: 52, height: 52)
+                .background(Color.accentColor.opacity(0.14), in: .circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(direction < 0 ? "Lighter" : "Heavier")
+    }
+
+    /// The last weight to start from, and the morning of the day being looked at.
+    func prefill() {
+        if value.isEmpty, let last = model.latestWeighIn {
+            value = Format.number(model.units.weight.fromKilograms(last.kg))
+        }
+        if model.selectedDay != model.today {
+            date = model.selectedDay.date().addingTimeInterval(7 * 3600)
+        }
+        // With no weight to start from, type one.
+        if model.latestWeighIn == nil { focused = true }
     }
 
     var kg: Double? {

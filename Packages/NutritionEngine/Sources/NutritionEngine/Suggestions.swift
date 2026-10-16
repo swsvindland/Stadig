@@ -44,17 +44,34 @@ public enum LogAgain {
             .map { $0 }
     }
 
-    /// The same meal as the last time this slot was logged, for a one-tap "Same as yesterday".
-    public static func usual(_ slot: MealSlot, entries: [FoodEntry], before day: Day) -> (day: Day, entries: [FoodEntry])? {
-        let past = entries.filter { $0.meal == slot && $0.day < day && $0.day >= day.adding(days: -7) }
-        guard let last = past.map(\.day).max() else { return nil }
-        let meal = past.filter { $0.day == last }.sorted { $0.date < $1.date }
-        return meal.isEmpty ? nil : (last, meal)
+    /// What was eaten around this time of day most recently, for a one-tap "Same as yesterday":
+    /// the latest earlier day's moment of two or more foods starting within `window` of the
+    /// clock time of `now`, from the last week.
+    public static func usualMoment(near now: Date, entries: [FoodEntry], calendar: Calendar = .current,
+                                   window: TimeInterval = 90 * 60) -> Moment? {
+        let today = Day(now, calendar: calendar)
+        let hourNow = hourOfDay(now, calendar)
+        let recent = entries.filter { $0.day < today && $0.day >= today.adding(days: -7) }
+        for day in Set(recent.map(\.day)).sorted(by: >) {
+            let moments = Timeline.moments(recent.filter { $0.day == day }).filter { $0.entries.count >= 2 }
+            let near = moments.map { moment -> (Moment, Double) in
+                var diff = abs(hourOfDay(moment.start, calendar) - hourNow)
+                diff = min(diff, 24 - diff)
+                return (moment, diff)
+            }.filter { $0.1 * 3600 <= window }
+            if let best = near.min(by: { $0.1 < $1.1 }) { return best.0 }
+        }
+        return nil
+    }
+
+    /// Copies of a moment's entries at `date`, a second apart so they keep their order.
+    public static func copy(_ moment: Moment, to date: Date, source: EntrySource = .copied) -> [FoodEntry] {
+        moment.entries.enumerated().map { i, e in copy(e, to: date.addingTimeInterval(Double(i)), source: source) }
     }
 
     /// A copy of an entry for now, keeping the amount and numbers.
-    public static func copy(_ entry: FoodEntry, to date: Date, meal: MealSlot? = nil, source: EntrySource = .recent) -> FoodEntry {
-        FoodEntry(date: date, meal: meal ?? entry.meal, name: entry.name, brand: entry.brand, foodID: entry.foodID,
+    public static func copy(_ entry: FoodEntry, to date: Date, source: EntrySource = .recent) -> FoodEntry {
+        FoodEntry(date: date, name: entry.name, brand: entry.brand, foodID: entry.foodID,
                   amountLabel: entry.amountLabel, grams: entry.grams, unitID: entry.unitID, count: entry.count,
                   nutrients: entry.nutrients, source: source,
                   confidence: entry.confidence)
@@ -82,10 +99,10 @@ public enum NutritionExport {
     public static func tables(entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus]) -> [NutritionExportTable] {
         let diary = NutritionExportTable(
             name: "diary",
-            header: ["day", "time", "meal", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
+            header: ["day", "time", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
                      "sat_fat_g", "sodium_mg", "source", "estimate"],
             rows: entries.sorted { $0.date < $1.date }.map { e in
-                [e.day.iso, e.date.formatted(.iso8601.time(includingFractionalSeconds: false)), e.meal.rawValue, e.name, e.brand ?? "",
+                [e.day.iso, e.date.formatted(.iso8601.time(includingFractionalSeconds: false)), e.name, e.brand ?? "",
                  e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
                  n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium), e.source.rawValue,
                  e.isEstimate ? "yes" : "no"]

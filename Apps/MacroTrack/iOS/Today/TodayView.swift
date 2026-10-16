@@ -16,9 +16,10 @@ struct TodayView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
+                WeightSection(day: model.selectedDay)
                 if model.selectedDay == model.today {
                     ActionsSection()
-                    if !model.entries.isEmpty && !model.logAgain.isEmpty { LogAgainSection() }
+                    if !model.logAgain.isEmpty || model.usualNow != nil { LogAgainSection() }
                 } else {
                     Section {
                         Label("Catching up \(Format.relative(model.selectedDay, today: model.today)). New entries land on that day.",
@@ -26,9 +27,7 @@ struct TodayView: View {
                             .font(.subheadline)
                     }
                 }
-                ForEach(MealSlot.allCases) { slot in
-                    MealSection(slot: slot, editing: $editing)
-                }
+                TimelineSections(day: model.selectedDay, editing: $editing)
                 DayStateSection(day: model.selectedDay)
             }
             .listStyle(.insetGrouped)
@@ -145,20 +144,16 @@ struct ModeLine: View {
     }
 }
 
-/// The prescriptive cards: what was seen, and the one thing to do. Weighing in is inline.
+/// The prescriptive cards: what was seen, and the one thing to do.
 struct ActionsSection: View {
     @Environment(AppModel.self) private var model
-    @State private var weight = ""
-    @FocusState private var weightFocused: Bool
 
     var body: some View {
         if let analysis = model.analysis {
             let actions = analysis.actions.filter { $0.kind != .weighIn }.prefix(2)
-            let weighIn = analysis.actions.first { $0.kind == .weighIn }
             let checkIn = recentCheckIn
-            if weighIn != nil || !actions.isEmpty || checkIn != nil {
+            if !actions.isEmpty || checkIn != nil {
                 Section {
-                    if weighIn != nil { weighInRow }
                     if let checkIn { CheckInRow(checkIn: checkIn, previous: model.checkIns.last { $0.day < checkIn.day }) }
                     ForEach(Array(actions)) { action in
                         ActionRow(action: action)
@@ -168,49 +163,92 @@ struct ActionsSection: View {
         }
     }
 
-    /// A weigh-in in one field and one tap.
-    var weighInRow: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "scalemass").foregroundStyle(Color.accentColor).frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Weigh in").font(.subheadline.weight(.semibold))
-                Text("First thing, after the bathroom").font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            TextField(placeholder, text: $weight)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(.body.monospacedDigit())
-                .frame(width: 70)
-                .focused($weightFocused)
-            Text(model.units.weight.symbol).foregroundStyle(.secondary)
-            Button("Save") { save() }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                .disabled(parsed == nil)
-        }
-    }
-
-    var placeholder: String {
-        model.latestWeighIn.map { Format.number(model.units.weight.fromKilograms($0.kg)) } ?? "0.0"
-    }
-
-    var parsed: Double? {
-        guard let value = Double(weight.replacingOccurrences(of: ",", with: ".")), value > 0 else { return nil }
-        return model.units.weight.toKilograms(value)
-    }
-
-    func save() {
-        guard let kg = parsed else { return }
-        weightFocused = false
-        weight = ""
-        model.weighIn(kg: kg)
-    }
-
     /// This week's check-in, for a couple of days after it moved the targets.
     var recentCheckIn: CheckIn? {
         guard let last = model.checkIns.last, last.day.days(until: model.today) <= 2, model.checkIns.count > 1 else { return nil }
         return last
+    }
+}
+
+/// The day's weight, always one tap away: a field to weigh in, or the reading and the trend.
+struct WeightSection: View {
+    @Environment(AppModel.self) private var model
+    let day: Day
+    @State private var weight = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let unit = model.units.weight
+        let reading = model.weighIns.last { $0.day == day && !$0.excluded }
+        let away = day == model.today && (model.analysis.map { $0.targets.mode == .vacation || $0.targets.mode == .illness } ?? false)
+        if reading != nil || !away {
+            Section {
+                if let reading {
+                    Button {
+                        model.showWeighIn = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "scalemass").foregroundStyle(Color.accentColor).frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(Format.weight(reading.kg, unit: unit)).font(.subheadline.weight(.semibold).monospacedDigit())
+                                if let trend = model.analysis?.trend[day] {
+                                    Text("Trend \(Format.weight(trend, unit: unit))\(change.map { " · \($0)" } ?? "")")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if case .health = reading.source { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink) }
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Weight \(Format.weight(reading.kg, unit: unit)). Edit weigh-ins")
+                } else {
+                    field(unit)
+                }
+            }
+        }
+    }
+
+    var change: String? {
+        guard day == model.today, let weekly = model.analysis?.weeklyChange else { return nil }
+        return Format.weeklyChange(weekly, unit: model.units.weight)
+    }
+
+    /// A weigh-in in one field and one tap.
+    func field(_ unit: WeightUnit) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "scalemass").foregroundStyle(Color.accentColor).frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Weigh in").font(.subheadline.weight(.semibold))
+                Text(day == model.today ? "First thing, after the bathroom" : Format.day(day)).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            TextField(model.latestWeighIn.map { Format.number(unit.fromKilograms($0.kg)) } ?? "0.0", text: $weight)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .font(.body.monospacedDigit())
+                .frame(width: 70)
+                .focused($focused)
+            Text(unit.symbol).foregroundStyle(.secondary)
+            Button("Save") { save(unit) }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .disabled(parsed(unit) == nil)
+        }
+    }
+
+    func parsed(_ unit: WeightUnit) -> Double? {
+        guard let value = Double(weight.replacingOccurrences(of: ",", with: ".")), value > 20 else { return nil }
+        return unit.toKilograms(value)
+    }
+
+    func save(_ unit: WeightUnit) {
+        guard let kg = parsed(unit) else { return }
+        focused = false
+        weight = ""
+        model.weighIn(kg: kg, date: day == model.today ? Date() : day.date().addingTimeInterval(7 * 3600))
     }
 }
 
@@ -277,7 +315,8 @@ struct ActionRow: View {
     }
 }
 
-/// Foods worth logging again right now, one tap each.
+/// What's worth logging again right now, one tap each: what was eaten around now yesterday,
+/// then single foods by how often and how recently they're eaten at this time of day.
 struct LogAgainSection: View {
     @Environment(AppModel.self) private var model
 
@@ -285,25 +324,17 @@ struct LogAgainSection: View {
         Section {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
-                    ForEach(model.logAgain.prefix(10)) { item in
-                        Button {
-                            model.logAgain(item)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.template.name).font(.subheadline.weight(.semibold)).lineLimit(1)
-                                Text("\(item.template.amountLabel) · \(Format.whole(item.template.nutrients.kcal))")
-                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            .frame(maxWidth: 170, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(.insetBackground, in: .rect(cornerRadius: 14))
+                    if let usual = model.usualNow {
+                        chip(title: "Same as \(Format.relative(Day(usual.start), today: model.today))",
+                             detail: "\(Format.time(usual.start)) · \(usual.entries.map(\.name).prefix(2).joined(separator: ", "))\(usual.entries.count > 2 ? " +\(usual.entries.count - 2)" : "")",
+                             kcal: usual.nutrients.kcal, highlight: true) {
+                            model.logAgain(usual)
                         }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            ForEach(MealSlot.allCases) { slot in
-                                Button("Log to \(slot.label)", systemImage: slot.symbol) { model.logAgain(item, meal: slot) }
-                            }
+                        .accessibilityLabel("Log the same as \(Format.relative(Day(usual.start), today: model.today)): \(usual.entries.map(\.name).joined(separator: ", ")), \(Format.kcal(usual.nutrients.kcal))")
+                    }
+                    ForEach(model.logAgain.prefix(10)) { item in
+                        chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
+                            model.logAgain(item)
                         }
                         .accessibilityLabel("Log \(item.template.name), \(item.template.amountLabel), \(Format.kcal(item.template.nutrients.kcal))")
                     }
@@ -316,19 +347,55 @@ struct LogAgainSection: View {
             Text("Log again")
         }
     }
+
+    func chip(title: String, detail: String, kcal: Double, highlight: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Text("\(detail) · \(Format.whole(kcal))").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .frame(maxWidth: 180, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(highlight ? AnyShapeStyle(Color.accentColor.opacity(0.14)) : AnyShapeStyle(.insetBackground), in: .rect(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+    }
 }
 
-/// One meal: its entries, its total, and quick ways to fill it.
-struct MealSection: View {
+/// The day as a timeline: each moment (foods eaten together) with its time and total.
+struct TimelineSections: View {
     @Environment(AppModel.self) private var model
-    let slot: MealSlot
+    let day: Day
     @Binding var editing: FoodEntry?
 
     var body: some View {
-        let entries = model.entries(on: model.selectedDay).filter { $0.meal == slot }
-        let usual = entries.isEmpty ? LogAgain.usual(slot, entries: model.entries, before: model.selectedDay) : nil
+        let moments = Timeline.moments(model.entries(on: day))
+        if moments.isEmpty {
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(day == model.today ? "Nothing logged yet today" : "Nothing logged on this day").font(.subheadline.weight(.semibold))
+                    Text("Search, scan, snap or describe below. Foods eaten together are kept together, however many times you eat.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        ForEach(moments) { moment in
+            MomentSection(moment: moment, editing: $editing)
+        }
+    }
+}
+
+/// Foods eaten together: their time, their total, and quick ways to add to them or eat them again.
+struct MomentSection: View {
+    @Environment(AppModel.self) private var model
+    let moment: Moment
+    @Binding var editing: FoodEntry?
+
+    var body: some View {
         Section {
-            ForEach(entries) { entry in
+            ForEach(moment.entries) { entry in
                 Button {
                     editing = entry
                 } label: {
@@ -340,35 +407,31 @@ struct MealSection: View {
                 }
                 .swipeActions(edge: .leading) {
                     Button("Again", systemImage: "arrow.clockwise") {
-                        model.log([LogAgain.copy(entry, to: model.logSlot(slot).date, meal: slot, source: .copied)])
+                        model.log([LogAgain.copy(entry, to: model.logDate(), source: .copied)])
                     }
                     .tint(.accentColor)
                 }
             }
-            if let usual {
-                Button {
-                    model.copyUsual(slot)
-                } label: {
-                    Label("Same as \(Format.relative(usual.day, today: model.selectedDay)): \(usual.entries.map(\.name).prefix(3).joined(separator: ", "))",
-                          systemImage: "arrow.triangle.2.circlepath")
-                        .font(.subheadline)
-                        .lineLimit(1)
-                }
-            }
         } header: {
-            HStack {
-                Label(slot.label, systemImage: slot.symbol)
+            HStack(spacing: 10) {
+                Text(Format.time(moment.start)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
                 Spacer()
-                if !entries.isEmpty {
-                    Text(Format.kcal(entries.map(\.nutrients.kcal).reduce(0, +))).monospacedDigit()
+                Text(Format.kcal(moment.nutrients.kcal)).monospacedDigit()
+                Menu {
+                    Button("Log all again", systemImage: "arrow.clockwise") { model.logAgain(moment) }
+                    Button("Delete all", systemImage: "trash", role: .destructive) { model.delete(entries: moment.entries.map(\.id)) }
+                } label: {
+                    Image(systemName: "ellipsis.circle").font(.title3)
                 }
+                .accessibilityLabel("More for \(Format.time(moment.start))")
                 Button {
-                    model.loggerMeal = slot
+                    // Added foods join this moment.
+                    model.loggerTime = moment.end.addingTimeInterval(60)
                     model.logger = .search
                 } label: {
                     Image(systemName: "plus.circle.fill").font(.title3)
                 }
-                .accessibilityLabel("Add to \(slot.label)")
+                .accessibilityLabel("Add to \(Format.time(moment.start))")
             }
         }
     }

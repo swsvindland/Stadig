@@ -9,6 +9,7 @@ struct MacroTrackWidgets: WidgetBundle {
         SnapMealControl()
         ScanBarcodeControl()
         LogFoodControl()
+        WeighInControl()
     }
 }
 
@@ -28,6 +29,18 @@ struct ScanBarcodeControl: ControlWidget {
 struct LogFoodControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         logControl(kind: "search", entry: .search, title: "Log Food", symbol: "fork.knife")
+    }
+}
+
+struct WeighInControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "dev.svindland.macrotrack.control.weigh") {
+            ControlWidgetButton(action: OpenLoggerIntent(entry: .weigh)) {
+                Label("Weigh In", systemImage: "scalemass")
+            }
+        }
+        .displayName("Weigh In")
+        .description("Opens Macro Track ready to record this morning's weight.")
     }
 }
 

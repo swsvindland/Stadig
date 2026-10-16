@@ -14,12 +14,11 @@ extension AppModel {
     /// logged, in words.
     func logDescribed(_ text: String) async -> String {
         let now = Date()
-        let meal = MealSlot.guess(for: now)
         var logged: [FoodEntry] = []
         if ai.canDescribe, let guess = try? await ai.recognize(description: text, personal: personal) {
             for item in guess.items {
                 guard let food = item.match?.food, let unit = item.unit else { continue }
-                logged.append(FoodEntry(date: now, meal: meal, name: food.name, brand: food.brand, foodID: food.id,
+                logged.append(FoodEntry(date: now, name: food.name, brand: food.brand, foodID: food.id,
                                         amountLabel: FoodUnits.entryLabel(for: food, count: item.count, unit: unit, estimate: true),
                                         grams: FoodUnits.amount(item.count, unit),
                                         unitID: unit.id, count: item.count, nutrients: FoodUnits.nutrients(food, count: item.count, unit: unit),
@@ -32,7 +31,7 @@ extension AppModel {
             if let food = match?.food {
                 let p = personalFood(food.id)
                 let s = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount)
-                logged.append(FoodEntry(date: now, meal: meal, name: food.name, brand: food.brand, foodID: food.id,
+                logged.append(FoodEntry(date: now, name: food.name, brand: food.brand, foodID: food.id,
                                         amountLabel: FoodUnits.entryLabel(for: food, count: s.count, unit: s.unit),
                                         grams: FoodUnits.amount(s.count, s.unit),
                                         unitID: s.unit.id, count: s.count, nutrients: FoodUnits.nutrients(food, count: s.count, unit: s.unit),

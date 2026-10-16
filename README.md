@@ -186,14 +186,16 @@ The finished session comes back to the phone both live and queued. The Watch's w
 
 Macro Track is built for the least time in the app. Most visits are one of these:
 
-- **A glance.** Today shows calories left as a ring, protein (and carbs and fat, if shown) as bars, and the one or two things worth doing. The widget shows the same on the Home Screen and Lock Screen.
-- **One tap.** "Log again" ranks foods by how recently and how often you eat them at this time of day, and logs the same amount with one tap. "Same as yesterday" copies a whole meal. Every log shows Undo.
-- **A few taps.** The quick-log bar sits above the tabs on every screen: search, camera, barcode, describe.
+- **A glance.** Today shows calories left as a ring, protein (and carbs and fat, if shown) as bars, today's weight and trend, and the one or two things worth doing. The widget shows the same on the Home Screen and Lock Screen.
+- **No meal slots.** A day is a timeline: foods logged within 45 minutes of each other are one moment, with its time and total, whether you eat three times a day or five. Logging defaults to now, with "30m ago", "1h ago", "2h ago" or any time one tap away, and **+** on a moment adds to it.
+- **One tap.** "Log again" ranks foods by how recently and how often you eat them at this time of day, and logs the same amount with one tap. "Same as yesterday" copies what you ate around this time on a recent day. Every log shows Undo.
+- **A weigh-in in seconds.** The scale button in the quick-log bar opens the weigh-in with your last weight ready to nudge (± 0.1 kg or 0.2 lb) and save; Today has an inline field until you've weighed in; and there's a Weigh In control for the Lock Screen and Control Center. Health weigh-ins from a smart scale arrive on their own.
+- **A few taps.** The quick-log bar sits above the tabs on every screen: search, camera, barcode, describe and weigh in.
   - **Search** is offline and instant over 3.2 million foods: USDA, plus Open Food Facts' packaged foods. Your own foods rank first, and each result shows the portion it would log (your last one, or a natural unit like "1 container"). The **+** logs it, clears the search and keeps the keyboard up for the next food.
   - **Barcode** opens the food with the usual portion ready. An unknown code becomes your own food from a photo of the label (Vision OCR plus the label parser), kept for next time.
   - **Photo** and **Describe** ("two eggs, toast with butter and a flat white") use Apple's on-device model, and Private Cloud Compute when allowed. The model only names foods and amounts; nutrients always come from the catalog. The review screen fixes a wrong match in one tap and logs everything at once.
   - **Quick add** takes calories and protein.
-- **No app at all.** Siri and Shortcuts: "Log food in Macro Track" (a description logged in the background), "How many calories are left", "Log my weight", quick add, and "Open food logger" on the camera or scanner for the Action Button.
+- **No app at all.** Siri and Shortcuts: "Log food in Macro Track" (a description logged in the background), "How many calories are left", "Log my weight", quick add, and "Open food logger" on the camera, scanner or weigh-in for the Action Button. Controls: Snap a Meal, Scan Barcode, Log Food and Weigh In.
 
 ### How the doc maps to the code
 
@@ -322,7 +324,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 
 - **Macro Track, iPhone 18 Pro simulator**
   - Onboarding with Lift Track's profile already in the shared container: it asks only about recent dieting and weight, then Health shows the nutrition and weight permissions. Day 1 of 21.
-  - The inline weigh-in, search ("greek yog" with natural portions like "1 container"), the portion screen, one-tap + with Undo, the meal bar, and the barcode path (typed digits, since the simulator has no camera) finding Nutella in Open Food Facts.
+  - The inline weigh-in, search ("greek yog" with natural portions like "1 container"), the portion screen, one-tap + with Undo, the time bar (a food logged "1h ago" lands an hour back on the timeline), the timeline of moments, the weigh-in from the quick-log bar (last weight prefilled, nudged and saved in four taps), and the barcode path (typed digits, since the simulator has no camera) finding Nutella in Open Food Facts.
   - Describe with the on-device model: "two eggs, toast with butter and a flat white" became eggs, toast, butter, and espresso plus whole milk for the flat white (440 kcal), logged in one tap. One-tap correction and "Search for…" work.
   - With `-seedSampleData`: Today, the assessment card, the maintenance range, the recommendation with "Why?", the active plan after starting it, Progress (trend, intake against maintenance, discipline) and Settings with the catalogs' attribution.
   - Launch to a usable screen in under 2.5 s without seeding.

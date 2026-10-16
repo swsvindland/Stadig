@@ -27,7 +27,7 @@ struct LoggerSheet: View {
             content
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if mode != .search { ToolbarItem(placement: .principal) { MealMenu() } }
+                    if mode != .search { ToolbarItem(placement: .principal) { TimeMenu() } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }
                     }
@@ -61,45 +61,146 @@ struct LoggerSheet: View {
     }
 }
 
-/// Which meal new entries land in; guessed from the time until changed.
-struct MealMenu: View {
+/// When the foods being logged were eaten: now, a little while ago, or any time of the day.
+enum LogTime {
+    /// Minutes ago offered as one tap.
+    static let recent = [30, 60, 120]
+
+    @MainActor
+    static func label(_ model: AppModel) -> String {
+        let date = model.logDate()
+        if model.selectedDay != model.today { return "\(Format.day(model.selectedDay, style: .dateTime.weekday(.abbreviated))) \(Format.time(date))" }
+        guard let picked = model.loggerTime else { return "Now" }
+        let minutes = Int((Date().timeIntervalSince(picked) / 60).rounded())
+        if let match = recent.first(where: { abs($0 - minutes) <= 2 }) { return ago(match) }
+        return Format.time(picked)
+    }
+
+    static func ago(_ minutes: Int) -> String { minutes < 60 ? "\(minutes) min ago" : "\(minutes / 60) h ago" }
+
+    /// The same, short enough for a row of chips.
+    static func short(_ minutes: Int) -> String { minutes < 60 ? "\(minutes)m ago" : "\(minutes / 60)h ago" }
+}
+
+/// The time choice in the logger's title: now, a recent time, or any time.
+struct TimeMenu: View {
     @Environment(AppModel.self) private var model
+    @State private var picking = false
 
     var body: some View {
-        let current = model.logSlot().meal
         Menu {
-            ForEach(MealSlot.allCases) { slot in
-                Button {
-                    model.loggerMeal = slot
-                } label: {
-                    if slot == current { Label(slot.label, systemImage: "checkmark") } else { Text(slot.label) }
+            if model.selectedDay == model.today {
+                Button("Now") { model.loggerTime = nil }
+                ForEach(LogTime.recent, id: \.self) { minutes in
+                    Button(LogTime.ago(minutes)) { model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60) }
                 }
             }
+            Button("Pick a time…", systemImage: "clock") { picking = true }
         } label: {
             HStack(spacing: 4) {
-                Text(current.label).font(.headline)
-                if model.selectedDay != model.today {
-                    Text(Format.day(model.selectedDay, style: .dateTime.weekday(.abbreviated))).font(.subheadline).foregroundStyle(.secondary)
-                }
+                Image(systemName: "clock").font(.subheadline)
+                Text(LogTime.label(model)).font(.headline)
                 Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(.secondary)
             }
             .foregroundStyle(.primary)
         }
-        .accessibilityLabel("Meal: \(current.label)")
+        .accessibilityLabel("Eaten: \(LogTime.label(model))")
+        .sheet(isPresented: $picking) { TimePickerSheet() }
     }
 }
 
-/// Which meal the logger adds to, as one row of choices at the bottom.
-struct MealPicker: View {
+/// The time choice under a search, where the thumb is.
+struct LogTimeBar: View {
     @Environment(AppModel.self) private var model
+    @State private var picking = false
 
     var body: some View {
-        Picker("Meal", selection: Binding(get: { model.logSlot().meal }, set: { model.loggerMeal = $0 })) {
-            ForEach(MealSlot.allCases) { Text($0.label).tag($0) }
+        HStack(spacing: 6) {
+            if model.selectedDay == model.today {
+                chip("Now", selected: model.loggerTime == nil) { model.loggerTime = nil }
+                ForEach(LogTime.recent, id: \.self) { minutes in
+                    chip(LogTime.short(minutes), selected: LogTime.label(model) == LogTime.ago(minutes)) {
+                        model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60)
+                    }
+                }
+            } else {
+                Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.medium)).padding(.leading, 8)
+                Spacer(minLength: 0)
+            }
+            Button {
+                picking = true
+            } label: {
+                Group {
+                    if let custom {
+                        Label(custom, systemImage: "clock").labelStyle(.titleAndIcon)
+                    } else {
+                        Image(systemName: "clock")
+                    }
+                }
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(custom != nil ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Pick a time")
         }
-        .pickerStyle(.segmented)
         .padding(6)
         .floatingGlass(in: Capsule(), interactive: false)
+        .sheet(isPresented: $picking) { TimePickerSheet() }
+    }
+
+    /// A time picked on the wheel rather than with a chip.
+    var custom: String? {
+        guard model.loggerTime != nil || model.selectedDay != model.today else { return nil }
+        let label = LogTime.label(model)
+        return LogTime.recent.map(LogTime.ago).contains(label) ? nil : Format.time(model.logDate())
+    }
+
+    func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(selected ? .semibold : .regular))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(selected ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Any time of the selected day, on a wheel.
+struct TimePickerSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var time = Date()
+
+    var body: some View {
+        NavigationStack {
+            DatePicker("Eaten at", selection: $time, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
+                .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            let picked = model.onSelectedDay(time)
+                            // Later than now today is a slip of the wheel: it means earlier.
+                            model.loggerTime = model.selectedDay == model.today && picked > Date() ? picked.addingTimeInterval(-86400) : picked
+                            dismiss()
+                        }
+                    }
+                }
+        }
+        .presentationDetents([.height(300)])
+        .onAppear { time = model.logDate() }
     }
 }
 
@@ -166,7 +267,7 @@ struct SearchLogView: View {
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)
         .safeAreaInset(edge: .bottom) {
-            MealPicker().padding(.horizontal).padding(.bottom, 8)
+            LogTimeBar().padding(.horizontal).padding(.bottom, 8)
         }
         .task(id: query) { await search() }
         .onAppear { if portion == nil { focused = true } }
@@ -381,7 +482,8 @@ struct PortionView: View {
                 model.log([model.entry(for: food, count: count, unit: current, source: request.source)])
                 done(false)
             } label: {
-                Text("Add to \(model.logSlot().meal.label) · \(Format.kcal(n.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(Format.time(model.logDate()))") · \(Format.kcal(n.kcal))")
+                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
             }
             .primaryAction()
             .padding()
