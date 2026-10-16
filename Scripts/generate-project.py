@@ -191,7 +191,7 @@ macro_widgets = dict(swift_common, **ios_widgets_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.macrotrack.widgets",
 })
 
-MACRO_PACKAGES = ["SystemCore", "SystemStore", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence"]
+MACRO_PACKAGES = ["SystemCore", "SystemStore", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner"]
 
 MACRO = {
     "name": "MacroTrack",

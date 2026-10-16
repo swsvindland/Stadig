@@ -14,21 +14,22 @@
 		4D2E00000000000000000009 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000A /* NutritionEngine */; };
 		4D2E0000000000000000000B /* FoodDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000C /* FoodDatabase */; };
 		4D2E0000000000000000000D /* FoodIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000E /* FoodIntelligence */; };
-		4D2E0000000000000000000F /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000010 /* SystemCore */; };
+		4D2E0000000000000000000F /* MealPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000010 /* MealPlanner */; };
+		4D2E00000000000000000011 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000012 /* SystemCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4D2E00000000000000000011 /* PBXContainerItemProxy */ = {
+		4D2E00000000000000000013 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4D2E00000000000000000012 /* Project object */;
+			containerPortal = 4D2E00000000000000000014 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4D2E00000000000000000013;
+			remoteGlobalIDString = 4D2E00000000000000000015;
 			remoteInfo = MacroTrackWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		4D2E00000000000000000014 /* Embed Foundation Extensions */ = {
+		4D2E00000000000000000016 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
@@ -43,44 +44,44 @@
 
 /* Begin PBXFileReference section */
 		4D2E00000000000000000002 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		4D2E00000000000000000015 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4D2E00000000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		4D2E00000000000000000017 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
-		4D2E00000000000000000018 /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
-		4D2E00000000000000000019 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
-		4D2E0000000000000000001A /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
+		4D2E00000000000000000017 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E00000000000000000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4D2E00000000000000000019 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
+		4D2E0000000000000000001A /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
+		4D2E0000000000000000001B /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		4D2E0000000000000000001C /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4D2E0000000000000000001B /* Exceptions for "Catalogs" folder in "MacroTrack" target */ = {
+		4D2E0000000000000000001D /* Exceptions for "Catalogs" folder in "MacroTrack" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				README.md,
 			);
-			target = 4D2E0000000000000000001C /* MacroTrack */;
+			target = 4D2E0000000000000000001E /* MacroTrack */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4D2E0000000000000000001D /* iOS */ = {
+		4D2E0000000000000000001F /* iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = iOS;
 			sourceTree = "<group>";
 		};
-		4D2E0000000000000000001E /* Shared */ = {
+		4D2E00000000000000000020 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
 			sourceTree = "<group>";
 		};
-		4D2E0000000000000000001F /* Widgets */ = {
+		4D2E00000000000000000021 /* Widgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Widgets;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000020 /* Catalogs */ = {
+		4D2E00000000000000000022 /* Catalogs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4D2E0000000000000000001B /* Exceptions for "Catalogs" folder in "MacroTrack" target */,
+				4D2E0000000000000000001D /* Exceptions for "Catalogs" folder in "MacroTrack" target */,
 			);
 			path = Catalogs;
 			sourceTree = "<group>";
@@ -88,7 +89,7 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		4D2E00000000000000000021 /* Frameworks */ = {
+		4D2E00000000000000000023 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -98,48 +99,49 @@
 				4D2E00000000000000000009 /* NutritionEngine in Frameworks */,
 				4D2E0000000000000000000B /* FoodDatabase in Frameworks */,
 				4D2E0000000000000000000D /* FoodIntelligence in Frameworks */,
+				4D2E0000000000000000000F /* MealPlanner in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E00000000000000000022 /* Frameworks */ = {
+		4D2E00000000000000000024 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4D2E0000000000000000000F /* SystemCore in Frameworks */,
+				4D2E00000000000000000011 /* SystemCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		4D2E00000000000000000023 = {
+		4D2E00000000000000000025 = {
 			isa = PBXGroup;
 			children = (
-				4D2E0000000000000000001D /* iOS */,
-				4D2E0000000000000000001E /* Shared */,
-				4D2E0000000000000000001F /* Widgets */,
-				4D2E00000000000000000020 /* Catalogs */,
-				4D2E00000000000000000024 /* Config */,
-				4D2E0000000000000000001A /* MacroTrack.storekit */,
-				4D2E00000000000000000025 /* Products */,
+				4D2E0000000000000000001F /* iOS */,
+				4D2E00000000000000000020 /* Shared */,
+				4D2E00000000000000000021 /* Widgets */,
+				4D2E00000000000000000022 /* Catalogs */,
+				4D2E00000000000000000026 /* Config */,
+				4D2E0000000000000000001C /* MacroTrack.storekit */,
+				4D2E00000000000000000027 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000024 /* Config */ = {
+		4D2E00000000000000000026 /* Config */ = {
 			isa = PBXGroup;
 			children = (
-				4D2E00000000000000000016 /* Info.plist */,
-				4D2E00000000000000000017 /* Widgets-Info.plist */,
-				4D2E00000000000000000018 /* MacroTrack.entitlements */,
-				4D2E00000000000000000019 /* Widgets.entitlements */,
+				4D2E00000000000000000018 /* Info.plist */,
+				4D2E00000000000000000019 /* Widgets-Info.plist */,
+				4D2E0000000000000000001A /* MacroTrack.entitlements */,
+				4D2E0000000000000000001B /* Widgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000025 /* Products */ = {
+		4D2E00000000000000000027 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4D2E00000000000000000015 /* MacroTrack.app */,
+				4D2E00000000000000000017 /* MacroTrack.app */,
 				4D2E00000000000000000002 /* MacroTrackWidgets.appex */,
 			);
 			name = Products;
@@ -148,48 +150,48 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4D2E00000000000000000013 /* MacroTrackWidgets */ = {
+		4D2E00000000000000000015 /* MacroTrackWidgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E0000000000000000002C /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */;
+			buildConfigurationList = 4D2E0000000000000000002E /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */;
 			buildPhases = (
-				4D2E0000000000000000002A /* Sources */,
-				4D2E00000000000000000022 /* Frameworks */,
-				4D2E0000000000000000002B /* Resources */,
+				4D2E0000000000000000002C /* Sources */,
+				4D2E00000000000000000024 /* Frameworks */,
+				4D2E0000000000000000002D /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4D2E0000000000000000001E /* Shared */,
-				4D2E0000000000000000001F /* Widgets */,
+				4D2E00000000000000000020 /* Shared */,
+				4D2E00000000000000000021 /* Widgets */,
 			);
 			name = MacroTrackWidgets;
 			packageProductDependencies = (
-				4D2E00000000000000000010 /* SystemCore */,
+				4D2E00000000000000000012 /* SystemCore */,
 			);
 			productName = MacroTrackWidgets;
 			productReference = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		4D2E0000000000000000001C /* MacroTrack */ = {
+		4D2E0000000000000000001E /* MacroTrack */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E00000000000000000029 /* Build configuration list for PBXNativeTarget "MacroTrack" */;
+			buildConfigurationList = 4D2E0000000000000000002B /* Build configuration list for PBXNativeTarget "MacroTrack" */;
 			buildPhases = (
-				4D2E00000000000000000026 /* Sources */,
-				4D2E00000000000000000021 /* Frameworks */,
-				4D2E00000000000000000027 /* Resources */,
-				4D2E00000000000000000014 /* Embed Foundation Extensions */,
+				4D2E00000000000000000028 /* Sources */,
+				4D2E00000000000000000023 /* Frameworks */,
+				4D2E00000000000000000029 /* Resources */,
+				4D2E00000000000000000016 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				4D2E00000000000000000028 /* PBXTargetDependency */,
+				4D2E0000000000000000002A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4D2E0000000000000000001D /* iOS */,
-				4D2E0000000000000000001E /* Shared */,
-				4D2E00000000000000000020 /* Catalogs */,
+				4D2E0000000000000000001F /* iOS */,
+				4D2E00000000000000000020 /* Shared */,
+				4D2E00000000000000000022 /* Catalogs */,
 			);
 			name = MacroTrack;
 			packageProductDependencies = (
@@ -199,66 +201,68 @@
 				4D2E0000000000000000000A /* NutritionEngine */,
 				4D2E0000000000000000000C /* FoodDatabase */,
 				4D2E0000000000000000000E /* FoodIntelligence */,
+				4D2E00000000000000000010 /* MealPlanner */,
 			);
 			productName = MacroTrack;
-			productReference = 4D2E00000000000000000015 /* MacroTrack.app */;
+			productReference = 4D2E00000000000000000017 /* MacroTrack.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		4D2E00000000000000000012 /* Project object */ = {
+		4D2E00000000000000000014 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
-					4D2E00000000000000000013 = {
+					4D2E00000000000000000015 = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4D2E0000000000000000001C = {
+					4D2E0000000000000000001E = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
-			buildConfigurationList = 4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */;
+			buildConfigurationList = 4D2E00000000000000000036 /* Build configuration list for PBXProject "MacroTrack" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 4D2E00000000000000000023;
+			mainGroup = 4D2E00000000000000000025;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
-				4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
-				4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
-				4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
-				4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
-				4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
+				4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
+				4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
+				4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
+				4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
+				4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
+				4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 4D2E00000000000000000025 /* Products */;
+			productRefGroup = 4D2E00000000000000000027 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4D2E0000000000000000001C /* MacroTrack */,
-				4D2E00000000000000000013 /* MacroTrackWidgets */,
+				4D2E0000000000000000001E /* MacroTrack */,
+				4D2E00000000000000000015 /* MacroTrackWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		4D2E00000000000000000027 /* Resources */ = {
+		4D2E00000000000000000029 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E0000000000000000002B /* Resources */ = {
+		4D2E0000000000000000002D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -268,14 +272,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		4D2E00000000000000000026 /* Sources */ = {
+		4D2E00000000000000000028 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E0000000000000000002A /* Sources */ = {
+		4D2E0000000000000000002C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -285,15 +289,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		4D2E00000000000000000028 /* PBXTargetDependency */ = {
+		4D2E0000000000000000002A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4D2E00000000000000000013 /* MacroTrackWidgets */;
-			targetProxy = 4D2E00000000000000000011 /* PBXContainerItemProxy */;
+			target = 4D2E00000000000000000015 /* MacroTrackWidgets */;
+			targetProxy = 4D2E00000000000000000013 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		4D2E00000000000000000034 /* Debug */ = {
+		4D2E00000000000000000037 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -326,7 +330,7 @@
 			};
 			name = Debug;
 		};
-		4D2E00000000000000000035 /* Release */ = {
+		4D2E00000000000000000038 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -352,7 +356,7 @@
 			};
 			name = Release;
 		};
-		4D2E00000000000000000036 /* Debug */ = {
+		4D2E00000000000000000039 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -397,7 +401,7 @@
 			};
 			name = Debug;
 		};
-		4D2E00000000000000000037 /* Release */ = {
+		4D2E0000000000000000003A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -442,7 +446,7 @@
 			};
 			name = Release;
 		};
-		4D2E00000000000000000038 /* Debug */ = {
+		4D2E0000000000000000003B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -476,7 +480,7 @@
 			};
 			name = Debug;
 		};
-		4D2E00000000000000000039 /* Release */ = {
+		4D2E0000000000000000003C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -513,29 +517,29 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4D2E00000000000000000029 /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
+		4D2E0000000000000000002B /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E00000000000000000036 /* Debug */,
-				4D2E00000000000000000037 /* Release */,
+				4D2E00000000000000000039 /* Debug */,
+				4D2E0000000000000000003A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4D2E0000000000000000002C /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */ = {
+		4D2E0000000000000000002E /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E00000000000000000038 /* Debug */,
-				4D2E00000000000000000039 /* Release */,
+				4D2E0000000000000000003B /* Debug */,
+				4D2E0000000000000000003C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */ = {
+		4D2E00000000000000000036 /* Build configuration list for PBXProject "MacroTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E00000000000000000034 /* Debug */,
-				4D2E00000000000000000035 /* Release */,
+				4D2E00000000000000000037 /* Debug */,
+				4D2E00000000000000000038 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -543,69 +547,78 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
+		4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
 		};
-		4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
+		4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemStore;
 		};
-		4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
+		4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/HealthBridge;
 		};
-		4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */ = {
+		4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/NutritionEngine;
 		};
-		4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */ = {
+		4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/FoodDatabase;
 		};
-		4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
+		4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/FoodIntelligence;
+		};
+		4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/MealPlanner;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		4D2E00000000000000000004 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
 		};
 		4D2E00000000000000000006 /* SystemStore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			package = 4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
 			productName = SystemStore;
 		};
 		4D2E00000000000000000008 /* HealthBridge */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			package = 4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
 			productName = HealthBridge;
 		};
 		4D2E0000000000000000000A /* NutritionEngine */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			package = 4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
 			productName = NutritionEngine;
 		};
 		4D2E0000000000000000000C /* FoodDatabase */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */;
+			package = 4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */;
 			productName = FoodDatabase;
 		};
 		4D2E0000000000000000000E /* FoodIntelligence */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */;
+			package = 4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */;
 			productName = FoodIntelligence;
 		};
-		4D2E00000000000000000010 /* SystemCore */ = {
+		4D2E00000000000000000010 /* MealPlanner */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			package = 4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */;
+			productName = MealPlanner;
+		};
+		4D2E00000000000000000012 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = 4D2E00000000000000000012 /* Project object */;
+	rootObject = 4D2E00000000000000000014 /* Project object */;
 }

@@ -3,6 +3,7 @@ import Observation
 import OSLog
 import FoodDatabase
 import HealthBridge
+import MealPlanner
 import NutritionEngine
 import SystemCore
 import SystemStore
@@ -49,6 +50,8 @@ final class AppModel {
     private(set) var customFoods: [CustomFoodRecord] = []
     private(set) var favorites: Set<String> = []
     private(set) var lifeModes: [LifeModePeriod] = []
+    /// Meal plans, oldest first: the current or next one is the one shown.
+    private(set) var mealPlans: [MealPlan] = []
 
     // From the other apps and the hub.
     private(set) var lift: AppSummary?
@@ -87,6 +90,9 @@ final class AppModel {
     @ObservationIgnored private var fixTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
+    @ObservationIgnored private var plannerCache: MealPlanner?
+    /// Bumped by "another plan", so each shuffle is a different week.
+    @ObservationIgnored var planVariation = 0
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -122,9 +128,14 @@ final class AppModel {
         checkIns = store.all(CheckIn.self).sorted { $0.day < $1.day }
         customFoods = store.all(CustomFoodRecord.self)
         favorites = Set(store.all(FavoriteRecord.self).map(\.foodID))
+        reloadMealPlans()
         readShared(recompute: false)
         recompute()
         refreshPersonal()
+    }
+
+    func reloadMealPlans() {
+        mealPlans = store.all(MealPlan.self).sorted { $0.start < $1.start }
     }
 
     /// Picks up changes that arrived from iCloud.
@@ -431,6 +442,14 @@ final class AppModel {
         for e in existing { store.delete(DayStatus.self, id: e.id) }
         if let state { store.save(DayStatus(id: existing.first?.id ?? UUID(), day: day, state: state)) }
         reload()
+    }
+
+    /// The meal planner, with its building blocks read from the catalog once.
+    var planner: MealPlanner {
+        if let plannerCache { return plannerCache }
+        let planner = MealPlanner(catalog: catalog)
+        plannerCache = planner
+        return planner
     }
 
     // MARK: Nutrients

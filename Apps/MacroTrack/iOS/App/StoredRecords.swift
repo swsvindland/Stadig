@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import FoodDatabase
+import MealPlanner
 import NutritionEngine
 import SystemCore
 import SystemStore
@@ -96,5 +97,10 @@ nonisolated extension LifeModeRecord: @retroactive StoredRecord {
 
 nonisolated extension ProfileRecord: @retroactive StoredRecord {
     public static var kind: String { "profile" }
+    public static var schemaVersion: Int { 1 }
+}
+
+nonisolated extension MealPlan: @retroactive StoredRecord {
+    public static var kind: String { "meal-plan" }
     public static var schemaVersion: Int { 1 }
 }

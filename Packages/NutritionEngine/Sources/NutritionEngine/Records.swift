@@ -7,6 +7,8 @@ import SystemCore
 /// How an entry got into the log, which says how far its numbers can be trusted.
 public enum EntrySource: String, Codable, Sendable {
     case search, barcode, recent, favorite, copied, quickAdd, recipe, photo, description, label, shortcut
+    /// A meal from the week's meal plan, eaten as planned.
+    case plan
 }
 
 /// One thing eaten, at a time. There are no meal slots: a day is a timeline, three meals or five.

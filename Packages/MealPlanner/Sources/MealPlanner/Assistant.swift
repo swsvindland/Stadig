@@ -1,0 +1,66 @@
+import Foundation
+import FoundationModels
+
+@available(iOS 27.0, macOS 27.0, *)
+@Generable(description: "What a person wants changed in next week's meal plan")
+struct PlanRequestOutput {
+    @Guide(description: "Foods, ingredients or flavours to leave out, one or two words each, e.g. fish, chicken, spicy, dairy. Empty if none.",
+           .maximumCount(8))
+    var avoid: [String]
+    @Guide(description: "Foods, ingredients or flavours wanted, one or two words each, e.g. salmon, Mexican, curry, egg muffins. Empty if none.",
+           .maximumCount(8))
+    var want: [String]
+    @Guide(description: "vegetarian, vegan, pescatarian or everything if the request changes the diet, otherwise empty")
+    var diet: String
+    @Guide(description: "true if they want it cheaper")
+    var cheaper: Bool
+    @Guide(description: "true if they want less cooking time")
+    var quicker: Bool
+}
+
+/// Reads a request for next week's plan. Apple's on-device model (or Private Cloud Compute when
+/// allowed) tidies messy wording into short phrases; the word rules map those to the library.
+/// Without a model, the word rules read the request directly.
+public struct PlanAssistant: Sendable {
+    public init() {}
+
+    static let instructions = """
+        You turn a request about a weekly meal-prep plan into lists. The plan is built from chicken, turkey, beef, pork, \
+        salmon, cod, shrimp, tofu, lentils, chickpeas, rice, quinoa, pasta, potatoes, sweet potatoes, vegetables, and \
+        teriyaki, Tex-Mex, Mediterranean, curry, Italian and peanut-lime flavours, with overnight oats, egg muffins or \
+        yogurt for breakfast. Put what they don't want in avoid and what they want more of in want. Keep each entry to \
+        one or two words. Leave lists empty when nothing fits.
+        """
+
+    public func read(_ request: String, allowCloud: Bool) async -> PlanChange {
+        let words = PlanRequests.read(request)
+        guard #available(iOS 27.0, macOS 27.0, *) else { return words }
+        let model: (any LanguageModel)?
+        if SystemLanguageModel.default.availability == .available {
+            model = SystemLanguageModel.default
+        } else if allowCloud {
+            let cloud = PrivateCloudComputeLanguageModel()
+            model = cloud.isAvailable && !cloud.quotaUsage.isLimitReached ? cloud : nil
+        } else {
+            model = nil
+        }
+        guard let model else { return words }
+        do {
+            let session = LanguageModelSession(model: model, instructions: Self.instructions)
+            let reply = try await session.respond(to: request, generating: PlanRequestOutput.self,
+                                                  options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 200))
+            let output = reply.content
+            var change = PlanRequests.read(avoid: output.avoid, want: output.want, diet: output.diet, cheaper: output.cheaper,
+                                           quicker: output.quicker)
+            // The model can miss a word the rules caught, never the other way round on purpose.
+            change.avoid.formUnion(words.avoid)
+            change.want.formUnion(words.want.subtracting(change.avoid))
+            change.diet = change.diet ?? words.diet
+            change.cheaper = change.cheaper ?? words.cheaper
+            change.quicker = change.quicker ?? words.quicker
+            return change.isEmpty ? words : change
+        } catch {
+            return words
+        }
+    }
+}

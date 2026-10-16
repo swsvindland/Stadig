@@ -1,0 +1,128 @@
+import Foundation
+import FoodDatabase
+import HealthBridge
+import MealPlanner
+import NutritionEngine
+import SystemCore
+import SystemStore
+
+extension AppModel {
+    /// The plan being eaten from, or the next one when it's waiting for its prep day.
+    var mealPlan: MealPlan? {
+        mealPlans.last { $0.end >= today }
+    }
+
+    /// The plan with meals on a day.
+    func mealPlan(covering day: Day) -> MealPlan? {
+        mealPlans.last { $0.covers(day) }
+    }
+
+    /// Today's targets for planning; while the assessment runs (no calorie target yet), maintenance.
+    var planTargets: PlanTargets {
+        let analysis = analysis
+        let kcal = analysis?.targets.kcal ?? analysis?.maintenance.kcal ?? 2200
+        let macros = Targets.macros(kcal: kcal, referenceKg: analysis?.referenceKg ?? 75, phase: analysis?.phase?.kind)
+        return PlanTargets(kcal: kcal, protein: analysis?.targets.protein ?? macros.protein, carbs: analysis?.targets.carbs ?? macros.carbs,
+                           fat: analysis?.targets.fat ?? macros.fat)
+    }
+
+    /// The Monday after today, prepped on Sunday; or tomorrow, prepped today.
+    func planStart(tomorrow: Bool) -> Day {
+        if tomorrow { return today.adding(days: 1) }
+        return today.startOfWeek.adding(days: 7)
+    }
+
+    /// What the last plan asked for, to start the next one from.
+    var lastPlanPreferences: PlanPreferences { mealPlans.last?.preferences ?? PlanPreferences() }
+
+    /// A new week. It replaces a plan that hasn't started; one being eaten from ends where this begins.
+    func makeMealPlan(preferences: PlanPreferences, start: Day) {
+        let recent = Set(mealPlans.last?.recipes.map(\.id) ?? [])
+        planVariation = 0
+        let plan = planner.plan(start: start, targets: planTargets, preferences: preferences, recent: recent)
+        for old in mealPlans where old.start >= start || (old.covers(start) && old.start > today) {
+            store.delete(MealPlan.self, id: old.id)
+        }
+        save(plan)
+    }
+
+    /// The same preferences, another set of dishes.
+    func shuffleMealPlan(_ plan: MealPlan) {
+        planVariation += 1
+        var next = planner.plan(start: plan.start, targets: plan.targets, preferences: plan.preferences,
+                                recent: Set(plan.recipes.map(\.id)), variation: planVariation)
+        next.id = plan.id
+        next.logged = plan.logged
+        next.createdAt = plan.createdAt
+        save(next)
+    }
+
+    func swap(_ recipeID: String, in plan: MealPlan) {
+        planVariation += 1
+        save(planner.swap(recipeID, in: plan, variation: planVariation))
+    }
+
+    /// Reads a request ("no fish, more spicy") and replans the week with it. Returns what changed,
+    /// in words, or nil when nothing in it applied.
+    func applyRequest(_ text: String, to plan: MealPlan) async -> String? {
+        let change = await PlanAssistant().read(text, allowCloud: settings.allowCloudAI)
+        guard !change.isEmpty else { return nil }
+        let current = mealPlans.first { $0.id == plan.id } ?? plan
+        save(planner.replan(current, preferences: change.applied(to: current.preferences), targets: planTargets))
+        return change.summary
+    }
+
+    func deleteMealPlan(_ plan: MealPlan) {
+        store.delete(MealPlan.self, id: plan.id)
+        reloadMealPlans()
+    }
+
+    func toggleGrocery(_ id: String, in plan: MealPlan) {
+        var plan = mealPlans.first { $0.id == plan.id } ?? plan
+        if plan.checked.contains(id) { plan.checked.remove(id) } else { plan.checked.insert(id) }
+        save(plan)
+    }
+
+    private func save(_ plan: MealPlan) {
+        var plan = plan
+        plan.updatedAt = Date()
+        store.save(plan)
+        reloadMealPlans()
+    }
+
+    // MARK: Eating from the plan
+
+    /// Logged, as long as what was logged is still there (Undo or a delete un-logs it).
+    func isLogged(_ meal: PlannedMeal, in plan: MealPlan) -> Bool {
+        guard let ids = plan.logged[meal.id] else { return false }
+        return entries.contains { ids.contains($0.id) }
+    }
+
+    /// One tap: the container (and what goes with it) as one entry, at the time it's logged.
+    func logPlanned(_ meal: PlannedMeal, in plan: MealPlan) {
+        guard let recipe = plan.recipe(meal.recipeID) else { return }
+        // Today, when it's logged; a day being caught up, at the meal's usual time.
+        let date = meal.day == today ? logDate() : meal.day.date().addingTimeInterval(meal.slot.hour * 3600)
+        let entry = Self.entry(for: recipe, date: date)
+        log([entry], message: "Logged \(recipe.title)")
+        var plan = mealPlans.first { $0.id == plan.id } ?? plan
+        plan.logged[meal.id] = [entry.id]
+        save(plan)
+    }
+
+    /// A planned dish as one entry: its numbers summed, its processing the group most of its
+    /// calories come from, fermented if anything in it is.
+    static func entry(for recipe: PlannedRecipe, date: Date) -> FoodEntry {
+        let n = recipe.nutrients
+        var micros: [String: Double] = [:]
+        for item in recipe.items { for (key, value) in item.micros { micros[key, default: 0] += value } }
+        var byGroup: [Processing: Double] = [:]
+        for item in recipe.items { if let p = item.processing { byGroup[p, default: 0] += item.nutrients.kcal } }
+        let processing = byGroup.max { $0.value < $1.value }?.key
+        let fermented = recipe.items.contains { $0.fermented == true }
+        let label = recipe.kind == .bowl ? "1 container" : "1 serving"
+        return FoodEntry(date: date, name: recipe.title, amountLabel: label,
+                         grams: recipe.items.map(\.grams).reduce(0, +), nutrients: n, micros: micros, processing: processing,
+                         fermented: fermented, source: .plan)
+    }
+}

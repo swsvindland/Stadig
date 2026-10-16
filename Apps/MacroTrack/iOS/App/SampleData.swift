@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import FoodDatabase
+import MealPlanner
 import NutritionEngine
 import SystemCore
 import SystemStore
@@ -79,6 +80,10 @@ enum SampleData {
         model.reload()
         if ProcessInfo.processInfo.arguments.contains("-seedPlan"), let plan = model.recommendation {
             model.start(plan)
+        }
+        // A week of meals being eaten from, started yesterday: Today shows its meals.
+        if ProcessInfo.processInfo.arguments.contains("-seedMealPlan") {
+            model.makeMealPlan(preferences: PlanPreferences(slots: Set(MealSlot.allCases)), start: .today.adding(days: -1))
         }
     }
 }

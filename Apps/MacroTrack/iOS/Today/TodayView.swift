@@ -20,6 +20,7 @@ struct TodayView: View {
                 WeightSection(day: model.selectedDay)
                 if model.selectedDay == model.today {
                     ActionsSection()
+                    PlannedMealsSection(day: model.selectedDay)
                     if !model.logAgain.isEmpty || model.usualNow != nil { LogAgainSection() }
                 } else {
                     Section {
@@ -27,6 +28,7 @@ struct TodayView: View {
                               systemImage: "clock.arrow.circlepath")
                             .font(.subheadline)
                     }
+                    PlannedMealsSection(day: model.selectedDay)
                 }
                 TimelineSections(day: model.selectedDay, editing: $editing)
                 DayStateSection(day: model.selectedDay)

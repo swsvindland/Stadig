@@ -16,6 +16,7 @@ struct PlanView: View {
                             if let review = model.planReview { ReviewCard(plan: review) }
                             CurrentPhaseCard(plan: plan, analysis: analysis)
                             TimelineCard(plan: plan, today: model.today)
+                            MealPrepCard()
                             MaintenanceCard(estimate: analysis.maintenance)
                             CheckInHistory(checkIns: model.checkIns)
                         } else {
@@ -24,6 +25,7 @@ struct PlanView: View {
                             if let recommendation = model.recommendation {
                                 RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
                             }
+                            MealPrepCard()
                         }
                     }
                 }
