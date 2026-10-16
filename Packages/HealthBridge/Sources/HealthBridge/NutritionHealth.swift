@@ -29,14 +29,17 @@ public struct HealthFood: Hashable, Sendable {
     public var date: Date
     public var name: String
     public var nutrients: Nutrients
+    /// Vitamins, minerals and fat parts by catalog key, in the catalog's units (mg, µg or g).
+    public var micros: [String: Double]
     /// Higher versions replace earlier copies.
     public var version: Int
 
-    public init(id: UUID, date: Date, name: String, nutrients: Nutrients, version: Int) {
+    public init(id: UUID, date: Date, name: String, nutrients: Nutrients, micros: [String: Double] = [:], version: Int) {
         self.id = id
         self.date = date
         self.name = name
         self.nutrients = nutrients
+        self.micros = micros
         self.version = version
     }
 }
@@ -86,7 +89,7 @@ extension HealthBridge {
         await deleteFoods(ids: foods.map(\.id))
         let correlations: [HKCorrelation] = foods.compactMap { food in
             var samples = Set<HKSample>()
-            for (type, key, value) in HealthTypes.dietaryValues(food.nutrients) where value > 0 {
+            for (type, key, value) in HealthTypes.dietaryValues(food.nutrients, micros: food.micros) where value > 0 {
                 guard store.authorizationStatus(for: type.type) == .sharingAuthorized else { continue }
                 samples.insert(HKQuantitySample(type: type.type, quantity: HKQuantity(unit: type.unit, doubleValue: value),
                                                 start: food.date, end: food.date, metadata: [
@@ -134,11 +137,38 @@ extension HealthTypes {
         Dietary(type: HKQuantityType(.dietarySugar), unit: .gram(), key: "sugar"),
         Dietary(type: HKQuantityType(.dietaryFatSaturated), unit: .gram(), key: "satFat"),
         Dietary(type: HKQuantityType(.dietarySodium), unit: .gramUnit(with: .milli), key: "sodium"),
+        // Vitamins, minerals and fat parts, keyed like the catalogs.
+        Dietary(type: HKQuantityType(.dietaryFatMonounsaturated), unit: .gram(), key: "monounsaturatedFat"),
+        Dietary(type: HKQuantityType(.dietaryFatPolyunsaturated), unit: .gram(), key: "polyunsaturatedFat"),
+        Dietary(type: HKQuantityType(.dietaryCholesterol), unit: .gramUnit(with: .milli), key: "cholesterol"),
+        Dietary(type: HKQuantityType(.dietaryPotassium), unit: .gramUnit(with: .milli), key: "potassium"),
+        Dietary(type: HKQuantityType(.dietaryCalcium), unit: .gramUnit(with: .milli), key: "calcium"),
+        Dietary(type: HKQuantityType(.dietaryIron), unit: .gramUnit(with: .milli), key: "iron"),
+        Dietary(type: HKQuantityType(.dietaryMagnesium), unit: .gramUnit(with: .milli), key: "magnesium"),
+        Dietary(type: HKQuantityType(.dietaryPhosphorus), unit: .gramUnit(with: .milli), key: "phosphorus"),
+        Dietary(type: HKQuantityType(.dietaryZinc), unit: .gramUnit(with: .milli), key: "zinc"),
+        Dietary(type: HKQuantityType(.dietaryCopper), unit: .gramUnit(with: .milli), key: "copper"),
+        Dietary(type: HKQuantityType(.dietaryManganese), unit: .gramUnit(with: .milli), key: "manganese"),
+        Dietary(type: HKQuantityType(.dietarySelenium), unit: .gramUnit(with: .micro), key: "selenium"),
+        Dietary(type: HKQuantityType(.dietaryVitaminA), unit: .gramUnit(with: .micro), key: "vitaminA"),
+        Dietary(type: HKQuantityType(.dietaryVitaminC), unit: .gramUnit(with: .milli), key: "vitaminC"),
+        Dietary(type: HKQuantityType(.dietaryVitaminD), unit: .gramUnit(with: .micro), key: "vitaminD"),
+        Dietary(type: HKQuantityType(.dietaryVitaminE), unit: .gramUnit(with: .milli), key: "vitaminE"),
+        Dietary(type: HKQuantityType(.dietaryVitaminK), unit: .gramUnit(with: .micro), key: "vitaminK"),
+        Dietary(type: HKQuantityType(.dietaryThiamin), unit: .gramUnit(with: .milli), key: "thiamin"),
+        Dietary(type: HKQuantityType(.dietaryRiboflavin), unit: .gramUnit(with: .milli), key: "riboflavin"),
+        Dietary(type: HKQuantityType(.dietaryNiacin), unit: .gramUnit(with: .milli), key: "niacin"),
+        Dietary(type: HKQuantityType(.dietaryPantothenicAcid), unit: .gramUnit(with: .milli), key: "pantothenicAcid"),
+        Dietary(type: HKQuantityType(.dietaryVitaminB6), unit: .gramUnit(with: .milli), key: "vitaminB6"),
+        Dietary(type: HKQuantityType(.dietaryFolate), unit: .gramUnit(with: .micro), key: "folate"),
+        Dietary(type: HKQuantityType(.dietaryVitaminB12), unit: .gramUnit(with: .micro), key: "vitaminB12"),
+        Dietary(type: HKQuantityType(.dietaryCaffeine), unit: .gramUnit(with: .milli), key: "caffeine"),
     ]
 
-    static func dietaryValues(_ n: Nutrients) -> [(Dietary, String, Double)] {
-        let values: [String: Double?] = ["kcal": n.kcal, "protein": n.protein, "carbs": n.carbs, "fat": n.fat, "fiber": n.fiber,
+    static func dietaryValues(_ n: Nutrients, micros: [String: Double] = [:]) -> [(Dietary, String, Double)] {
+        var values: [String: Double?] = ["kcal": n.kcal, "protein": n.protein, "carbs": n.carbs, "fat": n.fat, "fiber": n.fiber,
                                          "sugar": n.sugar, "satFat": n.saturatedFat, "sodium": n.sodium]
+        for (key, value) in micros where values[key] == nil { values[key] = value }
         return dietary.compactMap { d in (values[d.key] ?? nil).map { (d, d.key, $0) } }
     }
 }

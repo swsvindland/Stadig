@@ -1,4 +1,5 @@
 import SwiftUI
+import FoodDatabase
 import NutritionEngine
 import SystemCore
 
@@ -152,11 +153,18 @@ struct ActionsSection: View {
         if let analysis = model.analysis {
             let actions = analysis.actions.filter { $0.kind != .weighIn }.prefix(2)
             let checkIn = recentCheckIn
-            if !actions.isEmpty || checkIn != nil {
+            // One nutrient at a time, and only while there's room among the day's actions.
+            let nutrient = actions.count < 2 ? analysis.micros.flagged.first { !model.isNutrientHidden($0.nutrient.key) } : nil
+            // Done for today once its food is logged; the week's numbers catch up tomorrow.
+            let fixedToday = model.microFix.map { fix in model.entries(on: model.today).contains { $0.foodID == fix.food.id } } ?? false
+            if !actions.isEmpty || checkIn != nil || (nutrient != nil && !fixedToday) {
                 Section {
                     if let checkIn { CheckInRow(checkIn: checkIn, previous: model.checkIns.last { $0.day < checkIn.day }) }
                     ForEach(Array(actions)) { action in
                         ActionRow(action: action)
+                    }
+                    if let nutrient, !(fixedToday && model.microFix?.nutrient.key == nutrient.nutrient.key) {
+                        NutrientActionRow(reading: nutrient)
                     }
                 }
             }

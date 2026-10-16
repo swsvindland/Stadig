@@ -155,3 +155,19 @@ struct UnitsTests {
         #expect(FoodUnits.suggested(for: bread, lastUnitID: "g", lastCount: 0).unit.id == "portion:0")
     }
 }
+
+@Suite("Portion micronutrients")
+struct PortionMicroTests {
+    @Test("vitamins and minerals scale with the portion, and unlisted ones stay unknown")
+    func scaling() {
+        let spinach = Food(id: "usda:1", name: "Spinach, raw", basis: .g, nutrients: Nutrients(kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4),
+                           extras: ["potassium": 558, "vitaminK": 483], source: .usda)
+        let grams = PortionUnit(id: "g", label: "g", kind: .mass, amount: 1)
+        let micros = FoodUnits.micros(spinach, count: 150, unit: grams)
+        #expect(micros["potassium"] == 837 && micros["vitaminK"] == 724.5)
+        #expect(micros["calcium"] == nil, "not listed is unknown, not zero")
+        let bar = Food(id: "off:1", name: "Bar", basis: .serving, nutrients: Nutrients(kcal: 200, protein: 10, carbs: 20, fat: 8),
+                       extras: ["iron": 3], source: .off)
+        #expect(FoodUnits.micros(bar, count: 2, unit: PortionUnit(id: "serving", label: "bar", kind: .serving, amount: 1))["iron"] == 6)
+    }
+}

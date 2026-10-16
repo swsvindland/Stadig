@@ -26,6 +26,9 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     public var count: Double?
     /// The numbers as logged, kept even if the food later changes.
     public var nutrients: Nutrients
+    /// Vitamins, minerals and other values by catalog key ("potassium" in mg, "vitaminD" in µg;
+    /// see ``Micronutrients``), as logged. A key the food didn't list is unknown, not zero.
+    public var micros: [String: Double]?
     public var source: EntrySource
     /// 0–1 for estimates (a photo, a description); nil when the numbers are exact.
     public var confidence: Double?
@@ -33,7 +36,8 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
 
     public init(id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
                 foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
-                nutrients: Nutrients, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()) {
+                nutrients: Nutrients, micros: [String: Double]? = nil, source: EntrySource, confidence: Double? = nil,
+                updatedAt: Date = Date()) {
         self.id = id
         self.date = date
         self.day = day ?? Day(date)
@@ -45,6 +49,7 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
         self.unitID = unitID
         self.count = count
         self.nutrients = nutrients
+        self.micros = micros?.isEmpty == true ? nil : micros
         self.source = source
         self.confidence = confidence
         self.updatedAt = updatedAt

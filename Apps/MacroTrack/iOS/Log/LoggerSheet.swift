@@ -474,6 +474,7 @@ struct PortionView: View {
             }
             Section {
                 NutrientSummary(nutrients: n)
+                if let current { PortionNutrients(food: food, count: count, unit: current) }
             }
         }
         .safeAreaInset(edge: .bottom) {

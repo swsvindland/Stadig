@@ -61,6 +61,8 @@ final class AppModel {
     private(set) var logAgain: [LogAgainItem] = []
     /// Foods this person logs, for search ranking and last-used portions.
     private(set) var personal: [PersonalFood] = []
+    /// The one food that best fixes this week's shortest nutrient, ready to log.
+    private(set) var microFix: MicroFix?
 
     // Presentation.
     var tab: AppTab = .today
@@ -80,6 +82,8 @@ final class AppModel {
     @ObservationIgnored private var lastRevision = -1
     @ObservationIgnored private var foodCache: [String: Food] = [:]
     @ObservationIgnored private var personalTask: Task<Void, Never>?
+    @ObservationIgnored private var fixTask: Task<Void, Never>?
+    @ObservationIgnored private var fixKey: String?
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -172,6 +176,28 @@ final class AppModel {
             self.analysis = MacroAnalyst.analyse(self.state ?? state)
         }
         publish()
+        refreshMicroFix()
+    }
+
+    /// Finds a food for the shortest watched nutrient off the main thread, when it changes.
+    private func refreshMicroFix() {
+        let short = analysis?.micros.flagged.first { $0.nutrient.goal == .atLeast }
+        guard let short, let target = short.target else {
+            microFix = nil
+            fixKey = nil
+            return
+        }
+        guard fixKey != short.nutrient.key || microFix == nil else { return }
+        fixKey = short.nutrient.key
+        fixTask?.cancel()
+        let catalog = catalog, personal = personal
+        fixTask = Task.detached(priority: .utility) { [weak self] in
+            let fix = MicroFix.find(for: short.nutrient, target: target, personal: personal, catalog: catalog)
+            await MainActor.run {
+                guard let self, !Task.isCancelled, self.fixKey == short.nutrient.key else { return }
+                self.microFix = fix
+            }
+        }
     }
 
     @ObservationIgnored private var lastPublished: (nutrition: NutritionSummary, summary: AppSummary)?
@@ -255,6 +281,9 @@ final class AppModel {
                 guard let self, !Task.isCancelled else { return }
                 self.personal = result
                 self.foodCache.merge(found) { a, _ in a }
+                // A fix found before the person's own foods were known may have a better one now.
+                self.microFix = nil
+                self.refreshMicroFix()
             }
         }
     }
@@ -304,8 +333,8 @@ final class AppModel {
         FoodEntry(date: logDate(), name: food.name, brand: food.brand, foodID: food.id,
                          amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
                          grams: FoodUnits.amount(count, unit),
-                         unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit), source: source,
-                         confidence: confidence)
+                         unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
+                         micros: FoodUnits.micros(food, count: count, unit: unit), source: source, confidence: confidence)
     }
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health.
@@ -364,7 +393,8 @@ final class AppModel {
     }
 
     static func healthFood(_ e: FoodEntry) -> HealthFood {
-        HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
+        HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: e.micros ?? [:],
+                   version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
     }
 
     func entries(on day: Day) -> [FoodEntry] { entries.filter { $0.day == day } }
@@ -376,6 +406,18 @@ final class AppModel {
         for e in existing { store.delete(DayStatus.self, id: e.id) }
         if let state { store.save(DayStatus(id: existing.first?.id ?? UUID(), day: day, state: state)) }
         reload()
+    }
+
+    // MARK: Nutrients
+
+    /// "Not now" on a nutrient's action hides it for three days.
+    func hideNutrient(_ key: String) {
+        UserDefaults.standard.set(Date().addingTimeInterval(3 * 86400), forKey: "hideNutrient.\(key)")
+        recompute()
+    }
+
+    func isNutrientHidden(_ key: String) -> Bool {
+        (UserDefaults.standard.object(forKey: "hideNutrient.\(key)") as? Date).map { $0 > Date() } ?? false
     }
 
     // MARK: Weight

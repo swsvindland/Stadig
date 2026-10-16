@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed */ = {isa = PBXBuildFile; fileRef = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D2E00000000000000000003 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000004 /* SystemCore */; };
 		4D2E00000000000000000005 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000006 /* SystemStore */; };
 		4D2E00000000000000000007 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000008 /* HealthBridge */; };
@@ -34,7 +34,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed */,
+				4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -42,10 +42,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4D2E00000000000000000002 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D2E00000000000000000015 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4D2E00000000000000000002 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D2E00000000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		4D2E00000000000000000017 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Widgets-Info.plist; sourceTree = "<group>"; };
+		4D2E00000000000000000017 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
 		4D2E00000000000000000018 /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
 		4D2E00000000000000000019 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
 		4D2E0000000000000000001A /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
@@ -125,15 +125,6 @@
 			);
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000025 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				4D2E00000000000000000015 /* MacroTrack.app */,
-				4D2E00000000000000000002 /* MacroTrackWidgets.appex */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		4D2E00000000000000000024 /* Config */ = {
 			isa = PBXGroup;
 			children = (
@@ -145,12 +136,45 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		4D2E00000000000000000025 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4D2E00000000000000000015 /* MacroTrack.app */,
+				4D2E00000000000000000002 /* MacroTrackWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4D2E00000000000000000013 /* MacroTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E0000000000000000002C /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */;
+			buildPhases = (
+				4D2E0000000000000000002A /* Sources */,
+				4D2E00000000000000000022 /* Frameworks */,
+				4D2E0000000000000000002B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E0000000000000000001E /* Shared */,
+				4D2E0000000000000000001F /* Widgets */,
+			);
+			name = MacroTrackWidgets;
+			packageProductDependencies = (
+				4D2E00000000000000000010 /* SystemCore */,
+			);
+			productName = MacroTrackWidgets;
+			productReference = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		4D2E0000000000000000001C /* MacroTrack */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E00000000000000000029;
+			buildConfigurationList = 4D2E00000000000000000029 /* Build configuration list for PBXNativeTarget "MacroTrack" */;
 			buildPhases = (
 				4D2E00000000000000000026 /* Sources */,
 				4D2E00000000000000000021 /* Frameworks */,
@@ -178,31 +202,7 @@
 			);
 			productName = MacroTrack;
 			productReference = 4D2E00000000000000000015 /* MacroTrack.app */;
-			productType = com.apple.product-type.application;
-		};
-		4D2E00000000000000000013 /* MacroTrackWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E0000000000000000002C;
-			buildPhases = (
-				4D2E0000000000000000002A /* Sources */,
-				4D2E00000000000000000022 /* Frameworks */,
-				4D2E0000000000000000002B /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				4D2E0000000000000000001F /* Widgets */,
-				4D2E0000000000000000001E /* Shared */,
-			);
-			name = MacroTrackWidgets;
-			packageProductDependencies = (
-				4D2E00000000000000000010 /* SystemCore */,
-			);
-			productName = MacroTrackWidgets;
-			productReference = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */;
-			productType = com.apple.product-type.app-extension;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -214,15 +214,15 @@
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
-					4D2E0000000000000000001C = {
+					4D2E00000000000000000013 = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4D2E00000000000000000013 = {
+					4D2E0000000000000000001C = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
-			buildConfigurationList = 4D2E00000000000000000033;
+			buildConfigurationList = 4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -322,7 +322,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = -Onone;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
@@ -338,7 +338,7 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf-with-dsym;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -348,7 +348,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = -O;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = Release;
 		};
@@ -366,7 +366,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
-				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
@@ -411,7 +411,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
-				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
@@ -453,10 +453,13 @@
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -484,10 +487,13 @@
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -507,15 +513,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				4D2E00000000000000000034 /* Debug */,
-				4D2E00000000000000000035 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		4D2E00000000000000000029 /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -530,6 +527,15 @@
 			buildConfigurations = (
 				4D2E00000000000000000038 /* Debug */,
 				4D2E00000000000000000039 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E00000000000000000034 /* Debug */,
+				4D2E00000000000000000035 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

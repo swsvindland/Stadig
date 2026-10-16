@@ -53,6 +53,12 @@ public enum FoodUnits {
 
     public static func nutrients(_ food: Food, count: Double, unit: PortionUnit) -> Nutrients { food.nutrients(for: amount(count, unit)) }
 
+    /// The vitamins, minerals and other values the food has, for a portion; a value it doesn't
+    /// list is unknown, not zero.
+    public static func micros(_ food: Food, count: Double, unit: PortionUnit) -> [String: Double] {
+        food.extras(for: amount(count, unit))
+    }
+
     /// "1½ cups", "150 g", "2 large".
     public static func label(count: Double, unit: PortionUnit) -> String {
         "\(format(count, unit)) \(count > 1 ? plural(unit.label) : unit.label)"

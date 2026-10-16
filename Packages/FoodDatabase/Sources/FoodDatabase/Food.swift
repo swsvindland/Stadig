@@ -62,6 +62,12 @@ public struct Food: Hashable, Codable, Sendable, Identifiable {
         basis == .serving ? nutrients.scaled(amount) : nutrients.scaled(amount / 100)
     }
 
+    /// `extras` for an amount in the basis: grams, millilitres or servings.
+    public func extras(for amount: Double) -> [String: Double] {
+        let factor = basis == .serving ? amount : amount / 100
+        return extras.mapValues { $0 * factor }
+    }
+
     /// "Cheerios · General Mills", or just the name.
     public var title: String { brand.map { "\(name) · \($0)" } ?? name }
 

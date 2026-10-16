@@ -150,12 +150,14 @@ struct EntryEditor: View {
         var updated = entry
         if let food, let unit {
             updated.nutrients = FoodUnits.nutrients(food, count: count, unit: unit)
+            updated.micros = FoodUnits.micros(food, count: count, unit: unit)
             updated.amountLabel = FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: entry.isEstimate)
             updated.grams = FoodUnits.amount(count, unit)
             updated.unitID = unit.id
             updated.count = count
         } else if count != 1 {
             updated.nutrients = entry.nutrients.scaled(count)
+            updated.micros = entry.micros?.mapValues { $0 * count }
             updated.amountLabel = "\(Format.number(count, digits: 2)) × \(entry.amountLabel)"
             updated.grams = entry.grams.map { $0 * count }
         }

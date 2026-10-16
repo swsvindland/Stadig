@@ -54,7 +54,7 @@ enum SampleData {
                         eaten += n.kcal
                         entries.append(FoodEntry(date: date, name: food.name, brand: food.brand, foodID: food.id,
                                                  amountLabel: FoodUnits.label(count: (grams * scale).rounded(), unit: unit), grams: grams * scale,
-                                                 nutrients: n, source: .search, updatedAt: date))
+                                                 nutrients: n, micros: food.extras(for: grams * scale), source: .search, updatedAt: date))
                     } else {
                         let n = Nutrients(kcal: 220 * scale, protein: 15 * scale, carbs: 22 * scale, fat: 7 * scale)
                         eaten += n.kcal

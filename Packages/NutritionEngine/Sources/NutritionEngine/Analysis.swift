@@ -78,6 +78,8 @@ public struct MacroAnalysis: Sendable {
     public var dueCheckIn: CheckIn?
     /// Body weight to scale targets by.
     public var referenceKg: Double
+    /// Vitamins and minerals over the last week of complete days.
+    public var micros: MicroReport = .empty
 
     public var remaining: Nutrients? {
         guard let kcal = targets.kcal else { return nil }
@@ -224,6 +226,8 @@ public enum MacroAnalyst {
                                      todayIntake: intakeByDay[today] ?? .zero, intakeByDay: intakeByDay, discipline: discipline,
                                      loggingRate: loggingRate, actions: [], life: life, plannerInput: input, usable: complete,
                                      checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
+        analysis.micros = MicroAnalyst.report(entries: state.entries, complete: Set(complete.keys), profile: state.profile,
+                                              kcal: targets.kcal ?? maintenance.kcal, today: today)
         analysis.actions = actions(state, analysis)
         return analysis
     }
