@@ -116,6 +116,26 @@ public actor MealAI {
         return LabelResult(reading: reading, lines: lines, suggestedName: guess?.name, brand: guess?.brand)
     }
 
+    /// A Supplement Facts photo → its serving and lines. Vision reads the text and FoodDatabase's
+    /// parser reads the panel; the model only suggests the product's name and brand.
+    public func readSupplementLabel(photo: CGImage) async throws -> SupplementLabelResult {
+        let lines = LabelOCR.rows(try await LabelOCR.recognize(photo))
+        let facts = SupplementLabel.parse(lines: lines)
+        guard !lines.isEmpty, let engine = MealEngines.engine(photo: false, in: state()) else {
+            return SupplementLabelResult(facts: facts, lines: lines, suggestedName: nil, brand: nil)
+        }
+        let guess: LabelGuess?
+        do {
+            guess = try await model(engine).readSupplementName(lines: lines)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // The panel stands on its own; the name is typed instead.
+            guess = nil
+        }
+        return SupplementLabelResult(facts: facts, lines: lines, suggestedName: guess?.name, brand: guess?.brand)
+    }
+
     // MARK: Running
 
     private func run(description: String, image: CGImage?, engine: MealEngine, personal: [PersonalFood], state: MealAIAvailability,

@@ -244,7 +244,7 @@ struct ToastView: View {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             Text(toast.message).font(.subheadline.weight(.medium)).lineLimit(2)
             Spacer(minLength: 4)
-            if !toast.undo.isEmpty {
+            if toast.canUndo {
                 Button("Undo", action: undo).font(.subheadline.weight(.semibold))
             }
         }

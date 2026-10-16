@@ -25,6 +25,11 @@ struct Toast: Identifiable, Equatable {
     var id = UUID()
     var message: String
     var undo: [UUID] = []
+    /// Glasses of water and supplement doses the Undo takes back.
+    var undoWater: [UUID] = []
+    var undoDoses: [UUID] = []
+
+    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty }
 }
 
 /// The app's state: Macro Track's own synced records, what Lift Track and the hub published, what
@@ -38,6 +43,8 @@ final class AppModel {
     let catalog: FoodCatalog
     let purchases = Purchases()
     let ai = MealAIService()
+    /// The NIH supplement labels, when the build ships them.
+    let supplementCatalog: SupplementCatalog?
 
     // Records.
     private(set) var profile: SharedProfile?
@@ -52,6 +59,10 @@ final class AppModel {
     private(set) var lifeModes: [LifeModePeriod] = []
     /// Meal plans, oldest first: the current or next one is the one shown.
     private(set) var mealPlans: [MealPlan] = []
+    /// The supplement stack, by name, and every dose taken or skipped.
+    private(set) var supplements: [Supplement] = []
+    private(set) var supplementLogs: [SupplementLog] = []
+    private(set) var water: [WaterLog] = []
 
     // From the other apps and the hub.
     private(set) var lift: AppSummary?
@@ -77,6 +88,7 @@ final class AppModel {
     var showSettings = false
     var showPaywall = false
     var showWeighIn = false
+    var showSupplements = false
     var toast: Toast?
     var today: Day = .today
     /// The day Today shows and logs to: today, or a day being caught up.
@@ -100,6 +112,7 @@ final class AppModel {
         store = RecordStore(name: "MacroTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.macrotrack", inMemory: memory)
         shared = SharedContainer()
         catalog = FoodCatalog.standard()
+        supplementCatalog = SupplementCatalog.standard()
         #if DEBUG
         if arguments.contains("-resetData") { store.eraseAll() }
         #endif
@@ -128,6 +141,9 @@ final class AppModel {
         checkIns = store.all(CheckIn.self).sorted { $0.day < $1.day }
         customFoods = store.all(CustomFoodRecord.self)
         favorites = Set(store.all(FavoriteRecord.self).map(\.foodID))
+        supplements = store.all(Supplement.self).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date }
+        water = store.all(WaterLog.self).sorted { $0.date < $1.date }
         reloadMealPlans()
         readShared(recompute: false)
         recompute()
@@ -167,7 +183,8 @@ final class AppModel {
     var state: MacroState? {
         guard let profile else { return nil }
         return MacroState(profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
-                          lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, today: today)
+                          lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
+                          supplementLogs: supplementLogs, water: water, today: today)
     }
 
     func recompute() {
@@ -192,6 +209,7 @@ final class AppModel {
         publish()
         refreshMicroFix()
         refreshFermentedFix()
+        SupplementReminders.schedule(self)
     }
 
     /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
@@ -214,7 +232,7 @@ final class AppModel {
 
     /// Finds a food for the shortest watched nutrient off the main thread, when it changes.
     private func refreshMicroFix() {
-        let short = analysis?.micros.flagged.first { $0.nutrient.goal == .atLeast }
+        let short = analysis?.micros.flagged.first { $0.nutrient.goal == .atLeast && $0.status == .low }
         guard let short, let target = short.target else {
             microFix = nil
             fixKey = nil
@@ -363,15 +381,26 @@ final class AppModel {
         return calendar.date(bySettingHour: parts.hour ?? 12, minute: parts.minute ?? 0, second: 0, of: selectedDay.date()) ?? time
     }
 
-    /// A ready-to-save entry for a food and portion, timed for the selected day.
+    /// A ready-to-save entry for a food and portion, timed for the selected day. A drink keeps its
+    /// fluid, and its caffeine when the catalog didn't list it (a café latte, a can without it).
     func entry(for food: Food, count: Double, unit: PortionUnit, source: EntrySource, confidence: Double? = nil) -> FoodEntry {
-        FoodEntry(date: logDate(), name: food.name, brand: food.brand, foodID: food.id,
+        let amount = FoodUnits.amount(count, unit)
+        var micros = FoodUnits.micros(food, count: count, unit: unit)
+        let drink = Hydration.isDrink("\(food.name) \(food.brand ?? "")")
+            || (food.basis == .ml && !Self.notDrunk.contains { food.name.localizedCaseInsensitiveContains($0) })
+        if drink, micros["caffeine"] == nil, let mg = Caffeine.estimate(name: food.name, brand: food.brand, grams: amount) {
+            micros["caffeine"] = mg
+        }
+        return FoodEntry(date: logDate(), name: food.name, brand: food.brand, foodID: food.id,
                          amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
-                         grams: FoodUnits.amount(count, unit),
-                         unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
-                         micros: FoodUnits.micros(food, count: count, unit: unit), processing: food.processing,
-                         fermented: food.fermented, source: source, confidence: confidence)
+                         grams: amount, unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
+                         micros: micros, processing: food.processing, fermented: food.fermented,
+                         fluid: drink ? amount : nil, source: source, confidence: confidence)
     }
+
+    /// Foods sold by the millilitre that aren't drunk.
+    private static let notDrunk = ["oil", "sauce", "syrup", "vinegar", "dressing", "ketchup", "mayo", "honey", "cream", "creamer", "soup",
+                                   "spray", "extract", "marinade", "gravy"]
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health.
     func log(_ new: [FoodEntry], message: String? = nil) {
@@ -380,7 +409,9 @@ final class AppModel {
         reload()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
-        toast = Toast(message: "\(text) · \(Format.kcal(kcal))", undo: new.map(\.id))
+        let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
+        let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
+        toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
         if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(new.map(Self.healthFood)) } }
     }
 
@@ -400,7 +431,9 @@ final class AppModel {
     }
 
     func undo(_ toast: Toast) {
-        delete(entries: toast.undo)
+        if !toast.undo.isEmpty { delete(entries: toast.undo) }
+        if !toast.undoWater.isEmpty { delete(water: toast.undoWater) }
+        if !toast.undoDoses.isEmpty { delete(doses: toast.undoDoses) }
         self.toast = nil
     }
 
@@ -429,8 +462,10 @@ final class AppModel {
     }
 
     static func healthFood(_ e: FoodEntry) -> HealthFood {
-        HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: e.micros ?? [:],
-                   version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
+        var micros = e.micros ?? [:]
+        if let fluid = e.fluid { micros["water"] = fluid }
+        return HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros,
+                          version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
     }
 
     func entries(on day: Day) -> [FoodEntry] { entries.filter { $0.day == day } }
@@ -622,7 +657,8 @@ final class AppModel {
         let folder = URL.temporaryDirectory.appending(path: "Macro Track Export \(Day.today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try NutritionExport.tables(entries: entries, weighIns: weighIns, checkIns: checkIns, days: dayStatus).map { table in
+        return try NutritionExport.tables(entries: entries, weighIns: weighIns, checkIns: checkIns, days: dayStatus,
+                                          supplements: supplementLogs, water: water).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }
             let url = folder.appending(path: "\(table.name).csv")

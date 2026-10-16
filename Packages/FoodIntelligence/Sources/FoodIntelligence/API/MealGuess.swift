@@ -128,3 +128,19 @@ public enum MealAIError: Error, LocalizedError, Equatable, Sendable {
         }
     }
 }
+
+/// A Supplement Facts photo, read.
+public struct SupplementLabelResult: Sendable {
+    /// The panel's serving and lines; nil when no panel could be read. Its name is empty.
+    public var facts: SupplementFacts?
+    public var lines: [String]
+    public var suggestedName: String?
+    public var brand: String?
+
+    public init(facts: SupplementFacts?, lines: [String], suggestedName: String?, brand: String?) {
+        self.facts = facts
+        self.lines = lines
+        self.suggestedName = suggestedName
+        self.brand = brand
+    }
+}

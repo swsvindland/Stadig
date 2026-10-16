@@ -62,3 +62,10 @@ a fermented category (yogurt, kefir, kimchi…), live cultures in the ingredient
 name, excluding aged cheese (skyr, quark and fromage blanc count), chocolate, snacks and baked, frozen
 or heat-treated products. For USDA both are estimated from
 each food's group and name. They guide; they don't certify.
+
+## NIH Dietary Supplement Label Database — `supplements.db`
+
+From the [Dietary Supplement Label Database](https://dsld.od.nih.gov) of the NIH Office of Dietary
+Supplements, a US government work in the public domain. Use of the data doesn't suggest endorsement
+by the NIH or ODS. `supplements.db` keeps one label per barcode (the one on the market, else the
+newest) and labels without one while on the market; it's built by `Scripts/build-supplement-catalog.py`.

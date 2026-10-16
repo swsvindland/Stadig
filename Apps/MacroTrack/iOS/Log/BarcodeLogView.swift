@@ -18,10 +18,17 @@ struct BarcodeLogView: View {
     @State private var readingLabel = false
     @State private var label: LabelResult?
     @State private var error: String?
+    /// A supplement the scan found: taken from here, or added to the stack.
+    @State private var supplement: Supplement?
 
     var body: some View {
         Group {
-            if let label {
+            if let supplement {
+                SupplementFoundView(supplement: supplement) {
+                    self.supplement = nil
+                    scanning = true
+                }
+            } else if let label {
                 LabelReviewView(result: label, barcode: missing) { food in
                     portion = PortionRequest(food: food, source: .label, closeAfterAdd: true)
                 }
@@ -86,7 +93,12 @@ struct BarcodeLogView: View {
     func handle(_ code: String, symbology: Barcode.Symbology? = nil) {
         let digits = code.filter(\.isNumber)
         guard !digits.isEmpty else { return }
-        if let food = model.food(barcode: digits, symbology: symbology) {
+        let food = model.food(barcode: digits, symbology: symbology)
+        if let own = model.ownSupplement(barcode: digits, symbology: symbology) {
+            supplement = own
+        } else if let facts = model.supplementFacts(barcode: digits, symbology: symbology), model.isSupplement(facts, food: food) {
+            supplement = Supplement(facts: facts)
+        } else if let food {
             portion = PortionRequest(food: food, source: .barcode, closeAfterAdd: true)
             scanning = BarcodeScanner.isAvailable
         } else {
@@ -218,5 +230,40 @@ struct LabelReviewView: View {
         let food = reading.food(name: name.trimmingCharacters(in: .whitespaces),
                                 brand: brand.trimmingCharacters(in: .whitespaces).isEmpty ? nil : brand, barcode: barcode)
         saved(model.save(customFood: food))
+    }
+}
+
+/// A scanned supplement: one dose now if it's in the stack, or added to it.
+struct SupplementFoundView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let supplement: Supplement
+    let scanAgain: () -> Void
+    @State private var adding = false
+
+    var body: some View {
+        let own = model.supplements.contains { $0.id == supplement.id }
+        ContentUnavailableView {
+            Label(supplement.name, systemImage: supplement.facts.form.symbol)
+        } description: {
+            Text([supplement.facts.brand, own ? supplement.scheduleLabel : "A supplement: add it to your stack to tick it off each day."]
+                .compactMap { $0 }.joined(separator: "\n"))
+        } actions: {
+            if own {
+                Button("Take \(supplement.facts.amountLabel(supplement.doses.first?.count ?? supplement.facts.servingCount)) now") {
+                    model.takeExtra(supplement)
+                    dismiss()
+                }
+                .primaryAction()
+                Button("Edit") { adding = true }
+            } else {
+                Button("Add to my supplements") { adding = true }.primaryAction()
+            }
+            Button("Scan again", action: scanAgain)
+        }
+        .navigationTitle("Supplement")
+        .sheet(isPresented: $adding) {
+            NavigationStack { SupplementEditor(supplement: supplement, isNew: !own) }
+        }
     }
 }

@@ -74,7 +74,7 @@ public enum LogAgain {
         FoodEntry(date: date, name: entry.name, brand: entry.brand, foodID: entry.foodID,
                   amountLabel: entry.amountLabel, grams: entry.grams, unitID: entry.unitID, count: entry.count,
                   nutrients: entry.nutrients, micros: entry.micros, processing: entry.processing, fermented: entry.fermented,
-                  source: source,
+                  fluid: entry.fluid, source: source,
                   confidence: entry.confidence)
     }
 
@@ -97,20 +97,22 @@ public enum NutritionExport {
         return value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never).locale(Locale(identifier: "en_US_POSIX")))
     }
 
-    public static func tables(entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus]) -> [NutritionExportTable] {
+    public static func tables(entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus],
+                              supplements: [SupplementLog] = [], water: [WaterLog] = []) -> [NutritionExportTable] {
         // Vitamins and minerals after the label basics, a column each; blank where a food didn't list it.
         let micros = Micronutrients.all.filter { !["fiber", "sodium", "saturatedFat"].contains($0.key) }
         let diary = NutritionExportTable(
             name: "diary",
             header: ["day", "time", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
                      "sat_fat_g", "sodium_mg"] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" }
-                + ["nova", "fermented", "source", "estimate"],
+                + ["nova", "fermented", "fluid_ml", "source", "estimate"],
             rows: entries.sorted { $0.date < $1.date }.map { e in
                 [e.day.iso, e.date.formatted(.iso8601.time(includingFractionalSeconds: false)), e.name, e.brand ?? "",
                  e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
                  n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium)]
                     + micros.map { n(e.micros?[$0.key]) }
-                    + [e.processing.map { String($0.rawValue) } ?? "", e.fermented.map { $0 ? "yes" : "no" } ?? "", e.source.rawValue,
+                    + [e.processing.map { String($0.rawValue) } ?? "", e.fermented.map { $0 ? "yes" : "no" } ?? "",
+                       n(Hydration.fluid(of: e)), e.source.rawValue,
                        e.isEstimate ? "yes" : "no"]
             })
         let weights = NutritionExportTable(
@@ -131,6 +133,25 @@ public enum NutritionExport {
             })
         let dayStates = NutritionExportTable(
             name: "days", header: ["day", "status"], rows: days.sorted { $0.day < $1.day }.map { [$0.day.iso, $0.state.rawValue] })
-        return [diary, weights, targets, dayStates]
+        var tables = [diary, weights, targets, dayStates]
+        if !supplements.isEmpty {
+            let keys = Micronutrients.all.map(\.key).filter { key in supplements.contains { $0.amounts[key] != nil } }
+            tables.append(NutritionExportTable(
+                name: "supplements",
+                header: ["day", "time", "name", "amount", "taken", "kcal"] + keys.map { key in
+                    let unit = Micronutrients.info(key)?.unit ?? .mg
+                    return "\(key)_\(unit == .µg ? "ug" : unit.symbol)"
+                },
+                rows: supplements.sorted { $0.date < $1.date }.map { s in
+                    [s.day.iso, s.date.formatted(.iso8601.time(includingFractionalSeconds: false)), s.name, s.amountLabel,
+                     s.taken ? "yes" : "skipped", n(s.nutrients?.kcal)] + keys.map { n(s.amounts[$0]) }
+                }))
+        }
+        if !water.isEmpty {
+            tables.append(NutritionExportTable(
+                name: "water", header: ["day", "time", "ml"],
+                rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(.iso8601.time(includingFractionalSeconds: false)), n($0.ml)] }))
+        }
+        return tables
     }
 }

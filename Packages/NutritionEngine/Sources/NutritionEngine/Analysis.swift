@@ -16,11 +16,16 @@ public struct MacroState: Sendable {
     public var lift: AppSummary?
     /// Weekly check-ins, oldest first: the targets in force from each day on.
     public var checkIns: [CheckIn]
+    /// The supplement stack, and doses taken or skipped.
+    public var supplements: [Supplement]
+    public var supplementLogs: [SupplementLog]
+    public var water: [WaterLog]
     public var today: Day
 
     public init(profile: SharedProfile, settings: MacroSettings, entries: [FoodEntry] = [], weighIns: [WeighIn] = [],
                 dayStatus: [DayStatus] = [], plan: PhasePlan? = nil, lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil,
-                lift: AppSummary? = nil, checkIns: [CheckIn] = [], today: Day = .today) {
+                lift: AppSummary? = nil, checkIns: [CheckIn] = [], supplements: [Supplement] = [], supplementLogs: [SupplementLog] = [],
+                water: [WaterLog] = [], today: Day = .today) {
         self.profile = profile
         self.settings = settings
         self.entries = entries
@@ -31,7 +36,17 @@ public struct MacroState: Sendable {
         self.calendar = calendar
         self.lift = lift
         self.checkIns = checkIns.sorted { $0.day < $1.day }
+        self.supplements = supplements
+        self.supplementLogs = supplementLogs
+        self.water = water
         self.today = today
+    }
+
+    /// Bedtime on a day, from the person's bedtime (after midnight counts as that night).
+    public func bedtime(on day: Day, calendar: Calendar = .current) -> Date {
+        let minutes = settings.minutes(.bedtime)
+        let night = minutes < 12 * 60 ? day.adding(days: 1) : day
+        return night.date(calendar: calendar).addingTimeInterval(Double(minutes % (24 * 60)) * 60)
     }
 }
 
@@ -82,6 +97,9 @@ public struct MacroAnalysis: Sendable {
     public var micros: MicroReport = .empty
     /// Whole against ultra-processed, and fermented foods, over the same days.
     public var quality: QualityReport = .empty
+    /// Today's caffeine and drinks.
+    public var caffeine: CaffeineReport?
+    public var hydration: HydrationDay?
 
     public var remaining: Nutrients? {
         guard let kcal = targets.kcal else { return nil }
@@ -115,6 +133,12 @@ public enum MacroAnalyst {
         // Intake per day, and which days count as fully logged.
         var intakeByDay: [Day: Nutrients] = [:]
         for entry in state.entries { intakeByDay[entry.day] = (intakeByDay[entry.day] ?? .zero) + entry.nutrients }
+        // A supplement's few calories count on days with food logged; alone, they don't make a day logged.
+        for log in state.supplementLogs where log.taken {
+            if let n = log.nutrients, let day = intakeByDay[log.day] {
+                intakeByDay[log.day] = day + Nutrients(kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat)
+            }
+        }
 
         let trainingDays = state.lift.map { summary in
             Int((Double(summary.sessions.filter { $0.kind == .strength && $0.day > today.adding(days: -28) }.count) / 4).rounded())
@@ -228,8 +252,13 @@ public enum MacroAnalyst {
                                      todayIntake: intakeByDay[today] ?? .zero, intakeByDay: intakeByDay, discipline: discipline,
                                      loggingRate: loggingRate, actions: [], life: life, plannerInput: input, usable: complete,
                                      checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
-        analysis.micros = MicroAnalyst.report(entries: state.entries, complete: Set(complete.keys), profile: state.profile,
-                                              kcal: targets.kcal ?? maintenance.kcal, today: today)
+        analysis.micros = MicroAnalyst.report(entries: state.entries, supplements: state.supplementLogs, complete: Set(complete.keys),
+                                              profile: state.profile, kcal: targets.kcal ?? maintenance.kcal, today: today)
+        analysis.caffeine = Caffeine.report(day: today, entries: state.entries, supplements: state.supplementLogs,
+                                            bedtime: state.bedtime(on: today), limit: state.settings.caffeineLimit ?? Caffeine.defaultLimit,
+                                            cutBack: state.settings.caffeineCutBack, complete: Set(complete.keys))
+        analysis.hydration = Hydration.day(today, water: state.water, entries: state.entries,
+                                           target: state.settings.waterTarget ?? Hydration.target(sex: state.profile.sex))
         analysis.quality = QualityAnalyst.report(entries: state.entries, complete: Set(complete.keys), today: today)
         analysis.actions = actions(state, analysis)
         return analysis

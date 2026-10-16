@@ -29,7 +29,8 @@ public struct HealthFood: Hashable, Sendable {
     public var date: Date
     public var name: String
     public var nutrients: Nutrients
-    /// Vitamins, minerals and fat parts by catalog key, in the catalog's units (mg, µg or g).
+    /// Vitamins, minerals and fat parts by catalog key, in the catalog's units (mg, µg or g), and
+    /// "water" in millilitres.
     public var micros: [String: Double]
     /// Higher versions replace earlier copies.
     public var version: Int
@@ -163,6 +164,8 @@ extension HealthTypes {
         Dietary(type: HKQuantityType(.dietaryFolate), unit: .gramUnit(with: .micro), key: "folate"),
         Dietary(type: HKQuantityType(.dietaryVitaminB12), unit: .gramUnit(with: .micro), key: "vitaminB12"),
         Dietary(type: HKQuantityType(.dietaryCaffeine), unit: .gramUnit(with: .milli), key: "caffeine"),
+        // Millilitres: a glass of water on its own, or the fluid in a drink logged as food.
+        Dietary(type: HKQuantityType(.dietaryWater), unit: .literUnit(with: .milli), key: "water"),
     ]
 
     static func dietaryValues(_ n: Nutrients, micros: [String: Double] = [:]) -> [(Dietary, String, Double)] {

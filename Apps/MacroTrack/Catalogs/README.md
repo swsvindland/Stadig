@@ -15,3 +15,12 @@ fermented data. Without either the app still works with the USDA catalog.
 
 Open Food Facts data is under the ODbL: keep the in-app notice, per-food attribution and public
 access to the matching database and its build recipe (see `ATTRIBUTION.md` in FoodDatabase).
+
+`supplements.db` (the NIH Dietary Supplement Label Database, about 43 MB, public domain) is bundled
+from here too and isn't in git either. Build it with:
+
+    python3 Scripts/build-supplement-catalog.py
+
+That downloads the database's CSV export once (about 90 MB, cached in
+`~/Library/Caches/SystemFoodCatalog/dsld`) and builds in about ten seconds. Without it the app still
+works: supplements are added from a photo of the label or typed in.

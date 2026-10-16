@@ -86,5 +86,80 @@ enum SampleData {
             model.makeMealPlan(preferences: PlanPreferences(slots: Set(MealSlot.allCases)), start: .today.adding(days: -1))
         }
     }
+
+    /// The stack from the design brief, two weeks of it taken, and drinks: fish oil and a
+    /// multivitamin in the morning, pre-workout in the afternoon on training days, the multi again
+    /// in the evening and a sleep gummy at bedtime; coffee most mornings, an energy drink some
+    /// afternoons, and some water. Debug builds only (-seedSupplements).
+    @MainActor
+    static func seedSupplements(_ model: AppModel) {
+        guard model.supplements.isEmpty, model.profile != nil else { return }
+        func label(_ query: String, fallback: SupplementFacts) -> SupplementFacts {
+            model.supplementCatalog?.search(query, limit: 1).first ?? fallback
+        }
+        func custom(_ name: String, _ count: Double, _ unit: String, _ lines: [(String, Double, String)]) -> SupplementFacts {
+            SupplementFacts(id: "custom:\(name)", name: name, servingCount: count, unit: unit,
+                            ingredients: lines.map { SupplementIngredient(name: $0.0, amount: $0.1, unit: $0.2) }, source: .custom)
+        }
+        let fish = model.supplementCatalog?.supplement(barcode: "031604010539")
+            ?? custom("Fish Oil 1200 mg", 1, "softgel", [("Calories", 10, "kcal"), ("EPA", 216, "mg"), ("DHA", 144, "mg")])
+        let multi = label("centrum adults multivitamin", fallback: custom("Multivitamin", 1, "tablet", [
+            ("Vitamin D3", 25, "mcg"), ("Vitamin C", 90, "mg"), ("Zinc", 11, "mg"), ("Magnesium", 50, "mg"), ("Vitamin B12", 25, "mcg")]))
+        let pre = label("c4 original pre workout", fallback: custom("Pre-Workout", 1, "scoop", [
+            ("Calories", 5, "kcal"), ("Caffeine Anhydrous", 150, "mg"), ("Beta-Alanine", 1.6, "g")]))
+        let sleep = custom("Sleep Gummies", 2, "gummy", [("Calories", 15, "kcal"), ("Magnesium", 50, "mg"), ("Melatonin", 3, "mg")])
+        let stack = [
+            Supplement(facts: fish, doses: [Dose(time: .morning, count: 2)]),
+            Supplement(facts: multi, doses: [Dose(time: .morning, count: 1), Dose(time: .evening, count: 1)]),
+            Supplement(facts: pre, doses: [Dose(time: .afternoon, count: 1, days: .trainingDays)]),
+            Supplement(facts: sleep, doses: [Dose(time: .bedtime, count: 2)]),
+        ]
+        model.store.save(stack)
+        model.reload()
+
+        var rng = SystemRandomNumberGenerator()
+        var logs: [SupplementLog] = []
+        var drinks: [FoodEntry] = []
+        var water: [WaterLog] = []
+        let coffee = model.food(id: "usda:171890")
+        let energy = model.catalog.food(barcode: "070847811169") ?? model.catalog.search("monster energy", limit: 1).first?.food
+        for offset in 1...14 {
+            let day = model.today.adding(days: -offset)
+            for dose in model.doses(on: day) where Double.random(in: 0...1, using: &rng) < 0.85 {
+                let date = day.date().addingTimeInterval(Double(model.settings.minutes(dose.dose.time) + Int.random(in: -20...40, using: &rng)) * 60)
+                logs.append(SupplementLog(supplement: dose.supplement, doseID: dose.dose.id, date: date, day: day, count: dose.dose.count))
+            }
+            if let coffee {
+                for cup in 0..<(Double.random(in: 0...1, using: &rng) < 0.5 ? 2 : 1) {
+                    let date = day.date().addingTimeInterval((7.5 + Double(cup) * 3) * 3600)
+                    drinks.append(sampleDrink(coffee, ml: 237, date: date, name: "Coffee"))
+                }
+            }
+            if let energy, Double.random(in: 0...1, using: &rng) < 0.4 {
+                drinks.append(sampleDrink(energy, ml: 473, date: day.date().addingTimeInterval(15.5 * 3600), name: nil))
+            }
+            for hour in [9.0, 12.0, 15.0, 18.0] where Double.random(in: 0...1, using: &rng) < 0.7 {
+                water.append(WaterLog(date: day.date().addingTimeInterval(hour * 3600), ml: 500))
+            }
+        }
+        if let coffee { drinks.append(sampleDrink(coffee, ml: 237, date: model.today.date().addingTimeInterval(7.5 * 3600), name: "Coffee")) }
+        model.store.save(logs)
+        model.store.save(drinks)
+        model.store.save(water)
+        var settings = model.settings
+        settings.tracksDrinks = true
+        model.store.save(settings)
+        model.reload()
+    }
+
+    @MainActor
+    private static func sampleDrink(_ food: Food, ml: Double, date: Date, name: String?) -> FoodEntry {
+        let unit = PortionUnit(id: food.basis == .ml ? "ml" : "g", label: food.basis == .ml ? "ml" : "g", kind: food.basis == .ml ? .volume : .mass, amount: 1)
+        var micros = FoodUnits.micros(food, count: ml, unit: unit)
+        if micros["caffeine"] == nil { micros["caffeine"] = Caffeine.estimate(name: food.name, brand: food.brand, grams: ml) }
+        return FoodEntry(date: date, name: name ?? food.name, brand: food.brand, foodID: food.id, amountLabel: FoodUnits.label(count: ml, unit: unit),
+                         grams: ml, unitID: unit.id, count: ml, nutrients: FoodUnits.nutrients(food, count: ml, unit: unit), micros: micros,
+                         processing: food.processing, fermented: food.fermented, fluid: ml, source: .drink, updatedAt: date)
+    }
 }
 #endif

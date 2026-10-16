@@ -52,6 +52,15 @@ final class MealAIService {
 
     /// A label photo read into a food. Works without the language model too: OCR and the parser
     /// do the reading; the model only helps with a name.
+    /// A Supplement Facts photo: OCR and the parser, with the model naming the product when it can.
+    func readSupplementLabel(photo: CGImage) async throws -> SupplementLabelResult {
+        if #available(iOS 27.0, *), let ai = engine as? MealAI {
+            return try await ai.readSupplementLabel(photo: photo)
+        }
+        let lines = try await LabelOCR.lines(in: photo)
+        return SupplementLabelResult(facts: SupplementLabel.parse(lines: lines), lines: lines, suggestedName: nil, brand: nil)
+    }
+
     func readLabel(photo: CGImage) async throws -> LabelResult {
         if #available(iOS 27.0, *), let ai = engine as? MealAI {
             return try await ai.readLabel(photo: photo)

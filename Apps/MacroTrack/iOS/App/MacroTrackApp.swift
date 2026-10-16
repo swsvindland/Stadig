@@ -16,6 +16,9 @@ struct MacroTrackApp: App {
         // opens a logger. For checking screens quickly.
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        if arguments.contains("-seedSupplements") { SampleData.seedSupplements(model) }
+        if arguments.contains("-showSupplements") { model.showSupplements = true }
+        if arguments.contains("-showSettings") { model.showSettings = true }
         if let i = arguments.firstIndex(of: "-tab"), arguments.indices.contains(i + 1) {
             model.tab = switch arguments[i + 1] {
             case "plan": .plan
@@ -26,6 +29,7 @@ struct MacroTrackApp: App {
         if let i = arguments.firstIndex(of: "-log"), arguments.indices.contains(i + 1) { model.logger = LogMode(rawValue: arguments[i + 1]) }
         #endif
         MacroShortcuts.updateAppShortcutParameters()
+        SupplementReminders.register()
     }
 
     var body: some Scene {
@@ -62,6 +66,7 @@ enum DeepLink {
         case "describe": model.logger = .describe
         case "quickadd": model.logger = .quickAdd
         case "weigh": model.showWeighIn = true
+        case "supplements": model.showSupplements = true
         case "plan": model.tab = .plan
         default: model.tab = .today
         }

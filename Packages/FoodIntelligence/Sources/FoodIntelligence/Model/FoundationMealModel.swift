@@ -97,6 +97,16 @@ struct FoundationMealModel: MealModel {
         }
     }
 
+    /// A supplement's name and brand from its label's text.
+    func readSupplementName(lines: [String]) async throws -> LabelGuess {
+        try await attempt {
+            let session = LanguageModelSession(model: model, instructions: Prompts.supplementLabelInstructions)
+            let reply = try await session.respond(to: Prompts.label(lines: lines), generating: LabelNameOutput.self, options: options(60),
+                                                  contextOptions: context(schema: true))
+            return LabelGuess(name: reply.content.name, brand: reply.content.brand)
+        }
+    }
+
     // MARK: Requests
 
     /// Greedy decoding keeps the same photo producing the same draft; the token cap keeps a

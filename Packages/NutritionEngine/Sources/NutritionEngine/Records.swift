@@ -9,6 +9,8 @@ public enum EntrySource: String, Codable, Sendable {
     case search, barcode, recent, favorite, copied, quickAdd, recipe, photo, description, label, shortcut
     /// A meal from the week's meal plan, eaten as planned.
     case plan
+    /// One tap in the drinks card: a coffee, a tea.
+    case drink
 }
 
 /// One thing eaten, at a time. There are no meal slots: a day is a timeline, three meals or five.
@@ -34,6 +36,9 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     /// The food's NOVA group and whether it was fermented, as logged; nil when the food didn't say.
     public var processing: Processing?
     public var fermented: Bool?
+    /// Millilitres of fluid, for a drink; nil for food, or an entry from before drinks were counted
+    /// (``Hydration/fluid(of:)`` reads those by name).
+    public var fluid: Double?
     public var source: EntrySource
     /// 0–1 for estimates (a photo, a description); nil when the numbers are exact.
     public var confidence: Double?
@@ -42,7 +47,7 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     public init(id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
                 foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
                 nutrients: Nutrients, micros: [String: Double]? = nil, processing: Processing? = nil, fermented: Bool? = nil,
-                source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()) {
+                fluid: Double? = nil, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.date = date
         self.day = day ?? Day(date)
@@ -57,6 +62,7 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
         self.micros = micros?.isEmpty == true ? nil : micros
         self.processing = processing
         self.fermented = fermented
+        self.fluid = fluid
         self.source = source
         self.confidence = confidence
         self.updatedAt = updatedAt
@@ -151,6 +157,19 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     public var allowCloudAI: Bool
     /// Write logged food and manual weigh-ins to Health.
     public var saveToHealth: Bool
+    /// Show the drinks card: water, and caffeine against a limit. Off until turned on.
+    public var tracksDrinks: Bool?
+    /// The day's caffeine limit, mg; nil is ``Caffeine/defaultLimit``.
+    public var caffeineLimit: Double?
+    /// A cut-back in progress.
+    public var caffeineCutBack: CaffeineCutBack?
+    /// Millilitres to drink a day; nil is ``Hydration/target(sex:)``.
+    public var waterTarget: Double?
+    /// The person's own times for each part of the day, minutes after midnight; bedtime also
+    /// times the caffeine report.
+    public var doseTimes: [DoseTime: Int]?
+    /// Notify at each time of day with doses due, with a button to mark them taken.
+    public var supplementReminders: Bool?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), onboardedAt: Date? = nil, assessmentStart: Day? = nil, dietHistory: DietHistory = .none,
@@ -166,4 +185,9 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
         self.saveToHealth = saveToHealth
         self.updatedAt = updatedAt
     }
+
+    public var drinks: Bool { tracksDrinks ?? false }
+
+    /// Minutes after midnight for a time of day.
+    public func minutes(_ time: DoseTime) -> Int { doseTimes?[time] ?? time.defaultMinutes }
 }

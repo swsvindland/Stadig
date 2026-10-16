@@ -129,6 +129,45 @@ struct RemainingIntent: AppIntent {
     }
 }
 
+struct TakeSupplementsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Take Supplements"
+    static let description = IntentDescription("Ticks off the supplements due now: this morning's, or whichever time of day it is.")
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let model = AppModel.shared
+        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        let time = model.currentDoseTime
+        let open = model.doses(on: model.today).filter(\.open)
+        // The time of day it is, else the earliest still open.
+        let chosen = open.contains { $0.dose.time == time } ? time : open.map(\.dose.time).min()
+        guard let chosen else { return .result(dialog: "Nothing's left to take today.") }
+        let names = open.filter { $0.dose.time == chosen }.map(\.supplement.name)
+        _ = model.takeAll(at: chosen, on: model.today)
+        return .result(dialog: IntentDialog(stringLiteral: "Took your \(chosen.label.lowercased()) supplements: \(names.joined(separator: ", "))."))
+    }
+}
+
+struct LogWaterIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log Water"
+    static let description = IntentDescription("Adds a glass of water, or an amount you say.")
+
+    @Parameter(title: "Millilitres", default: 250)
+    var ml: Int
+
+    static var parameterSummary: some ParameterSummary { Summary("Log \(\.$ml) ml of water") }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let model = AppModel.shared
+        guard model.onboarded, ml > 0 else { return .result(dialog: "Open Macro Track to set it up first.") }
+        model.selectedDay = model.today
+        model.addWater(ml: Double(ml))
+        let total = model.analysis?.hydration?.total ?? Double(ml)
+        return .result(dialog: IntentDialog(stringLiteral: "Logged \(Format.volume(Double(ml), ounces: model.fluidOunces)). \(Format.volume(total, ounces: model.fluidOunces)) so far today."))
+    }
+}
+
 struct MacroShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: LogMealIntent(), phrases: ["Log food in \(.applicationName)", "Log a meal in \(.applicationName)",
@@ -142,5 +181,10 @@ struct MacroShortcuts: AppShortcutsProvider {
                     shortTitle: "Calories Left", systemImageName: "chart.pie")
         AppShortcut(intent: LogWeightIntent(), phrases: ["Log my weight in \(.applicationName)"],
                     shortTitle: "Log Weight", systemImageName: "scalemass")
+        AppShortcut(intent: TakeSupplementsIntent(), phrases: ["Take my supplements in \(.applicationName)",
+                                                               "I took my supplements in \(.applicationName)"],
+                    shortTitle: "Take Supplements", systemImageName: "pills.fill")
+        AppShortcut(intent: LogWaterIntent(), phrases: ["Log water in \(.applicationName)", "Add a glass of water in \(.applicationName)"],
+                    shortTitle: "Log Water", systemImageName: "drop.fill")
     }
 }

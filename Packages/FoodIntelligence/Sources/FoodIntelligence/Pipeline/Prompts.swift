@@ -29,6 +29,10 @@ enum Prompts {
         You read the text of a food package's nutrition label, recognized by OCR, which may be out of order and contain misread characters. Name the product in a few words as a shopper would (e.g. "Rolled oats", "Greek yogurt, vanilla", "Tortilla chips"), from the ingredients, claims and any other text. Fill brand only when a brand or maker is printed (e.g. "Distributed by General Mills"); otherwise leave it empty.
         """
 
+    static let supplementLabelInstructions = """
+        You read the text of a dietary supplement's label, recognized by OCR, which may be out of order and contain misread characters. Name the product in a few words as a shopper would, with its strength when printed (e.g. "Fish oil 1200 mg", "Vitamin D3 2000 IU", "Magnesium glycinate", "Pre-workout, fruit punch"), from the product name, claims and Supplement Facts. Fill brand only when a brand or maker is printed (e.g. "Nature Made", "Distributed by Optimum Nutrition"); otherwise leave it empty.
+        """
+
     /// Added when the label's own parse found little: copy the printed values, never estimate.
     static let labelValueInstructions = """
         Also copy the nutrition values printed for one serving, exactly as printed in the text. Leave a value out when it isn't printed; never estimate or calculate one.

@@ -107,6 +107,32 @@ public enum Micronutrients {
         }
     }
 
+    /// The Tolerable Upper Intake Level for an adult: the most a day that's still safe. For
+    /// magnesium, folate (as folic acid, here in µg DFE), niacin and vitamin E it counts only what
+    /// supplements and fortified foods add; nil where there isn't one worth checking (vitamin A's
+    /// applies only to retinol, which labels rarely split out).
+    public static func upperLimit(_ key: String, age: Int?) -> (amount: Double, supplementsOnly: Bool)? {
+        let age = age ?? 35
+        switch key {
+        case "vitaminD": return (100, false)
+        case "calcium": return (age > 50 ? 2000 : 2500, false)
+        case "iron": return (45, false)
+        case "zinc": return (40, false)
+        case "magnesium": return (350, true)
+        case "vitaminB6": return (100, false)
+        case "folate": return (1700, true)
+        case "selenium": return (400, false)
+        case "vitaminC": return (2000, false)
+        case "copper": return (10, false)
+        case "manganese": return (11, false)
+        case "vitaminE": return (1000, true)
+        case "niacin": return (35, true)
+        case "choline": return (3500, false)
+        case "phosphorus": return (age > 70 ? 3000 : 4000, false)
+        default: return nil
+        }
+    }
+
     /// An entry's amount of a nutrient, or nil when its food didn't list it.
     public static func amount(_ key: String, in entry: FoodEntry) -> Double? {
         switch key {
@@ -142,10 +168,18 @@ public struct NutrientReading: Hashable, Sendable, Identifiable {
     public var status: Status
     /// Foods that gave the most of it, biggest first.
     public var sources: [String]
+    /// The daily average from supplements taken, already part of `daily` and `measured`.
+    public var supplemented: Double = 0
+    /// The safe upper limit, where there's one to check (see ``Micronutrients/upperLimit(_:age:)``).
+    public var upper: Double?
 
     public var id: String { nutrient.key }
+    /// Over the safe upper limit: a nutrient to get enough of, taken past what's safe.
+    public var overUpper: Bool { nutrient.goal == .atLeast && status == .high }
     /// The estimate against the target, 0–… (nil when either is missing).
-    public var fraction: Double? { (daily ?? (nutrient.goal == .atMost ? measured : nil)).flatMap { d in target.map { $0 > 0 ? d / $0 : 0 } } }
+    public var fraction: Double? {
+        (daily ?? (nutrient.goal == .atMost || status != .unknown ? measured : nil)).flatMap { d in target.map { $0 > 0 ? d / $0 : 0 } }
+    }
 }
 
 /// The week's vitamins and minerals: which are short, which are over, and how much of what was
@@ -155,14 +189,16 @@ public struct MicroReport: Hashable, Sendable {
     public var days: [Day]
     public var readings: [NutrientReading]
 
-    /// Watched nutrients off target, worst first. Empty until three complete days are known.
+    /// Watched nutrients off target, and any taken past its safe upper limit, worst first (the
+    /// upper limits first of all). Empty until three complete days are known.
     public var flagged: [NutrientReading] {
         guard days.count >= MicroAnalyst.minimumDays else { return [] }
-        return readings.filter { $0.nutrient.watched && ($0.status == .low || $0.status == .high) }
+        return readings.filter { $0.overUpper || ($0.nutrient.watched && ($0.status == .low || $0.status == .high)) }
             .sorted { severity($0) > severity($1) }
     }
 
     func severity(_ r: NutrientReading) -> Double {
+        if r.overUpper, let upper = r.upper, upper > 0 { return 1 + (r.daily ?? r.measured) / upper }
         guard let f = r.fraction else { return 0 }
         return r.status == .low ? 1 - f : f - 1
     }
@@ -178,11 +214,15 @@ public enum MicroAnalyst {
     /// Below this share of calories with a value, a nutrient is unknown rather than low.
     public static let minimumCoverage = 0.5
 
-    /// The last seven complete days (from the last fortnight) of a person's log, read against their targets.
-    public static func report(entries: [FoodEntry], complete: Set<Day>, profile: SharedProfile, kcal: Double, today: Day) -> MicroReport {
+    /// The last seven complete days (from the last fortnight) of a person's log, read against their
+    /// targets. Supplements taken those days add what their labels say, as measured: a capsule
+    /// has no calories, so it says nothing about how much of the food was listed.
+    public static func report(entries: [FoodEntry], supplements: [SupplementLog] = [], complete: Set<Day>, profile: SharedProfile,
+                              kcal: Double, today: Day) -> MicroReport {
         let days = complete.filter { $0 < today && $0 >= today.adding(days: -14) }.sorted(by: >).prefix(7)
         let window = Set(days)
         let eaten = entries.filter { window.contains($0.day) }
+        let taken = supplements.filter { $0.taken && window.contains($0.day) }
         let totalKcal = eaten.map { max(0, $0.nutrients.kcal) }.reduce(0, +)
         let age = profile.age(on: today)
         var readings: [NutrientReading] = []
@@ -195,15 +235,23 @@ public enum MicroAnalyst {
                 knownKcal += max(0, entry.nutrients.kcal)
                 bySource[entry.name, default: 0] += value
             }
+            var pills = 0.0
+            for log in taken {
+                guard let value = log.amounts[nutrient.key] else { continue }
+                pills += value
+                bySource[log.name, default: 0] += value
+            }
             let n = Double(max(1, days.count))
-            let measured = sum / n
+            let food = sum / n
+            let supplemented = pills / n
+            let measured = food + supplemented
             // Zero-calorie foods (water, black coffee) say nothing about coverage either way.
             let coverage = totalKcal > 0 ? knownKcal / totalKcal : 0
             let target = Micronutrients.target(nutrient.key, sex: profile.sex, age: age, kcal: kcal)
             // Foods without a value are assumed alike the ones with: for "enough", that errs
             // toward not flagging.
-            let daily: Double? = coverage >= minimumCoverage ? measured / coverage : nil
-            let status: NutrientReading.Status
+            let daily: Double? = coverage >= minimumCoverage ? food / coverage + supplemented : nil
+            var status: NutrientReading.Status
             if days.isEmpty || target == nil {
                 status = .unknown
             } else if nutrient.goal == .atMost {
@@ -214,9 +262,15 @@ public enum MicroAnalyst {
             } else {
                 status = measured >= target! ? .ok : .unknown
             }
+            // Past the upper limit, with supplements part of why. Food alone almost never gets there.
+            let limit = Micronutrients.upperLimit(nutrient.key, age: age)
+            if let limit, supplemented > 0, !days.isEmpty {
+                let counted = limit.supplementsOnly ? supplemented : (daily ?? measured)
+                if counted > limit.amount { status = .high }
+            }
             let sources = bySource.sorted { $0.value > $1.value }.prefix(3).map(\.key)
             readings.append(NutrientReading(nutrient: nutrient, daily: daily, measured: measured, coverage: coverage, target: target,
-                                            status: status, sources: sources))
+                                            status: status, sources: sources, supplemented: supplemented, upper: limit?.amount))
         }
         return MicroReport(days: Array(days), readings: readings)
     }

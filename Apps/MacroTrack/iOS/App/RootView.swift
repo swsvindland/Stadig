@@ -29,6 +29,9 @@ struct RootView: View {
         .sheet(isPresented: $model.showWeighIn) {
             WeighInSheet()
         }
+        .sheet(isPresented: $model.showSupplements) {
+            SupplementsView()
+        }
         .sheet(isPresented: $model.showSettings) {
             NavigationStack { SettingsView() }
         }

@@ -104,3 +104,18 @@ nonisolated extension MealPlan: @retroactive StoredRecord {
     public static var kind: String { "meal-plan" }
     public static var schemaVersion: Int { 1 }
 }
+
+nonisolated extension Supplement: @retroactive StoredRecord {
+    public static var kind: String { "supplement" }
+    public static var schemaVersion: Int { 1 }
+}
+
+nonisolated extension SupplementLog: @retroactive StoredRecord {
+    public static var kind: String { "supplement-log" }
+    public static var schemaVersion: Int { 1 }
+}
+
+nonisolated extension WaterLog: @retroactive StoredRecord {
+    public static var kind: String { "water" }
+    public static var schemaVersion: Int { 1 }
+}

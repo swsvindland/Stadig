@@ -17,6 +17,7 @@ struct PlanView: View {
                             CurrentPhaseCard(plan: plan, analysis: analysis)
                             TimelineCard(plan: plan, today: model.today)
                             MealPrepCard()
+                            SupplementsCard()
                             MaintenanceCard(estimate: analysis.maintenance)
                             CheckInHistory(checkIns: model.checkIns)
                         } else {
@@ -26,6 +27,7 @@ struct PlanView: View {
                                 RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
                             }
                             MealPrepCard()
+                            SupplementsCard()
                         }
                     }
                 }

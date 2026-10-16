@@ -49,5 +49,19 @@
     "basisFromServingQuantity": 642,
     "duplicates": 32,
     "terms": 385089
+  },
+  "dsld": {
+    "version": "dsld-v1-058ce9867ad1-eb332b30",
+    "sourceUrl": "https://api.ods.od.nih.gov/dsld/s3/data/DSLD-full-database-CSV.zip",
+    "recipeSha256": "eb332b30181bb84c0d0d8daab41bf996a80d17b2ee5175164668ee117e2dcee1",
+    "sourceSha256": "058ce9867ad13c66d51a56fdaaa2015747cea2c27f55aaa6631e9d5e831fb05a",
+    "sha256": "f2145aaa1810627e95f57fc85911bf0c0fe7e8faffa0bf23aff99600099bb589",
+    "bytes": 43081728,
+    "license": "Public domain",
+    "sourceRecords": 214780,
+    "included": 127659,
+    "withBarcode": 97896,
+    "onMarket": 115237,
+    "lines": 781144
   }
 }

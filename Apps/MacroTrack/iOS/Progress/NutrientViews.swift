@@ -10,6 +10,9 @@ extension Format {
         return "\(value.formatted(.number.precision(.fractionLength(0...digits)))) \(unit.symbol)"
     }
 
+    /// A nutrient's name mid-sentence: "vitamin D", "omega-3", "thiamin (B1)".
+    static func inSentence(_ info: NutrientInfo) -> String { info.label.prefix(1).lowercased() + info.label.dropFirst() }
+
     /// A catalog name short enough for a sentence: "Potatoes, baked" from "Potatoes, baked, flesh, without salt".
     static func shortName(_ food: Food) -> String { shortName(food.name) }
 
@@ -71,7 +74,7 @@ struct NutrientBar: View {
     var statusWords: String {
         switch reading.status {
         case .low: "low"
-        case .high: "over"
+        case .high: reading.overUpper ? "over the safe upper limit" : "over"
         case .ok: "fine"
         case .unknown: "unknown"
         }
@@ -124,6 +127,12 @@ struct AllNutrientsView: View {
                         if reading.coverage < 1, reading.coverage > 0 {
                             Text("Listed for \(Format.percent(reading.coverage)) of the calories eaten").font(.caption2).foregroundStyle(.tertiary)
                         }
+                        if reading.supplemented > 0 {
+                            Text("\(Format.nutrient(reading.supplemented, reading.nutrient.unit)) a day from supplements").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        if reading.overUpper, let upper = reading.upper {
+                            Text("Over the safe upper limit of \(Format.nutrient(upper, reading.nutrient.unit)) a day").font(.caption2.weight(.medium)).foregroundStyle(.orange)
+                        }
                         if reading.status != .ok, reading.status != .unknown, !reading.sources.isEmpty {
                             Text("Most from \(reading.sources.prefix(2).joined(separator: " and "))").font(.caption2).foregroundStyle(.secondary)
                         }
@@ -131,7 +140,7 @@ struct AllNutrientsView: View {
                     .padding(.vertical, 2)
                 }
             } footer: {
-                Text("Daily targets are the US National Academies' recommended intakes for your age and sex; fiber is 14 g per 1,000 kcal and saturated fat under 10% of calories. Supplements aren't counted.")
+                Text("Daily targets are the US National Academies' recommended intakes for your age and sex; fiber is 14 g per 1,000 kcal and saturated fat under 10% of calories. Supplements you tick off count too, and where there's a safe upper limit, going over it is flagged.")
             }
         }
         .navigationTitle("Nutrients")
@@ -148,12 +157,16 @@ struct NutrientActionRow: View {
         let low = reading.status == .low
         let fix = model.microFix.flatMap { $0.nutrient.key == reading.nutrient.key ? $0 : nil }
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(Color.accentColor).frame(width: 24)
+            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(reading.overUpper ? Color.orange : Color.accentColor).frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(reading.nutrient.label) has run \(low ? "low" : "high") this week").font(.subheadline.weight(.semibold))
+                Text(reading.overUpper ? "\(reading.nutrient.label) is over the safe upper limit" : "\(reading.nutrient.label) has run \(low ? "low" : "high") this week")
+                    .font(.subheadline.weight(.semibold))
                 Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if let fix {
                     Text("\(fix.yours ? "Your " : "")\(Format.shortName(fix.food)), \(fix.portion), adds \(Format.nutrient(fix.amount, fix.nutrient.unit)).")
+                        .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                } else if reading.overUpper, let source = reading.sources.first {
+                    Text("Most is from \(source): take it every other day, or a lower strength.")
                         .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
                 } else if !low, !reading.sources.isEmpty {
                     Text("Most came from \(reading.sources.prefix(2).joined(separator: " and ")); a swap there does the most.")
@@ -177,6 +190,9 @@ struct NutrientActionRow: View {
     var detail: String {
         let unit = reading.nutrient.unit
         let amount = reading.daily ?? reading.measured
+        if reading.overUpper, let upper = reading.upper {
+            return "About \(Format.nutrient(amount, unit)) a day, \(Format.nutrient(reading.supplemented, unit)) of it from supplements. The safe upper limit is \(Format.nutrient(upper, unit))."
+        }
         let target = reading.target.map { Format.nutrient($0, unit) } ?? "?"
         return "About \(Format.nutrient(amount, unit)) a day of \(reading.nutrient.goal == .atLeast ? "" : "at most ")\(target). \(reading.nutrient.why)"
     }

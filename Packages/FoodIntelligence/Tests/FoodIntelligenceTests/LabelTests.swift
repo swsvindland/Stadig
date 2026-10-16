@@ -81,4 +81,21 @@ struct LabelTests {
         }
         #expect(try await LabelOCR.lines(in: blankImage()).isEmpty)
     }
+
+    @Test func aPhotographedSupplementPanelReadsIntoNutrients() async throws {
+        let rows: [(String, String?)] = [
+            ("Supplement Facts", nil), ("Serving Size 2 Softgels", nil), ("Amount Per Serving", "% DV"),
+            ("Calories 20", nil), ("Total Fat 2 g", "3%*"), ("Vitamin D3", nil), ("(as cholecalciferol) 25 mcg", "125%"),
+            ("Fish Oil 2,400 mg", "†"), ("EPA (Eicosapentaenoic Acid) 650 mg", "†"), ("DHA (Docosahexaenoic Acid) 450 mg", "†"),
+            ("Other ingredients: Gelatin, Glycerin", nil),
+        ]
+        for sideways in [false, true] {
+            let lines = try await LabelOCR.lines(in: renderLabel(rows, sideways: sideways))
+            let facts = try #require(SupplementLabel.parse(lines: lines), "\(sideways): \(lines)")
+            #expect(facts.servingLabel == "2 softgels", "\(sideways): \(lines)")
+            #expect(facts.amounts["vitaminD"] == 25, "\(sideways): \(lines)")
+            #expect(abs((facts.amounts["omega3"] ?? 0) - 1.1) < 0.001, "\(sideways): \(lines)")
+            #expect(facts.nutrients?.kcal == 20, "\(sideways): \(lines)")
+        }
+    }
 }

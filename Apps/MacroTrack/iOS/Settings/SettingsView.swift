@@ -27,6 +27,40 @@ struct SettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    SupplementsList()
+                } label: {
+                    LabeledContent("Supplements", value: model.activeSupplements.isEmpty ? "None" : "\(model.activeSupplements.count)")
+                }
+                Toggle("Drinks and caffeine", isOn: Binding(get: { model.tracksDrinks }, set: { model.setTracksDrinks($0) }))
+                if model.tracksDrinks {
+                    let ounces = model.fluidOunces
+                    let target = model.settings.waterTarget ?? model.profile.map { Hydration.target(sex: $0.sex) } ?? 2600
+                    Stepper(value: Binding(get: { target }, set: { value in
+                        var s = model.settings
+                        s.waterTarget = value
+                        model.save(settings: s)
+                    }), in: 1000...6000, step: ounces ? 236.6 : 250) {
+                        LabeledContent("Water a day", value: Format.volume(target, ounces: ounces))
+                    }
+                    if model.settings.caffeineCutBack == nil {
+                        let limit = model.settings.caffeineLimit ?? Caffeine.defaultLimit
+                        Stepper(value: Binding(get: { limit }, set: { value in
+                            var s = model.settings
+                            s.caffeineLimit = value
+                            model.save(settings: s)
+                        }), in: 0...600, step: 25) {
+                            LabeledContent("Caffeine limit", value: Format.mg(limit))
+                        }
+                    }
+                }
+            } header: {
+                Text("Tracking")
+            } footer: {
+                Text("Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest.")
+            }
+
+            Section {
                 LabeledContent("On this iPhone", value: model.ai.availability.onDevice
                     ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
                 Toggle("Use Private Cloud Compute", isOn: Binding(get: { model.settings.allowCloudAI }, set: { on in
@@ -104,6 +138,13 @@ struct SettingsView: View {
                         Text(source.name).font(.subheadline.weight(.medium))
                         Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(.secondary)
                         Text(source.attribution).font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                if let supplements = model.supplementCatalog {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("NIH Dietary Supplement Label Database").font(.subheadline.weight(.medium))
+                        Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(.secondary)
+                        Text(supplements.attribution).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
                 if !model.catalog.hasPackagedFoods {

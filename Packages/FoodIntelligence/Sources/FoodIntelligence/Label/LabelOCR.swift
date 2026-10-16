@@ -46,7 +46,7 @@ public enum LabelOCR {
         return best
     }
 
-    private static let keywords = Pattern("calor|total fat|protein|carb|sodium|serving")
+    private static let keywords = Pattern("calor|total fat|protein|carb|sodium|serving|vitamin|supplement facts")
 
     /// A recognized box with a top-left origin, in image heights: x is scaled by the aspect ratio
     /// so angles are true.
