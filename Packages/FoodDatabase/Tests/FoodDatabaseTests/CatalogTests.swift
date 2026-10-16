@@ -46,6 +46,22 @@ struct CatalogTests {
         #expect(JSONValue.parse("-") == nil)
     }
 
+    @Test("generic foods say how processed they are, and which are fermented")
+    func processing() throws {
+        func first(_ query: String) throws -> Food { try #require(Catalogs.usda.search(query, limit: 1).first?.food, "\(query)") }
+        #expect(try first("banana raw").processing == .whole)
+        #expect(try first("chicken breast roasted").processing == .whole)
+        #expect(try first("olive oil").processing == .culinary)
+        #expect(try first("cheddar cheese").processing == .processed)
+        #expect(try first("cola").processing == .ultraProcessed)
+        #expect(try first("frankfurter").processing == .ultraProcessed)
+        #expect(try first("plain greek yogurt").fermented == true)
+        #expect(try first("kefir").fermented == true)
+        #expect(try first("cheddar cheese").fermented == false, "fermented, but not what eating fermented foods means")
+        #expect(try first("frozen yogurt").fermented == false)
+        #expect(try first("banana raw").fermented == false)
+    }
+
     @Test("barcodes are keyed as 14 digits")
     func barcodeKeys() {
         #expect(barcodeKey("6111246721261") == "06111246721261")
@@ -58,7 +74,7 @@ struct CatalogTests {
     func usda() throws {
         let catalog = FoodCatalog.standard(region: "us")
         let info = try #require(catalog.sources.first)
-        #expect(info.version == "usda-v2-0fe8ae486a2c-c433e0e0")
+        #expect(info.version.hasPrefix("usda-v3-0fe8ae486a2c-"), "SR Legacy, packed rows")
         #expect(info.license == "CC0-1.0")
         #expect(info.foods == 7793)
         #expect(info.attribution.contains("USDA"))
@@ -98,9 +114,10 @@ struct CatalogTests {
         let catalog = Catalogs.both
         #expect(catalog.hasPackagedFoods)
         let info = try #require(catalog.sources.last)
-        #expect(info.version == "off-v3-aedda10d75d7-6d3b87a4")
+        // Rebuilt from each new export, so only the format and rough size are fixed.
+        #expect(info.version.hasPrefix("off-v3-"))
         #expect(info.license == "ODbL-1.0")
-        #expect(info.foods == 3_192_971)
+        #expect(info.foods > 3_000_000)
         #expect(info.attribution.contains("Open Database License"))
         // The most scanned row, whose id the catalog leaves for the app to derive.
         let food = try #require(catalog.food(barcode: "6111246721261"))

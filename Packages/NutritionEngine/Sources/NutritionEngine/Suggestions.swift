@@ -73,7 +73,8 @@ public enum LogAgain {
     public static func copy(_ entry: FoodEntry, to date: Date, source: EntrySource = .recent) -> FoodEntry {
         FoodEntry(date: date, name: entry.name, brand: entry.brand, foodID: entry.foodID,
                   amountLabel: entry.amountLabel, grams: entry.grams, unitID: entry.unitID, count: entry.count,
-                  nutrients: entry.nutrients, micros: entry.micros, source: source,
+                  nutrients: entry.nutrients, micros: entry.micros, processing: entry.processing, fermented: entry.fermented,
+                  source: source,
                   confidence: entry.confidence)
     }
 
@@ -102,12 +103,15 @@ public enum NutritionExport {
         let diary = NutritionExportTable(
             name: "diary",
             header: ["day", "time", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
-                     "sat_fat_g", "sodium_mg"] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" } + ["source", "estimate"],
+                     "sat_fat_g", "sodium_mg"] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" }
+                + ["nova", "fermented", "source", "estimate"],
             rows: entries.sorted { $0.date < $1.date }.map { e in
                 [e.day.iso, e.date.formatted(.iso8601.time(includingFractionalSeconds: false)), e.name, e.brand ?? "",
                  e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
                  n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium)]
-                    + micros.map { n(e.micros?[$0.key]) } + [e.source.rawValue, e.isEstimate ? "yes" : "no"]
+                    + micros.map { n(e.micros?[$0.key]) }
+                    + [e.processing.map { String($0.rawValue) } ?? "", e.fermented.map { $0 ? "yes" : "no" } ?? "", e.source.rawValue,
+                       e.isEstimate ? "yes" : "no"]
             })
         let weights = NutritionExportTable(
             name: "weight",

@@ -11,9 +11,11 @@ extension Format {
     }
 
     /// A catalog name short enough for a sentence: "Potatoes, baked" from "Potatoes, baked, flesh, without salt".
-    static func shortName(_ food: Food) -> String {
-        let parts = food.name.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        return parts.prefix(2).joined(separator: ", ")
+    static func shortName(_ food: Food) -> String { shortName(food.name) }
+
+    /// The same, from an entry's name.
+    static func shortName(_ name: String) -> String {
+        name.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.prefix(2).joined(separator: ", ")
     }
 }
 
@@ -93,7 +95,8 @@ struct NutrientsCard: View {
                 Text("After three complete days of logging, this shows which nutrients are running short, with a food that fixes each.")
                     .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(report.readings.filter(\.nutrient.watched)) { NutrientBar(reading: $0) }
+                // Fiber is under food quality.
+                ForEach(report.readings.filter { $0.nutrient.watched && $0.nutrient.key != "fiber" }) { NutrientBar(reading: $0) }
                 NavigationLink {
                     AllNutrientsView(report: report)
                 } label: {

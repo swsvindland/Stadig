@@ -21,7 +21,13 @@ enum SampleData {
         model.store.save(MacroSettings(onboardedAt: start.date(), assessmentStart: start, dietHistory: .none))
 
         // What, how much, and when (hours): three meals and a couple of snacks on most days.
-        let menu: [(String, Double, Double)] = [
+        // -sampleProcessed eats the convenient way instead, for the food-quality views.
+        let menu: [(String, Double, Double)] = ProcessInfo.processInfo.arguments.contains("-sampleProcessed") ? [
+            ("toaster pastries", 100, 8), ("cola", 370, 8.05),
+            ("chicken nuggets", 170, 12.5), ("french fries", 130, 12.55),
+            ("pepperoni pizza", 220, 19), ("broccoli", 90, 19.05),
+            ("whey protein", 35, 15.5), ("apple", 180, 16.5),
+        ] : [
             ("oats", 80, 8), ("greek yogurt", 170, 8.05), ("banana", 120, 8.1),
             ("chicken breast", 150, 12.5), ("white rice cooked", 200, 12.55), ("broccoli", 90, 12.6),
             ("salmon", 160, 19), ("potato", 250, 19.05), ("olive oil", 12, 19.1),
@@ -54,7 +60,8 @@ enum SampleData {
                         eaten += n.kcal
                         entries.append(FoodEntry(date: date, name: food.name, brand: food.brand, foodID: food.id,
                                                  amountLabel: FoodUnits.label(count: (grams * scale).rounded(), unit: unit), grams: grams * scale,
-                                                 nutrients: n, micros: food.extras(for: grams * scale), source: .search, updatedAt: date))
+                                                 nutrients: n, micros: food.extras(for: grams * scale), processing: food.processing,
+                                                 fermented: food.fermented, source: .search, updatedAt: date))
                     } else {
                         let n = Nutrients(kcal: 220 * scale, protein: 15 * scale, carbs: 22 * scale, fat: 7 * scale)
                         eaten += n.kcal

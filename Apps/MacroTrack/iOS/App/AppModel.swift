@@ -63,6 +63,8 @@ final class AppModel {
     private(set) var personal: [PersonalFood] = []
     /// The one food that best fixes this week's shortest nutrient, ready to log.
     private(set) var microFix: MicroFix?
+    /// A fermented food to log, while the week has had too few.
+    private(set) var fermentedFix: FermentedFix?
 
     // Presentation.
     var tab: AppTab = .today
@@ -84,6 +86,7 @@ final class AppModel {
     @ObservationIgnored private var personalTask: Task<Void, Never>?
     @ObservationIgnored private var fixTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
+    @ObservationIgnored private var fermentedTask: Task<Void, Never>?
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -177,6 +180,25 @@ final class AppModel {
         }
         publish()
         refreshMicroFix()
+        refreshFermentedFix()
+    }
+
+    /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
+    private func refreshFermentedFix() {
+        guard analysis?.quality.fermentedStatus == .off else {
+            fermentedFix = nil
+            return
+        }
+        guard fermentedFix == nil, fermentedTask == nil else { return }
+        let catalog = catalog, personal = personal
+        fermentedTask = Task.detached(priority: .utility) { [weak self] in
+            let fix = FermentedFix.find(personal: personal, catalog: catalog)
+            await MainActor.run {
+                guard let self else { return }
+                self.fermentedTask = nil
+                if self.analysis?.quality.fermentedStatus == .off { self.fermentedFix = fix }
+            }
+        }
     }
 
     /// Finds a food for the shortest watched nutrient off the main thread, when it changes.
@@ -284,6 +306,8 @@ final class AppModel {
                 // A fix found before the person's own foods were known may have a better one now.
                 self.microFix = nil
                 self.refreshMicroFix()
+                self.fermentedFix = nil
+                self.refreshFermentedFix()
             }
         }
     }
@@ -334,7 +358,8 @@ final class AppModel {
                          amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
                          grams: FoodUnits.amount(count, unit),
                          unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
-                         micros: FoodUnits.micros(food, count: count, unit: unit), source: source, confidence: confidence)
+                         micros: FoodUnits.micros(food, count: count, unit: unit), processing: food.processing,
+                         fermented: food.fermented, source: source, confidence: confidence)
     }
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health.

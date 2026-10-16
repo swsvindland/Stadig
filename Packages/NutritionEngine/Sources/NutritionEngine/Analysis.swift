@@ -80,6 +80,8 @@ public struct MacroAnalysis: Sendable {
     public var referenceKg: Double
     /// Vitamins and minerals over the last week of complete days.
     public var micros: MicroReport = .empty
+    /// Whole against ultra-processed, and fermented foods, over the same days.
+    public var quality: QualityReport = .empty
 
     public var remaining: Nutrients? {
         guard let kcal = targets.kcal else { return nil }
@@ -228,6 +230,7 @@ public enum MacroAnalyst {
                                      checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
         analysis.micros = MicroAnalyst.report(entries: state.entries, complete: Set(complete.keys), profile: state.profile,
                                               kcal: targets.kcal ?? maintenance.kcal, today: today)
+        analysis.quality = QualityAnalyst.report(entries: state.entries, complete: Set(complete.keys), today: today)
         analysis.actions = actions(state, analysis)
         return analysis
     }

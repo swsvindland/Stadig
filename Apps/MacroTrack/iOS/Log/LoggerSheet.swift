@@ -434,6 +434,7 @@ struct PortionView: View {
                         Text(brand).font(.subheadline).foregroundStyle(.secondary)
                     }
                     Text(sourceLabel(food)).font(.caption).foregroundStyle(.tertiary)
+                    FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
                 }
             }
             Section("Amount") {

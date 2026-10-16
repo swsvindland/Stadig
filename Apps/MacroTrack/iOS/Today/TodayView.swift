@@ -153,22 +153,55 @@ struct ActionsSection: View {
         if let analysis = model.analysis {
             let actions = analysis.actions.filter { $0.kind != .weighIn }.prefix(2)
             let checkIn = recentCheckIn
-            // One nutrient at a time, and only while there's room among the day's actions.
-            let nutrient = actions.count < 2 ? analysis.micros.flagged.first { !model.isNutrientHidden($0.nutrient.key) } : nil
-            // Done for today once its food is logged; the week's numbers catch up tomorrow.
-            let fixedToday = model.microFix.map { fix in model.entries(on: model.today).contains { $0.foodID == fix.food.id } } ?? false
-            if !actions.isEmpty || checkIn != nil || (nutrient != nil && !fixedToday) {
+            let food = foodActions(analysis, room: actions.isEmpty ? 2 : (actions.count < 2 ? 1 : 0))
+            if !actions.isEmpty || checkIn != nil || !food.isEmpty {
                 Section {
                     if let checkIn { CheckInRow(checkIn: checkIn, previous: model.checkIns.last { $0.day < checkIn.day }) }
                     ForEach(Array(actions)) { action in
                         ActionRow(action: action)
                     }
-                    if let nutrient, !(fixedToday && model.microFix?.nutrient.key == nutrient.nutrient.key) {
-                        NutrientActionRow(reading: nutrient)
+                    ForEach(food) { action in
+                        switch action {
+                        case .nutrient(let reading): NutrientActionRow(reading: reading)
+                        case .quality(let kind): QualityActionRow(kind: kind, report: analysis.quality)
+                        }
                     }
                 }
             }
         }
+    }
+
+    enum FoodAction: Identifiable {
+        case nutrient(NutrientReading)
+        case quality(QualityActionRow.Kind)
+
+        var id: String {
+            switch self {
+            case .nutrient(let r): r.nutrient.key
+            case .quality(let kind): QualityActionRow.hideKey(kind)
+            }
+        }
+    }
+
+    /// What the week's food calls for, while there's room among the day's actions: a lot of
+    /// ultra-processed food first, then the shortest nutrient, then fermented foods.
+    func foodActions(_ analysis: MacroAnalysis, room: Int) -> [FoodAction] {
+        guard room > 0 else { return [] }
+        let todays = model.entries(on: model.today)
+        var list: [FoodAction] = []
+        if analysis.quality.ultraStatus == .off, !model.isNutrientHidden(QualityActionRow.hideKey(.ultra)) {
+            list.append(.quality(.ultra))
+        }
+        if let nutrient = analysis.micros.flagged.first(where: { !model.isNutrientHidden($0.nutrient.key) }) {
+            // Done for today once its food is logged; the week's numbers catch up tomorrow.
+            let fixed = model.microFix.map { fix in fix.nutrient.key == nutrient.nutrient.key && todays.contains { $0.foodID == fix.food.id } } ?? false
+            if !fixed { list.append(.nutrient(nutrient)) }
+        }
+        if analysis.quality.fermentedStatus == .off, !model.isNutrientHidden(QualityActionRow.hideKey(.fermented)),
+           !todays.contains(where: Fermented.isFermented) {
+            list.append(.quality(.fermented))
+        }
+        return Array(list.prefix(room))
     }
 
     /// This week's check-in, for a couple of days after it moved the targets.

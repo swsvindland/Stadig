@@ -1,5 +1,6 @@
 import Foundation
 import Synchronization
+import SystemCore
 
 /// One catalog file, open read-only in place: USDA's generic foods or Open Food Facts' packaged ones.
 final class Catalog: Sendable {
@@ -23,11 +24,11 @@ final class Catalog: Sendable {
     let order: [String]?
     private let pool: ConnectionPool
     private let barcodeIsInteger: Bool
+    private let columns: String
     private let matchSQL: String
     /// Rows already read this launch, by rowid: each keystroke finds most of the last one's foods.
     private let read = Mutex<[Int64: Entry]>([:])
 
-    private static let columns = "foods.rowid, foods.id, foods.name, foods.brand, foods.barcode, foods.data, foods.popularity"
 
     /// Opens a catalog and reads its metadata; throws when the file isn't a catalog.
     init(url: URL, kind: Kind, region: String?) throws {
@@ -35,6 +36,7 @@ final class Catalog: Sendable {
         pool = try ConnectionPool(url: url)
         var meta: [String: String] = [:]
         var markets = false
+        var quality = false
         var integerBarcodes = false
         var foods = 0
         try pool.with { connection in
@@ -43,6 +45,7 @@ final class Catalog: Sendable {
             }
             try connection.query("SELECT name, type FROM pragma_table_info('foods')") { row in
                 if row.string(0) == "markets" { markets = true }
+                if row.string(0) == "nova" { quality = true }
                 if row.string(0) == "barcode" { integerBarcodes = row.string(1)?.uppercased() == "INTEGER" }
             }
             try connection.query("SELECT max(rowid) FROM foods") { row in foods = Int(row.int(0)) }
@@ -55,6 +58,9 @@ final class Catalog: Sendable {
         self.foods = foods
         order = meta["nutrients"].flatMap { JSONValue.parse($0)?.array?.compactMap(\.string) }
         barcodeIsInteger = integerBarcodes
+        // Catalogs from before processing and traits were kept read as unknown for both.
+        columns = "foods.rowid, foods.id, foods.name, foods.brand, foods.barcode, foods.data, foods.popularity, "
+            + (quality ? "foods.nova, foods.traits" : "NULL, NULL")
         // A brand's recipe differs between countries (US and French Oreos), so a packaged food sold
         // only elsewhere ranks below the foods sold here; one whose countries aren't known isn't one.
         let away: String
@@ -67,7 +73,7 @@ final class Catalog: Sendable {
         // Names starting with the lead word come before the full-text ranking, then the foods sold
         // in the phone's region, and among packaged foods the ones scanned more often come sooner.
         matchSQL = """
-            SELECT \(Self.columns), \(away) AS away FROM (
+            SELECT \(columns), \(away) AS away FROM (
               SELECT rowid, bm25(food_search, 3.0, 1.0) AS score FROM food_search WHERE food_search MATCH ? LIMIT ?
             ) AS hit
             JOIN foods ON foods.rowid = hit.rowid
@@ -92,9 +98,13 @@ final class Catalog: Sendable {
         }
         guard let data = row.withBytes(5, { RowData(data: $0, order: order) }) ?? nil else { return nil }
         let brand = row.string(3)
+        // Traits are a bit set: 1 is fermented with live cultures. Unset says no only where the
+        // catalog looked (USDA names, Open Food Facts labels and ingredients).
         return Food(id: id, name: name, brand: brand?.isEmpty == false ? brand : nil, barcode: barcode, basis: data.basis,
                     nutrients: data.nutrients, extras: data.extras, portions: data.portions, source: foodSource,
-                    popularity: row.isNull(6) ? 0 : row.double(6))
+                    popularity: row.isNull(6) ? 0 : row.double(6),
+                    processing: row.isNull(7) ? nil : Processing(rawValue: Int(row.int(7))),
+                    fermented: row.isNull(8) ? nil : row.int(8) & 1 == 1)
     }
 
     /// How many matches a catalog ranks. Millions of packaged foods match "ch" or "chicken", so only
@@ -111,11 +121,11 @@ final class Catalog: Sendable {
                                             .integer(Int64(limit))]) { row in
                 let rowid = row.int(0)
                 if let entry = read.withLock({ $0[rowid] }) {
-                    hits.append(Hit(entry: entry, away: row.int(7) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(9) == 1))
                 } else if let food = food(row) {
                     let entry = Entry(food)
                     fresh.append((rowid, entry))
-                    hits.append(Hit(entry: entry, away: row.int(7) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(9) == 1))
                 }
             }
         }
@@ -152,12 +162,12 @@ final class Catalog: Sendable {
     /// The food stored under a 14-digit barcode key.
     func food(barcode key: String) -> Food? {
         let value: SQLValue = barcodeIsInteger ? .integer(Int64(key) ?? -1) : .text(key)
-        return first("SELECT \(Self.columns) FROM foods WHERE barcode = ? LIMIT 1", [value])
+        return first("SELECT \(columns) FROM foods WHERE barcode = ? LIMIT 1", [value])
     }
 
     /// The food with a stored id.
     func food(id: String) -> Food? {
-        first("SELECT \(Self.columns) FROM foods WHERE id = ? LIMIT 1", [.text(id)])
+        first("SELECT \(columns) FROM foods WHERE id = ? LIMIT 1", [.text(id)])
     }
 
     private func first(_ sql: String, _ parameters: [SQLValue]) -> Food? {

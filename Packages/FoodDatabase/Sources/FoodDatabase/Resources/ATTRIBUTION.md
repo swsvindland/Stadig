@@ -14,14 +14,14 @@ Individual contents are available under the
 
 `off.db` is a derivative database: a filtered, worldwide subset of the full
 [Open Food Facts JSONL export](https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz),
-downloaded October 2, 2026 and decompressed before the build (`sourceSha256` in `manifest.json`
-is the decompressed JSONL's). It is distributed under the ODbL 1.0, and this directory is where it,
-and the method that made it, are publicly offered:
+downloaded October 16, 2026. It is distributed under the ODbL 1.0, and is publicly offered with
+the method that made it:
 
 - `off.db` — the derivative database exactly as the app ships it.
-- [`scripts/build-food-catalog.py`](../../scripts/build-food-catalog.py) — the complete
-  transformation recipe, which rebuilds `off.db` from the source export.
-- `manifest.json` — source URL, source and recipe SHA-256 hashes, filtering counts and sizes.
+- `Scripts/build-food-catalog.py` — the complete transformation recipe, which rebuilds `off.db`
+  (and `usda.db`) from the source exports.
+- `Packages/FoodDatabase/catalog-manifest.json` — source URLs, source and recipe SHA-256 hashes,
+  filtering counts and sizes.
 
 Each database also carries its own `license`, `attribution` and `source` rows in `catalog_meta`, so
 the notice stays with the file when it is copied out of the app.
@@ -37,7 +37,7 @@ with or endorsed by Open Food Facts.
    to Open Food Facts, the ODbL and the DbCL, and links here to download the database.
 2. **Per-food source.** A packaged food's portion screen names Open Food Facts as its source.
 3. **Public access to the derivative.** Keep this directory, with the `off.db` and recipe that match
-   the shipped build, publicly reachable. At 555 MiB, `off.db` is stored with Git LFS; GitHub
+   the shipped build, publicly reachable. At about 570 MiB, `off.db` is stored with Git LFS; GitHub
    serves it from this directory like any other file. If the repository ever goes private, publish
    the same files elsewhere (for example a public GitHub release) and update the Library link.
 4. **Keep notices intact.** Don't strip `catalog_meta` or this file from redistributed copies.
@@ -54,3 +54,11 @@ twice the richest USDA food's (unit slips) or larger than their whole (saturated
 keeps an Open Food Facts zero only for nutrients a US label must list, rounds values to four
 significant figures, and never equates a missing nutrient with zero. Nutrition values are estimates;
 check product labels for the foods you consume.
+
+Each food also carries a NOVA processing group and a fermented flag. For Open Food Facts these are
+the product's own `nova_group` (computed by Open Food Facts from its ingredients) or, without one, the
+group nearly every product in one of its categories shares; fermented means a live-cultures label,
+a fermented category (yogurt, kefir, kimchi…), live cultures in the ingredients or a fermented food's
+name, excluding aged cheese (skyr, quark and fromage blanc count), chocolate, snacks and baked, frozen
+or heat-treated products. For USDA both are estimated from
+each food's group and name. They guide; they don't certify.

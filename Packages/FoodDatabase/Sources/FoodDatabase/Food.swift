@@ -40,10 +40,14 @@ public struct Food: Hashable, Codable, Sendable, Identifiable {
     public var sourceVersion: Int
     /// log(1 + scans) for packaged foods; used in ranking.
     public var popularity: Double
+    /// Its NOVA group, from the catalog: Open Food Facts' own, or estimated for USDA's foods. Nil when unknown.
+    public var processing: Processing?
+    /// A fermented food with live cultures (yogurt, kefir, kimchi), when the catalog knows; nil when it can't say.
+    public var fermented: Bool?
 
     public init(id: String, name: String, brand: String? = nil, barcode: String? = nil, basis: FoodBasis, nutrients: Nutrients,
                 extras: [String: Double] = [:], portions: [Portion] = [], source: FoodSource, sourceVersion: Int = 1,
-                popularity: Double = 0) {
+                popularity: Double = 0, processing: Processing? = nil, fermented: Bool? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -55,6 +59,8 @@ public struct Food: Hashable, Codable, Sendable, Identifiable {
         self.source = source
         self.sourceVersion = sourceVersion
         self.popularity = popularity
+        self.processing = processing
+        self.fermented = fermented
     }
 
     /// Nutrients for an amount in basis units (grams, millilitres, or servings).

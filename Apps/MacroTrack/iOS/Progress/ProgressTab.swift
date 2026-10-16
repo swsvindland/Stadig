@@ -15,6 +15,7 @@ struct ProgressTab: View {
                     if let analysis = model.analysis {
                         WeightCard(trend: analysis.trend, weeklyChange: analysis.weeklyChange, range: $range)
                         IntakeCard(analysis: analysis)
+                        QualityCard(report: analysis.quality, fiber: analysis.micros.reading("fiber"))
                         NutrientsCard(report: analysis.micros)
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Discipline").font(.headline)

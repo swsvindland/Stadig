@@ -23,7 +23,7 @@ extension AppModel {
                                         grams: FoodUnits.amount(item.count, unit),
                                         unitID: unit.id, count: item.count, nutrients: FoodUnits.nutrients(food, count: item.count, unit: unit),
                                         micros: FoodUnits.micros(food, count: item.count, unit: unit),
-                                        source: .shortcut, confidence: item.sure && !item.approximate ? 0.8 : 0.5))
+                                        processing: food.processing, fermented: food.fermented, source: .shortcut, confidence: item.sure && !item.approximate ? 0.8 : 0.5))
             }
         }
         if logged.isEmpty {
@@ -37,7 +37,7 @@ extension AppModel {
                                         grams: FoodUnits.amount(s.count, s.unit),
                                         unitID: s.unit.id, count: s.count, nutrients: FoodUnits.nutrients(food, count: s.count, unit: s.unit),
                                         micros: FoodUnits.micros(food, count: s.count, unit: s.unit),
-                                        source: .shortcut))
+                                        processing: food.processing, fermented: food.fermented, source: .shortcut))
             }
         }
         guard !logged.isEmpty else { return "Couldn't find “\(text)”. Open Macro Track to search for it." }
