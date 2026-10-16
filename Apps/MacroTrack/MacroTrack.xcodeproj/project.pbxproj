@@ -1,0 +1,605 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed */ = {isa = PBXBuildFile; fileRef = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E00000000000000000003 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000004 /* SystemCore */; };
+		4D2E00000000000000000005 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000006 /* SystemStore */; };
+		4D2E00000000000000000007 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000008 /* HealthBridge */; };
+		4D2E00000000000000000009 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000A /* NutritionEngine */; };
+		4D2E0000000000000000000B /* FoodDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000C /* FoodDatabase */; };
+		4D2E0000000000000000000D /* FoodIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000E /* FoodIntelligence */; };
+		4D2E0000000000000000000F /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000010 /* SystemCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4D2E00000000000000000011 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D2E00000000000000000012 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D2E00000000000000000013;
+			remoteInfo = MacroTrackWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4D2E00000000000000000014 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4D2E00000000000000000015 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E00000000000000000002 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E00000000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4D2E00000000000000000017 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Widgets-Info.plist; sourceTree = "<group>"; };
+		4D2E00000000000000000018 /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
+		4D2E00000000000000000019 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		4D2E0000000000000000001A /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4D2E0000000000000000001B /* Exceptions for "Catalogs" folder in "MacroTrack" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				README.md,
+			);
+			target = 4D2E0000000000000000001C /* MacroTrack */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4D2E0000000000000000001D /* iOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		4D2E0000000000000000001E /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		4D2E0000000000000000001F /* Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		4D2E00000000000000000020 /* Catalogs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4D2E0000000000000000001B /* Exceptions for "Catalogs" folder in "MacroTrack" target */,
+			);
+			path = Catalogs;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4D2E00000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D2E00000000000000000003 /* SystemCore in Frameworks */,
+				4D2E00000000000000000005 /* SystemStore in Frameworks */,
+				4D2E00000000000000000007 /* HealthBridge in Frameworks */,
+				4D2E00000000000000000009 /* NutritionEngine in Frameworks */,
+				4D2E0000000000000000000B /* FoodDatabase in Frameworks */,
+				4D2E0000000000000000000D /* FoodIntelligence in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E00000000000000000022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D2E0000000000000000000F /* SystemCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4D2E00000000000000000023 = {
+			isa = PBXGroup;
+			children = (
+				4D2E0000000000000000001D /* iOS */,
+				4D2E0000000000000000001E /* Shared */,
+				4D2E0000000000000000001F /* Widgets */,
+				4D2E00000000000000000020 /* Catalogs */,
+				4D2E00000000000000000024 /* Config */,
+				4D2E0000000000000000001A /* MacroTrack.storekit */,
+				4D2E00000000000000000025 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4D2E00000000000000000025 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4D2E00000000000000000015 /* MacroTrack.app */,
+				4D2E00000000000000000002 /* MacroTrackWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4D2E00000000000000000024 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				4D2E00000000000000000016 /* Info.plist */,
+				4D2E00000000000000000017 /* Widgets-Info.plist */,
+				4D2E00000000000000000018 /* MacroTrack.entitlements */,
+				4D2E00000000000000000019 /* Widgets.entitlements */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4D2E0000000000000000001C /* MacroTrack */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E00000000000000000029;
+			buildPhases = (
+				4D2E00000000000000000026 /* Sources */,
+				4D2E00000000000000000021 /* Frameworks */,
+				4D2E00000000000000000027 /* Resources */,
+				4D2E00000000000000000014 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D2E00000000000000000028 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E0000000000000000001D /* iOS */,
+				4D2E0000000000000000001E /* Shared */,
+				4D2E00000000000000000020 /* Catalogs */,
+			);
+			name = MacroTrack;
+			packageProductDependencies = (
+				4D2E00000000000000000004 /* SystemCore */,
+				4D2E00000000000000000006 /* SystemStore */,
+				4D2E00000000000000000008 /* HealthBridge */,
+				4D2E0000000000000000000A /* NutritionEngine */,
+				4D2E0000000000000000000C /* FoodDatabase */,
+				4D2E0000000000000000000E /* FoodIntelligence */,
+			);
+			productName = MacroTrack;
+			productReference = 4D2E00000000000000000015 /* MacroTrack.app */;
+			productType = com.apple.product-type.application;
+		};
+		4D2E00000000000000000013 /* MacroTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E0000000000000000002C;
+			buildPhases = (
+				4D2E0000000000000000002A /* Sources */,
+				4D2E00000000000000000022 /* Frameworks */,
+				4D2E0000000000000000002B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E0000000000000000001F /* Widgets */,
+				4D2E0000000000000000001E /* Shared */,
+			);
+			name = MacroTrackWidgets;
+			packageProductDependencies = (
+				4D2E00000000000000000010 /* SystemCore */,
+			);
+			productName = MacroTrackWidgets;
+			productReference = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */;
+			productType = com.apple.product-type.app-extension;
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4D2E00000000000000000012 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					4D2E0000000000000000001C = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					4D2E00000000000000000013 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 4D2E00000000000000000033;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4D2E00000000000000000023;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
+				4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
+				4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
+				4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
+				4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4D2E00000000000000000025 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4D2E0000000000000000001C /* MacroTrack */,
+				4D2E00000000000000000013 /* MacroTrackWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4D2E00000000000000000027 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E0000000000000000002B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4D2E00000000000000000026 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E0000000000000000002A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4D2E00000000000000000028 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D2E00000000000000000013 /* MacroTrackWidgets */;
+			targetProxy = 4D2E00000000000000000011 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4D2E00000000000000000034 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = -Onone;
+			};
+			name = Debug;
+		};
+		4D2E00000000000000000035 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf-with-dsym;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = -O;
+			};
+			name = Release;
+		};
+		4D2E00000000000000000036 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/MacroTrack.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4D2E00000000000000000037 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/MacroTrack.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.healthcare-fitness;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4D2E00000000000000000038 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4D2E00000000000000000039 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Widgets-Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.macrotrack.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4D2E00000000000000000033 /* Build configuration list for PBXProject "MacroTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E00000000000000000034 /* Debug */,
+				4D2E00000000000000000035 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2E00000000000000000029 /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E00000000000000000036 /* Debug */,
+				4D2E00000000000000000037 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2E0000000000000000002C /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E00000000000000000038 /* Debug */,
+				4D2E00000000000000000039 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemCore;
+		};
+		4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemStore;
+		};
+		4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/HealthBridge;
+		};
+		4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/NutritionEngine;
+		};
+		4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/FoodDatabase;
+		};
+		4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/FoodIntelligence;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4D2E00000000000000000004 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4D2E00000000000000000006 /* SystemStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E0000000000000000002E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			productName = SystemStore;
+		};
+		4D2E00000000000000000008 /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4D2E0000000000000000000A /* NutritionEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			productName = NutritionEngine;
+		};
+		4D2E0000000000000000000C /* FoodDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */;
+			productName = FoodDatabase;
+		};
+		4D2E0000000000000000000E /* FoodIntelligence */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */;
+			productName = FoodIntelligence;
+		};
+		4D2E00000000000000000010 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E0000000000000000002D /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4D2E00000000000000000012 /* Project object */;
+}

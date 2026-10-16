@@ -41,14 +41,16 @@ extension HealthBridge {
 
     // MARK: Authorization
 
-    /// Reads: body mass, height, body fat %, waist circumference, resting HR, HRV SDNN, VO2 max, sleep
-    /// analysis, heart rate, workouts, active energy and date of birth (for an age-based max heart
-    /// rate). Writes: workouts, waist circumference, body fat %, active energy (and heart rate on the
-    /// Watch, for live sessions). Returns whether the request completed.
-    public func requestAuthorization() async -> Bool {
+    /// Training reads body mass, height, body fat %, waist circumference, resting HR, HRV SDNN, VO2
+    /// max, sleep analysis, heart rate, workouts, active energy and date of birth (for an age-based
+    /// max heart rate), and writes workouts, waist circumference, body fat %, active energy (and
+    /// heart rate on the Watch, for live sessions). Nutrition reads body mass, height, body
+    /// composition, workouts and date of birth, and writes food and body mass. Returns whether
+    /// the request completed.
+    public func requestAuthorization(_ access: HealthAccess = .training) async -> Bool {
         guard let store else { return false }
         do {
-            try await store.requestAuthorization(toShare: HealthTypes.shareTypes, read: HealthTypes.readTypes)
+            try await store.requestAuthorization(toShare: HealthTypes.shareTypes(access), read: HealthTypes.readTypes(access))
             return true
         } catch {
             return false
@@ -346,16 +348,30 @@ enum HealthTypes {
         HKCategoryValueSleepAnalysis.asleepUnspecified, .asleepCore, .asleepDeep, .asleepREM,
     ].map(\.rawValue))
 
-    static var readTypes: Set<HKObjectType> {
-        [bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy,
-         HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)]
+    static func readTypes(_ access: HealthAccess) -> Set<HKObjectType> {
+        var types: Set<HKObjectType> = []
+        if access.contains(.training) {
+            types.formUnion([bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy,
+                             HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)])
+        }
+        if access.contains(.nutrition) {
+            types.formUnion([bodyMass, height, bodyFat, waist, HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)])
+        }
+        return types
     }
 
-    static var shareTypes: Set<HKSampleType> {
-        var types: Set<HKSampleType> = [HKObjectType.workoutType(), waist, bodyFat, activeEnergy]
-        #if os(watchOS)
-        types.insert(heartRate)
-        #endif
+    static func shareTypes(_ access: HealthAccess) -> Set<HKSampleType> {
+        var types: Set<HKSampleType> = []
+        if access.contains(.training) {
+            types.formUnion([HKObjectType.workoutType(), waist, bodyFat, activeEnergy])
+            #if os(watchOS)
+            types.insert(heartRate)
+            #endif
+        }
+        if access.contains(.nutrition) {
+            types.insert(bodyMass)
+            types.formUnion(dietary.map(\.type))
+        }
         return types
     }
 }
@@ -364,7 +380,7 @@ enum HealthTypes {
 
 extension HealthBridge {
     public var isAvailable: Bool { false }
-    public func requestAuthorization() async -> Bool { false }
+    public func requestAuthorization(_ access: HealthAccess = .training) async -> Bool { false }
     public func latestBodyweight() async -> (kg: Double, date: Date)? { nil }
     public func bodyweights(since: Date) async -> [(date: Date, kg: Double)] { [] }
     public func latestHeight() async -> Double? { nil }
@@ -378,6 +394,11 @@ extension HealthBridge {
     public func deleteWorkout(id: UUID) async {}
     public func saveMeasurements(_ measurements: BodyMeasurements) async {}
     public func observeChanges(_ handler: @escaping @Sendable () -> Void) -> AnyObject? { nil }
+    public func weighIns(since: Date, ownBundlePrefix: String) async -> [HealthWeight] { [] }
+    public func saveWeight(id: UUID, date: Date, kg: Double, version: Int) async {}
+    public func deleteWeight(id: UUID) async {}
+    public func saveFoods(_ foods: [HealthFood]) async {}
+    public func deleteFoods(ids: [UUID]) async {}
 }
 
 #endif

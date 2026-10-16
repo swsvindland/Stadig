@@ -1,0 +1,436 @@
+import Foundation
+
+// Keyword matching shared by typed search and AI matching. The catalogs' full-text index has no
+// stemming, so words are searched as stemmed prefixes and the results are ranked here.
+
+/// Catalog words a typed word probably meant when the catalogs barely know it as typed:
+/// "chiken" → ["chicken"], "peanutbutter" → ["peanut butter"]. Forms are stemmed like the word's.
+typealias Fixes = [String: [String]]
+
+let stopWords: Set<String> = ["a", "an", "and", "the", "of", "with", "in", "on", "or", "s", "to", "for", "style"]
+
+/// Catalog wording differs from everyday names: USDA files burger buns under "Rolls, hamburger".
+let alternatives: [String: [String]] = [
+    "fries": ["fries", "fried"], "bun": ["bun", "roll"], "buns": ["bun", "roll"], "ketchup": ["ketchup", "catsup"],
+    "soda": ["soda", "carbonated"], "pop": ["carbonated"], "strip": ["strip", "slice"], "strips": ["strip", "slice"],
+    "oatmeal": ["oatmeal", "oat"], "burger": ["burger", "hamburger"], "burgers": ["burger", "hamburger"],
+]
+
+/// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
+/// bolognese is "spaghetti with meat sauce". Longest first.
+let dishNames: [(said: [String], catalog: [String])] = [
+    (["spag", "bol"], ["spaghetti", "meat", "sauce"]),
+    (["bolognese", "sauce"], ["meat", "sauce"]),
+    (["bolognaise", "sauce"], ["meat", "sauce"]),
+    (["bolognese"], ["meat", "sauce"]),
+    (["bolognaise"], ["meat", "sauce"]),
+]
+
+/// A seen dish in the catalog's wording: "Spaghetti bolognese" → "spaghetti meat sauce".
+func catalogDish(_ name: String) -> String {
+    var list = words(name)
+    var changed = false
+    for (said, catalog) in dishNames {
+        guard said.count <= list.count else { continue }
+        var i = 0
+        while i + said.count <= list.count {
+            if Array(list[i..<(i + said.count)]) == said {
+                list.replaceSubrange(i..<(i + said.count), with: catalog)
+                i += catalog.count
+                changed = true
+            } else {
+                i += 1
+            }
+        }
+    }
+    return changed ? list.joined(separator: " ") : name
+}
+
+/// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
+/// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
+let typedAlternatives: Set<String> = ["bun", "buns", "ketchup", "soda", "oatmeal"]
+
+/// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
+let countWords: Set<String> = [
+    "slice", "slices", "piece", "pieces", "strip", "strips", "leaf", "leaves", "wedge", "wedges", "chunk", "chunks",
+    "serving", "servings", "portion", "portions", "cup", "cups", "bowl", "bowls", "plate", "plates", "side", "sides",
+    "order", "orders", "small", "medium", "large", "regular", "jumbo", "mini", "kid", "kids", "tall", "grande", "venti",
+]
+
+/// A search can carry its amount: "cup of coffee", "200 g chicken", "2 eggs".
+let unitWords: Set<String> = [
+    "g", "gram", "grams", "gm", "gms", "kg", "kgs", "kilo", "kilos", "oz", "ounce", "ounces", "lb", "lbs", "pound",
+    "pounds", "ml", "mls", "l", "liter", "liters", "litre", "litres", "fl", "floz", "tbsp", "tbs", "tsp", "tablespoon",
+    "tablespoons", "teaspoon", "teaspoons", "scoop", "scoops", "can", "cans", "bottle", "bottles", "glass", "glasses",
+    "mug", "mugs", "shot", "shots", "pint", "pints", "handful", "handfuls",
+]
+
+/// A size before the food says how much of it: "large egg", "grande latte". "Mini" names products.
+let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "tall", "grande", "venti"]
+
+// MARK: - Characters
+
+/// JavaScript's string length (UTF-16 code units), which the ranking's thresholds were tuned on.
+@inline(__always) func length(_ value: String) -> Int { value.utf16.count }
+
+@inline(__always) func starts(_ value: String, _ prefix: String) -> Bool { value.utf8.starts(with: prefix.utf8) }
+
+@inline(__always) func isWordScalar(_ scalar: Unicode.Scalar) -> Bool {
+    let v = scalar.value
+    if v < 0x80 { return (v >= 0x30 && v <= 0x39) || (v >= 0x61 && v <= 0x7A) || (v >= 0x41 && v <= 0x5A) }
+    switch scalar.properties.generalCategory {
+    case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter, .decimalNumber, .letterNumber,
+         .otherNumber:
+        return true
+    default:
+        return false
+    }
+}
+
+@inline(__always) func isLetter(_ scalar: Unicode.Scalar) -> Bool {
+    let v = scalar.value
+    if v < 0x80 { return (v >= 0x61 && v <= 0x7A) || (v >= 0x41 && v <= 0x5A) }
+    switch scalar.properties.generalCategory {
+    case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter: return true
+    default: return false
+    }
+}
+
+@inline(__always) func isDigit(_ scalar: Unicode.Scalar) -> Bool { scalar.value >= 0x30 && scalar.value <= 0x39 }
+
+/// JavaScript's `\s`, near enough.
+@inline(__always) func isSpace(_ scalar: Unicode.Scalar) -> Bool {
+    switch scalar.value {
+    case 0x20, 0x09...0x0D, 0xA0, 0x1680, 0x2000...0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF: return true
+    default: return false
+    }
+}
+
+/// Lower case without accents: "Crème Brûlée" → "creme brulee".
+func plain(_ value: String) -> String { makeString(plainScalars(value)[...]) }
+
+/// The scalars of plain text: ASCII lower-cased directly, anything else decomposed (NFKD) without
+/// its accents, then lower-cased.
+func plainScalars(_ value: String) -> [Unicode.Scalar] {
+    if value.utf8.allSatisfy({ $0 < 0x80 }) {
+        return value.utf8.map { Unicode.Scalar($0 >= 0x41 && $0 <= 0x5A ? $0 + 32 : $0) }
+    }
+    var scalars = String.UnicodeScalarView()
+    for scalar in value.decomposedStringWithCompatibilityMapping.unicodeScalars where !(0x300...0x36F).contains(scalar.value) {
+        scalars.append(scalar)
+    }
+    return Array(String(scalars).lowercased().unicodeScalars)
+}
+
+/// A string from scalars, without a detour through a scalar view for ASCII.
+func makeString(_ scalars: ArraySlice<Unicode.Scalar>) -> String {
+    if scalars.allSatisfy(\.isASCII) {
+        return String(unsafeUninitializedCapacity: scalars.count) { buffer in
+            var i = 0
+            for scalar in scalars {
+                buffer[i] = UInt8(truncatingIfNeeded: scalar.value)
+                i += 1
+            }
+            return i
+        }
+    }
+    var view = String.UnicodeScalarView()
+    view.append(contentsOf: scalars)
+    return String(view)
+}
+
+/// A run of letters and digits in plain text, and where it is.
+struct Token {
+    var word: String
+    var start: Int
+    var end: Int
+}
+
+/// The runs of letters and digits in plain text.
+func scanTokens(_ scalars: [Unicode.Scalar]) -> [Token] {
+    var result: [Token] = []
+    var index = 0
+    while index < scalars.count {
+        guard isWordScalar(scalars[index]) else {
+            index += 1
+            continue
+        }
+        let start = index
+        while index < scalars.count, isWordScalar(scalars[index]) { index += 1 }
+        result.append(Token(word: makeString(scalars[start..<index]), start: start, end: index))
+    }
+    return result
+}
+
+/// The words of some text, plain: "McDonald's" → ["mcdonald", "s"].
+func tokens(_ value: String) -> [String] { scanTokens(plainScalars(value)).map(\.word) }
+
+/// Tokens without the small words a name doesn't need.
+func words(_ value: String) -> [String] { tokens(value).filter { !stopWords.contains($0) } }
+
+/// Only ASCII digits: "12", not "12g".
+@inline(__always) func isNumber(_ word: String) -> Bool { !word.isEmpty && word.utf8.allSatisfy { $0 >= 0x30 && $0 <= 0x39 } }
+
+/// The words that name a food a model saw: "tomato slice" is a tomato. "Mini" names products more
+/// often than a size: Mini-Wheats, mini pretzels, mini peppers.
+func nameWords(_ name: String) -> [String] {
+    let list = words(name)
+    let food = list.filter { $0 == "mini" || !countWords.contains($0) }
+    return Array((food.isEmpty ? list : food).prefix(6))
+}
+
+// MARK: - Stems and forms
+
+private let iePlurals: [StaticString] = ["cookies", "brownies", "smoothies", "veggies", "hoagies", "pierogies", "goodies", "calories"]
+
+@inline(__always) private func ends(_ bytes: UnsafeBufferPointer<UInt8>, _ suffix: StaticString) -> Bool {
+    let n = suffix.utf8CodeUnitCount
+    guard bytes.count >= n else { return false }
+    let start = suffix.utf8Start
+    let offset = bytes.count - n
+    for i in 0..<n where bytes[offset + i] != start[i] { return false }
+    return true
+}
+
+/// A prefix that matches singular and plural forms in the catalog's prefix search.
+func stem(_ word: String) -> String {
+    let n = length(word)
+    if n <= 3 { return word }
+    let counted: Int? = word.utf8.withContiguousStorageIfAvailable { bytes in
+        if iePlurals.contains(where: { ends(bytes, $0) }) { return 1 }
+        if ends(bytes, "ies") { return n > 5 ? 3 : 0 }
+        if ends(bytes, "ches") || ends(bytes, "shes") || ends(bytes, "xes") || ends(bytes, "oes") || ends(bytes, "sses") { return 2 }
+        if ends(bytes, "y") && n > 4 { return 1 }
+        // "Turkeys" and "Wendy's" end like "turkey" and "Wendy" do.
+        if ends(bytes, "ys") && n > 5 { return 2 }
+        if ends(bytes, "ss") || ends(bytes, "us") || ends(bytes, "is") { return 0 }
+        return ends(bytes, "s") ? 1 : 0
+    }
+    guard let drop = counted else {
+        var copy = word
+        copy.makeContiguousUTF8()
+        return stem(copy)
+    }
+    return drop == 0 ? word : String(decoding: word.utf8.dropLast(drop), as: UTF8.self)
+}
+
+/// Both sides are stemmed, so a match may only differ by a plural-length ending; a letter can't.
+@inline(__always) func same(_ word: String, _ form: String) -> Bool {
+    if word == form { return true }
+    let n = length(form)
+    return n > 1 && starts(word, form) && length(word) - n <= 2
+}
+
+/// The catalog's wordings of a word the model said, including looser ones.
+func forms(_ word: String) -> [String] { alternatives[word] ?? [stem(word)] }
+
+/// The wordings a typed word is searched by.
+func searchForms(_ word: String) -> [String] {
+    var result = [stem(word)]
+    if typedAlternatives.contains(word) { for form in forms(word) where !result.contains(form) { result.append(form) } }
+    return result
+}
+
+private func either(_ options: [String]) -> String {
+    options.count == 1 ? options[0] : "(\(options.joined(separator: " OR ")))"
+}
+
+private func unique(_ list: [String]) -> [String] {
+    var seen = Set<String>()
+    return list.filter { seen.insert($0).inserted }
+}
+
+/// A word the model said in the catalog's full-text syntax, with every wording of it.
+func term(_ word: String) -> String { either(forms(word).map { "\"\($0)\"*" }) }
+
+/// A typed word in the catalog's full-text syntax; a number, or a letter on its own, matches only
+/// itself. Its fixes are searched too, as prefixes or, for a word typed without its space, a phrase.
+func searchTerm(_ word: String, _ fixes: Fixes = [:]) -> String {
+    if isNumber(word) || length(word) == 1 { return "\"\(word)\"" }
+    return either(unique(searchForms(word) + (fixes[word] ?? [])).map { "\"\($0)\"*" })
+}
+
+/// The catalog's full-text expression for a search: each word as a stemmed prefix.
+func searchExpression(_ query: String) -> String {
+    readQuery(query).words.map { searchTerm($0) }.joined(separator: " AND ")
+}
+
+// MARK: - Reading a typed search
+
+/// What a typed search asks for: `words` must all match, and `counts` are numbers before a food
+/// that may be part of its name ("12 grain bread"), searched as an optional phrase.
+struct QueryReading: Equatable {
+    var words: [String]
+    var counts: [(String, String)]
+
+    static func == (a: QueryReading, b: QueryReading) -> Bool {
+        a.words == b.words && a.counts.elementsEqual(b.counts, by: { $0 == $1 })
+    }
+}
+
+private enum Role { case name, amount, stop }
+
+/// "200g" and "12oz" are amounts; "7up" is a name.
+private func measured(_ word: String) -> Bool {
+    guard let first = word.unicodeScalars.first, isDigit(first) else { return false }
+    return unitWords.contains(String(word.unicodeScalars.drop(while: isDigit)))
+}
+
+/// Whether a number is written as part of a name: "2% milk", "93/7 beef", "7-up" and "v-8".
+private func writtenIntoName(_ word: String, before: ArraySlice<Unicode.Scalar>, after: ArraySlice<Unicode.Scalar>) -> Bool {
+    func percent(_ text: ArraySlice<Unicode.Scalar>) -> Bool {
+        var rest = text.drop(while: isSpace)
+        return rest.popFirst() == "%"
+    }
+    // A percentage, also with decimals: "2%", "3.25 %".
+    if percent(after) { return true }
+    if let first = after.first, first == "." || first == ",", after.dropFirst().first.map(isDigit) == true,
+       percent(after.dropFirst().drop(while: isDigit)) {
+        return true
+    }
+    if before.count >= 2, let last = before.last, last == "." || last == ",", isDigit(before[before.endIndex - 2]), percent(after) {
+        return true
+    }
+    // Hyphenated with letters: "7-up", "v-8".
+    if after.first == "-", let next = after.dropFirst().first, isLetter(next) { return true }
+    if before.last == "-", let previous = before.dropLast().last, isLetter(previous) { return true }
+    // A lean-to-fat ratio, not a fraction like 1/2.
+    func number(_ digits: ArraySlice<Unicode.Scalar>) -> Double? {
+        digits.isEmpty ? nil : Double(String(String.UnicodeScalarView(digits)))
+    }
+    let value = Double(word) ?? 0
+    var next = after.drop(while: isSpace)
+    if next.popFirst() == "/", let other = number(next.drop(while: isSpace).prefix(while: isDigit)), value >= other { return true }
+    var previous = before
+    while let last = previous.last, isSpace(last) { previous = previous.dropLast() }
+    if previous.last == "/" {
+        previous = previous.dropLast()
+        while let last = previous.last, isSpace(last) { previous = previous.dropLast() }
+        let end = previous.endIndex
+        while let last = previous.last, isDigit(last) { previous = previous.dropLast() }
+        if let other = number(before[previous.endIndex..<end]), other >= value { return true }
+    }
+    return false
+}
+
+/// What a typed search asks for. Amounts go ("2 eggs", "200 g", "1/2 cup", "cup of coffee", "large
+/// egg"), while numbers written into a name ("2% milk") and count words that name the food ("cup
+/// noodles") stay. Typed alone, small words stay: "or" and "to" are the start of orange and toast.
+func readQuery(_ query: String) -> QueryReading {
+    let text = plainScalars(query)
+    let found = scanTokens(text)
+    var roles: [Role] = []
+    for (i, token) in found.enumerated() {
+        let word = token.word
+        // Counted ("2 cups rice"), measured ("cup of coffee") or sized ("large egg"), it's an amount.
+        let much = (i > 0 && roles[i - 1] == .amount) || (i + 1 < found.count && found[i + 1].word == "of")
+            || (sizeWords.contains(word) && found[(i + 1)...].contains { !stopWords.contains($0.word) })
+        if isNumber(word) {
+            roles.append(writtenIntoName(word, before: text[..<token.start], after: text[token.end...]) ? .name : .amount)
+        } else if measured(word) {
+            roles.append(.amount)
+        } else if stopWords.contains(word) {
+            roles.append(.stop)
+        } else {
+            roles.append(much && (countWords.contains(word) || unitWords.contains(word)) ? .amount : .name)
+        }
+    }
+    func pick(_ role: Role) -> [String] {
+        zip(found, roles).filter { $0.1 == role && !($0.0.word.unicodeScalars.first.map(isDigit) ?? false) }.map(\.0.word)
+    }
+    let names = zip(found, roles).filter { $0.1 == .name }.map(\.0.word)
+    if names.isEmpty {
+        // Only amounts and small words: "cups" or "or" is still a search, a number alone isn't.
+        let measures = pick(.amount)
+        return QueryReading(words: Array((measures.isEmpty ? pick(.stop) : measures).prefix(8)), counts: [])
+    }
+    var counts: [(String, String)] = []
+    for i in found.indices where roles[i] == .amount && isNumber(found[i].word) && i + 1 < found.count
+        && roles[i + 1] == .name && !isNumber(found[i + 1].word) {
+        counts.append((found[i].word, found[i + 1].word))
+    }
+    return QueryReading(words: Array(names.prefix(8)), counts: counts)
+}
+
+/// The words a typed search looks for: a last word of one letter waits for its second, unless it
+/// is a digit ("chicken b" searches chicken).
+func searchedWords(_ words: [String]) -> [String] {
+    guard let last = words.last, length(last) < 2, !isNumber(last) else { return words }
+    return Array(words.dropLast())
+}
+
+// MARK: - Typos
+
+/// Typos a word may have and still be recognized: none under four letters, one to six, then two.
+func allowedTypos(_ word: String) -> Int { allowedTypos(length: length(word)) }
+
+func allowedTypos(length: Int) -> Int { length < 4 ? 0 : length < 7 ? 1 : 2 }
+
+/// Edit distance with a swapped pair of letters counting as one ("protien"), stopping early once
+/// two words are further apart than a limit. Reuses its rows across calls.
+struct TypoMeter {
+    private var before: [Int] = []
+    private var previous: [Int] = []
+    private var current: [Int] = []
+
+    /// Edits between `a` and `b`, or `limit + 1` once they are further apart than `limit`.
+    mutating func distance(_ a: ArraySlice<UInt16>, _ b: ArraySlice<UInt16>, limit: Int) -> Int {
+        let n = a.count, m = b.count
+        if abs(n - m) > limit { return limit + 1 }
+        if previous.count < m + 1 {
+            before = Array(repeating: 0, count: m + 1)
+            previous = before
+            current = before
+        }
+        for j in 0...m { previous[j] = j }
+        let a0 = a.startIndex, b0 = b.startIndex
+        var i = 1
+        while i <= n {
+            current[0] = i
+            var best = i
+            let ai = a[a0 + i - 1]
+            var j = 1
+            while j <= m {
+                let bj = b[b0 + j - 1]
+                var value = min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ai == bj ? 0 : 1))
+                if i > 1 && j > 1 && ai == b[b0 + j - 2] && a[a0 + i - 2] == bj { value = min(value, before[j - 2] + 1) }
+                current[j] = value
+                best = min(best, value)
+                j += 1
+            }
+            if best > limit { return limit + 1 }
+            swap(&before, &previous)
+            swap(&previous, &current)
+            i += 1
+        }
+        return min(previous[m], limit + 1)
+    }
+
+    /// How a typed word, which may still be half typed, reads a catalog word: the start of it that
+    /// is fewest edits away ("chikc" is one from "chick" in chicken), or nil past the allowance.
+    mutating func misread(_ typed: [UInt16], _ word: [UInt16]) -> (edits: Int, length: Int)? {
+        let limit = allowedTypos(length: typed.count)
+        if limit == 0 || word.count < typed.count - limit { return nil }
+        var found: (edits: Int, length: Int)?
+        var tried: [Int] = []
+        // The whole word first, so "brocoli" means broccoli rather than its start "brocco".
+        for size in [word.count, typed.count - 1, typed.count, typed.count + 1] where !tried.contains(size) {
+            tried.append(size)
+            guard size >= 3 && size <= word.count else { continue }
+            let edits = distance(typed[...], word[..<size], limit: limit)
+            if edits <= limit && (found == nil || edits < found!.edits) { found = (edits, size) }
+        }
+        return found
+    }
+}
+
+func typos(_ a: String, _ b: String, limit: Int) -> Int {
+    var meter = TypoMeter()
+    return meter.distance(Array(a.utf16)[...], Array(b.utf16)[...], limit: limit)
+}
+
+func misread(_ typed: String, _ word: String) -> (edits: Int, meant: String)? {
+    var meter = TypoMeter()
+    guard let found = meter.misread(Array(typed.utf16), Array(word.utf16)) else { return nil }
+    return (found.edits, String(decoding: Array(word.utf16.prefix(found.length)), as: UTF16.self))
+}
