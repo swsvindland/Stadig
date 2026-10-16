@@ -6,6 +6,10 @@ import StoreKit
 /// without it: your data is yours. Generating real training blocks after the assessment needs it.
 @MainActor @Observable
 final class Purchases {
+    /// Off while the app is in testing (it isn't in App Store Connect yet): everything is unlocked,
+    /// StoreKit is never asked, and the Unlock rows are hidden. Turn on before release.
+    static let enabled = false
+
     static let productID = "dev.svindland.lifttrack.unlock"
 
     private(set) var product: Product?
@@ -16,12 +20,14 @@ final class Purchases {
     @ObservationIgnored private var updates: Task<Void, Never>?
 
     init() {
+        if !Self.enabled { unlocked = true }
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-unlocked") { unlocked = true }
         #endif
     }
 
     func start() async {
+        guard Self.enabled else { return }
         if updates == nil {
             updates = Task { [weak self] in
                 for await update in Transaction.updates {
@@ -41,6 +47,10 @@ final class Purchases {
     }
 
     func refresh() async {
+        guard Self.enabled else {
+            unlocked = true
+            return
+        }
         var owned = false
         for await entitlement in Transaction.currentEntitlements {
             if case .verified(let transaction) = entitlement, transaction.productID == Self.productID, transaction.revocationDate == nil {

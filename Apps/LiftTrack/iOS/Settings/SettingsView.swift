@@ -78,12 +78,14 @@ struct SettingsView: View {
             } footer: {
                 Text("Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins.")
             }
-            Section("Lift Track") {
-                if purchases.unlocked {
-                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                } else {
-                    Button("Unlock Lift Track") { model.showPaywall = true }
-                    Button("Restore purchase") { Task { await purchases.restore() } }
+            if Purchases.enabled {
+                Section("Lift Track") {
+                    if purchases.unlocked {
+                        Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
+                    } else {
+                        Button("Unlock Lift Track") { model.showPaywall = true }
+                        Button("Restore purchase") { Task { await purchases.restore() } }
+                    }
                 }
             }
             Section {

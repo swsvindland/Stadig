@@ -156,12 +156,14 @@ struct SettingsView: View {
                 Text("Open Food Facts data is available under the Open Database License (opendatacommons.org/licenses/odbl). USDA FoodData Central is in the public domain.")
             }
 
-            Section("Macro Track") {
-                if purchases.unlocked {
-                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                } else {
-                    Button("Unlock Macro Track", systemImage: "lock.open") { model.showPaywall = true }
-                    Button("Restore purchase") { Task { await purchases.restore() } }
+            if Purchases.enabled {
+                Section("Macro Track") {
+                    if purchases.unlocked {
+                        Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
+                    } else {
+                        Button("Unlock Macro Track", systemImage: "lock.open") { model.showPaywall = true }
+                        Button("Restore purchase") { Task { await purchases.restore() } }
+                    }
                 }
             }
 

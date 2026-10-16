@@ -256,7 +256,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 - `-seedSampleData` fills an empty store with a lifter three weeks into the assessment. Every session runs through the real planner, live session and autoregulation.
 - `-inMemoryStore` keeps nothing between launches.
 - `-resetData` erases the store first.
-- `-unlocked` skips the purchase.
+- `-unlocked` skips the purchase (only matters once purchases are switched back on).
 - `-gymSauna` gives the gym a sauna, for the recovery screen.
 - `-startSession` starts today's session.
 - `-tab plan|progress|body` opens a tab.
@@ -308,6 +308,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 ## Decisions to check
 
 - **iPhone, iPad and Watch only.** The doc says "iOS first", so the first pass's Mac and Vision Pro targets are gone. iPad runs the iPhone app with readable widths.
+- **Purchases are switched off for testing.** Neither app is in App Store Connect yet, so `Purchases.enabled` is `false` in both: everything is unlocked, StoreKit is never asked, and the Unlock rows are hidden. Set it to `true` in each app's `Purchase/Purchases.swift` before release; the gates below then apply as written.
 - **What the unlock covers.** The assessment, logging, history, export and backup are free, because the data is yours. Generating real training blocks after the assessment needs the one-time unlock. That's a product call; it lives in `NextBlockView.accept` and `Purchases`.
 - **Strength standards** are approximate public tables, scored at beginner 20, novice 40, intermediate 60, advanced 80 and elite 100. Age adjustment isn't modelled yet.
 - **Macro Track's unlock** gates starting the phase plan. Logging (including photos and descriptions), the assessment, export and backup are free. The StoreKit price (24.99) is a placeholder.
