@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthBridge
 import SystemCore
 
 @main
@@ -23,6 +24,8 @@ struct LiftTrackApp: App {
         if arguments.contains("-startSession"), AppModel.shared.live == nil, let plan = AppModel.shared.plan() { AppModel.shared.start(plan) }
         #endif
         WatchLink.shared.activate()
+        WorkoutMirror.shared.onData = { data in AppModel.shared.fromWatch(data) }
+        WorkoutMirror.shared.activate()
     }
 
     var body: some Scene {

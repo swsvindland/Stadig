@@ -9,6 +9,7 @@ struct SessionScreen: View {
     @Environment(AppModel.self) private var model
     @State private var showFeedback = false
     @State private var swapping: SwapTarget?
+    @State private var editing: SetTarget?
     @State private var confirmDiscard = false
 
     var body: some View {
@@ -20,19 +21,18 @@ struct SessionScreen: View {
                             ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
                                 Text(note).font(.subheadline).foregroundStyle(.secondary)
                             }
-                            ForEach(SessionBlockKind.allCases, id: \.self) { kind in
-                                let indices = live.items.indices.filter { live.items[$0].plan.block == kind }
-                                if !indices.isEmpty {
-                                    Label(kind.label, systemImage: kind.symbol)
+                            // In the session's order, which the person can change; a heading where the block changes.
+                            ForEach(Array(live.items.enumerated()), id: \.element.id) { index, item in
+                                if index == 0 || live.items[index - 1].plan.block != item.plan.block {
+                                    Label(item.plan.block.label, systemImage: item.plan.block.symbol)
                                         .font(.headline)
-                                        .foregroundStyle(kind.color)
+                                        .foregroundStyle(item.plan.block.color)
                                         .padding(.top, 6)
-                                    ForEach(indices, id: \.self) { index in
-                                        ItemCard(index: index, item: live.items[index], current: live.current?.item == index,
-                                                 swap: { swapping = SwapTarget(index: index) })
-                                            .id(live.items[index].id)
-                                    }
                                 }
+                                ItemCard(index: index, item: item, current: live.current?.item == index,
+                                         swap: { swapping = SwapTarget(index: index) },
+                                         edit: { set in editing = SetTarget(item: index, set: set) })
+                                    .id(item.id)
                             }
                             Color.clear.frame(height: 24)
                         }
@@ -58,7 +58,15 @@ struct SessionScreen: View {
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
                             Text(live.plan.title).font(.headline)
-                            Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            HStack(spacing: 8) {
+                                Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                if let bpm = model.currentHeartRate {
+                                    Label("\(Int(bpm))", systemImage: "heart.fill")
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(.red)
+                                        .accessibilityLabel("Heart rate \(Int(bpm))")
+                                }
+                            }
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -73,6 +81,7 @@ struct SessionScreen: View {
                 }
                 .sheet(isPresented: $showFeedback) { FeedbackSheet() }
                 .sheet(item: $swapping) { target in SwapSheet(index: target.index) }
+                .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
                 .confirmationDialog("Discard this session?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                     Button("Discard", role: .destructive) { model.discardLive() }
                 } message: {
@@ -91,6 +100,12 @@ struct SwapTarget: Identifiable {
     var id: Int { index }
 }
 
+struct SetTarget: Identifiable {
+    let item: Int
+    let set: Int
+    var id: String { "\(item).\(set)" }
+}
+
 /// One exercise: its sets, prescribed and logged, and why it's here.
 struct ItemCard: View {
     @Environment(AppModel.self) private var model
@@ -98,6 +113,8 @@ struct ItemCard: View {
     let item: LiveItem
     let current: Bool
     let swap: () -> Void
+    /// Corrects a logged set.
+    let edit: (Int) -> Void
 
     var body: some View {
         let exercise = model.catalog.resolve(item.exerciseID)
@@ -117,6 +134,10 @@ struct ItemCard: View {
                         .accessibilityLabel(item.skipped ? "Skipped" : "Done")
                 }
                 Menu {
+                    // The rack's taken, or this one's free: do it now and come back to the rest.
+                    if !item.isDone && !current {
+                        Button("Do this now", systemImage: "arrow.up.to.line") { model.update { $0.doNext(item: index) } }
+                    }
                     if item.plan.isStrength { Button("Swap exercise", systemImage: "arrow.triangle.2.circlepath", action: swap) }
                     Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
                     if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
@@ -141,8 +162,17 @@ struct ItemCard: View {
             } else {
                 VStack(spacing: 6) {
                     ForEach(Array(item.sets.enumerated()), id: \.element.id) { setIndex, set in
-                        SetRow(set: set, number: number(of: setIndex), exercise: exercise,
-                               isCurrent: current && model.live?.current?.set == setIndex)
+                        if set.logged != nil, item.plan.isStrength {
+                            // A logged set opens for a correction: the wrong weight, a rating tapped too fast.
+                            Button { edit(setIndex) } label: {
+                                SetRow(set: set, number: number(of: setIndex), exercise: exercise, isCurrent: false, editable: true)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Edit this set")
+                        } else {
+                            SetRow(set: set, number: number(of: setIndex), exercise: exercise,
+                                   isCurrent: current && model.live?.current?.set == setIndex)
+                        }
                     }
                 }
             }
@@ -171,6 +201,7 @@ struct SetRow: View {
     let number: String
     let exercise: Exercise
     let isCurrent: Bool
+    var editable = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -184,6 +215,7 @@ struct SetRow: View {
                 if set.prescription.kind == .repOut { Pill(text: "Rep-out", color: .purple) }
                 Spacer()
                 RatingMark(rating: logged.rating)
+                if editable { Image(systemName: "pencil").font(.caption).foregroundStyle(.tertiary) }
             } else if set.skipped {
                 Text("Skipped").foregroundStyle(.secondary)
                 Spacer()
@@ -203,6 +235,7 @@ struct SetRow: View {
                 }
             }
         }
+        .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
 }

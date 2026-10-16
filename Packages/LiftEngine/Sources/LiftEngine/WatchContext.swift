@@ -18,11 +18,13 @@ public struct PhoneContext: Codable, Hashable, Sendable {
     public var heartRateGuidedRest: Bool
     public var zones: HeartRateZones
     public var units: UnitPreference
+    /// A first guess at the working weight for exercises with no history, kg by exercise id.
+    public var startingLoads: [String: Double]?
     public var sentAt: Date
 
     public init(plan: SessionPlan?, upNext: String?, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
                 history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool, zones: HeartRateZones,
-                units: UnitPreference, sentAt: Date = Date()) {
+                units: UnitPreference, startingLoads: [String: Double]? = nil, sentAt: Date = Date()) {
         self.plan = plan
         self.upNext = upNext
         self.gym = gym
@@ -34,6 +36,7 @@ public struct PhoneContext: Codable, Hashable, Sendable {
         self.heartRateGuidedRest = heartRateGuidedRest
         self.zones = zones
         self.units = units
+        self.startingLoads = startingLoads
         self.sentAt = sentAt
     }
 
@@ -41,6 +44,17 @@ public struct PhoneContext: Codable, Hashable, Sendable {
         SessionEnvironment(catalog: catalog, gym: gym, trust: trust, phase: phase, bodyweightKg: bodyweightKg, history: history,
                            enduranceScore: enduranceScore, heartRateGuidedRest: heartRateGuidedRest)
     }
+}
+
+/// What the Watch and the iPhone say over a mirrored workout, while the phone runs the session
+/// and the Watch only measures heart rate.
+public enum MirrorMessage: Codable, Sendable {
+    /// A reading, Watch to phone.
+    case heartRate(bpm: Double, date: Date)
+    /// The phone's session is over: save the workout under the session's id.
+    case finish(id: UUID, title: String)
+    /// The phone's session was thrown away: so is the workout.
+    case discard
 }
 
 /// Messages between the Watch and the iPhone.

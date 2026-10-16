@@ -35,6 +35,8 @@ public struct LiveSet: Codable, Hashable, Sendable, Identifiable {
     public var skipped: Bool
     /// The adjustment that produced this set's numbers, said plainly.
     public var note: String?
+    /// The set as first prescribed, before any rating adjusted it: where a correction starts from.
+    public var planned: SetPrescription?
 
     public init(id: UUID = UUID(), prescription: SetPrescription, logged: LoggedSet? = nil, skipped: Bool = false, note: String? = nil) {
         self.id = id
@@ -42,6 +44,7 @@ public struct LiveSet: Codable, Hashable, Sendable, Identifiable {
         self.logged = logged
         self.skipped = skipped
         self.note = note
+        planned = prescription
     }
 
     public var isOpen: Bool { logged == nil && !skipped }
@@ -202,6 +205,91 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         return adjustment
     }
 
+    /// Corrects a logged set (the wrong weight, a rating tapped too fast) and redoes what it set in
+    /// motion: the sets still to come are worked out again from the plan and the corrected log.
+    public mutating func edit(item index: Int, set setIndex: Int, reps: Int, loadKg: Double?, rating: SetRating?,
+                              environment: SessionEnvironment, now: Date = Date()) {
+        guard items.indices.contains(index), items[index].sets.indices.contains(setIndex),
+              var logged = items[index].sets[setIndex].logged else { return }
+        logged.reps = reps
+        if let loadKg { logged.loadKg = loadKg }
+        if logged.kind != .warmup { logged.rating = rating }
+        items[index].sets[setIndex].logged = logged
+        replay(item: index, environment: environment)
+        updatedAt = now
+    }
+
+    /// Works an exercise's open sets out again: back to how they were first prescribed, then each
+    /// logged set's adjustment in order, as if it had been logged right the first time.
+    mutating func replay(item index: Int, environment: SessionEnvironment) {
+        var item = items[index]
+        guard item.plan.isStrength else { return }
+        let exercise = environment.catalog.resolve(item.exerciseID)
+        for i in item.sets.indices where item.sets[i].isOpen {
+            if let planned = item.sets[i].planned { item.sets[i].prescription = planned }
+            item.sets[i].note = nil
+        }
+        item.verified = false
+        var last: SetAdjustment?
+        for k in item.sets.indices {
+            guard let logged = item.sets[k].logged, logged.kind != .warmup else { continue }
+            if logged.rating != nil,
+               let next = item.sets.indices.first(where: { $0 > k && item.sets[$0].isOpen && item.sets[$0].prescription.kind != .warmup }) {
+                let context = Autoregulation.Context(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
+                                                     repRange: item.plan.repRange, verifiedAlready: item.verified,
+                                                     hasSafeties: environment.gym.hasSafeties)
+                let result = Autoregulation.next(after: logged, planned: item.sets[next].prescription, context: context)
+                if result.kind == .verify { item.verified = true }
+                for later in item.sets.indices where later >= next && item.sets[later].isOpen {
+                    let kind = item.sets[later].prescription.kind
+                    var updated = result.next
+                    if kind == .repOut {
+                        updated.kind = .repOut
+                        updated.targetRIR = 0
+                        updated.stopAtFormBreakdown = item.sets[later].prescription.stopAtFormBreakdown
+                    }
+                    item.sets[later].prescription = updated
+                    item.sets[later].note = later == next ? result.message : nil
+                }
+                last = result
+            }
+            if logged.kind == .findingWeight {
+                for later in item.sets.indices where later > k && item.sets[later].isOpen && item.sets[later].prescription.loadKg == nil {
+                    item.sets[later].prescription.loadKg = logged.loadKg
+                }
+            }
+        }
+        items[index] = item
+        message = last?.message
+        lastAdjustment = last?.kind
+    }
+
+    // MARK: Order
+
+    /// Does an exercise now, ahead of the plan's order (its rack or machine came free, or the next
+    /// one is taken): it moves in front of whatever isn't done yet, with its superset partner.
+    public mutating func doNext(item index: Int, now: Date = Date()) {
+        guard items.indices.contains(index), !items[index].isDone else { return }
+        let group = items[index].plan.supersetGroup
+        let moving = items.indices.filter { $0 == index || (group != nil && items[$0].plan.supersetGroup == group && !items[$0].isDone) }
+        let moved = moving.map { items[$0] }
+        var others = items.indices.filter { !moving.contains($0) }.map { items[$0] }
+        // In front of the first exercise not done yet; one half done picks up again straight after.
+        let target = others.firstIndex { !$0.isDone } ?? others.count
+        others.insert(contentsOf: moved, at: target)
+        items = others
+        if let rest, !items.contains(where: { $0.id == rest.itemID && !$0.isDone }) { self.rest = nil }
+        updatedAt = now
+    }
+
+    /// Moves an exercise to another place in the order.
+    public mutating func moveItem(from source: Int, to destination: Int, now: Date = Date()) {
+        guard items.indices.contains(source), destination >= 0, destination <= items.count, source != destination else { return }
+        let item = items.remove(at: source)
+        items.insert(item, at: destination > source ? destination - 1 : destination)
+        updatedAt = now
+    }
+
     public mutating func skipSet(item index: Int, set setIndex: Int, now: Date = Date()) {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return }
         items[index].sets[setIndex].skipped = true
@@ -302,6 +390,24 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         guard let state = rest else { return false }
         let elapsed = Int(now.timeIntervalSince(state.started))
         return Rest.recovered(heartRate: bpm, preSet: state.preSetHeartRate, zones: zones, elapsed: elapsed, plan: state.plan)
+    }
+
+    /// Minutes in each heart-rate zone between two times: each reading counts until the next, and
+    /// a gap over 15 s (the sensor dropping out) counts 15 s.
+    public func zoneMinutes(from start: Date, to end: Date, zones: HeartRateZones) -> [Int: Double] {
+        let samples = heartRateSamples.filter { $0.date >= start && $0.date <= end }
+        var minutes: [Int: Double] = [:]
+        for (index, sample) in samples.enumerated() {
+            let next = index + 1 < samples.count ? samples[index + 1].date : end
+            let seconds = min(max(0, next.timeIntervalSince(sample.date)), 15)
+            minutes[zones.zone(for: sample.bpm), default: 0] += seconds / 60
+        }
+        return minutes
+    }
+
+    public func averageHeartRate(from start: Date, to end: Date) -> Double? {
+        let samples = heartRateSamples.filter { $0.date >= start && $0.date <= end }
+        return samples.isEmpty ? nil : samples.map(\.bpm).reduce(0, +) / Double(samples.count)
     }
 
     // MARK: Finish

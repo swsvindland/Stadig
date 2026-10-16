@@ -190,7 +190,7 @@ public enum MovementPattern: String, CaseIterable, Codable, Sendable, Identifiab
     case shrug, lateralRaise, frontRaise, rearDeltFly, facePull, curl, tricepsExtension, squat, lunge
     case legPress, hinge, hipThrust, legExtension, legCurl, backExtension, hipAdduction, hipAbduction
     case calfRaise, crunch, legRaise, core, wrist, carry
-    case conditioning, mobility, warmup, stretch
+    case conditioning, mobility, warmup, stretch, recovery
 
     public var id: String { rawValue }
 
@@ -231,6 +231,7 @@ public enum MovementPattern: String, CaseIterable, Codable, Sendable, Identifiab
         case .mobility: "Mobility"
         case .warmup: "Warm-up"
         case .stretch: "Stretch"
+        case .recovery: "Recovery"
         }
     }
 

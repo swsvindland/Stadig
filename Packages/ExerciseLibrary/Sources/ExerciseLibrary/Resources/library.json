@@ -17772,10 +17772,10 @@
  },
  {
   "id": "easy-bike-warmup",
-  "name": "5-Minute Easy Bike",
+  "name": "Easy Bike",
   "aliases": [
    "Bike Warm-Up",
-   "Easy Bike"
+   "5-Minute Easy Bike"
   ],
   "kind": "warmup",
   "pattern": "warmup",
@@ -17820,10 +17820,10 @@
  },
  {
   "id": "easy-row-warmup",
-  "name": "5-Minute Easy Row",
+  "name": "Easy Row",
   "aliases": [
-   "Rower Warm-Up",
-   "Easy Row"
+   "Row Warm-Up",
+   "5-Minute Easy Row"
   ],
   "kind": "warmup",
   "pattern": "warmup",
@@ -20142,6 +20142,96 @@
    "restSeconds": 30
   },
   "cue": "Light bounces on the balls of the feet; 30 on, 30 off.",
+  "custom": false
+ },
+ {
+  "id": "sauna",
+  "name": "Sauna",
+  "aliases": [
+   "Dry Sauna",
+   "Finnish Sauna"
+  ],
+  "kind": "recovery",
+  "pattern": "recovery",
+  "equipment": "bodyweight",
+  "apparatus": [
+   "sauna"
+  ],
+  "muscles": [],
+  "joints": [],
+  "fatigue": {
+   "systemic": 0.0,
+   "local": 0.0,
+   "stimulus": 0.0,
+   "failureMultiplier": 1.0
+  },
+  "safetyTier": "safeToFail",
+  "loadBasis": "none",
+  "unilateral": false,
+  "reps": {
+   "strength": {
+    "lower": 1,
+    "upper": 1
+   },
+   "hypertrophy": {
+    "lower": 1,
+    "upper": 1
+   }
+  },
+  "rest": {
+   "strength": 0,
+   "hypertrophy": 0
+  },
+  "restRole": "accessory",
+  "mobilityTargets": [],
+  "timed": true,
+  "seconds": 900,
+  "cue": "Sit or lie on a lower bench to start; leave if you feel dizzy or unwell. A big glass of water afterwards.",
+  "custom": false
+ },
+ {
+  "id": "steam-room",
+  "name": "Steam Room",
+  "aliases": [
+   "Steam Bath",
+   "Hammam"
+  ],
+  "kind": "recovery",
+  "pattern": "recovery",
+  "equipment": "bodyweight",
+  "apparatus": [
+   "steamRoom"
+  ],
+  "muscles": [],
+  "joints": [],
+  "fatigue": {
+   "systemic": 0.0,
+   "local": 0.0,
+   "stimulus": 0.0,
+   "failureMultiplier": 1.0
+  },
+  "safetyTier": "safeToFail",
+  "loadBasis": "none",
+  "unilateral": false,
+  "reps": {
+   "strength": {
+    "lower": 1,
+    "upper": 1
+   },
+   "hypertrophy": {
+    "lower": 1,
+    "upper": 1
+   }
+  },
+  "rest": {
+   "strength": 0,
+   "hypertrophy": 0
+  },
+  "restRole": "accessory",
+  "mobilityTargets": [],
+  "timed": true,
+  "seconds": 600,
+  "cue": "Shorter than a sauna: the wet heat feels hotter. Leave if you feel dizzy; drink water afterwards.",
   "custom": false
  }
 ]

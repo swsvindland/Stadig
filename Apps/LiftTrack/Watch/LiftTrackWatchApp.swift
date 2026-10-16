@@ -1,8 +1,18 @@
 import SwiftUI
+import HealthKit
+import WatchKit
+
+/// The phone starting a session asks this Watch for a workout, to measure heart rate.
+final class WatchDelegate: NSObject, WKApplicationDelegate {
+    func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
+        WatchModel.shared.startCompanion()
+    }
+}
 
 @main
 struct LiftTrackWatchApp: App {
-    @State private var model = WatchModel()
+    @WKApplicationDelegateAdaptor private var delegate: WatchDelegate
+    @State private var model = WatchModel.shared
 
     var body: some Scene {
         WindowGroup {

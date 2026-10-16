@@ -157,8 +157,9 @@ The program generator works like this:
   - Cheap local volume is added for lagging physique areas.
 - **Elastic time budget**: each block has a minimum, a desired length and a priority, and goals reorder the priorities.
   - **30 minutes:** ramp-up sets are the warm-up, the limiter drill happens in the rests, two compounds are supersetted, and conditioning becomes a quest.
-  - **60 minutes:** a short warm-up, the limiter slot, the main lifts, a few accessories and brief conditioning.
-  - **90 minutes:** a full warm-up and a 20–30 minute conditioning finisher.
+  - **60 minutes:** five easy minutes on a bike or rower and three drills, the limiter slot, the main lifts, a few accessories and brief conditioning.
+  - **90 minutes:** a fuller warm-up, more sets and a 20–30 minute conditioning finisher.
+  - Time the lifting doesn't use goes to more sets first (main lifts up to four work sets, accessories up to three), then to conditioning; no lift is ever a single set.
 - **"Short on time today?"** refits the day to 30, 45, 60 or 90 minutes.
 
 **Session planning** turns a day into exact sets:
@@ -169,6 +170,7 @@ The program generator works like this:
 - crunch mode gives the minimum effective dose, with equipment stand-ins
 - injuries swap out what they must, and injury ramps ease lifts back in
 - a head cold means light work only
+- a gym with a sauna or steam room gets an optional 15 (or 10) minutes at the end, outside the session's time (Settings → Gym → Recovery)
 
 **Analysis** produces the "Do this next" actions. Each one ends in a concrete step, e.g. "Next session, 82.5 kg for 3×5" for a stall. When Macro Track data exists, it adds cross-app context such as "Protein was under target 4 of the last 7 logged days." It also produces the day's quests (three at most), the training discipline score, and the summary published for the hub.
 
@@ -183,6 +185,10 @@ The iPhone keeps the Watch's application context current: today's plan, the gym,
 - a quick feedback screen
 
 The finished session comes back to the phone both live and queued. The Watch's workout session saves it to Health. The complication shows the next session.
+
+When the session runs on the iPhone instead, starting it asks the Watch for a workout (`HKHealthStore.startWatchApp`). The Watch shows a heart-rate screen and mirrors the workout back (`startMirroringToCompanionDevice`), sending each reading over it. The phone shows live bpm in the session header, zones against the aim in the warm-up and conditioning (logged as minutes per zone), and ends heart-rate-guided rests early. At the end the Watch saves the workout under the session's id, with heart rate and energy, and the phone doesn't save a second one.
+
+**In the gym:** "Do this now" on any exercise moves it (and its superset partner) ahead when the next machine is taken. Tapping a logged set corrects its weight, reps or rating, and the sets still to come are worked out again from the corrected log. Tapping the weight types it in, and holding − or + keeps stepping. With no history, the weight starts from the strength standards (scored lifts) or a bodyweight ratio for the movement and equipment, scaled for experience and sex, so a 400 lb leg press isn't fifty taps from an empty sled.
 
 ## Macro Track
 
@@ -272,8 +278,10 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
   - A **plateaued veteran** gets a stall that reads as a programming problem at maintenance, expected in a cut, and a recovery problem when beat up.
   - A **growing lifter** is never flagged as stalled.
   - Also covered: strength standards, autoregulation for every rating, assisted exercises, finding weights, deloads, injury ramps, vacation reflow, early deloads, life-mode effects, the discipline band, Fatigue Budget states, physique, agility, rest rules and quests.
-- **LiftEngine (21 tests).**
+- **LiftEngine (28 tests).**
   - Every day count from 1 to 6, and every scored lift covered each week.
+  - The easy bike gets its five minutes and the drills fit the rest; no lift gets a single set at 45 to 90 minutes, and an hour and a half is more lifting than an hour.
+  - "Do this now" (with superset partners), a mistyped weight or rating corrected with the next sets following it, starting weights in range for leg press, dumbbell bench, pulldown and squat, the sauna or steam room only where the gym has one, and minutes per heart-rate zone.
   - 30, 60 and 90-minute budgets. Endurance goals rank conditioning higher.
   - Hotel gyms, injuries, "legs ahead means upper body first", and beat-up-and-stalled swaps.
   - Physique gaps, declared classes, crunch mode, swaps, gym loads and CSV export.
@@ -310,7 +318,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 
 **Verified**
 
-- **Builds.** All nine packages build and test clean: 296 tests, zero warnings. The `LiftTrack` scheme (iPhone/iPad app, widgets, Live Activity, embedded Watch app), the `LiftTrackWatch` scheme and the `MacroTrack` scheme (app, widgets, controls) build with zero errors and warnings.
+- **Builds.** All nine packages build and test clean: 303 tests, zero warnings. The `LiftTrack` scheme (iPhone/iPad app, widgets, Live Activity, embedded Watch app), the `LiftTrackWatch` scheme and the `MacroTrack` scheme (app, widgets, controls) build with zero errors and warnings.
 - **iPhone 18 Pro Max simulator**
   - Onboarding on the persistent store creates the assessment block. The first session prescribes "find weight" sets.
   - `-seedSampleData` runs three weeks of real engine sessions. Today shows "What we've learned", including the overhead-press imbalance and "you can finish early".
@@ -344,6 +352,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 - CloudKit sync between real devices, and duplicate rows converging.
 - A real iPhone ↔ Watch round trip. The two sides were checked separately against the same message format.
 - Live heart rate on the Watch: heart-rate-guided early rest, heart-rate recovery between sets, and minutes per zone.
+- The phone-led session's mirrored Watch workout (start from the phone, readings on the phone, the Watch saving it). It needs a real Watch with Developer Mode on.
 - Haptics, the crown and double tap.
 - Health on a device: reads, imports from other apps, and the sync-id replace when saving workouts.
 - The Live Activity and widgets as rendered on the Lock Screen, Dynamic Island, Home Screen and watch face.

@@ -350,7 +350,8 @@ struct Builder {
         }
         if input.kind == .standard { sets *= input.phase.effects.volumeTolerance }
         if e > 0.3 { sets += 1 } else if e < -0.3 { sets -= 1 }
-        let start = max(role == .main ? 2 : 1, Int(sets.rounded()))
+        // Two sets at least: one set of a lift is rarely worth walking over to the equipment for.
+        let start = max(2, Int(sets.rounded()))
         let weeks = input.kind == .assessment ? input.loadingWeeks : input.loadingWeeks
         // Volume ramps across a standard block for wanted work: a set more from the middle on.
         return (0..<max(1, weeks)).map { week in
@@ -565,7 +566,8 @@ struct Builder {
         let conditioningMinimum = minutes >= 85 ? 20 : (minutes >= 70 ? 15 : 10)
         var specs: [BlockSpec] = [
             BlockSpec(kind: .main, minimum: 15, desired: mainSeconds / 60, priority: 10),
-            BlockSpec(kind: .warmup, minimum: 5, desired: minutes >= 80 ? 15 : 6, priority: 8),
+            // Five easy minutes on a bike or rower, then a few drills.
+            BlockSpec(kind: .warmup, minimum: 5, desired: minutes >= 80 ? 12 : (minutes >= 50 ? 9 : 6), priority: 8),
             BlockSpec(kind: .limiter, minimum: 3, desired: minutes >= 80 ? 8 : 4, priority: 7 + emphasis.mobility),
             BlockSpec(kind: .accessory, minimum: 8, desired: accessorySeconds / 60, priority: 6 + emphasis.hypertrophy - 0.5),
         ]
@@ -623,9 +625,36 @@ struct Builder {
         var kept: [SlotPlan] = []
         for slot in accessory where seconds(main + kept + [slot]) <= liftingBudget { kept.append(slot) }
         accessory = kept
+        // Time the lifting doesn't use goes to more sets before conditioning gets it: the main lifts
+        // up to four work sets, then accessories up to three, in order of importance, while the
+        // session still fits. A plan with a spare quarter of an hour shouldn't stop at two sets.
+        let otherMinutes = allocation.filter { $0.key != .main && $0.key != .accessory }.values.reduce(0, +)
+        var spareSeconds = minutes * 60 - otherMinutes * 60 - seconds(main + accessory)
+        // Conditioning keeps the extra it was meant to have; only time beyond that is spare.
+        if let wanted = specs.first(where: { $0.kind == .conditioning }), let given = allocation[.conditioning] {
+            spareSeconds += max(0, given - wanted.desired) * 60
+            if given > wanted.desired { allocation[.conditioning] = wanted.desired }
+        }
+        var growing = true
+        while growing, spareSeconds > 0, !short {
+            growing = false
+            for (list, cap) in [(0, 4), (1, 3)] {
+                var slots = list == 0 ? main : accessory
+                for i in slots.indices where slots[i].sets(week: 0) < cap {
+                    let cost = Self.seconds(for: slots[i], exercise: resolve(slots[i])) / max(1, slots[i].sets(week: 0))
+                    guard cost <= spareSeconds else { continue }
+                    slots[i].sets = slots[i].sets.map { min(cap, $0 + 1) }
+                    spareSeconds -= cost
+                    growing = true
+                    break
+                }
+                if list == 0 { main = slots } else { accessory = slots }
+                if growing { break }
+            }
+        }
         allocation[.main] = Int((Double(seconds(main)) / 60).rounded())
         allocation[.accessory] = accessory.isEmpty ? nil : Int((Double(seconds(accessory)) / 60).rounded())
-        // Lifting time left over goes to conditioning.
+        // What's left after that goes to conditioning.
         let spare = minutes - allocation.values.reduce(0, +)
         if spare > 0, allocation[.conditioning] != nil { allocation[.conditioning, default: 0] += spare }
 
@@ -633,17 +662,24 @@ struct Builder {
         var overflow: [OverflowItem] = []
         let lowerBody = day.focus.lowerBody
         if let m = allocation[.warmup] {
-            let drills = Drills.warmup(lowerBody: lowerBody, in: input.catalog.all, availability: availability).prefix(m >= 12 ? 5 : 3)
-            let per = max(30, m * 60 / max(1, drills.count) - 15)
-            blocks.append(SessionBlockPlan(kind: .warmup, minutes: m, slots: drills.map {
-                SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(10, 10), restSeconds: 15,
-                         seconds: $0.timed ? min(per, $0.seconds ?? per) : nil)
-            }))
+            // Easy cardio first, for the time the drills leave (five minutes at most, two at least),
+            // then the drills by reps, about a minute each.
+            let options = Drills.warmup(lowerBody: lowerBody, in: input.catalog.all, availability: availability)
+            let opener = options.first { $0.equipment.isCardio }
+            let moves = Array(options.filter { !$0.equipment.isCardio }.prefix(m >= 12 ? 4 : (m >= 8 ? 3 : 2)))
+            let openerSeconds = opener.map { min($0.seconds ?? 300, max(120, (m - moves.count) * 60) / 30 * 30) }
+            let slots = (opener.map { [SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(1, 1), restSeconds: 0,
+                                                seconds: openerSeconds)] } ?? [])
+                + moves.map {
+                    SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(10, 10), restSeconds: 15,
+                             seconds: $0.timed ? min(45, $0.seconds ?? 45) : nil)
+                }
+            blocks.append(SessionBlockPlan(kind: .warmup, minutes: m, slots: slots))
         }
         let limiterTarget = input.agility?.limiter ?? (lowerBody ? .hips : .shoulders)
         let limiterDrills = Drills.mobility(for: limiterTarget, in: input.catalog.all, availability: availability)
         if let m = allocation[.limiter], !limiterDrills.isEmpty {
-            let drills = limiterDrills.prefix(m >= 6 ? 2 : 1)
+            let drills = limiterDrills.prefix(m >= 4 ? 2 : 1)
             blocks.append(SessionBlockPlan(kind: .limiter, minutes: m, slots: drills.map {
                 SlotPlan(exerciseID: $0.id, role: .mobility, sets: [2], repRange: RepRange(8, 8), restSeconds: 15,
                          seconds: $0.timed ? ($0.seconds ?? 45) : nil,

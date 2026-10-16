@@ -13,11 +13,15 @@ public enum ExerciseKind: String, Codable, Sendable, CaseIterable {
     case warmup
     /// Static stretches for the optional cool-down.
     case stretch
+    /// Heat after training, where the gym has it: sauna, steam room.
+    case recovery
 }
 
 /// Fixtures beyond the equipment list that an exercise needs: a bench, a rack, a bar to hang from.
 public enum Apparatus: String, Codable, Sendable, CaseIterable {
     case bench, rack, pullUpBar, dipStation, box, landmine, gluteHamBench, backExtensionBench
+    /// Rooms rather than fixtures: what the gym has for recovery.
+    case sauna, steamRoom
 
     public var label: String {
         switch self {
@@ -29,8 +33,13 @@ public enum Apparatus: String, Codable, Sendable, CaseIterable {
         case .landmine: "Landmine"
         case .gluteHamBench: "Glute-ham bench"
         case .backExtensionBench: "Back extension bench"
+        case .sauna: "Sauna"
+        case .steamRoom: "Steam room"
         }
     }
+
+    /// A room for after training rather than a fixture to train on.
+    public var isRecovery: Bool { self == .sauna || self == .steamRoom }
 }
 
 /// Default rest in seconds, by training goal.

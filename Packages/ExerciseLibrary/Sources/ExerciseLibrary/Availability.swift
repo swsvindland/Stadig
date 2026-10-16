@@ -25,7 +25,8 @@ public struct Availability: Hashable, Sendable {
     /// The typical setup for an equipment dial position.
     public init(access: EquipmentAccess) {
         let apparatus: Set<Apparatus> = switch access {
-        case .fullGym: Set(Apparatus.allCases)
+        // A sauna or steam room is the person's to say: plenty of full gyms have neither.
+        case .fullGym: Set(Apparatus.allCases.filter { !$0.isRecovery })
         case .homeGym: [.rack, .bench, .pullUpBar, .box, .landmine]
         case .hotelGym: [.bench, .box]
         case .bodyweightOnly: [.box]

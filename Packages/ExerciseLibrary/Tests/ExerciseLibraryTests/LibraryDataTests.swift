@@ -159,6 +159,7 @@ struct LibraryDataTests {
                 if let spec = e.conditioning, spec.style == .intervals {
                     #expect((spec.workSeconds ?? 0) > 0 && (spec.restSeconds ?? 0) > 0, "\(e.id)")
                 }
+            case .recovery: #expect(e.timed && !e.apparatus.isEmpty && e.apparatus.allSatisfy(\.isRecovery), "\(e.id)")
             case .warmup, .strength: break
             }
         }

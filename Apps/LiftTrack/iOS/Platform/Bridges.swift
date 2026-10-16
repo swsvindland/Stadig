@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 import WidgetKit
 import ExerciseLibrary
@@ -63,5 +64,16 @@ final class RestAlerts {
 
     func cancel() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    }
+
+    /// Heart rate came back down before the timer: rest's over now, with a tap to say so.
+    func heartRateRecovered() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        let content = UNMutableNotificationContent()
+        content.title = "Heart rate's back down"
+        content.body = "Ready for the next set."
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
 }

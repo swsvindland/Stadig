@@ -83,9 +83,9 @@ public struct SessionPlan: Codable, Hashable, Sendable, Identifiable {
         self.quests = quests
     }
 
-    /// A rough length in minutes.
+    /// A rough length in minutes, without the optional sauna or steam room.
     public var estimatedMinutes: Int {
-        let seconds = items.map { item -> Int in
+        let seconds = items.filter { $0.block != .recovery }.map { item -> Int in
             if let c = item.conditioning { return c.minutes * 60 }
             let work = item.seconds ?? (item.repRange.middle * 3 + 15)
             return item.sets.map { $0.kind == .warmup ? 60 : work + item.rest.target }.reduce(0, +) + (item.isStrength ? 45 : 0)
@@ -239,7 +239,7 @@ public enum SessionPlanner {
                                              repRange: slot.repRange, rest: rest, seconds: slot.seconds, supersetGroup: med ? nil : slot.supersetGroup,
                                              restFiller: slot.restFiller, reason: slot.reason, note: prescription.reason, mode: prescription.mode,
                                              substitutedFor: substitutedFor))
-                case .mobility, .warmup, .stretch:
+                case .mobility, .warmup, .stretch, .recovery:
                     let count = max(1, slot.sets(week: week))
                     let sets = (0..<count).map { _ in
                         SetPrescription(kind: .working, loadKg: nil, targetReps: slot.repRange.middle, targetRIR: 5, seconds: slot.seconds)
@@ -263,6 +263,19 @@ public enum SessionPlanner {
                                              seconds: plan.minutes * 60, conditioning: plan, reason: slot.reason))
                 }
             }
+        }
+
+        // Heat afterwards where the gym has it: offered, never required, and not on a sick day.
+        if !light, let room = Drills.recovery(in: catalog.all, availability: availability).first {
+            let minutes = (room.seconds ?? 900) / 60
+            items.append(PlannedItem(id: UUID(day.id, salt: date.ordinal + 7_000_000), slotID: nil, block: .recovery, exerciseID: room.id,
+                                     role: .recovery,
+                                     sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: minutes * 60)],
+                                     repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
+                                     seconds: minutes * 60,
+                                     reason: room.id == "sauna"
+                                         ? "Optional. Regular sauna use goes with better heart health, and it's a good way to wind down. Skip it if you're short on time."
+                                         : "Optional: a warm, humid wind-down. Skip it if you're short on time."))
         }
 
         let questDay = date

@@ -50,6 +50,8 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
 
 public enum SessionBlockKind: String, Codable, Sendable, CaseIterable, Comparable {
     case warmup, limiter, main, accessory, conditioning, cooldown
+    /// Sauna or steam room after training, where the gym has one: optional, outside the session's time.
+    case recovery
 
     public var label: String {
         switch self {
@@ -59,6 +61,7 @@ public enum SessionBlockKind: String, Codable, Sendable, CaseIterable, Comparabl
         case .accessory: "Accessories"
         case .conditioning: "Conditioning"
         case .cooldown: "Cool-down"
+        case .recovery: "Recovery"
         }
     }
 
@@ -70,6 +73,7 @@ public enum SessionBlockKind: String, Codable, Sendable, CaseIterable, Comparabl
         case .accessory: "dumbbell"
         case .conditioning: "heart.circle"
         case .cooldown: "wind"
+        case .recovery: "heat.waves"
         }
     }
 
@@ -79,7 +83,7 @@ public enum SessionBlockKind: String, Codable, Sendable, CaseIterable, Comparabl
 }
 
 public enum SlotRole: String, Codable, Sendable {
-    case main, accessory, mobility, warmup, conditioning, stretch
+    case main, accessory, mobility, warmup, conditioning, stretch, recovery
 }
 
 public struct ConditioningPlan: Codable, Hashable, Sendable {

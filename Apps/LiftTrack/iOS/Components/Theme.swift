@@ -46,6 +46,7 @@ extension SessionBlockKind {
         case .accessory: .indigo
         case .conditioning: .red
         case .cooldown: .mint
+        case .recovery: .pink
         }
     }
 }

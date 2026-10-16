@@ -30,7 +30,9 @@ struct CatalogTests {
 
     @Test func presetsMatchTheEquipmentDial() throws {
         let full = Availability(access: .fullGym)
-        #expect(ExerciseLibrary.bundled.allSatisfy(full.allows))
+        // Everything but the sauna and steam room, which a full gym may or may not have.
+        #expect(ExerciseLibrary.bundled.filter { $0.kind != .recovery }.allSatisfy(full.allows))
+        #expect(!ExerciseLibrary.bundled.filter { $0.kind == .recovery }.contains(where: full.allows))
         #expect(full.hasSafeties && full.dumbbellMaxKg == nil)
         let home = Availability(access: .homeGym)
         #expect(home.hasSafeties && home.dumbbellMaxKg == 40)

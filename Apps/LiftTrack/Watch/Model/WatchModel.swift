@@ -61,8 +61,14 @@ struct SessionSummary: Equatable {
 /// change, feeds it heart rate, and keeps the timers and haptics that rests and drills need.
 @MainActor @Observable
 final class WatchModel {
+    /// One model: the app's scene and the phone's request to start a workout share it.
+    static let shared = WatchModel()
+
     let catalog = ExerciseCatalog()
     let workout = LiveWorkoutSession()
+
+    /// Measuring heart rate for a session the iPhone runs, since this time.
+    private(set) var companionSince: Date?
 
     private(set) var context: PhoneContext?
     private(set) var session: StoredSession?
@@ -90,6 +96,8 @@ final class WatchModel {
             WatchStorage.remove(WatchStorage.session)
         }
         workout.onHeartRate = { [weak self] bpm in self?.heartRate(bpm) }
+        workout.onRemoteData = { [weak self] data in self?.fromPhone(data) }
+        workout.onEndedRemotely = { [weak self] in self?.endCompanion(syncID: nil) }
         // Wired here rather than from a view: a background wake to deliver a context may never render one.
         PhoneLink.shared.onContext = { [weak self] context in self?.receive(context) }
         PhoneLink.shared.activate()
@@ -171,7 +179,8 @@ final class WatchModel {
     }
 
     /// Where the crown starts: the prescribed load, else a sensible guess for a finding-weight set
-    /// (the last load used, none for bodyweight and assisted work, else the lightest makeable load).
+    /// (the last load used, the phone's estimate, none for bodyweight and assisted work, else the
+    /// lightest makeable load).
     func startingLoad(item index: Int, set setIndex: Int) -> Double? {
         guard let live, live.items.indices.contains(index), live.items[index].sets.indices.contains(setIndex) else { return nil }
         let item = live.items[index]
@@ -180,6 +189,8 @@ final class WatchModel {
         if let load = item.sets[setIndex].prescription.loadKg { return load }
         if let last = item.loggedSets.last { return last.loadKg }
         if let last = context?.history[item.exerciseID]?.last(where: { $0.kind.countsAsWork }) { return last.loadKg }
+        // The phone's guess from bodyweight and experience, so a heavy leg press isn't a long crown turn away.
+        if let guess = context?.startingLoads?[item.exerciseID] { return guess }
         switch exercise.loadBasis {
         case .bodyweightPlus, .assisted, .none: return 0
         case .external, .perHand: return increments(for: exercise)?.around(nil).first { $0 > 0 } ?? 0
@@ -349,7 +360,50 @@ final class WatchModel {
         }
     }
 
+    // MARK: Heart rate for the iPhone
+
+    /// The phone started a session and asked for heart rate: a workout here, mirrored to it. A
+    /// session already running on this Watch carries on instead.
+    func startCompanion() {
+        guard session == nil, companionSince == nil, healthEnabled else { return }
+        companionSince = Date()
+        Task {
+            _ = await HealthBridge.shared.requestAuthorization()
+            do {
+                try await workout.startMirrored()
+            } catch {
+                companionSince = nil
+            }
+        }
+    }
+
+    /// Ends the heart-rate workout and saves it under the phone's session id.
+    func endCompanion(syncID: UUID?) {
+        guard companionSince != nil else { return }
+        companionSince = nil
+        Task { _ = await workout.end(syncID: syncID) }
+    }
+
+    private func fromPhone(_ data: [Data]) {
+        for item in data {
+            guard let message = try? JSONDecoder().decode(MirrorMessage.self, from: item) else { continue }
+            switch message {
+            case .finish(let id, _):
+                endCompanion(syncID: id)
+            case .discard:
+                companionSince = nil
+                Task { await workout.discard() }
+            case .heartRate:
+                break
+            }
+        }
+    }
+
     private func heartRate(_ bpm: Double) {
+        if companionSince != nil, let data = try? JSONEncoder().encode(MirrorMessage.heartRate(bpm: bpm, date: Date())) {
+            Task { await workout.send(data) }
+            return
+        }
         guard var stored = session else { return }
         let recovered = stored.live.record(heartRate: bpm, zones: stored.context.zones)
         if recovered, stored.live.rest != nil {

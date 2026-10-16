@@ -60,12 +60,11 @@ struct SetLogger: View {
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 if hasLoad {
-                    Stepperish(title: loadTitle(exercise), value: Format.load(load, unit: increments.gym.unit, basis: exercise.loadBasis),
-                               minus: { load = increments.step(load, direction: -1) },
-                               plus: { load = increments.step(load, direction: 1) })
+                    LoadControl(title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis)
                 }
                 Stepperish(title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
-                           minus: { reps = max(0, reps - 1) }, plus: { reps += 1 })
+                           minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
+                           entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Int(text), n >= 0 { reps = min(n, 100) } })
                     .frame(maxWidth: hasLoad ? 140 : .infinity)
             }
             if let plates = increments.platesPerSide(load), !plates.isEmpty, exercise.equipment.platePaired {
@@ -97,7 +96,7 @@ struct SetLogger: View {
         }
     }
 
-    private func loadTitle(_ exercise: Exercise) -> String {
+    func loadTitle(_ exercise: Exercise) -> String {
         switch exercise.loadBasis {
         case .bodyweightPlus: "Added"
         case .assisted: "Assistance"
@@ -108,6 +107,10 @@ struct SetLogger: View {
 
     private func timedControls(set: LiveSet, exercise: Exercise) -> some View {
         VStack(spacing: 10) {
+            // Easy means easy: a warm-up in zones 1–2, and the sauna's climb, shown as they happen.
+            if let item = model.live?.items[itemIndex], item.plan.block == .warmup || item.plan.block == .recovery {
+                HeartRateLine(aim: item.plan.block == .warmup ? 1...2 : nil)
+            }
             if let seconds = set.prescription.seconds {
                 if let timerStart {
                     let end = timerStart.addingTimeInterval(TimeInterval(seconds))
@@ -141,6 +144,7 @@ struct SetLogger: View {
     private func conditioningControls(_ plan: ConditioningPlan) -> some View {
         VStack(spacing: 10) {
             Text(plan.summary).font(.headline.monospacedDigit())
+            HeartRateLine(aim: plan.zones)
             if let timerStart {
                 Text(timerStart, style: .timer).font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
             }
@@ -150,8 +154,13 @@ struct SetLogger: View {
                         .secondaryAction()
                 }
                 Button {
-                    let minutes = timerStart.map { max(1, Int(Date().timeIntervalSince($0) / 60)) } ?? plan.minutes
-                    model.update { $0.logConditioning(item: itemIndex, minutes: minutes, averageHeartRate: nil, zoneMinutes: [:]) }
+                    let now = Date()
+                    let minutes = timerStart.map { max(1, Int(now.timeIntervalSince($0) / 60)) } ?? plan.minutes
+                    let start = timerStart ?? now.addingTimeInterval(-Double(minutes * 60))
+                    // With the Watch measuring: the average and the minutes in each zone.
+                    let average = model.live?.averageHeartRate(from: start, to: now)
+                    let zones = model.live?.zoneMinutes(from: start, to: now, zones: model.heartRateZones) ?? [:]
+                    model.update { $0.logConditioning(item: itemIndex, minutes: minutes, averageHeartRate: average, zoneMinutes: zones) }
                     timerStart = nil
                 } label: {
                     Text("Done").font(.headline).frame(maxWidth: .infinity)
@@ -159,7 +168,10 @@ struct SetLogger: View {
                 .primaryAction()
                 .controlSize(.large)
             }
-            Text("With your Watch running the session, heart-rate zones are logged automatically.").font(.caption).foregroundStyle(.secondary)
+            if model.currentHeartRate == nil {
+                Text("Wear your Apple Watch with Lift Track on it and heart rate and zones are logged automatically.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -186,6 +198,11 @@ struct SetLogger: View {
             load = earlier
         } else if let last = model.analysis?.history[exercise.id]?.last?.loadKg {
             load = last
+        } else if let profile = model.profile,
+                  let guess = StartingLoad.estimate(exercise, reps: set.prescription.targetReps, bodyweightKg: model.state?.effectiveBodyweight,
+                                                    sex: profile.sex, experience: profile.experience) {
+            // Near what someone like this lifts, so a 400 lb leg press isn't fifty taps away.
+            load = increments.round(guess, down: true)
         } else {
             load = switch exercise.loadBasis {
             case .bodyweightPlus, .assisted, .none: 0
@@ -208,12 +225,43 @@ struct SetLogger: View {
     }
 }
 
-/// A − value + control, big enough for gym hands.
+/// The load: − and + step through what the gym can make (hold to keep going), and a tap on the
+/// number types it in.
+struct LoadControl: View {
+    let title: String
+    @Binding var load: Double
+    let increments: GymIncrements
+    let basis: LoadBasis
+
+    var body: some View {
+        let unit = increments.gym.unit
+        Stepperish(title: title, value: Format.load(load, unit: unit, basis: basis),
+                   minus: { load = increments.step(load, direction: -1) },
+                   plus: { load = increments.step(load, direction: 1) },
+                   entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
+                       guard let value = Double(text.replacingOccurrences(of: ",", with: ".")), value >= 0 else { return }
+                       load = increments.round(unit.toKilograms(value), down: false)
+                   })
+    }
+}
+
+/// A − value + control, big enough for gym hands. With an entry, a tap on the value types it.
 struct Stepperish: View {
+    /// Typing a value in: its unit, the text to start from, and what to do with the result.
+    struct Entry {
+        var unit: String
+        var text: String
+        var decimal = false
+        var apply: (String) -> Void
+    }
+
     let title: String
     let value: String
     let minus: () -> Void
     let plus: () -> Void
+    var entry: Entry?
+    @State private var typing = false
+    @State private var typed = ""
 
     var body: some View {
         VStack(spacing: 4) {
@@ -221,16 +269,38 @@ struct Stepperish: View {
             HStack(spacing: 6) {
                 Button(action: minus) { Image(systemName: "minus").frame(width: 36, height: 36) }
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
+                    .buttonRepeatBehavior(.enabled)
                     .accessibilityLabel("Less \(title.lowercased())")
-                Text(value)
-                    .font(.title3.weight(.semibold).monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(maxWidth: .infinity)
+                Button {
+                    guard let entry else { return }
+                    typed = entry.text
+                    typing = true
+                } label: {
+                    Text(value)
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .frame(minWidth: 28, maxWidth: .infinity)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .disabled(entry == nil)
+                // The number wins the space over the round buttons.
+                .layoutPriority(1)
+                .accessibilityHint(entry == nil ? "" : "Type a value")
                 Button(action: plus) { Image(systemName: "plus").frame(width: 36, height: 36) }
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
+                    .buttonRepeatBehavior(.enabled)
                     .accessibilityLabel("More \(title.lowercased())")
             }
+        }
+        .alert(title, isPresented: $typing) {
+            TextField(entry?.unit ?? "", text: $typed)
+                .keyboardType(entry?.decimal == true ? .decimalPad : .numberPad)
+            Button("Set") { entry?.apply(typed) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let unit = entry?.unit { Text("In \(unit)") }
         }
         .padding(8)
         .background(.insetBackground, in: .rect(cornerRadius: 16))
@@ -343,6 +413,108 @@ struct SwapSheet: View {
             .navigationTitle("Swap exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
+    }
+}
+
+/// Corrects a logged set: the weight, the reps, the rating. The sets still to come adjust again
+/// from the corrected numbers.
+struct EditSetSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let itemIndex: Int
+    let setIndex: Int
+    @State private var load: Double = 0
+    @State private var reps = 0
+    @State private var rating: SetRating?
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            if let live = model.live, live.items.indices.contains(itemIndex), live.items[itemIndex].sets.indices.contains(setIndex),
+               let logged = live.items[itemIndex].sets[setIndex].logged {
+                let exercise = model.catalog.resolve(live.items[itemIndex].exerciseID)
+                let increments = model.gymForToday.increments(for: exercise.equipment)
+                Form {
+                    Section {
+                        HStack(spacing: 12) {
+                            if exercise.loadBasis != .none {
+                                LoadControl(title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis)
+                            }
+                            Stepperish(title: "Reps", value: "\(reps)", minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
+                                       entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Int(text), n >= 0 { reps = min(n, 100) } })
+                                .frame(maxWidth: exercise.loadBasis != .none ? 140 : .infinity)
+                        }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    } footer: {
+                        Text("Tap a number to type it.")
+                    }
+                    if logged.kind != .warmup, logged.kind != .repOut {
+                        Section("How it felt") {
+                            Picker("Rating", selection: $rating) {
+                                ForEach(SetRating.allCases) { Text($0.label).tag(SetRating?.some($0)) }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+                }
+                .navigationTitle(exercise.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            if let environment = model.environment {
+                                model.update { live in
+                                    live.edit(item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load,
+                                              rating: rating, environment: environment)
+                                }
+                            }
+                            dismiss()
+                        }
+                    }
+                }
+                .onAppear {
+                    guard !loaded else { return }
+                    loaded = true
+                    load = logged.loadKg
+                    reps = logged.reps
+                    rating = logged.rating
+                }
+            } else {
+                ContentUnavailableView("Set not found", systemImage: "questionmark")
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+/// The Watch's latest reading, its zone, and the zones to aim for.
+struct HeartRateLine: View {
+    @Environment(AppModel.self) private var model
+    let aim: ClosedRange<Int>?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 5)) { _ in
+            if let bpm = model.currentHeartRate {
+                let zone = model.heartRateZones.zone(for: bpm)
+                let inside = aim.map { $0.contains(zone) } ?? true
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill").foregroundStyle(.red).symbolEffect(.pulse)
+                    Text("\(Int(bpm))").font(.title2.weight(.semibold).monospacedDigit())
+                    Text("Zone \(zone)").font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background((inside ? Color.green : Color.orange).opacity(0.18), in: .capsule)
+                    Spacer()
+                    if let aim {
+                        let low = Int(model.heartRateZones.range(zone: aim.lowerBound).lowerBound)
+                        let high = Int(model.heartRateZones.range(zone: aim.upperBound).upperBound)
+                        Text("Aim \(low)–\(high)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Heart rate \(Int(bpm)), zone \(zone)\(inside ? "" : aim.map { ", aim zone \($0.lowerBound) to \($0.upperBound)" } ?? "")")
+            }
         }
     }
 }

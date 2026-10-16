@@ -54,6 +54,11 @@ final class AppModel {
 
     // Live session and presentation.
     var live: LiveSession? { didSet { persistLive() } }
+    /// The latest reading from the Watch during a session led from here, and when it came.
+    private(set) var heartRate: Double?
+    private(set) var heartRateAt: Date?
+    @ObservationIgnored private var lastLivePersist = Date.distantPast
+    @ObservationIgnored private var heartRateOnly = false
     var showSession = false
     var finished: SessionRecord?
     var tab: AppTab = .today
@@ -381,6 +386,41 @@ final class AppModel {
         showSession = true
         RestAlerts.shared.requestPermission()
         LiveActivityBridge.update(live, catalog: catalog, unit: gym.unit)
+        heartRate = nil
+        // A workout on the Watch, mirrored here, for heart rate: warm-up, rests and conditioning.
+        if WatchLink.shared.watchAppInstalled { Task { await WorkoutMirror.shared.startWatchWorkout() } }
+    }
+
+    /// Readings from the Watch's mirrored workout.
+    func fromWatch(_ data: [Data]) {
+        for item in data {
+            guard case .heartRate(let bpm, let date)? = try? JSONDecoder().decode(MirrorMessage.self, from: item) else { continue }
+            heartRate = bpm
+            heartRateAt = date
+            guard var session = live else { continue }
+            let recovered = session.record(heartRate: bpm, zones: heartRateZones, now: date)
+            // Samples come every few seconds: they needn't hit the disk as often.
+            heartRateOnly = true
+            live = session
+            heartRateOnly = false
+            if recovered, settings.heartRateGuidedRest, session.rest != nil {
+                update { $0.endRest() }
+                RestAlerts.shared.heartRateRecovered()
+            }
+        }
+    }
+
+    /// A reading from the last half minute, or nothing.
+    var currentHeartRate: Double? {
+        guard let heartRate, let heartRateAt, Date().timeIntervalSince(heartRateAt) < 30 else { return nil }
+        return heartRate
+    }
+
+    var heartRateZones: HeartRateZones { HeartRateZones.estimated(age: profile?.age(), resting: restingHeartRate) }
+
+    private func tellWatch(_ message: MirrorMessage) {
+        guard WorkoutMirror.shared.isConnected, let data = try? JSONEncoder().encode(message) else { return }
+        Task { await WorkoutMirror.shared.send(data) }
     }
 
     /// Mutates the live session and keeps rest alerts and the Live Activity in step.
@@ -395,20 +435,24 @@ final class AppModel {
     func finish(feedback: SessionFeedback?) {
         guard let live else { return }
         let record = live.record(feedback: feedback)
+        // The Watch measured it: its workout, with heart rate and energy, is the one Health keeps.
+        let watchSaves = WorkoutMirror.shared.isConnected
+        tellWatch(.finish(id: record.id, title: record.title))
         self.live = nil
         showSession = false
         RestAlerts.shared.cancel()
         LiveActivityBridge.end()
-        keep(record)
+        keep(record, savedByWatch: watchSaves)
         finished = record
     }
 
-    /// Saves a finished session from this phone or the Watch, and to Health when it ran here.
-    func keep(_ record: SessionRecord) {
+    /// Saves a finished session from this phone or the Watch, and to Health when it ran here
+    /// (unless the Watch recorded the workout alongside).
+    func keep(_ record: SessionRecord, savedByWatch: Bool = false) {
         guard !record.exercises.isEmpty || !record.conditioning.isEmpty || !record.mobility.isEmpty else { return }
         store.save(record)
         reload()
-        if settings.saveToHealth, record.device != "Watch" {
+        if settings.saveToHealth, record.device != "Watch", !savedByWatch {
             Task {
                 try? await HealthBridge.shared.saveStrengthWorkout(id: record.id, version: 2, start: record.start, end: record.end,
                                                                    title: record.title, energyKcal: nil)
@@ -417,6 +461,7 @@ final class AppModel {
     }
 
     func discardLive() {
+        tellWatch(.discard)
         live = nil
         showSession = false
         RestAlerts.shared.cancel()
@@ -428,6 +473,8 @@ final class AppModel {
     }
 
     private func persistLive() {
+        if heartRateOnly, Date().timeIntervalSince(lastLivePersist) < 30 { return }
+        lastLivePersist = Date()
         if let live, let data = try? SystemJSON.encoder().encode(live) {
             try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
             try? data.write(to: liveURL, options: .atomic)

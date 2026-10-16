@@ -17,6 +17,12 @@ public final class LiveWorkoutSession: NSObject {
     public private(set) var samples: [(date: Date, bpm: Double)] = []
     /// Called on the main actor with each new bpm reading.
     @ObservationIgnored public var onHeartRate: ((Double) -> Void)?
+    /// Data the iPhone sent over a mirrored session.
+    @ObservationIgnored public var onRemoteData: (([Data]) -> Void)?
+    /// The iPhone ended a mirrored session without saying how.
+    @ObservationIgnored public var onEndedRemotely: (() -> Void)?
+    /// Mirrored to the iPhone, which leads the session.
+    public private(set) var isMirrored = false
 
     @ObservationIgnored private var session: HKWorkoutSession?
     @ObservationIgnored private var builder: HKLiveWorkoutBuilder?
@@ -26,6 +32,24 @@ public final class LiveWorkoutSession: NSObject {
     /// Starts a session and begins collecting. The workout carries `syncID` as its sync identifier
     /// (version 1), so the phone can later replace it with a higher version.
     public func start(activity: HKWorkoutActivityType = .traditionalStrengthTraining, syncID: UUID) async throws {
+        try await begin(activity: activity, syncID: syncID)
+    }
+
+    /// Starts a workout for a session the iPhone leads: this Watch measures, the phone shows it.
+    /// The workout gets its sync id when the phone says it's done (``end(syncID:)``).
+    public func startMirrored(activity: HKWorkoutActivityType = .traditionalStrengthTraining) async throws {
+        try await begin(activity: activity, syncID: nil)
+        try await session?.startMirroringToCompanionDevice()
+        isMirrored = true
+    }
+
+    /// Sends data to the iPhone over a mirrored session.
+    public func send(_ data: Data) async {
+        guard let session, isMirrored else { return }
+        try? await session.sendToRemoteWorkoutSession(data: data)
+    }
+
+    private func begin(activity: HKWorkoutActivityType, syncID: UUID?) async throws {
         guard session == nil else { return }
         guard let store = HealthBridge.shared.store else { throw HKError(.errorHealthDataUnavailable) }
         let configuration = HKWorkoutConfiguration()
@@ -47,7 +71,7 @@ public final class LiveWorkoutSession: NSObject {
         session.startActivity(with: start)
         do {
             try await builder.beginCollection(at: start)
-            try await builder.addMetadata([HKMetadataKeySyncIdentifier: syncID.uuidString, HKMetadataKeySyncVersion: 1])
+            if let syncID { try await builder.addMetadata([HKMetadataKeySyncIdentifier: syncID.uuidString, HKMetadataKeySyncVersion: 1]) }
             isRunning = true
         } catch {
             session.end()
@@ -69,12 +93,14 @@ public final class LiveWorkoutSession: NSObject {
     }
 
     /// Ends the session and saves the workout with the sync id metadata; returns the saved workout's end date.
-    public func end() async -> Date? {
+    /// A mirrored workout takes its sync id here, from the phone's session.
+    public func end(syncID: UUID? = nil) async -> Date? {
         guard let session, let builder else { return nil }
         let endDate = Date()
         session.end()
         defer { reset() }
         do {
+            if let syncID { try await builder.addMetadata([HKMetadataKeySyncIdentifier: syncID.uuidString, HKMetadataKeySyncVersion: 1]) }
             try await builder.endCollection(at: endDate)
             return try await builder.finishWorkout()?.endDate
         } catch {
@@ -95,6 +121,7 @@ public final class LiveWorkoutSession: NSObject {
         session = nil
         builder = nil
         isRunning = false
+        isMirrored = false
     }
 
     private func record(from source: HKWorkoutSession, latest: (date: Date, bpm: Double)?, average: Double?, energy: Double?) {
@@ -108,16 +135,26 @@ public final class LiveWorkoutSession: NSObject {
         onHeartRate?(latest.bpm)
     }
 
-    private func sessionChanged(_ source: HKWorkoutSession, running: Bool) {
+    private func sessionChanged(_ source: HKWorkoutSession, running: Bool, ended: Bool = false) {
         guard source === session else { return }
         isRunning = running
+        if ended, isMirrored { onEndedRemotely?() }
+    }
+
+    private func received(_ data: [Data], from source: HKWorkoutSession) {
+        guard source === session else { return }
+        onRemoteData?(data)
     }
 }
 
 extension LiveWorkoutSession: HKWorkoutSessionDelegate {
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                                            from fromState: HKWorkoutSessionState, date: Date) {
-        Task { @MainActor in self.sessionChanged(workoutSession, running: toState == .running) }
+        Task { @MainActor in self.sessionChanged(workoutSession, running: toState == .running, ended: toState == .ended) }
+    }
+
+    nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
+        Task { @MainActor in self.received(data, from: workoutSession) }
     }
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: any Error) {

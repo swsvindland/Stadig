@@ -22,6 +22,12 @@ final class WatchLink: NSObject {
         session.activate()
     }
 
+    /// A paired Watch with Lift Track on it.
+    var watchAppInstalled: Bool {
+        guard let session, session.activationState == .activated else { return false }
+        return session.isPaired && session.isWatchAppInstalled
+    }
+
     func publish(_ model: AppModel) {
         guard let session, session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
               let analysis = model.analysis, let profile = model.profile else { return }
@@ -45,10 +51,19 @@ final class WatchLink: NSObject {
             history[id] = sets.filter { days.contains(Day($0.date)) }
         }
         let zones = HeartRateZones.estimated(age: profile.age(), resting: model.restingHeartRate)
+        // Where the Watch's crown starts for exercises with no history yet.
+        var startingLoads: [String: Double] = [:]
+        for item in plan?.items ?? [] where item.isStrength && (analysis.history[item.exerciseID] ?? []).isEmpty {
+            let exercise = model.catalog.resolve(item.exerciseID)
+            if let guess = StartingLoad.estimate(exercise, reps: item.repRange.middle, bodyweightKg: model.state?.effectiveBodyweight,
+                                                 sex: profile.sex, experience: profile.experience) {
+                startingLoads[item.exerciseID] = model.gymForToday.increments(for: exercise.equipment).round(guess, down: true)
+            }
+        }
         let context = PhoneContext(plan: plan, upNext: upNext, gym: model.gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
                                    bodyweightKg: model.state?.effectiveBodyweight, history: history,
                                    enduranceScore: analysis.endurance.score, heartRateGuidedRest: model.settings.heartRateGuidedRest,
-                                   zones: zones, units: profile.units, sentAt: .distantPast)
+                                   zones: zones, units: profile.units, startingLoads: startingLoads, sentAt: .distantPast)
         guard let data = try? SystemJSON.encoder().encode(context), data != lastContext else { return }
         lastContext = data
         var stamped = context

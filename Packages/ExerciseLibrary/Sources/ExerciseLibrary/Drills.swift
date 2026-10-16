@@ -46,6 +46,11 @@ public enum Drills {
         }
     }
 
+    /// Heat after training the place has: the sauna first, then the steam room.
+    public static func recovery(in catalog: [Exercise], availability: Availability?) -> [Exercise] {
+        catalog.filter { $0.kind == .recovery && allows(availability, $0) }
+    }
+
     private static func allows(_ availability: Availability?, _ exercise: Exercise) -> Bool {
         availability?.allows(exercise) ?? true
     }

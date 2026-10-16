@@ -231,7 +231,7 @@ struct GymEditor: View {
                 }
             }
             Section {
-                ForEach(Apparatus.allCases, id: \.self) { item in
+                ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
                     Toggle(item.label, isOn: Binding(get: { gym.apparatus.contains(item) }, set: { on in
                         if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
                     }))
@@ -240,6 +240,17 @@ struct GymEditor: View {
                 Text("Fixtures")
             } footer: {
                 Text("A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.")
+            }
+            Section {
+                ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { item in
+                    Toggle(item.label, isOn: Binding(get: { gym.apparatus.contains(item) }, set: { on in
+                        if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
+                    }))
+                }
+            } header: {
+                Text("Recovery")
+            } footer: {
+                Text("Sessions end with an optional 15 minutes in the sauna (or 10 in the steam room), outside the time you train.")
             }
             Section("Loads") {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
