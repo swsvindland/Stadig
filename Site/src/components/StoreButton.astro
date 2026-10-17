@@ -1,0 +1,7 @@
+---
+import type { App } from "../content/site";
+const { app, ghost = false } = Astro.props as { app: App; ghost?: boolean };
+---
+{app.appStoreUrl
+  ? <a class={`btn${ghost ? " ghost" : ""}`} href={app.appStoreUrl} rel="noopener">Get {app.name} on the App Store</a>
+  : <span class={`btn${ghost ? " ghost" : ""}`} aria-disabled="true" title="Not yet released">{app.name}: coming to the App Store</span>}

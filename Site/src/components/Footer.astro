@@ -1,0 +1,41 @@
+---
+import Logo from "./Logo.astro";
+import { brand, apps } from "../content/site";
+---
+<footer>
+  <div class="wrap cols">
+    <div>
+      <p class="mark"><Logo size={22} /> {brand.name}</p>
+      <p class="muted small">{brand.pronunciation}. {brand.meaning}<br/>Made by {brand.publisher}.</p>
+    </div>
+    <div>
+      <p class="small"><strong>Apps</strong></p>
+      {apps.map((a) => <a class="small" href={`/${a.slug}`}>{a.name}</a>)}
+    </div>
+    <div>
+      <p class="small"><strong>Company</strong></p>
+      <a class="small" href="/principles">Principles</a>
+      <a class="small" href="/faq">FAQ</a>
+      <a class="small" href="/privacy">Privacy</a>
+      <a class="small" href={`mailto:${brand.email}`}>{brand.email}</a>
+    </div>
+    <div>
+      <p class="small"><strong>For machines</strong></p>
+      <a class="small" href="/llms.txt">llms.txt</a>
+      <a class="small" href="/llms-full.txt">llms-full.txt</a>
+      <a class="small" href="/sitemap-index.xml">Sitemap</a>
+    </div>
+  </div>
+  <p class="wrap muted small fine">© {new Date().getFullYear()} {brand.publisher}. Apple, iPhone, iPad, Apple Watch and App Store are trademarks of Apple Inc.</p>
+</footer>
+<style>
+  footer { border-top: 1px solid var(--line); padding-block: 2.5rem 2rem; margin-top: 2rem; }
+  .cols { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 2rem; }
+  @media (max-width: 40rem) { .cols { grid-template-columns: 1fr 1fr; } }
+  .mark { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .small { font-size: 0.9rem; }
+  p.small { margin-bottom: 0.5rem; }
+  a.small { display: block; color: var(--ink-2); text-decoration: none; padding: 0.15rem 0; }
+  a.small:hover { color: var(--ink); text-decoration: underline; }
+  .fine { margin-top: 2rem; font-size: 0.8rem; }
+</style>

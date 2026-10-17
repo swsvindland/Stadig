@@ -1,0 +1,19 @@
+---
+import Base from "../layouts/Base.astro";
+import { brand, faq } from "../content/site";
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+}];
+---
+<Base title="FAQ" description={`Questions about ${brand.name}'s apps: Lift Track, Macro Track and Mind Track. Pricing, offline use, privacy, devices and the ideas behind them.`} jsonLd={jsonLd}>
+  <section class="wrap">
+    <p class="eyebrow">FAQ</p>
+    <h1>Questions, answered plainly.</h1>
+    <div class="prose" style="margin-top:2rem">
+      {faq.map((f) => <details open><summary>{f.q}</summary><p>{f.a}</p></details>)}
+    </div>
+    <p style="margin-top:2rem" class="muted">Something else? <a href={`mailto:${brand.email}`}>{brand.email}</a></p>
+  </section>
+</Base>

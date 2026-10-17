@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import { brand, principles, stats } from "../content/site";
+const description = `The seven principles behind every ${brand.name} app: prescribe don't describe, real-world tests, no streaks or XP, offline first, private by construction, one-time purchase, no third-party code.`;
+---
+<Base title="Principles" description={description}>
+  <section class="wrap">
+    <p class="eyebrow">Principles</p>
+    <h1>Steady, by design.</h1>
+    <p class="lede">{brand.name} is Norwegian for steady. The apps are built for the long game: years of training, eating and learning, not a thirty-day challenge. These are the rules every app follows, and the ones we check new work against.</p>
+  </section>
+  <section class="wrap prose">
+    {principles.map((p, i) => <><h2>{i + 1}. {p.title}</h2><p>{p.body}</p></>)}
+    <h2>The stats, and what moves them</h2>
+    <p>Every app publishes a few honest readings. They move only on the tests below.</p>
+    <ul>{stats.map((s) => <li><strong>{s.name}</strong>: {s.source}.</li>)}</ul>
+    <h2>Discipline, defined</h2>
+    <p>Discipline is the one stat every app shares. It is a rolling four-week adherence rate against the planned days, with a target band of 80 to 90 percent. Going above the band earns nothing extra. One miss barely moves it. Rest days are planned days and count as kept. A day with nothing logged is unknown, not a failure. Vacation, illness and exempt crunch days never count either way.</p>
+  </section>
+</Base>
