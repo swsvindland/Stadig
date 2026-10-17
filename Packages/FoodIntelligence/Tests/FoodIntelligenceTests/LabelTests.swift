@@ -71,7 +71,7 @@ struct LabelTests {
         #expect(LabelAssist.isThin(nil) && LabelAssist.isThin(parsed) && !LabelAssist.isThin(filled))
     }
 
-    @Test func ocrReadsARenderedPanelInEitherOrientation() async throws {
+    @Test(.needsVisionOCR) func ocrReadsARenderedPanelInEitherOrientation() async throws {
         let rows = sampleLabel
         for sideways in [false, true] {
             let lines = try await LabelOCR.lines(in: renderLabel(rows, sideways: sideways))
@@ -82,7 +82,7 @@ struct LabelTests {
         #expect(try await LabelOCR.lines(in: blankImage()).isEmpty)
     }
 
-    @Test func aPhotographedSupplementPanelReadsIntoNutrients() async throws {
+    @Test(.needsVisionOCR) func aPhotographedSupplementPanelReadsIntoNutrients() async throws {
         let rows: [(String, String?)] = [
             ("Supplement Facts", nil), ("Serving Size 2 Softgels", nil), ("Amount Per Serving", "% DV"),
             ("Calories 20", nil), ("Total Fat 2 g", "3%*"), ("Vitamin D3", nil), ("(as cholecalciferol) 25 mcg", "125%"),

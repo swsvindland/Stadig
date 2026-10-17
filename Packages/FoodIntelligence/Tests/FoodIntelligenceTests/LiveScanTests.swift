@@ -25,7 +25,7 @@ struct LiveScanTests {
         }
     }
 
-    @Test func aPannedLabelFillsInFrameByFrame() async throws {
+    @Test(.needsVisionOCR) func aPannedLabelFillsInFrameByFrame() async throws {
         let label = renderLabel(panel, sideways: false)
         // No slice holds both calories and protein.
         let frames = slices(label, [(0, 0.4), (0.02, 0.42), (0.3, 0.7), (0.32, 0.72), (0.6, 1), (0.58, 0.98)])
@@ -46,7 +46,7 @@ struct LiveScanTests {
         #expect(reading.extras["calcium"] == 260)
     }
 
-    @Test func thePackageFrontGivesTheNameAndNoValues() async throws {
+    @Test(.needsVisionOCR) func thePackageFrontGivesTheNameAndNoValues() async throws {
         let front = renderFront(title: "Oat Crunch", lines: ["HONEY ALMOND", "20g PROTEIN", "Whole grain oats"])
         let text = try await LabelOCR.frame(front)
         #expect(text.headline == "Oat Crunch", "\(text.lines)")

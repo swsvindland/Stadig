@@ -4,7 +4,18 @@ import Foundation
 import FoodDatabase
 import Synchronization
 import SystemCore
+import Testing
 @testable import FoodIntelligence
+
+// MARK: Vision
+
+extension Trait where Self == ConditionTrait {
+    /// For tests that run real Vision OCR. GitHub's virtual Macs have no Neural Engine, so the text
+    /// recognizer can't load there; the package-tests workflow sets NO_VISION_OCR.
+    static var needsVisionOCR: Self {
+        .disabled(if: ProcessInfo.processInfo.environment["NO_VISION_OCR"] != nil, "Vision's text recognizer can't load without a Neural Engine")
+    }
+}
 
 // MARK: Foods
 

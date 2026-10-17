@@ -51,6 +51,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Test packages
+        env:
+          # No Neural Engine on these virtual Macs, so tests that run real Vision OCR are skipped.
+          NO_VISION_OCR: "1"
         run: |
           failed=()
           for pkg in Packages/*/; do
