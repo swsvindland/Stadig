@@ -1,0 +1,2061 @@
+{
+  "skills": [
+    {
+      "id": "subject-verb",
+      "title": "Subject–verb agreement",
+      "level": 1,
+      "lesson": "A verb must agree with its subject: a singular subject takes a singular verb, and a plural subject takes a plural verb. The usual trap is a phrase between the two, as in 'the bag of apples', where the subject is still 'bag'. Words such as 'each', 'every' and 'everyone' are singular. With 'either … or' and 'neither … nor', the verb agrees with the nearer subject.",
+      "example": "The list of ingredients is printed on the back of the packet."
+    },
+    {
+      "id": "pronoun-case",
+      "title": "Pronoun case",
+      "level": 1,
+      "lesson": "Use subject pronouns (I, he, she, we, they, who) for whoever does the action, and object pronouns (me, him, her, us, them, whom) after verbs and prepositions. In a pair such as 'Sam and me', cover the other name and test the pronoun alone: 'invited me', not 'invited I'. 'Myself' needs an 'I' earlier in the same sentence, so 'the tickets are for Ravi and myself' is wrong. Use 'who' or 'whoever' where 'he' would fit, and 'whom' where 'him' would fit.",
+      "example": "The manager asked Omar and me to lead the training session."
+    },
+    {
+      "id": "homophones",
+      "title": "Homophones",
+      "level": 1,
+      "lesson": "'It's', 'they're', 'you're' and 'who's' are contractions of 'it is' (or 'it has'), 'they are', 'you are' and 'who is' (or 'who has'). The possessives 'its', 'their', 'your' and 'whose' never take an apostrophe. 'There' points to a place, and 'too' means 'also' or 'more than enough'; otherwise the word is 'to'. If you can expand the word to 'it is' or 'they are', it needs an apostrophe.",
+      "example": "They're sure it's their dog, even though its collar is missing."
+    },
+    {
+      "id": "apostrophes",
+      "title": "Possessive apostrophes",
+      "level": 1,
+      "lesson": "To show that one person or thing owns something, add 's: the pilot's seat. For a plural ending in s, add only an apostrophe (the pilots' lounge); for a plural that doesn't end in s, add 's (the children's menu). When two people own something together, only the second name takes the possessive: Anna and Raj's flat. Never use an apostrophe just to make a word plural.",
+      "example": "The guests' coats are in Anna and Raj's spare room."
+    },
+    {
+      "id": "fragments",
+      "title": "Sentence fragments",
+      "level": 1,
+      "lesson": "A sentence needs a subject and a main verb, and it must make sense on its own. Fragments usually happen when a dependent clause ('Because the train was late.') or a phrase ('Such as flour and sugar.') is punctuated as if it were a full sentence. Fix a fragment by joining it to the sentence next to it, or by adding the missing subject or verb.",
+      "example": "We left early because the forecast warned of snow."
+    },
+    {
+      "id": "run-ons",
+      "title": "Comma splices and run-ons",
+      "level": 2,
+      "lesson": "Two complete sentences can't be joined with only a comma (a comma splice) or with no punctuation at all (a run-on). Join them with a full stop, a semicolon, or a comma plus a conjunction such as 'and', 'but', 'so' or 'yet'. Words like 'however', 'therefore' and 'instead' are not conjunctions, so they need a semicolon or full stop before them.",
+      "example": "The shop was closed, so we bought bread at the station instead."
+    },
+    {
+      "id": "commas",
+      "title": "Commas",
+      "level": 2,
+      "lesson": "Put a comma after an introductory clause, especially where the reader might otherwise misread the sentence. Put commas around extra information that could be removed without changing who or what you mean, but not around information that identifies the noun. Use a comma before 'and', 'but' or 'so' when it joins two complete sentences. Never put a single comma between a subject and its verb.",
+      "example": "Lisbon, which is built on seven hills, is a tiring city to explore on foot."
+    },
+    {
+      "id": "semicolons-colons",
+      "title": "Semicolons and colons",
+      "level": 2,
+      "lesson": "A semicolon joins two closely related complete sentences, or separates list items that already contain commas. A colon follows a complete clause and introduces a list, an example or an explanation. Don't put a colon straight after a verb or preposition ('The bag contains: a towel'), and don't use a semicolon where one side couldn't stand as a sentence.",
+      "example": "The museum has two highlights: a Roman mosaic and a Viking sword."
+    },
+    {
+      "id": "pronoun-reference",
+      "title": "Pronoun agreement and reference",
+      "level": 2,
+      "lesson": "A pronoun must agree in number with the noun it stands for, so plural nouns take 'they' and 'them', not 'it'. Its reference must also be clear: if 'she' could point to two different women, rewrite the sentence or repeat the name. Don't switch between 'one', 'you' and 'people' partway through a sentence.",
+      "example": "When the shoes arrived, they were a size too small."
+    },
+    {
+      "id": "verb-tense",
+      "title": "Verb tense",
+      "level": 2,
+      "lesson": "Keep verbs in the same tense unless the time you're describing actually changes. Irregular verbs have separate past and past-participle forms: 'sang' but 'have sung', 'took' but 'has taken'. Use the past perfect ('had left') for an action completed before another past event, as in 'By the time we arrived, the bus had left'.",
+      "example": "By the time we reached the summit, the clouds had rolled in."
+    },
+    {
+      "id": "confused-words",
+      "title": "Commonly confused words",
+      "level": 2,
+      "lesson": "These words sound alike or are related, but they aren't interchangeable. 'Affect' is usually the verb and 'effect' the noun; use 'fewer' for things you can count and 'less' for amounts; 'than' compares, while 'then' is about time. You lie down but lay something down, a speaker implies while a listener infers, and one thing complements another by completing it. A principal is the main one and a principle is a rule, 'loose' means not tight while 'lose' is a verb, and 'further' (not 'farther') is used for extent, as in 'further questions'.",
+      "example": "Fewer people came than we expected, but the rain didn't affect the mood."
+    },
+    {
+      "id": "parallelism",
+      "title": "Parallel structure",
+      "level": 3,
+      "lesson": "Items joined by 'and' or 'or', and pairs such as 'both … and', 'either … or' and 'not only … but also', should take the same grammatical form. Match a noun with a noun, an -ing word with an -ing word, and a 'to' verb with a 'to' verb. The usual trap is switching form partway through, as in 'He likes cooking and to garden'.",
+      "example": "She likes cooking for friends and walking in the hills."
+    },
+    {
+      "id": "modifiers",
+      "title": "Dangling and misplaced modifiers",
+      "level": 3,
+      "lesson": "A describing phrase should sit next to the word it describes. When a sentence opens with a phrase such as 'Running for the bus,', the words straight after it must name whoever is doing the walking; otherwise the phrase dangles. A phrase placed too far from its word attaches to the wrong noun, as in 'a sofa from a shop with a broken leg'.",
+      "example": "Tired after the long drive, we went straight to bed."
+    },
+    {
+      "id": "concision",
+      "title": "Concision",
+      "level": 3,
+      "lesson": "Clear writing says the same thing in fewer words. Cut phrases that repeat themselves ('past history', 'close proximity', 'unexpected surprise'), and replace padding such as 'in the event that' with 'if'. Prefer a strong verb ('investigate') to a noun phrase built around it ('carry out an investigation into').",
+      "example": "If the train is late, we'll take a taxi."
+    },
+    {
+      "id": "adjectives-adverbs",
+      "title": "Adjectives and adverbs",
+      "level": 2,
+      "lesson": "Adjectives describe nouns and adverbs describe actions, so you do something well or badly, not good or bad. After linking verbs such as 'is', 'seems', 'smells' and 'tastes', use an adjective: the soup tastes good, the plan sounds risky. 'Really' is the intensifier in standard writing, not 'real'. Short adjectives usually take -er and -est, longer ones take 'more' and 'most', and never both at once.",
+      "example": "The new bakery is busier than the old one, and its bread tastes really good."
+    }
+  ],
+  "items": [
+    {
+      "id": "subject-verb-01",
+      "skill": "subject-verb",
+      "prompt": "The box of old letters ___ in the attic.",
+      "choices": [
+        "is",
+        "are",
+        "were",
+        "have been"
+      ],
+      "answer": 0,
+      "explanation": "The subject is 'box', which is singular, so it takes 'is'. The phrase 'of old letters' doesn't change the subject."
+    },
+    {
+      "id": "subject-verb-02",
+      "skill": "subject-verb",
+      "prompt": "Each of the new laptops ___ with a two-year warranty.",
+      "choices": [
+        "come",
+        "comes",
+        "are coming",
+        "have come"
+      ],
+      "answer": 1,
+      "explanation": "'Each' is singular, so the verb is 'comes'. 'Of the new laptops' only describes it."
+    },
+    {
+      "id": "subject-verb-03",
+      "skill": "subject-verb",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The results of the survey was published on Monday.",
+        "Neither the manager nor her assistants was told about the delay.",
+        "Everyone in both offices have been invited to the lunch.",
+        "The cost of the repairs was higher than the quote."
+      ],
+      "answer": 3,
+      "explanation": "The subject is 'cost', which is singular, so 'was' is right. The others need 'were' (results, assistants) or 'has' (everyone)."
+    },
+    {
+      "id": "subject-verb-04",
+      "skill": "subject-verb",
+      "prompt": "My sister, along with two of her friends, ___ running the marathon this year.",
+      "choices": [
+        "are",
+        "were",
+        "is",
+        "have been"
+      ],
+      "answer": 2,
+      "explanation": "Phrases such as 'along with' and 'as well as' don't make the subject plural. The subject is 'my sister', so the verb is 'is'."
+    },
+    {
+      "id": "subject-verb-05",
+      "skill": "subject-verb",
+      "prompt": "There ___ several reasons why the train was late.",
+      "choices": [
+        "is",
+        "was",
+        "has been",
+        "are"
+      ],
+      "answer": 3,
+      "explanation": "After 'there', the verb agrees with the noun that follows it. 'Reasons' is plural, so use 'are'."
+    },
+    {
+      "id": "subject-verb-06",
+      "skill": "subject-verb",
+      "prompt": "The number of applicants ___ risen every year since 2015.",
+      "choices": [
+        "have",
+        "has",
+        "are",
+        "were"
+      ],
+      "answer": 1,
+      "explanation": "The subject is 'number', which is singular, so it takes 'has'. (By contrast, 'a number of applicants' takes a plural verb.)"
+    },
+    {
+      "id": "subject-verb-07",
+      "skill": "subject-verb",
+      "prompt": "Either the drivers or the guide ___ the keys to the van.",
+      "choices": [
+        "has",
+        "have",
+        "are holding",
+        "keep"
+      ],
+      "answer": 0,
+      "explanation": "With 'either … or', the verb agrees with the nearer subject. 'The guide' is singular, so use 'has'."
+    },
+    {
+      "id": "subject-verb-08",
+      "skill": "subject-verb",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The quality of the photos are surprisingly good.",
+        "One of the reasons we moved were the schools.",
+        "Every one of the bottles has a cracked seal.",
+        "Each of the rooms have its own bathroom."
+      ],
+      "answer": 2,
+      "explanation": "'Every one' is singular, so 'has' is right. The other subjects ('quality', 'one', 'each') are also singular but have been given plural verbs."
+    },
+    {
+      "id": "subject-verb-09",
+      "skill": "subject-verb",
+      "prompt": "Physics ___ my weakest subject at school.",
+      "choices": [
+        "were",
+        "are",
+        "have been",
+        "was"
+      ],
+      "answer": 3,
+      "explanation": "School subjects such as physics and mathematics end in s but are singular, so they take 'was'."
+    },
+    {
+      "id": "subject-verb-10",
+      "skill": "subject-verb",
+      "prompt": "The keys to the storage cupboard ___ missing again.",
+      "choices": [
+        "is",
+        "are",
+        "has been",
+        "was"
+      ],
+      "answer": 1,
+      "explanation": "The subject is 'keys', which is plural, so it takes 'are'. 'Cupboard' is part of the phrase 'to the storage cupboard'."
+    },
+    {
+      "id": "pronoun-case-01",
+      "skill": "pronoun-case",
+      "prompt": "The client sent the revised contract to Priya and ___.",
+      "choices": [
+        "I",
+        "me",
+        "myself",
+        "mine"
+      ],
+      "answer": 1,
+      "explanation": "'To' is a preposition, so it takes the object pronoun 'me'. Test it alone: 'sent it to me', not 'sent it to I'."
+    },
+    {
+      "id": "pronoun-case-02",
+      "skill": "pronoun-case",
+      "prompt": "Between you and ___, the second proposal is stronger.",
+      "choices": [
+        "I",
+        "myself",
+        "me",
+        "mine"
+      ],
+      "answer": 2,
+      "explanation": "'Between' is a preposition, so both pronouns after it take the object form: 'between you and me'."
+    },
+    {
+      "id": "pronoun-case-03",
+      "skill": "pronoun-case",
+      "prompt": "My brother and ___ spent the weekend repainting the kitchen.",
+      "choices": [
+        "I",
+        "me",
+        "myself",
+        "mine"
+      ],
+      "answer": 0,
+      "explanation": "The pronoun is part of the subject, so use 'I'. Drop 'my brother and' to check: 'I spent the weekend', not 'me spent'."
+    },
+    {
+      "id": "pronoun-case-04",
+      "skill": "pronoun-case",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The coach gave Sam and I extra training sessions.",
+        "The coach gave Sam and myself extra training sessions.",
+        "The coach gave Sam and me extra training sessions.",
+        "The coach gave I and Sam extra training sessions."
+      ],
+      "answer": 2,
+      "explanation": "'Sam and me' receives the action of 'gave', so it takes the object form 'me'. 'Myself' is only correct when 'I' is already the subject."
+    },
+    {
+      "id": "pronoun-case-05",
+      "skill": "pronoun-case",
+      "prompt": "To ___ should I address the complaint?",
+      "choices": [
+        "who",
+        "whom",
+        "whomever",
+        "whoever"
+      ],
+      "answer": 1,
+      "explanation": "After a preposition such as 'to', use the object form 'whom'."
+    },
+    {
+      "id": "pronoun-case-06",
+      "skill": "pronoun-case",
+      "prompt": "The candidate ___ the panel believed was best qualified withdrew her application.",
+      "choices": [
+        "who",
+        "whom",
+        "whose",
+        "which"
+      ],
+      "answer": 0,
+      "explanation": "The pronoun is the subject of 'was best qualified' (the panel believed she was best qualified), so it takes 'who'. 'The panel believed' is just inserted."
+    },
+    {
+      "id": "pronoun-case-07",
+      "skill": "pronoun-case",
+      "prompt": "The organisers thanked ___ and the other volunteers at the end of the night.",
+      "choices": [
+        "she",
+        "her",
+        "herself",
+        "hers"
+      ],
+      "answer": 1,
+      "explanation": "'Her' is the object of 'thanked'. Remove 'and the other volunteers' to check: 'thanked her', not 'thanked she'."
+    },
+    {
+      "id": "pronoun-case-08",
+      "skill": "pronoun-case",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Her and her partner run a small bakery in town.",
+        "Her and her partner runs a small bakery in town.",
+        "She and her partner runs a small bakery in town.",
+        "She and her partner run a small bakery in town."
+      ],
+      "answer": 3,
+      "explanation": "The pronoun is part of the subject, so it must be 'she'. A subject joined by 'and' is plural, so the verb is 'run'."
+    },
+    {
+      "id": "pronoun-case-09",
+      "skill": "pronoun-case",
+      "prompt": "The prize will go to ___ finishes the course in the fastest time.",
+      "choices": [
+        "whoever",
+        "whomever",
+        "who",
+        "whom"
+      ],
+      "answer": 0,
+      "explanation": "The pronoun is the subject of 'finishes', so use 'whoever', even after 'to'. The whole clause 'whoever finishes the course' is what follows the preposition."
+    },
+    {
+      "id": "pronoun-case-10",
+      "skill": "pronoun-case",
+      "prompt": "Please let Tom or ___ know if the delivery is late.",
+      "choices": [
+        "I",
+        "myself",
+        "we",
+        "me"
+      ],
+      "answer": 3,
+      "explanation": "'Me' is the object of 'let'. Check it alone: 'let me know', not 'let I know' or 'let myself know'."
+    },
+    {
+      "id": "homophones-01",
+      "skill": "homophones",
+      "prompt": "The company changed ___ logo after the merger.",
+      "choices": [
+        "its",
+        "it's",
+        "its'",
+        "it is"
+      ],
+      "answer": 0,
+      "explanation": "'Its' is the possessive and has no apostrophe. 'It's' always means 'it is' or 'it has', and an apostrophe after 'its' is never correct."
+    },
+    {
+      "id": "homophones-02",
+      "skill": "homophones",
+      "prompt": "Let me know when ___ ready to leave.",
+      "choices": [
+        "your",
+        "you",
+        "you're",
+        "yours"
+      ],
+      "answer": 2,
+      "explanation": "'You're' is short for 'you are': 'when you are ready'. 'Your' shows possession."
+    },
+    {
+      "id": "homophones-03",
+      "skill": "homophones",
+      "prompt": "The hikers left ___ muddy boots by the door.",
+      "choices": [
+        "there",
+        "they're",
+        "theirs",
+        "their"
+      ],
+      "answer": 3,
+      "explanation": "'Their' shows possession: the boots belong to the hikers. 'There' is a place and 'they're' means 'they are'."
+    },
+    {
+      "id": "homophones-04",
+      "skill": "homophones",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Its been a long week, and everyone is too tired to cook.",
+        "It's been a long week, and everyone is to tired to cook.",
+        "It's been a long week, and everyone is too tired to cook.",
+        "Its been a long week, and everyone is to tired to cook."
+      ],
+      "answer": 2,
+      "explanation": "'It's' stands for 'it has' here, so it needs the apostrophe. 'Too' means 'excessively', while 'to' goes with the verb 'cook'."
+    },
+    {
+      "id": "homophones-05",
+      "skill": "homophones",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Who's car is that, and who's driving it?",
+        "Whose car is that, and who's driving it?",
+        "Whose car is that, and whose driving it?",
+        "Who's car is that, and whose driving it?"
+      ],
+      "answer": 1,
+      "explanation": "'Whose' asks about ownership ('whose car'), while 'who's' means 'who is' ('who is driving it')."
+    },
+    {
+      "id": "homophones-06",
+      "skill": "homophones",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The soup was to salty to eat.",
+        "The soup was too salty too eat.",
+        "The soup was to salty too eat.",
+        "The soup was too salty to eat."
+      ],
+      "answer": 3,
+      "explanation": "'Too' means 'excessively' ('too salty'), and 'to' introduces the verb ('to eat')."
+    },
+    {
+      "id": "homophones-07",
+      "skill": "homophones",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "They're moving their office to a new building in May.",
+        "Their moving their office to a new building in May.",
+        "They're moving there office to a new building in May.",
+        "Their moving they're office to a new building in May."
+      ],
+      "answer": 0,
+      "explanation": "'They're' means 'they are' ('they are moving'), and 'their' shows possession ('their office')."
+    },
+    {
+      "id": "homophones-08",
+      "skill": "homophones",
+      "prompt": "I think ___ been in the oven too long.",
+      "choices": [
+        "its",
+        "it's",
+        "its'",
+        "it"
+      ],
+      "answer": 1,
+      "explanation": "'It's' is short for 'it has' here: 'I think it has been in the oven too long'."
+    },
+    {
+      "id": "homophones-09",
+      "skill": "homophones",
+      "prompt": "Leave the boxes over ___ by the window.",
+      "choices": [
+        "there",
+        "their",
+        "they're",
+        "theirs"
+      ],
+      "answer": 0,
+      "explanation": "'There' refers to a place. 'Their' shows possession and 'they're' means 'they are'."
+    },
+    {
+      "id": "homophones-10",
+      "skill": "homophones",
+      "prompt": "Is this ___ umbrella, or did someone else leave it?",
+      "choices": [
+        "you're",
+        "your",
+        "yours",
+        "your's"
+      ],
+      "answer": 1,
+      "explanation": "'Your' is the possessive used before a noun. 'You're' means 'you are', 'yours' stands alone ('Is this yours?'), and 'your's' is never correct."
+    },
+    {
+      "id": "apostrophes-01",
+      "skill": "apostrophes",
+      "prompt": "The two ___ passports were in the same envelope.",
+      "choices": [
+        "traveller's",
+        "travellers'",
+        "travellers",
+        "travellers's"
+      ],
+      "answer": 1,
+      "explanation": "There are two travellers, so the plural takes an apostrophe after its final s. A plural ending in s doesn't add another s."
+    },
+    {
+      "id": "apostrophes-02",
+      "skill": "apostrophes",
+      "prompt": "The ___ section is on the third floor of the library.",
+      "choices": [
+        "childrens'",
+        "childrens",
+        "children's",
+        "childs'"
+      ],
+      "answer": 2,
+      "explanation": "'Children' is a plural that doesn't end in s, so it takes 's: 'children's'."
+    },
+    {
+      "id": "apostrophes-03",
+      "skill": "apostrophes",
+      "prompt": "We stayed at ___ cottage, which they bought together last year.",
+      "choices": [
+        "Tom's and Ella's",
+        "Toms and Ellas",
+        "Tom and Ellas'",
+        "Tom and Ella's"
+      ],
+      "answer": 3,
+      "explanation": "When two people own one thing together, only the second name takes the possessive: 'Tom and Ella's cottage'."
+    },
+    {
+      "id": "apostrophes-04",
+      "skill": "apostrophes",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The market sells fresh tomato's and avocado's every Saturday.",
+        "The market sells fresh tomatoes' and avocados' every Saturday.",
+        "The market sells fresh tomatoes and avocados every Saturday.",
+        "The market sell's fresh tomatoes and avocados every Saturday."
+      ],
+      "answer": 2,
+      "explanation": "Plain plurals and verbs never take an apostrophe. 'Tomatoes' and 'avocados' are simply plural, and 'sells' is a verb."
+    },
+    {
+      "id": "apostrophes-05",
+      "skill": "apostrophes",
+      "prompt": "The ___ changing rooms are on the left, past the pool.",
+      "choices": [
+        "mens'",
+        "men's",
+        "mens",
+        "man's"
+      ],
+      "answer": 1,
+      "explanation": "'Men' is a plural that doesn't end in s, so it takes 's: 'men's'."
+    },
+    {
+      "id": "apostrophes-06",
+      "skill": "apostrophes",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The Patel's house is the one with the red door.",
+        "The Patels house is the one with the red door.",
+        "The Patels's house is the one with the red door.",
+        "The Patels' house is the one with the red door."
+      ],
+      "answer": 3,
+      "explanation": "'The Patels' is the plural of the family name. A plural ending in s becomes possessive with an apostrophe alone."
+    },
+    {
+      "id": "apostrophes-07",
+      "skill": "apostrophes",
+      "prompt": "We borrowed ___ ladder to clear the gutters.",
+      "choices": [
+        "Priya's",
+        "Priyas",
+        "Priyas'",
+        "Priya"
+      ],
+      "answer": 0,
+      "explanation": "One person owns the ladder, so add 's to her name: 'Priya's ladder'."
+    },
+    {
+      "id": "apostrophes-08",
+      "skill": "apostrophes",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The two companies' profits rose sharply last year.",
+        "The two company's profits rose sharply last year.",
+        "The two companies profits rose sharply last year.",
+        "The two companies's profits rose sharply last year."
+      ],
+      "answer": 0,
+      "explanation": "There are two companies, so the plural 'companies' takes an apostrophe after its final s to show possession."
+    },
+    {
+      "id": "apostrophes-09",
+      "skill": "apostrophes",
+      "prompt": "Most ___ first car is second-hand.",
+      "choices": [
+        "peoples'",
+        "people's",
+        "peoples",
+        "people"
+      ],
+      "answer": 1,
+      "explanation": "'People' is a plural that doesn't end in s, so its possessive is 'people's'."
+    },
+    {
+      "id": "apostrophes-10",
+      "skill": "apostrophes",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The bakerys croissants sell out by nine o'clock.",
+        "The bakery's croissant's sell out by nine o'clock.",
+        "The bakery's croissants sell out by nine o'clock.",
+        "The bakery croissant's sell out by nine o'clock."
+      ],
+      "answer": 2,
+      "explanation": "The croissants belong to the bakery, so 'bakery's' takes an apostrophe. 'Croissants' is a plain plural and doesn't."
+    },
+    {
+      "id": "fragments-01",
+      "skill": "fragments",
+      "prompt": "The new library, which opened last spring, ___ already too small for the town.",
+      "choices": [
+        "being",
+        "which is",
+        "is",
+        "having been"
+      ],
+      "answer": 2,
+      "explanation": "The subject 'the new library' needs a main verb, and 'is' supplies it. The other options leave the sentence without one."
+    },
+    {
+      "id": "fragments-02",
+      "skill": "fragments",
+      "prompt": "Running a marathon ___ months of careful training.",
+      "choices": [
+        "requiring",
+        "which requires",
+        "that requires",
+        "requires"
+      ],
+      "answer": 3,
+      "explanation": "'Running a marathon' is the subject and needs the main verb 'requires'. The other options turn the rest into a description, leaving a fragment."
+    },
+    {
+      "id": "fragments-03",
+      "skill": "fragments",
+      "prompt": "The chef ___ the sauce slowly so it would not burn.",
+      "choices": [
+        "stirred",
+        "stirring",
+        "having stirred",
+        "who stirred"
+      ],
+      "answer": 0,
+      "explanation": "'Stirred' gives 'the chef' a main verb. 'Stirring' and 'having stirred' can't act as main verbs, and 'who stirred' only describes the chef."
+    },
+    {
+      "id": "fragments-04",
+      "skill": "fragments",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Because the road was closed. We took the long way round.",
+        "Because the road was closed, we took the long way round.",
+        "The road was closed. Because of the flooding after the storm.",
+        "Because the road was closed and we took the long way round."
+      ],
+      "answer": 1,
+      "explanation": "A clause starting with 'because' can't stand alone. Joining it to the main clause with a comma makes a complete sentence."
+    },
+    {
+      "id": "fragments-05",
+      "skill": "fragments",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "She packed a few essentials. Such as a torch and a map.",
+        "She packed. A few essentials, such as a torch and a map.",
+        "She packed a few essentials. Such as a torch, and a map.",
+        "She packed a few essentials, such as a torch and a map."
+      ],
+      "answer": 3,
+      "explanation": "A phrase such as 'such as a torch and a map' has no subject or verb, so it must stay attached to the sentence it belongs to."
+    },
+    {
+      "id": "fragments-06",
+      "skill": "fragments",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The museum, which holds over a million objects and attracts visitors from around the world.",
+        "The museum holds over a million objects. Attracting visitors from around the world.",
+        "The museum holds over a million objects and attracts visitors from around the world.",
+        "The museum holding over a million objects and attracting visitors from around the world."
+      ],
+      "answer": 2,
+      "explanation": "The correct version gives 'the museum' two main verbs, 'holds' and 'attracts'. The others lack a main verb or leave a phrase standing alone."
+    },
+    {
+      "id": "fragments-07",
+      "skill": "fragments",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "After years of saving for a deposit, they finally bought a flat.",
+        "After years of saving for a deposit. They finally bought a flat.",
+        "After years of saving for a deposit, finally buying a flat.",
+        "They finally bought a flat. After years of saving for a deposit and living with her parents."
+      ],
+      "answer": 0,
+      "explanation": "'After years of saving for a deposit' is an introductory phrase, so it must be joined to a main clause with its own subject and verb."
+    },
+    {
+      "id": "fragments-08",
+      "skill": "fragments",
+      "prompt": "Our flight was delayed for six hours. ___ meant we missed the connection.",
+      "choices": [
+        "Which",
+        "This",
+        "Because it",
+        "Having"
+      ],
+      "answer": 1,
+      "explanation": "'This meant…' has its own subject and stands as a sentence. Starting with 'Which', 'Because it' or 'Having' leaves a fragment."
+    },
+    {
+      "id": "fragments-09",
+      "skill": "fragments",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The results were clear. Although the sample was small.",
+        "Although the sample was small. The results were clear.",
+        "The results were clear. Although small, the sample.",
+        "The results were clear, although the sample was small."
+      ],
+      "answer": 3,
+      "explanation": "A clause beginning with 'although' is dependent, so it must be joined to a main clause, here with a comma."
+    },
+    {
+      "id": "fragments-10",
+      "skill": "fragments",
+      "prompt": "The engineers who designed the bridge ___ for its unusual curved deck.",
+      "choices": [
+        "were praised",
+        "being praised",
+        "having been praised",
+        "who were praised"
+      ],
+      "answer": 0,
+      "explanation": "'The engineers who designed the bridge' is the subject and still needs a main verb. 'Were praised' supplies it; the others leave a fragment."
+    },
+    {
+      "id": "run-ons-01",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The meeting ran over, we missed the train.",
+        "The meeting ran over we missed the train.",
+        "The meeting ran over, so we missed the train.",
+        "The meeting ran over, therefore we missed the train."
+      ],
+      "answer": 2,
+      "explanation": "Two complete sentences can be joined with a comma plus a conjunction such as 'so'. A comma alone, no punctuation, or a comma before 'therefore' makes a run-on."
+    },
+    {
+      "id": "run-ons-02",
+      "skill": "run-ons",
+      "prompt": "The forecast was poor, ___ we went sailing anyway.",
+      "choices": [
+        "however",
+        "but",
+        "therefore",
+        "then"
+      ],
+      "answer": 1,
+      "explanation": "After a comma, only a conjunction such as 'but' can join two complete sentences. 'However', 'therefore' and 'then' would create a comma splice."
+    },
+    {
+      "id": "run-ons-03",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "I love cooking, however, I hate washing up.",
+        "I love cooking; however, I hate washing up.",
+        "I love cooking however I hate washing up.",
+        "I love cooking, however I hate washing up."
+      ],
+      "answer": 1,
+      "explanation": "'However' is not a conjunction, so it can't join two sentences after a comma. Put a semicolon (or a full stop) before it."
+    },
+    {
+      "id": "run-ons-04",
+      "skill": "run-ons",
+      "prompt": "The museum closes at five, ___ you should arrive by four.",
+      "choices": [
+        "so",
+        "therefore",
+        "thus",
+        "consequently"
+      ],
+      "answer": 0,
+      "explanation": "'So' is a conjunction and can join two sentences after a comma. 'Therefore', 'thus' and 'consequently' are adverbs and would create a comma splice."
+    },
+    {
+      "id": "run-ons-05",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The printer is out of toner, someone needs to order more.",
+        "The printer is out of toner someone needs to order more.",
+        "The printer is out of toner, then someone needs to order more.",
+        "The printer is out of toner. Someone needs to order more."
+      ],
+      "answer": 3,
+      "explanation": "These are two complete sentences, so a full stop separates them. A comma alone, even with 'then', makes a comma splice."
+    },
+    {
+      "id": "run-ons-06",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "My phone died during the call because it hadn't been charged all day.",
+        "My phone died during the call, it hadn't been charged all day.",
+        "My phone died during the call it hadn't been charged all day.",
+        "My phone died during the call, because, it hadn't been charged all day."
+      ],
+      "answer": 0,
+      "explanation": "'Because' makes the second clause dependent, so the sentence is correctly joined. The others are a comma splice, a run-on and a misplaced comma."
+    },
+    {
+      "id": "run-ons-07",
+      "skill": "run-ons",
+      "prompt": "The hotel was fully booked; ___, we stayed with friends.",
+      "choices": [
+        "and",
+        "although",
+        "but",
+        "instead"
+      ],
+      "answer": 3,
+      "explanation": "'Instead' is an adverb, so it follows a semicolon and takes a comma after it. 'And', 'although' and 'but' aren't followed by a comma here, and they don't fit the meaning."
+    },
+    {
+      "id": "run-ons-08",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The bridge was closed for repairs, drivers had to use the ferry.",
+        "The bridge was closed for repairs, consequently drivers had to use the ferry.",
+        "The bridge was closed for repairs drivers had to use the ferry.",
+        "The bridge was closed for repairs, and drivers had to use the ferry."
+      ],
+      "answer": 3,
+      "explanation": "A comma plus 'and' correctly joins two complete sentences. A comma alone, or a comma before 'consequently', creates a comma splice."
+    },
+    {
+      "id": "run-ons-09",
+      "skill": "run-ons",
+      "prompt": "Lena trained for months, ___ she still found the final climb exhausting.",
+      "choices": [
+        "nevertheless",
+        "however",
+        "yet",
+        "even so"
+      ],
+      "answer": 2,
+      "explanation": "'Yet' is a conjunction, so it can join two sentences after a comma. 'Nevertheless', 'however' and 'even so' would need a semicolon or full stop before them."
+    },
+    {
+      "id": "run-ons-10",
+      "skill": "run-ons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "We had planned to eat outside, it started to rain.",
+        "We had planned to eat outside but, it started to rain.",
+        "We had planned to eat outside, but it started to rain.",
+        "We had planned to eat outside, but, it started to rain."
+      ],
+      "answer": 2,
+      "explanation": "When a conjunction joins two complete sentences, the comma goes before it, not after. A comma alone would be a comma splice."
+    },
+    {
+      "id": "commas-01",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Edinburgh, which hosts a huge arts festival every August, is crowded in summer.",
+        "Edinburgh which hosts a huge arts festival every August, is crowded in summer.",
+        "Edinburgh, which hosts a huge arts festival every August is crowded in summer.",
+        "Edinburgh which hosts a huge arts festival every August is crowded in summer."
+      ],
+      "answer": 0,
+      "explanation": "The 'which' clause adds extra information about a city that's already named, so it needs a comma on both sides."
+    },
+    {
+      "id": "commas-02",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The man who repaired our boiler, has retired.",
+        "The man, who repaired our boiler has retired.",
+        "The man who repaired our boiler has retired.",
+        "The man who repaired, our boiler has retired."
+      ],
+      "answer": 2,
+      "explanation": "'Who repaired our boiler' identifies which man, so it takes no commas. A single comma between the subject and its verb 'has retired' is always wrong."
+    },
+    {
+      "id": "commas-03",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Passengers, who are travelling with small children, may board first.",
+        "Passengers who are travelling with small children may board first.",
+        "Passengers who are travelling with small children, may board first.",
+        "Passengers, who are travelling with small children may board first."
+      ],
+      "answer": 1,
+      "explanation": "The clause tells you which passengers may board first, so it is essential and takes no commas. With commas, it would mean every passenger has small children."
+    },
+    {
+      "id": "commas-04",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "While the chef, was cooking the guests waited in the bar.",
+        "While the chef was cooking the guests waited in the bar.",
+        "While the chef was cooking the guests, waited in the bar.",
+        "While the chef was cooking, the guests waited in the bar."
+      ],
+      "answer": 3,
+      "explanation": "A comma after the introductory clause shows where it ends. Without it, the reader first takes 'cooking the guests' together."
+    },
+    {
+      "id": "commas-05",
+      "skill": "commas",
+      "prompt": "Our neighbour, ___ grows prize-winning roses, has offered to help.",
+      "choices": [
+        "that",
+        "which",
+        "who",
+        "whom"
+      ],
+      "answer": 2,
+      "explanation": "A non-essential clause set off by commas uses 'who' for people and 'which' for things, never 'that'. 'Whom' is wrong because the pronoun is the subject of 'grows'."
+    },
+    {
+      "id": "commas-06",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The flight was cancelled, and the airline offered us a hotel for the night.",
+        "The flight was cancelled and, the airline offered us a hotel for the night.",
+        "The flight was cancelled, the airline offered us a hotel for the night.",
+        "The flight, was cancelled and the airline offered us a hotel for the night."
+      ],
+      "answer": 0,
+      "explanation": "When 'and' joins two complete sentences, the comma goes before 'and'. A comma alone is a splice, and a comma after 'the flight' splits the subject from its verb."
+    },
+    {
+      "id": "commas-07",
+      "skill": "commas",
+      "prompt": "The Eiffel Tower, ___ was completed in 1889, was meant to stand for only twenty years.",
+      "choices": [
+        "that",
+        "which",
+        "it",
+        "what"
+      ],
+      "answer": 1,
+      "explanation": "A clause set off by commas adds extra information and uses 'which' for things, not 'that'. 'It' would turn the clause into a comma splice."
+    },
+    {
+      "id": "commas-08",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "My sister's dog a nervous greyhound called Pip, hides under the table during storms.",
+        "My sister's dog, a nervous greyhound called Pip hides under the table during storms.",
+        "My sister's dog a nervous greyhound called Pip hides under the table during storms.",
+        "My sister's dog, a nervous greyhound called Pip, hides under the table during storms."
+      ],
+      "answer": 3,
+      "explanation": "'A nervous greyhound called Pip' renames the dog and adds extra detail, so it needs a comma on both sides."
+    },
+    {
+      "id": "commas-09",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The pilot announced, that we would be landing early.",
+        "The pilot announced that we would be landing early.",
+        "The pilot, announced that we would be landing early.",
+        "The pilot announced that, we would be landing early."
+      ],
+      "answer": 1,
+      "explanation": "No comma is needed before or after 'that' when its clause follows a verb such as 'announced'. A comma must never separate the subject 'the pilot' from its verb."
+    },
+    {
+      "id": "commas-10",
+      "skill": "commas",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The laptop, that I bought last year, has already stopped working.",
+        "The laptop that I bought last year, has already stopped working.",
+        "The laptop that I bought last year has already stopped working.",
+        "The laptop, that I bought last year has already stopped working."
+      ],
+      "answer": 2,
+      "explanation": "'That I bought last year' identifies which laptop, so it takes no commas; 'that' clauses never go between commas. A comma before 'has' would split the subject from its verb."
+    },
+    {
+      "id": "semicolons-colons-01",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The recipe needs: flour and two eggs.",
+        "The recipe needs only two ingredients: flour and eggs.",
+        "The recipe needs only two ingredients; flour and eggs.",
+        "The recipe: needs only two ingredients, flour and eggs."
+      ],
+      "answer": 1,
+      "explanation": "A colon introduces a list after a complete clause. It can't come straight after a verb such as 'needs', and a semicolon can't introduce a list."
+    },
+    {
+      "id": "semicolons-colons-02",
+      "skill": "semicolons-colons",
+      "prompt": "Before the interview, she ___: her CV and the route to the office.",
+      "choices": [
+        "checked",
+        "made sure of",
+        "checked two things",
+        "looked over"
+      ],
+      "answer": 2,
+      "explanation": "A colon should follow a complete statement, such as 'she checked two things'. It shouldn't sit between a verb or preposition and its object."
+    },
+    {
+      "id": "semicolons-colons-03",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The tour stops in Cork, Ireland, Cardiff, Wales; and Bath, England.",
+        "The tour stops in: Cork, Ireland; Cardiff, Wales; and Bath, England.",
+        "The tour stops in Cork; Ireland, Cardiff; Wales, and Bath; England.",
+        "The tour stops in Cork, Ireland; Cardiff, Wales; and Bath, England."
+      ],
+      "answer": 3,
+      "explanation": "When list items already contain commas, semicolons separate the items so each one stays clear. No colon is needed after the preposition 'in'."
+    },
+    {
+      "id": "semicolons-colons-04",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The lecture was fascinating; I took pages of notes.",
+        "The lecture was fascinating; taking pages of notes.",
+        "The lecture was fascinating; because I took pages of notes.",
+        "The lecture was fascinating: and I took pages of notes."
+      ],
+      "answer": 0,
+      "explanation": "A semicolon joins two complete sentences. 'Taking pages of notes' and 'because I took pages of notes' can't stand alone, and a colon shouldn't be followed by 'and'."
+    },
+    {
+      "id": "semicolons-colons-05",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "There was only one explanation for the noise; a loose window.",
+        "There was only one explanation for: the noise, a loose window.",
+        "There was only one explanation for the noise: a loose window.",
+        "There was only one explanation; for the noise a loose window."
+      ],
+      "answer": 2,
+      "explanation": "After a complete clause, a colon can introduce the explanation it promises. A semicolon needs a complete sentence on both sides, and 'a loose window' isn't one."
+    },
+    {
+      "id": "semicolons-colons-06",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Although the café was busy; we found a table by the window.",
+        "Although the café was busy, we found a table by the window.",
+        "Although the café was busy: we found a table by the window.",
+        "Although; the café was busy, we found a table by the window."
+      ],
+      "answer": 1,
+      "explanation": "'Although the café was busy' is a dependent clause, so it can't come before a semicolon or colon. A comma joins it to the main clause."
+    },
+    {
+      "id": "semicolons-colons-07",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The kit includes: a tent and two sleeping bags.",
+        "The kit includes; a tent and two sleeping bags.",
+        "The kit: includes a tent and two sleeping bags.",
+        "The kit includes a tent and two sleeping bags."
+      ],
+      "answer": 3,
+      "explanation": "No punctuation goes between a verb such as 'includes' and its object. A colon is used only after a complete clause."
+    },
+    {
+      "id": "semicolons-colons-08",
+      "skill": "semicolons-colons",
+      "prompt": "I didn't get the job; ___, I learned a lot from the interview.",
+      "choices": [
+        "but",
+        "although",
+        "however",
+        "because"
+      ],
+      "answer": 2,
+      "explanation": "After a semicolon, a linking adverb such as 'however' is followed by a comma. Conjunctions such as 'but', 'although' and 'because' don't fit that pattern."
+    },
+    {
+      "id": "semicolons-colons-09",
+      "skill": "semicolons-colons",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Please bring the following: a packed lunch and waterproof boots.",
+        "Please bring: a packed lunch and waterproof boots.",
+        "Please bring the following; a packed lunch and waterproof boots.",
+        "Please bring the following, a packed lunch, and waterproof boots."
+      ],
+      "answer": 0,
+      "explanation": "'Please bring the following' is complete, so a colon can introduce the list. A colon straight after 'bring' splits the verb from its object, and a semicolon can't introduce a list."
+    },
+    {
+      "id": "semicolons-colons-10",
+      "skill": "semicolons-colons",
+      "prompt": "The trip was a disaster; ___ rained every day and the hotel lost our booking.",
+      "choices": [
+        "it",
+        "because it",
+        "which",
+        "since it"
+      ],
+      "answer": 0,
+      "explanation": "A semicolon needs a complete sentence on each side. 'It rained every day…' can stand alone; the other options make the second half dependent."
+    },
+    {
+      "id": "pronoun-reference-01",
+      "skill": "pronoun-reference",
+      "prompt": "I bought new running shoes, but ___ rub against my heels.",
+      "choices": [
+        "it",
+        "this",
+        "that",
+        "they"
+      ],
+      "answer": 3,
+      "explanation": "The pronoun stands for 'shoes', which is plural, so it must be 'they'."
+    },
+    {
+      "id": "pronoun-reference-02",
+      "skill": "pronoun-reference",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "When Mia called her sister, she was upset.",
+        "Mia was upset when she called her sister.",
+        "Mia called her sister, and she was upset.",
+        "When Mia called her sister, she was upset with her."
+      ],
+      "answer": 1,
+      "explanation": "In the clearest version, 'she' can only mean Mia. In the others, 'she' could be either Mia or her sister."
+    },
+    {
+      "id": "pronoun-reference-03",
+      "skill": "pronoun-reference",
+      "prompt": "Both trains were cancelled because ___ brakes had failed inspection.",
+      "choices": [
+        "its",
+        "it's",
+        "their",
+        "the train's"
+      ],
+      "answer": 2,
+      "explanation": "The pronoun refers to 'both trains', which is plural, so use 'their'."
+    },
+    {
+      "id": "pronoun-reference-04",
+      "skill": "pronoun-reference",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "When people start running, they often get sore knees.",
+        "When people start running, you often get sore knees.",
+        "When people start running, one often gets sore knees.",
+        "When a person starts running, you often get sore knees."
+      ],
+      "answer": 0,
+      "explanation": "Keep the same point of view: 'people' is followed by 'they'. Switching to 'you' or 'one' partway through is a pronoun shift."
+    },
+    {
+      "id": "pronoun-reference-05",
+      "skill": "pronoun-reference",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "When the lid came off the jar, it rolled under the fridge.",
+        "The lid came off the jar, and it rolled under the fridge.",
+        "The lid came off the jar and rolled under the fridge.",
+        "It rolled under the fridge when the lid came off the jar."
+      ],
+      "answer": 2,
+      "explanation": "Making 'the lid' the subject of both verbs removes the unclear 'it', which could mean either the lid or the jar."
+    },
+    {
+      "id": "pronoun-reference-06",
+      "skill": "pronoun-reference",
+      "prompt": "Leila and Sam forgot to bring ___ own towels.",
+      "choices": [
+        "her",
+        "his",
+        "their",
+        "its"
+      ],
+      "answer": 2,
+      "explanation": "Two people joined by 'and' make a plural antecedent, so the pronoun is 'their'."
+    },
+    {
+      "id": "pronoun-reference-07",
+      "skill": "pronoun-reference",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "Daniel told his father that he needed a new car.",
+        "Daniel asked his father for advice because he needed a new car.",
+        "When Daniel spoke to his father, he said he needed a new car.",
+        "Daniel said he needed a new car and asked his father for advice."
+      ],
+      "answer": 3,
+      "explanation": "Only the last version makes it clear that Daniel is the one who needs a car. In the others, 'he' could mean Daniel or his father."
+    },
+    {
+      "id": "pronoun-reference-08",
+      "skill": "pronoun-reference",
+      "prompt": "If the plants start to wilt, move ___ out of direct sunlight.",
+      "choices": [
+        "it",
+        "them",
+        "this",
+        "its"
+      ],
+      "answer": 1,
+      "explanation": "The pronoun stands for 'plants', which is plural, so it must be 'them'."
+    },
+    {
+      "id": "pronoun-reference-09",
+      "skill": "pronoun-reference",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "If you train every day, you will improve quickly.",
+        "If one trains every day, you will improve quickly.",
+        "If you train every day, one will improve quickly.",
+        "If a person trains every day, you will improve quickly."
+      ],
+      "answer": 0,
+      "explanation": "Keep the same pronoun all the way through. Switching between 'one', 'a person' and 'you' is a pronoun shift."
+    },
+    {
+      "id": "pronoun-reference-10",
+      "skill": "pronoun-reference",
+      "prompt": "I left my gloves at the gym, but luckily someone handed ___ in.",
+      "choices": [
+        "it",
+        "they",
+        "this",
+        "them"
+      ],
+      "answer": 3,
+      "explanation": "The pronoun stands for 'gloves', which is plural, so use 'them'. 'They' is a subject form and can't follow 'handed'."
+    },
+    {
+      "id": "verb-tense-01",
+      "skill": "verb-tense",
+      "prompt": "Yesterday we ___ two kilometres in the lake before breakfast.",
+      "choices": [
+        "swum",
+        "swam",
+        "swimmed",
+        "have swum"
+      ],
+      "answer": 1,
+      "explanation": "The simple past of 'swim' is 'swam'. 'Swum' is the past participle used after 'have', and 'have swum' can't go with a finished time like 'yesterday'."
+    },
+    {
+      "id": "verb-tense-02",
+      "skill": "verb-tense",
+      "prompt": "By the time the firefighters arrived, the fire ___ to the roof.",
+      "choices": [
+        "spreads",
+        "has spread",
+        "had spread",
+        "will have spread"
+      ],
+      "answer": 2,
+      "explanation": "The fire spread before the firefighters arrived, so the earlier past action takes the past perfect, 'had spread'."
+    },
+    {
+      "id": "verb-tense-03",
+      "skill": "verb-tense",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "She walked into the office and sits down at her desk.",
+        "She walks into the office and sat down at her desk.",
+        "She walked into the office and sat down at her desk.",
+        "She walked into the office and has sat down at her desk."
+      ],
+      "answer": 2,
+      "explanation": "Both actions happened in the past, one after the other, so both verbs stay in the simple past."
+    },
+    {
+      "id": "verb-tense-04",
+      "skill": "verb-tense",
+      "prompt": "Have you ever ___ a cappuccino this good?",
+      "choices": [
+        "drunk",
+        "drank",
+        "drinked",
+        "drinking"
+      ],
+      "answer": 0,
+      "explanation": "After 'have', use the past participle 'drunk'. 'Drank' is the simple past, as in 'I drank it'."
+    },
+    {
+      "id": "verb-tense-05",
+      "skill": "verb-tense",
+      "prompt": "If I ___ about the roadworks, I would have left earlier.",
+      "choices": [
+        "would have known",
+        "had known",
+        "knew",
+        "would know"
+      ],
+      "answer": 1,
+      "explanation": "For an unreal situation in the past, the 'if' clause takes the past perfect ('had known') and the result takes 'would have'. 'Would have' never goes in the 'if' clause."
+    },
+    {
+      "id": "verb-tense-06",
+      "skill": "verb-tense",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The phone rang three times before anyone answered.",
+        "The phone rung three times before anyone answered.",
+        "The phone ringed three times before anyone answered.",
+        "The phone has rang three times before anyone answered."
+      ],
+      "answer": 0,
+      "explanation": "The simple past of 'ring' is 'rang'. 'Rung' is the past participle, used after 'has' or 'had'."
+    },
+    {
+      "id": "verb-tense-07",
+      "skill": "verb-tense",
+      "prompt": "The lecture had already ___ when we found the right building.",
+      "choices": [
+        "began",
+        "begins",
+        "beginning",
+        "begun"
+      ],
+      "answer": 3,
+      "explanation": "After 'had', use the past participle 'begun'. 'Began' is the simple past."
+    },
+    {
+      "id": "verb-tense-08",
+      "skill": "verb-tense",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Last summer we go to Portugal and stayed in a farmhouse.",
+        "Last summer we went to Portugal and stay in a farmhouse.",
+        "Last summer we have gone to Portugal and stayed in a farmhouse.",
+        "Last summer we went to Portugal and stayed in a farmhouse."
+      ],
+      "answer": 3,
+      "explanation": "'Last summer' is a finished past time, so both verbs take the simple past. The present perfect ('have gone') can't be used with a specific past time."
+    },
+    {
+      "id": "verb-tense-09",
+      "skill": "verb-tense",
+      "prompt": "She ___ the same job for ten years when the company closed.",
+      "choices": [
+        "has had",
+        "has",
+        "was having",
+        "had had"
+      ],
+      "answer": 3,
+      "explanation": "Her ten years in the job came before another past event, the company closing, so use the past perfect 'had had'."
+    },
+    {
+      "id": "verb-tense-10",
+      "skill": "verb-tense",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "He has wrote three novels since he retired.",
+        "He had wrote three novels since he retired.",
+        "He has written three novels since he retired.",
+        "He have written three novels since he retired."
+      ],
+      "answer": 2,
+      "explanation": "After 'has', use the past participle 'written'. 'Wrote' is the simple past and can't follow 'has' or 'had'."
+    },
+    {
+      "id": "confused-words-01",
+      "skill": "confused-words",
+      "prompt": "The cold weather didn't seem to ___ attendance at the outdoor concert.",
+      "choices": [
+        "effect",
+        "affect",
+        "infect",
+        "afflict"
+      ],
+      "answer": 1,
+      "explanation": "'Affect' is the verb meaning 'to influence'. 'Effect' is normally a noun, meaning a result."
+    },
+    {
+      "id": "confused-words-02",
+      "skill": "confused-words",
+      "prompt": "There are ___ cafés on the high street than there were ten years ago.",
+      "choices": [
+        "fewer",
+        "less",
+        "lesser",
+        "less of"
+      ],
+      "answer": 0,
+      "explanation": "Use 'fewer' with things you can count, such as cafés, and 'less' with amounts, such as less time."
+    },
+    {
+      "id": "confused-words-03",
+      "skill": "confused-words",
+      "prompt": "The vineyard tour took longer ___ we expected.",
+      "choices": [
+        "then",
+        "that",
+        "than",
+        "when"
+      ],
+      "answer": 2,
+      "explanation": "'Than' is used in comparisons, as in 'longer than'. 'Then' refers to time."
+    },
+    {
+      "id": "confused-words-04",
+      "skill": "confused-words",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Yesterday afternoon I laid on the sofa and read.",
+        "Yesterday afternoon I lied on the sofa and read.",
+        "Yesterday afternoon I have lain on the sofa and read.",
+        "Yesterday afternoon I lay on the sofa and read."
+      ],
+      "answer": 3,
+      "explanation": "'Lie' (to recline) has the past tense 'lay'. 'Laid' is the past of 'lay' (to put something down), and 'lied' means told an untruth."
+    },
+    {
+      "id": "confused-words-05",
+      "skill": "confused-words",
+      "prompt": "From the way she smiled, I ___ that the interview had gone well.",
+      "choices": [
+        "implied",
+        "implicated",
+        "inferred",
+        "insinuated"
+      ],
+      "answer": 2,
+      "explanation": "The person drawing a conclusion infers it; the person hinting at something implies it. Here 'I' am drawing the conclusion."
+    },
+    {
+      "id": "confused-words-06",
+      "skill": "confused-words",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The tart sauce compliments the rich pork perfectly.",
+        "The tart sauce complements the rich pork perfectly.",
+        "The tart sauce complement the rich pork perfectly.",
+        "The tart sauce is complimentary to the rich pork."
+      ],
+      "answer": 1,
+      "explanation": "'Complement' means to complete or go well with something. 'Compliment' means to praise, and 'complimentary' means flattering or free."
+    },
+    {
+      "id": "confused-words-07",
+      "skill": "confused-words",
+      "prompt": "The ___ cause of the delay was a signal failure near the station.",
+      "choices": [
+        "principle",
+        "principled",
+        "principally",
+        "principal"
+      ],
+      "answer": 3,
+      "explanation": "'Principal' means main or most important. A 'principle' is a rule or belief."
+    },
+    {
+      "id": "confused-words-08",
+      "skill": "confused-words",
+      "prompt": "These jeans are so ___ that I need a belt.",
+      "choices": [
+        "lose",
+        "losing",
+        "loosed",
+        "loose"
+      ],
+      "answer": 3,
+      "explanation": "'Loose' means not tight. 'Lose' is a verb meaning to misplace something or fail to win."
+    },
+    {
+      "id": "confused-words-09",
+      "skill": "confused-words",
+      "prompt": "Before we sign anything, we need to discuss the contract ___.",
+      "choices": [
+        "farther",
+        "more far",
+        "further",
+        "furthest"
+      ],
+      "answer": 2,
+      "explanation": "'Further' is used for extent or degree, meaning 'more'. 'Farther' refers only to physical distance."
+    },
+    {
+      "id": "confused-words-10",
+      "skill": "confused-words",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Fewer passengers complained, so the change clearly had an effect.",
+        "Less passengers complained, so the change clearly had an effect.",
+        "Fewer passengers complained, so the change clearly had an affect.",
+        "Less passengers complained, so the change clearly had an affect."
+      ],
+      "answer": 0,
+      "explanation": "Passengers can be counted, so use 'fewer'. 'An effect' is the noun meaning a result."
+    },
+    {
+      "id": "parallelism-01",
+      "skill": "parallelism",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "She enjoys hiking in the hills and to swim in cold lakes.",
+        "She enjoys hiking in the hills and swimming in cold lakes.",
+        "She enjoys to hike in the hills and swimming in cold lakes.",
+        "She enjoys hiking in the hills and swim in cold lakes."
+      ],
+      "answer": 1,
+      "explanation": "Both activities follow 'enjoys', so they should share the same -ing form: 'hiking' and 'swimming'."
+    },
+    {
+      "id": "parallelism-02",
+      "skill": "parallelism",
+      "prompt": "The course teaches you how to plan a budget and ___ a team.",
+      "choices": [
+        "managing",
+        "to managing",
+        "managed",
+        "manage"
+      ],
+      "answer": 3,
+      "explanation": "'Plan' and 'manage' both follow 'how to', so they take the same base form."
+    },
+    {
+      "id": "parallelism-03",
+      "skill": "parallelism",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The new trains are not only faster but also more comfortable.",
+        "The new trains are not only faster but also comfort is better.",
+        "The new trains are not only faster but also more comfortably.",
+        "The new trains are not only faster and also more comfortable."
+      ],
+      "answer": 0,
+      "explanation": "'Not only' pairs with 'but also', and the words after each should match: 'faster' and 'more comfortable' are both adjectives."
+    },
+    {
+      "id": "parallelism-04",
+      "skill": "parallelism",
+      "prompt": "Our manager would rather solve problems early than ___ them later.",
+      "choices": [
+        "fixing",
+        "fix",
+        "to fix",
+        "having fixed"
+      ],
+      "answer": 1,
+      "explanation": "'Would rather solve' sets the pattern, so the second verb also takes the base form: 'than fix'."
+    },
+    {
+      "id": "parallelism-05",
+      "skill": "parallelism",
+      "prompt": "She is interested in learning Spanish and ___ to Mexico.",
+      "choices": [
+        "move",
+        "to move",
+        "moving",
+        "to moving"
+      ],
+      "answer": 2,
+      "explanation": "Both interests follow 'in', so they share the same -ing form: 'learning Spanish and moving to Mexico'."
+    },
+    {
+      "id": "parallelism-06",
+      "skill": "parallelism",
+      "prompt": "The job requires both patience and ___.",
+      "choices": [
+        "creativity",
+        "creatively",
+        "to be creative",
+        "creative"
+      ],
+      "answer": 0,
+      "explanation": "'Both … and' should link matching forms. 'Patience' is a noun, so pair it with the noun 'creativity'."
+    },
+    {
+      "id": "parallelism-07",
+      "skill": "parallelism",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The app is useful both for planning trips and to track expenses.",
+        "The app is useful both to plan trips and for tracking expenses.",
+        "The app is both useful for planning trips and to track expenses.",
+        "The app is useful both for planning trips and for tracking expenses."
+      ],
+      "answer": 3,
+      "explanation": "The parts after 'both' and 'and' should match: 'for planning' and 'for tracking'."
+    },
+    {
+      "id": "parallelism-08",
+      "skill": "parallelism",
+      "prompt": "Her goals for the year are to read more and ___ less time on her phone.",
+      "choices": [
+        "spending",
+        "spend",
+        "spent",
+        "she spends"
+      ],
+      "answer": 1,
+      "explanation": "Both goals follow 'to', so they take the same base form: 'to read more and spend less time'."
+    },
+    {
+      "id": "parallelism-09",
+      "skill": "parallelism",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "We asked for a room with a sea view and a balcony.",
+        "We asked for a room with a sea view and that has a balcony.",
+        "We asked for a room that has a sea view and with a balcony.",
+        "We asked for a room with a sea view and having a balcony."
+      ],
+      "answer": 0,
+      "explanation": "Both features follow 'with', so they should both be plain nouns: 'with a sea view and a balcony'."
+    },
+    {
+      "id": "parallelism-10",
+      "skill": "parallelism",
+      "prompt": "The instructor told us to bend our knees and ___ our eyes on the ball.",
+      "choices": [
+        "keeping",
+        "that we keep",
+        "keep",
+        "we should keep"
+      ],
+      "answer": 2,
+      "explanation": "Both instructions follow 'to', so they share the base form: 'to bend our knees and keep our eyes on the ball'."
+    },
+    {
+      "id": "modifiers-01",
+      "skill": "modifiers",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "Walking to the station, the rain started to fall heavily.",
+        "Walking to the station, I was caught in heavy rain.",
+        "Walking to the station, heavy rain started to fall on me.",
+        "Walking to the station, it started to rain heavily."
+      ],
+      "answer": 1,
+      "explanation": "An opening phrase such as 'Walking to the station' must be followed by whoever is walking. Only 'I' can walk; the rain can't."
+    },
+    {
+      "id": "modifiers-02",
+      "skill": "modifiers",
+      "prompt": "Having read the reviews, ___ to book a different hotel.",
+      "choices": [
+        "we decided",
+        "the decision was made",
+        "a different choice was made",
+        "it was decided"
+      ],
+      "answer": 0,
+      "explanation": "The people who read the reviews must come straight after the opening phrase, so the subject should be 'we'."
+    },
+    {
+      "id": "modifiers-03",
+      "skill": "modifiers",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "The waiter served a cake to the guests covered in chocolate.",
+        "Covered in chocolate, the waiter served the guests a cake.",
+        "The waiter served the guests a cake covered in chocolate.",
+        "A cake was served to the guests by the waiter covered in chocolate."
+      ],
+      "answer": 2,
+      "explanation": "'Covered in chocolate' describes the cake, so it should sit right after 'cake'. Anywhere else, it seems to describe the guests or the waiter."
+    },
+    {
+      "id": "modifiers-04",
+      "skill": "modifiers",
+      "prompt": "Exhausted after the long flight, ___ before dinner.",
+      "choices": [
+        "Kofi's eyes closed",
+        "Kofi fell asleep",
+        "sleep came quickly to Kofi",
+        "it was hard for Kofi to stay awake"
+      ],
+      "answer": 1,
+      "explanation": "The opening phrase describes Kofi, so 'Kofi' must be the subject straight after it. A possessive such as 'Kofi's eyes' makes the eyes the subject instead."
+    },
+    {
+      "id": "modifiers-05",
+      "skill": "modifiers",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "She bought a bike with a broken chain from a neighbour.",
+        "She bought a bike from a neighbour with a broken chain.",
+        "With a broken chain, she bought a bike from a neighbour.",
+        "She bought from a neighbour with a broken chain a bike."
+      ],
+      "answer": 0,
+      "explanation": "'With a broken chain' describes the bike, so it belongs straight after 'bike'. Placed after 'neighbour', it seems to describe the neighbour."
+    },
+    {
+      "id": "modifiers-06",
+      "skill": "modifiers",
+      "prompt": "While cooking dinner, ___.",
+      "choices": [
+        "the smoke alarm went off",
+        "the kitchen filled with smoke",
+        "smoke poured out of the oven",
+        "I set off the smoke alarm"
+      ],
+      "answer": 3,
+      "explanation": "'While cooking dinner' must be followed by the person cooking. Only 'I' can cook; the alarm, the kitchen and the smoke can't."
+    },
+    {
+      "id": "modifiers-07",
+      "skill": "modifiers",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "As a keen photographer, Maya's camera goes everywhere with her.",
+        "As a keen photographer, Maya takes her camera everywhere.",
+        "Being a keen photographer, the camera goes everywhere with Maya.",
+        "As a keen photographer, a camera is always with Maya."
+      ],
+      "answer": 1,
+      "explanation": "'As a keen photographer' describes Maya, so 'Maya' must be the subject that follows. Her camera isn't the photographer."
+    },
+    {
+      "id": "modifiers-08",
+      "skill": "modifiers",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "Hidden under a pile of coats, Jo finally found her keys.",
+        "Hidden under a pile of coats, the search for her keys ended.",
+        "Hidden under a pile of coats, finally Jo found her keys.",
+        "Jo finally found her keys hidden under a pile of coats."
+      ],
+      "answer": 3,
+      "explanation": "'Hidden under a pile of coats' describes the keys, so it should come right after 'keys'. At the start of the sentence, it describes Jo or the search."
+    },
+    {
+      "id": "modifiers-09",
+      "skill": "modifiers",
+      "prompt": "Born in a small fishing village, ___.",
+      "choices": [
+        "Elena's love of the sea started early",
+        "the sea was always part of Elena's life",
+        "Elena has always loved the sea",
+        "Elena's childhood was spent by the sea"
+      ],
+      "answer": 2,
+      "explanation": "The opening phrase describes Elena, so she must be the subject. Her love, her childhood and the sea weren't born in the village."
+    },
+    {
+      "id": "modifiers-10",
+      "skill": "modifiers",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "In the lobby, the museum showed a film about the ship that sank.",
+        "The museum showed a film about the ship that sank in the lobby.",
+        "The museum showed a film about the ship in the lobby that sank.",
+        "The museum showed in the lobby that sank a film about the ship."
+      ],
+      "answer": 0,
+      "explanation": "'In the lobby' tells you where the film was shown. Placed next to 'sank' or 'the ship', it suggests the ship was in the lobby."
+    },
+    {
+      "id": "concision-01",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "Due to the fact that it was raining, the match was postponed.",
+        "Because it was raining, the match was postponed.",
+        "Owing to the fact of the rain that was falling, the match was postponed.",
+        "Because of the fact that it was raining outside, the match was postponed."
+      ],
+      "answer": 1,
+      "explanation": "'Because' says in one word what 'due to the fact that' says in five. The other versions add padding."
+    },
+    {
+      "id": "concision-02",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "In my personal opinion, the end result was a success.",
+        "In my opinion, the end result was a successful outcome.",
+        "In my opinion, the result was a success.",
+        "It is my personal opinion that the result was a success."
+      ],
+      "answer": 2,
+      "explanation": "An opinion is always personal and a result always comes at the end, so 'personal' and 'end' add nothing."
+    },
+    {
+      "id": "concision-03",
+      "skill": "concision",
+      "prompt": "The two companies agreed to ___ their resources.",
+      "choices": [
+        "combine together",
+        "combine",
+        "join together in combination",
+        "combine and merge together"
+      ],
+      "answer": 1,
+      "explanation": "'Combine' already means to bring together, so adding 'together' or a second verb repeats it."
+    },
+    {
+      "id": "concision-04",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "At this point in time, we are unable to offer a refund.",
+        "We are unable at this present moment in time to offer a refund.",
+        "Currently, at the present time, we cannot offer a refund.",
+        "We cannot offer a refund at the moment."
+      ],
+      "answer": 3,
+      "explanation": "'At the moment' says it plainly. 'At this point in time' is padding, and 'currently, at the present time' says the same thing twice."
+    },
+    {
+      "id": "concision-05",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "The bridge closed because it needed repairs.",
+        "The reason why the bridge closed is because it needed repairs.",
+        "The reason the bridge closed is due to the fact that it needed repairs.",
+        "The reason why the bridge was closed was because of the reason that it needed repairs."
+      ],
+      "answer": 0,
+      "explanation": "'The reason … is because' states the cause twice. Giving the cause directly with 'because' is clearer."
+    },
+    {
+      "id": "concision-06",
+      "skill": "concision",
+      "prompt": "The new bypass will ___ travel times for commuters.",
+      "choices": [
+        "reduce",
+        "reduce down",
+        "make a reduction in the amount of",
+        "bring about a lowering of"
+      ],
+      "answer": 0,
+      "explanation": "'Reduce' does the job in one word. 'Down' repeats its meaning, and the longer phrases turn a simple verb into padding."
+    },
+    {
+      "id": "concision-07",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "Each and every guest received a free gift on arrival.",
+        "Every guest received a free gift on arrival.",
+        "Every guest received a gift on arrival.",
+        "Each guest received a gift that was free of charge on arrival."
+      ],
+      "answer": 2,
+      "explanation": "A gift is free by definition, and 'each and every' repeats itself, so 'Every guest received a gift' is the most direct version."
+    },
+    {
+      "id": "concision-08",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "She made the decision to postpone the trip.",
+        "She came to the decision that she would postpone the trip.",
+        "She made a decision that the trip would be postponed by her.",
+        "She decided to postpone the trip."
+      ],
+      "answer": 3,
+      "explanation": "The verb 'decided' does the work of 'made the decision', so the shortest version is the clearest."
+    },
+    {
+      "id": "concision-09",
+      "skill": "concision",
+      "prompt": "The engineer will ___ the faults in the system.",
+      "choices": [
+        "carry out an examination of",
+        "examine",
+        "make an examination of",
+        "perform the examining of"
+      ],
+      "answer": 1,
+      "explanation": "A single strong verb, 'examine', is clearer than a phrase built around the noun 'examination'."
+    },
+    {
+      "id": "concision-10",
+      "skill": "concision",
+      "prompt": "Choose the clearest version.",
+      "choices": [
+        "Although he was tired, he finished the race.",
+        "In spite of the fact that he was tired, he finished the race.",
+        "Even though he was tired, he still nonetheless finished the race.",
+        "He was tired, but despite that fact he nevertheless finished the race."
+      ],
+      "answer": 0,
+      "explanation": "'Although' does the work of 'in spite of the fact that', and 'still', 'nonetheless' and 'nevertheless' repeat a contrast that's already there."
+    },
+    {
+      "id": "adjectives-adverbs-01",
+      "skill": "adjectives-adverbs",
+      "prompt": "After a week of lessons, she could swim surprisingly ___.",
+      "choices": [
+        "good",
+        "well",
+        "great",
+        "nice"
+      ],
+      "answer": 1,
+      "explanation": "'Swim' is an action verb, so it takes the adverb 'well'. 'Good' is an adjective."
+    },
+    {
+      "id": "adjectives-adverbs-02",
+      "skill": "adjectives-adverbs",
+      "prompt": "This route is ___ than the motorway at rush hour.",
+      "choices": [
+        "quicker",
+        "more quicker",
+        "more quick",
+        "quickest"
+      ],
+      "answer": 0,
+      "explanation": "Short adjectives such as 'quick' form the comparative with -er. Adding 'more' as well makes a double comparative."
+    },
+    {
+      "id": "adjectives-adverbs-03",
+      "skill": "adjectives-adverbs",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The fresh bread smelled wonderfully.",
+        "The fresh bread smelled real wonderful.",
+        "The fresh bread smelled wonderful.",
+        "The fresh bread smelled more wonderfully."
+      ],
+      "answer": 2,
+      "explanation": "'Smelled' is a linking verb here, describing the bread, so it takes the adjective 'wonderful'."
+    },
+    {
+      "id": "adjectives-adverbs-04",
+      "skill": "adjectives-adverbs",
+      "prompt": "The negotiations went ___ than anyone had predicted.",
+      "choices": [
+        "badder",
+        "more bad",
+        "worser",
+        "worse"
+      ],
+      "answer": 3,
+      "explanation": "'Bad' has an irregular comparative, 'worse'. 'Worser' is a double comparative, and 'badder' and 'more bad' aren't standard."
+    },
+    {
+      "id": "adjectives-adverbs-05",
+      "skill": "adjectives-adverbs",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "This is the most comfortable chair in the whole house.",
+        "This is the comfortablest chair in the whole house.",
+        "This is the most comfortablest chair in the whole house.",
+        "This is the more comfortable chair in the whole house."
+      ],
+      "answer": 0,
+      "explanation": "Long adjectives such as 'comfortable' form the superlative with 'most', not -est. Using both is a double superlative, and 'more' compares only two things."
+    },
+    {
+      "id": "adjectives-adverbs-06",
+      "skill": "adjectives-adverbs",
+      "prompt": "The new software runs ___ even on older laptops.",
+      "choices": [
+        "efficient",
+        "more efficient",
+        "most efficient",
+        "efficiently"
+      ],
+      "answer": 3,
+      "explanation": "'Runs' is an action verb, so it takes the adverb 'efficiently'. 'Efficient' and its comparative forms are adjectives."
+    },
+    {
+      "id": "adjectives-adverbs-07",
+      "skill": "adjectives-adverbs",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The concert was real good, and the crowd was loud.",
+        "The concert was really well, and the crowd was loud.",
+        "The concert was real well, and the crowd was loudly.",
+        "The concert was really good, and the crowd was loud."
+      ],
+      "answer": 3,
+      "explanation": "'Really' is the adverb that intensifies 'good', and 'good' follows the linking verb 'was'. 'Real' isn't used as an intensifier in standard writing."
+    },
+    {
+      "id": "adjectives-adverbs-08",
+      "skill": "adjectives-adverbs",
+      "prompt": "Of the three hotels we stayed in, this one was the ___.",
+      "choices": [
+        "more expensive",
+        "most expensive",
+        "expensivest",
+        "most expensivest"
+      ],
+      "answer": 1,
+      "explanation": "When comparing three or more things, use the superlative, and long adjectives form it with 'most'."
+    },
+    {
+      "id": "adjectives-adverbs-09",
+      "skill": "adjectives-adverbs",
+      "prompt": "Choose the correct sentence.",
+      "choices": [
+        "The interview went good, so I'm hopeful.",
+        "The interview went very good, so I'm hopeful.",
+        "The interview went well, so I'm hopeful.",
+        "The interview went real well, so I'm hopeful."
+      ],
+      "answer": 2,
+      "explanation": "'Went' describes how the interview proceeded, so it takes the adverb 'well', not the adjective 'good'."
+    },
+    {
+      "id": "adjectives-adverbs-10",
+      "skill": "adjectives-adverbs",
+      "prompt": "The milk smells ___, so I poured it away.",
+      "choices": [
+        "badly",
+        "badder",
+        "bad",
+        "more badly"
+      ],
+      "answer": 2,
+      "explanation": "'Smells' is a linking verb here, describing the milk, so it takes the adjective 'bad'."
+    }
+  ]
+}

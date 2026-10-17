@@ -1,0 +1,34 @@
+{
+  "identifier" : "4E3F57D0",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : true,
+      "internalID" : "4E3F57D1",
+      "localizations" : [
+        {
+          "description" : "Mind Track, unlocked for good. No subscription.",
+          "displayName" : "Mind Track",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "dev.svindland.mindtrack.unlock",
+      "referenceName" : "Mind Track unlock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [ ]
+  },
+  "subscriptionGroups" : [ ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -3,7 +3,7 @@
 linked to the local Swift packages in Packages/. Run from the repo root:
 
     python3 Scripts/generate-project.py              # every app
-    python3 Scripts/generate-project.py MacroTrack   # just one
+    python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack, MacroTrack or MindTrack)
 """
 import os
 import sys
@@ -212,7 +212,37 @@ MACRO = {
     "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True)],
 }
 
-APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO}
+# MARK: - Mind Track
+
+mind_app = {**swift_common, **ios_app_common, **{
+    "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
+    "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.mindtrack",
+    # The doc puts this one on the Mac too (sheet music and study at a desk): the iPad app runs there as is.
+    "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "YES",
+}}
+
+MIND_PACKAGES = ["SystemCore", "SystemStore", "MindEngine"]
+
+MIND = {
+    "name": "MindTrack",
+    "id_prefix": "4E3F",
+    "packages": MIND_PACKAGES,
+    "targets": [
+        ("MindTrack", "MindTrack.app", "com.apple.product-type.application", "wrapper.application", mind_app,
+         ["iOS", "Catalogs"], MIND_PACKAGES),
+    ],
+    "embeds": [],
+    "config_files": ["Info.plist", "MindTrack.entitlements"],
+    "groups": ["iOS", "Catalogs"],
+    # The catalog folder holds japanese.db (built by Scripts/build-japanese-catalog.py, not in git) and its README.
+    "exceptions": [("Catalogs", "MindTrack", ["README.md"])],
+    "extra_files": ["MindTrack.storekit"],
+    "schemes": [("MindTrack", "MindTrack", "MindTrack.app", True)],
+}
+
+APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO, "MindTrack": MIND}
 
 project_debug = {
     "ALWAYS_SEARCH_USER_PATHS": "NO", "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",

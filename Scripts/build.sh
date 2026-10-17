@@ -1,9 +1,10 @@
 #!/bin/zsh
-# Usage: Scripts/build.sh [test|ios|watch|macro|all]
+# Usage: Scripts/build.sh [test|ios|watch|macro|mind|all]
 #   test   swift test for every package
 #   ios    Lift Track for iPhone/iPad with its widgets and Watch app (iPhone 18 Pro simulator)
 #   watch  Lift Track's Watch app and its complications (generic watchOS simulator)
 #   macro  Macro Track for iPhone/iPad with its widgets (iPhone 18 Pro simulator)
+#   mind   Mind Track for iPhone/iPad (iPhone 18 Pro simulator)
 #   all    everything above
 # Builds into a throwaway DerivedData and prints only errors and warnings.
 set -u
@@ -13,7 +14,7 @@ DD=${DERIVED_DATA:-/tmp/system-dd}
 STATUS=0
 
 run_tests() {
-  for pkg in SystemCore ExerciseLibrary SystemStore HealthBridge LiftEngine NutritionEngine FoodDatabase FoodIntelligence MealPlanner; do
+  for pkg in SystemCore ExerciseLibrary SystemStore HealthBridge LiftEngine NutritionEngine FoodDatabase FoodIntelligence MealPlanner MindEngine; do
     print "== $pkg"
     (cd Packages/$pkg && swift test 2>&1 | grep -E "error:|warning:|recorded an issue|Test run with|Executed .* tests") || true
   done
@@ -29,6 +30,7 @@ build() {
 
 LIFT=Apps/LiftTrack/LiftTrack.xcodeproj
 MACRO=Apps/MacroTrack/MacroTrack.xcodeproj
+MIND=Apps/MindTrack/MindTrack.xcodeproj
 PHONE='platform=iOS Simulator,name=iPhone 18 Pro'
 
 case $WHAT in
@@ -36,6 +38,7 @@ case $WHAT in
   ios) build $LIFT LiftTrack $PHONE ;;
   watch) build $LIFT LiftTrackWatch 'generic/platform=watchOS Simulator' ;;
   macro) build $MACRO MacroTrack $PHONE ;;
-  all) run_tests; build $LIFT LiftTrack $PHONE; build $LIFT LiftTrackWatch 'generic/platform=watchOS Simulator'; build $MACRO MacroTrack $PHONE ;;
+  mind) build $MIND MindTrack $PHONE ;;
+  all) run_tests; build $LIFT LiftTrack $PHONE; build $LIFT LiftTrackWatch 'generic/platform=watchOS Simulator'; build $MACRO MacroTrack $PHONE; build $MIND MindTrack $PHONE ;;
 esac
 exit $STATUS
