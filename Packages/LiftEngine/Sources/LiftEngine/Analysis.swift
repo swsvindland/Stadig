@@ -16,6 +16,8 @@ public struct LiftState: Sendable {
     public var mesocycles: [Mesocycle]
     public var lifeModes: [LifeModePeriod]
     public var recovery: [RecoveryDay]
+    /// Daily steps from Health, today's so far included.
+    public var steps: [StepDay]
     public var bodyweightKg: Double?
     public var vo2Max: Double?
     public var restingHeartRate: Double?
@@ -27,8 +29,9 @@ public struct LiftState: Sendable {
     public init(profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
                 activities: [ActivityLog] = [], measurements: [BodyMeasurements] = [], mobility: [MobilityResult] = [],
                 benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
-                recovery: [RecoveryDay] = [], bodyweightKg: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil,
-                nutrition: NutritionSummary? = nil, recommendations: [Recommendation] = [], today: Day = .today) {
+                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, vo2Max: Double? = nil,
+                restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil, recommendations: [Recommendation] = [],
+                today: Day = .today) {
         self.profile = profile
         self.settings = settings
         self.gym = gym
@@ -41,6 +44,7 @@ public struct LiftState: Sendable {
         self.mesocycles = mesocycles
         self.lifeModes = lifeModes
         self.recovery = recovery
+        self.steps = steps
         self.bodyweightKg = bodyweightKg
         self.vo2Max = vo2Max
         self.restingHeartRate = restingHeartRate
@@ -56,6 +60,34 @@ public struct LiftState: Sendable {
     }
 
     public var phase: NutritionPhase { PhaseResolver.current(published: nutrition?.phase, selfReported: settings.selfReportedPhase) }
+
+    /// When the current phase began, for the step aim's usual count: Macro Track's phase start, else
+    /// when the phase answer last changed, else when training here began.
+    public var phaseStart: Day? {
+        if let published = nutrition?.phase {
+            if let start = published.start { return start }
+        } else if settings.selfReportedPhase != nil, let since = settings.selfReportedPhaseSince {
+            return since
+        }
+        return settings.assessmentStart ?? settings.onboardedAt.map { Day($0) }
+    }
+
+    /// The first day of steps the analysis needs: four weeks before the phase began (within a
+    /// year), and at least the last eight weeks.
+    public var stepsNeededSince: Day {
+        let recent = today.adding(days: -56)
+        guard let start = phaseStart else { return recent }
+        return max(today.adding(days: -365), min(recent, start.adding(days: -28)))
+    }
+
+    /// Days of illness: their steps say nothing about habits.
+    var illnessDays: Set<Day> {
+        var days = Set<Day>()
+        for period in lifeModes {
+            if case .illness = period.kind { days.formUnion(period.range(openUntil: today).days) }
+        }
+        return days
+    }
 }
 
 /// A prescriptive insight: every one ends in a concrete action, or it isn't shown.
@@ -109,6 +141,8 @@ public struct LiftAnalysis: Sendable {
     public var adherence: [AdherenceItem]
     /// Every sauna and steam session, oldest first.
     public var heat: [HeatLog] = []
+    /// The daily step aim, when Health has enough steps to know the usual count.
+    public var steps: StepAim?
 }
 
 public enum Analyst {
@@ -142,6 +176,20 @@ public enum Analyst {
             return FatigueEvent(day: session.day, load: load, feedback: session.feedback)
         }
         events += state.activities.map { FatigueEvent(day: $0.day, load: $0.fatigue) }
+        // Steps: an aim from the usual count and the phase; long unlogged days on foot spend the budget.
+        let stepAim = state.phaseStart.flatMap { anchor in
+            Steps.aim(days: state.steps, anchor: anchor, energy: state.phase.kind.energy, age: state.profile.age(on: today), today: today,
+                      exempt: state.illnessDays)
+        }
+        if let stepAim {
+            let logged = Set(state.activities.map(\.day))
+            let walking = ActivityType.walking.hourlyFatigue
+            events += Steps.longDays(state.steps.filter { $0.day < today }, baseline: stepAim.baseline, skipping: logged).map { long in
+                let hours = Double(long.minutes) / 60
+                return FatigueEvent(day: long.day, load: FatigueLoad(systemic: walking.systemic * hours,
+                                                                     local: walking.local.mapValues { $0 * hours }))
+            }
+        }
         let lifeStress = LifeModes.lifeStress(in: DayRange(today.adding(days: -27), today), periods: state.lifeModes)
         let series = history.map { id, sets in StrengthEstimator.sessionBests(sets, basis: state.catalog.resolve(id).loadBasis, trust: trust) }
         let trend = FatigueBudget.performanceTrend(series, today: today)
@@ -204,6 +252,7 @@ public enum Analyst {
                                     block: block, next: next, assessment: assessment, actions: [], quests: [], calendar: calendar,
                                     adherence: adherence)
         analysis.heat = sessions.flatMap { $0.heat ?? [] }.sorted { $0.date < $1.date }
+        analysis.steps = stepAim
         analysis.actions = actions(state, analysis)
         analysis.quests = quests(state, analysis)
         return analysis
@@ -352,10 +401,28 @@ public enum Analyst {
                               detail: "Your weakest mobility test.", stat: .agility, source: .liftTrack, minutes: 10, day: today,
                               timeOfDay: .evening, priority: 1.5))
         }
+        if let walk = walkQuest(state, a) { list.append(walk) }
         return Quests.forDay(today, from: list)
     }
 
     private static func next(_ a: LiftAnalysis) -> NextSession? { a.next }
+
+    /// A walk on a rest day when the week's steps are behind the aim: the gap to the aim as minutes
+    /// of brisk walking. Not on lift or class days, while ill, or with a hip, knee or ankle injury,
+    /// and gone once today reaches the aim.
+    static func walkQuest(_ state: LiftState, _ a: LiftAnalysis) -> Quest? {
+        let today = state.today
+        guard let steps = a.steps, steps.shown, steps.onTrack == false, let recent = steps.recent, (steps.today ?? 0) < steps.aim,
+              next(a)?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
+              !state.profile.recurring.contains(where: { $0.weekdays.contains(today.weekday) }),
+              !state.illnessDays.contains(today),
+              !a.life.injuries.contains(where: { $0.parts.contains { [.hip, .knee, .ankle].contains($0.joint) } }) else { return nil }
+        let minutes = clamp(Int((Double(steps.gap) / Double(Steps.perMinute) / 5).rounded()) * 5, 10, 40)
+        return Quest(id: "lift-\(today.iso)-walk", title: "\(minutes)-minute walk",
+                     detail: "Steps have averaged \(Steps.round(recent, to: 100).formatted()) a day over the last week; the aim is \(steps.aim.formatted()).",
+                     stat: .vitality, source: .liftTrack, minutes: minutes, day: today, timeOfDay: .evening,
+                     priority: steps.energy == .deficit ? 1.8 : 1.2)
+    }
 
     // MARK: Publishing
 
@@ -395,10 +462,13 @@ public enum Analyst {
             SessionSummary(id: log.id, app: .liftTrack, kind: .activity, activity: log.type, start: log.start, minutes: log.minutes,
                            metrics: ["intensity": Double(log.intensity)], fatigue: log.fatigue, statCredit: log.statCredit, planned: false)
         }
+        // Complete days only, so today's climbing count doesn't republish all day.
+        let stepDays = state.steps.filter { $0.day >= today.adding(days: -56) && $0.day < today }.sorted { $0.day < $1.day }
+        let steps = stepDays.isEmpty ? nil : StepSummary(days: stepDays, aim: a.steps?.aim, baseline: a.steps?.baseline)
         return AppSummary(app: .liftTrack, stats: stats, sessions: shared.sorted { $0.start < $1.start }, quests: a.quests,
                           strength: a.strength.categories.isEmpty ? nil : a.strength, fatigue: a.fatigue.status, discipline: a.discipline,
                           measurements: a.physique.latest, mobility: Array(a.agility.latest.values), benchmarks: state.benchmarks.suffix(6),
-                          stalls: a.stalls, phaseUsed: a.phase)
+                          stalls: a.stalls, phaseUsed: a.phase, steps: steps)
     }
 
     static func strengthTrend(_ a: LiftAnalysis) -> Trajectory {

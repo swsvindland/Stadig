@@ -98,6 +98,11 @@ Everything the hub and every app must agree on lives here, so scores are identic
   - Endurance: heart-rate zones, heart-rate-guided rest with minimums for heavy compounds, heart-rate recovery between sets, benchmarks.
   - Agility: five mobility tests, with the weakest becoming the limiter, and "see a physio" when a test hurts or worsens.
   - Physique: shoulder-to-waist and waist-to-height ratios, a tape body-fat estimate as a soft signal, and gaps described in neutral words.
+- **Steps** (`Steps`): a daily aim, never a stat, streak or ring.
+  - It starts from your usual count (the four weeks before the current phase began), not a universal 10,000. Days under 1,000 steps (the phone on a desk) and illness days are unknown.
+  - In a cut it heads for your usual plus about 2,000, at least the floor (8,000, or 7,000 from 60, where the benefit levels off in large cohort studies); a usual count over 12,000 is held. Otherwise it holds the usual count, lifted to the floor if it's under, and nothing over 10,000 is prescribed.
+  - Each calendar week's aim is last week's average plus 1,000, never under the usual count and never past the target, so a missed week doesn't raise the next.
+  - It's judged as the last seven days' average, and shown only when there's something to do: always in a cut, otherwise while building to the floor or when steps slip more than 1,000 under the aim.
 
 ### ExerciseLibrary
 
@@ -124,7 +129,7 @@ Each app owns its own **SwiftData + CloudKit** database: one generic `RecordRow`
 
 ### HealthBridge
 
-- **Reads** body weight, height, sleep, HRV, resting heart rate, VO₂ max, heart-rate samples, and workouts other apps wrote. Those workouts are mapped to activity types with an estimated intensity and imported as outside activities.
+- **Reads** body weight, height, sleep, HRV, resting heart rate, VO₂ max, heart-rate samples, daily steps (merged across iPhone and Watch the way Health shows them), and workouts other apps wrote. Those workouts are mapped to activity types with an estimated intensity and imported as outside activities.
 - **Writes** strength workouts (keyed by sync id, so edits replace them), waist and body fat.
 - **On watchOS**, `LiveWorkoutSession` streams heart rate.
 
@@ -176,6 +181,8 @@ The program generator works like this:
 
 **Analysis** produces the "Do this next" actions. Each one ends in a concrete step, e.g. "Next session, 82.5 kg for 3×5" for a stall. When Macro Track data exists, it adds cross-app context such as "Protein was under target 4 of the last 7 logged days." It also produces the day's quests (three at most), the training discipline score, and the summary published for the hub.
 
+**Steps** show on the Plan tab under the week strip: this week's aim, the last seven days against it, where it's heading and why. On a rest day with the week behind, a quest offers the gap as a brisk walk ("20-minute walk"), but not on lift or class days, while ill, with a hip, knee or ankle injury, or once today reaches the aim. A long day on foot nobody logged (15,000 steps and 7,000 over the usual) spends the Fatigue Budget as walking; a logged hike counts once, as the hike. The last eight weeks of steps and the aim are published for Macro Track. Health is asked again for steps only by people who already connected it.
+
 ### The Watch
 
 The iPhone keeps the Watch's application context current: today's plan, the gym, trust, and recent history for the plan's exercises and their likely swaps. The Watch then runs the session on its own with the same `LiveSession` engine:
@@ -216,8 +223,8 @@ Macro Track is built for the least time in the app. Most visits are one of these
 
 | Doc item | Where |
 |---|---|
-| Nutrition and bodyweight; daily weigh-ins drive adaptive targets | `Weight.trend` smooths both level and rate (Holt), so a steady loss doesn't lag; lone misreads are left out. `Energy.observe` fits a line through the weigh-ins against mean intake on complete days. `CheckIns.review` moves maintenance a third of the way each week and targets at most 150 kcal (or 7.5%), holding on jumps and misreads. |
-| 2–3 week assessment; week 1 is water; a wide preliminary estimate at week 2; no deficit or surplus | `MacroAnalyst` (21 days, or 14 with a fortnight of earlier Health weigh-ins) and `Energy.estimate`: the formula (Mifflin–St Jeor × activity from Lift Track's sessions) blended with the data by their uncertainties, with an honest range ("Early estimate", "Getting there", "Solid"). Targets during the assessment ask only for protein. |
+| Nutrition and bodyweight; daily weigh-ins drive adaptive targets | `Weight.trend` smooths both level and rate (Holt), so a steady loss doesn't lag; lone misreads are left out. `Energy.observe` fits a line through the weigh-ins against mean intake on complete days. `CheckIns.review` moves maintenance a third of the way each week and targets at most 150 kcal (or 7.5%), holding on jumps and misreads. In a deficit, when Lift Track's steps fell (by at least 1,500 a day and an eighth, against the month before) and that explains at least half of a lower maintenance, it holds maintenance once and says to walk back toward the aim before calories come down; a week later the data leads again. |
+| 2–3 week assessment; week 1 is water; a wide preliminary estimate at week 2; no deficit or surplus | `MacroAnalyst` (21 days, or 14 with a fortnight of earlier Health weigh-ins) and `Energy.estimate`: the formula (Mifflin–St Jeor × activity from Lift Track's sessions and, when Lift Track has them, steps in place of an assumed everyday average) blended with the data by their uncertainties, with an honest range ("Early estimate", "Getting there", "Solid"). Targets during the assessment ask only for protein. |
 | Goal-driven phase recommendation, chained, three horizons, one recommendation with "Why?", honest confidence | `PhasePlanner.recommend`: cut, mini-cut, maintenance, diet break, reverse diet, recomp or lean bulk with rate and length, from goals, waist-to-height (Lift Track's measurements), strength, diet history and maintenance against the formula. Thin data keeps the first phase to 4 weeks and says so. The Plan tab shows now, next and the year's arc. |
 | Review at mesocycle boundaries with rule triggers | `PhasePlanner.review`: a cut ends with a diet break when strength regresses or you reach lean; a surplus slows when gaining too fast; a new recommendation when the plan runs out. Shown as "Plan check" on Today and the Plan tab when Lift Track's block ends. |
 | Publish the phase to the core | `AppModel.publish` writes `NutritionSummary` (phase, maintenance, day-by-day logging and target hits) and Macro Track's `AppSummary`, only when they change. Lift Track already reads them. |
@@ -277,14 +284,15 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 
 ## Tests: the logic is the product
 
-- **SystemCore (52 tests).** Includes simulated users trained for 12 weeks through the real progression, autoregulation and calibration code:
+- **SystemCore (58 tests).** Includes simulated users trained for 12 weeks through the real progression, autoregulation and calibration code:
   - An **honest novice** earns trust (0.3 → 0.73), and estimates track true strength within 12%.
   - A **sandbagger** is caught in week one. Machine rep-outs pin their real strength within 10%; their barbell estimate stays conservative but in range (above 80%).
   - An **overconfident veteran** loses trust (0.7 → 0.52), and estimates don't run ahead of reality.
   - A **plateaued veteran** gets a stall that reads as a programming problem at maintenance, expected in a cut, and a recovery problem when beat up.
   - A **growing lifter** is never flagged as stalled.
   - Also covered: strength standards, autoregulation for every rating, assisted exercises, finding weights, deloads, injury ramps, vacation reflow, early deloads, life-mode effects, the discipline band, Fatigue Budget states, physique, agility, rest rules and quests.
-- **LiftEngine (32 tests).**
+  - Steps: the usual count from before the phase (desk and illness days left out), a cut's target and its 1,000-a-week climb, holding outside a cut, when the aim shows, long days on foot, and a fall in steps against the month before.
+- **LiftEngine (37 tests).**
   - Every day count from 1 to 6, and every scored lift covered each week.
   - The easy bike gets its five minutes and the drills fit the rest; no lift gets a single set at 45 to 90 minutes, and an hour and a half is more lifting than an hour.
   - "Do this now" (with superset partners), a mistyped weight or rating corrected with the next sets following it, starting weights in range for leg press, dumbbell bench, pulldown and squat, the sauna or steam room only where the gym has one, and minutes per heart-rate zone.
@@ -292,12 +300,14 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
   - 30, 60 and 90-minute budgets. Endurance goals rank conditioning higher.
   - Hotel gyms, injuries, "legs ahead means upper body first", and beat-up-and-stalled swaps.
   - Physique gaps, declared classes, crunch mode, swaps, gym loads and CSV export.
+  - The step aim from a cut's start, the walk quest and when it stays away, a long unlogged day spending the budget once, and the published steps.
   - A full four-week assessment that ends with all working weights found, seven lifts scored within about 3% of the simulated lifter's true strength, and the next block prioritising the lagging upper body with its "Why?".
 - **ExerciseLibrary (28), SystemStore (22) and HealthBridge (12)** cover the data, migrations, dedupe, backups and mappings.
-- **NutritionEngine (43 tests).** Simulated eaters with a known true maintenance, who log most days (some partly), weigh in most mornings with noisy scales and a week-one water drop, and occasionally misread:
+- **NutritionEngine (45 tests).** Simulated eaters with a known true maintenance, who log most days (some partly), weigh in most mornings with noisy scales and a week-one water drop, and occasionally misread:
   - After four weeks, maintenance lands within about 150 kcal on average, and the honest range holds the truth in 38–40 of 40 runs at every noise level tried (33–38 of 40 at three weeks, when the formula guess was far off).
   - The trend follows a steady loss within 0.1 kg; a plain 7-day average would sit about 0.8 kg high.
   - Weekly check-ins walk an overestimate of 2,800 down to the true 2,400 in about four weeks, never moving targets more than 150 kcal at once.
+  - Steps falling from 11,000 to 6,000 in a cut hold maintenance once, with the reason, then the data leads; steady steps change nothing; and steps move the formula either side of 7,500.
   - Food quality: calorie shares by processing group, "fair" between the 20% aim and the 30% worth acting on, unknown under three complete days or when too little says how processed it is, fermented days counted once a day (a custom "kimchi" by its name, frozen yogurt never), and processing kept through copies, old saved entries and the CSV.
   - The phase planner's rules, including the doc's worked example (off a long cut with low maintenance: reverse diet, then a lean bulk), review triggers, target modes (diet break in a deload, vacation, illness, crunch, assessment), discipline unknowns and "Log again" ranking.
   - Supplements and drinks: a day's doses by time of day, with the pre-workout only on training days; every other day and chosen weekdays; doses scaled from the label's serving (one softgel of a two-softgel serving); a dose taken off the plan still showing on its day; supplements added to the week's vitamins unscaled by food coverage (3 µg vitamin D from half the calories plus a 25 µg multivitamin is 31 µg, not 56); a supplement alone enough to call zinc fine; vitamin D at 145 µg and 400 mg of supplemental magnesium flagged first, while 500 mg of magnesium from food isn't; supplement calories only on days with food; caffeine left at bedtime, a 400 → 200 mg cut-back in three weekly steps, and the week's average from days with caffeine logged; caffeine estimated for a latte or a Monster without a value, never for coffee cake; drinks told from foods named after them (chocolate milk and cold brew are drinks; coffee ice cream, oats cooked with milk and tuna in water aren't); and the supplement and water CSV tables.
@@ -313,6 +323,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 - **Strength standards** are approximate public tables, scored at beginner 20, novice 40, intermediate 60, advanced 80 and elite 100. Age adjustment isn't modelled yet.
 - **Macro Track's unlock** gates starting the phase plan. Logging (including photos and descriptions), the assessment, export and backup are free. The StoreKit price (24.99) is a placeholder.
 - **Macro Track's weekly check-ins apply themselves**, damped and capped at 150 kcal, with the reason on Today, rather than asking each week.
+- **The step aim's numbers.** The 8,000 floor (7,000 from 60), a cut's extra 2,000, 1,000 a week, nothing prescribed over 10,000 outside a cut, 1,000 steps as "the phone stayed on a desk", and a check-in holding at most once for fewer steps are calls made without sign-off. Macro Track gets steps only from Lift Track; on its own it doesn't read them.
 - **Shipping `off.db`.** It's about 590 MB and bundled from `Apps/MacroTrack/Catalogs`, which isn't in git. Shipping it in the app bundle versus downloading it with Background Assets is undecided. `supplements.db` (43 MB, public domain) is bundled the same way.
 - **Supplements and drinks, calls made without sign-off.** Unmarked doses count for nothing (unknown, like an unlogged day); a supplement's calories count only on days with food; upper limits are checked only when supplements contribute, and vitamin A's isn't (it applies to retinol, which labels rarely split out). A barcode in both catalogs is a supplement unless it has 50 kcal or more a serving (protein powders stay food). Drinks are off by default; water aims are 3 L and 2.2 L; caffeine uses a five-hour half-life, flags 50 mg or more at bedtime, and cuts back a fifth a week.
 - **Not built yet:**
@@ -328,7 +339,7 @@ swift Scripts/make-macro-icons.swift  # redraw Macro Track's icons
 
 **Verified**
 
-- **Builds.** All nine packages build and test clean: 303 tests, zero warnings. The `LiftTrack` scheme (iPhone/iPad app, widgets, Live Activity, embedded Watch app), the `LiftTrackWatch` scheme and the `MacroTrack` scheme (app, widgets, controls) build with zero errors and warnings.
+- **Builds.** All nine packages build and test clean: 316 tests, zero warnings. The `LiftTrack` scheme (iPhone/iPad app, widgets, Live Activity, embedded Watch app), the `LiftTrackWatch` scheme and the `MacroTrack` scheme (app, widgets, controls) build with zero errors and warnings.
 - **iPhone 18 Pro Max simulator**
   - Onboarding on the persistent store creates the assessment block. The first session prescribes "find weight" sets.
   - `-seedSampleData` runs three weeks of real engine sessions. Today shows "What we've learned", including the overhead-press imbalance and "you can finish early".

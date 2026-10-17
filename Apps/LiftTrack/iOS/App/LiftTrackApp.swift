@@ -53,12 +53,14 @@ struct LiftTrackApp: App {
                 }
                 .task {
                     await model.purchases.start()
+                    await HealthBridge.shared.requestAddedTypes()
                     await model.refreshHealth()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         model.reloadIfChanged()
                         if model.today != .today { model.recompute() }
+                        Task { await model.refreshSteps() }
                     }
                 }
         }

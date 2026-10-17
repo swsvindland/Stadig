@@ -143,10 +143,16 @@ public enum MacroAnalyst {
         let trainingDays = state.lift.map { summary in
             Int((Double(summary.sessions.filter { $0.kind == .strength && $0.day > today.adding(days: -28) }.count) / 4).rounded())
         } ?? state.profile.schedule.daysPerWeek
-        let otherMinutes = Double(state.lift?.sessions.filter { $0.kind == .activity && $0.day > today.adding(days: -28) }.map(\.minutes).reduce(0, +) ?? 0) / 4
+        // Lift Track's steps, when it has them, stand in for everyday movement; walks are already in them.
+        let dailySteps = state.lift?.steps.flatMap { summary in
+            Steps.average(summary.days, in: DayRange(today.adding(days: -28), today.adding(days: -1)), minimumDays: 14)
+        }.map(Double.init)
+        let onFoot: Set<ActivityType> = dailySteps == nil ? [] : [.walking, .hiking]
+        let otherMinutes = Double(state.lift?.sessions.filter { $0.kind == .activity && $0.day > today.adding(days: -28) && !onFoot.contains($0.activity ?? .other) }
+            .map(\.minutes).reduce(0, +) ?? 0) / 4
             + Double(state.profile.recurring.map { $0.minutes * $0.weekdays.count }.reduce(0, +))
         let formula = Energy.formula(sex: state.profile.sex, kg: weight, heightCm: state.profile.heightCm, age: state.profile.age(on: today),
-                                     trainingDays: trainingDays, otherActiveMinutes: otherMinutes)
+                                     trainingDays: trainingDays, otherActiveMinutes: otherMinutes, dailySteps: dailySteps)
         // Usable days: marked complete (or fasting), or finished yesterday-or-earlier with at least
         // three entries logged live reaching 70% of the day's need. Everything else is unknown.
         let states = Dictionary(state.dayStatus.map { ($0.day, $0.state) }, uniquingKeysWith: { a, _ in a })
@@ -210,7 +216,7 @@ public enum MacroAnalyst {
         if !assessing, CheckIns.isDue(last: checkIn, today: today) {
             dueCheckIn = CheckIns.review(previous: checkIn, trend: trend, usable: complete.filter { !ignored.contains($0.key) }, today: today,
                                          phase: state.plan?.phase(on: today), weightKg: weight, referenceKg: referenceKg,
-                                         fallbackExpenditure: maintenance.kcal)
+                                         fallbackExpenditure: maintenance.kcal, steps: state.lift?.steps)
         }
         let targets = Targets.today(day: today, assessing: assessing, plan: state.plan, override: state.settings.phaseOverride,
                                     maintenance: maintenance, checkIn: dueCheckIn ?? checkIn, weightKg: weight,

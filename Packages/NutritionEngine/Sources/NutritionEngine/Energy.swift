@@ -175,17 +175,20 @@ public enum Energy {
         }
     }
 
-    /// Activity multiplier from training days and other weekly activity.
-    public static func activityFactor(trainingDays: Int, otherActiveMinutes: Double) -> Double {
-        clamp(1.35 + 0.04 * Double(trainingDays) + otherActiveMinutes / 60 * 0.012, 1.3, 1.8)
+    /// Activity multiplier from training days and other weekly activity. With a step count,
+    /// everyday movement comes from it (0.02 of resting energy per 1,000 steps either side of
+    /// 7,500) instead of an assumed average.
+    public static func activityFactor(trainingDays: Int, otherActiveMinutes: Double, dailySteps: Double? = nil) -> Double {
+        let everyday = dailySteps.map { clamp(1.35 + 0.02 * ($0 - 7_500) / 1_000, 1.2, 1.6) } ?? 1.35
+        return clamp(everyday + 0.04 * Double(trainingDays) + otherActiveMinutes / 60 * 0.012, 1.2, 1.8)
     }
 
     /// The formula guess, with a typical error of about 15%.
     public static func formula(sex: BiologicalSex, kg: Double, heightCm: Double?, age: Int?, trainingDays: Int,
-                               otherActiveMinutes: Double) -> Double {
+                               otherActiveMinutes: Double, dailySteps: Double? = nil) -> Double {
         let height = heightCm ?? (sex == .female ? 165 : 177)
         return restingEnergy(sex: sex, kg: kg, heightCm: height, age: age ?? 35)
-            * activityFactor(trainingDays: trainingDays, otherActiveMinutes: otherActiveMinutes)
+            * activityFactor(trainingDays: trainingDays, otherActiveMinutes: otherActiveMinutes, dailySteps: dailySteps)
     }
 
     /// Energy balance over a window. The weight change comes from a least-squares line through
@@ -262,6 +265,8 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
         case holding
         /// Set by the person.
         case manual
+        /// Maintenance dropped mostly because steps fell: targets hold once while they come back.
+        case steps
     }
 
     public var id: UUID
@@ -302,8 +307,10 @@ public enum CheckIns {
 
     /// The week's review: observe the last 21 days, move expenditure part of the way, and move
     /// targets at most 150 kcal (or 7.5%). Holds rather than reacting to a jump or a lone misread.
+    /// In a deficit, when fewer steps explain most of a lower maintenance, it holds once and says
+    /// to walk back up before calories come down.
     public static func review(previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
-                              weightKg: Double, referenceKg: Double, fallbackExpenditure: Double) -> CheckIn {
+                              weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil) -> CheckIn {
         let prior = previous?.expenditure ?? fallbackExpenditure
         let window = DayRange(today.adding(days: -21), today.adding(days: -1))
         let observation = Energy.observe(trend: trend, usable: usable, window: window)
@@ -336,6 +343,16 @@ public enum CheckIns {
         }
         let expenditure = prior + damping * clamp(raw - prior, -500, 500)
         let change = expenditure - prior
+        if change <= -25, phase?.kind.energy == .deficit, let steps, let fall = Steps.fall(steps.days, window: window) {
+            let burned = Double(fall.before - fall.during) * Steps.kcalPerStep(kg: weightKg)
+            let fell = "Steps fell from \(fall.before.formatted()) to \(fall.during.formatted()) a day, about \(Int((burned / 10).rounded() * 10)) kcal less burned"
+            let aim = steps.aim.map { "back toward \($0.formatted()) a day" } ?? "back up"
+            if burned >= min(prior - raw, 500) * 0.5, previous?.status != .steps {
+                return make(prior, .steps, "\(fell), which is most of the lower maintenance. Maintenance holds this week: walk \(aim) before calories come down. If steps stay down, next week follows the data.")
+            }
+            let lower = "Maintenance looks lower than last week (about \(Int((expenditure / 10).rounded() * 10)) kcal), so targets move down a little."
+            return make(expenditure, .updated, "\(lower) \(fell); walking \(aim) would win some of it back.")
+        }
         let reason = abs(change) < 25
             ? "Maintenance holding at about \(Int((expenditure / 10).rounded() * 10)) kcal."
             : "Maintenance looks \(change > 0 ? "higher" : "lower") than last week (about \(Int((expenditure / 10).rounded() * 10)) kcal), so targets move \(change > 0 ? "up" : "down") a little."

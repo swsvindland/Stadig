@@ -90,7 +90,7 @@ ios_widgets_common = {
 lift_app = dict(swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/LiftTrack.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
-    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track reads body weight, sleep, heart rate, HRV and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.",
+    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.",
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Lift Track saves progress photos you choose, for your own comparison.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Lift Track can take progress photos for your own comparison.",

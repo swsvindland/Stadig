@@ -42,7 +42,7 @@ extension HealthBridge {
     // MARK: Authorization
 
     /// Training reads body mass, height, body fat %, waist circumference, resting HR, HRV SDNN, VO2
-    /// max, sleep analysis, heart rate, workouts, active energy and date of birth (for an age-based
+    /// max, sleep analysis, heart rate, steps, workouts, active energy and date of birth (for an age-based
     /// max heart rate), and writes workouts, waist circumference, body fat %, active energy (and
     /// heart rate on the Watch, for live sessions). Nutrition reads body mass, height, body
     /// composition, workouts and date of birth, and writes food and body mass. Returns whether
@@ -55,6 +55,15 @@ extension HealthBridge {
         } catch {
             return false
         }
+    }
+
+    /// Asks again only when types were added since the person last answered, and only if they
+    /// answered before (sharing workouts was decided): never a first prompt out of nowhere.
+    public func requestAddedTypes(_ access: HealthAccess = .training) async {
+        guard let store, store.authorizationStatus(for: HKObjectType.workoutType()) != .notDetermined else { return }
+        let share = HealthTypes.shareTypes(access), read = HealthTypes.readTypes(access)
+        guard (try? await store.statusForAuthorizationRequest(toShare: share, read: read)) == .shouldRequest else { return }
+        _ = try? await store.requestAuthorization(toShare: share, read: read)
     }
 
     // MARK: Body
@@ -96,6 +105,25 @@ extension HealthBridge {
         async let resting = dailyAverages(store: store, type: HealthTypes.restingHeartRate, unit: HealthTypes.bpm, from: start,
                                           calendar: calendar)
         return await HealthMath.recoveryDays(from: since, through: today, sleep: sleep, hrv: hrv, restingHeartRate: resting)
+    }
+
+    // MARK: Steps
+
+    /// Steps per calendar day from `since` through today (today so far), every source merged the
+    /// way Health shows them, so an iPhone and a Watch don't double count. Oldest first.
+    public func dailySteps(since: Day) async -> [StepDay] {
+        guard let store else { return [] }
+        let calendar = Calendar.current
+        let start = since.date(calendar: calendar)
+        let descriptor = HKStatisticsCollectionQueryDescriptor(
+            predicate: .quantitySample(type: HealthTypes.steps,
+                                       predicate: HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)),
+            options: .cumulativeSum, anchorDate: start, intervalComponents: DateComponents(day: 1))
+        guard let collection = try? await descriptor.result(for: store) else { return [] }
+        return collection.statistics().compactMap { statistics in
+            guard let sum = statistics.sumQuantity()?.doubleValue(for: .count()) else { return nil }
+            return StepDay(day: Day(statistics.startDate, calendar: calendar), steps: Int(sum.rounded()))
+        }
     }
 
     // MARK: Workouts and heart rate
@@ -336,6 +364,7 @@ enum HealthTypes {
     static let vo2Max = HKQuantityType(.vo2Max)
     static let heartRate = HKQuantityType(.heartRate)
     static let activeEnergy = HKQuantityType(.activeEnergyBurned)
+    static let steps = HKQuantityType(.stepCount)
     static let sleep = HKCategoryType(.sleepAnalysis)
 
     static let kg = HKUnit.gramUnit(with: .kilo)
@@ -351,7 +380,7 @@ enum HealthTypes {
     static func readTypes(_ access: HealthAccess) -> Set<HKObjectType> {
         var types: Set<HKObjectType> = []
         if access.contains(.training) {
-            types.formUnion([bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy,
+            types.formUnion([bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy, steps,
                              HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)])
         }
         if access.contains(.nutrition) {
@@ -381,6 +410,8 @@ enum HealthTypes {
 extension HealthBridge {
     public var isAvailable: Bool { false }
     public func requestAuthorization(_ access: HealthAccess = .training) async -> Bool { false }
+    public func requestAddedTypes(_ access: HealthAccess = .training) async {}
+    public func dailySteps(since: Day) async -> [StepDay] { [] }
     public func latestBodyweight() async -> (kg: Double, date: Date)? { nil }
     public func bodyweights(since: Date) async -> [(date: Date, kg: Double)] { [] }
     public func latestHeight() async -> Double? { nil }

@@ -39,6 +39,8 @@ final class AppModel {
 
     // From Health.
     var recovery: [RecoveryDay] = []
+    var steps: [StepDay] = []
+    @ObservationIgnored private var stepsReadAt = Date.distantPast
     var bodyweightKg: Double?
     var vo2Max: Double?
     var restingHeartRate: Double?
@@ -140,7 +142,7 @@ final class AppModel {
         guard let profile else { return nil }
         return LiftState(profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
                          measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
-                         lifeModes: lifeModes, recovery: recovery, bodyweightKg: bodyweightKg, vo2Max: vo2Max,
+                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, vo2Max: vo2Max,
                          restingHeartRate: restingHeartRate, nutrition: nutrition, recommendations: recommendations, today: today)
     }
 
@@ -193,6 +195,7 @@ final class AppModel {
 
     func save(settings: LiftSettings) {
         var settings = settings
+        if settings.selfReportedPhase != self.settings.selfReportedPhase { settings.selfReportedPhaseSince = .today }
         settings.updatedAt = Date()
         store.save(settings)
         reload()
@@ -296,6 +299,7 @@ final class AppModel {
         settings.gymID = gym.id
         settings.onboardedAt = Date()
         settings.assessmentStart = .today
+        if settings.selfReportedPhase != nil { settings.selfReportedPhaseSince = .today }
         settings.updatedAt = Date()
         var profile = profile
         profile.updatedAt = Date()
@@ -505,7 +509,7 @@ final class AppModel {
         }
     }
 
-    /// Body weight, recovery signals and workouts other apps wrote.
+    /// Body weight, recovery signals, steps and workouts other apps wrote.
     func refreshHealth() async {
         let health = HealthBridge.shared
         guard health.isAvailable else { return }
@@ -514,12 +518,15 @@ final class AppModel {
         async let recovery = health.recoveryDays(since: Day.today.adding(days: -42))
         async let vo2 = health.latestVO2Max()
         async let rhr = health.latestRestingHeartRate()
+        async let steps = health.dailySteps(since: stepsSince)
         async let workouts = health.externalWorkouts(since: since, excludingBundlePrefix: "dev.svindland.lifttrack")
-        let (w, r, v, h, outside) = await (weight, recovery, vo2, rhr, workouts)
+        let (w, r, v, h, s, outside) = await (weight, recovery, vo2, rhr, steps, workouts)
         bodyweightKg = w?.kg
         self.recovery = r
         vo2Max = v
         restingHeartRate = h
+        self.steps = stepsOrSample(s)
+        stepsReadAt = Date()
         let known = Set(activities.compactMap { log -> UUID? in
             if case .health(let id, _) = log.source { return id }
             return nil
@@ -530,6 +537,26 @@ final class AppModel {
         }
         if !new.isEmpty { store.save(new.map { ActivityRecord(log: $0) }) }
         reload()
+    }
+
+    /// Steps change all day: read again on coming back to the app, at most every ten minutes.
+    func refreshSteps() async {
+        guard HealthBridge.shared.isAvailable, Date().timeIntervalSince(stepsReadAt) > 600 else { return }
+        stepsReadAt = Date()
+        let steps = stepsOrSample(await HealthBridge.shared.dailySteps(since: stepsSince))
+        guard steps != self.steps else { return }
+        self.steps = steps
+        recompute()
+    }
+
+    /// Far enough back for the usual count before the current phase began.
+    private var stepsSince: Day { state?.stepsNeededSince ?? Day.today.adding(days: -56) }
+
+    private func stepsOrSample(_ steps: [StepDay]) -> [StepDay] {
+        #if DEBUG
+        if steps.isEmpty, ProcessInfo.processInfo.arguments.contains("-seedSampleData") { return SampleData.steps() }
+        #endif
+        return steps
     }
 
     // MARK: Data

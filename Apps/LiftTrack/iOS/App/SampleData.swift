@@ -61,6 +61,19 @@ enum SampleData {
             MobilityResult(test: .overheadReach, day: start.adding(days: 3), value: 2),
         ])
         model.save(benchmark: BenchmarkResult(benchmark: .stairs10min, day: start.adding(days: 4), value: 52))
+        model.steps = steps()
+        model.recompute()
+    }
+
+    /// Steps when Health has none (the simulator): about 5,700 a day for ten weeks, busier at
+    /// weekends, and this morning's so far.
+    static func steps(today: Day = .today) -> [StepDay] {
+        (0...70).reversed().map { back in
+            let day = today.adding(days: -back)
+            let wobble = (day.ordinal * 7_919) % 2_400 - 1_200
+            let weekend = day.weekday == .saturday || day.weekday == .sunday ? 1_800 : 0
+            return StepDay(day: day, steps: back == 0 ? 3_150 : 5_200 + weekend + wobble)
+        }
     }
 
     /// Performs a session the way a consistent, honest lifter would.

@@ -292,11 +292,13 @@ public struct AppSummary: Hashable, Codable, Sendable {
     public var stalls: [StallReport]
     /// The nutrition phase the app planned around, and where it came from.
     public var phaseUsed: NutritionPhase?
+    /// Daily steps and the step aim (Lift Track).
+    public var steps: StepSummary?
 
     public init(app: AppID, updated: Date = Date(), stats: [StatReading] = [], sessions: [SessionSummary] = [], quests: [Quest] = [],
                 strength: StrengthProfile? = nil, fatigue: FatigueStatus? = nil, discipline: DisciplineScore? = nil,
                 measurements: BodyMeasurements? = nil, mobility: [MobilityResult] = [], benchmarks: [BenchmarkResult] = [],
-                stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil) {
+                stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil, steps: StepSummary? = nil) {
         self.app = app
         self.updated = updated
         self.stats = stats
@@ -310,5 +312,6 @@ public struct AppSummary: Hashable, Codable, Sendable {
         self.benchmarks = benchmarks
         self.stalls = stalls
         self.phaseUsed = phaseUsed
+        self.steps = steps
     }
 }

@@ -12,6 +12,8 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     public var gymID: UUID?
     /// The one-tap phase answer, used only when Macro Track hasn't published a phase.
     public var selfReportedPhase: SelfReportedPhase?
+    /// When that answer last changed: the step aim's usual count is from the weeks before.
+    public var selfReportedPhaseSince: Day?
     /// Strength and physique imbalances set the next block's priorities. Can be switched off.
     public var autoPrioritise: Bool
     /// Rest can end early on a recovered heart rate (Watch) for accessories.
@@ -29,10 +31,11 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     public init(id: UUID = UUID(), gymID: UUID? = nil, selfReportedPhase: SelfReportedPhase? = nil, autoPrioritise: Bool = true,
                 heartRateGuidedRest: Bool = true, includeConditioning: Bool = true, includeCooldown: Bool = false,
                 benchmark: EnduranceBenchmark = .stairs10min, avoid: Set<String> = [], saveToHealth: Bool = true,
-                onboardedAt: Date? = nil, assessmentStart: Day? = nil, updatedAt: Date = Date()) {
+                onboardedAt: Date? = nil, assessmentStart: Day? = nil, selfReportedPhaseSince: Day? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.gymID = gymID
         self.selfReportedPhase = selfReportedPhase
+        self.selfReportedPhaseSince = selfReportedPhaseSince
         self.autoPrioritise = autoPrioritise
         self.heartRateGuidedRest = heartRateGuidedRest
         self.includeConditioning = includeConditioning
