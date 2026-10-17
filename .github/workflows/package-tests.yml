@@ -27,18 +27,18 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-26
+    # The packages use Xcode 27 SDK APIs (Foundation Models), which macos-26 doesn't have.
+    # This image's default Xcode is the release, not one of its betas.
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
 
-      - name: Use the newest Xcode
-        run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
-          xcodebuild -version
+      - name: Show Xcode
+        run: xcodebuild -version
 
       - name: Restore catalogs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             Apps/MacroTrack/Catalogs/*.db
