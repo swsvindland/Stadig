@@ -48,10 +48,21 @@ struct Tally<Value: Hashable & Sendable>: Sendable {
 
     static var agreeing: Int { 2 }
     static var share: Double { 0.6 }
+    /// What a model's check counts for: two frames' worth. It settles a tie and fills a gap, but
+    /// three frames that agree outvote it.
+    static var checkWeight: Int { 2 }
 
-    mutating func add(_ value: Value) {
-        counts[value, default: 0] += 1
-        reads += 1
+    mutating func add(_ value: Value, weight: Int = 1) {
+        counts[value, default: 0] += weight
+        reads += weight
+    }
+
+    /// These reads with a model's check added.
+    func checked(_ value: Value?) -> Tally {
+        guard let value else { return self }
+        var tally = self
+        tally.add(value, weight: Self.checkWeight)
+        return tally
     }
 
     var best: (value: Value, count: Int)? {
@@ -68,15 +79,22 @@ struct Tally<Value: Hashable & Sendable>: Sendable {
 /// A nutrition panel read from a stream of camera frames. Each frame gives whatever part of the
 /// panel it shows; a value is trusted once two frames agree on it and most frames that read it do,
 /// so a misread in one frame is outvoted and the top and bottom of a tall label can come from
-/// different moments. Frames that aren't of a panel (the package's front) are ignored.
+/// different moments. Frames that aren't of a panel (the package's front) are ignored, and only
+/// what Macro Track tracks is kept. A model's reading of the text (`check`) counts as two votes.
 public struct LiveLabel: Sendable {
     private var values: [String: Tally<Double>] = [:]
     private var grams = Tally<Double>()
     private var milliliters = Tally<Double>()
     private var measures = Tally<String>()
+    /// The latest model check: values by key, and the serving.
+    private var checkedValues: [String: Double] = [:]
+    private var checkedGrams: Double?
+    private var checkedMeasure: String?
     /// Frames read, and those that showed part of a panel.
     public private(set) var frames = 0
     public private(set) var panelFrames = 0
+    /// A model has checked the text read so far.
+    public private(set) var isChecked = false
 
     public init() {}
 
@@ -89,7 +107,7 @@ public struct LiveLabel: Sendable {
         frames += 1
         guard frame.isPanel else { return }
         panelFrames += 1
-        for (key, value) in frame.amounts {
+        for (key, value) in frame.amounts where Self.kept(key) {
             values[key, default: Tally()].add(Self.bucket(value, key: key))
         }
         if let g = frame.servingGrams { grams.add((g * 10).rounded() / 10) }
@@ -97,21 +115,38 @@ public struct LiveLabel: Sendable {
         if let label = frame.servingLabel?.trimmingCharacters(in: .whitespaces), !label.isEmpty { measures.add(label.lowercased()) }
     }
 
+    /// A model's reading of the text so far, values it copied from it by key; it replaces the last
+    /// check. Values must already be checked against the printed text.
+    public mutating func check(values: [String: Double], servingGrams: Double? = nil, servingLabel: String? = nil) {
+        checkedValues = values.filter { Self.kept($0.key) }.reduce(into: [:]) { $0[$1.key] = Self.bucket($1.value, key: $1.key) }
+        checkedGrams = servingGrams.map { ($0 * 10).rounded() / 10 }
+        checkedMeasure = servingLabel?.trimmingCharacters(in: .whitespaces).lowercased()
+        if checkedMeasure?.isEmpty == true { checkedMeasure = nil }
+        isChecked = true
+    }
+
+    /// The panel's lines Macro Track keeps: the macros, fiber, sugar, sodium, saturated fat, and the
+    /// vitamins and minerals. Cholesterol, trans fat and added sugars are read but not kept.
+    static func kept(_ key: String) -> Bool { key == "kcal" || SupplementIngredients.tracked.contains(key) }
+
     /// Values close enough to be the same reading: tenths of a gram, whole milligrams and calories.
     static func bucket(_ value: Double, key: String) -> Double {
         value >= 10 || key == "kcal" ? value.rounded() : (value * 10).rounded() / 10
     }
 
+    private func tally(_ key: String) -> Tally<Double> { (values[key] ?? Tally()).checked(checkedValues[key]) }
+
     public func value(_ key: String) -> LiveValue {
-        guard let tally = values[key], let best = tally.best else { return .missing }
+        let tally = tally(key)
+        guard let best = tally.best else { return .missing }
         return tally.sure ? .locked(best.value) : .reading(best.value)
     }
 
     /// Every key read so far.
-    public var keys: [String] { Array(values.keys) }
+    public var keys: [String] { Array(Set(values.keys).union(checkedValues.keys)) }
 
     /// Values trusted so far.
-    public var lockedCount: Int { values.values.filter(\.sure).count }
+    public var lockedCount: Int { keys.filter { tally($0).sure }.count }
 
     /// The core fields not yet trusted, in the panel's order.
     public var missingCore: [String] { Self.core.filter { !value($0).isLocked } }
@@ -123,16 +158,16 @@ public struct LiveLabel: Sendable {
     }
 
     public var serving: (label: String?, grams: Double?, milliliters: Double?) {
-        (measures.best?.value, grams.best?.value, milliliters.best?.value)
+        (measures.checked(checkedMeasure).best?.value, grams.checked(checkedGrams).best?.value, milliliters.best?.value)
     }
 
     /// The panel as read so far, with the same checks as a photo's: the best value for each line
     /// (trusted or not), calories worked out from the macros when they weren't read. Nil until a
     /// panel has been seen.
     public var reading: LabelReading? {
-        guard panelFrames > 0, !values.isEmpty else { return nil }
+        guard panelFrames > 0, !keys.isEmpty else { return nil }
         var read = NutritionLabel.Values()
-        for (key, tally) in values { if let best = tally.best { read.amounts[key] = best.value } }
+        for key in keys { if let best = tally(key).best { read.amounts[key] = best.value } }
         NutritionLabel.check(&read)
         let serving = serving
         read.servingLabel = serving.label ?? ""
@@ -147,19 +182,28 @@ public struct LiveLabel: Sendable {
     }
 }
 
-/// A Supplement Facts panel read from a stream of camera frames: each line's amount by vote, in
-/// the order the lines appear on the label, however many frames it took to see them all.
+/// A Supplement Facts panel read from a stream of camera frames: each tracked line's amount by vote,
+/// in the order the lines appear on the label, however many frames it took to see them all. A
+/// model's reading of the text (`check`) counts as two votes per line, and can add a line the
+/// frames missed.
 public struct LiveSupplementLabel: Sendable {
     private struct Line: Sendable {
         var key: String
         var name: String
+        /// The nutrient it counts as, for matching a model's "Vitamin D" to a label's "Vitamin D3".
+        var nutrient: String?
         var tally = Tally<String>()
+        var checked: String?
+
+        var votes: Tally<String> { tally.checked(checked) }
     }
 
     private var lines: [Line] = []
     private var servings = Tally<String>()
+    private var checkedServing: String?
     public private(set) var frames = 0
     public private(set) var panelFrames = 0
+    public private(set) var isChecked = false
 
     public init() {}
 
@@ -170,47 +214,73 @@ public struct LiveSupplementLabel: Sendable {
         if facts.unit != "serving" { servings.add("\(facts.servingCount)|\(facts.unit)") }
         // A line not seen before goes after the line above it in this frame.
         var anchor: Int?
-        for ingredient in facts.ingredients {
-            guard let amount = ingredient.amount else { continue }
-            let key = SupplementIngredients.clean(ingredient.name)
-            guard !key.isEmpty else { continue }
-            // Tenths: supplements print 13.5 mg of vitamin E and 2.5 mcg of B12.
-            let reading = "\((amount * 10).rounded() / 10)|\(ingredient.unit)"
-            if let i = lines.firstIndex(where: { $0.key == key }) {
-                lines[i].tally.add(reading)
-                // The longest name read is the one least cut off.
-                if ingredient.name.count > lines[i].name.count { lines[i].name = ingredient.name }
-                anchor = i
-            } else {
-                var line = Line(key: key, name: ingredient.name)
-                line.tally.add(reading)
-                let at = anchor.map { $0 + 1 } ?? lines.count
-                lines.insert(line, at: at)
-                anchor = at
-            }
+        for ingredient in facts.ingredients where ingredient.isTracked {
+            guard let amount = ingredient.amount, let i = place(ingredient, after: anchor) else { continue }
+            lines[i].tally.add(Self.reading(amount, ingredient.unit))
+            anchor = i
         }
     }
+
+    /// A model's reading of the panel; it replaces the last check. Its lines must already be checked
+    /// against the printed text.
+    public mutating func check(_ facts: SupplementFacts) {
+        for i in lines.indices { lines[i].checked = nil }
+        checkedServing = facts.unit != "serving" ? "\(facts.servingCount)|\(facts.unit)" : nil
+        var anchor: Int?
+        for ingredient in facts.ingredients where ingredient.isTracked {
+            guard let amount = ingredient.amount, let i = place(ingredient, after: anchor) else { continue }
+            lines[i].checked = Self.reading(amount, ingredient.unit)
+            anchor = i
+        }
+        isChecked = true
+    }
+
+    /// The line an ingredient is, by name or by the one line counting as the same nutrient; a new
+    /// one goes after `anchor`.
+    private mutating func place(_ ingredient: SupplementIngredient, after anchor: Int?) -> Int? {
+        let key = SupplementIngredients.clean(ingredient.name)
+        guard !key.isEmpty else { return nil }
+        if let i = lines.firstIndex(where: { $0.key == key }) ?? sameNutrient(ingredient.key) {
+            // The longest name read is the one least cut off.
+            if ingredient.name.count > lines[i].name.count { lines[i].name = ingredient.name }
+            return i
+        }
+        let at = anchor.map { $0 + 1 } ?? lines.count
+        lines.insert(Line(key: key, name: ingredient.name, nutrient: ingredient.key), at: at)
+        return at
+    }
+
+    private func sameNutrient(_ nutrient: String?) -> Int? {
+        guard let nutrient else { return nil }
+        let matches = lines.indices.filter { lines[$0].nutrient == nutrient }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
+    /// Tenths: supplements print 13.5 mg of vitamin E and 2.5 mcg of B12.
+    private static func reading(_ amount: Double, _ unit: String) -> String { "\((amount * 10).rounded() / 10)|\(unit)" }
 
     /// Each line as read so far, in label order, with whether it's been read the same way twice.
     public var readLines: [(ingredient: SupplementIngredient, locked: Bool)] {
         lines.compactMap { line in
-            guard let best = line.tally.best else { return nil }
+            let votes = line.votes
+            guard let best = votes.best else { return nil }
             let parts = best.value.split(separator: "|", maxSplits: 1).map(String.init)
             guard let amount = Double(parts[0]) else { return nil }
-            return (SupplementIngredient(name: line.name, amount: amount, unit: parts.count > 1 ? parts[1] : ""), line.tally.sure)
+            return (SupplementIngredient(name: line.name, amount: amount, unit: parts.count > 1 ? parts[1] : ""), votes.sure)
         }
     }
 
-    public var lockedCount: Int { lines.filter(\.tally.sure).count }
+    public var lockedCount: Int { lines.filter(\.votes.sure).count }
 
     /// Two lines trusted, or a serving and one line.
-    public var ready: Bool { lockedCount >= 2 || (lockedCount >= 1 && servings.best != nil) }
+    public var ready: Bool { lockedCount >= 2 || (lockedCount >= 1 && servings.checked(checkedServing).best != nil) }
 
-    /// The panel as read so far; its name is left for the person or the model.
+    /// The panel as read so far; its name is left for the person or the model. A panel seen twice
+    /// with nothing Macro Track tracks on it (melatonin, ashwagandha) is still a supplement.
     public var facts: SupplementFacts? {
         let read = readLines.map(\.ingredient)
-        guard !read.isEmpty else { return nil }
-        let serving = servings.best.flatMap { best -> (Double, String)? in
+        guard !read.isEmpty || panelFrames >= 2 else { return nil }
+        let serving = servings.checked(checkedServing).best.flatMap { best -> (Double, String)? in
             let parts = best.value.split(separator: "|", maxSplits: 1).map(String.init)
             guard parts.count == 2, let count = Double(parts[0]) else { return nil }
             return (count, parts[1])

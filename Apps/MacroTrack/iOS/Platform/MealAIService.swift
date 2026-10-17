@@ -62,19 +62,22 @@ final class MealAIService {
         return SupplementLabelResult(facts: SupplementLabel.parse(lines: lines), lines: lines, suggestedName: nil, brand: nil)
     }
 
-    /// A panel read live: the model names it from all the text seen, when it can.
-    func nameLabel(reading: LabelReading?, lines: [String]) async throws -> LabelResult {
-        if #available(iOS 27.0, *), let ai = engine as? MealAI {
-            return try await ai.nameLabel(reading: reading, lines: lines)
-        }
-        return LabelResult(reading: reading, lines: lines, suggestedName: nil, brand: nil)
+    /// A live scan's text checked by the model: values copied from the panel and the product's name.
+    /// Nil without a model (on the device alone when `onDeviceOnly`).
+    func checkLabel(panel: [String], other: [String], onDeviceOnly: Bool) async throws -> LabelCheck? {
+        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return nil }
+        return try await ai.checkLabel(panel: panel, other: other, onDeviceOnly: onDeviceOnly)
     }
 
-    func nameSupplement(facts: SupplementFacts?, lines: [String]) async throws -> SupplementLabelResult {
-        if #available(iOS 27.0, *), let ai = engine as? MealAI {
-            return try await ai.nameSupplement(facts: facts, lines: lines)
-        }
-        return SupplementLabelResult(facts: facts, lines: lines, suggestedName: nil, brand: nil)
+    func checkSupplement(panel: [String], other: [String], onDeviceOnly: Bool) async throws -> SupplementCheck? {
+        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return nil }
+        return try await ai.checkSupplement(panel: panel, other: other, onDeviceOnly: onDeviceOnly)
+    }
+
+    /// Loads the on-device model for a scan's checks as the scanner opens.
+    func prewarmCheck(supplement: Bool) {
+        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return }
+        Task { await ai.prewarmCheck(supplement: supplement) }
     }
 
     func readLabel(photo: CGImage) async throws -> LabelResult {

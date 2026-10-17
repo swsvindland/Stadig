@@ -128,7 +128,8 @@ public enum NutritionLabel {
             return LabelReading(servingLabel: servingLabel.isEmpty ? nil : servingLabel,
                                 servingGrams: servingUnit == "g" ? servingAmount : nil,
                                 servingMilliliters: servingUnit == "ml" ? servingAmount : nil,
-                                nutrients: nutrients, extras: amounts.filter { !core.contains($0.key) },
+                                // Cholesterol, trans fat and added sugars are read for the checks but not kept.
+                                nutrients: nutrients, extras: amounts.filter { !core.contains($0.key) && SupplementIngredients.tracked.contains($0.key) },
                                 fieldsRead: amounts.count - (estimatedCalories ? 1 : 0), estimatedCalories: estimatedCalories,
                                 warnings: warnings, missing: fields.map(\.key).filter { amounts[$0] == nil })
         }

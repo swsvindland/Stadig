@@ -56,6 +56,9 @@ public struct SupplementIngredient: Hashable, Codable, Sendable {
         }
     }
 
+    /// A nutrient Macro Track follows; herbs, enzymes, probiotics and the like aren't.
+    public var isTracked: Bool { key != nil }
+
     /// "1,000 mg", "25 mcg", "5 billion CFU".
     public var amountLabel: String? {
         guard let amount else { return nil }
@@ -142,6 +145,14 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
     /// "2 softgels", "1 scoop", "10 g", "1 gummy".
     public func amountLabel(_ count: Double) -> String { SupplementServing.label(count, unit) }
 
+    /// The label with only the lines Macro Track counts. A bottle's herbs, extracts and "fish oil
+    /// concentrate" add nothing it tracks, so they aren't kept.
+    public var tracked: SupplementFacts {
+        var facts = self
+        facts.ingredients = ingredients.filter(\.isTracked)
+        return facts
+    }
+
     public var servingLabel: String { amountLabel(servingCount) }
 }
 
@@ -156,6 +167,11 @@ public enum SupplementServing {
     public static func parse(_ text: String) -> (count: Double, unit: String)? {
         var text = text.replacingOccurrences(of: "(s)", with: "s").replacingOccurrences(of: "(ies)", with: "ies")
         if let range = text.range(of: #"(?i)serving\s*size\s*[:.]?"#, options: .regularExpression) { text = String(text[range.upperBound...]) }
+        // "Two Softgels" counts the same as "2 Softgels".
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if let word = numberWords.first(where: { trimmed.lowercased().hasPrefix($0.key + " ") }) {
+            text = "\(word.value) " + trimmed.dropFirst(word.key.count + 1)
+        }
         let whole = NSRange(text.startIndex..., in: text)
         var main: (count: Double, unit: String)?
         if let match = leading.firstMatch(in: text, range: whole), let countRange = Range(match.range(at: 1), in: text) {
@@ -175,6 +191,8 @@ public enum SupplementServing {
         if let main, main.unit == "mg" { return (main.count / 1000, "g") }
         return main
     }
+
+    private static let numberWords = ["one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "half": 0.5]
 
     static func number(_ text: String) -> Double? {
         let t = text.lowercased().trimmingCharacters(in: .whitespaces)
@@ -244,6 +262,11 @@ public enum SupplementIngredients {
     public static let macroKeys: Set<String> = ["kcal", "protein", "carbs", "fat", "sugar"]
     /// The omega-3s a label may list instead of a total.
     public static let omega3Parts = ["epa", "dha", "dpa", "ala", "otherOmega3"]
+
+    /// Every key Macro Track follows on a label: the macros, fiber, the vitamins and minerals,
+    /// omega-3 and its parts, and caffeine. Anything else (cholesterol, trans fat, added sugars,
+    /// herbs) isn't kept.
+    public static let tracked: Set<String> = Set(units.keys)
 
     /// Each followed nutrient's unit.
     static let units: [String: String] = [

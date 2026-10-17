@@ -32,7 +32,10 @@ struct LiveLabelTests {
         #expect(reading.nutrients.kcal == 230 && reading.nutrients.fat == 8 && reading.nutrients.carbs == 37 && reading.nutrients.protein == 3)
         #expect(reading.nutrients.fiber == 4 && reading.nutrients.sugar == 12 && reading.nutrients.sodium == 160)
         #expect(reading.servingGrams == 55 && reading.servingLabel == "2/3 cup")
-        #expect(reading.extras["calcium"] == 260 && reading.extras["addedSugar"] == 10)
+        #expect(reading.extras["calcium"] == 260)
+        // Cholesterol, trans fat and added sugars aren't tracked, so they're neither shown nor kept.
+        #expect(reading.extras["addedSugar"] == nil && reading.extras["cholesterol"] == nil)
+        #expect(!live.keys.contains("cholesterol") && !live.keys.contains("transFat") && !live.keys.contains("addedSugar"))
         #expect(reading.warnings.isEmpty && !reading.estimatedCalories)
     }
 
@@ -92,7 +95,8 @@ struct LiveLabelTests {
         live.add(SupplementLabel.parse(lines: ["Nature Made", "Fish Oil", "Heart health"]))
         #expect(live.frames == 6 && live.panelFrames == 5)
         let lines = live.readLines
-        #expect(lines.map(\.ingredient.name) == ["Calories", "Total Fat", "Vitamin D3 (as cholecalciferol)", "Fish Oil",
+        // "Fish Oil 2,400 mg" isn't a nutrient Macro Track tracks, so it never shows up.
+        #expect(lines.map(\.ingredient.name) == ["Calories", "Total Fat", "Vitamin D3 (as cholecalciferol)",
                                                  "EPA (Eicosapentaenoic Acid)", "DHA (Docosahexaenoic Acid)", "Vitamin E"])
         #expect(lines.last?.ingredient.amount == 13.5)
         // EPA was misread as 560 once, then read as 650 twice.
@@ -103,5 +107,51 @@ struct LiveLabelTests {
         #expect(facts.servingLabel == "2 softgels")
         #expect(facts.amounts["vitaminD"] == 25 && abs(facts.amounts["omega3"]! - 1.1) < 0.001)
         #expect(facts.nutrients?.kcal == 20)
+    }
+
+    @Test func aModelCheckSettlesTiesAndFillsGapsButCantOverturnTheFrames() {
+        var live = LiveLabel()
+        live.add(frame(["Nutrition Facts", "Calories 230", "Total Fat 8g 10%"]))
+        live.add(frame(["Nutrition Facts", "Calories 280", "Total Fat 8g 10%"]))
+        #expect(!live.value("kcal").isLocked)
+        // The model read 230 from the text and protein the frames missed.
+        live.check(values: ["kcal": 230, "protein": 3])
+        #expect(live.value("kcal") == .locked(230))
+        #expect(live.value("protein") == .locked(3))
+        #expect(live.isChecked)
+        // Three frames agreeing outvote it.
+        var sure = LiveLabel()
+        for _ in 0..<3 { sure.add(frame(["Nutrition Facts", "Calories 230", "Total Fat 8g 10%"])) }
+        sure.check(values: ["kcal": 280])
+        #expect(sure.value("kcal") == .locked(230))
+        // A new check replaces the last one rather than piling up: the tie now goes the other way,
+        // and protein, which no frame read, is gone.
+        live.check(values: ["kcal": 280])
+        #expect(live.value("kcal") == .locked(280))
+        #expect(live.value("protein") == .missing)
+        // Nothing untracked gets in through a check either.
+        live.check(values: ["cholesterol": 30])
+        #expect(live.value("cholesterol") == .missing)
+    }
+
+    @Test func aModelCheckOfASupplementMatchesLinesByNutrientAndAddsWhatFramesMissed() throws {
+        var live = LiveSupplementLabel()
+        let panel = ["Supplement Facts", "Serving Size 2 Softgels", "Vitamin D3 (as cholecalciferol) 25 mcg 125%", "EPA 650 mg †",
+                     "Net Wt. 12 oz (340 g)", "Take 2 softgels daily with food"]
+        live.add(SupplementLabel.parse(lines: panel))
+        // Directions and net weight never become lines.
+        #expect(live.readLines.map(\.ingredient.name) == ["Vitamin D3 (as cholecalciferol)", "EPA"])
+        #expect(live.lockedCount == 0)
+        let model = SupplementFacts(id: "m", name: "Fish Oil", servingCount: 2, unit: "softgel", ingredients: [
+            SupplementIngredient(name: "Vitamin D", amount: 25, unit: "mcg"),
+            SupplementIngredient(name: "EPA", amount: 650, unit: "mg"),
+            SupplementIngredient(name: "DHA", amount: 450, unit: "mg"),
+        ], source: .label)
+        live.check(model)
+        let lines = live.readLines
+        #expect(lines.map(\.ingredient.name) == ["Vitamin D3 (as cholecalciferol)", "EPA", "DHA"])
+        #expect(lines.allSatisfy(\.locked) && live.ready)
+        let facts = try #require(live.facts)
+        #expect(facts.servingLabel == "2 softgels")
     }
 }

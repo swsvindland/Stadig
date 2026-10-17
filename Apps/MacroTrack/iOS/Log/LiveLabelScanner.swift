@@ -54,14 +54,22 @@ final class LiveScan {
     /// The latest frame's text, 0–1 of the frame, and the frame's width over height.
     private(set) var regions: [CGRect] = []
     private(set) var frameAspect = 9.0 / 16
-    /// Every printed row seen, once, in the order seen: for the model to name the product.
-    private(set) var lines: [String] = []
+    /// Every printed row seen, once, in the order seen: the panel's, and the rest of the package's
+    /// (for the name). Apple's model checks them while scanning.
+    private(set) var panelLines: [String] = []
+    private(set) var otherLines: [String] = []
     private(set) var finished = false
+    /// The model's name and brand for the product, once it has checked the text.
+    private(set) var modelName: String?
+    private(set) var modelBrand: String?
+    private(set) var checking = false
     /// Debug builds replay frames instead of using the camera.
     var still: CGImage?
 
     @ObservationIgnored private var seen = Set<String>()
     @ObservationIgnored private var headlines: [String: Int] = [:]
+    @ObservationIgnored private var checkedLines = 0
+    @ObservationIgnored private var checkTask: Task<Void, Never>?
     @ObservationIgnored let lookup: (String, Barcode.Symbology?) -> LiveScanOutcome?
     @ObservationIgnored let finish: (LiveScanOutcome) -> Void
 
@@ -75,13 +83,85 @@ final class LiveScan {
         guard !finished else { return }
         regions = text.regions
         frameAspect = aspect
-        for line in text.lines where lines.count < 300 && seen.insert(line.lowercased()).inserted { lines.append(line) }
         if let headline = text.headline { headlines[headline, default: 0] += 1 }
+        let panel: Bool
         switch kind {
-        case .food: label.add(NutritionLabel.frame(boxes: text.boxes))
-        case .supplement: supplementLabel.add(SupplementLabel.parse(lines: text.lines))
+        case .food:
+            let frame = NutritionLabel.frame(boxes: text.boxes)
+            panel = frame.isPanel
+            label.add(frame)
+        case .supplement:
+            let facts = SupplementLabel.parse(lines: text.lines)
+            panel = facts != nil
+            supplementLabel.add(facts)
+        }
+        for line in text.lines where seen.insert(line.lowercased()).inserted {
+            if panel {
+                if panelLines.count < 200 { panelLines.append(line) }
+            } else if otherLines.count < 60 {
+                otherLines.append(line)
+            }
         }
     }
+
+    // MARK: Apple's model
+
+    /// Has the on-device model check what's been read every couple of seconds while the panel is in
+    /// view: its reading of the text counts as two votes on each value, and it names the product.
+    func startChecking(_ ai: MealAIService) {
+        guard checkTask == nil else { return }
+        ai.prewarmCheck(supplement: kind == .supplement)
+        checkTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, !self.finished else { return }
+                await self.check(ai, onDeviceOnly: true, minimumNew: 3)
+            }
+        }
+    }
+
+    func stopChecking() {
+        checkTask?.cancel()
+        checkTask = nil
+    }
+
+    /// One check of the text so far, when enough new panel text has come in since the last.
+    func check(_ ai: MealAIService, onDeviceOnly: Bool, minimumNew: Int = 1) async {
+        let panel = panelLines
+        guard !checking, !panel.isEmpty, panel.count >= checkedLines + minimumNew || checkedLines == 0 else { return }
+        checking = true
+        defer { checking = false }
+        let other = Array(otherLines.prefix(20))
+        switch kind {
+        case .food:
+            guard let check = try? await ai.checkLabel(panel: panel, other: other, onDeviceOnly: onDeviceOnly) else { return }
+            label.check(values: check.values, servingGrams: check.servingGrams, servingLabel: check.servingLabel)
+            modelName = check.name
+            modelBrand = check.brand
+        case .supplement:
+            guard let check = try? await ai.checkSupplement(panel: panel, other: other, onDeviceOnly: onDeviceOnly) else { return }
+            supplementLabel.check(check.facts)
+            modelName = check.name
+            modelBrand = check.brand
+        }
+        checkedLines = panel.count
+    }
+
+    /// Before review: waits for a check under way, then checks whatever came in after it (with
+    /// Private Cloud Compute too, when allowed), for at most a few seconds.
+    func finalCheck(_ ai: MealAIService) async {
+        stopChecking()
+        let deadline = Date().addingTimeInterval(10)
+        while checking, Date() < deadline { try? await Task.sleep(for: .milliseconds(150)) }
+        guard panelLines.count > checkedLines, Date() < deadline else { return }
+        _ = await withTimeout(seconds: deadline.timeIntervalSinceNow) { [weak self] in
+            await self?.check(ai, onDeviceOnly: false)
+            return true
+        }
+    }
+
+    /// Everything seen, for naming when no check has run.
+    var lines: [String] { panelLines + otherLines }
 
     /// A barcode the camera read: known ones end the scan; a new one is kept for the food the
     /// label makes.
@@ -98,11 +178,16 @@ final class LiveScan {
     func end(_ outcome: LiveScanOutcome) {
         guard !finished else { return }
         finished = true
+        stopChecking()
         finish(outcome)
     }
 
-    /// The largest words seen on more than one frame: the package's name, most likely.
-    var name: String? { headlines.filter { $0.value >= 2 }.max { $0.value != $1.value ? $0.value < $1.value : $0.key > $1.key }?.key }
+    /// The model's name for the product, else the largest words seen on more than one frame.
+    var name: String? {
+        modelName ?? headlines.filter { $0.value >= 2 }.max { $0.value != $1.value ? $0.value < $1.value : $0.key > $1.key }?.key
+    }
+
+    var isChecked: Bool { kind == .food ? label.isChecked : supplementLabel.isChecked }
 
     var ready: Bool { kind == .food ? label.ready : supplementLabel.ready }
     var lockedCount: Int { kind == .food ? label.lockedCount : supplementLabel.lockedCount }
@@ -207,7 +292,10 @@ struct LiveLabelScanner: View {
         .sensoryFeedback(.impact(weight: .light), trigger: scan.lockedCount)
         .sensoryFeedback(.success, trigger: scan.ready) { _, ready in ready }
         .task { await start() }
-        .onDisappear { camera.stop() }
+        .onDisappear {
+            camera.stop()
+            scan.stopChecking()
+        }
     }
 
     @ViewBuilder
@@ -227,7 +315,13 @@ struct LiveLabelScanner: View {
     var card: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let name = scan.name {
-                Text(name).font(.headline).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(name).font(.headline).lineLimit(1)
+                    if scan.checking { ProgressView().controlSize(.mini) }
+                }
+            }
+            if scan.isChecked {
+                Label("Checked by Apple Intelligence", systemImage: "sparkles").font(.caption2).foregroundStyle(.secondary)
             }
             switch scan.kind {
             case .food: foodFields
@@ -238,7 +332,7 @@ struct LiveLabelScanner: View {
             } label: {
                 HStack {
                     if naming { ProgressView().controlSize(.small) }
-                    Text(naming ? "Naming it…" : "Review").font(.headline)
+                    Text(naming ? "Checking…" : "Review").font(.headline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
@@ -311,6 +405,7 @@ struct LiveLabelScanner: View {
     // MARK: Running
 
     func start() async {
+        scan.startChecking(model.ai)
         #if DEBUG
         if LiveScanDemo.enabled {
             await LiveScanDemo.run(scan)
@@ -334,26 +429,21 @@ struct LiveLabelScanner: View {
         denied = !started
     }
 
-    /// Names the product from everything seen (the model, or the package's largest words), then
-    /// hands the panel on for checking.
+    /// Lets Apple's model check the last of what was read (it also names the product), then hands
+    /// the panel on for checking by the person.
     func review() async {
         naming = true
         defer { naming = false }
         camera.stop()
-        let lines = scan.lines
+        await scan.finalCheck(model.ai)
         switch scan.kind {
         case .food:
-            let reading = scan.label.reading
-            var result = await withTimeout(seconds: 5) { [ai = model.ai] in try? await ai.nameLabel(reading: reading, lines: lines) }
-                ?? LabelResult(reading: reading, lines: lines, suggestedName: nil, brand: nil)
-            if result.suggestedName == nil { result.suggestedName = scan.name }
+            let result = LabelResult(reading: scan.label.reading, lines: scan.lines, suggestedName: scan.name, brand: scan.modelBrand)
             scan.end(.label(result, barcode: scan.newBarcode))
         case .supplement:
             guard var facts = scan.supplementLabel.facts else { return }
-            let read = facts
-            let named = await withTimeout(seconds: 5) { [ai = model.ai] in try? await ai.nameSupplement(facts: read, lines: lines) }
-            facts.name = named?.suggestedName ?? scan.name ?? ""
-            facts.brand = named?.brand
+            facts.name = scan.name ?? ""
+            facts.brand = scan.modelBrand
             if let code = scan.newBarcode { facts.barcode = Barcode.keys(for: code).first }
             scan.end(.supplementLabel(facts, barcode: scan.newBarcode))
         }

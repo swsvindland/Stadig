@@ -84,6 +84,30 @@ struct LabelOutput {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@Generable(description: "One line of a nutrient table")
+struct SupplementLineOutput {
+    @Guide(description: "The nutrient as printed, e.g. Vitamin D3, Magnesium, EPA, Caffeine, Calories")
+    var name: String
+    @Guide(description: "The amount per serving, as printed")
+    var amount: Double
+    @Guide(description: "The unit as printed: mg, mcg, g, IU, mcg DFE, mcg RAE or kcal")
+    var unit: String
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable(description: "A product label's name, serving and the lines of its nutrient table")
+struct SupplementPanelOutput {
+    @Guide(description: "The product in a few words with its strength, e.g. Fish oil 1200 mg")
+    var name: String
+    @Guide(description: "The brand or maker if printed, otherwise empty")
+    var brand: String
+    @Guide(description: "The serving size as printed, e.g. 2 softgels")
+    var servingSize: String?
+    @Guide(description: "Each nutrient line once, in the table's order", .maximumCount(40))
+    var lines: [SupplementLineOutput]
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 extension FoodOutput {
     var item: MealReply.Item { MealReply.Item(brand: brand, name: name, quantity: quantity, unit: unit, grams: grams) }
 }

@@ -46,7 +46,8 @@ struct LabelTests {
         #expect(read.found)
         let reading = read.reading
         #expect(reading.nutrients == Nutrients(kcal: 230, protein: 3, carbs: 37, fat: 8, fiber: 4, sugar: 12, saturatedFat: 1, sodium: 160))
-        #expect(reading.extras == ["transFat": 0, "cholesterol": 0, "addedSugar": 10])
+        // Read for the checks, but not kept: Macro Track doesn't track them.
+        #expect(reading.extras.isEmpty)
         #expect(reading.servingLabel == "2/3 cup" && reading.servingGrams == 55 && reading.servingMilliliters == nil)
         #expect(reading.fieldsRead == 11)
         #expect(reading.missing == ["vitaminD", "calcium", "iron", "potassium"])
@@ -61,7 +62,7 @@ struct LabelTests {
         ]))
         #expect(reading.nutrients == Nutrients(kcal: 230, protein: 3, carbs: 37, fat: 8, fiber: 4, sugar: 12, saturatedFat: 1, sodium: 160))
         #expect(reading.servingLabel == "2/3 cup" && reading.servingGrams == 55)
-        #expect(reading.extras["addedSugar"] == 10)
+        #expect(reading.extras["addedSugar"] == nil)
         // A footer limit on the next line is not this food's sodium.
         let footer = try #require(NutritionLabel.parse(lines: ["Calories 250", "Total Fat 12g", "Protein 5g", "Sodium", "Less than 2,400mg"]))
         #expect(footer.missing.contains("sodium"))

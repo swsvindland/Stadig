@@ -54,6 +54,35 @@ struct LiveScanTests {
         #expect(!text.regions.isEmpty)
     }
 
+    @Test func aModelsCheckKeepsOnlyNumbersPrintedOnThePanel() {
+        let panel = ["Nutrition Facts", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%", "Protein 3g"]
+        // The model "read" 12 g of carbs, which isn't printed anywhere: it's dropped.
+        let guess = LabelGuess(name: "Oat crunch", brand: "None", servingSize: "2/3 cup (55g)", servingGrams: 55,
+                               values: [.kcal: 230, .fat: 8, .protein: 3, .carbs: 12])
+        let check = LiveCheck.label(guess, panel: panel)
+        #expect(check.values == ["kcal": 230, "fat": 8, "protein": 3])
+        #expect(check.servingLabel == "2/3 cup" && check.servingGrams == 55)
+        #expect(check.name == "Oat crunch" && check.brand == nil)
+        // A serving given only as a weight has no measure.
+        #expect(LiveCheck.label(LabelGuess(name: nil, brand: nil, servingSize: "55g"), panel: ["Serving size 55g"]).servingLabel == nil)
+    }
+
+    @Test func aModelsSupplementCheckKeepsTrackedPrintedLines() throws {
+        let panel = ["Supplement Facts", "Serving Size Two Softgels", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
+                     "DHA 450 mg †", "Lemon Oil 10 mg †"]
+        let reply = SupplementReply(name: "Fish Oil 1200 mg", brand: "", servingSize: "Two Softgels", lines: [
+            .init(name: "Vitamin D3", amount: 25, unit: "mcg"), .init(name: "Fish Oil", amount: 2400, unit: "mg"),
+            .init(name: "EPA", amount: 650, unit: "mg"), .init(name: "DHA", amount: 450, unit: "mg"),
+            .init(name: "Lemon Oil", amount: 10, unit: "mg"), .init(name: "Vitamin C", amount: 90, unit: "mg"),
+        ])
+        let check = LiveCheck.supplement(reply, panel: panel)
+        // Fish oil and lemon oil aren't tracked; vitamin C's 90 mg isn't printed.
+        #expect(check.facts.ingredients.map(\.name) == ["Vitamin D3", "EPA", "DHA"])
+        #expect(check.facts.servingLabel == "2 softgels")
+        #expect(check.name == "Fish Oil 1200 mg" && check.brand == nil)
+        #expect(abs((check.facts.amounts["omega3"] ?? 0) - 1.1) < 0.001)
+    }
+
     /// A box's front: a big name, then small claims.
     func renderFront(title: String, lines: [String]) -> CGImage {
         let (width, height) = (900, 900)

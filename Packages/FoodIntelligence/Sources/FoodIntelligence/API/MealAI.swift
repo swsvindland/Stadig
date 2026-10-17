@@ -149,6 +149,39 @@ public actor MealAI {
         return SupplementLabelResult(facts: facts, lines: lines, suggestedName: guess?.name, brand: guess?.brand)
     }
 
+    /// A live scan's text, checked by the model: the panel's values and the product's name, kept only
+    /// where the numbers are printed in the panel. Nil when no model can run (on the device alone
+    /// when `onDeviceOnly`, as the checks while scanning are).
+    public func checkLabel(panel: [String], other: [String], onDeviceOnly: Bool = false) async throws -> LabelCheck? {
+        guard !panel.isEmpty, let engine = engine(onDeviceOnly: onDeviceOnly) else { return nil }
+        let guess = try await model(engine).checkLabel(text: Prompts.liveText(panel: panel, other: other))
+        return LiveCheck.label(guess, panel: panel)
+    }
+
+    /// The same for a Supplement Facts panel: its tracked lines with printed amounts, the serving and
+    /// the product's name.
+    public func checkSupplement(panel: [String], other: [String], onDeviceOnly: Bool = false) async throws -> SupplementCheck? {
+        guard !panel.isEmpty, let engine = engine(onDeviceOnly: onDeviceOnly) else { return nil }
+        let reply = try await model(engine).checkSupplement(text: Prompts.liveText(panel: panel, other: other))
+        return LiveCheck.supplement(reply, panel: panel)
+    }
+
+    /// Whether the checks while scanning can run: they use the on-device model only.
+    public var canCheckOnDevice: Bool { state().onDevice }
+
+    /// Loads the on-device model with a live check's instructions as a scan starts.
+    public func prewarmCheck(supplement: Bool) {
+        guard state().onDevice else { return }
+        let model = model(.onDevice)
+        Task { await model.prewarmCheck(supplement: supplement) }
+    }
+
+    private func engine(onDeviceOnly: Bool) -> MealEngine? {
+        var state = state()
+        if onDeviceOnly { state.privateCloud = false }
+        return MealEngines.engine(photo: false, in: state)
+    }
+
     // MARK: Running
 
     private func run(description: String, image: CGImage?, engine: MealEngine, personal: [PersonalFood], state: MealAIAvailability,

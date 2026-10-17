@@ -93,12 +93,14 @@ struct SupplementEditor: View {
         }
     }
 
-    /// Lines without a name or amount dropped, and each line read again in case its name or unit changed.
+    /// Each line read again in case its name or unit changed, and only the ones Macro Track tracks
+    /// kept: nothing else would count for anything.
     var tidied: Supplement {
         var s = supplement
         s.facts.name = s.facts.name.trimmingCharacters(in: .whitespacesAndNewlines)
         s.facts.ingredients = s.facts.ingredients.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty && $0.amount != nil }
             .map { SupplementIngredient(name: $0.name, amount: $0.amount, unit: $0.unit) }
+            .filter(\.isTracked)
         if s.facts.servingCount <= 0 { s.facts.servingCount = 1 }
         return s
     }
@@ -108,7 +110,7 @@ struct SupplementEditor: View {
         let counted = Micronutrients.all.compactMap { info in amounts[info.key].map { "\(Format.nutrient($0, info.unit)) \(Format.inSentence(info))" } }
         let kcal = tidied.facts.nutrients.map { $0.kcal >= 1 ? ["\(Format.whole($0.kcal)) kcal"] : [] } ?? []
         guard !counted.isEmpty || !kcal.isEmpty else {
-            return "Nothing here is a nutrient Macro Track follows, so it's tracked as taken but adds no numbers."
+            return "Nothing on this label is a nutrient Macro Track tracks, so doses are ticked off but add no numbers."
         }
         return "Each serving counts as " + (kcal + counted).joined(separator: ", ") + "."
     }
@@ -240,8 +242,10 @@ private struct LineEditor: View {
                 .labelsHidden()
                 .fixedSize()
             }
-            if let read, let note = note(read) {
-                Text(note).font(.caption2).foregroundStyle(.secondary)
+            if let read {
+                if let note = note(read) { Text(note).font(.caption2).foregroundStyle(.secondary) }
+            } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {
+                Text("Not something Macro Track tracks, so it won't be kept").font(.caption2).foregroundStyle(.orange)
             }
         }
     }

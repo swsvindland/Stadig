@@ -107,6 +107,37 @@ struct FoundationMealModel: MealModel {
         }
     }
 
+    /// The Nutrition Facts values and the product's name from the text a live scan gathered.
+    func checkLabel(text: String) async throws -> LabelGuess {
+        try await attempt {
+            let (session, warm) = await session(Prompts.liveLabelInstructions)
+            let start = ContinuousClock.now
+            let reply = try await session.respond(to: text, generating: LabelOutput.self, options: options(300),
+                                                  contextOptions: context(schema: true))
+            trace("check label", session, warm: warm, since: start)
+            return LabelGuess(reply.content)
+        }
+    }
+
+    /// A supplement's name, serving and nutrient lines from the text a live scan gathered.
+    func checkSupplement(text: String) async throws -> SupplementReply {
+        try await attempt {
+            let (session, warm) = await session(Prompts.liveSupplementInstructions)
+            let start = ContinuousClock.now
+            let reply = try await session.respond(to: text, generating: SupplementPanelOutput.self, options: options(800),
+                                                  contextOptions: context(schema: true))
+            trace("check supplement", session, warm: warm, since: start)
+            let output = reply.content
+            return SupplementReply(name: output.name, brand: output.brand, servingSize: output.servingSize,
+                                   lines: output.lines.map { SupplementReply.Line(name: $0.name, amount: $0.amount, unit: $0.unit) })
+        }
+    }
+
+    /// Loads the model with a live check's instructions ahead of the first check.
+    func prewarmCheck(supplement: Bool) async {
+        await pool.prewarm(supplement ? Prompts.liveSupplementInstructions : Prompts.liveLabelInstructions, model: model)
+    }
+
     // MARK: Requests
 
     /// Greedy decoding keeps the same photo producing the same draft; the token cap keeps a

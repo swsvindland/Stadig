@@ -120,6 +120,33 @@ struct EvaluationTests {
         }
     }
 
+    /// The live scan's check on what a scan of the demo package would gather: a front, then a panel
+    /// with repeated, misread and untracked lines.
+    @Test @available(macOS 27.0, iOS 27.0, *)
+    func liveChecks() async throws {
+        let ai = MealAI(catalog: Self.catalog, allowCloud: false)
+        let front = ["Oat Crunch", "HONEY ALMOND", "20g PROTEIN", "Whole grain oats", "NET WT 12 OZ (340g)"]
+        let panel = ["Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Amount per serving", "Calories 230",
+                     "% Daily Value*", "Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g", "Cholesterol 0mg 0%",
+                     "Sodium 160mg 7%", "Sodium 160mg 7%", "Total Carb. 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
+                     "Includes 10g Added Sugars 20%", "Protein 3g", "Protcin 3g", "Vitamin D 2mcg 10%", "Calcium 260mg 20%"]
+        var start = ContinuousClock.now
+        let label = try #require(try await ai.checkLabel(panel: panel, other: front, onDeviceOnly: true))
+        print("live label check in \(ContinuousClock.now - start): \(label)")
+        #expect(label.values["kcal"] == 230 && label.values["protein"] == 3 && label.values["carbs"] == 37 && label.values["fat"] == 8)
+        let supplementPanel = ["Supplement Facts", "Serving Size 2 Softgels", "Servings Per Container 50", "Amount Per Serving % DV",
+                               "Calories 20", "Total Fat 2 g 3%", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
+                               "DHA 450 mg †", "Other Omega-3s 120 mg †", "Vitamin E 13.5 mg 90%", "Lemon Oil 10 mg †",
+                               "Rosemary Extract 2 mg †", "† Daily Value not established.", "Other ingredients: Gelatin, Glycerin."]
+        start = ContinuousClock.now
+        let supplement = try #require(try await ai.checkSupplement(panel: supplementPanel, other: ["Fish Oil", "1200 mg", "Heart health"],
+                                                                   onDeviceOnly: true))
+        print("live supplement check in \(ContinuousClock.now - start): \(supplement.name ?? "-") · \(supplement.facts.servingLabel) · "
+              + supplement.facts.ingredients.map { "\($0.name) \($0.amountLabel ?? "")" }.joined(separator: ", "))
+        #expect(supplement.facts.amounts["vitaminD"] == 25)
+        #expect(!supplement.facts.ingredients.contains { $0.name.localizedCaseInsensitiveContains("lemon") })
+    }
+
     // MARK: Helpers
 
     /// Runs with the pipeline's notes printed, when `MEAL_AI_TRACE=1`.

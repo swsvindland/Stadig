@@ -50,6 +50,7 @@ struct SupplementTests {
         #expect(serving("Serving Size 1 Scoop (6.5 g)") == "1.0 scoop")
         #expect(serving("1/2 Teaspoon(s)") == "0.5 tsp")
         #expect(serving("2 Caplet(s)") == "2.0 caplet")
+        #expect(serving("Serving Size: Two Softgels") == "2.0 softgel")
         #expect(SupplementServing.label(2, "softgel") == "2 softgels")
         #expect(SupplementServing.label(1, "gummy") == "1 gummy")
         #expect(SupplementServing.label(3, "gummy") == "3 gummies")
@@ -96,7 +97,8 @@ struct SupplementTests {
         ]
         let facts = try #require(SupplementLabel.parse(lines: lines))
         #expect(facts.servingLabel == "1 tablet")
-        #expect(facts.ingredients.count == 10)
+        // Lutein isn't a nutrient Macro Track tracks, so it isn't kept.
+        #expect(facts.ingredients.count == 9)
         let amounts = facts.amounts
         #expect(amounts["vitaminA"] == 750)
         #expect(amounts["vitaminC"] == 90)
@@ -107,7 +109,7 @@ struct SupplementTests {
         #expect(amounts["calcium"] == 200)
         #expect(amounts["iron"] == 8)
         #expect(amounts["zinc"] == 11)
-        #expect(facts.ingredients.last?.name == "Lutein")
+        #expect(facts.ingredients.last?.name == "Zinc (as zinc oxide)")
         #expect(facts.ingredients.first { $0.key == "vitaminB12" }?.name == "Vitamin B12 (as cyanocobalamin)")
     }
 
@@ -123,7 +125,9 @@ struct SupplementTests {
         #expect(preWorkout.amounts["niacin"] == 30)
         #expect(preWorkout.nutrients?.kcal == 5)
         #expect(preWorkout.nutrients?.carbs == 0.5)
-        #expect(preWorkout.others.map(\.name) == ["L-Citrulline", "Beta-Alanine", "L-Theanine"])
+        // The amino acids aren't tracked, so only the nutrients are kept.
+        #expect(preWorkout.ingredients.map(\.name) == ["Calories", "Total Carbohydrate", "Niacin (as niacinamide)",
+                                                       "Vitamin B12 (as methylcobalamin)", "Caffeine Anhydrous"])
 
         let sleep = try #require(SupplementLabel.parse(lines: [
             "Supplement Facts", "Serving Size: 2 Gummies", "Amount Per Serving", "Calories 15", "Total Sugars 3 g",
@@ -133,7 +137,7 @@ struct SupplementTests {
         #expect(sleep.servingLabel == "2 gummies")
         #expect(sleep.amounts["magnesium"] == 50)
         #expect(sleep.nutrients?.kcal == 15)
-        #expect(sleep.others.contains { $0.name == "Melatonin" && $0.amount == 3 })
+        #expect(!sleep.ingredients.contains { $0.name == "Melatonin" })
         // Not a panel at all.
         #expect(SupplementLabel.parse(lines: ["Nature Made", "Fish Oil", "Heart health support"]) == nil)
     }
@@ -148,6 +152,8 @@ struct SupplementTests {
         #expect(fish.brand == "Nature Made")
         #expect(fish.unit == "softgel")
         #expect((fish.amounts["omega3"] ?? 0) > 0.5)
+        // The catalog keeps only tracked lines: no "Fish Oil concentrate" or cholesterol.
+        #expect(fish.ingredients.allSatisfy(\.isTracked) && !fish.ingredients.contains { $0.name.contains("concentrate") })
         #expect(catalog.supplement(id: fish.id)?.name == fish.name)
         let found = catalog.search("nature made fish oil")
         #expect(found.contains { $0.brand == "Nature Made" && $0.name.localizedCaseInsensitiveContains("fish oil") })

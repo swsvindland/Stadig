@@ -29,9 +29,31 @@ enum Prompts {
         You read the text of a food package's nutrition label, recognized by OCR, which may be out of order and contain misread characters. Name the product in a few words as a shopper would (e.g. "Rolled oats", "Greek yogurt, vanilla", "Tortilla chips"), from the ingredients, claims and any other text. Fill brand only when a brand or maker is printed (e.g. "Distributed by General Mills"); otherwise leave it empty.
         """
 
+    /// Worded around "a product's label": the on-device model's guardrails refuse requests that
+    /// call it a dietary supplement.
     static let supplementLabelInstructions = """
-        You read the text of a dietary supplement's label, recognized by OCR, which may be out of order and contain misread characters. Name the product in a few words as a shopper would, with its strength when printed (e.g. "Fish oil 1200 mg", "Vitamin D3 2000 IU", "Magnesium glycinate", "Pre-workout, fruit punch"), from the product name, claims and Supplement Facts. Fill brand only when a brand or maker is printed (e.g. "Nature Made", "Distributed by Optimum Nutrition"); otherwise leave it empty.
+        You read the text of a product's label, recognized by OCR, which may be out of order and contain misread characters. Name the product in a few words as a shopper would, with its strength when printed (e.g. "Fish oil 1200 mg", "Vitamin D3 2000 IU", "Magnesium glycinate"). Fill brand only when a brand or maker is printed (e.g. "Nature Made", "Distributed by Optimum Nutrition"); otherwise leave it empty.
         """
+
+    /// Live scans gather text from many camera frames, the package's front and its panel alike.
+    static let liveLabelInstructions = """
+        You read text recognized by OCR from a food package, gathered over several camera frames: lines may repeat, be cut off, be out of order or be misread. Copy the Nutrition Facts values printed for one serving. When the panel has two columns (per serving and per container, or as packaged and as prepared), use the per serving, as packaged column. Copy each number exactly as printed in the panel text; leave a value out when it isn't printed there, and never estimate or calculate one. Claims on the front of the package, such as "20g protein", are not the panel. Name the product in a few words as a shopper would, and fill brand only when a brand or maker is printed.
+        """
+
+    /// Every line with an amount: the app keeps the ones it tracks. Asking the model to sort them,
+    /// or naming supplements, trips the on-device model's guardrails.
+    static let liveSupplementInstructions = """
+        You copy values from the nutrient table of a product label, recognized by OCR from several camera frames: lines may repeat, be cut off, be out of order or be misread. List each line of the table that has an amount, once, in the table's order, with its amount per serving and unit exactly as printed in the panel text. Leave out the % Daily Value. Give the serving size as printed. Name the product in a few words as its front names it, with the strength printed there (e.g. "Fish oil 1200 mg"), and fill brand only when a brand or maker is printed.
+        """
+
+    /// A live scan's text: the panel's rows first, then a little of the rest for the name.
+    static func liveText(panel: [String], other: [String]) -> String {
+        var text = "Panel text:\n" + panel.prefix(90).map { FoodText.clean($0, limit: 120) }.joined(separator: "\n")
+        if !other.isEmpty {
+            text += "\nOther text on the package:\n" + other.prefix(20).map { FoodText.clean($0, limit: 80) }.joined(separator: "\n")
+        }
+        return text
+    }
 
     /// Added when the label's own parse found little: copy the printed values, never estimate.
     static let labelValueInstructions = """

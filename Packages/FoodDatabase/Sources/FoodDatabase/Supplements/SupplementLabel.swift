@@ -74,8 +74,9 @@ public enum SupplementLabel {
         }
         let read = ingredients.filter { $0.amount != nil }
         guard !read.isEmpty, heading || read.count >= 2 || serving != nil else { return nil }
+        // Every line read says it's a panel; only the ones Macro Track tracks are kept.
         return SupplementFacts(id: "custom:\(UUID().uuidString)", name: "", servingCount: serving?.count ?? 1,
-                               unit: serving?.unit ?? "serving", ingredients: read, source: .label)
+                               unit: serving?.unit ?? "serving", ingredients: read.filter(\.isTracked), source: .label)
     }
 
     /// "Calories 20": the one line whose amount has no unit.
