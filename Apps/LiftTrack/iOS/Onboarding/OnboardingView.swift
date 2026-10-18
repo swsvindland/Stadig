@@ -11,7 +11,7 @@ struct OnboardingView: View {
     @Environment(AppModel.self) private var model
 
     enum Step: Int, CaseIterable {
-        case welcome, goals, schedule, equipment, experience, outside, body, phase, health, ready
+        case welcome, goals, focus, schedule, equipment, experience, outside, body, phase, health, ready
     }
 
     @State private var step: Step = .welcome
@@ -27,7 +27,8 @@ struct OnboardingView: View {
     private var steps: [Step] {
         Step.allCases.filter { step in
             if step == .phase { return model.nutrition == nil }
-            if reusedProfile { return [.welcome, .equipment, .phase, .health, .ready].contains(step) }
+            // The focus is Lift Track's own, so it's asked even when the shared setup is reused.
+            if reusedProfile { return [.welcome, .focus, .equipment, .phase, .health, .ready].contains(step) }
             return true
         }
     }
@@ -64,6 +65,7 @@ struct OnboardingView: View {
         switch step {
         case .welcome: welcome
         case .goals: goals
+        case .focus: focus
         case .schedule: schedule
         case .equipment: equipment
         case .experience: experience
@@ -151,6 +153,34 @@ struct OnboardingView: View {
                     .card()
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
+    private var focus: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            header("Anything to bring up?", "Optional. Pick up to two areas and they get extra sets every block. Everything else is still trained.")
+            ForEach(PhysiqueRegion.allCases) { region in
+                let selected = settings.focus.contains(region)
+                let full = !selected && settings.focus.count >= LiftSettings.focusLimit
+                Button {
+                    // Checked here too: quick taps can land before the row shows as full.
+                    if selected { settings.focus.remove(region) } else if settings.focus.count < LiftSettings.focusLimit { settings.focus.insert(region) }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(region.label).font(.headline)
+                            Text(region.focusDetail).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
+                    }
+                    .card()
+                }
+                .buttonStyle(.plain)
+                .disabled(full)
+                .opacity(full ? 0.5 : 1)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }

@@ -36,6 +36,9 @@ struct SettingsView: View {
                 toggle("Heart-rate guided rest", \.heartRateGuidedRest)
                 toggle("Conditioning after lifting", \.includeConditioning)
                 toggle("Stretching cool-down", \.includeCooldown)
+                NavigationLink { FocusScreen() } label: {
+                    LabeledContent("Focus", value: model.settings.focusSummary)
+                }
                 toggle("Prioritise automatically", \.autoPrioritise)
                 Picker("Conditioning benchmark", selection: setting(\.benchmark)) {
                     ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
@@ -185,6 +188,61 @@ struct ProfileEditor: View {
         }
         .navigationTitle("About you")
         .onDisappear { model.save(profile: profile) }
+    }
+}
+
+/// Up to two areas the person wants brought up, whatever the analysis says.
+struct FocusScreen: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(PhysiqueRegion.allCases) { region in
+                    let on = model.settings.focus.contains(region)
+                    let full = !on && model.settings.focus.count >= LiftSettings.focusLimit
+                    Toggle(isOn: Binding(get: { on }, set: { value in
+                        var s = model.settings
+                        if !value { s.focus.remove(region) } else if s.focus.count < LiftSettings.focusLimit { s.focus.insert(region) }
+                        model.save(settings: s)
+                    })) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(region.label)
+                            Text(region.focusDetail).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(full)
+                    // A disabled toggle barely looks it in a form.
+                    .opacity(full ? 0.5 : 1)
+                }
+            } footer: {
+                Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
+            }
+        }
+        .navigationTitle("Focus")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension LiftSettings {
+    var focusSummary: String {
+        focus.isEmpty ? "None" : PhysiqueRegion.allCases.filter(focus.contains).map(\.label).joined(separator: ", ")
+    }
+}
+
+extension PhysiqueRegion {
+    /// What a focus here adds, in a few words.
+    var focusDetail: String {
+        switch self {
+        case .shoulders: "Lateral raises and overhead work"
+        case .chest: "Presses and flyes"
+        case .back: "Rows and pulldowns"
+        case .arms: "Curls and triceps work"
+        case .core: "Direct ab work"
+        case .glutes: "Hip thrusts and abduction"
+        case .thighs: "Quad and hamstring work"
+        case .calves: "Calf raises"
+        }
     }
 }
 

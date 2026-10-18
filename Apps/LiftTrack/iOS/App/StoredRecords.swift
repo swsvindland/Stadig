@@ -8,7 +8,12 @@ import SystemStore
 
 nonisolated extension LiftSettings: @retroactive StoredRecord {
     public static var kind: String { "settings" }
-    public static var schemaVersion: Int { 1 }
+    public static var schemaVersion: Int { 2 }
+
+    /// 2 added the person's focus areas.
+    public static func migrate(_ json: inout [String: Any], from version: Int) throws {
+        if version == 1 { json["focus"] = [String]() }
+    }
 }
 
 nonisolated extension Gym: @retroactive StoredRecord {

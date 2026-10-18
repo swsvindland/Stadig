@@ -106,6 +106,17 @@ struct PlanView: View {
                     }
                 }
             }
+            NavigationLink { FocusScreen() } label: {
+                HStack {
+                    Text("Focus")
+                    Spacer()
+                    Text(model.settings.focusSummary).foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                }
+                .font(.subheadline)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
             Toggle("Prioritise automatically", isOn: Binding(get: { model.settings.autoPrioritise }, set: { on in
                 var s = model.settings
                 s.autoPrioritise = on

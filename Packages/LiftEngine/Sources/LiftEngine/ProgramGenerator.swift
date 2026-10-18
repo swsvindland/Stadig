@@ -82,7 +82,13 @@ enum Templates {
 
     static let quadAnchor = accessory([.legPress, .legExtension, .squat], [.quads], anchor: true)
     static let hamCurl = accessory([.legCurl], [.hamstrings], anchor: true)
+    // Hamstrings only: counting glutes here picks a trap bar deadlift or pull-through over the RDL.
+    // The hip thrust slot covers glutes.
     static let rdl = accessory([.hinge, .hipThrust], [.hamstrings])
+    /// Glutes at short length, where the squat trains them long.
+    static let hipThrust = accessory([.hipThrust], [.glutes], anchor: true)
+    /// The side glutes, which squats, hinges and lunges barely reach.
+    static let abduction = accessory([.hipAbduction, .hipThrust], [.glutes], sets: 2, anchor: true)
     static let lunge = accessory([.lunge, .legPress], [.quads, .glutes])
     static let legExtension = accessory([.legExtension], [.quads], sets: 2, anchor: true)
     static let calves = accessory([.calfRaise], [.calves], sets: 2, anchor: true)
@@ -119,11 +125,13 @@ enum Templates {
     }
 
     /// The days of a split, each a name, a focus and its slot requests in order of importance.
+    /// Every lower and legs day has direct glute work high enough to survive an hour: a hip
+    /// thrust after a squat, abduction after a deadlift, which already loads the glutes heavily.
     static func days(_ split: SplitKind, count: Int) -> [DayTemplate] {
         let upperA = DayTemplate("Upper A", .upper, [main(.horizontalPress), main(.horizontalPull), main(.verticalPress), pulldown, lateral, triceps, curl])
-        let lowerA = DayTemplate("Lower A", .lower, [main(.squat), rdl, quadAnchor, hamCurl, calves, abs])
+        let lowerA = DayTemplate("Lower A", .lower, [main(.squat), rdl, hipThrust, quadAnchor, hamCurl, calves, abs])
         let upperB = DayTemplate("Upper B", .upper, [main(.inclinePress), main(.verticalPull), rowAnchor, fly, rearDelt, curl, triceps])
-        let lowerB = DayTemplate("Lower B", .lower, [main(.floorPull), lunge, legExtension, hamCurl, calves, abs])
+        let lowerB = DayTemplate("Lower B", .lower, [main(.floorPull), lunge, hamCurl, abduction, legExtension, calves, abs])
         switch split {
         case .fullBody:
             // Two days carry all seven scored lifts between them.
@@ -146,16 +154,16 @@ enum Templates {
                 upperA, lowerA,
                 DayTemplate("Push", .push, [main(.inclinePress), overhead, pressAnchor, lateral, triceps]),
                 DayTemplate("Pull", .pull, [main(.verticalPull), main(.horizontalPull), rowAnchor, rearDelt, curl]),
-                DayTemplate("Legs", .legs, [main(.floorPull), quadAnchor, lunge, hamCurl, calves, abs]),
+                DayTemplate("Legs", .legs, [main(.floorPull), lunge, hamCurl, abduction, quadAnchor, calves, abs]),
             ]
         case .pushPullLegs:
             return [
                 DayTemplate("Push A", .push, [main(.horizontalPress), main(.verticalPress), fly, lateral, triceps]),
                 DayTemplate("Pull A", .pull, [main(.horizontalPull), main(.verticalPull), rearDelt, curl, abs]),
-                DayTemplate("Legs A", .legs, [main(.squat), rdl, legExtension, hamCurl, calves]),
+                DayTemplate("Legs A", .legs, [main(.squat), rdl, hipThrust, legExtension, hamCurl, calves]),
                 DayTemplate("Push B", .push, [main(.inclinePress), overhead, pressAnchor, lateral, triceps]),
                 DayTemplate("Pull B", .pull, [main(.verticalPull), rowAnchor, rearDelt, curl, abs]),
-                DayTemplate("Legs B", .legs, [main(.floorPull), quadAnchor, lunge, hamCurl, calves]),
+                DayTemplate("Legs B", .legs, [main(.floorPull), lunge, hamCurl, abduction, quadAnchor, calves]),
             ]
         }
     }
@@ -206,7 +214,10 @@ struct Builder {
     // MARK: Priorities
 
     mutating func gatherPriorities() {
-        var list: [TrainingPriority] = []
+        // The person's own focus comes first, in every block and whatever auto-prioritisation says.
+        var list = PhysiqueRegion.allCases.filter(input.settings.focus.contains).map { region in
+            TrainingPriority(target: .physique(region), emphasis: 1, reason: "You chose \(region.label.lowercased()) as a focus.", source: .person)
+        }
         if input.settings.autoPrioritise, input.kind == .standard {
             list += input.strength?.priorities ?? []
             for gap in input.physique?.gaps.prefix(2) ?? [] where gap.magnitude > 0.15 {
@@ -433,12 +444,14 @@ struct Builder {
     }
 
     /// Lagging physique areas get cheap, local volume where it fits: lateral raises for shoulders,
-    /// arm work for arms. It barely touches recovery.
+    /// arm work for arms, a hip thrust on the lower day that lacks one. It barely touches recovery.
     mutating func addPhysiqueVolume(_ days: inout [PlannedDay]) {
+        // Once per region, with the first reason: a focus and a measured gap don't add it twice.
+        var seen: Set<PhysiqueRegion> = []
         let wanted = priorities.filter { $0.emphasis > 0 }.compactMap { p -> (PhysiqueRegion, String)? in
             if case .physique(let region) = p.target { return (region, p.reason) }
             return nil
-        }
+        }.filter { seen.insert($0.0).inserted }
         for (region, reason) in wanted {
             let request: SlotRequest? = switch region {
             case .shoulders: Templates.lateral
@@ -447,7 +460,7 @@ struct Builder {
             case .back: Templates.rowAnchor
             case .thighs: Templates.hamCurl
             case .calves: Templates.calves
-            case .glutes: Templates.rdl
+            case .glutes: Templates.hipThrust
             case .core: Templates.abs
             }
             guard let request else { continue }
@@ -768,9 +781,10 @@ struct Builder {
         case .minimumEffective:
             headline = "The minimum effective dose: short sessions that keep strength and muscle."
         case .standard:
-            let lead = priorities.filter { $0.emphasis > 0 && ($0.source == .strength || $0.source == .physique || $0.source == .hub) }
+            let lead = priorities.filter { $0.emphasis > 0 && [.person, .strength, .physique, .hub].contains($0.source) }
             if let first = lead.first {
-                headline = "\(first.label) comes first this block. \(input.loadingWeeks) weeks of loading, then a deload."
+                let plural = if case .physique(let p) = first.target { [.shoulders, .arms, .glutes, .thighs, .calves].contains(p) } else { false }
+                headline = "\(first.label) \(plural ? "come" : "comes") first this block. \(input.loadingWeeks) weeks of loading, then a deload."
             } else {
                 headline = "A balanced \(input.loadingWeeks)-week block across every lift, then a deload."
             }

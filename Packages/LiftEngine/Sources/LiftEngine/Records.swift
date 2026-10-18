@@ -16,6 +16,10 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     public var selfReportedPhaseSince: Day?
     /// Strength and physique imbalances set the next block's priorities. Can be switched off.
     public var autoPrioritise: Bool
+    /// Areas the person wants brought up, whatever the analysis says: extra volume every block.
+    public var focus: Set<PhysiqueRegion>
+    /// More than two and a focus stops meaning anything.
+    public static let focusLimit = 2
     /// Rest can end early on a recovered heart rate (Watch) for accessories.
     public var heartRateGuidedRest: Bool
     public var includeConditioning: Bool
@@ -29,14 +33,16 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), gymID: UUID? = nil, selfReportedPhase: SelfReportedPhase? = nil, autoPrioritise: Bool = true,
-                heartRateGuidedRest: Bool = true, includeConditioning: Bool = true, includeCooldown: Bool = false,
-                benchmark: EnduranceBenchmark = .stairs10min, avoid: Set<String> = [], saveToHealth: Bool = true,
-                onboardedAt: Date? = nil, assessmentStart: Day? = nil, selfReportedPhaseSince: Day? = nil, updatedAt: Date = Date()) {
+                focus: Set<PhysiqueRegion> = [], heartRateGuidedRest: Bool = true, includeConditioning: Bool = true,
+                includeCooldown: Bool = false, benchmark: EnduranceBenchmark = .stairs10min, avoid: Set<String> = [],
+                saveToHealth: Bool = true, onboardedAt: Date? = nil, assessmentStart: Day? = nil, selfReportedPhaseSince: Day? = nil,
+                updatedAt: Date = Date()) {
         self.id = id
         self.gymID = gymID
         self.selfReportedPhase = selfReportedPhase
         self.selfReportedPhaseSince = selfReportedPhaseSince
         self.autoPrioritise = autoPrioritise
+        self.focus = focus
         self.heartRateGuidedRest = heartRateGuidedRest
         self.includeConditioning = includeConditioning
         self.includeCooldown = includeCooldown

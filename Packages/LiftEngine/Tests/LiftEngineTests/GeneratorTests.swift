@@ -24,6 +24,12 @@ enum Fixture {
                        injuries: injuries, trust: TrustState(experience: profile.experience))
     }
 
+    /// A week's sets of direct glute work: compounds that also load the glutes don't count.
+    static func directGluteSets(_ m: Mesocycle) -> Int {
+        m.days.flatMap(\.strengthSlots).filter { [.hipThrust, .hipAbduction].contains(catalog.resolve($0.exerciseID).pattern) }
+            .map { $0.sets(week: 0) }.reduce(0, +)
+    }
+
     static func describe(_ m: Mesocycle) -> String {
         var lines = ["\(m.block.kind.label) · \(m.split.label) · \(m.block.loadingWeeks) weeks", "Why: \(m.rationale.headline)"]
         lines += m.rationale.reasons.map { "  - \($0)" }
@@ -154,6 +160,57 @@ struct GeneratorTests {
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), physique: physique))
         let lateral = m.days.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .lateralRaise }
         #expect(lateral.contains { ($0.reason ?? "").contains("side-delt") })
+    }
+
+    @Test func everyLegDayTrainsGlutesDirectly() {
+        let direct: [MovementPattern] = [.hipThrust, .hipAbduction]
+        for access in [EquipmentAccess.fullGym, .homeGym, .hotelGym] {
+            for days in 4...6 {
+                let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: days, access: access)))
+                for day in m.days where day.focus == .lower || day.focus == .legs {
+                    #expect(day.strengthSlots.contains { direct.contains(Fixture.catalog.resolve($0.exerciseID).pattern) },
+                            "\(access) \(days) days: \(day.name) has no direct glute work")
+                }
+                if ProcessInfo.processInfo.environment["PRINT_PROGRAMS"] != nil, access == .fullGym { print(Fixture.describe(m)) }
+            }
+        }
+    }
+
+    @Test func glutePriorityAddsAHipThrust() {
+        let before = ProgramGenerator.generate(Fixture.input(Fixture.profile()))
+        var input = Fixture.input(Fixture.profile())
+        input.recommendations = [Recommendation(to: .liftTrack, kind: .prioritise, subject: .physique(.glutes), reason: "Glutes are lagging.")]
+        let after = ProgramGenerator.generate(input)
+        #expect(Fixture.directGluteSets(after) > Fixture.directGluteSets(before))
+        let thrusts = after.days.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .hipThrust }
+        #expect(thrusts.count >= 2)
+        #expect(thrusts.contains { $0.reason == "Glutes are lagging." })
+    }
+
+    @Test func chosenFocusLeadsEvenWithoutAutoPrioritising() {
+        var settings = LiftSettings(autoPrioritise: false)
+        settings.focus = [.glutes]
+        let before = ProgramGenerator.generate(Fixture.input(Fixture.profile()))
+        let after = ProgramGenerator.generate(Fixture.input(Fixture.profile(), settings: settings))
+        #expect(after.priorities.first?.source == .person)
+        #expect(after.rationale.headline.hasPrefix("Glutes come first"), "\(after.rationale.headline)")
+        #expect(Fixture.directGluteSets(after) > Fixture.directGluteSets(before))
+        #expect(after.days.flatMap(\.strengthSlots).contains { $0.reason == "You chose glutes as a focus." })
+        // The assessment honours it too.
+        let assessment = ProgramGenerator.generate(Fixture.input(Fixture.profile(), kind: .assessment, settings: settings))
+        #expect(assessment.priorities.contains { $0.source == .person })
+    }
+
+    @Test func aFocusAndAMeasuredGapAddVolumeOnce() {
+        var settings = LiftSettings()
+        settings.focus = [.shoulders]
+        let physique = Physique.analyse([BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 110, waistCm: 88, armCm: 36)],
+                                        sex: .male, heightCm: 180)
+        let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 6), settings: settings, physique: physique))
+        #expect(m.priorities.filter { $0.target == .physique(.shoulders) }.count == 2)
+        // Push days have lateral raises already; one pull day gains them, not both.
+        let added = m.days.filter { $0.focus == .pull }.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .lateralRaise }
+        #expect(added.count == 1)
     }
 
     @Test func assessmentPrefersSafeToFailAnchors() {
