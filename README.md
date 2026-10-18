@@ -276,7 +276,7 @@ The first playtest's notes (the doc's "Mind Track Rework") are in. The shared co
 - **Records.** Writing pieces (text, source, feedback, metrics), blind comparisons and looked-up book metadata sync like the rest; books gain format (print, ebook, audiobook), ISBN and language. Onboarding asks each subject's own questions on its own page: kana and speaking, maths strands (numeracy always on), kinds of writing (creative by default), genres and only the last year's reading.
 - **AI.** Every AI call goes through `SystemAI`: light jobs stay on the device, heavy ones prefer Private Cloud Compute when the setting allows (on by default) and the app declares Apple's managed entitlement (`SystemAIPrivateCloud` in its Info.plist; without it, Foundation Models reports PCC as available and then stops the app on the first request, so until Sam has the entitlement heavy jobs run on the device). A failure falls back to the other model when that could help, and nothing core waits on it.
 
-Each subject's rework is under Subjects below. Spanish has its own catalog, `spanish.db`, built by `Scripts/build-spanish-catalog.py` into `Apps/MindTrack/Catalogs`; like `japanese.db` it isn't in git, and it isn't yet in `Scripts/catalogs.manifest`, so CI builds lack Spanish until it's published. Piano is still deferred, and Korean is the next language pack.
+Each subject's rework is under Subjects below. Spanish has its own catalog, `spanish.db`, built by `Scripts/build-spanish-catalog.py` into `Apps/MindTrack/Catalogs`; like `japanese.db` it isn't in git, and CI fetches it from the catalogs release named in `Scripts/catalogs.manifest`. Piano is still deferred, and Korean is the next language pack.
 
 ### Subjects
 
