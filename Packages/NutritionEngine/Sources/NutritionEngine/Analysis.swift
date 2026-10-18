@@ -205,7 +205,7 @@ public enum MacroAnalyst {
         let input = PlannerInput(profile: state.profile, history: state.settings.dietHistory, today: today, weightKg: weight,
                                  weeklyChange: trend.weeklyChange(days: 21), maintenance: maintenance, waistCm: liftMeasurements?.waistCm,
                                  bodyFatPercent: liftMeasurements?.bodyFatPercent, strengthScore: state.lift?.strength?.overall,
-                                 strengthTrend: state.lift?.stats.first { $0.stat == .strength }?.trend)
+                                 strengthTrend: state.lift?.stats.first { $0.stat == .strength }?.trend, physique: state.lift?.physique)
 
         let life = LifeModes.effects(on: today, periods: state.lifeModes)
         let assessing = state.plan == nil

@@ -197,10 +197,14 @@ public struct PhysiqueDirection: Hashable, Codable, Sendable {
     public var bodyFatPercent: Double?
     public var normalizedFFMI: Double?
     public var ffmiBand: FFMIBand?
-    public var reasons: [String]
+    /// Each ratio fat loss would close, with what it reads and its target.
+    public var fatLossReasons: [String]
+    /// Each ratio training would close.
+    public var buildReasons: [String]
 
     public init(targets: ProportionTargets, fatLoss: Double, build: Double, buildRegions: [PhysiqueRegion], atLeanFloor: Bool,
-                waistToHeight: Double?, bodyFatPercent: Double?, normalizedFFMI: Double?, ffmiBand: FFMIBand?, reasons: [String]) {
+                waistToHeight: Double?, bodyFatPercent: Double?, normalizedFFMI: Double?, ffmiBand: FFMIBand?,
+                fatLossReasons: [String] = [], buildReasons: [String] = []) {
         self.targets = targets
         self.fatLoss = fatLoss
         self.build = build
@@ -210,7 +214,24 @@ public struct PhysiqueDirection: Hashable, Codable, Sendable {
         self.bodyFatPercent = bodyFatPercent
         self.normalizedFFMI = normalizedFFMI
         self.ffmiBand = ffmiBand
-        self.reasons = reasons
+        self.fatLossReasons = fatLossReasons
+        self.buildReasons = buildReasons
+    }
+
+    /// The first builds to publish this kept every reason in one list; reading one leaves these empty.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        targets = try c.decode(ProportionTargets.self, forKey: .targets)
+        fatLoss = try c.decode(Double.self, forKey: .fatLoss)
+        build = try c.decode(Double.self, forKey: .build)
+        buildRegions = try c.decodeIfPresent([PhysiqueRegion].self, forKey: .buildRegions) ?? []
+        atLeanFloor = try c.decodeIfPresent(Bool.self, forKey: .atLeanFloor) ?? false
+        waistToHeight = try c.decodeIfPresent(Double.self, forKey: .waistToHeight)
+        bodyFatPercent = try c.decodeIfPresent(Double.self, forKey: .bodyFatPercent)
+        normalizedFFMI = try c.decodeIfPresent(Double.self, forKey: .normalizedFFMI)
+        ffmiBand = try c.decodeIfPresent(FFMIBand.self, forKey: .ffmiBand)
+        fatLossReasons = try c.decodeIfPresent([String].self, forKey: .fatLossReasons) ?? []
+        buildReasons = try c.decodeIfPresent([String].self, forKey: .buildReasons) ?? []
     }
 }
 

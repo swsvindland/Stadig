@@ -378,7 +378,7 @@ public enum Physique {
             targets: targets, fatLoss: floor ? 0 : flagged.map(\.fatShare).max() ?? 0, build: builds.map(\.magnitude).max() ?? 0,
             buildRegions: builds.compactMap(\.region), atLeanFloor: floor, waistToHeight: wth, bodyFatPercent: bodyFat,
             normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
-            reasons: flagged.map { [$0.finding, $0.action].compactMap { $0 }.joined(separator: " ") })
+            fatLossReasons: floor ? [] : flagged.filter { $0.cause == .fat }.map(\.finding), buildReasons: builds.map(\.finding))
 
         var waistTrend: Double?
         let waists = sorted.compactMap { m in m.waistCm.map { (m.day, $0) } }

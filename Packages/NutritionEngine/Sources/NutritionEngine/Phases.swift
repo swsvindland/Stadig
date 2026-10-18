@@ -75,10 +75,12 @@ public struct PlannerInput: Sendable {
     /// Lift Track's overall strength score and its direction, when it's installed.
     public var strengthScore: Double?
     public var strengthTrend: Trajectory?
+    /// Lift Track's read on whether fat loss or building would do more for proportions.
+    public var physique: PhysiqueDirection?
 
     public init(profile: SharedProfile, history: DietHistory, today: Day, weightKg: Double, weeklyChange: Double?,
                 maintenance: MaintenanceEstimate, waistCm: Double? = nil, bodyFatPercent: Double? = nil,
-                strengthScore: Double? = nil, strengthTrend: Trajectory? = nil) {
+                strengthScore: Double? = nil, strengthTrend: Trajectory? = nil, physique: PhysiqueDirection? = nil) {
         self.profile = profile
         self.history = history
         self.today = today
@@ -89,6 +91,7 @@ public struct PlannerInput: Sendable {
         self.bodyFatPercent = bodyFatPercent
         self.strengthScore = strengthScore
         self.strengthTrend = strengthTrend
+        self.physique = physique
     }
 
     public var waistToHeight: Double? {
@@ -96,8 +99,11 @@ public struct PlannerInput: Sendable {
         return waistCm / h
     }
 
-    /// Leanness from the best signal available: waist-to-height first, then body fat.
+    /// Leanness from the best signal available: waist-to-height first, then body fat. At Lift
+    /// Track's lean floor (10% body fat for men, 20% for women) it's lean whatever the waist says,
+    /// so nothing plans a cut below it.
     public var leanness: Leanness {
+        if physique?.atLeanFloor == true { return .lean }
         if let wth = waistToHeight {
             switch wth {
             case ..<0.46: return .lean
@@ -141,10 +147,20 @@ public enum PhasePlanner {
         }
 
         let leanness = input.leanness
+        // Lift Track's proportions count only for the goals they serve.
+        let proportions = goals.isDisjoint(with: [.leaner, .biggerAndStronger, .healthier]) ? nil : input.physique
+        // The waist is what holds the ratios back: lose fat before any gain.
+        let fatFirst = (proportions.map { $0.fatLoss >= 0.3 && !$0.atLeanFloor } ?? false) && leanness != .lean && leanness != .unknown
+        // Lean, with muscle the ratios still need.
+        let buildGap = (proportions.map { $0.build >= 0.3 } ?? false) && leanness == .lean
+        let room = proportions?.ffmiBand
+        func percent(_ rate: Double) -> String { (rate * 100).formatted(.number.precision(.fractionLength(0...2))) }
+
         if (input.history == .longCut || (input.history == .recentCut && lowMaintenance)), leanness != .high {
             add(.reverseDiet, rate: 0.001, weeks: 6)
             add(.maintenance, weeks: 2)
-            add(wantsLean && leanness == .higher ? .miniCut : .leanBulk, weeks: wantsLean && leanness == .higher ? 5 : 12)
+            let cutNext = fatFirst || (wantsLean && leanness == .higher)
+            add(cutNext ? .miniCut : .leanBulk, weeks: cutNext ? 5 : 12)
             headline = lowMaintenance
                 ? "Your maintenance looks lower than expected after your cut, so calories rise gradually for \(phases[0].weeks) weeks, then a slow gain."
                 : "After a long cut, calories rise gradually for \(phases[0].weeks) weeks before anything else."
@@ -174,6 +190,15 @@ public enum PhasePlanner {
                     add(.maintenance, weeks: 4)
                     headline = "A focused mini-cut of about \(phases[0].weeks) weeks, then maintenance to hold it."
                     reasons.append("You're in a healthy range already, so a short, sharp cut gets you leaner without a long grind.")
+                } else if fatFirst {
+                    add(.miniCut, rate: -0.0075, weeks: 5)
+                    if wantsSize {
+                        add(.leanBulk, rate: 0.0025, weeks: 16)
+                        headline = "A focused mini-cut of about \(phases[0].weeks) weeks first, then a slow lean bulk from a leaner start."
+                    } else {
+                        add(.maintenance, weeks: 4)
+                        headline = "A focused mini-cut of about \(phases[0].weeks) weeks, then maintenance to hold it."
+                    }
                 } else if novice || (input.strengthScore ?? 100) < 40 {
                     add(.recomp, weeks: 12)
                     headline = "A recomp: eat around maintenance with plenty of protein, and let training do the work."
@@ -187,10 +212,21 @@ public enum PhasePlanner {
                     headline = "Maintenance: hold your weight and let training drive progress."
                 }
             case .lean:
-                if wantsSize || !wantsLean {
-                    add(.leanBulk, rate: novice ? 0.005 : 0.0025, weeks: 16)
-                    headline = "A lean bulk: about \(novice ? "0.5" : "0.25")% of body weight a week."
+                if room == .nearCeiling, !wantsSize {
+                    add(buildGap ? .recomp : .maintenance, weeks: buildGap ? 12 : 8)
+                    headline = buildGap ? "A recomp: you're lean and near your natural ceiling, so build at maintenance."
+                        : "Maintenance: you're lean and near your natural ceiling."
+                    reasons.append("Near the natural ceiling a surplus mostly adds fat, so calories stay at maintenance.")
+                } else if wantsSize || !wantsLean {
+                    // Less room to build, a smaller surplus.
+                    let rate = room == .someRoom || room == .nearCeiling ? 0.0015 : (novice ? 0.005 : 0.0025)
+                    add(.leanBulk, rate: rate, weeks: 16)
+                    headline = "A lean bulk: about \(percent(rate))% of body weight a week."
                     reasons.append("You're lean, so the most useful thing is to gain slowly while training hard.")
+                } else if buildGap {
+                    add(.recomp, weeks: 12)
+                    headline = "A recomp: you're lean, so the muscle your proportions need is built at maintenance."
+                    reasons.append("Eating at maintenance with plenty of protein builds muscle without giving up the leanness you're after.")
                 } else {
                     add(.maintenance, weeks: 8)
                     headline = "Maintenance: you're already lean."
@@ -202,6 +238,30 @@ public enum PhasePlanner {
             }
         }
 
+        if fatFirst, let proportions {
+            if proportions.fatLossReasons.isEmpty {
+                reasons.append("Lift Track's measurements show the waist holds your proportions back more than muscle does, so fat loss comes before any gain.")
+            } else {
+                let named = proportions.fatLossReasons.prefix(2)
+                reasons.append(contentsOf: named)
+                reasons.append("At a leaner waist \(named.count == 1 ? "it reaches its target" : "these reach their targets"), so fat loss comes before any gain.")
+            }
+        }
+        if buildGap, let proportions, phases.first.map({ $0.kind == .leanBulk || $0.kind == .recomp }) == true {
+            reasons.append(contentsOf: proportions.buildReasons.prefix(2))
+            if let ffmi = proportions.normalizedFFMI, let room {
+                let ffmiText = ffmi.formatted(.number.precision(.fractionLength(1)))
+                let roomText = switch room {
+                case .lotsOfRoom: "An FFMI of \(ffmiText) leaves lots of room to build."
+                case .someRoom: "An FFMI of \(ffmiText) leaves some room to build, so the surplus is kept small."
+                case .nearCeiling: "An FFMI of \(ffmiText) is near the natural ceiling, so gains come slowly."
+                }
+                reasons.append(roomText)
+            }
+        }
+        if input.physique?.atLeanFloor == true, wantsLean {
+            reasons.append("Body fat is already at the lean floor, so no cut is planned below it.")
+        }
         if let change = input.weeklyChange, abs(change) > 0.1 {
             let pct = change / input.weightKg * 100
             reasons.append("Over the assessment you've been \(change < 0 ? "losing" : "gaining") about \(abs(pct).formatted(.number.precision(.fractionLength(1))))% a week while eating as usual.")
