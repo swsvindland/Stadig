@@ -28,29 +28,35 @@ public enum StrengthStandards {
 
     /// One-rep max as a multiple of bodyweight at each anchor, at the reference bodyweight.
     static func ratios(_ category: StrengthCategory, _ sex: BiologicalSex) -> [Double] {
-        let male: [StrengthCategory: [Double]] = [
-            .squat: [0.8, 1.15, 1.55, 2.05, 2.6],
-            .floorPull: [1.0, 1.45, 1.9, 2.45, 3.05],
-            .horizontalPress: [0.65, 0.9, 1.25, 1.65, 2.1],
-            .inclinePress: [0.55, 0.75, 1.03, 1.37, 1.75],
-            .verticalPress: [0.4, 0.58, 0.8, 1.05, 1.35],
-            // Pull-ups count the whole body plus any added load.
-            .verticalPull: [0.95, 1.12, 1.35, 1.6, 1.88],
-            .horizontalPull: [0.5, 0.72, 1.0, 1.3, 1.62],
-        ]
-        let female: [StrengthCategory: [Double]] = [
-            .squat: [0.55, 0.85, 1.15, 1.55, 2.0],
-            .floorPull: [0.7, 1.05, 1.4, 1.85, 2.35],
-            .horizontalPress: [0.35, 0.52, 0.75, 1.0, 1.3],
-            .inclinePress: [0.3, 0.44, 0.63, 0.85, 1.1],
-            .verticalPress: [0.25, 0.36, 0.5, 0.7, 0.9],
-            .verticalPull: [0.75, 0.95, 1.15, 1.37, 1.6],
-            .horizontalPull: [0.35, 0.5, 0.7, 0.95, 1.2],
-        ]
         switch sex {
-        case .male: return male[category]!
-        case .female: return female[category]!
-        case .unspecified: return zip(male[category]!, female[category]!).map { ($0 + $1) / 2 }
+        case .male: maleRatios(category)
+        case .female: femaleRatios(category)
+        case .unspecified: zip(maleRatios(category), femaleRatios(category)).map { ($0 + $1) / 2 }
+        }
+    }
+
+    private static func maleRatios(_ category: StrengthCategory) -> [Double] {
+        switch category {
+        case .squat: [0.8, 1.15, 1.55, 2.05, 2.6]
+        case .floorPull: [1.0, 1.45, 1.9, 2.45, 3.05]
+        case .horizontalPress: [0.65, 0.9, 1.25, 1.65, 2.1]
+        case .inclinePress: [0.55, 0.75, 1.03, 1.37, 1.75]
+        case .verticalPress: [0.4, 0.58, 0.8, 1.05, 1.35]
+        // Pull-ups count the whole body plus any added load.
+        case .verticalPull: [0.95, 1.12, 1.35, 1.6, 1.88]
+        case .horizontalPull: [0.5, 0.72, 1.0, 1.3, 1.62]
+        }
+    }
+
+    private static func femaleRatios(_ category: StrengthCategory) -> [Double] {
+        switch category {
+        case .squat: [0.55, 0.85, 1.15, 1.55, 2.0]
+        case .floorPull: [0.7, 1.05, 1.4, 1.85, 2.35]
+        case .horizontalPress: [0.35, 0.52, 0.75, 1.0, 1.3]
+        case .inclinePress: [0.3, 0.44, 0.63, 0.85, 1.1]
+        case .verticalPress: [0.25, 0.36, 0.5, 0.7, 0.9]
+        case .verticalPull: [0.75, 0.95, 1.15, 1.37, 1.6]
+        case .horizontalPull: [0.35, 0.5, 0.7, 0.95, 1.2]
         }
     }
 
@@ -199,7 +205,25 @@ public struct StrengthProfile: Hashable, Codable, Sendable {
             list.append(TrainingPriority(target: .category(weakest.category), emphasis: 0.8,
                                          reason: "\(weakest.category.label) is the weakest lift relative to the rest.", source: .strength))
         }
-        return list
+        // Legs ahead and pressing ahead of pulling can both ask for pulling: one row, both reasons.
+        return list.mergedByID()
+    }
+}
+
+public extension Array where Element == TrainingPriority {
+    /// One priority per id (target and source), so lists keyed by id never repeat one. Emphasis adds
+    /// up, as the generator would add it anyway, and the reasons are joined.
+    func mergedByID() -> [TrainingPriority] {
+        var merged: [TrainingPriority] = []
+        for priority in self {
+            if let i = merged.firstIndex(where: { $0.id == priority.id }) {
+                merged[i].emphasis += priority.emphasis
+                if !merged[i].reason.contains(priority.reason) { merged[i].reason += " " + priority.reason }
+            } else {
+                merged.append(priority)
+            }
+        }
+        return merged
     }
 }
 
@@ -222,12 +246,33 @@ public enum StrengthEstimator {
         return floor + trust.score * (claimed - floor)
     }
 
-    /// Per-session best estimates for one exercise, oldest first.
+    /// Sets this far apart belong to different sessions; nothing rests three hours between sets.
+    public static let sessionGap: TimeInterval = 3 * 3600
+
+    /// Sets grouped into the sessions they were done in, oldest first, each in the order it was done.
+    /// Grouped by time rather than by calendar day, so a workout that runs past midnight stays one
+    /// session and a change of time zone doesn't regroup old ones.
+    public static func sessions(_ sets: [LoggedSet]) -> [[LoggedSet]] {
+        let ordered = sets.enumerated().sorted { ($0.element.date, $0.offset) < ($1.element.date, $1.offset) }.map(\.element)
+        var sessions: [[LoggedSet]] = []
+        for set in ordered {
+            if let previous = sessions.last?.last, set.date.timeIntervalSince(previous.date) <= sessionGap {
+                sessions[sessions.count - 1].append(set)
+            } else {
+                sessions.append([set])
+            }
+        }
+        return sessions
+    }
+
+    /// Per-session best estimates for one exercise, oldest first. A session counts on the day it
+    /// started; two on one day count as that day's best.
     public static func sessionBests(_ sets: [LoggedSet], basis: LoadBasis, trust: TrustState) -> [(day: Day, e1rm: Double)] {
         var byDay: [Day: Double] = [:]
-        for set in sets {
-            guard let e = estimate(set, basis: basis, trust: trust) else { continue }
-            byDay[Day(set.date), default: 0] = max(byDay[Day(set.date), default: 0], e)
+        for session in sessions(sets) {
+            guard let first = session.first, let best = session.compactMap({ estimate($0, basis: basis, trust: trust) }).max() else { continue }
+            let day = Day(first.date)
+            byDay[day] = max(byDay[day] ?? 0, best)
         }
         return byDay.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
     }
@@ -242,9 +287,10 @@ public enum StrengthEstimator {
     public static func profile(history: [String: [LoggedSet]], exercises: [String: any ExerciseTraits], trust: TrustState,
                                bodyweightKg: Double, sex: BiologicalSex, today: Day, windowDays: Int = 56) -> StrengthProfile {
         var best: [StrengthCategory: CategoryScore] = [:]
+        let cutoff = today.adding(days: -windowDays)
         for (id, sets) in history {
             guard let exercise = exercises[id], let mapping = exercise.strength else { continue }
-            let recent = sets.filter { Day($0.date) >= today.adding(days: -windowDays) }
+            let recent = sets.filter { Day($0.date) >= cutoff }
             for point in sessionBests(recent, basis: exercise.loadBasis, trust: trust) {
                 let reference = point.e1rm * mapping.factor
                 let score = StrengthStandards.score(mapping.category, oneRepMaxKg: reference, bodyweightKg: bodyweightKg, sex: sex)

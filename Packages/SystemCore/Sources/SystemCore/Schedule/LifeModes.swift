@@ -175,9 +175,21 @@ public enum LifeModeKind: Hashable, Codable, Sendable {
         case .illness: "thermometer.medium"
         }
     }
+
+    /// Injuries and illness can run until marked better; a trip or a crunch has an end.
+    public var allowsOpenEnd: Bool {
+        switch self {
+        case .injury, .illness: true
+        case .vacation, .crunch: false
+        }
+    }
 }
 
 public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
+    /// The shared container's `core/life-modes.json`. 2 added `deletedAt`: an app that only knows 1
+    /// would drop it when it rewrites the file and bring deleted periods back, so it mustn't write.
+    public static let schemaVersion = 2
+
     public var id: UUID
     public var kind: LifeModeKind
     public var start: Day
@@ -185,19 +197,77 @@ public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
     public var end: Day?
     public var createdBy: AppID
     public var updatedAt: Date
+    /// When it was deleted. A deleted period stays in the lists as a tombstone, so the delete
+    /// reaches the other apps and devices and wins over their older copies by `updatedAt`. Nil in
+    /// everything written before deletes were shared.
+    public var deletedAt: Date?
 
-    public init(id: UUID = UUID(), kind: LifeModeKind, start: Day, end: Day? = nil, createdBy: AppID, updatedAt: Date = Date()) {
+    public init(id: UUID = UUID(), kind: LifeModeKind, start: Day, end: Day? = nil, createdBy: AppID, updatedAt: Date = Date(),
+                deletedAt: Date? = nil) {
         self.id = id
         self.kind = kind
         self.start = start
         self.end = end
         self.createdBy = createdBy
         self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
+    public var isDeleted: Bool { deletedAt != nil }
+
+    /// The tombstone that replaces it when it's deleted.
+    public func deleted(at date: Date = Date()) -> LifeModePeriod {
+        var tombstone = self
+        tombstone.deletedAt = date
+        tombstone.updatedAt = date
+        return tombstone
     }
 
     public func contains(_ day: Day) -> Bool { day >= start && (end.map { day <= $0 } ?? true) }
 
     public func range(openUntil day: Day) -> DayRange { DayRange(start, end ?? max(start, day)) }
+
+    /// Whether an editor can save it: the end isn't before the start, only an injury or illness is
+    /// open-ended, and an injury says where it is.
+    public var isValid: Bool {
+        if let end, end < start { return false }
+        if end == nil, !kind.allowsOpenEnd { return false }
+        if case .injury(let injury) = kind, injury.parts.isEmpty { return false }
+        return true
+    }
+
+    /// The dates put in order when the end was moved before the start (or the start after the end).
+    public func normalized() -> LifeModePeriod {
+        guard let end, end < start else { return self }
+        var period = self
+        period.start = end
+        period.end = start
+        return period
+    }
+
+    /// Every app's and device's copies merged: the newest edit of each period wins by `updatedAt`,
+    /// a delete included, so tombstones are kept and passed on. On a tie a delete wins, then the
+    /// first source. Compared in whole milliseconds, the precision the shared container stores.
+    /// Hand the engines `live`.
+    public static func merge(_ sources: [[LifeModePeriod]]) -> [LifeModePeriod] {
+        var merged: [UUID: LifeModePeriod] = [:]
+        for period in sources.joined() {
+            if let existing = merged[period.id] {
+                let new = milliseconds(period.updatedAt), old = milliseconds(existing.updatedAt)
+                guard new > old || (new == old && period.isDeleted && !existing.isDeleted) else { continue }
+            }
+            merged[period.id] = period
+        }
+        return merged.values.sorted { ($0.start, $0.id.uuidString) < ($1.start, $1.id.uuidString) }
+    }
+
+    /// Kept a Double: a converted Int64 would trap on a corrupt timestamp read from another device.
+    private static func milliseconds(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
+}
+
+public extension Array where Element == LifeModePeriod {
+    /// Without the tombstones: the periods that are in force, for the engines and the screens.
+    var live: [LifeModePeriod] { filter { !$0.isDeleted } }
 }
 
 /// An injury marked better, with the fraction of normal load affected lifts ramp back from.
@@ -245,7 +315,7 @@ public enum LifeModes {
 
     public static func effects(on day: Day, periods: [LifeModePeriod]) -> LifeModeEffects {
         var effects = LifeModeEffects()
-        for period in periods {
+        for period in periods where !period.isDeleted {
             if period.contains(day) {
                 effects.active.append(period)
                 switch period.kind {

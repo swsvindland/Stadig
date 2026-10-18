@@ -8,6 +8,9 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
 
     public init(ordinal: Int) { self.ordinal = ordinal }
 
+    /// Further from 1970 than this, in days, a moment can't be a real date (about 2.7 million years).
+    private static let ordinalLimit = 1e9
+
     public init(year: Int, month: Int, day: Int) {
         // Howard Hinnant's days_from_civil.
         let y = month <= 2 ? year - 1 : year
@@ -19,9 +22,21 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
         ordinal = era * 146097 + doe - 719468
     }
 
+    /// The day a moment falls on in the calendar's time zone. Only the time zone is used: a day is
+    /// always a Gregorian date, so a phone set to the Buddhist, Japanese or Hebrew calendar still
+    /// agrees with every other device on weekdays, ages and stored dates.
     public init(_ date: Date, calendar: Calendar = .current) {
-        let parts = calendar.dateComponents([.year, .month, .day], from: date)
-        self.init(year: parts.year ?? 1970, month: parts.month ?? 1, day: parts.day ?? 1)
+        self.init(date, timeZone: calendar.timeZone)
+    }
+
+    public init(_ date: Date, timeZone: TimeZone) {
+        // The wall-clock time there, in whole days since 1970. The offset is the one in force at that
+        // moment, so daylight saving is accounted for.
+        let local = date.timeIntervalSince1970 + Double(timeZone.secondsFromGMT(for: date))
+        let days = (local / 86_400).rounded(.down)
+        // A corrupt timestamp (infinite, or past any real date) lands on 1970 rather than trapping
+        // in the conversion to Int.
+        self.init(ordinal: abs(days) < Day.ordinalLimit ? Int(days) : 0)
     }
 
     public static var today: Day { Day(Date()) }
@@ -43,10 +58,23 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
     public var month: Int { components.month }
     public var dayOfMonth: Int { components.day }
 
-    /// Midnight at the start of this day in the given calendar's time zone.
+    /// Midnight at the start of this day in the given calendar's time zone (or the first moment of
+    /// the day, where a clock change skips midnight). As with `init(_:calendar:)`, only the time zone
+    /// is used.
     public func date(calendar: Calendar = .current) -> Date {
         let c = components
-        return calendar.date(from: DateComponents(year: c.year, month: c.month, day: c.day)) ?? Date(timeIntervalSince1970: 0)
+        let gregorian = calendar.identifier == .gregorian ? calendar : Day.gregorian(in: calendar.timeZone)
+        return gregorian.date(from: DateComponents(year: c.year, month: c.month, day: c.day)) ?? Date(timeIntervalSince1970: 0)
+    }
+
+    public func date(timeZone: TimeZone) -> Date {
+        date(calendar: Day.gregorian(in: timeZone))
+    }
+
+    private static func gregorian(in timeZone: TimeZone) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar
     }
 
     public var weekday: Weekday {
@@ -73,10 +101,16 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
         return String(format: "%04d-%02d-%02d", c.year, c.month, c.day)
     }
 
+    /// Nil unless it's a real yyyy-mm-dd date: "2026-02-30" or "2026-x-10-18" would otherwise land on
+    /// some other day.
     public init?(iso: String) {
-        let parts = iso.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        self.init(year: parts[0], month: parts[1], day: parts[2])
+        let parts = iso.split(separator: "-", omittingEmptySubsequences: false).map { Int($0) }
+        guard parts.count == 3, let year = parts[0], let month = parts[1], let day = parts[2] else { return nil }
+        // Bounded before the arithmetic, which would overflow and trap on a corrupt "2026-01-9223372036854775807".
+        guard (0...999_999).contains(year), (1...12).contains(month), (1...31).contains(day) else { return nil }
+        let parsed = Day(year: year, month: month, day: day)
+        guard parsed.components == (year, month, day) else { return nil }
+        self = parsed
     }
 
     public var description: String { iso }

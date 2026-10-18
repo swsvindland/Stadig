@@ -35,8 +35,12 @@ public struct UnitPreference: Codable, Hashable, Sendable {
     }
 
     /// The person's region's habit.
-    public static var regional: UnitPreference {
-        Locale.current.measurementSystem == .metric ? UnitPreference(weight: .kg, length: .cm) : UnitPreference(weight: .lb, length: .inch)
+    public static var regional: UnitPreference { regional(for: .current) }
+
+    /// Only the US system is pounds and inches. The UK's is its own (`.uk`), and British gyms load in
+    /// kilograms.
+    public static func regional(for locale: Locale) -> UnitPreference {
+        locale.measurementSystem == .us ? UnitPreference(weight: .lb, length: .inch) : UnitPreference(weight: .kg, length: .cm)
     }
 }
 
@@ -48,17 +52,22 @@ public extension Array where Element == Double {
     /// Least-squares slope against the element index.
     var slope: Double? {
         guard count >= 2 else { return nil }
-        let n = Double(count)
-        let xs = (0..<count).map(Double.init)
-        let mx = xs.reduce(0, +) / n
-        let my = reduce(0, +) / n
-        var num = 0.0, den = 0.0
-        for (x, y) in zip(xs, self) {
-            num += (x - mx) * (y - my)
-            den += (x - mx) * (x - mx)
-        }
-        return den == 0 ? 0 : num / den
+        return leastSquaresSlope(x: (0..<count).map(Double.init), y: self) ?? 0
     }
+}
+
+/// The least-squares slope of y against x; nil with fewer than two points, mismatched lengths, or
+/// when every x is the same.
+public func leastSquaresSlope(x: [Double], y: [Double]) -> Double? {
+    guard x.count == y.count, x.count >= 2 else { return nil }
+    let n = Double(x.count)
+    let mx = x.reduce(0, +) / n, my = y.reduce(0, +) / n
+    var num = 0.0, den = 0.0
+    for (xi, yi) in zip(x, y) {
+        num += (xi - mx) * (yi - my)
+        den += (xi - mx) * (xi - mx)
+    }
+    return den == 0 ? nil : num / den
 }
 
 /// Exponentially weighted moving average over a daily series, oldest first.

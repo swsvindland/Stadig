@@ -213,15 +213,7 @@ public enum FatigueBudget {
             let recent = points.filter { $0.day > today.adding(days: -35) }
             guard recent.count >= 3, let first = recent.first, first.e1rm > 0 else { return nil }
             let weeks = recent.map { Double(first.day.days(until: $0.day)) / 7 }
-            let values = recent.map { $0.e1rm / first.e1rm }
-            let n = Double(recent.count)
-            let mx = weeks.reduce(0, +) / n, my = values.reduce(0, +) / n
-            var num = 0.0, den = 0.0
-            for (x, y) in zip(weeks, values) {
-                num += (x - mx) * (y - my)
-                den += (x - mx) * (x - mx)
-            }
-            return den == 0 ? nil : num / den
+            return leastSquaresSlope(x: weeks, y: recent.map { $0.e1rm / first.e1rm })
         }
         return slopes.mean
     }

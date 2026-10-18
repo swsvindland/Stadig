@@ -171,16 +171,7 @@ public enum HeartRateRecovery {
     /// The trend in recovery for comparable sets, bpm per week; positive is improving.
     public static func trend(_ points: [(day: Day, drop: Double)]) -> Double? {
         guard points.count >= 4, let first = points.first?.day else { return nil }
-        let weeks = points.map { Double(first.days(until: $0.day)) / 7 }
-        let drops = points.map(\.drop)
-        let n = Double(points.count)
-        let mx = weeks.reduce(0, +) / n, my = drops.reduce(0, +) / n
-        var num = 0.0, den = 0.0
-        for (x, y) in zip(weeks, drops) {
-            num += (x - mx) * (y - my)
-            den += (x - mx) * (x - mx)
-        }
-        return den == 0 ? nil : num / den
+        return leastSquaresSlope(x: points.map { Double(first.days(until: $0.day)) / 7 }, y: points.map(\.drop))
     }
 }
 

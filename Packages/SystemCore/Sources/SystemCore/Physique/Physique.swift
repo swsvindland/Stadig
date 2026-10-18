@@ -345,6 +345,8 @@ public enum Physique {
         }
     }
 
+    /// `weightKg` is the current weight (Health); it beats a typed one, as it does for strength
+    /// scoring, since a weight typed at onboarding would otherwise stand as the latest for good.
     /// `measuredBodyFat` is a recent Health sample; it beats a typed reading, which beats the tape.
     /// `targets` defaults to the set for the person's standards.
     public static func analyse(_ history: [BodyMeasurements], sex: BiologicalSex, heightCm: Double?,
@@ -352,7 +354,7 @@ public enum Physique {
         let sorted = history.sorted { $0.day < $1.day }
         var latest: BodyMeasurements?
         for entry in sorted { latest = latest.map { entry.filled(from: $0) } ?? entry }
-        if let weightKg, latest?.weightKg == nil { latest?.weightKg = weightKg }
+        if let weightKg { latest?.weightKg = weightKg }
 
         let ratio = latest?.shoulderToWaist
         let wth = latest?.waistToHeight(heightCm: heightCm)

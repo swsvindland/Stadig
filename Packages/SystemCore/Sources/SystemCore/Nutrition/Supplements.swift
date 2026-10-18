@@ -216,6 +216,9 @@ public enum SupplementServing {
         if has("caplet") { return "caplet" }
         if has("capsule", "vcap", "vegcap", "veggie cap", "vegicap", "cap") { return "capsule" }
         if has("chewable") { return "chewable" }
+        // Spoons before tablets: "tablespoon" has "tab" in it.
+        if has("tablespoon", "tbsp") { return "tbsp" }
+        if has("teaspoon", "tsp") { return "tsp" }
         if has("tablet", "tab") { return "tablet" }
         if has("gumm") { return "gummy" }
         if has("chew") { return "chew" }
@@ -224,8 +227,6 @@ public enum SupplementServing {
         if has("packet", "stick", "sachet", "pouch") { return "packet" }
         if has("drop") { return "drop" }
         if has("spray", "pump") { return "spray" }
-        if has("tablespoon", "tbsp") { return "tbsp" }
-        if has("teaspoon", "tsp") { return "tsp" }
         if has("pill") { return "pill" }
         if has("wafer") { return "wafer" }
         if has("bar") { return "bar" }
@@ -395,7 +396,7 @@ public enum SupplementIngredients {
             if key == "vitaminA", lower.contains("carotene"), unit != "mcg RAE" { value = value! / 2 }
         case "":
             // A macro's column of bare numbers is grams, calories are calories; anything else is a % or a guess.
-            value = key == "kcal" ? amount : nil
+            value = key == "kcal" || (target == "g" && macroKeys.contains(key)) ? amount : nil
         default:
             value = nil
         }

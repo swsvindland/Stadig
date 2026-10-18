@@ -16,6 +16,90 @@ struct DayTests {
         let data = try! JSONEncoder().encode([day])
         #expect(String(data: data, encoding: .utf8) == "[\"2026-10-15\"]")
     }
+
+    static func gregorian(_ zone: String) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: zone)!
+        return calendar
+    }
+
+    @Test(arguments: [Calendar.Identifier.buddhist, .japanese, .hebrew, .islamicUmmAlQura, .persian])
+    func aPhoneOnAnotherCalendarStillCountsGregorianDays(_ identifier: Calendar.Identifier) throws {
+        var device = Calendar(identifier: identifier)
+        device.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+        let noon = try #require(Self.gregorian("Asia/Bangkok").date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 12)))
+        let day = Day(noon, calendar: device)
+        // Sunday 18 October 2026, not Buddhist 2569 (a Wednesday) or Reiwa 8.
+        #expect(day == Day(year: 2026, month: 10, day: 18))
+        #expect(day.weekday == .sunday)
+        #expect(day.iso == "2026-10-18")
+        #expect(day.date(calendar: device) == Self.gregorian("Asia/Bangkok").startOfDay(for: noon))
+        // Every real day is the next Day, across the other calendar's month and year ends.
+        for offset in 0..<400 {
+            let date = noon.addingTimeInterval(Double(offset) * 86_400)
+            #expect(Day(date, calendar: device) == day.adding(days: offset))
+            #expect(Day(Day(date, calendar: device).date(calendar: device), calendar: device) == day.adding(days: offset))
+        }
+    }
+
+    @Test func daysFollowTheTimeZoneAndItsClockChanges() throws {
+        // 06:30 UTC on 8 March 2026 is still the 7th in Los Angeles and already the 8th in Tokyo.
+        let moment = try #require(Self.gregorian("UTC").date(from: DateComponents(year: 2026, month: 3, day: 8, hour: 6, minute: 30)))
+        #expect(Day(moment, timeZone: TimeZone(identifier: "America/Los_Angeles")!) == Day(year: 2026, month: 3, day: 7))
+        #expect(Day(moment, timeZone: TimeZone(identifier: "Asia/Tokyo")!) == Day(year: 2026, month: 3, day: 8))
+        // Agrees with the Gregorian calendar every six hours for three years, daylight saving included.
+        for zone in ["America/New_York", "Europe/London", "Australia/Sydney", "Asia/Kolkata"] {
+            let calendar = Self.gregorian(zone)
+            for step in 0..<(3 * 365 * 4) {
+                let date = moment.addingTimeInterval(Double(step) * 6 * 3600)
+                let parts = calendar.dateComponents([.year, .month, .day], from: date)
+                #expect(Day(date, calendar: calendar) == Day(year: parts.year!, month: parts.month!, day: parts.day!))
+            }
+        }
+        // New York springs forward on 8 March: that day starts at 05:00 UTC, the next at 04:00.
+        let newYork = TimeZone(identifier: "America/New_York")!
+        #expect(Day(year: 2026, month: 3, day: 8).date(timeZone: newYork) == moment.addingTimeInterval(-1.5 * 3600))
+        #expect(Day(year: 2026, month: 3, day: 9).date(timeZone: newYork) == moment.addingTimeInterval(21.5 * 3600))
+        // São Paulo's clocks skipped midnight on 4 November 2018: the day starts at its first moment.
+        let saoPaulo = TimeZone(identifier: "America/Sao_Paulo")!
+        let skipped = Day(year: 2018, month: 11, day: 4)
+        let start = skipped.date(timeZone: saoPaulo)
+        #expect(Day(start, timeZone: saoPaulo) == skipped)
+        #expect(Day(start.addingTimeInterval(-1), timeZone: saoPaulo) == skipped.adding(days: -1))
+    }
+
+    @Test func isoAcceptsOnlyRealDates() {
+        #expect(Day(iso: "2024-02-29") == Day(year: 2024, month: 2, day: 29))
+        for text in ["2026-02-29", "2026-02-30", "2026-13-01", "2026-00-10", "2026-10-00", "2026-x-10-18", "2026-10", "", "2026-10-18T00:00",
+                     "2026--10-18", "2026-01-9223372036854775807", "9223372036854775807-01-01", "2026-9223372036854775807-01"] {
+            #expect(Day(iso: text) == nil, "\(text)")
+        }
+        #expect(throws: DecodingError.self) { try JSONDecoder().decode([Day].self, from: Data(#"["2026-02-30"]"#.utf8)) }
+    }
+
+    @Test func aCorruptTimestampDoesntTrap() {
+        for seconds in [1e300, -1e300, .infinity, .nan] {
+            #expect(Day(Date(timeIntervalSince1970: seconds), timeZone: .gmt) == Day(ordinal: 0))
+        }
+    }
+}
+
+@Suite("Units")
+struct UnitTests {
+    @Test func onlyTheUSDefaultsToPoundsAndInches() {
+        #expect(UnitPreference.regional(for: Locale(identifier: "en_US")) == UnitPreference(weight: .lb, length: .inch))
+        #expect(UnitPreference.regional(for: Locale(identifier: "en_GB")) == UnitPreference(weight: .kg, length: .cm))
+        #expect(UnitPreference.regional(for: Locale(identifier: "fr_FR")) == UnitPreference(weight: .kg, length: .cm))
+    }
+
+    @Test func slopes() {
+        #expect(leastSquaresSlope(x: [0, 1, 2, 3], y: [1, 3, 5, 7]) == 2)
+        #expect(leastSquaresSlope(x: [2, 2, 2], y: [1, 3, 5]) == nil)
+        #expect(leastSquaresSlope(x: [1], y: [1]) == nil)
+        #expect(leastSquaresSlope(x: [1, 2], y: [1]) == nil)
+        #expect([5.0, 4, 3].slope == -1)
+        #expect([5.0].slope == nil)
+    }
 }
 
 @Suite("Strength scoring")
@@ -52,6 +136,34 @@ struct StrengthScoringTests {
         #expect(priorities.contains { $0.target == .region(.lower) && $0.emphasis < 0 })
         #expect(profile.weakest?.category == .verticalPress)
         #expect(abs((profile.overall ?? 0) - 63.8) < 0.01)
+    }
+
+    @Test func eachPriorityAppearsOnce() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        // Legs ahead of upper body and pressing ahead of pulling: both rules ask for more pulling.
+        let profile = StrengthProfile(categories: [
+            CategoryScore(category: .squat, oneRepMaxKg: 160, score: 80, exerciseID: "a", day: day),
+            CategoryScore(category: .floorPull, oneRepMaxKg: 190, score: 80, exerciseID: "b", day: day),
+            CategoryScore(category: .horizontalPress, oneRepMaxKg: 100, score: 70, exerciseID: "c", day: day),
+            CategoryScore(category: .verticalPress, oneRepMaxKg: 60, score: 70, exerciseID: "d", day: day),
+            CategoryScore(category: .verticalPull, oneRepMaxKg: 90, score: 55, exerciseID: "e", day: day),
+            CategoryScore(category: .horizontalPull, oneRepMaxKg: 70, score: 55, exerciseID: "f", day: day),
+        ], bodyweightKg: 80, sex: .male)
+        let ids = profile.priorities.map(\.id)
+        #expect(Set(ids).count == ids.count, "\(ids)")
+        let pull = profile.priorities.first { $0.target == .region(.upperPull) }
+        // The emphasis adds up as the generator would add it, and both reasons are kept.
+        #expect(abs((pull?.emphasis ?? 0) - 1.7) < 1e-9)
+        #expect(pull?.reason.contains("Legs are well ahead") == true && pull?.reason.contains("Pressing is ahead") == true)
+    }
+
+    @Test func ratioTablesCoverEveryCategory() {
+        for category in StrengthCategory.allCases {
+            for sex in [BiologicalSex.male, .female, .unspecified] {
+                let table = StrengthStandards.ratios(category, sex)
+                #expect(table.count == StrengthStandards.anchors.count && table == table.sorted())
+            }
+        }
     }
 
     @Test func estimatesWeighRatingsByTrust() {
@@ -264,6 +376,94 @@ struct ProgressionTests {
         #expect(sets.allSatisfy { $0.kind == .warmup && ($0.loadKg ?? 0) < 100 })
         #expect(Progression.rampUp(to: 40, reps: 10, exercise: TestExercise.legExtension, increments: FixedIncrements(stepKg: 5), bodyweightKg: 80).isEmpty)
     }
+
+    /// Midnight on a fixed summer day, in this machine's time zone (sets are grouped by its days).
+    static let night = Day(year: 2026, month: 6, day: 10).date()
+
+    func context(_ exercise: TestExercise, step: Double, history: [LoggedSet], loadFactor: Double = 1) -> ProgressionContext {
+        ProgressionContext(exercise: exercise, increments: FixedIncrements(stepKg: step), trust: TrustState(prior: 0.6),
+                           phase: NutritionPhase.assumedMaintenance.effects, loadFactor: loadFactor, bodyweightKg: 80, history: history)
+    }
+
+    @Test(arguments: [0.6, 0.92])
+    func aDeloadDuringARampScalesTheEffectiveLoad(_ factor: Double) {
+        let deload = SlotTarget(sets: 4, repRange: RepRange(5, 8), targetRIR: 1, deload: true)
+        // External: 87.5 kg last time, so at most 87.5 × 0.88 × the factor, on the gym's 2.5 kg steps.
+        let bench = (0..<3).map { _ in LoggedSet(exerciseID: "barbell-bench-press", date: Self.night, kind: .working, loadKg: 87.5, reps: 6, rating: .orange) }
+        for set in Progression.prescribe(deload, context(.bench, step: 2.5, history: bench, loadFactor: factor)).sets {
+            let load = set.loadKg ?? 0
+            #expect(load <= 87.5 * 0.88 * factor && load > 0)
+            #expect(abs(load / 2.5 - (load / 2.5).rounded()) < 1e-9, "\(load) kg isn't on 2.5 kg steps")
+        }
+        // Assisted: 20 kg of help at 80 kg is 60 kg lifted. Easing in means more help, never less.
+        var assisted = TestExercise.pullUp
+        assisted.loadBasis = .assisted
+        let pullUps = (0..<3).map { _ in LoggedSet(exerciseID: "pull-up", date: Self.night, kind: .working, loadKg: 20, reps: 8, rating: .orange, bodyweightKg: 80) }
+        for set in Progression.prescribe(deload, context(assisted, step: 2.5, history: pullUps, loadFactor: factor)).sets {
+            let help = set.loadKg ?? 0
+            #expect(help > 20)
+            #expect(80 - help <= 60 * 0.88 * factor)
+        }
+    }
+
+    @Test func noRepOutWhileALiftRampsBack() {
+        let history = (0..<3).map { _ in LoggedSet(exerciseID: "leg-extension", date: Self.night, kind: .working, loadKg: 60, reps: 12, rating: .orange) }
+        let checkIn = SlotTarget(sets: 3, repRange: RepRange(10, 15), targetRIR: 1, deload: true, repOut: true)
+        // Fresh: the check-in's last set goes to failure at the last working weight.
+        let fresh = Progression.prescribe(checkIn, context(.legExtension, step: 5, history: history))
+        #expect(fresh.sets.last?.kind == .repOut && fresh.sets.last?.loadKg == 60)
+        // A knee ramping back at 69%: every set stays light and short of failure.
+        let ramping = Progression.prescribe(checkIn, context(.legExtension, step: 5, history: history, loadFactor: 0.69))
+        #expect(ramping.sets.allSatisfy { $0.kind == .deload && ($0.loadKg ?? 99) < 60 && $0.targetRIR > 0 })
+        #expect(!ramping.reason.contains("Last set"))
+        // The same in a loading week on coarse dumbbell steps, where reps are trimmed instead.
+        var dumbbell = TestExercise.chestPress
+        dumbbell.equipment = .dumbbell
+        dumbbell.loadBasis = .perHand
+        let db = (0..<3).map { _ in LoggedSet(exerciseID: "db", date: Self.night, kind: .working, loadKg: 10, reps: 10, rating: .orange) }
+        let loading = SlotTarget(sets: 3, repRange: RepRange(8, 12), targetRIR: 2, repOut: true)
+        #expect(Progression.prescribe(loading, context(dumbbell, step: 2, history: db)).sets.last?.kind == .repOut)
+        #expect(!Progression.prescribe(loading, context(dumbbell, step: 2, history: db, loadFactor: 0.7)).sets.contains { $0.kind == .repOut })
+    }
+
+    @Test func aWorkoutPastMidnightIsOneSession() {
+        // Two sets just before midnight, then a third, fatigued, just after it.
+        let history = [
+            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-10 * 60), kind: .working, loadKg: 100, reps: 6, rating: .orange),
+            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-4 * 60), kind: .working, loadKg: 100, reps: 6, rating: .orange),
+            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(3 * 60), kind: .working, loadKg: 100, reps: 4, targetReps: 6,
+                      rating: .red),
+        ]
+        #expect(StrengthEstimator.sessions(history).count == 1)
+        #expect(StrengthEstimator.sessionBests(history, basis: .external, trust: TrustState(prior: 0.6)).map(\.day) == [Day(year: 2026, month: 6, day: 9)])
+        // One red set at the end isn't a miss, so the one-step floor holds: 97.5, not 90.
+        let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(5, 8), targetRIR: 2), context(.bench, step: 2.5, history: history))
+        #expect(p.mode == .load)
+        #expect(p.sets.allSatisfy { ($0.loadKg ?? 0) >= 97.5 })
+        // Sessions further apart than three hours are separate, even on one day.
+        let twoADay = [history[0], LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-6 * 3600), kind: .working, loadKg: 90,
+                                             reps: 6, rating: .orange)]
+        #expect(StrengthEstimator.sessions(twoADay).map { $0.map(\.loadKg) } == [[90], [100]])
+    }
+
+    @Test func aStallPromptBuildsOnTheLastRealSessionNotTheDeload() {
+        // Bench stuck at 100 × 5 for five weeks, then a deload session at 87.5.
+        let start = Day(year: 2026, month: 3, day: 2)
+        var history = stride(from: 0, through: 32, by: 4).flatMap { offset in
+            (0..<3).map { _ in
+                LoggedSet(exerciseID: "barbell-bench-press", date: start.adding(days: offset).date().addingTimeInterval(18 * 3600), kind: .working,
+                          loadKg: 100, reps: 5, rating: .orange)
+            }
+        }
+        history += (0..<2).map { _ in
+            LoggedSet(exerciseID: "barbell-bench-press", date: start.adding(days: 35).date().addingTimeInterval(18 * 3600), kind: .deload, loadKg: 87.5,
+                      reps: 5, rating: .green)
+        }
+        let report = Stalls.detect(context(.bench, step: 2.5, history: history), sets: 3, repRange: RepRange(5, 8), today: start.adding(days: 36),
+                                   phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
+        #expect(report?.reading == .programming)
+        #expect(report?.suggestion?.loadKg == 102.5)
+    }
 }
 
 @Suite("Blocks and life modes")
@@ -301,6 +501,36 @@ struct ScheduleTests {
         let reflowed = BlockScheduler.reflow(block, vacations: [vacation])
         #expect(reflowed.start == start.adding(days: 8))
         #expect(reflowed.loadingWeeks == 5)
+    }
+
+    @Test(arguments: [(2, 4), (5, 6), (0, 8)])
+    func aVacationThatStartsInTheDeloadKeepsIt(_ startsAfter: Int, _ lasts: Int) {
+        let block = TrainingBlock(kind: .standard, start: start, loadingWeeks: 5)
+        let vacation = DayRange(block.plannedDeloadStart.adding(days: startsAfter), block.plannedDeloadStart.adding(days: startsAfter + lasts))
+        let reflowed = BlockScheduler.reflow(block, vacations: [vacation])
+        // The deload days stay deload days; they don't turn back into the last, hardest loading week.
+        #expect(reflowed.effectiveDeloadStart == block.plannedDeloadStart)
+        #expect(reflowed.week(of: block.plannedDeloadStart) == .deload)
+        #expect(reflowed.week(of: block.plannedDeloadStart.adding(days: -1)) == .loading(4))
+        #expect(reflowed.end == max(block.end, vacation.end))
+        #expect(BlockScheduler.calendar(blocks: [reflowed], today: start).deloads.first == DayRange(block.plannedDeloadStart, reflowed.end))
+        #expect((reflowed.end > block.end) == (reflowed.deloadReason?.contains("runs through the trip") == true))
+    }
+
+    @Test func aTripDuringAnEarlyDeloadStretchesIt() {
+        let fatigue = FatigueAssessment(status: .overreached, loadRatio: 1.6, acute: 10, chronic: 6, signals: ["Sleep is short."],
+                                        action: .deloadEarly, budgetFactor: 0.7)
+        let early = BlockScheduler.deloadEarly(TrainingBlock(kind: .standard, start: start, loadingWeeks: 5), today: start.adding(days: 17),
+                                               fatigue: fatigue)!
+        let reflowed = BlockScheduler.reflow(early, vacations: [DayRange(start.adding(days: 20), start.adding(days: 30))])
+        #expect(reflowed.effectiveDeloadStart == start.adding(days: 17))
+        #expect(reflowed.end == start.adding(days: 30))
+        // Two overlapping trips near the deload: the first becomes it, the second stretches it.
+        let block = TrainingBlock(kind: .standard, start: start, loadingWeeks: 5)
+        let both = BlockScheduler.reflow(block, vacations: [DayRange(start.adding(days: 36), start.adding(days: 45)),
+                                                            DayRange(start.adding(days: 30), start.adding(days: 38))])
+        #expect(both.effectiveDeloadStart == start.adding(days: 30))
+        #expect(both.end == start.adding(days: 45))
     }
 
     @Test func shortTripsDontReshape() {
@@ -462,6 +692,45 @@ struct StatsTests {
         #expect(analysis.limiterTest == .hip9090)
         let painful = Agility.analyse([MobilityResult(test: .overheadReach, day: day, value: 1, painful: true)])
         #expect(painful.seePhysio == [.overheadReach])
+    }
+
+    @Test func aTieGoesToTheFirstTestEveryTime() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        // "Mostly clean" twice and a 40-second squat hold all score exactly two thirds.
+        let results = [
+            MobilityResult(test: .overheadReach, day: day, value: 2),
+            MobilityResult(test: .deepSquatHold, day: day, value: 40),
+            MobilityResult(test: .hip9090, day: day, value: 2),
+            MobilityResult(test: .kneeToWall, day: day, value: 12),
+        ]
+        // Every order, each a fresh dictionary with its own iteration order: a pick that followed the
+        // dictionary would land on another test in some of them.
+        func permutations(_ list: [MobilityResult]) -> [[MobilityResult]] {
+            list.count <= 1 ? [list] : list.indices.flatMap { i in
+                var rest = list
+                let first = rest.remove(at: i)
+                return permutations(rest).map { [first] + $0 }
+            }
+        }
+        for order in permutations(results) {
+            let analysis = Agility.analyse(order)
+            #expect(analysis.limiter == .hips)
+            #expect(analysis.limiterTest == .hip9090)
+        }
+    }
+
+    @Test func ffmiUsesTheCurrentWeightOverOneTypedLongAgo() {
+        // 90 kg typed at onboarding, then tape only; Health says 80 kg now.
+        let onboarding = BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), weightKg: 90, neckCm: 39, waistCm: 88)
+        let lately = BodyMeasurements(day: Day(year: 2026, month: 9, day: 1), neckCm: 39, waistCm: 84)
+        let analysis = Physique.analyse([lately, onboarding], sex: .male, heightCm: 180, weightKg: 80)
+        let bodyFat = Physique.tapeBodyFat(lately, sex: .male, heightCm: 180)!
+        #expect(analysis.latest?.weightKg == 80)
+        #expect(analysis.bodyFatSource == .tape && analysis.bodyFatPercent == bodyFat)
+        #expect(analysis.ffmi == Physique.ffmi(weightKg: 80, bodyFatPercent: bodyFat, heightCm: 180)?.ffmi)
+        #expect(analysis.direction.normalizedFFMI == analysis.normalizedFFMI)
+        // With no current weight, the typed one still counts.
+        #expect(Physique.analyse([lately, onboarding], sex: .male, heightCm: 180).latest?.weightKg == 90)
     }
 
     @Test func physiqueGapsSpeakInProportions() {
@@ -641,5 +910,34 @@ struct HubTests {
         #expect(Trajectories.assess(flat, goal: goal, today: start.adding(days: 35)) == .stalled)
         let down = (0..<6).map { (start.adding(days: $0 * 7), 85 - Double($0) * 1.5) }
         #expect(Trajectories.assess(down, goal: goal, today: start.adding(days: 35)) == .regressing)
+    }
+
+    @Test func aGoalToGetSmallerReadsTheTrendTheOtherWay() {
+        let start = Day(year: 2026, month: 1, day: 1)
+        let waist = TargetGoal(stat: .vitality, title: "Waist 80", metric: "waist", target: 80, start: start, deadline: start.adding(days: 120))
+        func weekly(_ value: (Int) -> Double) -> [(day: Day, value: Double)] { (0..<6).map { (start.adding(days: $0 * 7), value($0)) } }
+        let today = start.adding(days: 35)
+        #expect(Trajectories.assess(weekly { 88 - 0.47 * Double($0) }, goal: waist, today: today) == .onPace)
+        #expect(Trajectories.assess(weekly { 88 - Double($0) }, goal: waist, today: today) == .ahead)
+        #expect(Trajectories.assess(weekly { _ in 88 }, goal: waist, today: today) == .stalled)
+        #expect(Trajectories.assess(weekly { 88 + 0.3 * Double($0) }, goal: waist, today: today) == .regressing)
+        #expect(Trajectories.assess(Array(weekly { 88 - Double($0) }.prefix(2)), goal: waist, today: today) == .notEnoughData)
+    }
+
+    @Test func pastTheDeadlineAReachedGoalIsAheadAndAMissedOneStalled() {
+        let start = Day(year: 2026, month: 1, day: 1)
+        let goal = TargetGoal(stat: .strength, title: "Bench 100", metric: "category:horizontalPress", target: 100, start: start,
+                              deadline: start.adding(days: 35))
+        let today = start.adding(days: 49)
+        #expect(Trajectories.assess((0..<8).map { (start.adding(days: $0 * 7), 90 + 2 * Double($0)) }, goal: goal, today: today) == .ahead)
+        #expect(Trajectories.assess((0..<8).map { (start.adding(days: $0 * 7), 80 + 0.5 * Double($0)) }, goal: goal, today: today) == .stalled)
+    }
+
+    @Test func heartRateRecoveryTrendsPerWeek() {
+        let start = Day(year: 2026, month: 1, day: 1)
+        let improving = (0..<4).map { (day: start.adding(days: $0 * 7), drop: 20 + 2 * Double($0)) }
+        #expect(abs((HeartRateRecovery.trend(improving) ?? 0) - 2) < 1e-9)
+        #expect(HeartRateRecovery.trend(Array(improving.prefix(3))) == nil)
+        #expect(HeartRateRecovery.trend((0..<4).map { (day: start, drop: 20 + Double($0)) }) == nil)
     }
 }

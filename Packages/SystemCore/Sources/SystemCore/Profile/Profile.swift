@@ -10,7 +10,8 @@ public enum AppID: String, CaseIterable, Codable, CodingKeyRepresentable, Sendab
         switch self {
         case .liftTrack: "Lift Track"
         case .macroTrack: "Macro Track"
-        case .knowledge: "Knowledge"
+        // The design doc's "Knowledge" app; people know it as Mind Track.
+        case .knowledge: "Mind Track"
         case .hub: "The System"
         }
     }

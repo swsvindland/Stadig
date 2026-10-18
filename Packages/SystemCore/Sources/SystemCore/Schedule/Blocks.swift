@@ -96,7 +96,8 @@ public enum BlockScheduler {
 
     /// Fits a block around vacations. Near the planned deload, the vacation becomes the deload.
     /// Early in the block, the block is cut short, the vacation counts as the deload, and a fresh
-    /// block starts afterwards. In the first few days, the block simply starts after it.
+    /// block starts afterwards. In the first few days, the block simply starts after it. One that
+    /// starts during the deload keeps it and stretches it over the trip.
     public static func reflow(_ block: TrainingBlock, vacations: [DayRange]) -> TrainingBlock {
         var block = block
         for vacation in vacations.sorted(by: { $0.start < $1.start }) where vacation.count >= minimumReflowDays {
@@ -109,7 +110,16 @@ public enum BlockScheduler {
                 if let e = block.endOverride { block.endOverride = e.adding(days: shift) }
                 continue
             }
-            if let current = block.deloadStart, current <= vacation.start { continue }
+            if vacation.start >= block.effectiveDeloadStart {
+                // Already deloading when the trip starts: the deload days stay deload days (moving
+                // the start would turn them back into the hardest loading week), and the deload runs
+                // on through the trip.
+                if vacation.end > block.end {
+                    block.endOverride = vacation.end
+                    block.deloadReason = "Your vacation starts during the deload, so the deload runs through the trip."
+                }
+                continue
+            }
             block.deloadStart = vacation.start
             block.endOverride = vacation.end
             let nearDeload = vacation.start >= block.plannedDeloadStart.adding(days: -14)

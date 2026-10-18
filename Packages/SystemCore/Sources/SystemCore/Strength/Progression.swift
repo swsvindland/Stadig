@@ -112,6 +112,9 @@ enum LoadMath {
         increments.step(logged, direction: basis == .assisted ? -direction : direction)
     }
 
+    /// Whether logged load `a` is harder than `b`: heavier, or for assisted exercises less assistance.
+    static func harder(_ a: Double, _ b: Double, basis: LoadBasis) -> Bool { basis == .assisted ? a < b : a > b }
+
     static func effective(_ logged: Double, basis: LoadBasis, bodyweight: Double?) -> Double {
         OneRepMax.effectiveLoad(logged, basis: basis, bodyweightKg: bodyweight)
     }
@@ -276,9 +279,8 @@ public enum Autoregulation {
             let maxSteps = planned.kind == .findingWeight ? 4 : 2
             var cap = current
             for _ in 0..<maxSteps { cap = LoadMath.step(cap, 1, basis: basis, increments: context.increments) }
-            let harder: (Double, Double) -> Bool = { a, b in basis == .assisted ? a < b : a > b }
-            if !harder(load, current) { load = oneUp }
-            if harder(load, cap) { load = cap }
+            if !LoadMath.harder(load, current, basis: basis) { load = oneUp }
+            if LoadMath.harder(load, cap, basis: basis) { load = cap }
             next.loadKg = load
             if planned.kind == .findingWeight { next.kind = .findingWeight }
             let kind: AdjustmentKind = context.trust.isLow ? .verify : .bump
@@ -298,11 +300,8 @@ public enum Progression {
         let basis = exercise.loadBasis
         let bw = context.bodyweightKg
         // Deload sessions never anchor progression: the next block builds on the last real one.
-        let work = context.history.filter { $0.kind.countsAsWork && $0.kind != .deload && $0.reps > 0 }
-        let sessions = Dictionary(grouping: work) { Day($0.date) }
-        let lastDay = sessions.keys.max()
-
-        guard let lastDay, let last = sessions[lastDay] else {
+        let work = Progression.anchoringWork(context.history)
+        guard let last = StrengthEstimator.sessions(work).last, let top = topSet(last, basis: basis) else {
             // Finding working weights.
             let reps = clamp(findingReps, target.repRange.lower, max(target.repRange.upper, target.repRange.lower))
             let sets = (0..<target.sets).map { _ in SetPrescription(kind: .findingWeight, loadKg: nil, targetReps: reps, targetRIR: 2) }
@@ -310,9 +309,6 @@ public enum Progression {
                                         reason: "Pick a weight you think you can do for \(reps), then rate it. The next set adjusts.")
         }
 
-        let top = last.max { a, b in
-            LoadMath.effective(a.loadKg, basis: basis, bodyweight: a.bodyweightKg) < LoadMath.effective(b.loadKg, basis: basis, bodyweight: b.bodyweightKg)
-        }!
         let lastLoad = top.loadKg
         let topSets = last.filter { abs($0.loadKg - lastLoad) < 0.01 }
         // A miss that matters: the first top set fell short, or more than one did. A last set a
@@ -334,11 +330,13 @@ public enum Progression {
 
         if target.deload {
             mode = .deload
-            let effective = LoadMath.effective(lastLoad, basis: basis, bodyweight: bw) * 0.88
+            // An injury ramp or a week back scales the effective load before rounding, so assisted
+            // lifts get more assistance (not less) and the load is one the gym can make.
+            let effective = LoadMath.effective(lastLoad, basis: basis, bodyweight: bw) * deloadShare * context.loadFactor
             let load = LoadMath.logged(forEffective: effective, basis: basis, bodyweight: bw, increments: context.increments)
             let reps = max(target.repRange.lower, min(bestReps, target.repRange.middle))
             let count = max(1, Int((Double(target.sets) / 2).rounded(.up)))
-            sets = (0..<count).map { _ in SetPrescription(kind: .deload, loadKg: load * context.loadFactor, targetReps: reps, targetRIR: rir) }
+            sets = (0..<count).map { _ in SetPrescription(kind: .deload, loadKg: load, targetReps: reps, targetRIR: rir) }
             reason = "Deload: fewer sets, lighter, well short of failure."
         } else if coarse {
             mode = .reps
@@ -367,17 +365,16 @@ public enum Progression {
                 load = LoadMath.logged(forEffective: OneRepMax.load(e1rm: e1rm, reps: reps, rir: rir) * context.loadFactor,
                                        basis: basis, bodyweight: bw, increments: context.increments)
             }
-            let harder: (Double, Double) -> Bool = { a, b in basis == .assisted ? a < b : a > b }
             var cap = lastLoad
             let steps = missed ? 0 : context.phase.maxLoadStepsPerSession
             for _ in 0..<steps { cap = LoadMath.step(cap, 1, basis: basis, increments: context.increments) }
-            if harder(load, cap) { load = cap }
+            if LoadMath.harder(load, cap, basis: basis) { load = cap }
             if context.loadFactor >= 1, !missed {
                 // Don't slide back more than a step on a single off day.
                 let floor = LoadMath.step(lastLoad, -1, basis: basis, increments: context.increments)
-                if harder(floor, load) { load = floor }
+                if LoadMath.harder(floor, load, basis: basis) { load = floor }
             }
-            if harder(load, lastLoad) {
+            if LoadMath.harder(load, lastLoad, basis: basis) {
                 reason = "Your estimate says \(reps) reps with \(rir.formatted()) in reserve is a step up from last time."
             } else if load == lastLoad {
                 reason = missed ? "Last time was a miss, so the same weight again." : "Same weight, aiming for \(reps) reps with \(rir.formatted()) left."
@@ -389,7 +386,9 @@ public enum Progression {
 
         // Rep-outs land in the assessment and at check-ins (the end of a deload, when fresh). A
         // check-in rep-out uses the last working weight so the reps stay where Epley is accurate.
-        if target.repOut, var lastSet = sets.last {
+        // None while the lift is easing back in (an injury ramp, a week back): failure, and at the
+        // full working weight, is what the ramp is there to avoid.
+        if target.repOut, context.loadFactor >= 1, var lastSet = sets.last {
             if target.deload {
                 lastSet.loadKg = lastLoad
                 lastSet.targetReps = target.repRange.middle
@@ -422,12 +421,27 @@ public enum Progression {
     public static func targetRIR(week: Int, of loadingWeeks: Int) -> Double {
         guard loadingWeeks > 1 else { return 2 }
         let t = Double(week) / Double(loadingWeeks - 1)
-        return (3 - 2.5 * t).rounded(toNearestHalf: true)
+        return (3 - 2.5 * t).roundedToNearestHalf()
+    }
+
+    /// A deload's share of the last working load, in effective terms.
+    static let deloadShare = 0.88
+
+    /// The sets that anchor progression: work with reps, never warm-ups or deload sets.
+    static func anchoringWork(_ history: [LoggedSet]) -> [LoggedSet] {
+        history.filter { $0.kind.countsAsWork && $0.kind != .deload && $0.reps > 0 }
+    }
+
+    /// The heaviest set of a session, by effective load.
+    static func topSet(_ session: [LoggedSet], basis: LoadBasis) -> LoggedSet? {
+        session.max { a, b in
+            LoadMath.effective(a.loadKg, basis: basis, bodyweight: a.bodyweightKg) < LoadMath.effective(b.loadKg, basis: basis, bodyweight: b.bodyweightKg)
+        }
     }
 }
 
 extension Double {
-    func rounded(toNearestHalf: Bool) -> Double { (self * 2).rounded() / 2 }
+    func roundedToNearestHalf() -> Double { (self * 2).rounded() / 2 }
 }
 
 // MARK: - Stalls
@@ -474,14 +488,16 @@ public enum Stalls {
         guard days >= 21, since >= 3 else { return nil }
         let reading: StallReport.Reading = phase.stallsExpected ? .expectedInDeficit : (beatUp ? .recovery : .programming)
 
-        // The prompt: the smallest overload from the last top set, at the bottom of the range.
-        let work = context.history.filter { $0.kind.countsAsWork && $0.reps > 0 }
+        // The prompt: the smallest overload from the last top set, at the bottom of the range. A
+        // deload's lighter sets never set new bests, so the stall outlasts the deload; the prompt
+        // still builds on the last real session, as `prescribe` does.
         var suggestion: SetPrescription?
-        if let last = work.last {
+        if let session = StrengthEstimator.sessions(Progression.anchoringWork(context.history)).last,
+           let top = Progression.topSet(session, basis: basis) {
             let reps = reading == .programming ? max(repRange.lower, min(5, repRange.upper)) : repRange.middle
             let load = reading == .programming
-                ? LoadMath.step(last.loadKg, 1, basis: basis, increments: context.increments)
-                : last.loadKg
+                ? LoadMath.step(top.loadKg, 1, basis: basis, increments: context.increments)
+                : top.loadKg
             suggestion = SetPrescription(kind: .working, loadKg: load, targetReps: reps, targetRIR: 1)
         }
         return StallReport(exerciseID: context.exercise.id, weeks: days / 7, bestE1RM: best, since: bestDay, reading: reading,

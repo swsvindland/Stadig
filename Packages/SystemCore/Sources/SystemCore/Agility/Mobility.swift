@@ -113,9 +113,12 @@ public enum Agility {
             latest[result.test] = result
             history[result.test, default: []].append(result)
         }
-        let weakest = latest.values.filter { !$0.painful }.min { $0.score < $1.score }
+        // In the tests' fixed order, never the dictionary's (which changes from launch to launch), so
+        // a tie always goes to the first test and the plan doesn't change on its own.
+        let inOrder = MobilityTest.allCases.compactMap { latest[$0] }
+        let weakest = inOrder.filter { !$0.painful }.min { $0.score < $1.score }
         let limiter = weakest.flatMap { $0.score < 90 ? $0.test.target : nil }
-        let scores = latest.values.map(\.score)
+        let scores = inOrder.map(\.score)
         let seePhysio = history.compactMap { test, list -> MobilityTest? in
             if list.last?.painful == true { return test }
             let recent = list.suffix(3).map(\.score)
