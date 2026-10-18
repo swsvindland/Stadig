@@ -287,6 +287,8 @@ public struct AppSummary: Hashable, Codable, Sendable {
     public var fatigue: FatigueStatus?
     public var discipline: DisciplineScore?
     public var measurements: BodyMeasurements?
+    /// Whether fat loss or building would do more for proportions (Lift Track), for the phase planner.
+    public var physique: PhysiqueDirection?
     public var mobility: [MobilityResult]
     public var benchmarks: [BenchmarkResult]
     public var stalls: [StallReport]
@@ -297,8 +299,8 @@ public struct AppSummary: Hashable, Codable, Sendable {
 
     public init(app: AppID, updated: Date = Date(), stats: [StatReading] = [], sessions: [SessionSummary] = [], quests: [Quest] = [],
                 strength: StrengthProfile? = nil, fatigue: FatigueStatus? = nil, discipline: DisciplineScore? = nil,
-                measurements: BodyMeasurements? = nil, mobility: [MobilityResult] = [], benchmarks: [BenchmarkResult] = [],
-                stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil, steps: StepSummary? = nil) {
+                measurements: BodyMeasurements? = nil, physique: PhysiqueDirection? = nil, mobility: [MobilityResult] = [],
+                benchmarks: [BenchmarkResult] = [], stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil, steps: StepSummary? = nil) {
         self.app = app
         self.updated = updated
         self.stats = stats
@@ -308,6 +310,7 @@ public struct AppSummary: Hashable, Codable, Sendable {
         self.fatigue = fatigue
         self.discipline = discipline
         self.measurements = measurements
+        self.physique = physique
         self.mobility = mobility
         self.benchmarks = benchmarks
         self.stalls = stalls

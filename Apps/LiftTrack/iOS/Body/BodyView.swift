@@ -21,7 +21,7 @@ struct BodyView: View {
                     if let physique = model.analysis?.physique {
                         overview(physique)
                         sides(physique)
-                        if !physique.gaps.isEmpty { gaps(physique) }
+                        if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
                     }
                     waistTrend
                     photos
@@ -48,19 +48,24 @@ struct BodyView: View {
 
     private func overview(_ p: PhysiqueAnalysis) -> some View {
         let length = model.units.length
+        let sex = model.profile?.sex ?? .unspecified
         return VStack(alignment: .leading, spacing: 12) {
-            Label("Physique", systemImage: StatKind.physique.symbol).font(.headline).foregroundStyle(StatKind.physique.color)
+            HStack(alignment: .firstTextBaseline) {
+                Label("Physique", systemImage: StatKind.physique.symbol).font(.headline).foregroundStyle(StatKind.physique.color)
+                Spacer()
+                Text(p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets").font(.caption).foregroundStyle(.secondary)
+            }
             if p.latest == nil {
                 Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button { measuring = true } label: { Label("Add measurements", systemImage: "ruler").frame(maxWidth: .infinity) }.primaryAction()
             } else {
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
-                    if let ratio = p.shoulderToWaist {
+                    ForEach(p.proportions) { reading in
                         GridRow {
-                            Text("Shoulder to waist").foregroundStyle(.secondary)
-                            Text(Format.number(ratio, digits: 2)).monospacedDigit()
-                            Text("target \(Format.number(Physique.shoulderToWaistTarget(model.profile?.sex ?? .unspecified), digits: 2))").font(.caption).foregroundStyle(.secondary)
+                            Text(reading.rule.label).foregroundStyle(.secondary)
+                            Text(Format.number(reading.value, digits: 2)).monospacedDigit()
+                            Text(caption(reading, sex: sex)).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     if let wth = p.waistToHeight {
@@ -142,6 +147,14 @@ struct BodyView: View {
         }
     }
 
+    private func caption(_ reading: ProportionReading, sex: BiologicalSex) -> String {
+        switch reading.cause {
+        case .fat: "fat loss closes it"
+        case .build: "target \(reading.rule.targetText(sex: sex))"
+        case nil: reading.magnitude == 0 ? "on target" : "target \(reading.rule.targetText(sex: sex))"
+        }
+    }
+
     private func gaps(_ p: PhysiqueAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("What the program does about it").font(.headline)
@@ -150,6 +163,14 @@ struct BodyView: View {
                     Text(gap.region.label).font(.subheadline.weight(.semibold))
                     Text(gap.finding).font(.caption).foregroundStyle(.secondary)
                     Label(gap.action, systemImage: "arrow.right.circle").font(.caption)
+                }
+            }
+            // Gaps the waist drives: the nutrition phase closes them, not extra volume.
+            ForEach(p.proportions.filter { $0.cause == .fat }) { reading in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(reading.rule.label).font(.subheadline.weight(.semibold))
+                    Text(reading.finding).font(.caption).foregroundStyle(.secondary)
+                    if let action = reading.action { Label(action, systemImage: "arrow.right.circle").font(.caption) }
                 }
             }
             if model.settings.autoPrioritise == false {

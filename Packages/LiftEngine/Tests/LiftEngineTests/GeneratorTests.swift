@@ -162,6 +162,20 @@ struct GeneratorTests {
         #expect(lateral.contains { ($0.reason ?? "").contains("side-delt") })
     }
 
+    @Test func aWaistDrivenGapAddsNoVolumeAndIsPublished() {
+        let measurements = [BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 124, waistCm: 88)]
+        let physique = Physique.analyse(measurements, sex: .male, heightCm: 180)
+        let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), physique: physique))
+        #expect(m.rationale.reasons.contains { $0.contains("fat loss closes it") })
+        #expect(!m.days.flatMap(\.strengthSlots).contains { ($0.reason ?? "").contains("side-delt") })
+        // Macro Track reads the same answer from Lift Track's summary.
+        let state = LiftState(profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg),
+                              catalog: Fixture.catalog, measurements: measurements, today: Fixture.start)
+        let summary = Analyst.summary(state, Analyst.analyse(state))
+        #expect((summary.physique?.fatLoss ?? 0) > 0)
+        #expect(summary.physique?.targets == .vTaper)
+    }
+
     @Test func aLaggingSideTrainsOneSideAtATime() {
         let start = Fixture.start.adding(days: -30)
         let history = [BodyMeasurements(day: start, neckCm: 39, shouldersCm: 124, waistCm: 82, armLeftCm: 35, armRightCm: 37.2),

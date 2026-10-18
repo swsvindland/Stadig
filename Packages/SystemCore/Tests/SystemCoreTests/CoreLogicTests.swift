@@ -513,6 +513,65 @@ struct StatsTests {
         #expect(m.sides(.thigh) == nil)
     }
 
+    @Test func aWaistDrivenRatioAsksForFatLossNotVolume() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        // Shoulders 124 over a waist of 88 is 1.41; at a lean 82.8 cm waist it's about 1.48, on target.
+        let soft = Physique.analyse([BodyMeasurements(day: day, neckCm: 39, shouldersCm: 124, waistCm: 88)], sex: .male, heightCm: 180)
+        let reading = soft.proportions.first { $0.rule == .shoulderToWaist }
+        #expect(reading?.flagged == true && reading?.cause == .fat)
+        #expect(soft.gaps.isEmpty)
+        #expect(soft.direction.fatLoss > 0 && soft.direction.build == 0)
+        // Already lean with the same ratio: training closes it.
+        let lean = Physique.analyse([BodyMeasurements(day: day, neckCm: 39, shouldersCm: 112, waistCm: 80)], sex: .male, heightCm: 180)
+        #expect(lean.proportions.first { $0.rule == .shoulderToWaist }?.cause == .build)
+        #expect(lean.gaps.first?.region == .shoulders)
+        #expect(lean.direction.build > 0 && lean.direction.buildRegions == [.shoulders] && lean.direction.fatLoss == 0)
+    }
+
+    @Test func nothingAsksForFatLossAtTheFloor() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        // The waist-driven body from above, but measured at 9% body fat: the waist isn't fat.
+        let m = BodyMeasurements(day: day, bodyFatPercent: 9, neckCm: 39, shouldersCm: 124, waistCm: 88)
+        let analysis = Physique.analyse([m], sex: .male, heightCm: 180)
+        #expect(analysis.direction.atLeanFloor)
+        #expect(analysis.direction.fatLoss == 0)
+        #expect(analysis.proportions.first { $0.rule == .shoulderToWaist }?.cause == .build)
+        #expect(Proportions.atLeanFloor(bodyFatPercent: 20, waistToHeight: nil, sex: .female))
+        #expect(!Proportions.atLeanFloor(bodyFatPercent: 21, waistToHeight: nil, sex: .female))
+        #expect(Proportions.atLeanFloor(bodyFatPercent: nil, waistToHeight: 0.42, sex: .male))
+    }
+
+    @Test func hourglassTellsWaistFromGlutes() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        // Waist 76 over glutes 98 is 0.78; at a lean waist the glutes shrink half as fast and it's about 0.75.
+        let soft = Physique.analyse([BodyMeasurements(day: day, shouldersCm: 100, waistCm: 82, naturalWaistCm: 76, glutesCm: 98)],
+                                    sex: .female, heightCm: 165)
+        #expect(soft.targets == .hourglass)
+        #expect(soft.proportions.first { $0.rule == .waistToGlutes }?.cause == .fat)
+        // Lean, with the glutes behind: build them.
+        let lean = Physique.analyse([BodyMeasurements(day: day, shouldersCm: 94, waistCm: 74, naturalWaistCm: 70, glutesCm: 88)],
+                                    sex: .female, heightCm: 165)
+        #expect(lean.proportions.first { $0.rule == .waistToGlutes }?.cause == .build)
+        #expect(lean.gaps.contains { $0.region == .glutes })
+    }
+
+    @Test func eachTargetSetChecksItsOwnRules() {
+        #expect(ProportionTargets.standard(for: .male) == .vTaper)
+        #expect(ProportionTargets.standard(for: .female) == .hourglass)
+        #expect(ProportionTargets.standard(for: .unspecified) == .leannessOnly)
+        #expect(ProportionTargets.vTaper.rules(sex: .male).contains(.chestToWaist))
+        #expect(!ProportionTargets.vTaper.rules(sex: .female).contains(.chestToWaist))
+        #expect(ProportionTargets.leannessOnly.rules(sex: .male) == [.thighToCalf])
+        #expect(ProportionTargets.off.rules(sex: .female).isEmpty)
+        let m = BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), neckCm: 39, shouldersCm: 112, waistCm: 80)
+        #expect(Physique.analyse([m], sex: .male, heightCm: 180, targets: .off).gaps.isEmpty)
+        // A health ratio only ever asks for fat loss.
+        let wide = Physique.analyse([BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), waistCm: 100, glutesCm: 105)],
+                                    sex: .male, heightCm: 180)
+        let health = wide.proportions.first { $0.rule == .waistToHips }
+        #expect(health?.cause == .fat && health?.region == nil)
+    }
+
     @Test func aSideCountsAsLaggingOnlyWhenItLasts() {
         let start = Day(year: 2026, month: 1, day: 1)
         func check(_ offset: Int, _ left: Double, _ right: Double) -> BodyMeasurements {

@@ -182,7 +182,7 @@ public struct Asymmetry: Hashable, Codable, Sendable, Identifiable {
 }
 
 /// Fat-free mass index against what's typical, for how much room is left to build.
-public enum FFMIBand: String, Sendable {
+public enum FFMIBand: String, Codable, Sendable {
     case lotsOfRoom, someRoom, nearCeiling
 
     public var label: String {
@@ -248,6 +248,12 @@ public struct PhysiqueAnalysis: Hashable, Sendable {
     /// FFMI adjusted to a 1.8 m height, so people of different heights compare.
     public var normalizedFFMI: Double?
     public var ffmiBand: FFMIBand?
+    public var targets: ProportionTargets
+    /// Every rule in the set, flagged or not.
+    public var proportions: [ProportionReading]
+    /// Whether fat loss or building would do more, for Macro Track.
+    public var direction: PhysiqueDirection
+    /// Proportion gaps that training closes.
     public var gaps: [PhysiqueGap]
     public var asymmetries: [Asymmetry]
     /// Change in waist over the window, cm; negative is smaller.
@@ -340,8 +346,9 @@ public enum Physique {
     }
 
     /// `measuredBodyFat` is a recent Health sample; it beats a typed reading, which beats the tape.
+    /// `targets` defaults to the set for the person's standards.
     public static func analyse(_ history: [BodyMeasurements], sex: BiologicalSex, heightCm: Double?,
-                               weightKg: Double? = nil, measuredBodyFat: Double? = nil) -> PhysiqueAnalysis {
+                               weightKg: Double? = nil, measuredBodyFat: Double? = nil, targets: ProportionTargets? = nil) -> PhysiqueAnalysis {
         let sorted = history.sorted { $0.day < $1.day }
         var latest: BodyMeasurements?
         for entry in sorted { latest = latest.map { entry.filled(from: $0) } ?? entry }
@@ -358,27 +365,20 @@ public enum Physique {
             latest?.weightKg.flatMap { kg in heightCm.flatMap { ffmi(weightKg: kg, bodyFatPercent: bf, heightCm: $0) } }
         }
 
-        var gaps: [PhysiqueGap] = []
-        if let ratio {
-            let target = shoulderToWaistTarget(sex)
-            if ratio < target - 0.04 {
-                let magnitude = clamp((target - ratio) / 0.25, 0, 1)
-                gaps.append(PhysiqueGap(
-                    region: .shoulders, magnitude: magnitude,
-                    finding: String(format: "Shoulder-to-waist ratio is %.2f; the target range starts near %.2f.", ratio, target - 0.04),
-                    action: "Add side-delt and overhead volume this block."))
-            }
+        let targets = targets ?? .standard(for: sex)
+        let floor = Proportions.atLeanFloor(bodyFatPercent: bodyFat, waistToHeight: wth, sex: sex)
+        let proportions = latest.map { Proportions.read($0, targets: targets, sex: sex, heightCm: heightCm, atLeanFloor: floor) } ?? []
+        let gaps = proportions.compactMap { reading -> PhysiqueGap? in
+            guard reading.cause == .build, let region = reading.region, let action = reading.action else { return nil }
+            return PhysiqueGap(region: region, magnitude: reading.magnitude, finding: reading.finding, action: action)
         }
-        if let latest, let arm = latest.size(.arm), let neck = latest.neckCm, arm < neck * 0.95 {
-            gaps.append(PhysiqueGap(region: .arms, magnitude: clamp((neck - arm) / neck * 3, 0, 1),
-                                    finding: "Upper arms measure smaller than the neck.",
-                                    action: "Add direct biceps and triceps work; it costs little recovery."))
-        }
-        if let latest, let thigh = latest.size(.thigh), let calf = latest.size(.calf), thigh < calf * 1.5 {
-            gaps.append(PhysiqueGap(region: .thighs, magnitude: clamp((calf * 1.5 - thigh) / thigh, 0, 1),
-                                    finding: "Thighs are small relative to calves.",
-                                    action: "Add quad and hamstring volume."))
-        }
+        let flagged = proportions.filter { $0.cause != nil }
+        let builds = flagged.filter { $0.cause == .build }
+        let direction = PhysiqueDirection(
+            targets: targets, fatLoss: floor ? 0 : flagged.map(\.fatShare).max() ?? 0, build: builds.map(\.magnitude).max() ?? 0,
+            buildRegions: builds.compactMap(\.region), atLeanFloor: floor, waistToHeight: wth, bodyFatPercent: bodyFat,
+            normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
+            reasons: flagged.map { [$0.finding, $0.action].compactMap { $0 }.joined(separator: " ") })
 
         var waistTrend: Double?
         let waists = sorted.compactMap { m in m.waistCm.map { (m.day, $0) } }
@@ -386,12 +386,14 @@ public enum Physique {
 
         var score: Double?
         var parts: [Double] = []
-        if let ratio { parts.append(clamp(ratio / shoulderToWaistTarget(sex), 0, 1.1) * 100) }
         if let wth { parts.append(clamp((0.62 - wth) / (0.62 - 0.42), 0, 1) * 100) }
+        // Each active ratio by how close it is to its target now.
+        for reading in proportions { parts.append((1 - reading.rule.assess(reading.value, sex: sex).magnitude) * 100) }
         if !parts.isEmpty { score = parts.reduce(0, +) / Double(parts.count) }
 
         return PhysiqueAnalysis(latest: latest, shoulderToWaist: ratio, waistToHeight: wth, bodyFatPercent: bodyFat, bodyFatSource: source,
                                 ffmi: lean?.ffmi, normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
+                                targets: targets, proportions: proportions, direction: direction,
                                 gaps: gaps.sorted { $0.magnitude > $1.magnitude }, asymmetries: asymmetries(sorted),
                                 waistTrend: waistTrend, score: score)
     }

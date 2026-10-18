@@ -830,6 +830,12 @@ struct Builder {
         }
         list.append("\(split.label), \(days.count) day\(days.count == 1 ? "" : "s") a week, about \(input.profile.schedule.minutesPerSession) minutes each.")
         for priority in priorities where priority.emphasis != 0 { list.append(priority.reason) }
+        // Gaps the waist drives get no extra volume; say why.
+        if input.settings.autoPrioritise, input.kind == .standard {
+            for reading in input.physique?.proportions ?? [] where reading.cause == .fat {
+                list.append([reading.finding, reading.action].compactMap { $0 }.joined(separator: " "))
+            }
+        }
         if input.kind == .standard {
             switch input.phase.kind.energy {
             case .deficit: list.append("You're in a \(input.phase.kind.label.lowercased()), so the block is shorter, heavy compounds are protected, and a stall is expected rather than a problem.")

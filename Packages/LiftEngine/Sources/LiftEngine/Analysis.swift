@@ -224,7 +224,7 @@ public enum Analyst {
         }
 
         let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm, weightKg: state.bodyweightKg,
-                                        measuredBodyFat: state.bodyFatPercent)
+                                        measuredBodyFat: state.bodyFatPercent, targets: state.settings.proportionTargets)
         let agility = Agility.analyse(state.mobility)
         let conditioningMinutes = Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
             + Double(state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))
@@ -471,7 +471,8 @@ public enum Analyst {
         let steps = stepDays.isEmpty ? nil : StepSummary(days: stepDays, aim: a.steps?.aim, baseline: a.steps?.baseline)
         return AppSummary(app: .liftTrack, stats: stats, sessions: shared.sorted { $0.start < $1.start }, quests: a.quests,
                           strength: a.strength.categories.isEmpty ? nil : a.strength, fatigue: a.fatigue.status, discipline: a.discipline,
-                          measurements: a.physique.latest, mobility: Array(a.agility.latest.values), benchmarks: state.benchmarks.suffix(6),
+                          measurements: a.physique.latest, physique: a.physique.latest == nil ? nil : a.physique.direction,
+                          mobility: Array(a.agility.latest.values), benchmarks: state.benchmarks.suffix(6),
                           stalls: a.stalls, phaseUsed: a.phase, steps: steps)
     }
 

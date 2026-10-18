@@ -36,9 +36,6 @@ struct SettingsView: View {
                 toggle("Heart-rate guided rest", \.heartRateGuidedRest)
                 toggle("Conditioning after lifting", \.includeConditioning)
                 toggle("Stretching cool-down", \.includeCooldown)
-                NavigationLink { FocusScreen() } label: {
-                    LabeledContent("Focus", value: model.settings.focusSummary)
-                }
                 toggle("Prioritise automatically", \.autoPrioritise)
                 Picker("Conditioning benchmark", selection: setting(\.benchmark)) {
                     ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
@@ -55,6 +52,22 @@ struct SettingsView: View {
                 Text("Training")
             } footer: {
                 Text("With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest).")
+            }
+            Section {
+                NavigationLink { FocusScreen() } label: {
+                    LabeledContent("Focus", value: model.settings.focusSummary)
+                }
+                Picker("Proportion targets", selection: Binding(get: { proportionTargets }, set: { targets in
+                    var s = model.settings
+                    s.proportionTargets = targets
+                    model.save(settings: s)
+                })) {
+                    ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
+                }
+            } header: {
+                Text("Physique")
+            } footer: {
+                Text("\(proportionTargets.detail) Focus areas come first, and nothing asks for fat loss once you're lean.")
             }
             Section("Apple Health") {
                 Button("Connect Apple Health") { Task { await model.connectHealth() } }
@@ -122,6 +135,11 @@ struct SettingsView: View {
         } message: {
             Text(message ?? "")
         }
+    }
+
+    /// The chosen set, or the one for the person's standards.
+    private var proportionTargets: ProportionTargets {
+        model.settings.proportionTargets ?? .standard(for: model.profile?.sex ?? .unspecified)
     }
 
     private func setting<T>(_ keyPath: WritableKeyPath<LiftSettings, T>) -> Binding<T> {
