@@ -77,6 +77,19 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         gym.dumbbellMax = max(gym.dumbbellStep, (heaviest / gym.dumbbellStep).rounded() * gym.dumbbellStep)
         return gym
     }
+
+    /// The gym as another kind: that kind's equipment, plates and steps, but still this gym, with
+    /// its name, its exercise exceptions and its sauna or steam room (no kind assumes either).
+    public func switched(to access: EquipmentAccess) -> Gym {
+        guard access != self.access else { return self }
+        var gym = Gym.preset(access, unit: unit)
+        gym.id = id
+        gym.name = name
+        gym.apparatus.formUnion(apparatus.filter(\.isRecovery))
+        gym.excluded = excluded
+        gym.included = included
+        return gym
+    }
 }
 
 /// A gym's makeable loads for one kind of equipment, in kg, for the core's progression maths.
@@ -101,8 +114,18 @@ public struct GymIncrements: LoadIncrements, Hashable {
 
     static func cents(_ value: Double) -> Int { Int((value * 100).rounded()) }
 
-    /// Every load makeable up to a limit, ascending, in the gym's unit.
+    /// Past anything anyone lifts. A typed load over it is a slip (a few extra digits) and isn't
+    /// taken: the set logger and the Watch check what's typed against it.
+    public static let maximumLoadKg = 1_500.0
+
+    /// Every load makeable up to a limit, ascending, in the gym's unit. The limit goes no higher than
+    /// twice the most anyone lifts, whatever's asked: the tables behind it grow with the limit, and a
+    /// slipped load in the history would otherwise ask for billions of entries.
     public func loads(upTo limit: Double) -> [Double] {
+        // Bounded below too: every limit under nothing makes the same table, and one far under it
+        // (minus infinity, say) would trap in the conversion to cents.
+        let ceiling = gym.unit.fromKilograms(Self.maximumLoadKg) * 2
+        let limit = limit.isNaN ? 0 : min(max(limit, -ceiling), ceiling)
         if equipment.platePaired {
             let perSide = plateSums(limit: max(0, Self.cents((limit - base) / 2)) + 1)
             return perSide.map { base + Double($0 * 2) / 100 }
@@ -172,27 +195,39 @@ public struct GymIncrements: LoadIncrements, Hashable {
         return loads[lo...hi].map { gym.unit.toKilograms($0) }
     }
 
-    /// Plates for one side of the bar, heaviest first; nil when not plate-loaded or not makeable.
-    /// The fewest plates, found in steps of the plates' common divisor (every kg plate is a multiple
-    /// of 1.25): a 180 kg squat is 64 totals to try rather than 8,000, on every redraw of the logger.
+    /// Plates for one side of the bar, heaviest first; nil when not plate-loaded, not makeable, or
+    /// past the most anyone lifts. The fewest plates, found in steps of the plates' common divisor
+    /// (every kg plate is a multiple of 1.25): a 180 kg squat is 64 totals to try rather than 8,000,
+    /// on every redraw of the logger. Each total keeps only its count and its last plate, and the
+    /// plates are read back from those.
     public func platesPerSide(_ kg: Double) -> [Double]? {
-        guard equipment.platePaired else { return nil }
+        guard equipment.platePaired, (0...Self.maximumLoadKg).contains(kg) else { return nil }
         let perSide = Self.cents((gym.unit.fromKilograms(kg) - base) / 2)
         guard perSide > 0 else { return perSide == 0 ? [] : nil }
         let sizes = gym.plates.map(Self.cents).filter { $0 > 0 }.sorted(by: >)
         let unit = sizes.reduce(0, Self.gcd)
         guard unit > 0, perSide % unit == 0 else { return nil }
         let steps = perSide / unit
-        var best: [[Int]?] = Array(repeating: nil, count: steps + 1)
-        best[0] = []
+        // Fewest plates for each total in steps (nil when it can't be made), and the plate added last.
+        var count: [Int?] = Array(repeating: nil, count: steps + 1)
+        var last = Array(repeating: 0, count: steps + 1)
+        count[0] = 0
         for total in 1...steps {
-            var choice: [Int]?
             for size in sizes where size / unit <= total {
-                if let rest = best[total - size / unit], rest.count + 1 < choice?.count ?? .max { choice = [size] + rest }
+                if let rest = count[total - size / unit], rest + 1 < count[total] ?? .max {
+                    count[total] = rest + 1
+                    last[total] = size
+                }
             }
-            best[total] = choice
         }
-        return best[steps].map { $0.sorted(by: >).map { Double($0) / 100 } }
+        guard count[steps] != nil else { return nil }
+        var plates: [Int] = []
+        var total = steps
+        while total > 0 {
+            plates.append(last[total])
+            total -= last[total] / unit
+        }
+        return plates.sorted(by: >).map { Double($0) / 100 }
     }
 
     private static func gcd(_ a: Int, _ b: Int) -> Int { b == 0 ? a : gcd(b, a % b) }

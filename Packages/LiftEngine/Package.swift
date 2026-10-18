@@ -11,7 +11,8 @@ let package = Package(
     dependencies: [.package(path: "../SystemCore"), .package(path: "../ExerciseLibrary")],
     targets: [
         .target(name: "LiftEngine", dependencies: ["SystemCore", "ExerciseLibrary"]),
-        .testTarget(name: "LiftEngineTests", dependencies: ["LiftEngine"]),
+        // Fixtures: sessions as an earlier version saved them, which every later one must still read.
+        .testTarget(name: "LiftEngineTests", dependencies: ["LiftEngine"], resources: [.copy("Fixtures")]),
     ],
     swiftLanguageModes: [.v6]
 )

@@ -120,14 +120,17 @@ public enum FoodUnits {
     }
 
     /// The same amount of food in another unit, rounded for that unit: counts to quarters, grams to
-    /// whole ones, ounces to tenths.
+    /// whole ones, ounces and pounds to tenths. A pound is too big to round whole: 200 g would be 1 lb.
     public static func convert(_ count: Double, from: PortionUnit, to: PortionUnit) -> Double {
         guard count > 0, to.amount > 0 else { return .nan }
         let value = count * from.amount / to.amount
         if to.isCounted { return max(0.25, (value * 4).rounded() / 4) }
-        if to.id == "oz" || to.id == "floz" { return max(0.1, (value * 10).rounded() / 10) }
+        if tenths.contains(to.id) { return max(0.1, (value * 10).rounded() / 10) }
         return max(1, value.rounded())
     }
+
+    /// Units whole numbers are too coarse for.
+    private static let tenths: Set<String> = ["oz", "floz", "lb"]
 
     /// What ± adds: 10 g, ml or kcal, else half a unit.
     public static func step(for unit: PortionUnit) -> Double {

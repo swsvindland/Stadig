@@ -212,4 +212,28 @@ struct AnalysisTests {
         let a = Analyst.analyse(state([], today: Fixture.start.adding(weeks: 8), sessions: sessions))
         #expect(Analyst.strengthTrend(a, catalog: Fixture.catalog) == .onPace)
     }
+
+    @Test("a weight typed on today's tape beats an old one from Health, for strength and physique alike")
+    func newestBodyweight() {
+        let today = Fixture.start
+        let tape = BodyMeasurements(day: today, weightKg: 88, bodyFatPercent: 20, waistCm: 90)
+        func state(health: Double?, measured date: Date?, tape entries: [BodyMeasurements] = [tape]) -> LiftState {
+            LiftState(profile: Fixture.profile(), settings: LiftSettings(), gym: gym, catalog: Fixture.catalog, measurements: entries,
+                      bodyweightKg: health, bodyweightDate: date, today: today)
+        }
+        let monthsAgo = state(health: 80, measured: today.adding(days: -120).date().addingTimeInterval(7 * 3600))
+        #expect(monthsAgo.measuredBodyweight == 88 && monthsAgo.effectiveBodyweight == 88)
+        #expect(Analyst.analyse(monthsAgo).physique.latest?.weightKg == 88, "FFMI from the weight typed today")
+        // This morning's weigh-in is as new as the tape: Health's, from the scale.
+        let thisMorning = state(health: 87.4, measured: today.date().addingTimeInterval(7 * 3600))
+        #expect(thisMorning.effectiveBodyweight == 87.4 && Analyst.analyse(thisMorning).physique.latest?.weightKg == 87.4)
+        // A tape entry from before Health's weight is older news.
+        let lastWeek = BodyMeasurements(day: today.adding(days: -7), weightKg: 90)
+        #expect(state(health: 87.4, measured: today.adding(days: -1).date(), tape: [lastWeek]).effectiveBodyweight == 87.4)
+        // When Health's date isn't known it stands as current, as it always has.
+        #expect(state(health: 80, measured: nil).effectiveBodyweight == 80)
+        #expect(state(health: nil, measured: nil).effectiveBodyweight == 88)
+        let neither = state(health: nil, measured: nil, tape: [])
+        #expect(neither.measuredBodyweight == nil && neither.effectiveBodyweight == 80)
+    }
 }

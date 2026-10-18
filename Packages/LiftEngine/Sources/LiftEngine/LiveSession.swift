@@ -52,6 +52,22 @@ public struct LiveSet: Codable, Hashable, Sendable, Identifiable {
     public var isOpen: Bool { logged == nil && !skipped }
 }
 
+// A session in progress is saved after every change and read back at the next launch, which may
+// be an app update later: anything added since decodes as absent (nil, false, empty) rather than
+// leaving the session unreadable. What a thing can't be without (its plan, its prescription, its
+// id) stays required. A field added to one of these needs a line in its decoder.
+extension LiveSet {
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        prescription = try c.decode(SetPrescription.self, forKey: .prescription)
+        logged = try c.decodeIfPresent(LoggedSet.self, forKey: .logged)
+        skipped = try c.decodeIfPresent(Bool.self, forKey: .skipped) ?? false
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        planned = try c.decodeIfPresent(SetPrescription.self, forKey: .planned)
+    }
+}
+
 public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var plan: PlannedItem
@@ -75,6 +91,10 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     public var isDone: Bool { skipped || sets.allSatisfy { !$0.isOpen } }
     public var nextSet: Int? { skipped ? nil : sets.firstIndex { $0.isOpen } }
     public var loggedSets: [LoggedSet] { sets.compactMap(\.logged) }
+
+    /// Whether "Add a set" means anything: a conditioning piece or a sauna round is logged once, as
+    /// a whole, so a second bout would write over the first.
+    public var takesMoreSets: Bool { plan.conditioning == nil && plan.role != .conditioning && plan.role != .recovery }
 
     /// Adapts the exercise's open work sets to a rated set: the next one gets the adjustment and its
     /// message, and every later one the same numbers; a rep-out keeps its kind. Nil when no open
@@ -104,6 +124,20 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
         for later in sets.indices where later > index && sets[later].isOpen && sets[later].prescription.loadKg == nil {
             sets[later].prescription.loadKg = logged.loadKg
         }
+    }
+}
+
+extension LiveItem {
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        plan = try c.decode(PlannedItem.self, forKey: .plan)
+        id = try c.decode(UUID.self, forKey: .id)
+        exerciseID = try c.decodeIfPresent(String.self, forKey: .exerciseID) ?? plan.exerciseID
+        sets = try c.decodeIfPresent([LiveSet].self, forKey: .sets) ?? plan.sets.map { LiveSet(prescription: $0) }
+        skipped = try c.decodeIfPresent(Bool.self, forKey: .skipped) ?? false
+        verified = try c.decodeIfPresent(Bool.self, forKey: .verified) ?? false
+        conditioning = try c.decodeIfPresent(ConditioningLog.self, forKey: .conditioning)
+        heat = try c.decodeIfPresent(HeatLog.self, forKey: .heat)
     }
 }
 
@@ -151,6 +185,22 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         mobilityDone = []
         heartRateSamples = []
         updatedAt = now
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        plan = try c.decode(SessionPlan.self, forKey: .plan)
+        items = try c.decodeIfPresent([LiveItem].self, forKey: .items) ?? plan.items.map(LiveItem.init)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        // Only a timer: one that can't be read is dropped, and the session picks up without it.
+        rest = try? c.decodeIfPresent(RestState.self, forKey: .rest)
+        message = try c.decodeIfPresent(String.self, forKey: .message)
+        lastAdjustment = try c.decodeIfPresent(AdjustmentKind.self, forKey: .lastAdjustment)
+        device = try c.decodeIfPresent(String.self, forKey: .device) ?? "iPhone"
+        mobilityDone = try c.decodeIfPresent([String].self, forKey: .mobilityDone) ?? []
+        heartRateSamples = try c.decodeIfPresent([HeartRatePoint].self, forKey: .heartRateSamples) ?? []
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? startedAt
     }
 
     // MARK: Where we are
@@ -292,7 +342,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     }
 
     public mutating func addSet(item index: Int, now: Date = Date()) {
-        guard items.indices.contains(index) else { return }
+        guard items.indices.contains(index), items[index].takesMoreSets else { return }
         let last = items[index].sets.last { $0.prescription.kind != .warmup }
         var prescription = last?.prescription ?? SetPrescription(kind: .working, loadKg: nil, targetReps: items[index].plan.repRange.middle, targetRIR: 2)
         if prescription.kind == .repOut { prescription.kind = .working; prescription.targetRIR = 1 }
@@ -386,12 +436,14 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         updatedAt = now
     }
 
-    /// Feeds live heart rate (Watch). Returns true when a heart-rate-guided rest has recovered.
+    /// Feeds live heart rate (Watch). Returns true when a heart-rate-guided rest has recovered while
+    /// it's still running: once its time is up the person is already on the next set, though the
+    /// session keeps the rest until that set is logged (its rest is timed from it).
     @discardableResult
     public mutating func record(heartRate bpm: Double, zones: HeartRateZones, now: Date = Date()) -> Bool {
         heartRateSamples.append(HeartRatePoint(date: now, bpm: bpm))
         if heartRateSamples.count > 4000 { heartRateSamples.removeFirst(heartRateSamples.count - 4000) }
-        guard let state = rest else { return false }
+        guard let state = rest, now < state.endsAt else { return false }
         let elapsed = Int(now.timeIntervalSince(state.started))
         return Rest.recovered(heartRate: bpm, preSet: state.preSetHeartRate, zones: zones, elapsed: elapsed, plan: state.plan)
     }

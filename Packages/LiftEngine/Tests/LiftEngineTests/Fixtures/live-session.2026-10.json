@@ -1,0 +1,924 @@
+{
+  "device" : "Watch",
+  "heartRateSamples" : [
+    {
+      "bpm" : 151,
+      "date" : 1792429680000
+    },
+    {
+      "bpm" : 118,
+      "date" : 1792429740000
+    }
+  ],
+  "id" : "00000000-0000-0000-0000-000000000004",
+  "items" : [
+    {
+      "exerciseID" : "barbell-bench-press",
+      "id" : "00000000-0000-0000-0000-000000000101",
+      "plan" : {
+        "block" : "main",
+        "exerciseID" : "barbell-bench-press",
+        "id" : "00000000-0000-0000-0000-000000000101",
+        "mode" : "load",
+        "note" : "Up from last week's 77.5 kg.",
+        "reason" : "Pressing comes first this block.",
+        "repRange" : {
+          "lower" : 6,
+          "upper" : 10
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 120,
+          "target" : 180
+        },
+        "role" : "main",
+        "sets" : [
+          {
+            "kind" : "warmup",
+            "loadKg" : 40,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "repOut",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : true,
+            "targetRIR" : 0,
+            "targetReps" : 8
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000201"
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001000",
+          "logged" : {
+            "bodyweightKg" : 82,
+            "date" : 1792429440000,
+            "exerciseID" : "barbell-bench-press",
+            "id" : "00000000-0000-0000-0000-000000000301",
+            "kind" : "warmup",
+            "loadKg" : 40,
+            "reps" : 8,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 8
+          },
+          "planned" : {
+            "kind" : "warmup",
+            "loadKg" : 40,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 8
+          },
+          "prescription" : {
+            "kind" : "warmup",
+            "loadKg" : 40,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 8
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001001",
+          "logged" : {
+            "bodyweightKg" : 82,
+            "date" : 1792429680000,
+            "exerciseID" : "barbell-bench-press",
+            "heartRatePeak" : 151,
+            "id" : "00000000-0000-0000-0000-000000000302",
+            "kind" : "working",
+            "loadKg" : 80,
+            "rating" : "green",
+            "reps" : 8,
+            "restBeforeSeconds" : 240,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 8
+          },
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001002",
+          "note" : "Easy: up to 82.5 kg.",
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 82.5,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001003",
+          "planned" : {
+            "kind" : "repOut",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : true,
+            "targetRIR" : 0,
+            "targetReps" : 8
+          },
+          "prescription" : {
+            "kind" : "repOut",
+            "loadKg" : 82.5,
+            "stopAtFormBreakdown" : true,
+            "targetRIR" : 0,
+            "targetReps" : 8
+          },
+          "skipped" : false
+        }
+      ],
+      "skipped" : false,
+      "verified" : true
+    },
+    {
+      "exerciseID" : "chest-supported-db-row",
+      "id" : "00000000-0000-0000-0000-000000000102",
+      "plan" : {
+        "block" : "accessory",
+        "exerciseID" : "chest-supported-db-row",
+        "id" : "00000000-0000-0000-0000-000000000102",
+        "mode" : "reps",
+        "repRange" : {
+          "lower" : 8,
+          "upper" : 12
+        },
+        "rest" : {
+          "heartRateGuided" : true,
+          "minimum" : 0,
+          "target" : 90
+        },
+        "restFiller" : "couch-stretch",
+        "role" : "accessory",
+        "sets" : [
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000202",
+        "substitutedFor" : "barbell-row",
+        "supersetGroup" : 1
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001010",
+          "logged" : {
+            "date" : 1792430100000,
+            "exerciseID" : "chest-supported-db-row",
+            "id" : "00000000-0000-0000-0000-000000000303",
+            "kind" : "working",
+            "loadKg" : 26,
+            "rating" : "orange",
+            "reps" : 10,
+            "restBeforeSeconds" : 200,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 10
+          },
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001011",
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001012",
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          "skipped" : false
+        }
+      ],
+      "skipped" : false,
+      "verified" : false
+    },
+    {
+      "exerciseID" : "cable-fly",
+      "id" : "00000000-0000-0000-0000-000000000103",
+      "plan" : {
+        "block" : "accessory",
+        "exerciseID" : "cable-fly",
+        "id" : "00000000-0000-0000-0000-000000000103",
+        "mode" : "reps",
+        "repRange" : {
+          "lower" : 10,
+          "upper" : 15
+        },
+        "rest" : {
+          "heartRateGuided" : true,
+          "minimum" : 0,
+          "target" : 90
+        },
+        "role" : "accessory",
+        "sets" : [
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000203",
+        "supersetGroup" : 1
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001020",
+          "logged" : {
+            "date" : 1792430160000,
+            "exerciseID" : "cable-fly",
+            "id" : "00000000-0000-0000-0000-000000000304",
+            "kind" : "working",
+            "loadKg" : 15,
+            "rating" : "orange",
+            "reps" : 12,
+            "restBeforeSeconds" : 20,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 12
+          },
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001021",
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001022",
+          "planned" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "prescription" : {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          "skipped" : true
+        }
+      ],
+      "skipped" : false,
+      "verified" : false
+    },
+    {
+      "exerciseID" : "couch-stretch",
+      "id" : "00000000-0000-0000-0000-000000000104",
+      "plan" : {
+        "block" : "limiter",
+        "exerciseID" : "couch-stretch",
+        "id" : "00000000-0000-0000-0000-000000000104",
+        "reason" : "Hips are today's limiter.",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "mobility",
+        "seconds" : 60,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000204"
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001030",
+          "logged" : {
+            "date" : 1792429260000,
+            "exerciseID" : "couch-stretch",
+            "id" : "00000000-0000-0000-0000-000000000305",
+            "kind" : "working",
+            "loadKg" : 0,
+            "reps" : 1,
+            "seconds" : 60,
+            "stoppedAtFormBreakdown" : false
+          },
+          "planned" : {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "prescription" : {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "skipped" : false
+        },
+        {
+          "id" : "00000000-0000-0000-0000-000000001031",
+          "logged" : {
+            "date" : 1792429320000,
+            "exerciseID" : "couch-stretch",
+            "id" : "00000000-0000-0000-0000-000000000306",
+            "kind" : "working",
+            "loadKg" : 0,
+            "reps" : 1,
+            "seconds" : 60,
+            "stoppedAtFormBreakdown" : false
+          },
+          "planned" : {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "prescription" : {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "skipped" : false
+        }
+      ],
+      "skipped" : false,
+      "verified" : false
+    },
+    {
+      "conditioning" : {
+        "averageHeartRate" : 142,
+        "exerciseID" : "bike-30-30-intervals",
+        "minutes" : 15,
+        "zone" : 2,
+        "zoneMinutes" : {
+          "2" : 6.5,
+          "3" : 5,
+          "4" : 3.5
+        }
+      },
+      "exerciseID" : "bike-30-30-intervals",
+      "id" : "00000000-0000-0000-0000-000000000105",
+      "plan" : {
+        "block" : "conditioning",
+        "conditioning" : {
+          "minutes" : 15,
+          "restSeconds" : 30,
+          "style" : "intervals",
+          "workSeconds" : 30,
+          "zones" : [
+            2,
+            4
+          ]
+        },
+        "exerciseID" : "bike-30-30-intervals",
+        "id" : "00000000-0000-0000-0000-000000000105",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "conditioning",
+        "seconds" : 900,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 900,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 3,
+            "targetReps" : 1
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000205"
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001040",
+          "logged" : {
+            "date" : 1792431600000,
+            "exerciseID" : "bike-30-30-intervals",
+            "id" : "00000000-0000-0000-0000-000000000307",
+            "kind" : "working",
+            "loadKg" : 0,
+            "reps" : 1,
+            "seconds" : 900,
+            "stoppedAtFormBreakdown" : false
+          },
+          "planned" : {
+            "kind" : "working",
+            "seconds" : 900,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 3,
+            "targetReps" : 1
+          },
+          "prescription" : {
+            "kind" : "working",
+            "seconds" : 900,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 3,
+            "targetReps" : 1
+          },
+          "skipped" : false
+        }
+      ],
+      "skipped" : false,
+      "verified" : false
+    },
+    {
+      "exerciseID" : "sauna",
+      "heat" : {
+        "averageHeartRate" : 104,
+        "date" : 1792433400000,
+        "exerciseID" : "sauna",
+        "minutes" : 12,
+        "peakHeartRate" : 118,
+        "rating" : "orange",
+        "temperatureC" : 85
+      },
+      "id" : "00000000-0000-0000-0000-000000000106",
+      "plan" : {
+        "block" : "recovery",
+        "exerciseID" : "sauna",
+        "id" : "00000000-0000-0000-0000-000000000106",
+        "reason" : "Optional.",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "recovery",
+        "seconds" : 720,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 720,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          }
+        ]
+      },
+      "sets" : [
+        {
+          "id" : "00000000-0000-0000-0000-000000001050",
+          "planned" : {
+            "kind" : "working",
+            "seconds" : 720,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "prescription" : {
+            "kind" : "working",
+            "seconds" : 720,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          "skipped" : false
+        }
+      ],
+      "skipped" : false,
+      "verified" : false
+    }
+  ],
+  "lastAdjustment" : "bump",
+  "message" : "Easy: up to 82.5 kg.",
+  "mobilityDone" : [
+    "couch-stretch"
+  ],
+  "plan" : {
+    "assessment" : false,
+    "checkIn" : false,
+    "day" : "2026-10-19",
+    "dayID" : "00000000-0000-0000-0000-000000000003",
+    "deload" : false,
+    "id" : "00000000-0000-0000-0000-000000000001",
+    "items" : [
+      {
+        "block" : "main",
+        "exerciseID" : "barbell-bench-press",
+        "id" : "00000000-0000-0000-0000-000000000101",
+        "mode" : "load",
+        "note" : "Up from last week's 77.5 kg.",
+        "reason" : "Pressing comes first this block.",
+        "repRange" : {
+          "lower" : 6,
+          "upper" : 10
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 120,
+          "target" : 180
+        },
+        "role" : "main",
+        "sets" : [
+          {
+            "kind" : "warmup",
+            "loadKg" : 40,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 8
+          },
+          {
+            "kind" : "repOut",
+            "loadKg" : 80,
+            "stopAtFormBreakdown" : true,
+            "targetRIR" : 0,
+            "targetReps" : 8
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000201"
+      },
+      {
+        "block" : "accessory",
+        "exerciseID" : "chest-supported-db-row",
+        "id" : "00000000-0000-0000-0000-000000000102",
+        "mode" : "reps",
+        "repRange" : {
+          "lower" : 8,
+          "upper" : 12
+        },
+        "rest" : {
+          "heartRateGuided" : true,
+          "minimum" : 0,
+          "target" : 90
+        },
+        "restFiller" : "couch-stretch",
+        "role" : "accessory",
+        "sets" : [
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 26,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 10
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000202",
+        "substitutedFor" : "barbell-row",
+        "supersetGroup" : 1
+      },
+      {
+        "block" : "accessory",
+        "exerciseID" : "cable-fly",
+        "id" : "00000000-0000-0000-0000-000000000103",
+        "mode" : "reps",
+        "repRange" : {
+          "lower" : 10,
+          "upper" : 15
+        },
+        "rest" : {
+          "heartRateGuided" : true,
+          "minimum" : 0,
+          "target" : 90
+        },
+        "role" : "accessory",
+        "sets" : [
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          },
+          {
+            "kind" : "working",
+            "loadKg" : 15,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 2,
+            "targetReps" : 12
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000203",
+        "supersetGroup" : 1
+      },
+      {
+        "block" : "limiter",
+        "exerciseID" : "couch-stretch",
+        "id" : "00000000-0000-0000-0000-000000000104",
+        "reason" : "Hips are today's limiter.",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "mobility",
+        "seconds" : 60,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          },
+          {
+            "kind" : "working",
+            "seconds" : 60,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000204"
+      },
+      {
+        "block" : "conditioning",
+        "conditioning" : {
+          "minutes" : 15,
+          "restSeconds" : 30,
+          "style" : "intervals",
+          "workSeconds" : 30,
+          "zones" : [
+            2,
+            4
+          ]
+        },
+        "exerciseID" : "bike-30-30-intervals",
+        "id" : "00000000-0000-0000-0000-000000000105",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "conditioning",
+        "seconds" : 900,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 900,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 3,
+            "targetReps" : 1
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000205"
+      },
+      {
+        "block" : "recovery",
+        "exerciseID" : "sauna",
+        "id" : "00000000-0000-0000-0000-000000000106",
+        "reason" : "Optional.",
+        "repRange" : {
+          "lower" : 1,
+          "upper" : 1
+        },
+        "rest" : {
+          "heartRateGuided" : false,
+          "minimum" : 0,
+          "target" : 0
+        },
+        "role" : "recovery",
+        "seconds" : 720,
+        "sets" : [
+          {
+            "kind" : "working",
+            "seconds" : 720,
+            "stopAtFormBreakdown" : false,
+            "targetRIR" : 5,
+            "targetReps" : 1
+          }
+        ]
+      }
+    ],
+    "mesocycleID" : "00000000-0000-0000-0000-000000000002",
+    "minimumEffectiveDose" : false,
+    "notes" : [
+      "About 50 minutes today, under your 60."
+    ],
+    "quests" : [
+      {
+        "day" : "2026-10-19",
+        "detail" : "It didn't fit in today's session.",
+        "id" : "lift-2026-10-19-conditioning",
+        "minutes" : 20,
+        "priority" : 1,
+        "source" : "liftTrack",
+        "stat" : "endurance",
+        "status" : "open",
+        "timeOfDay" : "evening",
+        "title" : "Zone 2 this evening"
+      }
+    ],
+    "title" : "Upper A",
+    "week" : 1
+  },
+  "rest" : {
+    "endsAt" : 1792430180000,
+    "filler" : "couch-stretch",
+    "itemID" : "00000000-0000-0000-0000-000000000103",
+    "plan" : {
+      "heartRateGuided" : false,
+      "minimum" : 0,
+      "target" : 20
+    },
+    "preSetHeartRate" : 96,
+    "started" : 1792430160000
+  },
+  "startedAt" : 1792429200000,
+  "updatedAt" : 1792430160000
+}

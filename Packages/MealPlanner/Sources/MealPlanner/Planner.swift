@@ -52,6 +52,8 @@ public struct MealPlanner: Sendable {
         /// The snack was picked (kept from a plan, or swapped to), rather than left to whichever
         /// fills the day best.
         var snackPinned = false
+        /// Snacks not to fill with: the ones the week has had, when "other dishes" replaces them.
+        var replacedSnacks: Set<String> = []
     }
 
     // MARK: Plans
@@ -82,6 +84,52 @@ public struct MealPlanner: Sendable {
         } else if choices.snack.map({ "template:\($0.id)" }) == recipeID {
             choices.snack = nextTemplate(after: choices.snack, slot: .snack, preferences: plan.preferences)
             choices.snackPinned = true
+        }
+        let next = build(choices, id: plan.id, start: plan.start, targets: plan.targets, preferences: plan.preferences, now: now)
+        return keepingEaten(plan, in: next, today: today)
+    }
+
+    /// The dishes that can still be swapped, in the plan's order: those served at a meal from
+    /// `today` on that isn't logged. The others stay on the days they were eaten.
+    public func swappable(_ plan: MealPlan, today: Day) -> [String] {
+        let upcoming = Set(plan.meals.filter { $0.day >= today && plan.logged[$0.id] == nil }.map(\.recipeID))
+        return plan.recipes.map(\.id).filter(upcoming.contains)
+    }
+
+    /// The same preferences, other dishes: every dish still to come is replaced, and the plan keeps
+    /// its id, and the days already eaten and the meals logged keep theirs, as with a swap. The plan
+    /// as it is when nothing is left to change.
+    public func shuffle(_ plan: MealPlan, variation: Int, now: Date = Date(), calendar: Calendar = .current) -> MealPlan {
+        let today = Day(now, calendar: calendar)
+        guard !swappable(plan, today: today).isEmpty else { return plan }
+        var choices = self.choices(of: plan, from: today)
+        // Not one of the week's dishes, nor one just picked, so a dish doesn't come back in the
+        // other slot: swapping one bowl at a time would hand the second the first's old dish.
+        var used = Set(plan.recipes.map(\.id))
+        let ranked = rankedBowls(plan.preferences, recent: used, variation: variation)
+        var picked: [Bowl] = []
+        for index in choices.bowls.indices {
+            if let next = ranked.first(where: { candidate in !used.contains(candidate.id) && picked.allSatisfy { differs(candidate, $0) } })
+                ?? ranked.first(where: { !used.contains($0.id) }) {
+                choices.bowls[index] = next
+                used.insert(next.id)
+            }
+            picked.append(choices.bowls[index])
+        }
+        // Nor, while there's another, a breakfast or snack the week has had: one kept only for the
+        // days already eaten would otherwise come back on a second shuffle.
+        let templates = Set(plan.recipes.compactMap(\.templateID))
+        if let breakfast = choices.breakfast {
+            choices.breakfast = nextTemplate(after: breakfast, slot: .breakfast, preferences: plan.preferences, avoiding: templates)
+        }
+        if let snack = choices.snack {
+            // Whichever other snack fills the new week best, as in a new plan: the next one in line
+            // can leave the day well short of its protein.
+            let next = nextTemplate(after: snack, slot: .snack, preferences: plan.preferences, avoiding: templates)
+            let fresh = next.map { !templates.contains($0.id) } ?? false
+            choices.snack = next
+            choices.snackPinned = false
+            choices.replacedSnacks = fresh ? templates : [snack.id]
         }
         let next = build(choices, id: plan.id, start: plan.start, targets: plan.targets, preferences: plan.preferences, now: now)
         return keepingEaten(plan, in: next, today: today)
@@ -233,6 +281,14 @@ public struct MealPlanner: Sendable {
         return ranked[(index + 1) % ranked.count]
     }
 
+    /// The next in line after `current` that isn't one of `avoiding`, else just the next in line.
+    func nextTemplate(after current: Template, slot: MealSlot, preferences: PlanPreferences, avoiding: Set<String>) -> Template? {
+        let ranked = rankedTemplates(slot, preferences, variation: 0)
+        let start = ranked.firstIndex(of: current).map { $0 + 1 } ?? 0
+        let inLine = ranked.indices.map { ranked[(start + $0) % ranked.count] }
+        return inLine.first { !avoiding.contains($0.id) } ?? nextTemplate(after: current, slot: slot, preferences: preferences)
+    }
+
     /// A stable 0–1 number for a key and a variation, so "another plan" is repeatable.
     func jitter(_ key: String, _ variation: Int) -> Double {
         var hash: UInt64 = 0xcbf29ce484222325
@@ -299,7 +355,9 @@ public struct MealPlanner: Sendable {
             // fermented when the day has nothing else that is.
             let fermented = recipes.contains { $0.items.contains { $0.fermented == true } }
             var candidates = [template]
-            if !choices.snackPinned { candidates += rankedTemplates(.snack, preferences, variation: 0).filter { $0 != template } }
+            if !choices.snackPinned {
+                candidates += rankedTemplates(.snack, preferences, variation: 0).filter { $0 != template && !choices.replacedSnacks.contains($0.id) }
+            }
             let sized = candidates.enumerated().map { i, t -> (PlannedRecipe, Double) in
                 let r = make(t, target: target, preferences: preferences, servings: days.count)
                 let n = r.nutrients

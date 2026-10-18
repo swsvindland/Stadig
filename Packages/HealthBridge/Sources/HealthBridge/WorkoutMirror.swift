@@ -32,10 +32,19 @@ public final class WorkoutMirror: NSObject {
         try? await store.startWatchApp(toHandle: configuration)
     }
 
-    /// Sends data to the Watch.
-    public func send(_ data: Data) async {
-        guard let session else { return }
-        try? await session.sendToRemoteWorkoutSession(data: data)
+    /// Sends data to the Watch. Returns whether it got there: false with no mirrored workout or when
+    /// HealthKit couldn't deliver it (the Watch out of reach), so a caller that hands the Watch a job,
+    /// like saving the workout, can do the job itself instead.
+    @discardableResult
+    public func send(_ data: Data) async -> Bool {
+        guard let session else { return false }
+        do {
+            try await session.sendToRemoteWorkoutSession(data: data)
+            return true
+        } catch {
+            healthLog.error("Couldn't send to the Watch: \(String(describing: error), privacy: .public)")
+            return false
+        }
     }
 
     private func attach(_ session: HKWorkoutSession) {

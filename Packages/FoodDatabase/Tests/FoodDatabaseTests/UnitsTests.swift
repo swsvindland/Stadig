@@ -166,6 +166,29 @@ struct UnitsTests {
         #expect(FoodUnits.step(for: try unit(bread, "portion:0")) == 0.5)
     }
 
+    @Test("pounds convert to tenths, not whole pounds")
+    func pounds() throws {
+        let bread = Self.bread
+        func convert(_ count: Double, _ from: String, _ to: String, in food: Food = Self.bread) throws -> Double {
+            FoodUnits.convert(count, from: try unit(food, from), to: try unit(food, to))
+        }
+        // 200 g is 0.44 lb, not 1 lb (more than twice as much).
+        #expect(try convert(200, "g", "lb") == 0.4)
+        #expect(try convert(0.4, "lb", "g") == 181)
+        #expect(try convert(1.5, "lb", "g") == 680)
+        #expect(try convert(8, "oz", "lb") == 0.5)
+        #expect(try convert(0.5, "lb", "oz") == 8)
+        #expect(try convert(10, "g", "lb") == 0.1, "a crumb is still some")
+        // Half a one-pound pack is half a pound, and so is the logger's "½×" of 1 lb.
+        #expect(try convert(0.5, "lb", "lb") == 0.5)
+        #expect(try convert(1.5, "lb", "lb") == 1.5)
+        let pack = Self.with([("1 package (16 oz)", 453.6)])
+        #expect(try unit(pack, "portion:0").label == "package")
+        #expect(try convert(0.5, "portion:0", "lb", in: pack) == 0.5)
+        #expect(try convert(0.5, "lb", "portion:0", in: pack) == 0.5)
+        #expect(FoodUnits.format(try convert(200, "g", "lb"), try unit(bread, "lb")) == "0.4")
+    }
+
     // "1 bar (40 g)" logged, then a catalog update rewords, reorders or drops the food's portions.
     @Test("a logged entry reopens in its unit only while that unit still holds the amount logged")
     func reopened() throws {

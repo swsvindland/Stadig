@@ -669,3 +669,44 @@ extension ReadingTests {
         #expect(ReadingPlan.series(state, last: 50).map(\.score) == full.map(\.score))
     }
 }
+
+extension ReadingTests {
+    @Test("a bookmark stays within its book: made here, synced from another device, or after the page count is edited down")
+    func bookmarkBounds() throws {
+        let made = Book(title: "Short", author: "A", tier: 3, pages: 120, genres: [.fantasy], status: .reading, page: 400)
+        #expect(made.page == 120 && made.progress == 1)
+        #expect(Book(title: "Short", author: "A", tier: 3, pages: 120, genres: [], status: .reading, page: -5).page == 0)
+
+        // Another device's record, with a bookmark past the end of this edition.
+        var object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(made)) as? [String: Any])
+        object["pages"] = 250
+        object["page"] = 300
+        let synced = try JSONDecoder().decode(Book.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(synced.pages == 250 && synced.page == 250 && synced.progress == 1)
+        object["pages"] = 0
+        object["page"] = -3
+        object["tier"] = 14
+        let odd = try JSONDecoder().decode(Book.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(odd.pages == 1 && odd.page == 0 && odd.tier == 10 && odd.progress == 0)
+
+        // A first-version record, before format, ISBN, language and tier confidence, reads as it is.
+        for key in ["ladderID", "format", "isbn", "language", "tierConfidence", "feel", "started", "finished"] { object[key] = nil }
+        object["pages"] = 320
+        object["page"] = 40
+        let old = try JSONDecoder().decode(Book.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(old.page == 40 && old.format == nil && old.language == nil && old.title == "Short")
+
+        // Every field round-trips through the hand-written decoder.
+        let full = Book(ladderID: "x", title: "Full", author: "B", tier: 6, pages: 300, genres: [.sciFi, .fantasy], status: .finished,
+                        started: Fixtures.monday, finished: Fixtures.monday.adding(days: 9), page: 300, feel: .easy, format: .ebook, isbn: "9780141439518",
+                        language: .spanish, tierConfidence: 0.7, updatedAt: Fixtures.monday.date())
+        #expect(try JSONDecoder().decode(Book.self, from: JSONEncoder().encode(full)) == full)
+
+        // An edition with fewer pages brings the bookmark with it.
+        var edited = made
+        edited.pages = 80
+        #expect(edited.normalized().page == 80 && edited.normalized().pages == 80)
+        edited.pages = 0
+        #expect(edited.normalized().pages == 1 && edited.normalized().page == 1)
+    }
+}

@@ -237,7 +237,17 @@ public struct SharedProfile: Hashable, Codable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    public func age(on day: Day = .today) -> Int? { birthYear.map { day.year - $0 } }
+    /// Birth years that make someone 10 to 100 on the day. Anything else is a typo or bad stored
+    /// data (0, 19990, next year), and an age made from it would set heart-rate zones, the step
+    /// floor and the energy formula from nonsense.
+    public static func plausibleBirthYears(on day: Day) -> ClosedRange<Int> { (day.year - 100)...(day.year - 10) }
+
+    /// Nil without a birth year, or with one outside `plausibleBirthYears`, so every use falls back
+    /// to its default age.
+    public func age(on day: Day = .today) -> Int? {
+        guard let birthYear, Self.plausibleBirthYears(on: day).contains(birthYear) else { return nil }
+        return day.year - birthYear
+    }
 
     /// Declared outside training on a day.
     public func declared(on day: Day) -> [RecurringActivity] { recurring.filter { $0.weekdays.contains(day.weekday) } }

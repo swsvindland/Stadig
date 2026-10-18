@@ -21,6 +21,53 @@ public struct HealthWeight: Hashable, Sendable {
     public var date: Date
     public var kg: Double
     public var sourceName: String
+
+    public init(id: UUID, date: Date, kg: Double, sourceName: String) {
+        self.id = id
+        self.date = date
+        self.kg = kg
+        self.sourceName = sourceName
+    }
+}
+
+/// What changed among Health's body mass samples since an anchor (`HealthBridge.weighInChanges`).
+public struct HealthWeightChanges: Hashable, Sendable {
+    /// Samples added since the anchor, from the date asked for on, leaving out this app's own;
+    /// oldest first.
+    public var added: [HealthWeight]
+    /// Samples Health says were deleted since the anchor, whoever wrote them (Health keeps no source
+    /// for a deletion). Only ever what Health reported: a read that fails gives no changes at all,
+    /// and one that finds nothing deletes nothing. Match them to weigh-ins read from Health by sample
+    /// id; a weigh-in this app wrote has an id of its own, never its sample's.
+    public var deletedIDs: Set<UUID>
+    /// Where the next read picks up. It counts in this device's Health database, so keep it on the
+    /// device (not in a synced record) and pass it back next time.
+    public var anchor: Data
+
+    public init(added: [HealthWeight], deletedIDs: Set<UUID>, anchor: Data) {
+        self.added = added
+        self.deletedIDs = deletedIDs
+        self.anchor = anchor
+    }
+
+    /// An added sample as the query found it, before the filters.
+    struct Reading {
+        var weight: HealthWeight
+        var start: Date
+        var bundleIdentifier: String
+    }
+
+    /// Additions kept to `since` on (by start, as `weighIns` reads them) and to other sources, less
+    /// any also reported deleted, oldest first.
+    init(readings: [Reading], deleted: [UUID], since: Date, ownBundlePrefixes: [String], anchor: Data) {
+        let deletedIDs = Set(deleted)
+        self.init(
+            added: readings
+                .filter { $0.start >= since && !$0.bundleIdentifier.hasAnyPrefix(ownBundlePrefixes) && !deletedIDs.contains($0.weight.id) }
+                .map(\.weight)
+                .sorted { $0.date < $1.date },
+            deletedIDs: deletedIDs, anchor: anchor)
+    }
 }
 
 /// One logged food as Health stores it: a food correlation of dietary samples.
@@ -63,6 +110,59 @@ extension HealthBridge {
             if source.bundleIdentifier.hasAnyPrefix(ownBundlePrefixes) { return nil }
             return HealthWeight(id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
                                 sourceName: source.name)
+        }
+    }
+
+    /// Body mass samples added and deleted since `anchor`, and the anchor to pass next time. The
+    /// first read (a nil anchor, or one that can't be read) finds every sample and no deletions.
+    /// Additions keep to `since` on and leave out this app's own, as in `weighIns`. Nil when Health
+    /// is unavailable or the read fails: keep the old anchor and change nothing.
+    ///
+    /// The anchor moves past everything it has seen, so a sample left out (before `since`, or hidden
+    /// because reading wasn't allowed, which Health doesn't tell apart from no data) never comes back
+    /// as added; `weighIns` re-reads the whole window when that matters.
+    public func weighInChanges(after anchor: Data?, since: Date, ownBundlePrefixes: [String]) async -> HealthWeightChanges? {
+        guard let store else { return nil }
+        // No date predicate: Health applies the predicate to deletions too, and a deleted sample has
+        // no date left to match, so its deletion would never be reported.
+        let descriptor = HKAnchoredObjectQueryDescriptor(predicates: [.quantitySample(type: HealthTypes.bodyMass)],
+                                                         anchor: anchor.flatMap(Self.queryAnchor))
+        let result: HKAnchoredObjectQueryDescriptor<HKQuantitySample>.Result
+        do {
+            result = try await descriptor.result(for: store)
+        } catch {
+            healthLog.error("Couldn't read body mass changes: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+        guard let next = Self.anchorData(result.newAnchor) else { return nil }
+        let readings = result.addedSamples.map { sample in
+            let source = sample.sourceRevision.source
+            return HealthWeightChanges.Reading(
+                weight: HealthWeight(id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
+                                     sourceName: source.name),
+                start: sample.startDate, bundleIdentifier: source.bundleIdentifier)
+        }
+        return HealthWeightChanges(readings: readings, deleted: result.deletedObjects.map(\.uuid), since: since,
+                                   ownBundlePrefixes: ownBundlePrefixes, anchor: next)
+    }
+
+    /// An anchor as `weighInChanges` hands it out.
+    static func anchorData(_ anchor: HKQueryAnchor) -> Data? {
+        do {
+            return try NSKeyedArchiver.archivedData(withRootObject: anchor, requiringSecureCoding: true)
+        } catch {
+            healthLog.error("Couldn't keep a Health anchor: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// The anchor in `data`; nil, so the read starts over, when it isn't one.
+    static func queryAnchor(_ data: Data) -> HKQueryAnchor? {
+        do {
+            return try NSKeyedUnarchiver.unarchivedObject(ofClass: HKQueryAnchor.self, from: data)
+        } catch {
+            healthLog.error("Couldn't read a Health anchor, so reading from the start: \(String(describing: error), privacy: .public)")
+            return nil
         }
     }
 

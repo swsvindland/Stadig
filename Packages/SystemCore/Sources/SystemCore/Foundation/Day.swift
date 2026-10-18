@@ -71,6 +71,38 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
         date(calendar: Day.gregorian(in: timeZone))
     }
 
+    /// This day at a time on the clock, in the time zone. By the clock, not midnight plus so many
+    /// seconds, which is an hour off on the days the clocks change and can land on the next day. A
+    /// day is a Gregorian date whatever calendar the phone shows, so the time is set in a Gregorian
+    /// calendar. A time the clocks skip comes out just after the change: 02:30 on the night they go
+    /// forward is 03:30.
+    public func at(hour: Int, minute: Int, second: Int = 0, timeZone: TimeZone = .current) -> Date {
+        let c = components
+        let time = DateComponents(year: c.year, month: c.month, day: c.day, hour: hour, minute: minute, second: second)
+        return Day.gregorian(in: timeZone).date(from: time) ?? date(timeZone: timeZone).addingTimeInterval(Double(hour * 3600 + minute * 60 + second))
+    }
+
+    /// `at(hour:minute:)` in the calendar's time zone. As with `init(_:calendar:)`, only the time
+    /// zone is used.
+    public func at(hour: Int, minute: Int, second: Int = 0, calendar: Calendar) -> Date {
+        at(hour: hour, minute: minute, second: second, timeZone: calendar.timeZone)
+    }
+
+    /// `at(hour:minute:)` for minutes after midnight, the way dose and reminder times are kept.
+    public func at(minutes: Int, timeZone: TimeZone = .current) -> Date {
+        at(hour: minutes / 60, minute: minutes % 60, timeZone: timeZone)
+    }
+
+    public func at(minutes: Int, calendar: Calendar) -> Date { at(minutes: minutes, timeZone: calendar.timeZone) }
+
+    /// This day at the time of day `time` shows on the clock in the time zone.
+    public func at(sameTimeAs time: Date, timeZone: TimeZone = .current) -> Date {
+        let c = Day.gregorian(in: timeZone).dateComponents([.hour, .minute, .second], from: time)
+        return at(hour: c.hour ?? 12, minute: c.minute ?? 0, second: c.second ?? 0, timeZone: timeZone)
+    }
+
+    public func at(sameTimeAs time: Date, calendar: Calendar) -> Date { at(sameTimeAs: time, timeZone: calendar.timeZone) }
+
     private static func gregorian(in timeZone: TimeZone) -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone

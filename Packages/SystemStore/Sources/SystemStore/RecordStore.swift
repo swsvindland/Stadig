@@ -32,8 +32,10 @@ public final class RecordStore {
     /// changes (and another process's) from the echo of a save it already accounted for.
     private let author: String
     @ObservationIgnored private var context: ModelContext?
-    /// Decoded `all` results by record kind. A local write clears only its own kind, so saving a
-    /// setting doesn't re-decode every photo; an erase or a remote change clears them all.
+    /// Decoded `all` results by record kind, each a `DecodedKind`. A local save or delete patches its
+    /// own kind in place, so logging a food decodes that food and not every other, and leaves the
+    /// other kinds alone. An erase, a remote change, a restore, a big batch or a save that failed
+    /// drops them instead, to be read again.
     @ObservationIgnored private var cache: [String: Any] = [:]
     /// The `revision` at which each kind last changed, and at which every kind did (an erase or a
     /// remote change).
@@ -158,8 +160,14 @@ public final class RecordStore {
     /// written by a newer app version (a schema version this type doesn't know) are left out.
     public func all<T: StoredRecord>(_ type: T.Type) -> [T] {
         _ = revision
-        if let cached = cache[T.kind] as? [T] { return cached }
+        if let cached = cache[T.kind] as? DecodedKind<T> { return cached.records }
+        let decoded = decodeAll(T.self)
+        cache[T.kind] = decoded
+        return decoded.records
+    }
 
+    /// `all`, read from the rows.
+    private func decodeAll<T: StoredRecord>(_ type: T.Type) -> DecodedKind<T> {
         var newest: [UUID: RecordVersion] = [:]
         for row in fetchRows(kind: T.kind) {
             let version = RecordVersion(row)
@@ -167,12 +175,11 @@ public final class RecordStore {
             newest[row.uuid] = version
         }
         let decoder = SystemJSON.decoder()
-        let records = newest.values
-            .filter { !$0.deleted }
-            .sorted { ($0.updatedAt, $0.uuid.uuidString) > ($1.updatedAt, $1.uuid.uuidString) }
-            .compactMap { decode(T.self, $0, decoder) }
-        cache[T.kind] = records
-        return records
+        var decoded = DecodedKind<T>()
+        for version in newest.values.filter({ !$0.deleted }).sorted(by: { RecordOrder($0).comesBefore(RecordOrder($1)) }) {
+            if let record = decode(T.self, version, decoder) { decoded.append(record, at: RecordOrder(version)) }
+        }
+        return decoded
     }
 
     /// One record, or nil if it doesn't exist, was deleted, or can't be read by this app version.
@@ -197,6 +204,8 @@ public final class RecordStore {
         let bulk = records.count > 32
         var rowsByID: [UUID: [RecordRow]] = bulk ? Dictionary(grouping: fetchRows(kind: T.kind), by: \.uuid) : [:]
         var changes = 0
+        // What each record's rows now hold: the last write of it in the batch.
+        var written: [UUID: RecordVersion] = [:]
         for record in records {
             var stamped = record
             stamped.updatedAt = record.updatedAt.roundedToMilliseconds
@@ -227,9 +236,14 @@ public final class RecordStore {
             }
             let result = write(incoming, into: rows, context: context)
             rowsByID[record.id] = result.rows
-            if result.changed { changes += 1 }
+            if result.changed {
+                changes += 1
+                written[record.id] = incoming
+            }
         }
-        commit(changes, kind: T.kind, context)
+        // A big batch (an import, sample data) is read again in one go rather than patched in record
+        // by record, each a search and a shift of the whole list.
+        commit(changes, kind: T.kind, context, patch: bulk ? nil : { self.patchCache(T.self, with: Array(written.values)) })
     }
 
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
@@ -242,7 +256,9 @@ public final class RecordStore {
         let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
         let tombstone = RecordVersion(kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
                                       payload: Data(), deleted: true)
-        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context)
+        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context) {
+            self.patchCache(T.self, with: [tombstone])
+        }
     }
 
     /// Removes every row of every kind. With iCloud on, that erases the data on every device.
@@ -430,23 +446,46 @@ public final class RecordStore {
         return (rows, changed)
     }
 
-    private func commit(_ changes: Int, kind: String, _ context: ModelContext) {
+    /// Saves a write to one kind and records the change. `patch` brings the kind's decoded cache up
+    /// to date once the save has gone through; without one, or when the save fails and is rolled
+    /// back, the cache is dropped and read again.
+    private func commit(_ changes: Int, kind: String, _ context: ModelContext, patch: (() -> Void)? = nil) {
         guard changes > 0 else { return }
+        var patched = false
         do {
             try context.save()
+            if let patch {
+                patch()
+                patched = true
+            }
         } catch {
             storeLog.error("\(self.name, privacy: .public): save failed: \(String(describing: error), privacy: .public)")
             context.rollback()
         }
-        changed(kinds: [kind])
+        changed(kinds: [kind], cachePatched: patched)
     }
 
-    /// Records that `kinds` changed (nil: every kind), dropping their decoded caches.
-    private func changed(kinds: Set<String>?) {
+    /// Patches a kind's decoded `all`, if it has been read, with versions just saved: each takes its
+    /// place in the order (a deletion or a payload that won't decode just leaves). A saved record is
+    /// decoded from the payload it was stored as, so the cache holds what a fresh read would, dates
+    /// to the millisecond and all.
+    private func patchCache<T: StoredRecord>(_ type: T.Type, with versions: [RecordVersion]) {
+        guard var decoded = cache.removeValue(forKey: T.kind) as? DecodedKind<T> else { return }
+        let decoder = SystemJSON.decoder()
+        for version in versions {
+            decoded.remove(version.uuid)
+            if let record = decode(T.self, version, decoder) { decoded.insert(record, at: RecordOrder(version)) }
+        }
+        cache[T.kind] = decoded
+    }
+
+    /// Records that `kinds` changed (nil: every kind), dropping their decoded caches unless the
+    /// caller has just patched them.
+    private func changed(kinds: Set<String>?, cachePatched: Bool = false) {
         revision += 1
         if let kinds {
             for kind in kinds {
-                cache[kind] = nil
+                if !cachePatched { cache[kind] = nil }
                 kindRevisions[kind] = revision
             }
         } else {
@@ -537,12 +576,62 @@ public final class RecordStore {
 
     func rows(kind: String) -> [RecordRow] { fetchRows(kind: kind) }
 
+    /// `all` read from the rows, past the cache, to check a patched cache against.
+    func uncachedAll<T: StoredRecord>(_ type: T.Type) -> [T] { decodeAll(T.self).records }
+
     var storeFileURL: URL? { storeURL }
 }
 
 struct RowKey: Hashable {
     var kind: String
     var uuid: UUID
+}
+
+/// Where a record sits in `all`: the newest `updatedAt` (its row's) first, ties broken by the id's
+/// string, descending, so every read lists the same records in the same order.
+struct RecordOrder {
+    var updatedAt: Date
+    var uuid: UUID
+
+    init(_ version: RecordVersion) {
+        updatedAt = version.updatedAt
+        uuid = version.uuid
+    }
+
+    func comesBefore(_ other: RecordOrder) -> Bool {
+        if updatedAt != other.updatedAt { return updatedAt > other.updatedAt }
+        return uuid.uuidString > other.uuid.uuidString
+    }
+}
+
+/// One kind's `all`, with where each record sits, so a local write can patch it in place.
+struct DecodedKind<T: StoredRecord> {
+    private(set) var records: [T] = []
+    /// Parallel to `records`.
+    private var order: [RecordOrder] = []
+
+    /// Adds a record after the others; `all` builds the list in order.
+    mutating func append(_ record: T, at position: RecordOrder) {
+        records.append(record)
+        order.append(position)
+    }
+
+    mutating func remove(_ id: UUID) {
+        guard let index = order.firstIndex(where: { $0.uuid == id }) else { return }
+        records.remove(at: index)
+        order.remove(at: index)
+    }
+
+    /// Inserts a record at its place in the order. It mustn't be in the list already.
+    mutating func insert(_ record: T, at position: RecordOrder) {
+        var low = 0, high = order.count
+        while low < high {
+            let middle = (low + high) / 2
+            if order[middle].comesBefore(position) { low = middle + 1 } else { high = middle }
+        }
+        records.insert(record, at: low)
+        order.insert(position, at: low)
+    }
 }
 
 /// A `RecordStore.observeChanges` registration; the store holds it weakly, so releasing it ends the calls.

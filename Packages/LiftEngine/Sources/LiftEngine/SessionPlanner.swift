@@ -49,6 +49,31 @@ public struct PlannedItem: Codable, Hashable, Sendable, Identifiable {
     public var workSets: [SetPrescription] { sets.filter { $0.kind != .warmup } }
 }
 
+// Saved inside a session in progress and the Watch's copy of today, and read back after an app
+// update: anything added since decodes as absent (see LiveSession). A field added to one of these
+// needs a line in its decoder.
+extension PlannedItem {
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        slotID = try c.decodeIfPresent(UUID.self, forKey: .slotID)
+        block = try c.decode(SessionBlockKind.self, forKey: .block)
+        exerciseID = try c.decode(String.self, forKey: .exerciseID)
+        role = try c.decode(SlotRole.self, forKey: .role)
+        sets = try c.decodeIfPresent([SetPrescription].self, forKey: .sets) ?? []
+        repRange = try c.decode(RepRange.self, forKey: .repRange)
+        rest = try c.decode(RestPlan.self, forKey: .rest)
+        seconds = try c.decodeIfPresent(Int.self, forKey: .seconds)
+        conditioning = try c.decodeIfPresent(ConditioningPlan.self, forKey: .conditioning)
+        supersetGroup = try c.decodeIfPresent(Int.self, forKey: .supersetGroup)
+        restFiller = try c.decodeIfPresent(String.self, forKey: .restFiller)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        mode = try c.decodeIfPresent(ProgressionMode.self, forKey: .mode)
+        substitutedFor = try c.decodeIfPresent(String.self, forKey: .substitutedFor)
+    }
+}
+
 /// Today's session, ready to start.
 public struct SessionPlan: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
@@ -91,6 +116,25 @@ public struct SessionPlan: Codable, Hashable, Sendable, Identifiable {
             return item.sets.map { $0.kind == .warmup ? 60 : work + item.rest.target }.reduce(0, +) + (item.isStrength ? 45 : 0)
         }.reduce(0, +)
         return max(5, Int((Double(seconds) / 60).rounded()))
+    }
+}
+
+extension SessionPlan {
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        day = try c.decode(Day.self, forKey: .day)
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        mesocycleID = try c.decodeIfPresent(UUID.self, forKey: .mesocycleID)
+        dayID = try c.decodeIfPresent(UUID.self, forKey: .dayID)
+        week = try c.decodeIfPresent(Int.self, forKey: .week)
+        deload = try c.decodeIfPresent(Bool.self, forKey: .deload) ?? false
+        checkIn = try c.decodeIfPresent(Bool.self, forKey: .checkIn) ?? false
+        assessment = try c.decodeIfPresent(Bool.self, forKey: .assessment) ?? false
+        minimumEffectiveDose = try c.decodeIfPresent(Bool.self, forKey: .minimumEffectiveDose) ?? false
+        items = try c.decodeIfPresent([PlannedItem].self, forKey: .items) ?? []
+        notes = try c.decodeIfPresent([String].self, forKey: .notes) ?? []
+        quests = try c.decodeIfPresent([Quest].self, forKey: .quests) ?? []
     }
 }
 

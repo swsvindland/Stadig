@@ -230,8 +230,46 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
                                            version: 1)])
         await bridge.deleteFoods(ids: [UUID()])
         #expect(await bridge.weighIns(since: past, ownBundlePrefixes: []).isEmpty)
+        #expect(await bridge.weighInChanges(after: nil, since: past, ownBundlePrefixes: []) == nil, "no changes, not \"everything deleted\"")
         #expect(bridge.observeChanges {} == nil)
     }
+}
+
+@Suite struct WeighInChangesTests {
+    func reading(_ id: UUID, at date: Date, kg: Double = 80, bundle: String = "com.withings.wiScaleNG") -> HealthWeightChanges.Reading {
+        HealthWeightChanges.Reading(weight: HealthWeight(id: id, date: date, kg: kg, sourceName: "Scale"), start: date, bundleIdentifier: bundle)
+    }
+
+    @Test func additionsKeepToOtherSourcesFromTheStartDate() {
+        let scale = UUID(), phone = UUID(), early = UUID(), own = UUID(), watch = UUID(), gone = UUID(), deletedElsewhere = UUID()
+        let since = date(2026, 10, 1, 0)
+        let changes = HealthWeightChanges(
+            readings: [
+                reading(scale, at: date(2026, 10, 12, 7)),
+                reading(early, at: date(2026, 9, 30, 23, 59)),
+                reading(own, at: date(2026, 10, 10, 7), bundle: "dev.svindland.stadig.macro"),
+                reading(watch, at: date(2026, 10, 3, 7), kg: 81, bundle: "dev.svindland.stadig.macro.watchkitapp.other"),
+                reading(gone, at: date(2026, 10, 4, 7)),
+                reading(phone, at: date(2026, 10, 2, 7), bundle: "com.apple.Health"),
+            ],
+            deleted: [gone, deletedElsewhere], since: since, ownBundlePrefixes: ["dev.svindland.stadig.macro"], anchor: Data([1]))
+        #expect(changes.added.map(\.id) == [phone, scale], "oldest first, this app's own and older ones left out, deletions winning")
+        #expect(changes.deletedIDs == [gone, deletedElsewhere], "deletions from any source, as Health reports them")
+        #expect(changes.anchor == Data([1]))
+        // Nothing found is nothing changed.
+        let none = HealthWeightChanges(readings: [], deleted: [], since: since, ownBundlePrefixes: [], anchor: Data([2]))
+        #expect(none.added.isEmpty && none.deletedIDs.isEmpty)
+    }
+
+    #if canImport(HealthKit)
+    @Test func anchorsRoundTripAndAnUnreadableOneStartsOver() throws {
+        let data = try #require(HealthBridge.anchorData(HKQueryAnchor(fromValue: 42)))
+        let read = try #require(HealthBridge.queryAnchor(data))
+        #expect(HealthBridge.anchorData(read) == data)
+        #expect(HealthBridge.queryAnchor(Data("not an anchor".utf8)) == nil)
+        #expect(HealthBridge.queryAnchor(Data()) == nil)
+    }
+    #endif
 }
 
 @Suite struct WriteQueueTests {

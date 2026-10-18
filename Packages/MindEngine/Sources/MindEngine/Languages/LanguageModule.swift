@@ -84,9 +84,7 @@ enum LanguageModule: SubjectModule {
     static func learnPart(_ domain: Domain, minutes: Int, session: Int, state: StudyState, catalogs: Catalogs,
                           notes: inout [String]) -> PlanPart {
         guard let language = domain.language else { return PlanPart(kind: .learn, domain: domain, minutes: minutes, title: "", detail: "") }
-        let retention = LanguagePlan.retention(state.sessions, today: state.today, language)
-        let dueWeek = state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= state.today.adding(days: 6) } ?? false) }.count
-        let pace = LanguagePlan.newWords(retention: retention, dueThisWeek: dueWeek, minutes: session, reviewWeek: false)
+        let pace = LanguagePlan.pace(domain, state: state, reviewWeek: false, minutes: session)
         if let reason = pace.reason { notes.append("\(domain.label): \(reason)") }
         let deck = catalogs.deck(language)
         let items = deck.map { LanguagePlan.next(count: pace.count, cards: Set(state.cards.keys), deck: $0, readsKana: state.settings.readsKana,

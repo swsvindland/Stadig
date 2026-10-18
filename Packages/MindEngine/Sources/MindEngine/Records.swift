@@ -444,13 +444,40 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
         self.status = status
         self.started = started
         self.finished = finished
-        self.page = page
+        self.page = clamp(page, 0, self.pages)
         self.feel = feel
         self.format = format
         self.isbn = isbn
         self.language = language
         self.tierConfidence = tierConfidence
         self.updatedAt = updatedAt
+    }
+
+    /// A record from another device, or one an older build saved, is held to the same bounds as a
+    /// new one: a bookmark past the last page (an edition with fewer pages synced in) reads as the end.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(id: try c.decode(UUID.self, forKey: .id), ladderID: try c.decodeIfPresent(String.self, forKey: .ladderID),
+                  title: try c.decode(String.self, forKey: .title), author: try c.decode(String.self, forKey: .author),
+                  tier: try c.decode(Int.self, forKey: .tier), pages: try c.decode(Int.self, forKey: .pages),
+                  genres: try c.decode([Genre].self, forKey: .genres), status: try c.decode(BookStatus.self, forKey: .status),
+                  started: try c.decodeIfPresent(Day.self, forKey: .started), finished: try c.decodeIfPresent(Day.self, forKey: .finished),
+                  page: try c.decode(Int.self, forKey: .page), feel: try c.decodeIfPresent(BookFeel.self, forKey: .feel),
+                  format: try c.decodeIfPresent(BookFormat.self, forKey: .format), isbn: try c.decodeIfPresent(String.self, forKey: .isbn),
+                  language: try c.decodeIfPresent(Language.self, forKey: .language),
+                  tierConfidence: try c.decodeIfPresent(Double.self, forKey: .tierConfidence),
+                  updatedAt: try c.decode(Date.self, forKey: .updatedAt))
+    }
+
+    /// The book with its bounds restored after its fields were set directly: at least one page, a
+    /// tier from 1 to 10 and the bookmark within the book. Lowering `pages` below the bookmark
+    /// brings the bookmark with it.
+    public func normalized() -> Book {
+        var book = self
+        book.tier = clamp(tier, 1, 10)
+        book.pages = max(1, pages)
+        book.page = clamp(page, 0, book.pages)
+        return book
     }
 
     public var progress: Double { min(1, Double(page) / Double(pages)) }

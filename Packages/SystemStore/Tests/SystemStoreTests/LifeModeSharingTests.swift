@@ -9,7 +9,7 @@ import SystemCore
 struct LifeModeSharingTests {
     func container() -> SharedContainer {
         let directory = FileManager.default.temporaryDirectory.appending(path: "life-modes-\(UUID().uuidString)", directoryHint: .isDirectory)
-        return SharedContainer(groupID: "group.dev.svindland.stadig.tests.\(UUID().uuidString)", fallbackDirectory: directory)
+        return SharedContainer(directory: directory)
     }
 
     @Test func aDeleteTravelsAsATombstone() throws {

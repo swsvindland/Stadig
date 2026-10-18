@@ -45,6 +45,24 @@ struct SharedContainerTests {
         #expect(shared.directory == directory)
     }
 
+    @Test func anExplicitDirectoryIsUsedAsGiven() throws {
+        // Never the App Group, wherever this runs: a test or an in-memory launch never shares with the apps.
+        let directory = temporaryDirectory().appending(path: "not yet made", directoryHint: .isDirectory)
+        let shared = SharedContainer(directory: directory)
+        #expect(!shared.isAppGroup)
+        #expect(shared.directory == directory)
+        #expect(shared.allFiles().isEmpty)
+        #expect(shared.read(.profile) == nil)
+
+        let profile = SharedProfile(createdBy: .liftTrack, createdAt: t0, updatedAt: t0)
+        try shared.write(profile, to: .profile, by: .liftTrack)
+        #expect(FileManager.default.fileExists(atPath: directory.appending(path: "core/profile.json").path(percentEncoded: false)))
+        #expect(SharedContainer(directory: directory).read(.profile) == profile)
+        #expect(Set(shared.allFiles().keys) == ["core/profile.json"])
+        try shared.remove(.profile)
+        #expect(shared.read(.profile) == nil)
+    }
+
     @Test func writeReadRoundTripInAnEnvelope() throws {
         let shared = temporarySharedContainer()
         let profile = SharedProfile(goals: [.stronger], createdBy: .liftTrack, createdAt: t0, updatedAt: t0)

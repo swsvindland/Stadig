@@ -91,6 +91,45 @@ struct LifeModeSharingTests {
         #expect(LifeModePeriod(kind: .vacation, start: start, end: start, createdBy: .liftTrack).isValid)
     }
 
+    @Test func editorsSaveTheEndTheyShow() {
+        // A trip or a crunch with no end yet gets a week, open-ended or not.
+        let crunch = LifeModePeriod(kind: .crunch(CrunchDials()), start: start, createdBy: .knowledge)
+        #expect(crunch.editorEnd == start.adding(days: 6))
+        for openEnded in [false, true] {
+            let saved = crunch.edited(openEnded: openEnded)
+            #expect(saved.end == start.adding(days: 6) && saved.isValid, "open-ended: \(openEnded)")
+        }
+        // An injury or illness is open-ended only when asked; otherwise it keeps the end shown.
+        let illness = LifeModePeriod(kind: .illness(.aboveNeck), start: start, createdBy: .macroTrack)
+        #expect(illness.edited(openEnded: true).end == nil && illness.edited(openEnded: true).isValid)
+        #expect(illness.edited(openEnded: false).end == start.adding(days: 6))
+        var dated = illness
+        dated.end = start.adding(days: 2)
+        #expect(dated.edited(openEnded: false).end == start.adding(days: 2))
+        #expect(dated.edited(openEnded: true).end == nil)
+        // An end before the start is saved as the start.
+        dated.end = start.adding(days: -3)
+        #expect(dated.editorEnd == start && dated.edited(openEnded: false).end == start)
+    }
+
+    @Test func editorsKeepTheEndOnOrAfterTheStart() {
+        var trip = vacation(updatedAt: t0)
+        // Moving the start past the end takes the end with it; moving it earlier leaves the end.
+        trip.moveStart(to: start.adding(days: 10))
+        #expect(trip.start == start.adding(days: 10) && trip.end == start.adding(days: 10) && trip.isValid)
+        trip.moveStart(to: start.adding(days: 8))
+        #expect(trip.end == start.adding(days: 10))
+        // The end can't go before the start.
+        trip.moveEnd(to: start)
+        #expect(trip.end == start.adding(days: 8))
+        trip.moveEnd(to: start.adding(days: 12))
+        #expect(trip.end == start.adding(days: 12))
+        // An open-ended injury stays open-ended when its start moves.
+        var injury = LifeModePeriod(kind: .injury(Injury(parts: [InjuredPart(.knee)], severity: .mild)), start: start, createdBy: .liftTrack)
+        injury.moveStart(to: start.adding(days: 3))
+        #expect(injury.start == start.adding(days: 3) && injury.end == nil)
+    }
+
     @Test func periodsWrittenBeforeDeletesWereSharedStillDecode() throws {
         // A period as every app wrote it at schema 1, with no deletedAt.
         let json = #"""

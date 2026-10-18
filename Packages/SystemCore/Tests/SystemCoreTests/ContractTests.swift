@@ -95,6 +95,22 @@ struct ContractTests {
         #expect(try roundTrips(profile))
     }
 
+    @Test func aBirthYearThatCantBeRightGivesNoAge() {
+        let day = Day(year: 2026, month: 10, day: 18)
+        #expect(SharedProfile.plausibleBirthYears(on: day) == 1926...2016)
+        var profile = SharedProfile(createdBy: .liftTrack)
+        #expect(profile.age(on: day) == nil)
+        for (year, age) in [(1926, 100), (1990, 36), (2016, 10)] {
+            profile.birthYear = year
+            #expect(profile.age(on: day) == age, "\(year)")
+        }
+        // A typo, a cleared field stored as 0, a future year: the apps' default ages apply instead.
+        for year in [0, 1925, 2017, 2027, 19_990, -5] {
+            profile.birthYear = year
+            #expect(profile.age(on: day) == nil, "\(year)")
+        }
+    }
+
     @Test func appSummaryWithEverythingFilledIn() throws {
         let day = Day(year: 2026, month: 3, day: 2)
         let summary = AppSummary(

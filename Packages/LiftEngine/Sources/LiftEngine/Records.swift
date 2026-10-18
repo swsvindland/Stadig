@@ -8,6 +8,11 @@ import SystemCore
 
 /// Lift Track's settings. Shared setup answers live in ``SharedProfile``; these are the app's own.
 public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
+    /// One settings record per person, under one id on every device, so two devices that each set
+    /// up the app converge on the newest rather than keeping two. Settings saved before it have an
+    /// id of their own until they're saved under this one.
+    public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000F17E")!
+
     public var id: UUID
     public var gymID: UUID?
     /// The one-tap phase answer, used only when Macro Track hasn't published a phase.
@@ -321,6 +326,19 @@ public struct ConditioningLog: Codable, Hashable, Sendable {
     }
 }
 
+extension ConditioningLog {
+    // Kept in a session in progress as well as a finished one (see LiveSession): minutes in each
+    // zone decode as none when absent.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exerciseID = try c.decode(String.self, forKey: .exerciseID)
+        minutes = try c.decode(Int.self, forKey: .minutes)
+        averageHeartRate = try c.decodeIfPresent(Double.self, forKey: .averageHeartRate)
+        zoneMinutes = try c.decodeIfPresent([Int: Double].self, forKey: .zoneMinutes) ?? [:]
+        zone = try c.decode(Int.self, forKey: .zone)
+    }
+}
+
 /// A sauna or steam room after a session: how hot, how long, and how it felt. Rooms vary, so the
 /// temperature is what makes one session comparable with the next.
 public struct HeatLog: Codable, Hashable, Sendable {
@@ -400,6 +418,10 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var minutes: Int { max(1, Int(end.timeIntervalSince(start) / 60)) }
     public var sets: [LoggedSet] { exercises.flatMap(\.sets) }
     public var workSets: [LoggedSet] { sets.filter { $0.kind.countsAsWork } }
+
+    /// Whether there's anything to keep: lifting, conditioning, mobility or heat. A session ended
+    /// with none of them is thrown away rather than saved.
+    public var hasContent: Bool { !exercises.isEmpty || !conditioning.isEmpty || !mobility.isEmpty || !(heat ?? []).isEmpty }
 }
 
 /// An outside activity, as Lift Track stores it.

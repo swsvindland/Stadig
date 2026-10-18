@@ -43,7 +43,13 @@ public struct StudyRun: Sendable {
     public internal(set) var newReflections: [Reflection] = []
     public internal(set) var newPieces: [WritingPiece] = []
     public internal(set) var newComparisons: [BlindComparison] = []
-    public private(set) var step: Step?
+    public private(set) var step: Step? {
+        didSet { stepNumber += 1 }
+    }
+    /// Counts the steps handed out, so a screen can tell a new step from the same one with its
+    /// feedback added: it moves each time a step is handed out (and when the run ends), never when
+    /// only the feedback changes. The first step is 0.
+    public private(set) var stepNumber = 0
     public internal(set) var feedback: Feedback?
     public private(set) var partIndex = 0
     /// The plan's parts, plus extra practice when time is left at the end.
@@ -137,6 +143,14 @@ public struct StudyRun: Sendable {
         if case .question = step, feedback == nil { return }
         feedback = nil
         step = nextStep(now: now)
+    }
+
+    /// On from this answered question, and only from it. A screen that moves on by itself after
+    /// an answer (a test, a fluent timed problem) calls this, so it can't also skip whatever came
+    /// next when Continue or skipping the part got there first.
+    public mutating func next(after questionID: String, now: Date) {
+        guard case .question(let question) = step, question.id == questionID, feedback != nil else { return }
+        next(now: now)
     }
 
     /// Anything other than answering a question: a passage read, something said or written, a

@@ -363,5 +363,90 @@ struct MealPlannerTests {
         let change = PlanRequests.read("no chicken")
         let changed = planner.replan(plan, preferences: change.applied(to: plan.preferences), now: noon)
         check(changed, from: wednesday) { id in changed.recipe(id)?.items.contains { $0.ingredientID.hasPrefix("chicken") } == true }
+
+        // Other dishes mid-week: every dish from Wednesday on is new, and what was eaten stays.
+        let old = Set(plan.recipes.map(\.id))
+        let shuffled = planner.shuffle(plan, variation: 1, now: noon)
+        check(shuffled, from: wednesday) { old.contains($0) }
+        #expect(shuffled.createdAt == plan.createdAt && shuffled.checked == plan.checked)
+    }
+
+    @Test("other dishes replace every dish in a week not yet started, none coming back in another slot")
+    func shuffle() throws {
+        let everything = PlanPreferences(slots: Set(MealSlot.allCases))
+        let plan = planner.plan(start: monday, targets: cut, preferences: everything, now: prepMorning)
+        for variation in 1...4 {
+            let shuffled = planner.shuffle(plan, variation: variation, now: prepMorning)
+            #expect(shuffled.id == plan.id && shuffled.meals.map(\.id) == plan.meals.map(\.id) && shuffled.preferences == plan.preferences)
+            #expect(Set(shuffled.recipes.map(\.id)).isDisjoint(with: plan.recipes.map(\.id)), "variation \(variation)")
+            #expect(shuffled.recipes.filter { $0.kind == .bowl }.count == 2)
+            #expect(shuffled.recipes.contains { $0.slots == [.breakfast] } && shuffled.recipes.contains { $0.slots == [.snack] })
+            #expect(shuffled.recipes.allSatisfy { r in r.servings == shuffled.meals.filter { $0.recipeID == r.id }.count })
+            for day in shuffled.days {
+                #expect(Set(shuffled.meals(on: day).filter { $0.slot == .lunch || $0.slot == .dinner }.map(\.recipeID)).count == 2, "\(day)")
+                // The new snack is the one that fills the new week best, not just the next in line.
+                let n = shuffled.planned(on: day)
+                #expect(abs(n.kcal - cut.kcal) / cut.kcal < 0.08, "\(day): \(Int(n.kcal)) kcal")
+                #expect(n.protein >= cut.protein * 0.85, "\(day): \(Int(n.protein)) g protein")
+            }
+            #expect(planner.shuffle(plan, variation: variation, now: prepMorning) == shuffled, "the same variation gives the same week")
+        }
+        // Swapping one bowl and then the other brings the first one's old dish back for these.
+        for (preferences, variation) in [(PlanPreferences(diet: .vegetarian), 15), (PlanPreferences(diet: .pescatarian), 18)] {
+            let week = planner.plan(start: monday, targets: cut, preferences: preferences, now: prepMorning)
+            let shuffled = planner.shuffle(week, variation: variation, now: prepMorning)
+            #expect(Set(shuffled.recipes.map(\.id)).isDisjoint(with: week.recipes.map(\.id)), "\(preferences.diet)")
+        }
+        // A week that's over has nothing left to change.
+        let later = plan.end.adding(days: 1).date().addingTimeInterval(12 * 3600)
+        #expect(planner.shuffle(plan, variation: 1, now: later) == plan)
+    }
+
+    @Test("other dishes twice in a week don't bring back a dish the week has had")
+    func shuffleTwice() throws {
+        let everything = PlanPreferences(slots: Set(MealSlot.allCases))
+        let plan = planner.plan(start: monday, targets: cut, preferences: everything, now: prepMorning)
+        let wednesday = monday.adding(days: 2)
+        let friday = monday.adding(days: 4)
+        for variation in 1...4 {
+            let first = planner.shuffle(plan, variation: variation, now: wednesday.date().addingTimeInterval(12 * 3600))
+            let second = planner.shuffle(first, variation: variation + 1, now: friday.date().addingTimeInterval(12 * 3600))
+            // Monday and Tuesday keep the week's first snack, Wednesday and Thursday the next, and
+            // neither comes back from Friday on: each shuffle used to rule out only the current one.
+            let had = Set(first.meals.filter { $0.day < friday }.map(\.recipeID))
+            for meal in second.meals where meal.day >= friday {
+                #expect(!had.contains(meal.recipeID), "variation \(variation): \(meal.id) is \(meal.recipeID) again")
+            }
+            #expect(second.recipes.filter { $0.slots == [.snack] }.count == 3 && second.recipes.filter { $0.slots == [.breakfast] }.count == 3)
+            for day in second.days where day >= friday {
+                let n = second.planned(on: day)
+                #expect(abs(n.kcal - cut.kcal) / cut.kcal < 0.08, "\(day): \(Int(n.kcal)) kcal")
+                #expect(n.protein >= cut.protein * 0.85, "\(day): \(Int(n.protein)) g protein")
+            }
+        }
+    }
+
+    @Test("only dishes still to be eaten can be swapped")
+    func swappable() throws {
+        var plan = planner.plan(start: monday, targets: cut, preferences: PlanPreferences(), now: prepMorning)
+        let ids = plan.recipes.map(\.id)
+        #expect(planner.swappable(plan, today: monday.adding(days: -1)) == ids, "before the week, every dish, in the plan's order")
+        #expect(planner.swappable(plan, today: plan.end) == ids)
+        #expect(planner.swappable(plan, today: plan.end.adding(days: 1)).isEmpty)
+        // On Sunday, only Sunday's two meals are left; logging one leaves the other's dish.
+        let sunday = plan.meals(on: plan.end)
+        #expect(sunday.count == 2)
+        plan.logged[sunday[0].id] = [UUID()]
+        #expect(planner.swappable(plan, today: plan.end) == [sunday[1].recipeID])
+        plan.logged[sunday[1].id] = [UUID()]
+        #expect(planner.swappable(plan, today: plan.end).isEmpty)
+        #expect(planner.shuffle(plan, variation: 1, now: plan.end.date().addingTimeInterval(12 * 3600)) == plan)
+        // A dish swapped out mid-week stays on the days it was eaten, but can't be swapped again.
+        plan.logged = [:]
+        let wednesday = monday.adding(days: 2)
+        let swapped = planner.swap(ids[0], in: plan, now: wednesday.date().addingTimeInterval(12 * 3600))
+        #expect(swapped.recipe(ids[0]) != nil)
+        let left = planner.swappable(swapped, today: wednesday)
+        #expect(!left.contains(ids[0]) && left.contains(ids[1]) && left.count == 2)
     }
 }

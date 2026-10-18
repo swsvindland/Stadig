@@ -398,3 +398,79 @@ extension JapaneseMeasureTests {
         #expect(Set(listening).intersection(next).count <= 1)
     }
 }
+
+extension PlanTests {
+    /// A Japanese learner on day 30: `due` cards due within the week, and a fortnight of reviews
+    /// recalled at `recall`.
+    func paceState(due: Int, recall: Double) -> StudyState {
+        let today = monday.adding(days: 30)
+        let now = today.date().addingTimeInterval(18 * 3600)
+        var store = Store(settings: Fixtures.settings([.japanese]))
+        for rank in 1...due {
+            let word = deck.word(100_000 + rank)!
+            var card = MemoryCard(key: word.key, memory: Scheduler.known(stability: 10, at: now - 10 * 86_400), introduced: now - 20 * 86_400)
+            card.memory?.due = now + Double(rank % 6) * 86_400
+            store.cards[word.key] = card
+        }
+        let reviews = (0..<40).map { i in
+            Attempt(key: deck.word(100_500 + i)!.key, kind: .review, correct: Double(i) < recall * 40, seconds: 5, at: now - 3 * 86_400)
+        }
+        store.sessions = [StudySession(purpose: .regular, start: now - 3 * 86_400, end: now - 3 * 86_400 + 1500, plannedMinutes: 25,
+                                       domains: [.japanese], planned: true, attempts: reviews, ranToEnd: true)]
+        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 300, language: .japanese)]
+        return store.state(on: today)
+    }
+
+    @Test("a language's pace reads its own recall and week of reviews, and the session plan teaches what the Plan tab says")
+    func paceFromState() throws {
+        let steady = paceState(due: 50, recall: 0.9)
+        let pace = LanguagePlan.pace(.japanese, state: steady, reviewWeek: false)
+        #expect(pace.dueThisWeek == 50 && pace.count == 15 && pace.reason == nil, "\(pace)")
+        #expect(LanguagePlan.pace(.japanese, state: steady, reviewWeek: true).count == 0)
+        #expect(LanguagePlan.pace(.japanese, state: steady, reviewWeek: false, minutes: 50).count == 25, "twice the time, capped at 25")
+        #expect(LanguagePlan.pace(.spanish, state: steady, reviewWeek: false).dueThisWeek == 0, "another language's cards aren't counted")
+
+        let slipping = LanguagePlan.pace(.japanese, state: paceState(due: 50, recall: 0.7), reviewWeek: false)
+        #expect(slipping.count == 6 && slipping.reason?.contains("70%") == true, "\(slipping)")
+        let piled = LanguagePlan.pace(.japanese, state: paceState(due: 210, recall: 0.9), reviewWeek: false)
+        #expect(piled.dueThisWeek == 210 && piled.count <= 4 && piled.reason?.contains("210 reviews") == true, "\(piled)")
+
+        var notes: [String] = []
+        let learn = LanguageModule.learnPart(.japanese, minutes: 10, session: 25, state: paceState(due: 50, recall: 0.7),
+                                             catalogs: Fixtures.catalogs(deck), notes: &notes)
+        #expect(learn.items == slipping.count && notes.contains { $0.contains("70%") }, "\(learn) \(notes)")
+    }
+
+    @Test("Today's actions carry what they start: minutes of reviews, the missed session's domains, the episode's language")
+    func actionCommands() {
+        var store = Store(settings: Fixtures.settings())
+        store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
+                                       planned: true, ranToEnd: true)]
+        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
+                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
+                       TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
+        for rank in 1...100 {
+            let word = deck.word(100_000 + rank)!
+            store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 1, at: monday.date()), introduced: monday.date())
+        }
+        var seen: Set<MindAction.Kind> = []
+        for offset in 49...55 {
+            let state = store.state(on: monday.adding(days: offset))
+            let analysis = Analyst.analyse(state, catalogs: Fixtures.catalogs(deck))
+            for action in analysis.actions {
+                seen.insert(action.kind)
+                #expect(action.command.kind == action.kind, "\(action.id)")
+                switch action.command {
+                case .extraReview(let minutes): #expect(minutes == (action.id == "pile" ? 10 : 5), "\(action.id)")
+                case .episode(let language): #expect(action.id == "episode.\(language.domain.rawValue)" && language == .japanese)
+                case .catchUp(let domains):
+                    let yesterday = analysis.week.first { $0.day == state.today.adding(days: -1) }
+                    #expect(!domains.isEmpty && domains == yesterday?.domains, "\(domains)")
+                case .pickBook, .stalledBook: break
+                }
+            }
+        }
+        #expect(seen.isSuperset(of: [.extraReview, .episode, .catchUp]), "\(seen)")
+    }
+}

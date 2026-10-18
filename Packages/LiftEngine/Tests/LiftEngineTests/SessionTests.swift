@@ -290,6 +290,117 @@ struct SessionTests {
         #expect(live.heartRateSamples.count == 4_000)
         #expect(live.heartRateSamples.first?.date == start.addingTimeInterval(10))
     }
+
+    /// A hand-made session, so the order and rests are exactly what the test says.
+    func session(_ items: [PlannedItem], at start: Date) -> LiveSession {
+        LiveSession(plan: SessionPlan(day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
+                                      assessment: false, minimumEffectiveDose: false, items: items, notes: [], quests: []),
+                    device: "Test", now: start)
+    }
+
+    func lift(_ id: String, load: Double, group: Int? = nil,
+              rest: RestPlan = RestPlan(target: 90, minimum: 0, heartRateGuided: false)) -> PlannedItem {
+        PlannedItem(slotID: UUID(), block: group == nil ? .main : .accessory, exerciseID: id, role: group == nil ? .main : .accessory,
+                    sets: (0..<3).map { _ in SetPrescription(kind: .working, loadKg: load, targetReps: 10, targetRIR: 2) },
+                    repRange: RepRange(8, 12), rest: rest, supersetGroup: group)
+    }
+
+    var environment: SessionEnvironment {
+        SessionEnvironment(catalog: Fixture.catalog, gym: Gym.preset(.fullGym, unit: .kg), trust: TrustState(experience: .intermediate),
+                           phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: [:], enduranceScore: 50,
+                           heartRateGuidedRest: true)
+    }
+
+    @Test("a superset done ahead of an open lift alternates, with the 20-second changeover")
+    func supersetDoneNext() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var live = session([lift("barbell-bench-press", load: 60), lift("db-curl", load: 12, group: 1), lift("cable-fly", load: 15, group: 1)],
+                           at: start)
+        let (bench, curl, fly) = (live.items[0].id, live.items[1].id, live.items[2].id)
+        live.log(item: 0, set: 0, reps: 10, loadKg: 60, rating: .orange, environment: environment, now: start.addingTimeInterval(60))
+        // The cable's free: the pair goes in front of the bench, which picks up again after it.
+        live.doNext(item: 1, now: start.addingTimeInterval(90))
+        #expect(live.items.map(\.id) == [curl, fly, bench])
+        #expect(live.current?.item == 0 && live.current?.set == 0)
+        var clock = start.addingTimeInterval(120)
+        var expected = [curl, fly, curl, fly, curl, fly]
+        while let (item, set) = live.current, live.items[item].id != bench {
+            #expect(live.items[item].id == expected.removeFirst())
+            live.log(item: item, set: set, reps: 10, loadKg: nil, rating: .orange, environment: environment, now: clock)
+            let rest = try #require(live.rest)
+            if live.items[1].isDone {
+                #expect(rest.plan.target == 90, "the pair is done: the usual rest before the bench")
+            } else {
+                #expect(rest.plan.target == 20 && rest.endsAt == clock.addingTimeInterval(20) && rest.itemID == live.items[item].id)
+            }
+            clock = clock.addingTimeInterval(60)
+        }
+        #expect(expected.isEmpty)
+        #expect(live.current?.item == 2 && live.current?.set == 1)
+    }
+
+    @Test("conditioning and the sauna are one bout each: adding a set does nothing")
+    func oneBout() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        let none = RestPlan(target: 0, minimum: 0, heartRateGuided: false)
+        func timed(_ seconds: Int) -> [SetPrescription] {
+            [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: seconds)]
+        }
+        let bike = PlannedItem(slotID: UUID(), block: .conditioning, exerciseID: "bike-zone-2", role: .conditioning, sets: timed(900),
+                               repRange: RepRange(1, 1), rest: none, seconds: 900,
+                               conditioning: ConditioningPlan(minutes: 15, zones: 2...2, style: .steady))
+        let sauna = PlannedItem(slotID: nil, block: .recovery, exerciseID: "sauna", role: .recovery, sets: timed(600), repRange: RepRange(1, 1),
+                                rest: none, seconds: 600)
+        let stretch = PlannedItem(slotID: UUID(), block: .cooldown, exerciseID: "couch-stretch", role: .stretch, sets: timed(60),
+                                  repRange: RepRange(1, 1), rest: none, seconds: 60)
+        var live = session([bike, sauna, stretch], at: start)
+        #expect(live.items.map(\.takesMoreSets) == [false, false, true])
+        live.logConditioning(item: 0, minutes: 15, averageHeartRate: 128, zoneMinutes: [2: 15], now: start.addingTimeInterval(900))
+        live.addSet(item: 0, now: start.addingTimeInterval(910))
+        #expect(live.items[0].sets.count == 1 && live.items[0].isDone)
+        live.logHeat(item: 1, minutes: 10, temperatureC: 82, rating: .orange, now: start.addingTimeInterval(1_800))
+        live.addSet(item: 1, now: start.addingTimeInterval(1_810))
+        #expect(live.items[1].sets.count == 1 && live.items[1].heat?.minutes == 10)
+        // A second bout would have been the current item, and its log would have replaced the first.
+        #expect(live.current?.item == 2)
+        live.addSet(item: 2, now: start.addingTimeInterval(1_820))
+        #expect(live.items[2].sets.count == 2, "a stretch can be done again")
+        let record = live.record(feedback: nil, now: start.addingTimeInterval(2_000), timeZone: .gmt)
+        #expect(record.conditioning.map(\.minutes) == [15] && record.heat?.map(\.minutes) == [10])
+    }
+
+    @Test("a recovered heart rate ends the rest only while it's running")
+    func recoveryWhileResting() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var live = session([lift("db-curl", load: 12, rest: RestPlan(target: 90, minimum: 30, heartRateGuided: true))], at: start)
+        let zones = HeartRateZones(resting: 60, maximum: 190)
+        live.log(item: 0, set: 0, reps: 10, loadKg: nil, rating: .orange, environment: environment, now: start)
+        let rest = try #require(live.rest)
+        #expect(rest.endsAt == start.addingTimeInterval(90))
+        // The time's up at 90 s: the person is on the next set, and a low reading then says nothing about this rest.
+        let recovered = [20, 45, 90, 150].map { live.record(heartRate: 95, zones: zones, now: start.addingTimeInterval($0)) }
+        #expect(recovered == [false, true, false, false], "not before the minimum, nor after the time's up")
+        #expect(live.rest == rest, "the rest stays until the next set is logged, which is timed from it")
+    }
+
+    @Test("a session is kept when anything at all was done in it")
+    func sessionContent() {
+        let start = Fixture.start.date()
+        let empty = SessionRecord(start: start, end: start.addingTimeInterval(600), title: "Upper A")
+        #expect(!empty.hasContent)
+        var mobility = empty
+        mobility.mobility = ["couch-stretch"]
+        var conditioning = empty
+        conditioning.conditioning = [ConditioningLog(exerciseID: "bike-zone-2", minutes: 20, zone: 2)]
+        var heat = empty
+        heat.heat = [HeatLog(exerciseID: "sauna", date: start, minutes: 12, temperatureC: nil, rating: nil)]
+        var lifting = empty
+        lifting.exercises = [ExerciseLog(exerciseID: "db-curl", sets: [LoggedSet(exerciseID: "db-curl", date: start, loadKg: 12, reps: 10)])]
+        #expect([mobility, conditioning, heat, lifting].allSatisfy { $0.hasContent })
+        var none = empty
+        none.heat = []
+        #expect(!none.hasContent)
+    }
 }
 
 @Suite("A whole assessment")
@@ -436,5 +547,44 @@ struct GymTests {
         #expect(kg.platesPerSide(15) == nil, "lighter than the bar")
         #expect(kg.platesPerSide(21) == nil, "half a kilo a side isn't makeable")
         #expect(Gym.preset(.fullGym, unit: .kg).increments(for: .dumbbell).platesPerSide(20) == nil)
+        // The most anyone lifts is still worked out; past it, or not a number, it isn't.
+        #expect(kg.platesPerSide(GymIncrements.maximumLoadKg) == Array(repeating: 25, count: 29) + [15])
+        #expect([82_500.0, .infinity, -.infinity, .nan].allSatisfy { kg.platesPerSide($0) == nil })
+    }
+
+    @Test("a slipped load in the thousands of tonnes is rounded and stepped from without the tables growing to match")
+    func slippedLoads() {
+        let slip = 82_500_000.0
+        for unit in [WeightUnit.kg, .lb] {
+            for equipment in [Equipment.barbell, .bodyweight, .dumbbell, .machine] {
+                let increments = Gym.preset(.fullGym, unit: unit).increments(for: equipment)
+                // Twice the most anyone lifts, and a stack's one step past it.
+                let ceiling = GymIncrements.maximumLoadKg * 2 + 5
+                #expect((0...ceiling).contains(increments.round(slip, down: true)), "\(unit) \(equipment)")
+                #expect((0...ceiling).contains(increments.round(slip, down: false)), "\(unit) \(equipment)")
+                #expect(increments.step(slip, direction: -1) <= ceiling, "\(unit) \(equipment)")
+                #expect(!increments.around(slip).isEmpty, "\(unit) \(equipment)")
+                #expect(increments.loads(upTo: .infinity) == increments.loads(upTo: unit.fromKilograms(GymIncrements.maximumLoadKg * 2)))
+                #expect(increments.loads(upTo: -.infinity) == increments.loads(upTo: -1), "\(unit) \(equipment)")
+            }
+        }
+        // Everyday loads are untouched.
+        #expect(Gym.preset(.fullGym, unit: .kg).increments(for: .barbell).round(183, down: true) == 182.5)
+    }
+
+    @Test("switching a gym's kind keeps the gym: its id, name, sauna and exceptions")
+    func switchedKind() {
+        var gym = Gym.preset(.fullGym, unit: .lb)
+        gym.name = "Downtown"
+        gym.apparatus.formUnion([.sauna, .steamRoom])
+        gym.excluded = ["barbell-back-squat"]
+        gym.included = ["nordic-curl"]
+        let home = gym.switched(to: .homeGym)
+        let preset = Gym.preset(.homeGym, unit: .lb)
+        #expect(home.id == gym.id && home.name == "Downtown" && home.access == .homeGym && home.unit == .lb)
+        #expect(home.equipment == preset.equipment && home.dumbbellMax == preset.dumbbellMax)
+        #expect(home.apparatus == preset.apparatus.union([.sauna, .steamRoom]))
+        #expect(home.excluded == ["barbell-back-squat"] && home.included == ["nordic-curl"])
+        #expect(gym.switched(to: .fullGym) == gym, "the same kind changes nothing")
     }
 }

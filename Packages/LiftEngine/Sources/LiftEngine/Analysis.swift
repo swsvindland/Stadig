@@ -18,7 +18,10 @@ public struct LiftState: Sendable {
     public var recovery: [RecoveryDay]
     /// Daily steps from Health, today's so far included.
     public var steps: [StepDay]
+    /// The latest body weight in Health.
     public var bodyweightKg: Double?
+    /// When Health's weight was measured; nil when not known, and then it counts as current.
+    public var bodyweightDate: Date?
     /// A body-fat sample from Health in the last two weeks.
     public var bodyFatPercent: Double?
     public var vo2Max: Double?
@@ -31,9 +34,9 @@ public struct LiftState: Sendable {
     public init(profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
                 activities: [ActivityLog] = [], measurements: [BodyMeasurements] = [], mobility: [MobilityResult] = [],
                 benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
-                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyFatPercent: Double? = nil, vo2Max: Double? = nil,
-                restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil, recommendations: [Recommendation] = [],
-                today: Day = .today) {
+                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyweightDate: Date? = nil,
+                bodyFatPercent: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil,
+                recommendations: [Recommendation] = [], today: Day = .today) {
         self.profile = profile
         self.settings = settings
         self.gym = gym
@@ -49,6 +52,7 @@ public struct LiftState: Sendable {
         self.recovery = recovery
         self.steps = steps
         self.bodyweightKg = bodyweightKg
+        self.bodyweightDate = bodyweightDate
         self.bodyFatPercent = bodyFatPercent
         self.vo2Max = vo2Max
         self.restingHeartRate = restingHeartRate
@@ -57,11 +61,18 @@ public struct LiftState: Sendable {
         self.today = today
     }
 
-    /// Body weight for standards and bodyweight exercises: Health, then the tape, then a guess.
-    public var effectiveBodyweight: Double {
-        bodyweightKg ?? measurements.sorted { $0.day < $1.day }.last(where: { $0.weightKg != nil })?.weightKg
-            ?? (profile.sex == .female ? 65 : 80)
+    /// Body weight as last measured: Health's, or the latest typed on the tape when that's from a
+    /// later day (a Health weight from months ago doesn't beat one typed this morning). Health's on
+    /// the same day, or when its date isn't known. Nil when there's neither.
+    public var measuredBodyweight: Double? {
+        let typed = measurements.sorted { $0.day < $1.day }.last { $0.weightKg != nil }
+        guard let bodyweightKg else { return typed?.weightKg }
+        if let typed, let bodyweightDate, typed.day > Day(bodyweightDate) { return typed.weightKg }
+        return bodyweightKg
     }
+
+    /// Body weight for standards and bodyweight exercises: as last measured, else a guess.
+    public var effectiveBodyweight: Double { measuredBodyweight ?? (profile.sex == .female ? 65 : 80) }
 
     public var phase: NutritionPhase { PhaseResolver.current(published: nutrition?.phase, selfReported: settings.selfReportedPhase) }
 
@@ -250,8 +261,9 @@ public enum Analyst {
             }
         }
 
-        let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm, weightKg: state.bodyweightKg,
-                                        measuredBodyFat: state.bodyFatPercent, targets: state.settings.proportionTargets)
+        let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm,
+                                        weightKg: state.measuredBodyweight, measuredBodyFat: state.bodyFatPercent,
+                                        targets: state.settings.proportionTargets)
         let agility = Agility.analyse(state.mobility)
         let conditioningMinutes = Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
             + Double(state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))

@@ -1,0 +1,155 @@
+[
+  {
+    "averageHeartRate" : 121.5,
+    "conditioning" : [
+      {
+        "averageHeartRate" : 142,
+        "exerciseID" : "bike-30-30-intervals",
+        "minutes" : 15,
+        "zone" : 2,
+        "zoneMinutes" : {
+          "2" : 6.5,
+          "3" : 5,
+          "4" : 3.5
+        }
+      }
+    ],
+    "dayID" : "00000000-0000-0000-0000-000000000003",
+    "deload" : false,
+    "device" : "Watch",
+    "end" : 1792432920000,
+    "exercises" : [
+      {
+        "exerciseID" : "barbell-bench-press",
+        "id" : "00000000-0000-0000-0000-000000000401",
+        "sets" : [
+          {
+            "bodyweightKg" : 82,
+            "date" : 1792429680000,
+            "exerciseID" : "barbell-bench-press",
+            "heartRateDrop60" : 28,
+            "heartRatePeak" : 150,
+            "id" : "00000000-0000-0000-0000-000000000311",
+            "kind" : "working",
+            "loadKg" : 82.5,
+            "rating" : "orange",
+            "reps" : 8,
+            "restBeforeSeconds" : 180,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 8
+          },
+          {
+            "bodyweightKg" : 82,
+            "date" : 1792429920000,
+            "exerciseID" : "barbell-bench-press",
+            "heartRateDrop60" : 28,
+            "heartRatePeak" : 150,
+            "id" : "00000000-0000-0000-0000-000000000312",
+            "kind" : "working",
+            "loadKg" : 82.5,
+            "rating" : "orange",
+            "reps" : 8,
+            "restBeforeSeconds" : 180,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 8
+          },
+          {
+            "bodyweightKg" : 82,
+            "date" : 1792430160000,
+            "exerciseID" : "barbell-bench-press",
+            "heartRateDrop60" : 28,
+            "heartRatePeak" : 150,
+            "id" : "00000000-0000-0000-0000-000000000313",
+            "kind" : "repOut",
+            "loadKg" : 82.5,
+            "reps" : 11,
+            "restBeforeSeconds" : 180,
+            "stoppedAtFormBreakdown" : true,
+            "targetReps" : 8
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000201"
+      },
+      {
+        "exerciseID" : "chest-supported-db-row",
+        "id" : "00000000-0000-0000-0000-000000000402",
+        "sets" : [
+          {
+            "date" : 1792430520000,
+            "exerciseID" : "chest-supported-db-row",
+            "id" : "00000000-0000-0000-0000-000000000314",
+            "kind" : "working",
+            "loadKg" : 26,
+            "rating" : "green",
+            "reps" : 10,
+            "stoppedAtFormBreakdown" : false,
+            "targetReps" : 10
+          }
+        ],
+        "slotID" : "00000000-0000-0000-0000-000000000202",
+        "substitutedFor" : "barbell-row"
+      }
+    ],
+    "feedback" : {
+      "energy" : 4,
+      "jointPain" : [
+        "shoulder"
+      ],
+      "soreness" : 2
+    },
+    "heat" : [
+      {
+        "averageHeartRate" : 104,
+        "date" : 1792433700000,
+        "exerciseID" : "sauna",
+        "minutes" : 12,
+        "peakHeartRate" : 118,
+        "rating" : "orange",
+        "temperatureC" : 85
+      }
+    ],
+    "id" : "00000000-0000-0000-0000-000000000005",
+    "mesocycleID" : "00000000-0000-0000-0000-000000000002",
+    "mobility" : [
+      "couch-stretch"
+    ],
+    "planned" : true,
+    "start" : 1792429200000,
+    "timeZoneID" : "Europe/Oslo",
+    "title" : "Upper A",
+    "updatedAt" : 1792432920000
+  },
+  {
+    "conditioning" : [
+
+    ],
+    "deload" : false,
+    "device" : "iPhone",
+    "end" : 1792171500000,
+    "exercises" : [
+      {
+        "exerciseID" : "db-curl",
+        "id" : "00000000-0000-0000-0000-000000000403",
+        "sets" : [
+          {
+            "date" : 1792170600000,
+            "exerciseID" : "db-curl",
+            "id" : "00000000-0000-0000-0000-000000000315",
+            "kind" : "working",
+            "loadKg" : 14,
+            "reps" : 12,
+            "stoppedAtFormBreakdown" : false
+          }
+        ]
+      }
+    ],
+    "id" : "00000000-0000-0000-0000-000000000006",
+    "mobility" : [
+
+    ],
+    "planned" : false,
+    "start" : 1792170000000,
+    "title" : "Quick lift",
+    "updatedAt" : 1792171500000
+  }
+]

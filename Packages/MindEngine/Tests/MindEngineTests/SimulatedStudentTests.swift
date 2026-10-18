@@ -252,3 +252,36 @@ extension SimulatedStudentTests {
         #expect(!run.session.ranToEnd && !run.session.counts, "a two-minute session with a part skipped doesn't count")
     }
 }
+
+extension SimulatedStudentTests {
+    @Test("moving on after an answer only moves on from that answer: an auto-advance after Continue doesn't skip a question")
+    func moveOnOnce() throws {
+        let store = Store(settings: Fixtures.settings([.japanese]))
+        let state = store.state(on: Fixtures.monday)
+        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
+        var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
+        #expect(run.stepNumber == 0)
+        guard case .question(let first) = run.step else { Issue.record("no question: \(String(describing: run.step))"); return }
+
+        run.next(after: first.id, now: state.now + 1)
+        #expect(run.stepNumber == 0 && run.step == .question(first), "not answered yet: nothing to move on from")
+        run.choose(first.correctChoice ?? 0, now: state.now + 3)
+        #expect(run.stepNumber == 0 && run.feedback != nil, "feedback alone isn't a new step")
+
+        // Continue, then the auto-advance for the same answer.
+        run.next(now: state.now + 4)
+        #expect(run.stepNumber == 1)
+        guard case .question(let second) = run.step else { Issue.record("no second question"); return }
+        #expect(second.id != first.id)
+        run.next(after: first.id, now: state.now + 5)
+        #expect(run.stepNumber == 1 && run.step == .question(second), "the first answer's auto-advance doesn't skip the second question")
+        run.next(after: second.id, now: state.now + 5)
+        #expect(run.stepNumber == 1, "the second isn't answered yet")
+
+        run.choose(second.correctChoice ?? 0, now: state.now + 7)
+        run.next(after: second.id, now: state.now + 8)
+        #expect(run.stepNumber == 2 && run.step != .question(second))
+        run.skipPart(now: state.now + 9)
+        #expect(run.stepNumber == 3)
+    }
+}

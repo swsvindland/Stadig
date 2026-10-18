@@ -371,8 +371,129 @@ struct CountedNote: StoredRecord, Equatable {
     }
 }
 
+/// `CountedNote` with a second date, for `RecordStoreCacheTests.aLocalWritePatchesItsKindInPlace` alone.
+struct TimedNote: StoredRecord, Equatable {
+    static let kind = "timed-note"
+    static let schemaVersion = 1
+    static let decodes = Mutex(0)
+
+    var id: UUID
+    var text: String
+    var takenAt: Date
+    var updatedAt: Date
+
+    init(id: UUID = UUID(), text: String, takenAt: Date = t0, updatedAt: Date) {
+        self.id = id
+        self.text = text
+        self.takenAt = takenAt
+        self.updatedAt = updatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, text, takenAt, updatedAt }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        text = try container.decode(String.self, forKey: .text)
+        takenAt = try container.decode(Date.self, forKey: .takenAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        Self.decodes.withLock { $0 += 1 }
+    }
+}
+
 @MainActor
 struct RecordStoreCacheTests {
+    @Test func aLocalWritePatchesItsKindInPlace() throws {
+        func decodes() -> Int { TimedNote.decodes.withLock { $0 } }
+        let store = memoryStore()
+        var notes = (0..<200).map { TimedNote(text: "Note \($0)", updatedAt: t0 + Double($0)) }
+        notes.append(TimedNote(text: "In note 100's millisecond", updatedAt: t0 + 100))
+        store.save(notes)
+        #expect(store.all(TimedNote.self).count == 201)
+        var decoded = decodes()
+
+        // A new note is listed first at once, as it reads back from its row, and only it is decoded.
+        let new = TimedNote(text: "New", takenAt: t0 + 0.0004, updatedAt: t0 + 500)
+        store.save(new)
+        var all = store.all(TimedNote.self)
+        #expect(decodes() == decoded + 1)
+        #expect(all.count == 202)
+        #expect(all.first?.id == new.id)
+        #expect(all.first?.takenAt == t0, "to the millisecond, like a fresh read")
+        #expect(store.revision(of: TimedNote.self) == store.revision)
+
+        // An edit moves to its new place, a note in another's millisecond goes by its id, a delete leaves.
+        var edited = notes[3]
+        edited.text = "Edited"
+        edited.updatedAt = t0 + 150
+        store.save([edited, TimedNote(text: "Also in note 100's millisecond", updatedAt: t0 + 100)])
+        store.delete(TimedNote.self, id: notes[7].id)
+        all = store.all(TimedNote.self)
+        #expect(decodes() == decoded + 3, "nothing but the saved notes was decoded")
+        #expect(all.count == 202)
+        #expect(!all.contains { $0.id == notes[7].id })
+        #expect(all.filter { $0.id == edited.id } == [edited])
+        #expect(all == store.uncachedAll(TimedNote.self), "the same notes in the same order as reading the rows")
+        decoded = decodes()
+
+        // Writes the store ignores change nothing: an older copy, a second delete.
+        let revision = store.revision
+        store.save(notes[3])
+        store.delete(TimedNote.self, id: notes[7].id)
+        #expect(store.revision == revision)
+        #expect(store.all(TimedNote.self) == all)
+        #expect(decodes() == decoded)
+
+        // A big batch is read again whole, and still lands in order.
+        store.save((0..<40).map { i in
+            var note = notes[100 + i]
+            note.updatedAt = t0 + 1000 + Double(i % 3)
+            return note
+        })
+        #expect(store.all(TimedNote.self).count == 202)
+        #expect(store.all(TimedNote.self) == store.uncachedAll(TimedNote.self))
+    }
+
+    @Test func aPatchedListMatchesReadingTheRows() throws {
+        let store = memoryStore()
+        // Two rows of one record from two devices, a row an older app version wrote, and one from a newer.
+        let duplicate = UUID(), old = UUID(), future = UUID()
+        for offset in [0.0, 5.0] {
+            store.insertRawRow(kind: Lift.kind, uuid: duplicate, updatedAt: t0 + offset, schemaVersion: 2,
+                               payload: try payload(Lift(id: duplicate, name: "Copy", updatedAt: t0 + offset)))
+        }
+        store.insertRawRow(kind: Lift.kind, uuid: old, updatedAt: t0, schemaVersion: 1,
+                           payload: try v1Payload(id: old, title: "Squat", reps: 3, updatedAt: t0))
+        let futurePayload = Data(#"{"id":"\#(future.uuidString)","name":"Clean","reps":2,"notes":"","updatedAt":1760000000000,"tempo":"31X1"}"#.utf8)
+        store.insertRawRow(kind: Lift.kind, uuid: future, updatedAt: t0, schemaVersion: 3, payload: futurePayload)
+        let bench = Lift(name: "Bench", updatedAt: t0 + 1)
+        store.save(bench)
+        #expect(store.all(Lift.self).count == 3, "the newer app's lift stays unreadable")
+
+        store.save(Lift(id: duplicate, name: "Converged", updatedAt: t0 + 10))
+        store.save(Lift(id: old, name: "Squat", reps: 5, updatedAt: t0 + 2))
+        store.save(Lift(id: future, name: "Clean", updatedAt: t0 + 60))
+        store.delete(Lift.self, id: bench.id)
+        #expect(store.all(Lift.self).map(\.name) == ["Converged", "Squat"])
+
+        // Saved again in its deletion's own millisecond, it comes back.
+        let tombstone = try #require(store.rows(kind: Lift.kind).first { $0.uuid == bench.id })
+        var again = bench
+        again.reps = 8
+        again.updatedAt = tombstone.updatedAt
+        store.save(again)
+        let patched = store.all(Lift.self)
+        #expect(patched.map(\.name) == ["Bench", "Converged", "Squat"])
+        #expect(patched.first == again)
+        #expect(patched == store.uncachedAll(Lift.self))
+        #expect(patched.map(\.id).compactMap { store.get(Lift.self, id: $0) } == patched)
+
+        // A row that arrives some other way drops the cache rather than patching it.
+        let synced = Lift(name: "Row", updatedAt: t0 + 3)
+        store.insertRawRow(kind: Lift.kind, uuid: synced.id, updatedAt: synced.updatedAt, schemaVersion: 2, payload: try payload(synced))
+        #expect(store.all(Lift.self).map(\.name) == ["Bench", "Converged", "Row", "Squat"])
+    }
+
     @Test func aWriteClearsOnlyItsOwnKind() throws {
         let store = memoryStore()
         let notes = (0..<1000).map { CountedNote(text: "Note \($0)", updatedAt: t0 + Double($0)) }
@@ -398,10 +519,10 @@ struct RecordStoreCacheTests {
         #expect(store.revision(of: Lift.self) == store.revision)
         #expect(store.all(Lift.self).map(\.name) == ["Row"])
 
-        // Saving a note re-reads the notes; erasing moves every kind.
+        // Saving a note patches the notes in, decoding only that one; erasing moves every kind.
         store.save(CountedNote(text: "One more", updatedAt: t0 + 2000))
         #expect(store.all(CountedNote.self).count == 1001)
-        #expect(CountedNote.decodes.withLock { $0 } > decoded)
+        #expect(CountedNote.decodes.withLock { $0 } == decoded + 1)
         #expect(store.revision(of: CountedNote.self) == store.revision)
         store.eraseAll()
         #expect(store.revision(of: CountedNote.self) == store.revision)

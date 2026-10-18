@@ -14,11 +14,42 @@ public struct MindAction: Hashable, Sendable, Identifiable {
         case episode
     }
 
+    /// What the action starts, with what it needs to start it, so Today needn't read that from
+    /// the id.
+    public enum Command: Hashable, Sendable {
+        case extraReview(minutes: Int)
+        case pickBook
+        case stalledBook
+        /// The domains of the session that was missed.
+        case catchUp([Domain])
+        case episode(Language)
+
+        public var kind: Kind {
+            switch self {
+            case .extraReview: .extraReview
+            case .pickBook: .pickBook
+            case .stalledBook: .stalledBook
+            case .catchUp: .catchUp
+            case .episode: .episode
+            }
+        }
+    }
+
     public var id: String
-    public var kind: Kind
+    /// Read from the command, so the two can't disagree.
+    public var kind: Kind { command.kind }
     public var title: String
     public var detail: String
     public var priority: Double
+    public var command: Command
+
+    init(id: String, command: Command, title: String, detail: String, priority: Double) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.priority = priority
+        self.command = command
+    }
 }
 
 /// A day of the week as the Plan tab shows it.
@@ -270,41 +301,42 @@ public enum Analyst {
         let due = analysis.dueToday
         if case .paused(let kind) = analysis.phase {
             if case .crunch = kind, due > 0 {
-                out.append(MindAction(id: "extra", kind: .extraReview, title: "A five-minute review, if you want it",
+                out.append(MindAction(id: "extra", command: .extraReview(minutes: 5), title: "A five-minute review, if you want it",
                                       detail: "Crunch mode pauses Mind Track. \(due) reviews are waiting; nothing is expected.", priority: 1))
             }
             return out
         }
         if !plannedToday && analysis.doneToday.isEmpty && due >= 15 {
-            out.append(MindAction(id: "extra", kind: .extraReview, title: "Optional: five minutes of reviews",
+            out.append(MindAction(id: "extra", command: .extraReview(minutes: 5), title: "Optional: five minutes of reviews",
                                   detail: "Rest day. \(due) are due; clearing some now keeps tomorrow's warm-up short.", priority: 0.5))
         } else if due > 80 {
-            out.append(MindAction(id: "pile", kind: .extraReview, title: "Clear the review pile",
+            out.append(MindAction(id: "pile", command: .extraReview(minutes: 10), title: "Clear the review pile",
                                   detail: "\(due) reviews are due. A ten-minute review session tonight clears about \(min(due, 80)).", priority: 1.5))
         }
         let yesterday = state.today.adding(days: -1)
         if let missed = analysis.week.first(where: { $0.day == yesterday && $0.status == .missed }), !plannedToday, analysis.doneToday.isEmpty {
-            out.append(MindAction(id: "catch-up", kind: .catchUp, title: "Catch up on yesterday's \(ListFormatter.localizedString(byJoining: missed.domains.map(\.label)))",
+            out.append(MindAction(id: "catch-up", command: .catchUp(missed.domains), title: "Catch up on yesterday's \(ListFormatter.localizedString(byJoining: missed.domains.map(\.label)))",
                                   detail: "Today is a rest day, so there's room for it. Missing it is fine too; one day barely moves anything.", priority: 1))
         }
         if state.settings.has(.reading) {
             if let book = state.currentBook {
                 let lastRead = state.sessions.last { $0.reading?.bookID == book.id }?.day ?? book.started ?? state.today
                 if lastRead.days(until: state.today) >= 14 {
-                    out.append(MindAction(id: "stalled-book", kind: .stalledBook, title: "Still reading \(book.title)?",
+                    out.append(MindAction(id: "stalled-book", command: .stalledBook, title: "Still reading \(book.title)?",
                                           detail: "Nothing logged for two weeks. Read twenty pages tonight, or set it aside and pick another from the ladder.", priority: 0.8))
                 }
             } else if !state.phase.isAssessment || !state.sessions.isEmpty {
                 let picks = ReadingPlan.suggestions(shelf: state.books, tests: state.tests, genres: state.settings.genres, on: state.today).map(\.title)
                 if !picks.isEmpty {
-                    out.append(MindAction(id: "pick-book", kind: .pickBook, title: "Pick your next book",
+                    out.append(MindAction(id: "pick-book", command: .pickBook, title: "Pick your next book",
                                           detail: "The ladder suggests \(ListFormatter.localizedString(byJoining: picks)).", priority: 0.7))
                 }
             }
         }
         for domain in state.settings.focus where domain.isLanguage && analysis.phase.isReview
             && !state.tests.contains(where: { $0.test == .episode && $0.domain == domain && $0.day.days(until: state.today) < 7 }) {
-            out.append(MindAction(id: "episode.\(domain.rawValue)", kind: .episode, title: "Watch an episode without subtitles",
+            guard let language = domain.language else { continue }
+            out.append(MindAction(id: "episode.\(domain.rawValue)", command: .episode(language), title: "Watch an episode without subtitles",
                                   detail: "Review week: something you enjoy, in \(domain.label), just for fun. Afterwards, say how much you followed.",
                                   priority: 0.6))
         }

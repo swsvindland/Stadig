@@ -11,9 +11,10 @@ public struct SharedContainer: Sendable {
     /// The Darwin notification posted after every write, so other apps (and widgets) can reload.
     public static let changeNotification = "dev.svindland.stadig.changed"
 
-    /// Where the files live: `SystemShared` inside the App Group, or the fallback.
+    /// Where the files live: `SystemShared` inside the App Group, the fallback, or the folder given to
+    /// `init(directory:)`.
     public let directory: URL
-    /// False when the App Group isn't available and the fallback directory is in use.
+    /// False when the files live anywhere but the App Group: the fallback, or a folder given.
     public let isAppGroup: Bool
 
     /// Uses the App Group directory; falls back to `fallbackDirectory` (or Application
@@ -31,6 +32,15 @@ public struct SharedContainer: Sendable {
             isAppGroup = false
             storeLog.info("App Group \(groupID, privacy: .public) unavailable; sharing through \(fallback.path(percentEncoded: false), privacy: .public)")
         }
+    }
+
+    /// Uses `directory` and nothing else, never the App Group: for tests and in-memory launches,
+    /// which must neither read what the other apps published nor write where they'd read it. (A made-up
+    /// group id isn't enough: an iOS simulator may hand out a folder for any group.) The folder is
+    /// created on the first write.
+    public init(directory: URL) {
+        self.directory = directory
+        isAppGroup = false
     }
 
     private static func appGroupDirectory(_ groupID: String) -> URL? {

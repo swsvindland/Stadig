@@ -1,9 +1,12 @@
 import Foundation
+import OSLog
 import SystemCore
 #if canImport(HealthKit)
 import HealthKit
 import Synchronization
 #endif
+
+let healthLog = Logger(subsystem: "dev.svindland.stadig", category: "health")
 
 /// Thread-safe facade over HKHealthStore. All methods are safe to call when Health is unavailable or
 /// not authorised: they return nil/empty.
@@ -481,6 +484,7 @@ extension HealthBridge {
     public func deleteMeasurements(id: UUID) async {}
     public func observeChanges(_ handler: @escaping @Sendable () -> Void) -> AnyObject? { nil }
     public func weighIns(since: Date, ownBundlePrefixes: [String]) async -> [HealthWeight] { [] }
+    public func weighInChanges(after anchor: Data?, since: Date, ownBundlePrefixes: [String]) async -> HealthWeightChanges? { nil }
     public func saveWeight(id: UUID, date: Date, kg: Double, version: Int) async {}
     public func deleteWeight(id: UUID) async {}
     public func saveFoods(_ foods: [HealthFood]) async {}

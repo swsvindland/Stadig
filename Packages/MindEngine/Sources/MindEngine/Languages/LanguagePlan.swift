@@ -69,6 +69,23 @@ public enum LanguagePlan {
         return (min(maxNewWords, max(0, Int(count.rounded()))), reason)
     }
 
+    /// A course's reviews due within the coming week, today included.
+    public static func dueThisWeek(_ domain: Domain, state: StudyState) -> Int {
+        let end = state.today.adding(days: 6)
+        return state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= end } ?? false) }.count
+    }
+
+    /// New words a session for a language course, from its recall and the week's reviews: what a
+    /// session teaches and what the Plan tab says it will. `minutes` is the session's length, the
+    /// schedule's unless said.
+    public static func pace(_ domain: Domain, state: StudyState, reviewWeek: Bool, minutes: Int? = nil)
+        -> (count: Int, reason: String?, dueThisWeek: Int) {
+        let retention = domain.language.flatMap { Self.retention(state.sessions, today: state.today, $0) }
+        let due = dueThisWeek(domain, state: state)
+        let words = newWords(retention: retention, dueThisWeek: due, minutes: minutes ?? state.settings.schedule.minutes, reviewWeek: reviewWeek)
+        return (words.count, words.reason, due)
+    }
+
     public static func kanaIntroduced(_ script: Script, cards: Set<CardKey>) -> Bool {
         KanaTable.kana(script).filter { $0.group < 2 }.allSatisfy { cards.contains($0.key) }
     }

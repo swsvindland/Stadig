@@ -68,6 +68,49 @@ struct DayTests {
         #expect(Day(start.addingTimeInterval(-1), timeZone: saoPaulo) == skipped.adding(days: -1))
     }
 
+    /// New York's clocks go forward on 14 March 2027 (a 23-hour day) and back on 7 November (25 hours).
+    @Test(arguments: [Day(year: 2027, month: 3, day: 14), Day(year: 2027, month: 11, day: 7)])
+    func aTimeOnTheClockKeepsItsTimeAndItsDayWhenTheClocksChange(_ day: Day) throws {
+        let newYork = TimeZone(identifier: "America/New_York")!
+        let clock = Self.gregorian("America/New_York")
+        for (hour, minute) in [(7, 0), (23, 30)] {
+            let time = day.at(hour: hour, minute: minute, timeZone: newYork)
+            let shown = clock.dateComponents([.hour, .minute], from: time)
+            #expect(shown.hour == hour && shown.minute == minute, "\(day) \(hour):\(minute)")
+            #expect(Day(time, timeZone: newYork) == day)
+            #expect(day.at(minutes: hour * 60 + minute, timeZone: newYork) == time)
+            // The same time of day taken from another day, with no clock change.
+            let other = try #require(clock.date(from: DateComponents(year: 2027, month: 6, day: 1, hour: hour, minute: minute)))
+            #expect(day.at(sameTimeAs: other, timeZone: newYork) == time)
+            // Midnight plus the hours would be an hour off, or on the next day.
+            #expect(time != day.date(timeZone: newYork).addingTimeInterval(Double(hour * 3600 + minute * 60)))
+        }
+    }
+
+    @Test func aTimeTheClocksSkipComesOutJustAfterTheChange() throws {
+        let newYork = TimeZone(identifier: "America/New_York")!
+        let day = Day(year: 2027, month: 3, day: 14)
+        let time = day.at(hour: 2, minute: 30, timeZone: newYork)
+        let shown = Self.gregorian("America/New_York").dateComponents([.hour, .minute], from: time)
+        #expect(shown.hour == 3 && shown.minute == 30)
+        #expect(Day(time, timeZone: newYork) == day)
+    }
+
+    @Test(arguments: [Calendar.Identifier.buddhist, .japanese])
+    func aPhoneOnAnotherCalendarGetsTheSameTimes(_ identifier: Calendar.Identifier) throws {
+        var device = Calendar(identifier: identifier)
+        device.timeZone = TimeZone(identifier: "America/New_York")!
+        let gregorian = Self.gregorian("America/New_York")
+        for day in [Day(year: 2027, month: 3, day: 14), Day(year: 2027, month: 11, day: 7)] {
+            let time = day.at(hour: 7, minute: 0, calendar: device)
+            #expect(time == day.at(hour: 7, minute: 0, timeZone: gregorian.timeZone))
+            #expect(time == gregorian.date(from: DateComponents(year: day.year, month: day.month, day: day.dayOfMonth, hour: 7)))
+            #expect(day.at(minutes: 23 * 60 + 30, calendar: device) == day.at(hour: 23, minute: 30, timeZone: gregorian.timeZone))
+            #expect(day.at(sameTimeAs: time, calendar: device) == time)
+            #expect(Day(time, calendar: device) == day)
+        }
+    }
+
     @Test func isoAcceptsOnlyRealDates() {
         #expect(Day(iso: "2024-02-29") == Day(year: 2024, month: 2, day: 29))
         for text in ["2026-02-29", "2026-02-30", "2026-13-01", "2026-00-10", "2026-10-00", "2026-x-10-18", "2026-10", "", "2026-10-18T00:00",
@@ -585,6 +628,33 @@ struct ScheduleTests {
         let factor = ramp.loadFactor(for: TestExercise.bench)
         #expect(factor > 0.6 && factor < 1)
         #expect(ramp.loadFactor(for: TestExercise.legExtension) == 1)
+    }
+
+    @Test func overridesToggleBetweenAllowedAndSetAside() {
+        var injury = Injury(parts: [InjuredPart(.shoulder, side: .right)], severity: .moderate)
+        let press = TestExercise.chestPress
+        // Set aside by the filter: a tap allows it, the next sets it aside by hand.
+        injury.toggleOverride(for: press)
+        #expect(!injury.excludes(press) && injury.allowed == [press.id] && injury.removed.isEmpty)
+        injury.toggleOverride(for: press)
+        #expect(injury.excludes(press) && injury.allowed.isEmpty && injury.removed == [press.id])
+        // Allowed by the filter: set aside, allowed, set aside again.
+        let extensions = TestExercise.legExtension
+        injury.toggleOverride(for: extensions.id, currentlyExcluded: injury.excludes(extensions))
+        #expect(injury.excludes(extensions) && injury.removed == [press.id, extensions.id])
+        injury.toggleOverride(for: extensions.id, currentlyExcluded: injury.excludes(extensions))
+        #expect(!injury.excludes(extensions) && injury.allowed == [extensions.id] && injury.removed == [press.id])
+        injury.toggleOverride(for: extensions.id, currentlyExcluded: injury.excludes(extensions))
+        #expect(injury.excludes(extensions) && injury.allowed.isEmpty && injury.removed == [press.id, extensions.id])
+        // However many taps, each exercise is in one list, once.
+        for _ in 0..<5 { injury.toggleOverride(for: press) }
+        let all = injury.allowed + injury.removed
+        #expect(all.count == Set(all).count && all.count == 2)
+        // Lists that have it twice, or in both, come out with it in one.
+        injury.allowed = [press.id, press.id]
+        injury.removed.append(press.id)
+        injury.toggleOverride(for: press.id, currentlyExcluded: false)
+        #expect(injury.allowed.isEmpty && injury.removed == [extensions.id, press.id])
     }
 }
 

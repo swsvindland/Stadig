@@ -125,6 +125,19 @@ public struct Injury: Hashable, Codable, Sendable {
         exercise.joints.contains { joints.contains($0.joint) }
     }
 
+    /// The person's tap on an exercise in the overrides list: one that's set aside (by the filter or
+    /// by hand) is allowed back, and one that's allowed is set aside. An exercise is in at most one
+    /// of the lists, once, however many times it's tapped.
+    public mutating func toggleOverride(for exerciseID: String, currentlyExcluded: Bool) {
+        allowed.removeAll { $0 == exerciseID }
+        removed.removeAll { $0 == exerciseID }
+        if currentlyExcluded { allowed.append(exerciseID) } else { removed.append(exerciseID) }
+    }
+
+    public mutating func toggleOverride(for exercise: some ExerciseTraits) {
+        toggleOverride(for: exercise.id, currentlyExcluded: excludes(exercise))
+    }
+
     public var summary: String { "\(parts.map(\.label).joined(separator: ", ")), \(severity.label.lowercased())" }
 }
 
@@ -235,6 +248,32 @@ public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
         if case .injury(let injury) = kind, injury.parts.isEmpty { return false }
         return true
     }
+
+    // MARK: Editing
+
+    /// How long a period with no end yet runs when an editor gives it one: a week.
+    public static let defaultDays = 7
+
+    /// The end an editor's picker shows: the period's own, else a week from the start, and never
+    /// before the start.
+    public var editorEnd: Day { max(start, end ?? start.adding(days: Self.defaultDays - 1)) }
+
+    /// What an editor saves, so every app's editor saves the same thing: open-ended only where the
+    /// kind allows it, else with the end its picker shows.
+    public func edited(openEnded: Bool) -> LifeModePeriod {
+        var edited = self
+        edited.end = openEnded && kind.allowsOpenEnd ? nil : editorEnd
+        return edited
+    }
+
+    /// Moves the start, taking an end it passes along rather than leaving it before the start.
+    public mutating func moveStart(to day: Day) {
+        start = day
+        end = end.map { max(day, $0) }
+    }
+
+    /// Moves the end, never before the start.
+    public mutating func moveEnd(to day: Day) { end = max(start, day) }
 
     /// The dates put in order when the end was moved before the start (or the start after the end).
     public func normalized() -> LifeModePeriod {
