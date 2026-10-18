@@ -1,4 +1,5 @@
 import Foundation
+import SystemCore
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -103,11 +104,9 @@ public actor SystemAI {
         self.runner = runner
     }
 
-    /// Private Cloud Compute needs Apple's managed entitlement (com.apple.developer.private-cloud-compute).
-    /// Without it the framework still reports it available, then stops the app on the first request
-    /// with a fatal error, so it's used only when the app says it has the entitlement: `SystemAIPrivateCloud`
-    /// set to true in its Info.plist. Until then, heavy jobs run on the device.
-    public static var privateCloudEntitled: Bool { Bundle.main.object(forInfoDictionaryKey: "SystemAIPrivateCloud") as? Bool ?? false }
+    /// The app has Apple's entitlement for Private Cloud Compute (`PrivateCloud`, in SystemCore, which
+    /// every package that might use it reads). Until it does, heavy jobs run on the device.
+    public static var privateCloudEntitled: Bool { PrivateCloud.isEntitled }
 
     /// What can answer now. Needs iOS 27 / macOS 27 with Apple Intelligence; Private Cloud Compute
     /// also needs the setting on and the entitlement.
@@ -156,7 +155,11 @@ public actor SystemAI {
 /// Compute through the same session API.
 @available(iOS 27.0, macOS 27.0, *)
 enum FoundationBackend {
-    static func availability(allowCloud: Bool) -> AIAvailability {
+    /// `entitled` and `cloud` are there for tests; Private Cloud Compute isn't even asked without the
+    /// entitlement, since a request to it would stop the app.
+    static func availability(
+        allowCloud: Bool, entitled: Bool = SystemAI.privateCloudEntitled, cloud probe: () -> Bool = probeCloud
+    ) -> AIAvailability {
         var reason: String?
         var device = false
         switch SystemLanguageModel.default.availability {
@@ -166,12 +169,14 @@ enum FoundationBackend {
         case .unavailable(.modelNotReady): reason = "Apple Intelligence is still getting ready. Try again later."
         case .unavailable: reason = "Apple Intelligence isn't available right now."
         }
-        var cloud = false
-        if allowCloud && SystemAI.privateCloudEntitled {
-            let pcc = PrivateCloudComputeLanguageModel()
-            cloud = pcc.isAvailable && !pcc.quotaUsage.isLimitReached
-        }
+        let cloud = allowCloud && entitled && probe()
         return AIAvailability(onDevice: device, privateCloud: cloud, reason: device || cloud ? nil : reason)
+    }
+
+    /// Whether Private Cloud Compute can answer now.
+    static func probeCloud() -> Bool {
+        let pcc = PrivateCloudComputeLanguageModel()
+        return pcc.isAvailable && !pcc.quotaUsage.isLimitReached
     }
 
     static func respond(_ engine: AIEngine, instructions: String, prompt: String, maxTokens: Int) async throws -> String {

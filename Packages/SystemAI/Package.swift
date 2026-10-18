@@ -8,8 +8,9 @@ let package = Package(
     name: "SystemAI",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [.library(name: "SystemAI", targets: ["SystemAI"])],
+    dependencies: [.package(path: "../SystemCore")],
     targets: [
-        .target(name: "SystemAI"),
+        .target(name: "SystemAI", dependencies: ["SystemCore"]),
         .testTarget(name: "SystemAITests", dependencies: ["SystemAI"]),
     ],
     swiftLanguageModes: [.v6]

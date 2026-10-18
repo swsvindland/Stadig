@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import SystemCore
 
 @available(iOS 27.0, macOS 27.0, *)
 @Generable(description: "What a person wants changed in next week's meal plan")
@@ -21,10 +22,20 @@ struct PlanRequestOutput {
 }
 
 /// Reads a request for next week's plan. Apple's on-device model (or Private Cloud Compute when
-/// allowed) tidies messy wording into short phrases; the word rules map those to the library.
-/// Without a model, the word rules read the request directly.
+/// allowed and entitled) tidies messy wording into short phrases; the word rules map those to the
+/// library. Without a model, the word rules read the request directly.
 public struct PlanAssistant: Sendable {
     public init() {}
+
+    /// Which model reads a request: the device's when it can answer; Private Cloud Compute only when
+    /// the setting allows it and the app has Apple's entitlement, since without it a request would
+    /// stop the app (`PrivateCloud`); otherwise none, and the word rules read it alone.
+    enum Reader: Equatable { case device, cloud, words }
+
+    static func reader(deviceAvailable: Bool, allowCloud: Bool, entitled: Bool = PrivateCloud.isEntitled) -> Reader {
+        if deviceAvailable { return .device }
+        return allowCloud && entitled ? .cloud : .words
+    }
 
     static let instructions = """
         You turn a request about a weekly meal-prep plan into lists. The plan is built from chicken, turkey, beef, pork, \
@@ -38,12 +49,13 @@ public struct PlanAssistant: Sendable {
         let words = PlanRequests.read(request)
         guard #available(iOS 27.0, macOS 27.0, *) else { return words }
         let model: (any LanguageModel)?
-        if SystemLanguageModel.default.availability == .available {
+        switch Self.reader(deviceAvailable: SystemLanguageModel.default.availability == .available, allowCloud: allowCloud) {
+        case .device:
             model = SystemLanguageModel.default
-        } else if allowCloud {
+        case .cloud:
             let cloud = PrivateCloudComputeLanguageModel()
             model = cloud.isAvailable && !cloud.quotaUsage.isLimitReached ? cloud : nil
-        } else {
+        case .words:
             model = nil
         }
         guard let model else { return words }

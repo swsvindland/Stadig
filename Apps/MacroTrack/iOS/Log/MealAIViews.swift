@@ -74,6 +74,16 @@ struct PhotoLogView: View {
         .onAppear {
             if useCamera, CameraPicker.isAvailable, guess == nil, image == nil, model.ai.canSeePhotos { showCamera = true }
         }
+        #if DEBUG
+        .task {
+            // -photo meal.jpg reads a picture from the app's Documents the way the photo library's are,
+            // since a simulator can't be made to pick one.
+            if let name = LaunchOptions.current.value(after: "-photo"), guess == nil, image == nil, model.ai.canSeePhotos {
+                let url = URL.documentsDirectory.appending(path: name)
+                analyze { await PhotoInput.prepare(try Data(contentsOf: url), maxDimension: 1280) }
+            }
+        }
+        #endif
     }
 
     var chooser: some View {
@@ -92,7 +102,10 @@ struct PhotoLogView: View {
                         Label("Choose a photo", systemImage: "photo.on.rectangle")
                     }
                 } footer: {
-                    Text("Read on your iPhone, or with Private Cloud Compute when allowed in Settings. Photos aren't kept.")
+                    Text(
+                        MealAIAvailability.privateCloudEntitled
+                            ? "Read on your iPhone, or with Private Cloud Compute when allowed in Settings. Photos aren't kept."
+                            : "Read on your iPhone. Photos aren't kept.")
                 }
                 Section("Anything the photo can't show?") {
                     TextField("Optional: \"large\", \"no dressing\", \"half eaten\"", text: $note)

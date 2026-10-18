@@ -81,22 +81,28 @@ struct SettingsView: View {
                     "On this iPhone",
                     value: model.ai.availability.onDevice
                         ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
-                // The reload after the save reconfigures the AI engine for the new setting.
-                Toggle(
-                    "Use Private Cloud Compute",
-                    isOn: Binding(
-                        get: { model.settings.allowCloudAI },
-                        set: { on in
-                            model.updateSettings { $0.allowCloudAI = on }
-                        })
-                )
-                .accessibilityIdentifier("settings.allowCloudAI")
+                // Only with Apple's managed entitlement; without it everything runs on the device, since a
+                // request to Private Cloud Compute would stop the app. The reload after the save
+                // reconfigures the AI engine for the new setting.
+                if MealAIAvailability.privateCloudEntitled {
+                    Toggle(
+                        "Use Private Cloud Compute",
+                        isOn: Binding(
+                            get: { model.settings.allowCloudAI },
+                            set: { on in
+                                model.updateSettings { $0.allowCloudAI = on }
+                            })
+                    )
+                    .accessibilityIdentifier("settings.allowCloudAI")
+                }
                 if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
             } header: {
                 Text("Photo and description logging")
             } footer: {
                 Text(
-                    "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this iPhone can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
+                    MealAIAvailability.privateCloudEntitled
+                        ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this iPhone can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
+                        : "Everything is read by Apple's on-device model, on this iPhone. The model only names foods and amounts; nutrients come from the food database."
                 )
             }
 

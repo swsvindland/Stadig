@@ -18,7 +18,7 @@ Everything goes through `Scripts/build.sh` from the repo root. It prints only er
 | Widgets, Live Activity, the Watch app | `Scripts/build.sh ios` / `watch` / `macro` |
 | Anything, before committing | `Scripts/build.sh lint` |
 
-`<app>` is `lift`, `macro` or `mind`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything but SystemAI.
+`<app>` is `lift`, `macro` or `mind`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything.
 
 One suite or test: `cd Packages/<Package> && swift test --filter <SuiteOrTestName>`.
 

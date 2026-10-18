@@ -97,7 +97,8 @@ struct EvaluationTests {
         }
     }
 
-    @Test @available(macOS 27.0, iOS 27.0, *)
+    @Test(.enabled(if: MealAIAvailability.privateCloudEntitled, "needs Apple's Private Cloud Compute entitlement (SystemAIPrivateCloud)"))
+    @available(macOS 27.0, iOS 27.0, *)
     func privateCloud() async throws {
         print("availability with cloud: \(MealAI.availability(allowCloud: true))")
         let ai = MealAI(catalog: Self.catalog, allowCloud: true, pinned: .privateCloud)

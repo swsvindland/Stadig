@@ -1,6 +1,7 @@
 import FoodDatabase
 import Foundation
 import FoundationModels
+import Synchronization
 import SystemCore
 import Testing
 
@@ -190,6 +191,47 @@ struct EngineTests {
         #expect(MealEngines.fallback(after: .refused, from: .onDevice, photo: false, hasNote: true, in: both) == nil)
         #expect(MealEngines.fallback(after: .notFood("x"), from: .onDevice, photo: false, hasNote: true, in: both) == nil)
         #expect(MealEngines.fallback(after: .busy, from: .onDevice, photo: false, hasNote: true, in: state()) == nil)
+    }
+
+    /// Private Cloud Compute stops an app that lacks Apple's entitlement, so without
+    /// `SystemAIPrivateCloud` in the Info.plist it's never offered, even with the setting on.
+    @Test @available(macOS 27.0, iOS 27.0, *)
+    func theCloudNeedsTheEntitlement() {
+        // A cloud that's always there, so the test doesn't depend on this Mac's: without the
+        // entitlement it's never asked, let alone used.
+        let asked = Mutex(0)
+        let up = { () -> (available: Bool, vision: Bool) in
+            asked.withLock { $0 += 1 }
+            return (true, true)
+        }
+        for allowCloud in [true, false] {
+            let state = MealEngines.availability(allowCloud: allowCloud, entitled: false, cloud: up)
+            #expect(!state.privateCloud && !state.privateCloudVision)
+            #expect(MealEngines.engine(photo: true, in: state) != .privateCloud)
+            #expect(MealEngines.engine(photo: false, in: state) != .privateCloud)
+        }
+        #expect(asked.withLock { $0 } == 0)
+        // Entitled and allowed, the same cloud is offered.
+        #expect(MealEngines.availability(allowCloud: true, entitled: true, cloud: up).privateCloudVision)
+        #expect(!MealEngines.availability(allowCloud: false, entitled: true, cloud: up).privateCloud)
+        // The test runner declares nothing, like the apps until Apple grants the entitlement.
+        #expect(!MealAIAvailability.privateCloudEntitled)
+        #expect(!MealAI.availability(allowCloud: true).privateCloud)
+    }
+
+    @Test func aDeviceThatCantReadPhotosOffersTheCloudOnlyWhereItCanBeUsed() {
+        let textOnly = state(vision: false)
+        let describe = "Photo recognition isn't available on this device right now. Describe the meal instead."
+        let allow = "This device's model can't read photos. Allow Private Cloud Compute to log meals from photos."
+        // Entitled and switched off: say the switch would help.
+        #expect(MealEngines.reason(textOnly, deviceReason: nil, allowCloud: false, entitled: true) == allow)
+        // Not entitled: the switch is hidden, so never point to it.
+        #expect(MealEngines.reason(textOnly, deviceReason: nil, allowCloud: false, entitled: false) == describe)
+        #expect(MealEngines.reason(textOnly, deviceReason: nil, allowCloud: true, entitled: false) == describe)
+        #expect(MealEngines.reason(textOnly, deviceReason: nil, allowCloud: true, entitled: true) == describe)
+        // Everything works, or nothing does.
+        #expect(MealEngines.reason(state(), deviceReason: nil, allowCloud: false, entitled: false) == nil)
+        #expect(MealEngines.reason(state(device: false), deviceReason: "Turn it on", allowCloud: true, entitled: false) == "Turn it on")
     }
 
     @Test @available(macOS 27.0, iOS 27.0, *)
