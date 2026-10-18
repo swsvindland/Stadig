@@ -224,16 +224,20 @@ struct ReflectView: View {
     }
 }
 
-/// A book of your own: title, author, length, and how hard, by comparison with the ladder.
+/// A book of your own: title, author, length, format, and how hard, by comparison with the ladder.
 struct BookEditor: View {
     @Environment(\.dismiss) private var dismiss
     let book: Book?
+    /// For a new book: reading now, or finished before Mind Track.
+    var status: BookStatus = .reading
     let save: (Book) -> Void
     @State private var title = ""
     @State private var author = ""
     @State private var pages = 300
     @State private var tier = 3
     @State private var genre: Genre = .literary
+    @State private var format: BookFormat = .print
+    @State private var feel: BookFeel = .right
 
     var body: some View {
         NavigationStack {
@@ -243,6 +247,13 @@ struct BookEditor: View {
                     TextField("Author", text: $author)
                     Stepper(value: $pages, in: 40...2000, step: 10) { LabeledContent("Pages", value: "\(pages)") }
                     Picker("Genre", selection: $genre) { ForEach(Genre.allCases) { Text($0.label).tag($0) } }
+                    Picker("Format", selection: $format) { ForEach(BookFormat.allCases, id: \.self) { Text($0.label).tag($0) } }
+                }
+                if (book?.status ?? status) == .readBefore {
+                    Section("How it felt") {
+                        Picker("How it felt", selection: $feel) { ForEach(BookFeel.allCases, id: \.self) { Text($0.label).tag($0) } }
+                            .pickerStyle(.segmented)
+                    }
                 }
                 Section {
                     Stepper(value: $tier, in: 1...10) { LabeledContent("Tier", value: "\(tier) of 10") }
@@ -262,12 +273,14 @@ struct BookEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        var edited = book ?? Book(title: title, author: author, tier: tier, pages: pages, genres: [genre], status: .reading)
+                        var edited = book ?? Book(title: title, author: author, tier: tier, pages: pages, genres: [genre], status: status)
                         edited.title = title
                         edited.author = author
                         edited.tier = tier
                         edited.pages = pages
                         edited.genres = [genre]
+                        edited.format = format
+                        if edited.status == .readBefore { edited.feel = feel; edited.page = edited.pages }
                         save(edited)
                         dismiss()
                     }
@@ -281,6 +294,8 @@ struct BookEditor: View {
                 pages = book.pages
                 tier = book.tier
                 genre = book.genres.first ?? .literary
+                format = book.format ?? .print
+                feel = book.feel ?? .right
             }
         }
     }

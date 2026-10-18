@@ -12,9 +12,9 @@ struct SimulatedStudentTests {
         var store = Store(settings: Fixtures.settings())
         var student = Student(vocabulary: 1200, mathsLevel: 5, writingLevel: 1, deck: deck)
         let state = store.state(on: Fixtures.monday)
-        let plan = try #require(SessionPlanner.today(state, deck: deck))
+        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
         #expect(plan.kind == .placement)
-        #expect(plan.parts.map(\.kind) == [.placement(.japanese), .placement(.maths), .placement(.writing), .learn(.japanese)])
+        #expect(plan.parts.map { "\($0.kind) \($0.domain?.rawValue ?? "")" } == ["placement japanese", "placement maths", "placement writing", "learn japanese"])
         let run = try #require(store.study(on: Fixtures.monday, student: &student, deck: deck))
 
         let vocabulary = try #require(store.tests.first { $0.test == .vocabulary })
@@ -37,14 +37,14 @@ struct SimulatedStudentTests {
         #expect(!words.isEmpty)
         #expect(words.allSatisfy { (deck.word($0.key.wordID!)?.rank ?? 0) > 0 })
         #expect(run.session.minutes > 12 && run.session.minutes < 40, "\(run.session.minutes) minutes")
-        #expect(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), deck: deck)?.kind == .regular)
+        #expect(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck))?.kind == .regular)
     }
 
     @Test("someone who can't read kana starts with hiragana, and words wait for it")
     func kanaFirst() throws {
         var store = Store(settings: Fixtures.settings([.japanese], readsKana: false))
         var student = Student(vocabulary: 0, mathsLevel: 0, writingLevel: 0, deck: deck)
-        let plan = try #require(SessionPlanner.today(store.state(on: Fixtures.monday), deck: deck))
+        let plan = try #require(SessionPlanner.today(store.state(on: Fixtures.monday), catalogs: Fixtures.catalogs(deck)))
         #expect(plan.parts.first?.detail.contains("kana") == true, "\(plan.parts)")
         store.study(on: Fixtures.monday, student: &student, deck: deck)
         #expect(store.cards.keys.contains { $0.isKana })
@@ -96,7 +96,7 @@ struct SimulatedStudentTests {
         #expect(run.changedCards.isEmpty || run.changedCards.allSatisfy { store.cards[$0]?.memory != nil }, "tests don't schedule")
 
         let final = store.state(on: Fixtures.monday.adding(days: 57))
-        let analysis = Analyst.analyse(final, deck: deck)
+        let analysis = Analyst.analyse(final, catalogs: Fixtures.catalogs(deck))
         let intelligence = try #require(analysis.stats.first { $0.stat == .intelligence })
         #expect(intelligence.score != nil)
         #expect(analysis.discipline.band == .inZone || analysis.discipline.band == .above, "\(analysis.discipline)")
@@ -116,8 +116,8 @@ struct SimulatedStudentTests {
         store.tests = [TestResult(test: .vocabulary, date: now, score: 100)]
         store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.japanese], planned: true)]
         let state = store.state(on: Fixtures.monday.adding(days: 1))
-        let plan = SessionPlanner.plan(.extra, domains: [], state: state, deck: deck)
-        var run = StudyRun(plan: plan, state: state, deck: deck, now: state.now)
+        let plan = SessionPlanner.plan(.extra, domains: [], state: state, catalogs: Fixtures.catalogs(deck))
+        var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         guard case .question(let first) = run.step else { Issue.record("no question"); return }
         run.choose((first.correctChoice! + 1) % first.choices.count, now: state.now + 5)
         let after = try #require(run.cards[word.key]?.memory)

@@ -221,12 +221,18 @@ mind_app = {**swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
     "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
+    # Xcode moved this out of Config/Info.plist into build settings.
+    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
+    # Speaking exercises, ISBN and cover scans, and handwritten pages.
+    "INFOPLIST_KEY_NSMicrophoneUsageDescription": "Mind Track listens when you answer a speaking exercise out loud, so it can check what you said.",
+    "INFOPLIST_KEY_NSSpeechRecognitionUsageDescription": "Speaking exercises are checked by on-device speech recognition. What you say stays on this device.",
+    "INFOPLIST_KEY_NSCameraUsageDescription": "Mind Track uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand.",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
     # The doc puts this one on the Mac too (sheet music and study at a desk): the iPad app runs there as is.
     "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "YES",
 }}
 
-MIND_PACKAGES = ["SystemCore", "SystemStore", "MindEngine"]
+MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemAI", "MindEngine"]
 
 MIND = {
     "name": "MindTrack",

@@ -3,7 +3,7 @@ import SystemCore
 
 /// What a Japanese session teaches next, and how much. New words come only as fast as recall
 /// holds up: difficulty rises when performance shows mastery, never because a week went by.
-public enum JapanesePlan {
+public enum LanguagePlan {
     /// New words in a 25-minute session with recall on target: two Japanese days a week makes
     /// about 1,500 words a year.
     public static let baseNewWords = 15
@@ -30,15 +30,16 @@ public enum JapanesePlan {
         }
     }
 
-    /// Words up to here are checked rather than taught: the latest vocabulary estimate.
-    public static func frontier(_ tests: [TestResult]) -> Int {
-        Int(tests.filter { $0.test == .vocabulary }.max { $0.date < $1.date }?.score ?? 0)
+    /// Words up to here are checked rather than taught: the latest vocabulary estimate in the language.
+    public static func frontier(_ tests: [TestResult], _ language: Language = .japanese) -> Int {
+        Int(tests.filter { $0.test == .vocabulary && $0.domain == language.domain }.max { $0.date < $1.date }?.score ?? 0)
     }
 
-    /// The share of Japanese reviews recalled in the window. Nil with too few to say.
-    public static func retention(_ sessions: [StudySession], today: Day) -> Double? {
+    /// The share of a language's reviews recalled in the window. Nil with too few to say.
+    public static func retention(_ sessions: [StudySession], today: Day, _ language: Language = .japanese) -> Double? {
         let since = today.adding(days: -retentionWindowDays)
-        let reviews = sessions.filter { $0.day >= since }.flatMap(\.attempts).filter { $0.kind == .review && $0.domain == .japanese }
+        let reviews = sessions.filter { $0.day >= since }.flatMap(\.attempts)
+            .filter { $0.kind == .review && $0.domain == language.domain }
         guard reviews.count >= 20 else { return nil }
         return Double(reviews.filter(\.correct).count) / Double(reviews.count)
     }
@@ -72,12 +73,13 @@ public enum JapanesePlan {
         KanaTable.kana(script).filter { $0.group < 2 }.allSatisfy { cards.contains($0.key) }
     }
 
-    /// The next new items, in order. Without kana, hiragana comes first and words wait; katakana
-    /// then runs alongside words, and loanwords wait until it's in.
-    public static func next(count: Int, cards: Set<CardKey>, deck: JapaneseDeck, readsKana: Bool?, frontier: Int) -> [NewItem] {
+    /// The next new items, in order. For Japanese without kana, hiragana comes first and words
+    /// wait; katakana then runs alongside words, and loanwords wait until it's in.
+    public static func next(count: Int, cards: Set<CardKey>, deck: LanguageDeck, readsKana: Bool?, frontier: Int) -> [NewItem] {
         guard count > 0 else { return [] }
         var kana: [NewItem] = []
         var wordLimit = count
+        let readsKana: Bool? = deck.language == .japanese ? readsKana : true
         if readsKana == false {
             if !kanaIntroduced(.hiragana, cards: cards) {
                 return KanaTable.kana(.hiragana).filter { !cards.contains($0.key) }.prefix(newKanaPerSession).map(NewItem.kana)

@@ -14,7 +14,7 @@ DD=${DERIVED_DATA:-/tmp/system-dd}
 STATUS=0
 
 run_tests() {
-  for pkg in SystemCore ExerciseLibrary SystemStore HealthBridge LiftEngine NutritionEngine FoodDatabase FoodIntelligence MealPlanner MindEngine; do
+  for pkg in SystemCore ExerciseLibrary SystemStore HealthBridge LiftEngine NutritionEngine FoodDatabase FoodIntelligence MealPlanner SystemAI MindEngine; do
     print "== $pkg"
     (cd Packages/$pkg && swift test 2>&1 | grep -E "error:|warning:|recorded an issue|Test run with|Executed .* tests") || true
   done

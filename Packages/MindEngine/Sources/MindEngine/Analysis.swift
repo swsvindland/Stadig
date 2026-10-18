@@ -31,7 +31,10 @@ public struct StudyDay: Hashable, Sendable, Identifiable {
     public var id: Int { day.ordinal }
 }
 
-public struct JapaneseSummary: Hashable, Sendable {
+/// One language's picture: words in, kana for Japanese, the latest tests and recall.
+public struct LanguageSummary: Hashable, Sendable {
+    public var domain: Domain
+    public var mode: CourseMode
     public var wordsLearned: Int
     public var kanaLearned: Int
     public var vocabulary: TestResult?
@@ -75,7 +78,8 @@ public struct MindAnalysis: Sendable {
     public var discipline: DisciplineScore
     /// Weekly "what we've learned" notes while the assessment runs.
     public var learned: [String]
-    public var japanese: JapaneseSummary
+    /// One summary per active language course.
+    public var languages: [LanguageSummary]
     public var maths: MathsSummary
     public var writing: WritingSummary
     public var reading: ReadingSummary
@@ -91,20 +95,20 @@ extension MathTopic {
 }
 
 public enum Analyst {
-    public static func analyse(_ state: StudyState, deck: JapaneseDeck?) -> MindAnalysis {
+    public static func analyse(_ state: StudyState, catalogs: Catalogs) -> MindAnalysis {
         let phase = state.phase
-        let plan = SessionPlanner.today(state, deck: deck)
+        let plan = SessionPlanner.today(state, catalogs: catalogs)
         let doneToday = state.sessions.filter { $0.day == state.today && $0.finished }
         let todayDone = doneToday.contains { $0.planned && $0.counts }
         let due = state.due(on: state.today)
         let discipline = discipline(state)
-        let japanese = japaneseSummary(state)
         let maths = mathsSummary(state)
-        let writing = writingSummary(state)
+        let writing = writingSummary(state, catalogs: catalogs)
         let reading = readingSummary(state)
         var analysis = MindAnalysis(phase: phase, today: todayDone ? nil : plan, doneToday: doneToday, week: week(state),
                                     dueToday: due.count, actions: [], stats: stats(state), discipline: discipline,
-                                    learned: learned(state, maths: maths, writing: writing, reading: reading), japanese: japanese,
+                                    learned: learned(state, maths: maths, writing: writing, reading: reading),
+                                    languages: state.settings.languages.map { languageSummary($0, state: state) },
                                     maths: maths, writing: writing, reading: reading, quests: [])
         analysis.actions = actions(state, analysis: analysis, plannedToday: plan != nil)
         analysis.quests = quests(state, analysis: analysis)
@@ -113,36 +117,9 @@ public enum Analyst {
 
     // MARK: Stats: only tests and finished books move them
 
-    /// A domain's 0–100 reading from its tests, oldest first.
+    /// A course's 0–100 reading from its tests, oldest first: each subject says how.
     public static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)] {
-        switch domain {
-        case .japanese:
-            var listening: Double?
-            var out: [(Day, Double)] = []
-            for test in state.tests where test.test == .vocabulary || test.test == .listening {
-                if test.test == .listening { listening = test.score * 100 }
-                guard let vocabulary = state.tests.last(where: { $0.test == .vocabulary && $0.date <= test.date }) else { continue }
-                let words = JapaneseTests.vocabularyScore(vocabulary.score)
-                out.append((test.day, listening.map { 0.6 * words + 0.4 * $0 } ?? words))
-            }
-            return out
-        case .maths:
-            return state.tests.compactMap { test in
-                switch test.test {
-                case .mathsPlacement: return (test.day, min(100, 10 * (test.detail["level"] ?? 0)))
-                case .maths: return (test.day, min(100, 10 * (test.detail["reach"] ?? 0) * (0.5 + 0.5 * test.score)))
-                default: return nil
-                }
-            }
-        case .writing:
-            return state.tests.filter { $0.test == .writing }.map { ($0.day, $0.score * 100) }
-        case .reading:
-            return state.books.filter(\.done).compactMap { book in
-                let day = book.finished ?? state.start
-                let shelf = state.books.filter { $0.done && ($0.finished ?? state.start) <= day }
-                return ReadingPlan.score(shelf).map { (day, $0) }
-            }.sorted { $0.0 < $1.0 }
-        }
+        Subjects.module(domain).series(domain, state: state)
     }
 
     /// Compares the last two readings: up, flat or down.
@@ -193,20 +170,7 @@ public enum Analyst {
         return out
     }
 
-    static func label(_ domain: Domain, state: StudyState) -> String {
-        switch domain {
-        case .japanese:
-            let words = Int(state.latest(.vocabulary)?.score ?? 0)
-            return "Japanese ~\(words.formatted()) words"
-        case .maths:
-            let level = Int(state.tests.last { $0.test == .maths }?.detail["reach"] ?? state.latest(.mathsPlacement)?.detail["level"] ?? 0)
-            return "Maths level \(level)"
-        case .writing:
-            return "Writing \(Int(((state.latest(.writing)?.score ?? 0) * 100).rounded()))%"
-        case .reading:
-            return ""
-        }
-    }
+    static func label(_ domain: Domain, state: StudyState) -> String { Subjects.module(domain).label(domain, state: state) }
 
     // MARK: Discipline
 
@@ -247,12 +211,13 @@ public enum Analyst {
 
     // MARK: Summaries
 
-    static func japaneseSummary(_ state: StudyState) -> JapaneseSummary {
-        let cards = state.cards.values.filter { $0.domain == .japanese && $0.memory != nil }
-        return JapaneseSummary(wordsLearned: cards.filter { !$0.key.isKana }.count, kanaLearned: cards.filter(\.key.isKana).count,
-                               vocabulary: state.latest(.vocabulary), listening: state.latest(.listening),
-                               episodes: state.tests.filter { $0.test == .episode },
-                               retention: JapanesePlan.retention(state.sessions, today: state.today))
+    static func languageSummary(_ domain: Domain, state: StudyState) -> LanguageSummary {
+        let cards = state.cards.values.filter { $0.domain == domain && $0.memory != nil }
+        return LanguageSummary(domain: domain, mode: state.settings.mode(domain) ?? .focus,
+                               wordsLearned: cards.filter { !$0.key.isKana }.count, kanaLearned: cards.filter(\.key.isKana).count,
+                               vocabulary: state.latest(.vocabulary, in: domain), listening: state.latest(.listening, in: domain),
+                               episodes: state.tests.filter { $0.test.selfRated && $0.domain == domain },
+                               retention: domain.language.flatMap { LanguagePlan.retention(state.sessions, today: state.today, $0) })
     }
 
     static func mathsSummary(_ state: StudyState) -> MathsSummary {
@@ -264,8 +229,8 @@ public enum Analyst {
                             check: state.tests.last { $0.test == .maths || $0.test == .mathsPlacement })
     }
 
-    static func writingSummary(_ state: StudyState) -> WritingSummary {
-        let bank = WritingBank.standard
+    static func writingSummary(_ state: StudyState, catalogs: Catalogs) -> WritingSummary {
+        let bank = catalogs.writing
         return WritingSummary(known: WritingPlan.known(state.cards).count, total: bank.skills.count,
                               next: WritingPlan.next(state.cards, bank: bank)?.title, check: state.latest(.writing))
     }
@@ -282,11 +247,13 @@ public enum Analyst {
     static func learned(_ state: StudyState, maths: MathsSummary, writing: WritingSummary, reading: ReadingSummary) -> [String] {
         guard state.phase.isAssessment else { return [] }
         var notes: [String] = []
-        if state.settings.has(.japanese) {
-            if let vocabulary = state.latest(.vocabulary) {
+        for domain in state.settings.languages {
+            guard let language = domain.language else { continue }
+            if let vocabulary = state.latest(.vocabulary, in: domain) {
                 let words = Int(vocabulary.score)
-                notes.append("Japanese: about \(words.formatted()) words known (\(JapaneseTests.level(words: Double(words)).lowercased())). Words up to there get a quick check instead of a lesson.")
-            } else if state.settings.readsKana == false {
+                let level = LanguageTests.level(words: Double(words), language: language).lowercased()
+                notes.append("\(domain.label): about \(words.formatted()) words known (\(level)). Words up to there get a quick check instead of a lesson.")
+            } else if language == .japanese && state.settings.readsKana == false {
                 let kana = state.cards.values.filter { $0.key.isKana && $0.memory != nil }.count
                 notes.append("Japanese: \(kana) of \(KanaTable.all.count) kana in. Words start once hiragana is.")
             }
@@ -345,10 +312,11 @@ public enum Analyst {
                 }
             }
         }
-        if state.settings.has(.japanese), analysis.phase.isReview,
-           !state.tests.contains(where: { $0.test == .episode && $0.day.days(until: state.today) < 7 }) {
-            out.append(MindAction(id: "episode", kind: .episode, title: "Watch an episode without subtitles",
-                                  detail: "Review week: something you enjoy, in Japanese, just for fun. Afterwards, say how much you followed.", priority: 0.6))
+        for domain in state.settings.focus where domain.isLanguage && analysis.phase.isReview
+            && !state.tests.contains(where: { $0.test == .episode && $0.domain == domain && $0.day.days(until: state.today) < 7 }) {
+            out.append(MindAction(id: "episode.\(domain.rawValue)", kind: .episode, title: "Watch an episode without subtitles",
+                                  detail: "Review week: something you enjoy, in \(domain.label), just for fun. Afterwards, say how much you followed.",
+                                  priority: 0.6))
         }
         return out.sorted { $0.priority > $1.priority }
     }
@@ -370,8 +338,9 @@ public enum Analyst {
             out.append(Quest(id: "mind.read.\(state.today.iso)", title: "Read 20 pages of \(book.title)", stat: .wisdom, source: .knowledge,
                              minutes: 30, day: state.today, timeOfDay: .evening, priority: 0.8))
         }
-        if analysis.actions.contains(where: { $0.kind == .episode }) {
-            out.append(Quest(id: "mind.episode.\(state.today.iso)", title: "Watch an episode in Japanese without subtitles",
+        if let episode = analysis.actions.first(where: { $0.kind == .episode }) {
+            let language = Domain.languages.first { episode.id == "episode.\($0.rawValue)" } ?? .japanese
+            out.append(Quest(id: "mind.episode.\(state.today.iso)", title: "Watch an episode in \(language.label) without subtitles",
                              detail: "Just for fun, then note how much you followed", stat: .intelligence, source: .knowledge, minutes: 25,
                              day: state.today, timeOfDay: .evening, priority: 0.5))
         }

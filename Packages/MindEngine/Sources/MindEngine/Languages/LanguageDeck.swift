@@ -4,12 +4,14 @@ import SQLite3
 
 let mindLog = Logger(subsystem: "dev.svindland.stadig.mind", category: "engine")
 
-/// A word in the deck, in the order it's taught: how common it is in everyday sentences.
+/// A word in a language's deck, in the order it's taught: how common it is in everyday sentences.
 public struct Word: Hashable, Sendable, Identifiable {
     public var id: Int
+    public var language: Language
     public var rank: Int
-    /// As it's usually written: kanji, or kana for words usually written in kana.
+    /// As it's usually written: in Japanese kanji, or kana for words usually written in kana.
     public var text: String
+    /// How it's read: kana for Japanese; the word itself where the script needs no reading.
     public var kana: String
     /// The kanji spelling, even for words usually written in kana.
     public var kanji: String?
@@ -20,12 +22,13 @@ public struct Word: Hashable, Sendable, Identifiable {
     public var pos: String
     public var kanjiChars: String
 
-    public init(id: Int, rank: Int, text: String, kana: String, kanji: String? = nil, meaning: String, meanings: String? = nil,
-                pos: String = "noun", kanjiChars: String? = nil) {
+    public init(id: Int, language: Language = .japanese, rank: Int, text: String, kana: String? = nil, kanji: String? = nil,
+                meaning: String, meanings: String? = nil, pos: String = "noun", kanjiChars: String? = nil) {
         self.id = id
+        self.language = language
         self.rank = rank
         self.text = text
-        self.kana = kana
+        self.kana = kana ?? text
         self.kanji = kanji
         self.meaning = meaning
         self.meanings = meanings ?? meaning
@@ -33,7 +36,8 @@ public struct Word: Hashable, Sendable, Identifiable {
         self.kanjiChars = kanjiChars ?? String(text.filter { $0.isKanji })
     }
 
-    public var key: CardKey { .word(id) }
+    public var key: CardKey { .word(id, language) }
+    public var reading: String { kana }
     /// Written with kanji, so its reading is worth asking.
     public var hasKanji: Bool { text.contains { $0.isKanji } }
     public var hasKatakana: Bool { KanaTable.containsKatakana(text) }
@@ -55,19 +59,19 @@ public struct Kanji: Hashable, Sendable {
     }
 }
 
-/// A Tatoeba sentence and its English translation. `level` is the rank of its rarest word: every
-/// word in it is at or below that rank.
+/// A Tatoeba sentence in the language and its English translation. `level` is the rank of its
+/// rarest word: every word in it is at or below that rank.
 public struct Sentence: Hashable, Sendable, Identifiable {
     public var id: Int
-    public var jp: String
-    public var en: String
+    public var text: String
+    public var english: String
     public var level: Int
     public var words: [Int]
 
-    public init(id: Int, jp: String, en: String, level: Int, words: [Int]) {
+    public init(id: Int, text: String, english: String, level: Int, words: [Int]) {
         self.id = id
-        self.jp = jp
-        self.en = en
+        self.text = text
+        self.english = english
         self.level = level
         self.words = words
     }
@@ -77,9 +81,11 @@ extension Character {
     var isKanji: Bool { unicodeScalars.allSatisfy { (0x4E00...0x9FFF).contains($0.value) || $0.value == 0x3005 } }
 }
 
-/// The Japanese catalog: every word and kanji in memory (they're small), sentences read on demand.
-/// Built by Scripts/build-japanese-catalog.py from JMdict, KANJIDIC2 and Tatoeba.
-public final class JapaneseDeck: @unchecked Sendable {
+/// A language's catalog: every word (and, for Japanese, kanji) in memory, since they're small;
+/// sentences read on demand. Built by Scripts/build-japanese-catalog.py (JMdict, KANJIDIC2 and
+/// Tatoeba) and its Spanish counterpart, in one schema.
+public final class LanguageDeck: @unchecked Sendable {
+    public let language: Language
     public let words: [Word]
     public let attribution: String
     private let byID: [Int: Word]
@@ -92,7 +98,8 @@ public final class JapaneseDeck: @unchecked Sendable {
     }
 
     /// For tests and previews.
-    public init(words: [Word], kanji: [Kanji] = [], sentences: [Sentence] = []) {
+    public init(language: Language = .japanese, words: [Word], kanji: [Kanji] = [], sentences: [Sentence] = []) {
+        self.language = language
         self.words = words.sorted { $0.rank < $1.rank }
         byID = Dictionary(words.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         kanjiByLiteral = Dictionary(kanji.map { ($0.literal, $0) }, uniquingKeysWith: { a, _ in a })
@@ -100,24 +107,27 @@ public final class JapaneseDeck: @unchecked Sendable {
         attribution = ""
     }
 
-    /// Opens japanese.db read-only. Nil if it's missing or unreadable.
-    public init?(url: URL) {
+    /// Opens a catalog read-only. Nil if it's missing or unreadable.
+    public init?(url: URL, language: Language = .japanese) {
         var handle: OpaquePointer?
         guard sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK, let handle else {
-            mindLog.error("Couldn't open the Japanese catalog at \(url.path, privacy: .public)")
+            mindLog.error("Couldn't open the \(language.pack.name, privacy: .public) catalog at \(url.path, privacy: .public)")
             return nil
         }
+        self.language = language
         var words: [Word] = []
         Self.query(handle, "SELECT id, rank, word, kana, kanji, meaning, meanings, pos, kanji_chars FROM words ORDER BY rank") { row in
-            words.append(Word(id: Int(sqlite3_column_int64(row, 0)), rank: Int(sqlite3_column_int64(row, 1)),
+            words.append(Word(id: Int(sqlite3_column_int64(row, 0)), language: language, rank: Int(sqlite3_column_int64(row, 1)),
                               text: Self.text(row, 2), kana: Self.text(row, 3), kanji: Self.optionalText(row, 4),
                               meaning: Self.text(row, 5), meanings: Self.text(row, 6), pos: Self.text(row, 7),
                               kanjiChars: Self.text(row, 8)))
         }
         var kanji: [Kanji] = []
-        Self.query(handle, "SELECT literal, meanings, onyomi, kunyomi, strokes FROM kanji") { row in
-            kanji.append(Kanji(literal: Self.text(row, 0), meanings: Self.text(row, 1), onyomi: Self.text(row, 2),
-                               kunyomi: Self.text(row, 3), strokes: Int(sqlite3_column_int64(row, 4))))
+        if language.pack.script == .kanaKanji {
+            Self.query(handle, "SELECT literal, meanings, onyomi, kunyomi, strokes FROM kanji") { row in
+                kanji.append(Kanji(literal: Self.text(row, 0), meanings: Self.text(row, 1), onyomi: Self.text(row, 2),
+                                   kunyomi: Self.text(row, 3), strokes: Int(sqlite3_column_int64(row, 4))))
+            }
         }
         var attribution = ""
         Self.query(handle, "SELECT value FROM meta WHERE key = 'attribution'") { attribution = Self.text($0, 0) }
@@ -136,9 +146,14 @@ public final class JapaneseDeck: @unchecked Sendable {
         if case .sqlite(let handle) = source { sqlite3_close(handle) }
     }
 
-    /// The bundled catalog, if this build ships one.
-    public static func bundled(in bundle: Bundle = .main) -> JapaneseDeck? {
-        bundle.url(forResource: "japanese", withExtension: "db").flatMap(JapaneseDeck.init(url:))
+    /// A language's bundled catalog, if this build ships one.
+    public static func bundled(_ language: Language, in bundle: Bundle = .main) -> LanguageDeck? {
+        bundle.url(forResource: language.pack.catalog, withExtension: "db").flatMap { LanguageDeck(url: $0, language: language) }
+    }
+
+    /// Every language whose catalog this build ships.
+    public static func bundled(in bundle: Bundle = .main) -> [Language: LanguageDeck] {
+        Dictionary(uniqueKeysWithValues: Language.allCases.compactMap { language in bundled(language, in: bundle).map { (language, $0) } })
     }
 
     public var isEmpty: Bool { words.isEmpty }
@@ -185,15 +200,17 @@ public final class JapaneseDeck: @unchecked Sendable {
 
     // MARK: SQLite
 
+    // Every catalog shares one schema. The sentences table's `jp` column holds the sentence in the
+    // catalog's language and `en` its English translation (the names come from the first, Japanese, catalog).
     private static func sentence(_ row: OpaquePointer) -> Sentence {
-        Sentence(id: Int(sqlite3_column_int64(row, 0)), jp: text(row, 1), en: text(row, 2), level: Int(sqlite3_column_int64(row, 3)),
+        Sentence(id: Int(sqlite3_column_int64(row, 0)), text: text(row, 1), english: text(row, 2), level: Int(sqlite3_column_int64(row, 3)),
                  words: text(row, 4).split(separator: ",").compactMap { Int($0) })
     }
 
     private static func query(_ db: OpaquePointer, _ sql: String, bind: [Int] = [], row: (OpaquePointer) -> Void) {
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK, let statement else {
-            mindLog.error("Japanese catalog query failed: \(String(cString: sqlite3_errmsg(db)), privacy: .public)")
+            mindLog.error("Catalog query failed: \(String(cString: sqlite3_errmsg(db)), privacy: .public)")
             return
         }
         defer { sqlite3_finalize(statement) }

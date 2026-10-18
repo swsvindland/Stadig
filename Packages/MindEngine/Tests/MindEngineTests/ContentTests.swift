@@ -136,7 +136,7 @@ struct ContentTests {
         #expect(KanaTable.katakana("きゃ") == "キャ")
         #expect(KanaTable.all.first?.kana == "あ")
         let sa = KanaTable.byKana["さ"]!
-        let question = JapaneseQuiz.question(sa, reps: 0, kind: .learn, introduced: [], seed: "x")
+        let question = LanguageQuiz.question(sa, reps: 0, kind: .learn, introduced: [], seed: "x")
         #expect(question.choices.count == 4 && question.choices[question.correctChoice!] == "sa")
         #expect(question.choices.contains("chi") || question.choices.contains("ki"), "\(question.choices)")
     }

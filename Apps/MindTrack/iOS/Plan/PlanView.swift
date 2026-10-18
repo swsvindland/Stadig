@@ -13,7 +13,7 @@ struct PlanView: View {
                     if let analysis = model.analysis, let state = model.state {
                         BlockCard(analysis: analysis, state: state)
                         WeekStrip(days: analysis.week, today: model.today)
-                        if state.settings.has(.japanese) { JapanesePlanCard(analysis: analysis, state: state) }
+                        ForEach(analysis.languages, id: \.domain) { LanguagePlanCard(summary: $0, state: state) }
                         if state.settings.has(.maths) { MathsPlanCard(state: state) }
                         if state.settings.has(.writing) { WritingPlanCard(analysis: analysis, state: state) }
                         if state.settings.has(.reading) { ReadingPlanCard(analysis: analysis) }
@@ -130,20 +130,25 @@ private struct DomainHeader: View {
     }
 }
 
-private struct JapanesePlanCard: View {
+private struct LanguagePlanCard: View {
     @Environment(AppModel.self) private var model
-    let analysis: MindAnalysis
+    let summary: LanguageSummary
     let state: StudyState
 
+    var domain: Domain { summary.domain }
+
     var body: some View {
-        let summary = analysis.japanese
         let retention = summary.retention
-        let due = state.cards.values.filter { $0.domain == .japanese && ($0.memory.map { Day($0.due) <= state.today.adding(days: 6) } ?? false) }.count
-        let pace = JapanesePlan.newWords(retention: retention, dueThisWeek: due, minutes: state.settings.schedule.minutes, reviewWeek: false)
+        let due = state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= state.today.adding(days: 6) } ?? false) }.count
+        let pace = LanguagePlan.newWords(retention: retention, dueThisWeek: due, minutes: state.settings.schedule.minutes, reviewWeek: false)
         VStack(alignment: .leading, spacing: 12) {
-            DomainHeader(domain: .japanese, detail: "\(summary.wordsLearned) words in")
-            if model.deck == nil {
-                Text("The Japanese catalog isn't installed in this build.").font(.subheadline).foregroundStyle(.secondary)
+            DomainHeader(domain: domain, detail: "\(summary.wordsLearned) words in")
+            if model.catalogs.deck(for: domain) == nil {
+                Text("The \(domain.label) catalog isn't installed in this build.").font(.subheadline).foregroundStyle(.secondary)
+            } else if summary.mode == .maintenance {
+                LabeledContent("Maintenance", value: "Reviews only")
+                LabeledContent("Due this week", value: "\(due)")
+                LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
             } else {
                 LabeledContent("New words a session", value: "\(pace.count)")
                 LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
@@ -170,9 +175,9 @@ private struct JapanesePlanCard: View {
     }
 
     var upcomingWords: [Word] {
-        guard let deck = model.deck else { return [] }
-        let items = JapanesePlan.next(count: 8, cards: Set(state.cards.keys), deck: deck, readsKana: state.settings.readsKana,
-                                      frontier: JapanesePlan.frontier(state.tests))
+        guard let deck = model.catalogs.deck(for: domain), let language = domain.language else { return [] }
+        let items = LanguagePlan.next(count: 8, cards: Set(state.cards.keys), deck: deck, readsKana: language == .japanese ? state.settings.readsKana : true,
+                                      frontier: LanguagePlan.frontier(state.tests, language))
         return items.compactMap { item in
             switch item {
             case .teach(let word): word

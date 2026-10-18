@@ -1,9 +1,9 @@
 import Foundation
 
 /// How many words someone knows, from a sample of each frequency band; and how much of a spoken
-/// sentence they follow, at several levels. These measure: the words studied in the app are just
-/// part of the bands, so the number only rises by knowing more Japanese.
-public enum JapaneseTests {
+/// sentence they follow, at several levels, in any language. These measure: the words studied in
+/// the app are just part of the bands, so the number only rises by knowing more of the language.
+public enum LanguageTests {
     /// Frequency bands, by rank: the first 250 words, the next 250, then doubling.
     public static let bands: [ClosedRange<Int>] = [1...250, 251...500, 501...1000, 1001...2000, 2001...4000, 4001...8000,
                                                    8001...14000, 14001...20000]
@@ -15,13 +15,13 @@ public enum JapaneseTests {
     public static let listeningLevels: [ClosedRange<Int>] = [1...500, 501...1000, 1001...2000, 2001...4000, 4001...8000]
 
     /// Vocabulary questions for one band: what does it mean, with "Don't know".
-    public static func vocabulary(band: Int, deck: JapaneseDeck, seed: String) -> [Question] {
+    public static func vocabulary(band: Int, deck: LanguageDeck, seed: String) -> [Question] {
         guard bands.indices.contains(band) else { return [] }
         let range = bands[band]
         var rng = SeededRandom(seed, "band", "\(band)")
         let pool = deck.words.filter { range.contains($0.rank) }
         return pool.shuffled(using: &rng).prefix(wordsPerBand).map { word in
-            var question = JapaneseQuiz.question(word, ask: .meaning, kind: .test, deck: deck, seed: seed)
+            var question = LanguageQuiz.question(word, ask: .meaning, kind: .test, deck: deck, seed: seed)
             question.allowsDontKnow = true
             question.test = .vocabulary
             question.band = band
@@ -30,13 +30,13 @@ public enum JapaneseTests {
         }
     }
 
-    public static func bandsAvailable(in deck: JapaneseDeck) -> Int {
+    public static func bandsAvailable(in deck: LanguageDeck) -> Int {
         let maxRank = deck.words.last?.rank ?? 0
         return bands.filter { $0.lowerBound <= maxRank }.count
     }
 
     /// Whether placement should go on to the next band after these answers.
-    public static func continuePlacement(after band: Int, attempts: [Attempt], deck: JapaneseDeck) -> Bool {
+    public static func continuePlacement(after band: Int, attempts: [Attempt], deck: LanguageDeck) -> Bool {
         guard band + 1 < bandsAvailable(in: deck) else { return false }
         return known(attempts.filter { $0.band == band }) >= stopBelow
     }
@@ -78,11 +78,12 @@ public enum JapaneseTests {
                                   bands: shares)
     }
 
-    public static func result(_ attempts: [Attempt], date: Date, placement: Bool) -> TestResult {
+    public static func result(_ attempts: [Attempt], date: Date, placement: Bool, language: Language) -> TestResult {
         let estimate = estimate(attempts)
         var detail: [String: Double] = ["low": Double(estimate.low), "high": Double(estimate.high)]
         for (band, share) in estimate.bands { detail["band\(band)"] = share }
-        return TestResult(test: .vocabulary, date: date, score: Double(estimate.words), detail: detail, placement: placement)
+        return TestResult(test: .vocabulary, date: date, score: Double(estimate.words), detail: detail, placement: placement,
+                          language: language)
     }
 
     /// 0–100 for the hub, on a log scale: 1,000 words is about 57, 10,000 is 100.
@@ -90,9 +91,20 @@ public enum JapaneseTests {
         min(100, 100 * log(1 + words / 50) / log(1 + 10_000 / 50))
     }
 
-    /// A rough guide in familiar terms. The JLPT publishes no word lists, so it's only "roughly".
-    public static func level(words: Double) -> String {
-        switch words {
+    /// A rough guide in familiar terms: the JLPT for Japanese, CEFR for the rest. Neither
+    /// publishes word lists, so it's only "roughly".
+    public static func level(words: Double, language: Language = .japanese) -> String {
+        if language != .japanese {
+            switch words {
+            case ..<300: return "Getting started"
+            case ..<600: return "Roughly A1 vocabulary"
+            case ..<1200: return "Roughly A2 vocabulary"
+            case ..<2500: return "Roughly B1 vocabulary"
+            case ..<5000: return "Roughly B2 vocabulary"
+            default: return "Roughly C1 vocabulary"
+            }
+        }
+        return switch words {
         case ..<300: "Getting started"
         case ..<800: "Roughly N5 vocabulary in reach"
         case ..<1500: "Roughly N5 vocabulary"
@@ -105,13 +117,14 @@ public enum JapaneseTests {
 
     // MARK: Listening
 
-    public static func listening(deck: JapaneseDeck, seed: String, offset: Int) -> [Question] {
+    public static func listening(deck: LanguageDeck, seed: String, offset: Int) -> [Question] {
         var questions: [Question] = []
         for (band, levels) in listeningLevels.enumerated() {
             let pool = deck.sentences(levels: levels, limit: 24, skip: offset)
             guard pool.count >= 4 else { continue }
             for sentence in pool.prefix(2) {
-                var question = JapaneseQuiz.sentence(sentence, kind: .test, others: pool, seed: seed, key: CardKey("jp.listening"))
+                var question = LanguageQuiz.sentence(sentence, language: deck.language, kind: .test, others: pool, seed: seed,
+                                                     key: .practice(deck.language, "listening"))
                 question.test = .listening
                 question.band = band
                 questions.append(question)
@@ -121,7 +134,7 @@ public enum JapaneseTests {
     }
 
     /// The share understood, weighting harder sentences more, corrected for guessing.
-    public static func listeningResult(_ attempts: [Attempt], date: Date) -> TestResult {
+    public static func listeningResult(_ attempts: [Attempt], date: Date, language: Language) -> TestResult {
         let tested = attempts.filter { $0.test == .listening && $0.band != nil }
         var weighted = 0.0, weights = 0.0
         var detail: [String: Double] = [:]
@@ -132,6 +145,6 @@ public enum JapaneseTests {
             weights += weight
             detail["band\(band)"] = share
         }
-        return TestResult(test: .listening, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail)
+        return TestResult(test: .listening, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail, language: language)
     }
 }

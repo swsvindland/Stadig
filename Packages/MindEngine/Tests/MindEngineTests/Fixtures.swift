@@ -5,7 +5,7 @@ import SystemCore
 enum Fixtures {
     /// A made-up deck: `count` words in rank order (every third written with a kanji) and
     /// sentences of three words each, from common to rare.
-    static func deck(words count: Int = 3000, sentences: Int = 3000) -> JapaneseDeck {
+    static func deck(words count: Int = 3000, sentences: Int = 3000) -> LanguageDeck {
         let kinds = ["noun", "verb", "i-adjective"]
         let words = (1...count).map { i in
             Word(id: 100_000 + i, rank: i, text: i % 3 == 0 ? "語\(i)" : "ご\(i)", kana: "ご\(i)", meaning: "meaning \(i)",
@@ -13,19 +13,23 @@ enum Fixtures {
         }
         let list = (1...sentences).map { i -> Sentence in
             let ranks = [1 + i % 40, 1 + (i * 13) % 400, 1 + (i * 31) % max(1, min(count, i * 3))]
-            return Sentence(id: i, jp: "文\(i)です。", en: "Sentence number \(i) in English.", level: ranks.max()!,
+            return Sentence(id: i, text: "文\(i)です。", english: "Sentence number \(i) in English.", level: ranks.max()!,
                             words: ranks.map { 100_000 + $0 })
         }
-        return JapaneseDeck(words: words, sentences: list)
+        return LanguageDeck(words: words, sentences: list)
     }
 
     static let monday = Day(year: 2026, month: 3, day: 2)
 
-    static func settings(_ domains: [Domain] = Domain.allCases, readsKana: Bool = true, days: Int = 5,
-                         background: MathsBackground = .algebra) -> MindSettings {
-        MindSettings(domains: domains, schedule: StudySchedule(daysPerWeek: days), onboardedAt: monday.date(), readsKana: readsKana,
-                     mathsBackground: background, genres: [.fantasy, .sciFi])
+    static func settings(_ domains: [Domain] = [.japanese, .maths, .writing, .reading], maintenance: [Domain] = [], readsKana: Bool = true,
+                         days: Int = 5, background: MathsBackground = .algebra) -> MindSettings {
+        var courses = Dictionary(uniqueKeysWithValues: domains.map { ($0, CourseMode.focus) })
+        for domain in maintenance { courses[domain] = .maintenance }
+        return MindSettings(courses: courses, schedule: StudySchedule(daysPerWeek: days), onboardedAt: monday.date(), readsKana: readsKana,
+                            mathsBackground: background, genres: [.fantasy, .sciFi])
     }
+
+    static func catalogs(_ deck: LanguageDeck) -> Catalogs { Catalogs(decks: [deck.language: deck]) }
 }
 
 /// A simulated student with a true level in each domain, who learns what's taught with a fixed
@@ -44,12 +48,12 @@ struct Student {
     var rng = SeededRandom(seed: 42)
     /// What's been learned in the app, by card.
     var learned: Set<CardKey> = []
-    var deck: JapaneseDeck
+    var deck: LanguageDeck
 
     mutating func knows(_ question: Question, cards: [CardKey: MemoryCard], now: Date) -> Bool? {
         let key = question.key
         switch key.domain {
-        case .japanese:
+        case .japanese, .spanish:
             if key.raw == "jp.sentences" || key.raw == "jp.listening" { return Double.random(in: 0..<1, using: &rng) < 0.8 }
             if key.isKana { return Double.random(in: 0..<1, using: &rng) < (learned.contains(key) ? 0.95 : learnRate) }
             guard let id = key.wordID, let word = deck.word(id) else { return nil }
@@ -109,6 +113,18 @@ struct Student {
             case .reflect:
                 now += 30
                 run.reflect("The chapter turned on a choice the narrator didn't see coming.", now: now)
+            case .passage:
+                now += 60
+                run.respond(.passageRead(seconds: 60), now: now)
+            case .speak(let task):
+                now += 6
+                run.respond(.spoken(transcript: task.expected.first ?? "", seconds: 4), now: now)
+            case .compose:
+                now += 300
+                run.respond(.written(text: "A short piece, written for the test.", source: .typed), now: now)
+            case .compare:
+                now += 30
+                run.respond(.picked(1), now: now)
             }
         }
         run.finish(now: now)
@@ -129,11 +145,14 @@ struct Store {
     var tests: [TestResult] = []
     var books: [Book] = []
     var reflections: [Reflection] = []
+    var pieces: [WritingPiece] = []
+    var comparisons: [BlindComparison] = []
     var lifeModes: [LifeModePeriod] = []
     var calendar: SystemCalendar?
 
     func state(on day: Day, at hour: Double = 18) -> StudyState {
         StudyState(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
+                   pieces: pieces, comparisons: comparisons,
                    lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600))
     }
 
@@ -148,14 +167,16 @@ struct Store {
             }
         }
         reflections += run.newReflections
+        pieces += run.newPieces
+        comparisons += run.newComparisons
     }
 
     /// Runs today's planned session, if there is one, with the student.
     @discardableResult
-    mutating func study(on day: Day, student: inout Student, deck: JapaneseDeck) -> StudyRun? {
+    mutating func study(on day: Day, student: inout Student, deck: LanguageDeck) -> StudyRun? {
         let state = state(on: day)
-        guard let plan = SessionPlanner.today(state, deck: deck) else { return nil }
-        var run = StudyRun(plan: plan, state: state, deck: deck, now: state.now)
+        guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { return nil }
+        var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         _ = student.run(&run, from: state.now)
         save(run)
         return run

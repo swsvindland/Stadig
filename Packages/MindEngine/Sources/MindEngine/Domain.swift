@@ -1,16 +1,17 @@
 import Foundation
 import SystemCore
 
-/// What Mind Track trains. Japanese, maths and writing are Intelligence (active skill learning);
-/// reading is Wisdom. Piano comes later.
-public enum Domain: String, CaseIterable, Codable, Sendable, Identifiable, Comparable {
-    case japanese, maths, writing, reading
+/// A course Mind Track runs: one per language, plus maths, writing and reading. Languages, maths
+/// and writing are Intelligence (active skill learning); reading is Wisdom. Piano comes later.
+public enum Domain: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable, Comparable {
+    case japanese, spanish, maths, writing, reading
 
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
         case .japanese: "Japanese"
+        case .spanish: "Spanish"
         case .maths: "Maths"
         case .writing: "Writing"
         case .reading: "Reading"
@@ -20,6 +21,7 @@ public enum Domain: String, CaseIterable, Codable, Sendable, Identifiable, Compa
     public var symbol: String {
         switch self {
         case .japanese: "character.book.closed.ja"
+        case .spanish: "character.bubble"
         case .maths: "function"
         case .writing: "pencil.and.scribble"
         case .reading: "book.fill"
@@ -28,16 +30,52 @@ public enum Domain: String, CaseIterable, Codable, Sendable, Identifiable, Compa
 
     public var pitch: String {
         switch self {
-        case .japanese: "Words and kanji on spaced repetition, and listening until you can follow a show without subtitles."
-        case .maths: "From fractions to calculus: find where you are, then master one topic at a time."
-        case .writing: "Grammar, punctuation and usage, sharpened with short objective sets."
-        case .reading: "A ladder of books that climbs out of your comfort zone, with a short reflection as you go."
+        case .japanese: "Listening, speaking, reading and writing, with kana and kanji scaffolds that fade as each one sticks."
+        case .spanish: "Understand and be understood: listening and speaking first, with words on spaced repetition."
+        case .maths: "Everyday numeracy every session, plus algebra to calculus and the statistics that matter in real life."
+        case .writing: "Creative, practical or persuasive: write, get a few specific notes, and see the difference term by term."
+        case .reading: "A ladder of books just above where you read now, with stamina built separately from difficulty."
         }
     }
 
     public var stat: StatKind { self == .reading ? .wisdom : .intelligence }
 
+    /// The language a course teaches, for language courses.
+    public var language: Language? {
+        switch self {
+        case .japanese: .japanese
+        case .spanish: .spanish
+        default: nil
+        }
+    }
+
+    public var isLanguage: Bool { language != nil }
+
+    public static var languages: [Domain] { allCases.filter(\.isLanguage) }
+
     public static func < (a: Domain, b: Domain) -> Bool { allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)! }
+}
+
+/// How hard a course is pushed. Focus courses get full sessions and new material; Maintenance
+/// courses keep what's learned with a few minutes of reviews in each session's warm-up.
+public enum CourseMode: String, CaseIterable, Codable, Sendable, Identifiable {
+    case focus, maintenance
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .focus: "Focus"
+        case .maintenance: "Maintenance"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .focus: "New material and full sessions."
+        case .maintenance: "Reviews only, a few minutes a day, so nothing slips."
+        }
+    }
 }
 
 /// When the person studies: focused 25-minute blocks, five days a week by default.
@@ -59,9 +97,12 @@ public struct StudySchedule: Hashable, Codable, Sendable {
     public var studyDays: [Weekday] {
         TrainingSchedule(daysPerWeek: daysPerWeek, preferredDays: preferredDays).trainingDays
     }
+
+    public var weeklyMinutes: Int { daysPerWeek * minutes }
 }
 
-/// How far someone got with maths, asked once so the diagnostic starts near the right place.
+/// How far someone got with maths. The v2 doc replaces asking this with an adaptive placement per
+/// strand; it only sets where the classic ladder's placement opens until that lands.
 public enum MathsBackground: String, CaseIterable, Codable, Sendable, Identifiable {
     case basics, algebra, precalculus, calculus
 
@@ -85,40 +126,4 @@ public enum MathsBackground: String, CaseIterable, Codable, Sendable, Identifiab
         case .calculus: 8
         }
     }
-}
-
-/// Mind Track's own settings. One record.
-public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
-    public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000317D")!
-
-    public var id: UUID
-    public var domains: [Domain]
-    public var schedule: StudySchedule
-    public var onboardedAt: Date?
-    /// Nil until asked. False starts Japanese with hiragana and katakana.
-    public var readsKana: Bool?
-    public var mathsBackground: MathsBackground
-    public var genres: [Genre]
-    /// Lagging domains get more sessions. Off keeps the split even.
-    public var autoPrioritise: Bool
-    /// Reminders at the usual study time when the day's session hasn't happened.
-    public var reminders: Bool
-    public var updatedAt: Date
-
-    public init(domains: [Domain] = [.japanese, .maths, .writing, .reading], schedule: StudySchedule = StudySchedule(),
-                onboardedAt: Date? = nil, readsKana: Bool? = nil, mathsBackground: MathsBackground = .algebra,
-                genres: [Genre] = [], autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date()) {
-        id = Self.singletonID
-        self.domains = domains.sorted()
-        self.schedule = schedule
-        self.onboardedAt = onboardedAt
-        self.readsKana = readsKana
-        self.mathsBackground = mathsBackground
-        self.genres = genres
-        self.autoPrioritise = autoPrioritise
-        self.reminders = reminders
-        self.updatedAt = updatedAt
-    }
-
-    public func has(_ domain: Domain) -> Bool { domains.contains(domain) }
 }

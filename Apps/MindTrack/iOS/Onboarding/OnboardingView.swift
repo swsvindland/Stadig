@@ -3,14 +3,23 @@ import MindEngine
 import SystemCore
 
 /// A minute of setup, then the first session finds the level: the onboarding is the first session.
+/// Each subject asks its own questions on its own page (the files beside this one).
 struct OnboardingView: View {
-    @Environment(AppModel.self) private var model
-    @State private var page = 0
-    @State private var settings = MindSettings(onboardedAt: nil)
-    @State private var read: Set<String> = []
-    @State private var hard: Set<String> = []
+    enum Page: String, Hashable { case welcome, courses, schedule, languages, maths, writing, reading, ready }
 
-    var pages: [Int] { settings.has(.reading) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 5] }
+    @Environment(AppModel.self) private var model
+    @State private var page = Page.welcome
+    @State private var settings = MindSettings(onboardedAt: nil)
+    @State private var books: [Book] = []
+
+    var pages: [Page] {
+        var pages: [Page] = [.welcome, .courses, .schedule]
+        if settings.focus.contains(where: \.isLanguage) { pages.append(.languages) }
+        if settings.mode(.maths) == .focus { pages.append(.maths) }
+        if settings.mode(.writing) == .focus { pages.append(.writing) }
+        if settings.mode(.reading) == .focus { pages.append(.reading) }
+        return pages + [.ready]
+    }
 
     var body: some View {
         NavigationStack {
@@ -18,12 +27,14 @@ struct OnboardingView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         switch page {
-                        case 0: welcome
-                        case 1: domains
-                        case 2: schedule
-                        case 3: levels
-                        case 4: books
-                        default: ready
+                        case .welcome: welcome
+                        case .courses: courses
+                        case .schedule: schedule
+                        case .languages: LanguageOnboarding(settings: $settings)
+                        case .maths: MathsOnboarding(settings: $settings)
+                        case .writing: WritingOnboarding(settings: $settings)
+                        case .reading: ReadingOnboarding(settings: $settings, books: $books)
+                        case .ready: ready
                         }
                     }
                     .padding(24)
@@ -31,9 +42,9 @@ struct OnboardingView: View {
                 }
                 BottomBar {
                     HStack(spacing: 12) {
-                        if page > 0 {
+                        if page != .welcome {
                             Button {
-                                withAnimation { page = pages[max(0, (pages.firstIndex(of: page) ?? 0) - 1)] }
+                                withAnimation { move(-1) }
                             } label: {
                                 Text("Back").frame(maxWidth: .infinity)
                             }
@@ -41,18 +52,31 @@ struct OnboardingView: View {
                             .controlSize(.large)
                         }
                         Button {
-                            if page == 5 { finish() } else { withAnimation { page = pages[min(pages.count - 1, (pages.firstIndex(of: page) ?? 0) + 1)] } }
+                            if page == .ready { finish() } else { withAnimation { move(1) } }
                         } label: {
-                            Text(page == 5 ? "Start the first session" : page == 0 ? "Set up" : "Next").font(.headline).frame(maxWidth: .infinity)
+                            Text(page == .ready ? "Start" : page == .welcome ? "Set up" : "Next").font(.headline).frame(maxWidth: .infinity)
                         }
                         .primaryAction()
                         .controlSize(.large)
-                        .disabled(page == 1 && settings.domains.isEmpty)
+                        .disabled(page == .courses && settings.focus.isEmpty)
                     }
                 }
             }
             .background(.pageBackground)
         }
+        #if DEBUG
+        .onAppear {
+            // -onboardingPage courses|schedule|languages|maths|writing|reading|ready opens on that page.
+            let arguments = ProcessInfo.processInfo.arguments
+            if let i = arguments.firstIndex(of: "-onboardingPage"), arguments.indices.contains(i + 1),
+               let start = Page(rawValue: arguments[i + 1]) { page = start }
+        }
+        #endif
+    }
+
+    func move(_ by: Int) {
+        let index = pages.firstIndex(of: page) ?? 0
+        page = pages[clamp(index + by, 0, pages.count - 1)]
     }
 
     var welcome: some View {
@@ -71,137 +95,24 @@ struct OnboardingView: View {
         }
     }
 
-    var domains: some View {
+    var courses: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("What do you want to train?").font(.title.bold())
-            ForEach(Domain.allCases) { domain in
-                Button {
-                    if settings.has(domain) { settings.domains.removeAll { $0 == domain } } else { settings.domains = (settings.domains + [domain]).sorted() }
-                } label: {
-                    HStack(alignment: .top, spacing: 14) {
-                        DomainBadge(domain: domain, size: 38)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(domain.label).font(.headline)
-                            Text(domain.pitch).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
-                        }
-                        Spacer()
-                        Image(systemName: settings.has(domain) ? "checkmark.circle.fill" : "circle")
-                            .font(.title2).foregroundStyle(settings.has(domain) ? Color.accentColor : .secondary)
-                    }
-                    .card()
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(settings.has(domain) ? .isSelected : [])
-            }
+            Text("Focus courses get full sessions. Maintenance keeps what you know with a few minutes of reviews. Two or three Focus courses at once is plenty.")
+                .foregroundStyle(.secondary)
+            CoursePicker(settings: $settings)
+            LoadWarning(settings: settings)
         }
     }
 
     var schedule: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("When do you study?").font(.title.bold())
-            Text("Subjects rotate across the week like a training split. Reviews from every subject open each session.")
+            Text("Focus courses rotate across the week like a training split. Reviews from every course open each session.")
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 10) {
-                Stepper(value: Binding(get: { settings.schedule.daysPerWeek }, set: { settings.schedule = StudySchedule(daysPerWeek: $0, minutes: settings.schedule.minutes) }),
-                        in: 1...7) {
-                    LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
-                }
-                Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { settings.schedule.minutes = $0 })) {
-                    ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
-                }
-                .pickerStyle(.segmented)
-            }
-            .card()
+            ScheduleEditor(settings: $settings)
+            LoadWarning(settings: settings)
             WeekPreview(settings: settings)
-        }
-    }
-
-    var levels: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("A head start").font(.title.bold())
-            Text("Two quick answers so the first session starts in the right place. It finds the rest itself.").foregroundStyle(.secondary)
-            if settings.has(.japanese) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Can you read hiragana and katakana?", systemImage: Domain.japanese.symbol).font(.headline)
-                    Picker("Kana", selection: Binding(get: { settings.readsKana ?? true }, set: { settings.readsKana = $0 })) {
-                        Text("Yes").tag(true)
-                        Text("Not yet").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                    Text(settings.readsKana == false ? "You'll start with hiragana; words follow once it's in." : "You'll start with a word test to find your vocabulary.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                .card()
-            }
-            if settings.has(.maths) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("How far did you get with maths?", systemImage: Domain.maths.symbol).font(.headline)
-                    Picker("Maths", selection: $settings.mathsBackground) {
-                        ForEach(MathsBackground.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                    Text("Long ago is fine: the placement steps down until it finds solid ground.").font(.footnote).foregroundStyle(.secondary)
-                }
-                .card()
-            }
-            if !settings.has(.japanese) && !settings.has(.maths) {
-                Text("Nothing to ask here.").foregroundStyle(.secondary)
-            }
-        }
-        .onAppear { if settings.readsKana == nil { settings.readsKana = true } }
-    }
-
-    var books: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("What have you read?").font(.title.bold())
-            Text("Tick books you've finished; tap twice for one that was hard going. The ladder starts one step above.").foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Genres you enjoy").font(.headline)
-                FlowLayout(spacing: 8, lineSpacing: 8) {
-                    ForEach(Genre.allCases) { genre in
-                        let on = settings.genres.contains(genre)
-                        Button {
-                            if on { settings.genres.removeAll { $0 == genre } } else { settings.genres.append(genre) }
-                        } label: {
-                            Text(genre.label).font(.subheadline.weight(.medium)).padding(.horizontal, 12).padding(.vertical, 7)
-                                .background(on ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1), in: .capsule)
-                                .foregroundStyle(on ? Color.accentColor : .primary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                    }
-                }
-            }
-            .card()
-            ForEach(ReadingLadder.standard.tiers, id: \.tier) { tier in
-                let books = ReadingLadder.standard.books.filter { $0.tier == tier.tier }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Tier \(tier.tier) · \(tier.label)").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                    ForEach(books) { book in
-                        Button {
-                            if hard.contains(book.id) { hard.remove(book.id); read.remove(book.id) }
-                            else if read.contains(book.id) { hard.insert(book.id) }
-                            else { read.insert(book.id) }
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(book.title).font(.body)
-                                    Text(book.author).font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if hard.contains(book.id) { Pill(text: "Hard going", color: .orange) }
-                                Image(systemName: read.contains(book.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(read.contains(book.id) ? Color.accentColor : .secondary)
-                            }
-                            .padding(.vertical, 6)
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .card(padding: 14)
-            }
         }
     }
 
@@ -211,30 +122,111 @@ struct OnboardingView: View {
             Text("About \(settings.schedule.minutes) minutes to find your level, then the first new material. Answer honestly: “Don't know” is always better than a guess.")
                 .font(.title3)
             VStack(alignment: .leading, spacing: 10) {
-                if settings.has(.japanese) {
-                    Label(settings.readsKana == false ? "Japanese: your first hiragana" : "Japanese: words from common to rare", systemImage: Domain.japanese.symbol)
+                ForEach(settings.focus) { domain in
+                    if let line = firstSession(domain) { Label(line, systemImage: domain.symbol) }
                 }
-                if settings.has(.maths) { Label("Maths: about a dozen problems", systemImage: Domain.maths.symbol) }
-                if settings.has(.writing) { Label("Writing: one item for each skill", systemImage: Domain.writing.symbol) }
-                if settings.has(.reading) {
-                    Label("Reading: your ladder starts at tier \(ReadingPlan.targetTier(shelf))", systemImage: Domain.reading.symbol)
+                if !settings.maintenance.isEmpty {
+                    Label("Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews only",
+                          systemImage: "arrow.triangle.2.circlepath")
                 }
             }
             .card()
         }
     }
 
-    var shelf: [Book] {
-        ReadingLadder.standard.books.filter { read.contains($0.id) }.map { book in
-            var finished = book.book(status: .readBefore)
-            if hard.contains(book.id) { finished.feel = .hard }
-            return finished
+    func firstSession(_ domain: Domain) -> String? {
+        switch domain {
+        case .japanese, .spanish: LanguageOnboarding.firstSession(domain, settings: settings)
+        case .maths: MathsOnboarding.firstSession(settings)
+        case .writing: WritingOnboarding.firstSession(settings)
+        case .reading: ReadingOnboarding.firstSession(settings, books: books)
         }
     }
 
     func finish() {
         if !settings.has(.japanese) { settings.readsKana = nil }
-        model.completeOnboarding(settings, booksRead: shelf)
+        model.completeOnboarding(settings, booksRead: settings.has(.reading) ? books : [])
+    }
+}
+
+/// Every course with Focus, Maintenance or Off.
+struct CoursePicker: View {
+    enum Choice: Hashable { case focus, maintenance, off }
+
+    @Binding var settings: MindSettings
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(Domain.allCases) { domain in
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 14) {
+                        DomainBadge(domain: domain, size: 38)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(domain.label).font(.headline)
+                            Text(domain.pitch).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Picker(domain.label, selection: binding(domain)) {
+                        Text("Focus").tag(Choice.focus)
+                        Text("Maintenance").tag(Choice.maintenance)
+                        Text("Off").tag(Choice.off)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .card()
+            }
+        }
+    }
+
+    func binding(_ domain: Domain) -> Binding<Choice> {
+        Binding {
+            switch settings.mode(domain) {
+            case .focus: .focus
+            case .maintenance: .maintenance
+            case nil: .off
+            }
+        } set: { choice in
+            switch choice {
+            case .focus: settings.courses[domain] = .focus
+            case .maintenance: settings.courses[domain] = .maintenance
+            case .off: settings.courses[domain] = nil
+            }
+        }
+    }
+}
+
+/// Days a week and session length.
+struct ScheduleEditor: View {
+    @Binding var settings: MindSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Stepper(value: Binding(get: { settings.schedule.daysPerWeek }, set: { settings.schedule = StudySchedule(daysPerWeek: $0, minutes: settings.schedule.minutes) }),
+                    in: 1...7) {
+                LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
+            }
+            Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { settings.schedule.minutes = $0 })) {
+                ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
+            }
+            .pickerStyle(.segmented)
+        }
+        .card()
+    }
+}
+
+/// What to change when the courses won't fit the week. Nothing when they do.
+struct LoadWarning: View {
+    let settings: MindSettings
+
+    var body: some View {
+        if let warning = CourseLoad.check(settings).warning {
+            Label(warning, systemImage: "exclamationmark.triangle.fill")
+                .font(.subheadline)
+                .symbolRenderingMode(.multicolor)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: 14))
+        }
     }
 }
 
@@ -245,7 +237,7 @@ struct WeekPreview: View {
     var body: some View {
         let monday = Day.today.startOfWeek
         let week = Split.week(starting: monday, settings: settings)
-        HStack(spacing: 6) {
+        HStack(alignment: .top, spacing: 6) {
             ForEach(0..<7, id: \.self) { offset in
                 let day = monday.adding(days: offset)
                 VStack(spacing: 6) {
@@ -257,7 +249,7 @@ struct WeekPreview: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
         }
         .card(padding: 12)

@@ -14,7 +14,7 @@ struct ProgressTab: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if let analysis = model.analysis, let state = model.state {
                         StatCards(stats: analysis.stats)
-                        if state.settings.has(.japanese) { JapaneseProgress(analysis: analysis, state: state) }
+                        ForEach(analysis.languages, id: \.domain) { LanguageProgress(summary: $0, state: state) }
                         if state.settings.has(.maths) { MathsProgress(analysis: analysis, state: state) }
                         if state.settings.has(.writing) { WritingProgress(analysis: analysis, state: state) }
                         if state.settings.has(.reading) { ReadingProgress(analysis: analysis, state: state) }
@@ -83,26 +83,30 @@ private struct TestChart: View {
     }
 }
 
-private struct JapaneseProgress: View {
+private struct LanguageProgress: View {
     @Environment(AppModel.self) private var model
-    let analysis: MindAnalysis
+    let summary: LanguageSummary
     let state: StudyState
 
+    var language: Language { summary.domain.language ?? .japanese }
+
     var body: some View {
-        let summary = analysis.japanese
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                DomainBadge(domain: .japanese)
-                Text("Japanese").font(.headline)
+                DomainBadge(domain: summary.domain)
+                Text(summary.domain.label).font(.headline)
+                Spacer()
+                if summary.mode == .maintenance { Pill(text: "Maintenance", color: .secondary) }
             }
             if let vocabulary = summary.vocabulary {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("About \(Int(vocabulary.score).formatted()) words").font(.title2.bold())
-                    Text("\(Int(vocabulary.detail["low"] ?? 0).formatted())–\(Int(vocabulary.detail["high"] ?? 0).formatted()) · \(JapaneseTests.level(words: vocabulary.score))")
+                    Text("\(Int(vocabulary.detail["low"] ?? 0).formatted())–\(Int(vocabulary.detail["high"] ?? 0).formatted()) · \(LanguageTests.level(words: vocabulary.score, language: language))")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
-                TestChart(points: state.tests.filter { $0.test == TestKind.vocabulary }.map { ($0.date, $0.score) }, label: "Words", color: .pink)
-            } else if state.settings.readsKana == false {
+                TestChart(points: state.tests.filter { $0.test == TestKind.vocabulary && $0.domain == summary.domain }.map { ($0.date, $0.score) },
+                          label: "Words", color: summary.domain.color)
+            } else if summary.domain == .japanese, state.settings.readsKana == false {
                 Text("\(summary.kanaLearned) of \(KanaTable.all.count) kana in. The word test comes once hiragana is.").foregroundStyle(.secondary)
             }
             if let listening = summary.listening {
@@ -115,13 +119,13 @@ private struct JapaneseProgress: View {
             Divider()
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Without subtitles").font(.subheadline.weight(.semibold))
-                    Text(summary.episodes.last.map { "Last: \(TestLine.text($0).replacingOccurrences(of: "Episode without subtitles: ", with: ""))" }
-                         ?? "Watch an episode raw now and then, and note how much you followed.")
+                    Text("The real thing").font(.subheadline.weight(.semibold))
+                    Text(summary.episodes.last.map { "Last: \(TestLine.text($0))" }
+                         ?? "Now and then, watch an episode without subtitles or have a conversation, and note how much you followed.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Log one") { model.showEpisode = true }.buttonStyle(.borderless)
+                Button("Log one") { model.episodeLanguage = language }.buttonStyle(.borderless)
             }
         }
         .font(.subheadline)

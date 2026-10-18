@@ -118,6 +118,14 @@ private struct StepView: View {
             ReadingTimerView(book: book, minutes: minutes)
         case .reflect(let book, let finished):
             ReflectView(book: book, finished: finished)
+        case .passage(let passage):
+            PassageView(passage: passage)
+        case .speak(let task):
+            SpeakView(task: task)
+        case .compose(let task):
+            ComposeView(task: task)
+        case .compare(let pair):
+            CompareView(pair: pair)
         }
     }
 }
@@ -142,14 +150,20 @@ private struct SessionSummary: View {
                     if !attempts.isEmpty {
                         Label("\(attempts.count) answered, \(Format.percent(Double(right) / Double(attempts.count))) right", systemImage: "checkmark.circle")
                     }
-                    let words = learned.filter { $0.domain == .japanese }.count
-                    if words > 0 { Label("\(words) new in Japanese", systemImage: Domain.japanese.symbol) }
+                    ForEach(Domain.languages) { language in
+                        let words = learned.filter { $0.domain == language }.count
+                        if words > 0 { Label("\(words) new in \(language.label)", systemImage: language.symbol) }
+                    }
                     let topics = learned.filter { $0.domain == .maths }.count
                     if topics > 0 { Label("\(topics) maths topic\(topics == 1 ? "" : "s") mastered", systemImage: Domain.maths.symbol) }
                     let skills = learned.filter { $0.domain == .writing }.count
                     if skills > 0 { Label("\(skills) writing skill\(skills == 1 ? "" : "s") mastered", systemImage: Domain.writing.symbol) }
                     if let reading = run.session.reading, reading.pages > 0 {
                         Label("\(reading.pages) pages read", systemImage: Domain.reading.symbol)
+                    }
+                    if !run.newPieces.isEmpty {
+                        let words = run.newPieces.map(\.words).reduce(0, +)
+                        Label("\(words) words written", systemImage: Domain.writing.symbol)
                     }
                     ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary }, id: \.id) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
@@ -177,15 +191,26 @@ private struct SessionSummary: View {
 /// One line for a test result.
 enum TestLine {
     static func text(_ test: TestResult) -> String {
+        let language = test.domain.label
+        let rating = ["lost", "caught bits", "followed most", "followed nearly all"][min(3, max(0, Int((test.score * 3).rounded())))]
         switch test.test {
         case .vocabulary:
             let low = Int(test.detail["low"] ?? test.score), high = Int(test.detail["high"] ?? test.score)
-            return "About \(Int(test.score).formatted()) Japanese words known (\(low.formatted())–\(high.formatted()))"
-        case .listening: return "Listening: \(Format.percent(test.score)) understood"
-        case .episode: return "Episode without subtitles: \(["lost", "caught bits", "followed most", "followed nearly all"][min(3, Int((test.score * 3).rounded()))])"
+            return "About \(Int(test.score).formatted()) \(language) words known (\(low.formatted())–\(high.formatted()))"
+        case .listening: return "\(language) listening: \(Format.percent(test.score)) understood"
+        case .speaking: return "\(language) speaking: \(Format.percent(test.score)) understood"
+        case .languageReading: return "\(language) reading: \(Format.percent(test.score)) understood"
+        case .languageWriting: return "\(language) writing: \(Format.percent(test.score)) right"
+        case .episode: return "\(language) episode without subtitles: \(rating)"
+        case .conversation: return "\(language) conversation: \(rating)"
+        case .numeracy: return "Numeracy: \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
         case .mathsPlacement: return "Maths: placed at level \(Int(test.detail["level"] ?? 0)) of 10"
         case .maths: return "Maths check: \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
+        case .discrete: return "Discrete and statistics: \(Format.percent(test.score)) right"
         case .writing: return "Writing\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
+        case .writingBenchmark: return "Benchmark piece written"
+        case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
+        case .readingTest: return "Reading test: tier \(Int(test.detail["tier"] ?? test.score))"
         }
     }
 }

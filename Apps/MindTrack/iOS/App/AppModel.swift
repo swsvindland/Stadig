@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import OSLog
 import MindEngine
+import SystemAI
 import SystemCore
 import SystemStore
 
@@ -19,8 +20,8 @@ final class AppModel {
 
     let store: RecordStore
     let shared: SharedContainer
-    /// The Japanese catalog, when the build ships it.
-    let deck: JapaneseDeck?
+    /// The language packs the build ships, the writing bank and the reading ladder.
+    let catalogs: Catalogs
     let purchases = Purchases()
     let speech = Speech()
 
@@ -31,6 +32,10 @@ final class AppModel {
     private(set) var tests: [TestResult] = []
     private(set) var books: [Book] = []
     private(set) var reflections: [Reflection] = []
+    private(set) var pieces: [WritingPiece] = []
+    private(set) var comparisons: [BlindComparison] = []
+    /// Books looked up by ISBN, cover or search, kept so a lookup happens once.
+    private(set) var bookMeta: [BookMeta] = []
     private(set) var lifeModes: [LifeModePeriod] = []
 
     // From the other apps and the hub.
@@ -46,7 +51,8 @@ final class AppModel {
     var run: StudyRun?
     var showSettings = false
     var showPaywall = false
-    var showEpisode = false
+    /// The language an episode (or conversation) is being logged for.
+    var episodeLanguage: Language?
     var showShelf = false
     var today: Day = .today
 
@@ -60,7 +66,7 @@ final class AppModel {
         let memory = arguments.contains("-inMemoryStore")
         store = RecordStore(name: "MindTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.mind", inMemory: memory)
         shared = SharedContainer()
-        deck = JapaneseDeck.bundled()
+        catalogs = Catalogs(decks: LanguageDeck.bundled())
         #if DEBUG
         if arguments.contains("-resetData") { store.eraseAll() }
         #endif
@@ -69,6 +75,10 @@ final class AppModel {
     }
 
     var onboarded: Bool { settings?.onboardedAt != nil }
+
+    /// Every AI call goes through this: Apple's on-device model first, Private Cloud Compute for
+    /// heavier jobs when the setting allows it. Nothing core waits on it.
+    var ai: SystemAI { SystemAI(allowCloud: settings?.allowCloudAI ?? true) }
 
     // MARK: Loading
 
@@ -81,6 +91,9 @@ final class AppModel {
         tests = store.all(TestResult.self).sorted { $0.date < $1.date }
         books = store.all(Book.self)
         reflections = store.all(Reflection.self).sorted { $0.date < $1.date }
+        pieces = store.all(WritingPiece.self).sorted { $0.date < $1.date }
+        comparisons = store.all(BlindComparison.self).sorted { $0.date < $1.date }
+        bookMeta = store.all(BookMeta.self)
         readShared(recompute: false)
         recompute()
     }
@@ -109,7 +122,7 @@ final class AppModel {
     var state: StudyState? {
         guard let settings else { return nil }
         return StudyState(settings: settings, cards: cards, sessions: sessions, tests: tests, books: books, reflections: reflections,
-                          lifeModes: lifeModes, calendar: calendar, recommendations: recommendations, today: today, now: Date())
+                          pieces: pieces, comparisons: comparisons, lifeModes: lifeModes, calendar: calendar, recommendations: recommendations, today: today, now: Date())
     }
 
     func recompute() {
@@ -118,7 +131,7 @@ final class AppModel {
             analysis = nil
             return
         }
-        let analysis = Analyst.analyse(state, deck: deck)
+        let analysis = Analyst.analyse(state, catalogs: catalogs)
         self.analysis = analysis
         publish(state, analysis)
     }
@@ -161,20 +174,20 @@ final class AppModel {
     // MARK: Sessions
 
     func startToday() {
-        guard let state, let plan = analysis?.today ?? SessionPlanner.today(state, deck: deck) else { return }
+        guard let state, let plan = analysis?.today ?? SessionPlanner.today(state, catalogs: catalogs) else { return }
         start(plan)
     }
 
     /// A few minutes of reviews, on a rest or paused day.
     func startExtraReview(minutes: Int = 5) {
         guard let state else { return }
-        start(SessionPlanner.plan(.extra, domains: [], state: state, deck: deck, minutes: minutes))
+        start(SessionPlanner.plan(.extra, domains: [], state: state, catalogs: catalogs, minutes: minutes))
     }
 
     /// A session of one domain on demand, outside the plan.
     func startSession(_ domains: [Domain]) {
         guard let state else { return }
-        var plan = SessionPlanner.plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, deck: deck)
+        var plan = SessionPlanner.plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, catalogs: catalogs)
         plan.planned = analysis?.today.map { Set($0.domains) == Set(domains) } ?? false
         start(plan)
     }
@@ -187,7 +200,7 @@ final class AppModel {
             return
         }
         savedCards = Dictionary(cards.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
-        run = StudyRun(plan: plan, state: state, deck: deck, now: Date())
+        run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: Date())
     }
 
     /// Applies an action to the running session and keeps what changed.
@@ -229,6 +242,19 @@ final class AppModel {
             store.save(reflections)
             self.reflections += reflections
         }
+        let pieces = run.newPieces.filter { piece in self.pieces.last { $0.id == piece.id } != piece }
+        if !pieces.isEmpty {
+            store.save(pieces)
+            for piece in pieces {
+                self.pieces.removeAll { $0.id == piece.id }
+                self.pieces.append(piece)
+            }
+        }
+        let comparisons = run.newComparisons.filter { c in !self.comparisons.contains { $0.id == c.id } }
+        if !comparisons.isEmpty {
+            store.save(comparisons)
+            self.comparisons += comparisons
+        }
         lastRevision = store.revision
     }
 
@@ -251,13 +277,32 @@ final class AppModel {
         save(book: book.book(status: .reading, started: today))
     }
 
+    /// A lookup kept for next time: one record per book, newest wins.
+    func save(meta: BookMeta) {
+        var meta = meta
+        meta.updatedAt = Date()
+        store.save(meta)
+        reload()
+    }
+
+    // MARK: Writing outside sessions
+
+    /// A piece edited after its session: feedback arriving, a handwritten page read in later.
+    func save(piece: WritingPiece) {
+        var piece = piece
+        piece.updatedAt = Date()
+        store.save(piece)
+        reload()
+    }
+
     // MARK: Tests outside sessions
 
-    /// An episode watched without subtitles: 0 (lost) to 3 (followed nearly all of it).
-    func logEpisode(rating: Int, title: String?) {
+    /// An episode watched without subtitles (or a real conversation): 0 (lost) to 3 (followed
+    /// nearly all of it).
+    func logEpisode(rating: Int, title: String?, language: Language, test: TestKind = .episode) {
         var detail: [String: Double] = ["rating": Double(rating)]
         if let title, !title.isEmpty { detail["titled"] = 1 }
-        store.save(TestResult(test: .episode, date: Date(), score: Double(rating) / 3, detail: detail))
+        store.save(TestResult(test: test, date: Date(), score: Double(rating) / 3, detail: detail, language: language))
         reload()
     }
 
@@ -288,7 +333,8 @@ final class AppModel {
         let folder = URL.temporaryDirectory.appending(path: "Mind Track Export \(Day.today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try MindExport.tables(sessions: sessions, cards: cards, tests: tests, books: books, reflections: reflections).map { table in
+        return try MindExport.tables(sessions: sessions, cards: cards, tests: tests, books: books, reflections: reflections,
+                                     pieces: pieces).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }
             let url = folder.appending(path: "\(table.name).csv")
@@ -340,13 +386,14 @@ final class AppModel {
 
     /// For sample data: saves records straight to the store.
     func seed(settings: MindSettings, cards: [MemoryCard], sessions: [StudySession], tests: [TestResult], books: [Book],
-              reflections: [Reflection]) {
+              reflections: [Reflection], pieces: [WritingPiece] = []) {
         store.save(settings)
         store.save(cards)
         store.save(sessions)
         store.save(tests)
         store.save(books)
         store.save(reflections)
+        store.save(pieces)
         reload()
     }
     #endif

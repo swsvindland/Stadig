@@ -137,7 +137,7 @@ private struct PausedCard: View {
 
     var detail: String {
         switch kind {
-        case .vacation: "On vacation: nothing is expected, and these days never count against you. Watch something in Japanese if you feel like it."
+        case .vacation: "On vacation: nothing is expected, and these days never count against you. Watch something in a language you're learning if you feel like it."
         case .illness: "Get better. Nothing is expected, and the days don't count."
         case .crunch: "Crunch mode pauses study. A five-minute review is here if you want it; nothing is expected."
         case .injury: ""
@@ -194,7 +194,7 @@ private struct ActionCard: View {
         switch action.kind {
         case .extraReview: model.startExtraReview(minutes: action.id == "pile" ? 10 : 5)
         case .pickBook, .stalledBook: model.showShelf = true
-        case .episode: model.showEpisode = true
+        case .episode: model.episodeLanguage = Language.allCases.first { action.id == "episode.\($0.domain.rawValue)" } ?? .japanese
         case .catchUp:
             let yesterday = model.today.adding(days: -1)
             if let day = model.analysis?.week.first(where: { $0.day == yesterday }) { model.startSession(day.domains) }
@@ -228,10 +228,12 @@ private struct Glance: View {
     }
 }
 
-/// An episode watched without subtitles: how much did it make sense?
+/// An episode watched without subtitles, or a real conversation: how much did it make sense?
 struct EpisodeSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    let language: Language
+    @State private var test = TestKind.episode
     @State private var title = ""
     @State private var rating = 1
 
@@ -241,7 +243,12 @@ struct EpisodeSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("What did you watch? (optional)", text: $title)
+                    Picker("What was it?", selection: $test) {
+                        Text("An episode").tag(TestKind.episode)
+                        Text("A conversation").tag(TestKind.conversation)
+                    }
+                    .pickerStyle(.segmented)
+                    TextField(test == .episode ? "What did you watch? (optional)" : "Who with, or where? (optional)", text: $title)
                 }
                 Section {
                     Picker("How much did you follow?", selection: $rating) {
@@ -252,16 +259,16 @@ struct EpisodeSheet: View {
                 } header: {
                     Text("How much did you follow?")
                 } footer: {
-                    Text("A plain check-in, not a score: it's how you'll see the shows start to open up. The listening test is what measures.")
+                    Text("A plain check-in, not a score: it's how you'll see real \(language.domain.label) start to open up. The listening and speaking tests are what measure.")
                 }
             }
-            .navigationTitle("No subtitles")
+            .navigationTitle(language.domain.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        model.logEpisode(rating: rating, title: title)
+                        model.logEpisode(rating: rating, title: title, language: language, test: test)
                         dismiss()
                     }
                 }

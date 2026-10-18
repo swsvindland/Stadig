@@ -26,7 +26,7 @@ struct LessonView: View {
                 .controlSize(.large)
             }
         }
-        .onAppear(perform: speakIfJapanese)
+        .onAppear(perform: speakIfLanguage)
     }
 
     var continueLabel: String {
@@ -36,10 +36,10 @@ struct LessonView: View {
         }
     }
 
-    func speakIfJapanese() {
+    func speakIfLanguage() {
         switch lesson {
-        case .word(let word, _, _): model.speech.speak(word.kana)
-        case .kana(let kana): model.speech.speak(kana.kana)
+        case .word(let word, _, _): model.speech.speak(word.reading, language: word.language)
+        case .kana(let kana): model.speech.speak(kana.kana, language: .japanese)
         default: break
         }
     }
@@ -51,8 +51,8 @@ struct LessonView: View {
             if let example {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("In a sentence").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    SpeakButton(text: example.jp, label: example.jp, font: .title3)
-                    Text(example.en).font(.subheadline).foregroundStyle(.secondary)
+                    SpeakButton(text: example.text, language: word.language, label: example.text, font: .title3)
+                    Text(example.english).font(.subheadline).foregroundStyle(.secondary)
                 }
                 .card()
             }
@@ -61,7 +61,7 @@ struct LessonView: View {
                 Text(kana.kana).font(.system(size: 120, weight: .medium))
                 Text(kana.romaji).font(.title.weight(.semibold))
                 Text(kana.script.label).font(.subheadline).foregroundStyle(.secondary)
-                SpeakButton(text: kana.kana, label: "Hear it", font: .headline)
+                SpeakButton(text: kana.kana, language: .japanese, label: "Hear it", font: .headline)
             }
             .frame(maxWidth: .infinity)
             .card(padding: 28)
@@ -92,7 +92,7 @@ struct LessonView: View {
     }
 }
 
-/// A word with its reading, meanings and kanji.
+/// A word with its reading, meanings and, for Japanese, its kanji.
 struct WordCard: View {
     @Environment(AppModel.self) private var model
     let word: Word
@@ -104,7 +104,7 @@ struct WordCard: View {
                 if word.hasKanji { Text(word.kana).font(.title3).foregroundStyle(.secondary) }
                 Text(word.text).font(.system(size: 56, weight: .medium)).minimumScaleFactor(0.5).lineLimit(1)
                 Text(word.meaning).font(.title2.weight(.semibold))
-                SpeakButton(text: word.kana, label: "Hear it", font: .subheadline)
+                SpeakButton(text: word.reading, language: word.language, label: "Hear it", font: .subheadline)
             }
             .frame(maxWidth: .infinity)
             if word.meanings != word.meaning {
@@ -134,12 +134,13 @@ struct WordCard: View {
 struct SpeakButton: View {
     @Environment(AppModel.self) private var model
     let text: String
+    let language: Language
     let label: String
     var font: Font = .body
 
     var body: some View {
         Button {
-            model.speech.speak(text)
+            model.speech.speak(text, language: language)
         } label: {
             Label(label, systemImage: "speaker.wave.2.fill").font(font)
         }
@@ -182,7 +183,7 @@ struct QuestionView: View {
             return correct ? .success : .error
         }
         .onAppear {
-            if case .audio(let text) = question.prompt { model.speech.speak(text) }
+            if case .audio(let text, let language) = question.prompt { model.speech.speak(text, language: language) }
             if case .number = question.answer { typing = true }
         }
         .task(id: feedback) {
@@ -194,35 +195,7 @@ struct QuestionView: View {
         }
     }
 
-    @ViewBuilder var prompt: some View {
-        switch question.prompt {
-        case .text(let text):
-            Text(text).font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
-        case .japanese(let text, let reading):
-            VStack(spacing: 4) {
-                if let reading { Text(reading).font(.title3).foregroundStyle(.secondary) }
-                Text(text).font(.system(size: text.count > 6 ? 40 : 60, weight: .medium)).minimumScaleFactor(0.4).multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-        case .audio(let text):
-            VStack(spacing: 12) {
-                Button {
-                    model.speech.speak(text)
-                } label: {
-                    Image(systemName: "speaker.wave.3.fill").font(.system(size: 40)).frame(width: 96, height: 96)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .accessibilityLabel("Play again")
-                Button("Slower") { model.speech.speak(text, slow: true) }.font(.subheadline)
-                if feedback != nil { Text(text).font(.title2).multilineTextAlignment(.center) }
-            }
-            .frame(maxWidth: .infinity)
-        case .math(let text):
-            MathText(source: text, size: 21, weight: .medium)
-        }
-    }
+    var prompt: some View { PromptView(prompt: question.prompt, revealed: feedback != nil) }
 
     @ViewBuilder var answers: some View {
         switch question.answer {
@@ -303,6 +276,46 @@ struct QuestionView: View {
     }
 }
 
+/// What a question or task shows: text, the language (heard or seen), or maths.
+struct PromptView: View {
+    @Environment(AppModel.self) private var model
+    let prompt: Prompt
+    /// Audio shows its text once answered.
+    var revealed = false
+
+    var body: some View {
+        switch prompt {
+        case .text(let text):
+            Text(text).font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+        case .foreign(let text, let language, let reading):
+            VStack(spacing: 4) {
+                if let reading { Text(reading).font(.title3).foregroundStyle(.secondary) }
+                Text(text).font(.system(size: text.count > 12 ? 32 : text.count > 6 ? 40 : 60, weight: .medium)).minimumScaleFactor(0.4)
+                    .multilineTextAlignment(.center)
+                    .environment(\.locale, Locale(identifier: language.pack.locale))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        case .audio(let text, let language):
+            VStack(spacing: 12) {
+                Button {
+                    model.speech.speak(text, language: language)
+                } label: {
+                    Image(systemName: "speaker.wave.3.fill").font(.system(size: 40)).frame(width: 96, height: 96)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("Play again")
+                Button("Slower") { model.speech.speak(text, language: language, slow: true) }.font(.subheadline)
+                if revealed { Text(text).font(.title2).multilineTextAlignment(.center) }
+            }
+            .frame(maxWidth: .infinity)
+        case .math(let text):
+            MathText(source: text, size: 21, weight: .medium)
+        }
+    }
+}
+
 struct ChoiceButton: View {
     enum State { case idle, right, wrong, dimmed }
 
@@ -317,8 +330,10 @@ struct ChoiceButton: View {
                 Group {
                     switch style {
                     case .math: MathText(source: text, size: 19)
-                    case .japanese: Text(text).font(.title2)
+                    case .foreign: Text(text).font(.title2)
                     case .text: Text(text).font(.body).multilineTextAlignment(.leading)
+                    case .picture:
+                        Image(systemName: text).font(.system(size: 34)).frame(maxWidth: .infinity, minHeight: 56)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,7 +349,7 @@ struct ChoiceButton: View {
         }
         .buttonStyle(.plain)
         .opacity(state == .dimmed ? 0.5 : 1)
-        .accessibilityLabel(style == .math ? MathSource.spoken(text) : text)
+        .accessibilityLabel(style == .math ? MathSource.spoken(text) : style == .picture ? text.replacingOccurrences(of: ".", with: " ") : text)
         .accessibilityValue(state == .right ? "Right answer" : state == .wrong ? "Your answer, wrong" : "")
     }
 
@@ -367,10 +382,10 @@ struct FeedbackPanel: View {
                 switch question.reveal {
                 case .word(let word, let kanji):
                     WordCard(word: word, kanji: kanji)
-                case .sentence(let sentence):
+                case .sentence(let sentence, let language):
                     VStack(alignment: .leading, spacing: 6) {
-                        SpeakButton(text: sentence.jp, label: sentence.jp, font: .title3)
-                        Text(sentence.en).font(.subheadline).foregroundStyle(.secondary)
+                        SpeakButton(text: sentence.text, language: language, label: sentence.text, font: .title3)
+                        Text(sentence.english).font(.subheadline).foregroundStyle(.secondary)
                     }
                 case .steps(let steps):
                     VStack(alignment: .leading, spacing: 8) {

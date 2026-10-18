@@ -13,8 +13,8 @@ enum SampleData {
         let today = Day.today
         let start = today.adding(days: -60)
         let ladder = ReadingLadder.standard
-        var settings = MindSettings(domains: Domain.allCases, schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(),
-                                    readsKana: true, mathsBackground: .algebra, genres: [.fantasy, .sciFi, .nonfiction])
+        var settings = MindSettings(schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
+                                    mathsBackground: .algebra, genres: [.fantasy, .sciFi, .nonfiction])
         settings.updatedAt = start.date()
         var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { $0.book(status: .readBefore) }
         if books.isEmpty { books = ladder.books.filter { $0.tier == 3 }.prefix(2).map { $0.book(status: .readBefore) } }
@@ -22,6 +22,7 @@ enum SampleData {
         var sessions: [StudySession] = []
         var tests: [TestResult] = []
         var reflections: [Reflection] = []
+        var pieces: [WritingPiece] = []
         var rng = SeededRandom(seed: 2026)
 
         for offset in 0..<60 {
@@ -29,9 +30,9 @@ enum SampleData {
             // A missed day now and then.
             if offset > 20 && rng.chance(0.08) { continue }
             let state = StudyState(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
-                                   reflections: reflections, today: day, now: day.date().addingTimeInterval(18.5 * 3600))
-            guard let plan = SessionPlanner.today(state, deck: model.deck) else { continue }
-            var run = StudyRun(plan: plan, state: state, deck: model.deck, now: state.now)
+                                   reflections: reflections, pieces: pieces, today: day, now: day.date().addingTimeInterval(18.5 * 3600))
+            guard let plan = SessionPlanner.today(state, catalogs: model.catalogs) else { continue }
+            var run = StudyRun(plan: plan, state: state, catalogs: model.catalogs, now: state.now)
             var now = state.now
             var steps = 0
             while let step = run.step, steps < 600 {
@@ -42,7 +43,7 @@ enum SampleData {
                     run.next(now: now)
                 case .question(let question):
                     now += question.expectedSeconds * Double.random(in: 0.6...1.3, using: &rng)
-                    let p = chance(question, cards: run.cards, deck: model.deck)
+                    let p = chance(question, cards: run.cards, catalogs: model.catalogs)
                     if question.allowsDontKnow && p < 0.3 && rng.chance(0.7) {
                         run.dontKnow(now: now)
                         now += 3
@@ -70,6 +71,18 @@ enum SampleData {
                 case .reflect(_, let finished):
                     now += 60
                     run.reflect(rng.pick(finished ? bookNotes : sectionNotes), now: now)
+                case .passage(let passage):
+                    now += Double(passage.words) / 4
+                    run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
+                case .speak:
+                    now += 10
+                    run.respond(.skip, now: now)
+                case .compose(let task):
+                    now += Double(task.minutes) * 60
+                    run.respond(.written(text: rng.pick(sectionNotes), source: .typed), now: now)
+                case .compare:
+                    now += 90
+                    run.respond(.picked(1), now: now)
                 }
             }
             run.finish(now: now)
@@ -83,21 +96,23 @@ enum SampleData {
                 }
             }
             reflections += run.newReflections
+            pieces += run.newPieces
         }
         tests.append(TestResult(test: .episode, date: start.adding(days: 52).date().addingTimeInterval(21 * 3600), score: 1.0 / 3,
-                                detail: ["rating": 1]))
-        model.seed(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections)
+                                detail: ["rating": 1], language: .japanese))
+        model.seed(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
+                   pieces: pieces)
     }
 
     /// The sample student: about 600 Japanese words to begin with, solid maths to level 5 and
     /// shakier above, and the basic writing skills.
-    static func chance(_ question: Question, cards: [CardKey: MemoryCard], deck: JapaneseDeck?) -> Double {
+    static func chance(_ question: Question, cards: [CardKey: MemoryCard], catalogs: Catalogs) -> Double {
         let key = question.key
         switch key.domain {
-        case .japanese:
-            if key.raw == "jp.sentences" || key.raw == "jp.listening" { return 0.6 }
+        case .japanese, .spanish:
+            if key.wordID == nil && !key.isKana { return 0.6 }
             if let memory = cards[key]?.memory { return min(0.95, Scheduler.retrievability(memory, at: Date()) + 0.05) }
-            if let id = key.wordID, let word = deck?.word(id), word.rank <= 600 { return 0.92 }
+            if let id = key.wordID, let word = catalogs.deck(for: key.domain)?.word(id), word.rank <= 600 { return 0.92 }
             return question.kind == .learn ? 0.85 : 0.25
         case .maths:
             let level = MathCurriculum.topic(key.item)?.level ?? 10

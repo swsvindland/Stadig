@@ -29,8 +29,8 @@ struct RootView: View {
         .sheet(isPresented: $model.showPaywall) {
             PaywallView()
         }
-        .sheet(isPresented: $model.showEpisode) {
-            EpisodeSheet()
+        .sheet(item: $model.episodeLanguage) { language in
+            EpisodeSheet(language: language)
         }
         .sheet(isPresented: $model.showShelf) {
             NavigationStack { ShelfView() }

@@ -92,22 +92,22 @@ public enum StudyCalendar {
     }
 }
 
-/// The weekly split: domains rotate across study days like a training split. Japanese alone,
-/// maths with a writing segment beside it, and reading alone.
+/// The weekly split: Focus courses rotate across study days like a training split. Each language
+/// alone, maths with a writing segment beside it, and reading alone. Maintenance courses aren't
+/// in the split: their reviews ride in every session's warm-up.
 public enum Split {
     static func groups(_ domains: [Domain]) -> [[Domain]] {
-        var out: [[Domain]] = []
-        if domains.contains(.japanese) { out.append([.japanese]) }
+        var out: [[Domain]] = domains.filter(\.isLanguage).map { [$0] }
         if domains.contains(.maths) { out.append(domains.contains(.writing) ? [.maths, .writing] : [.maths]) }
         else if domains.contains(.writing) { out.append([.writing]) }
         if domains.contains(.reading) { out.append([.reading]) }
         return out
     }
 
-    /// How much of the week each group gets. Japanese most: a language wants frequency.
+    /// How much of the week each group gets. Languages most: they want near-daily exposure.
     static func weight(_ group: [Domain]) -> Double {
         switch group.first {
-        case .japanese: 2
+        case .japanese, .spanish: 2
         case .maths: 1.5
         case .writing: 1
         case .reading: 1.5
@@ -119,7 +119,7 @@ public enum Split {
     /// domains that get more of the week (when auto-prioritise is on).
     public static func week(starting monday: Day, settings: MindSettings, priorities: Set<Domain> = []) -> [Day: [Domain]] {
         let days = settings.schedule.studyDays.map { monday.adding(days: $0.rawValue - 1) }
-        let groups = groups(settings.domains)
+        let groups = groups(settings.focus)
         guard !days.isEmpty, !groups.isEmpty else { return [:] }
         let weights = groups.map { weight($0) + (settings.autoPrioritise && !priorities.isDisjoint(with: $0) ? 0.75 : 0) }
         var counts: [Int]

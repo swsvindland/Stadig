@@ -37,17 +37,21 @@ public struct SeededRandom: RandomNumberGenerator, Sendable {
 /// What's shown above the answers.
 public enum Prompt: Hashable, Sendable {
     case text(String)
-    /// Japanese shown large, with an optional reading underneath.
-    case japanese(String, reading: String? = nil)
-    /// Japanese spoken, not shown, until it's answered.
-    case audio(String)
+    /// The language shown large, with a scaffold (furigana, romaji) underneath while it's needed.
+    case foreign(String, Language, reading: String? = nil)
+    /// The language spoken in its own voice, not shown, until it's answered.
+    case audio(String, Language)
     /// Text with inline maths between dollar signs: "Solve $3x + 5 = 20$".
     case math(String)
 }
 
 /// How the choices are written.
 public enum ChoiceStyle: String, Hashable, Sendable {
-    case text, japanese, math
+    case text, math
+    /// In the language being learned.
+    case foreign
+    /// Pictures: each choice is an SF Symbol name (picture matching).
+    case picture
 }
 
 public enum Answer: Hashable, Sendable {
@@ -75,7 +79,7 @@ public struct MathTopicInfo: Hashable, Sendable {
 /// What's shown after answering, beyond right or wrong.
 public enum Reveal: Hashable, Sendable {
     case word(Word, kanji: [Kanji])
-    case sentence(Sentence)
+    case sentence(Sentence, Language)
     case steps([String])
     case note(String)
 }

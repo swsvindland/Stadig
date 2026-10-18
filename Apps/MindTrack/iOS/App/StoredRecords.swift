@@ -40,3 +40,18 @@ nonisolated extension LifeModeRecord: @retroactive StoredRecord {
     public static var kind: String { "life-mode" }
     public static var schemaVersion: Int { 1 }
 }
+
+nonisolated extension WritingPiece: @retroactive StoredRecord {
+    public static var kind: String { "writing-piece" }
+    public static var schemaVersion: Int { 1 }
+}
+
+nonisolated extension BlindComparison: @retroactive StoredRecord {
+    public static var kind: String { "blind-comparison" }
+    public static var schemaVersion: Int { 1 }
+}
+
+nonisolated extension BookMeta: @retroactive StoredRecord {
+    public static var kind: String { "book-meta" }
+    public static var schemaVersion: Int { 1 }
+}

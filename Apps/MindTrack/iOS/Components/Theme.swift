@@ -16,6 +16,7 @@ extension Domain {
     var color: Color {
         switch self {
         case .japanese: .pink
+        case .spanish: .red
         case .maths: .blue
         case .writing: .orange
         case .reading: .teal

@@ -1,9 +1,9 @@
 import Foundation
 
-/// Builds Japanese questions. Every one is multiple choice with believable wrong answers (the same
+/// Builds language questions, for any pack. Every one is multiple choice with believable wrong answers (the same
 /// part of speech, from nearby in the deck), so it can be answered on a phone in seconds and
 /// marked without asking the person to judge themselves.
-public enum JapaneseQuiz {
+public enum LanguageQuiz {
     /// Ways to ask about a word. They rotate across reviews, so no single cue carries it.
     public enum WordAsk: String, Sendable, CaseIterable {
         case meaning, reading, listening
@@ -15,21 +15,21 @@ public enum JapaneseQuiz {
         return order[reps % order.count]
     }
 
-    public static func question(_ word: Word, ask: WordAsk, kind: AttemptKind, deck: JapaneseDeck, seed: String) -> Question {
+    public static func question(_ word: Word, ask: WordAsk, kind: AttemptKind, deck: LanguageDeck, seed: String) -> Question {
         var rng = SeededRandom(seed, word.key.raw, ask.rawValue)
         let reveal = Reveal.word(word, kanji: deck.kanji(in: word))
         let id = "\(word.key.raw).\(ask.rawValue).\(seed)"
         switch ask {
         case .meaning:
-            return .choosing(id: id, key: word.key, kind: kind, instruction: "What does it mean?", prompt: .japanese(word.text),
+            return .choosing(id: id, key: word.key, kind: kind, instruction: "What does it mean?", prompt: .foreign(word.text, word.language),
                              correct: word.meaning, wrong: wrongMeanings(for: word, deck: deck, rng: &rng), expectedSeconds: 6,
                              reveal: reveal, rng: &rng)
         case .reading:
-            return .choosing(id: id, key: word.key, kind: kind, instruction: "How is it read?", prompt: .japanese(word.text),
-                             correct: word.kana, wrong: wrongReadings(for: word, deck: deck, rng: &rng), style: .japanese,
+            return .choosing(id: id, key: word.key, kind: kind, instruction: "How is it read?", prompt: .foreign(word.text, word.language),
+                             correct: word.kana, wrong: wrongReadings(for: word, deck: deck, rng: &rng), style: .foreign,
                              expectedSeconds: 6, reveal: reveal, rng: &rng)
         case .listening:
-            return .choosing(id: id, key: word.key, kind: kind, instruction: "What did you hear?", prompt: .audio(word.kana),
+            return .choosing(id: id, key: word.key, kind: kind, instruction: "What did you hear?", prompt: .audio(word.kana, word.language),
                              correct: word.meaning, wrong: wrongMeanings(for: word, deck: deck, rng: &rng), expectedSeconds: 8,
                              reveal: reveal, rng: &rng)
         }
@@ -44,30 +44,34 @@ public enum JapaneseQuiz {
         let id = "\(kana.key.raw).\(reps).\(seed)"
         if reps % 2 == 1 {
             // Hear it, pick the kana.
-            return .choosing(id: id, key: kana.key, kind: kind, instruction: "Which did you hear?", prompt: .audio(kana.kana),
-                             correct: kana.kana, wrong: pool.map(\.kana), style: .japanese, expectedSeconds: 5,
+            return .choosing(id: id, key: kana.key, kind: kind, instruction: "Which did you hear?", prompt: .audio(kana.kana, .japanese),
+                             correct: kana.kana, wrong: pool.map(\.kana), style: .foreign, expectedSeconds: 5,
                              reveal: .note("\(kana.kana) is “\(kana.romaji)”"), rng: &rng)
         }
-        return .choosing(id: id, key: kana.key, kind: kind, instruction: "How is it said?", prompt: .japanese(kana.kana),
+        return .choosing(id: id, key: kana.key, kind: kind, instruction: "How is it said?", prompt: .foreign(kana.kana, .japanese),
                          correct: kana.romaji, wrong: pool.map(\.romaji), expectedSeconds: 4,
                          reveal: .note("\(kana.kana) is “\(kana.romaji)”"), rng: &rng)
     }
 
     /// Hear a sentence, pick what it means. Wrong answers are translations of other sentences of
     /// about the same length, so length alone doesn't give it away.
-    public static func sentence(_ sentence: Sentence, kind: AttemptKind, others: [Sentence], seed: String, key: CardKey) -> Question {
+    public static func sentence(_ sentence: Sentence, language: Language, kind: AttemptKind, others: [Sentence], seed: String,
+                                key: CardKey) -> Question {
         var rng = SeededRandom(seed, "\(sentence.id)")
         let wrong = others.filter { $0.id != sentence.id }
-            .sorted { abs($0.en.count - sentence.en.count) < abs($1.en.count - sentence.en.count) }
-            .prefix(8).shuffled(using: &rng).map(\.en)
+            .sorted { abs($0.english.count - sentence.english.count) < abs($1.english.count - sentence.english.count) }
+            .prefix(8).shuffled(using: &rng).map(\.english)
+        // Japanese packs a sentence into fewer characters than a Latin script.
+        let perCharacter = language.pack.script == .kanaKanji ? 0.5 : 0.2
         var question = Question.choosing(id: "sentence.\(sentence.id).\(seed)", key: key, kind: kind, instruction: "What does it mean?",
-                                         prompt: .audio(sentence.jp), correct: sentence.en, wrong: wrong,
-                                         expectedSeconds: 12 + Double(sentence.jp.count) / 2, reveal: .sentence(sentence), rng: &rng)
+                                         prompt: .audio(sentence.text, language), correct: sentence.english, wrong: wrong,
+                                         expectedSeconds: 12 + Double(sentence.text.count) * perCharacter, reveal: .sentence(sentence, language),
+                                         rng: &rng)
         question.allowsDontKnow = kind == .test
         return question
     }
 
-    static func wrongMeanings(for word: Word, deck: JapaneseDeck, rng: inout SeededRandom) -> [String] {
+    static func wrongMeanings(for word: Word, deck: LanguageDeck, rng: inout SeededRandom) -> [String] {
         let near = neighbours(of: word, deck: deck, rng: &rng)
         let same = near.filter { $0.pos == word.pos }
         let mine = Question.normalised(word.meaning)
@@ -77,7 +81,7 @@ public enum JapaneseQuiz {
         }
     }
 
-    static func wrongReadings(for word: Word, deck: JapaneseDeck, rng: inout SeededRandom) -> [String] {
+    static func wrongReadings(for word: Word, deck: LanguageDeck, rng: inout SeededRandom) -> [String] {
         let near = neighbours(of: word, deck: deck, rng: &rng)
         // Readings that share a kanji or a length look most alike.
         let shared = near.filter { other in other.kanjiChars.contains { word.kanjiChars.contains($0) } }
@@ -89,7 +93,7 @@ public enum JapaneseQuiz {
     }
 
     /// Words of similar rank, shuffled.
-    static func neighbours(of word: Word, deck: JapaneseDeck, rng: inout SeededRandom) -> [Word] {
+    static func neighbours(of word: Word, deck: LanguageDeck, rng: inout SeededRandom) -> [Word] {
         let words = deck.words
         guard let index = words.firstIndex(where: { $0.id == word.id }) ?? words.firstIndex(where: { $0.rank >= word.rank }) else {
             return Array(words.shuffled(using: &rng).prefix(30))

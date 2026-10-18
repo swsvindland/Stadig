@@ -5,27 +5,37 @@ import SystemCore
 // Mind Track's records. Each is synced whole, newest wins, so anything two devices might both
 // change at once (a card's memory, a book's page) is its own record.
 
-/// What a card is about: "jp.word.1358280", "jp.kana.あ", "maths.fractions-add", "writing.commas".
+/// What a card is about: "jp.word.1358280", "es.word.4021", "jp.kana.あ", "maths.fractions-add",
+/// "writing.commas". A language's keys start with its pack's prefix.
 public struct CardKey: Hashable, Codable, Sendable, CustomStringConvertible, Comparable {
     public var raw: String
 
     public init(_ raw: String) { self.raw = raw }
 
-    public static func word(_ id: Int) -> CardKey { CardKey("jp.word.\(id)") }
+    public static func word(_ id: Int, _ language: Language = .japanese) -> CardKey { CardKey("\(language.pack.keyPrefix).word.\(id)") }
     public static func kana(_ kana: String) -> CardKey { CardKey("jp.kana.\(kana)") }
     public static func topic(_ id: String) -> CardKey { CardKey("maths.\(id)") }
     public static func skill(_ id: String) -> CardKey { CardKey("writing.\(id)") }
+    /// A language's untracked practice items (sentences, tests): attempts, never a schedule.
+    public static func practice(_ language: Language, _ what: String) -> CardKey { CardKey("\(language.pack.keyPrefix).\(what)") }
+
+    var prefix: String { String(raw.prefix { $0 != "." }) }
+
+    /// The language a key belongs to, if it's a language's.
+    public var language: Language? { LanguagePack.language(prefix: prefix) }
 
     public var domain: Domain {
-        if raw.hasPrefix("jp.") { return .japanese }
-        if raw.hasPrefix("maths.") { return .maths }
-        if raw.hasPrefix("writing.") { return .writing }
-        return .reading
+        if let language { return language.domain }
+        switch prefix {
+        case "maths": return .maths
+        case "writing": return .writing
+        default: return .reading
+        }
     }
 
     /// The id inside the domain: a word id, a kana, a topic or a skill.
     public var item: String { String(raw.split(separator: ".", maxSplits: 2).last ?? "") }
-    public var wordID: Int? { raw.hasPrefix("jp.word.") ? Int(item) : nil }
+    public var wordID: Int? { language != nil && raw.dropFirst(prefix.count).hasPrefix(".word.") ? Int(item) : nil }
     public var isKana: Bool { raw.hasPrefix("jp.kana.") }
 
     public var description: String { raw }
@@ -207,37 +217,77 @@ public struct StudySession: Hashable, Codable, Sendable, Identifiable {
 
 /// The honest measures. Tests measure and never schedule, and only these move a stat.
 public enum TestKind: String, Codable, Sendable, CaseIterable {
+    // Languages: each result carries its language. The four skills are levelled separately.
     /// Words known, estimated from a sample of every frequency band.
     case vocabulary
     /// Sentences understood by ear, at several levels.
     case listening
+    /// Saying things and being understood: checked by on-device speech recognition.
+    case speaking
+    /// Sentences understood from the page.
+    case languageReading
+    /// Producing the language: typed or handwritten answers.
+    case languageWriting
     /// An episode watched without subtitles, rated after: a plain check-in, not a score.
     case episode
-    /// Placement across the maths topics.
+    /// A real conversation, rated after: a plain check-in, not a score.
+    case conversation
+
+    // Maths: three strands, each with its own level.
+    /// Mental arithmetic, estimation, percentages, fractions and units: speed and accuracy.
+    case numeracy
+    /// Placement across the classic ladder.
     case mathsPlacement
-    /// A mixed, timed problem set over what's been learned.
+    /// A mixed, timed problem set over what's been learned on the classic ladder.
     case maths
-    /// A mixed set over every writing skill.
+    /// Logic, sets, counting, probability and statistics.
+    case discrete
+
+    // Writing.
+    /// The objective grammar, punctuation and usage set (support, not the measure).
     case writing
+    /// The term's benchmark prompt: deterministic metrics only, never a grade.
+    case writingBenchmark
+    /// An old and a new piece side by side, unlabelled: whether the new one was picked.
+    case blindComparison
+
+    // Reading.
+    /// Passages of rising difficulty with comprehension questions, timed in the background.
+    case readingTest
 
     public var label: String {
         switch self {
         case .vocabulary: "Vocabulary"
         case .listening: "Listening"
+        case .speaking: "Speaking"
+        case .languageReading: "Reading"
+        case .languageWriting: "Writing"
         case .episode: "No-subtitles episode"
+        case .conversation: "Conversation"
+        case .numeracy: "Numeracy"
         case .mathsPlacement: "Maths placement"
         case .maths: "Maths check"
-        case .writing: "Writing check"
+        case .discrete: "Statistics and logic"
+        case .writing: "Grammar check"
+        case .writingBenchmark: "Benchmark piece"
+        case .blindComparison: "Blind comparison"
+        case .readingTest: "Reading test"
         }
     }
 
+    /// The course a test belongs to. Language tests default to Japanese; a result's own
+    /// `language` says which.
     public var domain: Domain {
         switch self {
-        case .vocabulary, .listening, .episode: .japanese
-        case .mathsPlacement, .maths: .maths
-        case .writing: .writing
+        case .vocabulary, .listening, .speaking, .languageReading, .languageWriting, .episode, .conversation: .japanese
+        case .numeracy, .mathsPlacement, .maths, .discrete: .maths
+        case .writing, .writingBenchmark, .blindComparison: .writing
+        case .readingTest: .reading
         }
     }
+
+    /// Tests that are a plain self-rated check-in, never part of a score.
+    public var selfRated: Bool { self == .episode || self == .conversation }
 }
 
 /// A test's result. `score` is the test's own measure (words for vocabulary, a 0–1 share
@@ -249,20 +299,26 @@ public struct TestResult: Hashable, Codable, Sendable, Identifiable {
     public var score: Double
     public var detail: [String: Double]
     public var placement: Bool
+    /// The language a language test was in. Nil for other tests (and Japanese results saved before Spanish).
+    public var language: Language?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), test: TestKind, date: Date, score: Double, detail: [String: Double] = [:],
-                placement: Bool = false, updatedAt: Date = Date()) {
+                placement: Bool = false, language: Language? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.test = test
         self.date = date
         self.score = score
         self.detail = detail
         self.placement = placement
+        self.language = language
         self.updatedAt = updatedAt
     }
 
     public var day: Day { Day(date) }
+
+    /// The course this result counts toward.
+    public var domain: Domain { language?.domain ?? test.domain }
 }
 
 public enum Genre: String, CaseIterable, Codable, Sendable, Identifiable {
@@ -289,7 +345,8 @@ public enum BookStatus: String, Codable, Sendable {
     case readBefore
 }
 
-/// How a finished book felt. Moves the ladder: easy or right steps up, hard holds.
+/// How a book felt: the same three-tap colour rating as a set in Lift Track. It moves both the
+/// book's level estimate and the reader's level.
 public enum BookFeel: String, CaseIterable, Codable, Sendable, Identifiable {
     case easy, right, hard
 
@@ -298,10 +355,28 @@ public enum BookFeel: String, CaseIterable, Codable, Sendable, Identifiable {
     public var label: String {
         switch self {
         case .easy: "Easy"
-        case .right: "A stretch, but fine"
-        case .hard: "Hard going"
+        case .right: "Just right"
+        case .hard: "A slog"
         }
     }
+}
+
+/// How a book was taken in. Audiobooks count for comprehension and taste, not for reading
+/// stamina or focus.
+public enum BookFormat: String, CaseIterable, Codable, Sendable, Identifiable {
+    case print, ebook, audiobook
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .print: "Print"
+        case .ebook: "Ebook"
+        case .audiobook: "Audiobook"
+        }
+    }
+
+    public var countsForStamina: Bool { self != .audiobook }
 }
 
 /// A book on the person's shelf: from the ladder, or their own.
@@ -319,11 +394,16 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
     public var finished: Day?
     public var page: Int
     public var feel: BookFeel?
+    /// Print unless said otherwise.
+    public var format: BookFormat?
+    public var isbn: String?
+    /// Nil for English; set for a foreign-language reader, which has its own level per language.
+    public var language: Language?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), ladderID: String? = nil, title: String, author: String, tier: Int, pages: Int, genres: [Genre],
                 status: BookStatus, started: Day? = nil, finished: Day? = nil, page: Int = 0, feel: BookFeel? = nil,
-                updatedAt: Date = Date()) {
+                format: BookFormat? = nil, isbn: String? = nil, language: Language? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.ladderID = ladderID
         self.title = title
@@ -336,6 +416,9 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
         self.finished = finished
         self.page = page
         self.feel = feel
+        self.format = format
+        self.isbn = isbn
+        self.language = language
         self.updatedAt = updatedAt
     }
 

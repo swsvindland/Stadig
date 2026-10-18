@@ -73,8 +73,8 @@ struct PlanTests {
         store.lifeModes = [LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 0)), start: monday.adding(days: 1),
                                           end: monday.adding(days: 12), createdBy: .liftTrack)]
         let state = store.state(on: monday.adding(days: 8))
-        #expect(SessionPlanner.today(state, deck: deck) == nil)
-        let analysis = Analyst.analyse(state, deck: deck)
+        #expect(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) == nil)
+        let analysis = Analyst.analyse(state, catalogs: Fixtures.catalogs(deck))
         #expect(analysis.actions.contains { $0.kind == .extraReview })
         #expect(analysis.discipline.planned == 1, "only the placement day counts: \(analysis.discipline)")
     }
@@ -108,7 +108,7 @@ struct PlanTests {
                        TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true)]
         for offset in 49...53 {
             let state = store.state(on: monday.adding(days: offset))
-            guard let plan = SessionPlanner.today(state, deck: deck) else { continue }
+            guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { continue }
             #expect(plan.kind == .review || plan.kind == .checkIn)
             #expect(!plan.parts.contains { if case .learn = $0.kind { true } else { false } }, "\(plan.parts.map(\.kind))")
         }
@@ -116,12 +116,12 @@ struct PlanTests {
 
     @Test("new words slow when recall slips or reviews pile up, and stop in a review week")
     func pacing() {
-        #expect(JapanesePlan.newWords(retention: 0.9, dueThisWeek: 50, minutes: 25, reviewWeek: false).count == 15)
-        #expect(JapanesePlan.newWords(retention: 0.75, dueThisWeek: 50, minutes: 25, reviewWeek: false).count == 6)
-        #expect(JapanesePlan.newWords(retention: 0.95, dueThisWeek: 50, minutes: 25, reviewWeek: false).count > 15)
-        #expect(JapanesePlan.newWords(retention: 0.9, dueThisWeek: 260, minutes: 25, reviewWeek: false).count <= 4)
-        #expect(JapanesePlan.newWords(retention: 0.9, dueThisWeek: 50, minutes: 25, reviewWeek: true).count == 0)
-        let slipping = JapanesePlan.newWords(retention: 0.75, dueThisWeek: 50, minutes: 25, reviewWeek: false)
+        #expect(LanguagePlan.newWords(retention: 0.9, dueThisWeek: 50, minutes: 25, reviewWeek: false).count == 15)
+        #expect(LanguagePlan.newWords(retention: 0.75, dueThisWeek: 50, minutes: 25, reviewWeek: false).count == 6)
+        #expect(LanguagePlan.newWords(retention: 0.95, dueThisWeek: 50, minutes: 25, reviewWeek: false).count > 15)
+        #expect(LanguagePlan.newWords(retention: 0.9, dueThisWeek: 260, minutes: 25, reviewWeek: false).count <= 4)
+        #expect(LanguagePlan.newWords(retention: 0.9, dueThisWeek: 50, minutes: 25, reviewWeek: true).count == 0)
+        let slipping = LanguagePlan.newWords(retention: 0.75, dueThisWeek: 50, minutes: 25, reviewWeek: false)
         #expect(slipping.reason?.contains("75%") == true)
     }
 
@@ -159,23 +159,23 @@ struct JapaneseMeasureTests {
     func estimate() {
         // Knows the first 1,000 words, none after.
         let knower = (0..<3).flatMap { attempts($0, right: 5, wrong: 0, skipped: 0) } + (3..<8).flatMap { attempts($0, right: 0, wrong: 0, skipped: 5) }
-        #expect(JapaneseTests.estimate(knower).words == 1000)
+        #expect(LanguageTests.estimate(knower).words == 1000)
         // A guesser who never says "don't know": one right in four is luck, and comes out.
         let guesser = (0..<8).flatMap { attempts($0, right: 1, wrong: 3, skipped: 0) }
-        #expect(JapaneseTests.estimate(guesser).words == 0)
+        #expect(LanguageTests.estimate(guesser).words == 0)
         // Saying "don't know" costs nothing.
         let honest = (0..<8).flatMap { attempts($0, right: 1, wrong: 0, skipped: 4) }
-        #expect(JapaneseTests.estimate(honest).words == 4000)
-        let range = JapaneseTests.estimate(knower)
+        #expect(LanguageTests.estimate(honest).words == 4000)
+        let range = LanguageTests.estimate(knower)
         #expect(range.low <= 1000 && range.high >= 1000)
-        #expect(JapaneseTests.vocabularyScore(10_000) == 100 && JapaneseTests.vocabularyScore(1000) > 50)
+        #expect(LanguageTests.vocabularyScore(10_000) == 100 && LanguageTests.vocabularyScore(1000) > 50)
     }
 
     @Test("placement stops once a band is mostly unknown")
     func placementStop() {
         let deck = Fixtures.deck()
-        #expect(JapaneseTests.continuePlacement(after: 0, attempts: attempts(0, right: 4, wrong: 1, skipped: 0), deck: deck))
-        #expect(!JapaneseTests.continuePlacement(after: 2, attempts: attempts(2, right: 1, wrong: 0, skipped: 4), deck: deck))
+        #expect(LanguageTests.continuePlacement(after: 0, attempts: attempts(0, right: 4, wrong: 1, skipped: 0), deck: deck))
+        #expect(!LanguageTests.continuePlacement(after: 2, attempts: attempts(2, right: 1, wrong: 0, skipped: 4), deck: deck))
     }
 
     @Test("the real catalog, when it's been built: common words first, believable wrong answers, sentences at every level")
@@ -183,7 +183,7 @@ struct JapaneseMeasureTests {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appending(path: "../../../../Apps/MindTrack/Catalogs/japanese.db")
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         let opened = Date()
-        let deck = try #require(JapaneseDeck(url: url))
+        let deck = try #require(LanguageDeck(url: url))
         print("Opened the Japanese catalog in \(Int(Date().timeIntervalSince(opened) * 1000)) ms")
         #expect(deck.words.count == 20_000)
         let eat = try #require(deck.words.first { $0.text == "食べる" })
@@ -193,13 +193,13 @@ struct JapaneseMeasureTests {
         #expect(deck.kanji(in: eat).first?.meanings.contains("eat") == true)
         let examples = deck.sentences(with: eat.id, maxLevel: 500)
         #expect(!examples.isEmpty && examples.allSatisfy { $0.level <= 500 && $0.words.contains(eat.id) })
-        let question = JapaneseQuiz.question(eat, ask: .meaning, kind: .review, deck: deck, seed: "t")
+        let question = LanguageQuiz.question(eat, ask: .meaning, kind: .review, deck: deck, seed: "t")
         #expect(question.choices.count == 4 && question.choices[question.correctChoice!] == "to eat")
-        let reading = JapaneseQuiz.question(eat, ask: .reading, kind: .review, deck: deck, seed: "t")
+        let reading = LanguageQuiz.question(eat, ask: .reading, kind: .review, deck: deck, seed: "t")
         #expect(reading.choices.count == 4 && reading.choices.contains("たべる"))
-        let listening = JapaneseTests.listening(deck: deck, seed: "t", offset: 0)
+        let listening = LanguageTests.listening(deck: deck, seed: "t", offset: 0)
         #expect(listening.count == 10 && listening.allSatisfy { $0.choices.count == 4 })
-        for band in 0..<JapaneseTests.bands.count { #expect(JapaneseTests.vocabulary(band: band, deck: deck, seed: "t").count == 5) }
+        for band in 0..<LanguageTests.bands.count { #expect(LanguageTests.vocabulary(band: band, deck: deck, seed: "t").count == 5) }
     }
 }
 
@@ -228,8 +228,8 @@ struct MasteryTests {
         store.tests = [TestResult(test: .mathsPlacement, date: now, score: 3)]
         for day in [monday.adding(days: 1), monday.adding(days: 3)] {
             let state = store.state(on: day)
-            let plan = SessionPlanner.plan(.extra, domains: [], state: state, deck: nil, minutes: 5)
-            var run = StudyRun(plan: plan, state: state, deck: nil, now: state.now)
+            let plan = SessionPlanner.plan(.extra, domains: [], state: state, catalogs: Catalogs(), minutes: 5)
+            var run = StudyRun(plan: plan, state: state, catalogs: Catalogs(), now: state.now)
             var clock = state.now
             while case .question(let question) = run.step {
                 clock += 30
@@ -269,7 +269,7 @@ struct QuickReviewTests {
             store.cards[topic.key] = MemoryCard(key: topic.key, memory: memory, introduced: now)
         }
         store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true)]
-        let plan = SessionPlanner.plan(.extra, domains: [], state: store.state(on: Fixtures.monday), deck: nil, minutes: 5)
+        let plan = SessionPlanner.plan(.extra, domains: [], state: store.state(on: Fixtures.monday), catalogs: Catalogs(), minutes: 5)
         let part = try #require(plan.parts.first)
         #expect(plan.parts.count == 1 && part.kind == .reviews && part.minutes == 5, "\(plan.parts.map { ($0.kind, $0.minutes) })")
     }

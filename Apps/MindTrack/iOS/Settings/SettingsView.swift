@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import MindEngine
+import SystemAI
 import SystemCore
 import SystemStore
 
@@ -19,18 +20,25 @@ struct SettingsView: View {
             if let settings = model.settings {
                 Section {
                     ForEach(Domain.allCases) { domain in
-                        Toggle(isOn: Binding(get: { settings.has(domain) }, set: { on in
+                        Picker(selection: Binding(get: { settings.mode(domain) }, set: { mode in
                             var s = settings
-                            s.domains = on ? (s.domains + [domain]).sorted() : s.domains.filter { $0 != domain }
-                            if !s.domains.isEmpty { model.save(settings: s) }
+                            s.courses[domain] = mode
+                            if !s.focus.isEmpty { model.save(settings: s) }
                         })) {
+                            Text("Focus").tag(CourseMode?.some(.focus))
+                            Text("Maintenance").tag(CourseMode?.some(.maintenance))
+                            Text("Off").tag(CourseMode?.none)
+                        } label: {
                             Label(domain.label, systemImage: domain.symbol)
                         }
                     }
+                    if let warning = CourseLoad.check(settings).warning {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").font(.footnote).symbolRenderingMode(.multicolor)
+                    }
                 } header: {
-                    Text("Subjects")
+                    Text("Courses")
                 } footer: {
-                    Text("Turning one off keeps everything learned; reviews for it simply stop until it's back on.")
+                    Text("Focus courses get full sessions; Maintenance is a few minutes of reviews in each warm-up. Turning one off keeps everything learned; its reviews simply wait until it's back.")
                 }
                 Section {
                     Stepper(value: Binding(get: { settings.schedule.daysPerWeek }, set: { days in
@@ -57,37 +65,11 @@ struct SettingsView: View {
                 } footer: {
                     Text("A subject that stalls or slips at a check-in gets an extra day in the split until it moves again.")
                 }
-                if settings.has(.japanese) {
-                    Section {
-                        Toggle("I can read kana", isOn: Binding(get: { settings.readsKana != false }, set: { on in
-                            var s = settings
-                            s.readsKana = on
-                            model.save(settings: s)
-                        }))
-                        LabeledContent("Voice", value: model.speech.voiceName)
-                        if !model.speech.hasNaturalVoice {
-                            Text("For a more natural voice, download an enhanced Japanese voice in Settings → Accessibility → Spoken Content → Voices.")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
-                    } header: {
-                        Text("Japanese")
-                    }
-                }
-                if settings.has(.reading) {
-                    Section("Reading") {
-                        ForEach(Genre.allCases) { genre in
-                            Toggle(genre.label, isOn: Binding(get: { settings.genres.contains(genre) }, set: { on in
-                                var s = settings
-                                s.genres = on ? s.genres + [genre] : s.genres.filter { $0 != genre }
-                                model.save(settings: s)
-                            }))
-                        }
-                        Button("Your shelf", systemImage: "books.vertical") {
-                            dismiss()
-                            model.showShelf = true
-                        }
-                    }
-                }
+                if !settings.languages.isEmpty { LanguageSettings(settings: settings) }
+                if settings.has(.maths) { MathsSettings(settings: settings) }
+                if settings.has(.writing) { WritingSettings(settings: settings) }
+                if settings.has(.reading) { ReadingSettings(settings: settings, dismiss: { dismiss() }) }
+                AISettings(settings: settings)
             }
             Section {
                 let modes = model.lifeModes.filter { ($0.end ?? model.today) >= model.today }
@@ -138,14 +120,16 @@ struct SettingsView: View {
                 LabeledContent("Sync", value: model.store.syncStatus)
             }
             Section {
-                if let deck = model.deck {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Japanese words, kanji and sentences").font(.subheadline.weight(.medium))
-                        Text("\(deck.words.count.formatted()) words").font(.caption).foregroundStyle(.secondary)
-                        Text(deck.attribution).font(.caption2).foregroundStyle(.secondary)
+                ForEach(Language.allCases, id: \.self) { language in
+                    if let deck = model.catalogs.deck(language) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(language.domain.label) words and sentences").font(.subheadline.weight(.medium))
+                            Text("\(deck.words.count.formatted()) words").font(.caption).foregroundStyle(.secondary)
+                            Text(deck.attribution).font(.caption2).foregroundStyle(.secondary)
+                        }
+                    } else if settings(language) {
+                        Text("The \(language.domain.label) catalog isn't installed in this build.").font(.footnote).foregroundStyle(.secondary)
                     }
-                } else {
-                    Text("The Japanese catalog isn't installed in this build.").font(.footnote).foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Maths, writing and the reading ladder").font(.subheadline.weight(.medium))
@@ -155,7 +139,7 @@ struct SettingsView: View {
             } header: {
                 Text("Sources")
             } footer: {
-                Text("JMdict and KANJIDIC2 are used under the EDRDG licence (CC BY-SA 4.0); Tatoeba's sentences under CC BY 2.0 FR.")
+                Text("Each catalog's licence is listed with it.")
             }
             if Purchases.enabled {
                 Section {
@@ -190,6 +174,31 @@ struct SettingsView: View {
             }
         }
         .sheet(item: $editingLifeMode) { LifeModeEditor(period: $0) }
+    }
+
+    func settings(_ language: Language) -> Bool { model.settings?.has(language.domain) ?? false }
+}
+
+/// Private Cloud Compute for heavier jobs. Everything core works without any AI at all.
+struct AISettings: View {
+    @Environment(AppModel.self) private var model
+    let settings: MindSettings
+
+    var body: some View {
+        Section {
+            Toggle("Use Private Cloud Compute", isOn: Binding(get: { settings.allowCloudAI }, set: { on in
+                var s = settings
+                s.allowCloudAI = on
+                model.save(settings: s)
+            }))
+            let state = SystemAI.availability(allowCloud: settings.allowCloudAI)
+            LabeledContent("Status", value: state.privateCloud ? "On device and Private Cloud Compute" : state.onDevice ? "On device" : "Unavailable")
+            if let reason = state.reason { Text(reason).font(.footnote).foregroundStyle(.secondary) }
+        } header: {
+            Text("Apple Intelligence")
+        } footer: {
+            Text("Notes on your writing and reading books from a cover photo use Apple's on-device model. Longer jobs can go to Private Cloud Compute, which Apple can't read or keep. With neither, everything else works the same.")
+        }
     }
 }
 
