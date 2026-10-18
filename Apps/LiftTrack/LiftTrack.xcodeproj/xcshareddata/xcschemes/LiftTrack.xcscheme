@@ -3,20 +3,25 @@
    <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
-            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1F00000000000000000040" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
+            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1FDB510F80067E2686982F" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
-   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES"></TestAction>
+   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES">
+      <TestPlans>
+         <TestPlanReference reference = "container:LiftTrack.xctestplan" default = "YES"></TestPlanReference>
+         <TestPlanReference reference = "container:LiftTrackUI.xctestplan"></TestPlanReference>
+      </TestPlans>
+   </TestAction>
    <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1F00000000000000000040" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1FDB510F80067E2686982F" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference identifier = "../../LiftTrack.storekit"></StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1F00000000000000000040" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "4C1FDB510F80067E2686982F" BuildableName = "LiftTrack.app" BlueprintName = "LiftTrack" ReferencedContainer = "container:LiftTrack.xcodeproj"></BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction buildConfiguration = "Debug"></AnalyzeAction>

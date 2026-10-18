@@ -5,19 +5,55 @@ linked to the local Swift packages in Packages/. Run from the repo root:
     python3 Scripts/generate-project.py              # every app
     python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack, MacroTrack or MindTrack)
 """
+import hashlib
+import json
 import os
+import re
 import sys
+import uuid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "9HAG9PT8LJ"
+# Each app's version (CFBundleShortVersionString), shared by its extensions and Watch app as the App
+# Store requires. Bump it here when cutting a release branch, then run this script.
+VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0", "MindTrack": "1.0"}
 
 
 def q(v):
     v = str(v)
     if v == "":
         return '""'
-    safe = all(c.isalnum() or c in "._/-" for c in v)
+    # Xcode quotes anything beyond letters, digits, "._/", so writing the same keeps its rewrites a no-op.
+    safe = all(c.isalnum() or c in "._/" for c in v)
     return v if safe else '"' + v.replace('"', '\\"') + '"'
+
+
+def canonical(text):
+    """The project as Xcode itself writes it: each section's objects sorted by id and empty sections
+    left out, so opening the project in Xcode doesn't rewrite it."""
+    lines, out, i = text.split("\n"), [], 0
+    while i < len(lines):
+        line = lines[i]
+        if not (line.startswith("/* Begin ") and line.endswith(" section */")):
+            out.append(line)
+            i += 1
+            continue
+        end = lines.index(line.replace("/* Begin ", "/* End ", 1), i)
+        objects = []
+        for body_line in lines[i + 1:end]:
+            if re.match(r"\t\t[0-9A-F]{24} ", body_line):
+                objects.append([body_line])
+            else:
+                objects[-1].append(body_line)
+        i = end + 1
+        if objects:
+            out.append(line)
+            for obj in sorted(objects, key=lambda o: o[0][2:26]):
+                out.extend(obj)
+            out.append(lines[end])
+        elif i < len(lines) and lines[i] == "":
+            i += 1
+    return "\n".join(out)
 
 
 def settings_block(d, indent="\t\t\t\t"):
@@ -42,8 +78,8 @@ swift_common = {
     "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
     "SWIFT_VERSION": "6.0",
     "CODE_SIGN_STYLE": "Automatic",
+    # Xcode Cloud sets the build number of every archive it makes; this is only for local builds.
     "CURRENT_PROJECT_VERSION": "1",
-    "MARKETING_VERSION": "1.0",
     "DEVELOPMENT_TEAM": TEAM,
     "PRODUCT_NAME": "$(TARGET_NAME)",
     "GENERATE_INFOPLIST_FILE": "YES",
@@ -78,12 +114,55 @@ ios_widgets_common = {
     "CODE_SIGN_ENTITLEMENTS": "Config/Widgets.entitlements",
     "INFOPLIST_FILE": "Config/Widgets-Info.plist",
     "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
-    "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks @executable_path/../../Frameworks",
+    "LD_RUNPATH_SEARCH_PATHS": ["@executable_path/Frameworks", "@executable_path/../../Frameworks"],
     "SDKROOT": "iphoneos",
     "SKIP_INSTALL": "YES",
     "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
     "TARGETED_DEVICE_FAMILY": "1,2",
 }
+
+
+
+def unit_tests(host, bundle_id):
+    """A unit test bundle hosted in the app, so tests can `@testable import` it."""
+    settings = dict(swift_common, **{
+        "BUNDLE_LOADER": "$(TEST_HOST)",
+        "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
+        "PRODUCT_BUNDLE_IDENTIFIER": f"{bundle_id}.tests",
+        "SDKROOT": "iphoneos",
+        "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
+        "SWIFT_EMIT_LOC_STRINGS": "NO",
+        "TARGETED_DEVICE_FAMILY": "1,2",
+        "TEST_HOST": f"$(BUILT_PRODUCTS_DIR)/{host}.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/{host}",
+    })
+    del settings["ENABLE_PREVIEWS"]
+    return settings
+
+
+def ui_tests(host, bundle_id):
+    """A UI test bundle that drives the app from outside, as a person would."""
+    settings = dict(swift_common, **{
+        "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
+        "PRODUCT_BUNDLE_IDENTIFIER": f"{bundle_id}.uitests",
+        "SDKROOT": "iphoneos",
+        "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
+        "SWIFT_EMIT_LOC_STRINGS": "NO",
+        "TARGETED_DEVICE_FAMILY": "1,2",
+        "TEST_TARGET_NAME": host,
+    })
+    del settings["ENABLE_PREVIEWS"]
+    return settings
+
+
+def test_targets(app, bundle_id):
+    """The app's unit tests (Tests/) and UI tests (UITests/), as target tuples."""
+    return [
+        (f"{app}Tests", f"{app}Tests.xctest", "com.apple.product-type.bundle.unit-test", "wrapper.cfbundle",
+         unit_tests(app, bundle_id), ["Tests"], []),
+        (f"{app}UITests", f"{app}UITests.xctest", "com.apple.product-type.bundle.ui-testing", "wrapper.cfbundle",
+         ui_tests(app, bundle_id), ["UITests"], []),
+    ]
+
 
 # MARK: - Lift Track
 
@@ -132,7 +211,7 @@ lift_watch_widgets = dict(swift_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/WatchWidgets.entitlements",
     "INFOPLIST_FILE": "Config/Widgets-Info.plist",
     "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
-    "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks @executable_path/../../Frameworks",
+    "LD_RUNPATH_SEARCH_PATHS": ["@executable_path/Frameworks", "@executable_path/../../Frameworks"],
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.watchkitapp.widgets",
     "SDKROOT": "watchos",
     "SKIP_INSTALL": "YES",
@@ -167,13 +246,16 @@ LIFT = {
          ["Watch", "Shared"], ["SystemCore", "ExerciseLibrary", "HealthBridge", "LiftEngine"]),
         ("LiftTrackWatchWidgets", "LiftTrackWatchWidgets.appex", "com.apple.product-type.app-extension",
          "wrapper.app-extension", lift_watch_widgets, ["WatchWidgets", "Shared"], ["SystemCore"]),
-    ],
+    ] + test_targets("LiftTrack", "dev.svindland.stadig.lift"),
     "embeds": lift_embeds,
     "config_files": ["Info.plist", "Watch-Info.plist", "Widgets-Info.plist", "LiftTrack.entitlements", "Widgets.entitlements",
                      "Watch.entitlements", "WatchWidgets.entitlements"],
-    "groups": ["iOS", "Shared", "Widgets", "Watch", "WatchWidgets"],
+    "groups": ["iOS", "Shared", "Widgets", "Watch", "WatchWidgets", "Tests", "UITests"],
     "exceptions": [],
-    "extra_files": ["LiftTrack.storekit"],
+    "extra_files": ["LiftTrack.storekit", "LiftTrack.xctestplan", "LiftTrackUI.xctestplan"],
+    # Each scheme's test plans: unit and integration tests (the default), and UI tests. The packages'
+    # own tests run with swift test (Scripts/build.sh test); an app project can't list them in a plan.
+    "test_plans": [("LiftTrack", ["LiftTrackTests"]), ("LiftTrackUI", ["LiftTrackUITests"])],
     "schemes": [("LiftTrack", "LiftTrack", "LiftTrack.app", True), ("LiftTrackWatch", "LiftTrackWatch", "LiftTrackWatch.app", False)],
 }
 
@@ -205,13 +287,14 @@ MACRO = {
          ["iOS", "Shared", "Catalogs"], MACRO_PACKAGES),
         ("MacroTrackWidgets", "MacroTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
          macro_widgets, ["Widgets", "Shared"], ["SystemCore"]),
-    ],
+    ] + test_targets("MacroTrack", "dev.svindland.stadig.macro"),
     "embeds": [("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "")],
     "config_files": ["Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "Widgets.entitlements"],
-    "groups": ["iOS", "Shared", "Widgets", "Catalogs"],
+    "groups": ["iOS", "Shared", "Widgets", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds off.db (installed by Scripts/install-food-catalogs.sh, not in git) and its README.
-    "exceptions": [("Catalogs", "MacroTrack", ["README.md"])],
-    "extra_files": ["MacroTrack.storekit"],
+    "exceptions": [("Catalogs", "MacroTrack", [".gitignore", "README.md"])],
+    "extra_files": ["MacroTrack.storekit", "MacroTrack.xctestplan", "MacroTrackUI.xctestplan"],
+    "test_plans": [("MacroTrack", ["MacroTrackTests"]), ("MacroTrackUI", ["MacroTrackUITests"])],
     "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True)],
 }
 
@@ -241,13 +324,14 @@ MIND = {
     "targets": [
         ("MindTrack", "MindTrack.app", "com.apple.product-type.application", "wrapper.application", mind_app,
          ["iOS", "Catalogs"], MIND_PACKAGES),
-    ],
+    ] + test_targets("MindTrack", "dev.svindland.stadig.mind"),
     "embeds": [],
     "config_files": ["Info.plist", "MindTrack.entitlements"],
-    "groups": ["iOS", "Catalogs"],
+    "groups": ["iOS", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds japanese.db (built by Scripts/build-japanese-catalog.py, not in git) and its README.
-    "exceptions": [("Catalogs", "MindTrack", ["README.md"])],
-    "extra_files": ["MindTrack.storekit"],
+    "exceptions": [("Catalogs", "MindTrack", [".gitignore", "README.md"])],
+    "extra_files": ["MindTrack.storekit", "MindTrack.xctestplan", "MindTrackUI.xctestplan"],
+    "test_plans": [("MindTrack", ["MindTrackTests"]), ("MindTrackUI", ["MindTrackUITests"])],
     "schemes": [("MindTrack", "MindTrack", "MindTrack.app", True)],
 }
 
@@ -265,6 +349,11 @@ project_debug = {
     "LOCALIZATION_PREFERS_STRING_CATALOGS": "YES", "MTL_ENABLE_DEBUG_INFO": "INCLUDE_SOURCE", "MTL_FAST_MATH": "YES",
     "ONLY_ACTIVE_ARCH": "YES", "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG $(inherited)",
     "SWIFT_OPTIMIZATION_LEVEL": "-Onone",
+    # Warnings are errors in Debug builds on CI (Xcode Cloud sets CI=TRUE, GitHub CI=true), which is
+    # where tests build; local builds and Release archives only warn.
+    "SWIFT_TREAT_WARNINGS_AS_ERRORS": "$(WARNINGS_AS_ERRORS_ON_CI_$(CI))",
+    "WARNINGS_AS_ERRORS_ON_CI_TRUE": "YES",
+    "WARNINGS_AS_ERRORS_ON_CI_true": "YES",
 }
 project_release = {
     "ALWAYS_SEARCH_USER_PATHS": "NO", "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
@@ -288,11 +377,26 @@ def generate(spec):
     groups = spec["groups"]
     exceptions = spec["exceptions"]
     extra_files = spec["extra_files"]
+    test_plans = spec.get("test_plans", [])
+    # (test target, the app it tests): each test bundle depends on its app.
+    tests = [(t[0], app_name) for t in targets if t[2].startswith("com.apple.product-type.bundle.")]
     ID = {}
 
+    # Every synchronized folder must exist, and a test target needs at least one test: git doesn't
+    # keep empty folders, so a clean clone would otherwise get a test bundle with nothing in it.
+    for name, *_rest in targets:
+        for folder in _rest[-2]:
+            path = os.path.join(ROOT, "Apps", app_name, folder)
+            if not os.path.isdir(path):
+                sys.exit(f"Apps/{app_name}/{folder} doesn't exist (target {name})")
+            if name.endswith("Tests") and not any(f.endswith(".swift") for _, _, files in os.walk(path) for f in files):
+                sys.exit(f"Apps/{app_name}/{folder} has no Swift files, so {name} would be empty")
+
     def gid(name):
+        # Derived from the name, not the order objects are written in, so adding a target or file
+        # leaves every existing id alone.
         if name not in ID:
-            ID[name] = f"{spec['id_prefix']}{len(ID) + 1:020X}"
+            ID[name] = spec["id_prefix"] + hashlib.sha1(f"{app_name}/{name}".encode()).hexdigest()[:20].upper()
         return ID[name]
 
     P = []
@@ -300,9 +404,9 @@ def generate(spec):
     w("// !$*UTF8*$!\n{\n\tarchiveVersion = 1;\n\tclasses = {\n\t};\n\tobjectVersion = 77;\n\tobjects = {\n")
 
     w("/* Begin PBXBuildFile section */")
-    for host, emb, *_ in embeds:
+    for host, emb, phase_name, *_ in embeds:
         prod = [t for t in targets if t[0] == emb][0][1]
-        w(f"\t\t{gid('bf-' + emb)} /* {prod} in Embed */ = {{isa = PBXBuildFile; fileRef = {gid('prod-' + emb)} /* {prod} */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
+        w(f"\t\t{gid('bf-' + emb)} /* {prod} in {phase_name} */ = {{isa = PBXBuildFile; fileRef = {gid('prod-' + emb)} /* {prod} */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
     for name, *_rest in targets:
         for pkg in _rest[-1]:
             w(f"\t\t{gid('pbf-' + name + pkg)} /* {pkg} in Frameworks */ = {{isa = PBXBuildFile; productRef = {gid('pdep-' + name + pkg)} /* {pkg} */; }};")
@@ -311,12 +415,14 @@ def generate(spec):
     w("/* Begin PBXContainerItemProxy section */")
     for host, emb, *_ in embeds:
         w(f"\t\t{gid('proxy-' + emb)} /* PBXContainerItemProxy */ = {{\n\t\t\tisa = PBXContainerItemProxy;\n\t\t\tcontainerPortal = {gid('project')} /* Project object */;\n\t\t\tproxyType = 1;\n\t\t\tremoteGlobalIDString = {gid('target-' + emb)};\n\t\t\tremoteInfo = {emb};\n\t\t}};")
+    for test, host in tests:
+        w(f"\t\t{gid('proxy-' + test)} /* PBXContainerItemProxy */ = {{\n\t\t\tisa = PBXContainerItemProxy;\n\t\t\tcontainerPortal = {gid('project')} /* Project object */;\n\t\t\tproxyType = 1;\n\t\t\tremoteGlobalIDString = {gid('target-' + host)};\n\t\t\tremoteInfo = {host};\n\t\t}};")
     w("/* End PBXContainerItemProxy section */\n")
 
     w("/* Begin PBXCopyFilesBuildPhase section */")
     for host, emb, name, spec_, path in embeds:
         prod = [t for t in targets if t[0] == emb][0][1]
-        w(f"\t\t{gid('copy-' + emb)} /* {name} */ = {{\n\t\t\tisa = PBXCopyFilesBuildPhase;\n\t\t\tbuildActionMask = 2147483647;\n\t\t\tdstPath = {q(path)};\n\t\t\tdstSubfolderSpec = {spec_};\n\t\t\tfiles = (\n\t\t\t\t{gid('bf-' + emb)} /* {prod} in Embed */,\n\t\t\t);\n\t\t\tname = {q(name)};\n\t\t\trunOnlyForDeploymentPostprocessing = 0;\n\t\t}};")
+        w(f"\t\t{gid('copy-' + emb)} /* {name} */ = {{\n\t\t\tisa = PBXCopyFilesBuildPhase;\n\t\t\tbuildActionMask = 2147483647;\n\t\t\tdstPath = {q(path)};\n\t\t\tdstSubfolderSpec = {spec_};\n\t\t\tfiles = (\n\t\t\t\t{gid('bf-' + emb)} /* {prod} in {name} */,\n\t\t\t);\n\t\t\tname = {q(name)};\n\t\t\trunOnlyForDeploymentPostprocessing = 0;\n\t\t}};")
     w("/* End PBXCopyFilesBuildPhase section */\n")
 
     w("/* Begin PBXFileReference section */")
@@ -370,16 +476,24 @@ def generate(spec):
             if host == name:
                 phase_lines += f"\t\t\t\t{gid('copy-' + emb)} /* {pname} */,\n"
                 deps += f"\t\t\t\t{gid('dep-' + emb)} /* PBXTargetDependency */,\n"
-        syn = "".join(f"\t\t\t\t{gid('group-' + g)} /* {g} */,\n" for g in tgroups)
+        for test, host in tests:
+            if test == name:
+                deps += f"\t\t\t\t{gid('dep-' + test)} /* PBXTargetDependency */,\n"
+        syn = "".join(f"\t\t\t\t{gid('group-' + g)} /* {g} */,\n" for g in sorted(tgroups, key=lambda g: gid('group-' + g)))
         pdeps = "".join(f"\t\t\t\t{gid('pdep-' + name + pkg)} /* {pkg} */,\n" for pkg in pkgs)
-        w(f"\t\t{gid('target-' + name)} /* {name} */ = {{\n\t\t\tisa = PBXNativeTarget;\n\t\t\tbuildConfigurationList = {gid('cl-' + name)};\n\t\t\tbuildPhases = (\n{phase_lines}\t\t\t);\n\t\t\tbuildRules = (\n\t\t\t);\n\t\t\tdependencies = (\n{deps}\t\t\t);\n\t\t\tfileSystemSynchronizedGroups = (\n{syn}\t\t\t);\n\t\t\tname = {name};\n\t\t\tpackageProductDependencies = (\n{pdeps}\t\t\t);\n\t\t\tproductName = {name};\n\t\t\tproductReference = {gid('prod-' + name)} /* {prod} */;\n\t\t\tproductType = {q(ptype)};\n\t\t}};")
+        w(f"\t\t{gid('target-' + name)} /* {name} */ = {{\n\t\t\tisa = PBXNativeTarget;\n\t\t\tbuildConfigurationList = {gid('cl-' + name)} /* Build configuration list for PBXNativeTarget \"{name}\" */;\n\t\t\tbuildPhases = (\n{phase_lines}\t\t\t);\n\t\t\tbuildRules = (\n\t\t\t);\n\t\t\tdependencies = (\n{deps}\t\t\t);\n\t\t\tfileSystemSynchronizedGroups = (\n{syn}\t\t\t);\n\t\t\tname = {name};\n\t\t\tpackageProductDependencies = (\n{pdeps}\t\t\t);\n\t\t\tproductName = {name};\n\t\t\tproductReference = {gid('prod-' + name)} /* {prod} */;\n\t\t\tproductType = {q(ptype)};\n\t\t}};")
     w("/* End PBXNativeTarget section */\n")
 
     w("/* Begin PBXProject section */")
-    attrs = "".join(f"\t\t\t\t\t{gid('target-' + t[0])} = {{\n\t\t\t\t\t\tCreatedOnToolsVersion = 27.0;\n\t\t\t\t\t}};\n" for t in targets)
+    hosts = dict(tests)
+    attrs = "".join(
+        f"\t\t\t\t\t{gid('target-' + t[0])} = {{\n\t\t\t\t\t\tCreatedOnToolsVersion = 27.0;\n"
+        + (f"\t\t\t\t\t\tTestTargetID = {gid('target-' + hosts[t[0]])};\n" if t[0] in hosts else "")
+        + "\t\t\t\t\t};\n"
+        for t in sorted(targets, key=lambda t: gid('target-' + t[0])))
     tlist = "".join(f"\t\t\t\t{gid('target-' + t[0])} /* {t[0]} */,\n" for t in targets)
     prefs = "".join(f"\t\t\t\t{gid('pkg-' + p)} /* XCLocalSwiftPackageReference \"../../Packages/{p}\" */,\n" for p in packages)
-    w(f"\t\t{gid('project')} /* Project object */ = {{\n\t\t\tisa = PBXProject;\n\t\t\tattributes = {{\n\t\t\t\tBuildIndependentTargetsInParallel = 1;\n\t\t\t\tLastSwiftUpdateCheck = 2700;\n\t\t\t\tLastUpgradeCheck = 2700;\n\t\t\t\tTargetAttributes = {{\n{attrs}\t\t\t\t}};\n\t\t\t}};\n\t\t\tbuildConfigurationList = {gid('cl-project')};\n\t\t\tdevelopmentRegion = en;\n\t\t\thasScannedForEncodings = 0;\n\t\t\tknownRegions = (\n\t\t\t\ten,\n\t\t\t\tBase,\n\t\t\t);\n\t\t\tmainGroup = {gid('main')};\n\t\t\tminimizedProjectReferenceProxies = 1;\n\t\t\tpackageReferences = (\n{prefs}\t\t\t);\n\t\t\tpreferredProjectObjectVersion = 77;\n\t\t\tproductRefGroup = {gid('products')} /* Products */;\n\t\t\tprojectDirPath = \"\";\n\t\t\tprojectRoot = \"\";\n\t\t\ttargets = (\n{tlist}\t\t\t);\n\t\t}};")
+    w(f"\t\t{gid('project')} /* Project object */ = {{\n\t\t\tisa = PBXProject;\n\t\t\tattributes = {{\n\t\t\t\tBuildIndependentTargetsInParallel = 1;\n\t\t\t\tLastSwiftUpdateCheck = 2700;\n\t\t\t\tLastUpgradeCheck = 2700;\n\t\t\t\tTargetAttributes = {{\n{attrs}\t\t\t\t}};\n\t\t\t}};\n\t\t\tbuildConfigurationList = {gid('cl-project')} /* Build configuration list for PBXProject \"{app_name}\" */;\n\t\t\tdevelopmentRegion = en;\n\t\t\thasScannedForEncodings = 0;\n\t\t\tknownRegions = (\n\t\t\t\ten,\n\t\t\t\tBase,\n\t\t\t);\n\t\t\tmainGroup = {gid('main')};\n\t\t\tminimizedProjectReferenceProxies = 1;\n\t\t\tpackageReferences = (\n{prefs}\t\t\t);\n\t\t\tpreferredProjectObjectVersion = 77;\n\t\t\tproductRefGroup = {gid('products')} /* Products */;\n\t\t\tprojectDirPath = \"\";\n\t\t\tprojectRoot = \"\";\n\t\t\ttargets = (\n{tlist}\t\t\t);\n\t\t}};")
     w("/* End PBXProject section */\n")
 
     for section, prefix in [("PBXResourcesBuildPhase", "res"), ("PBXSourcesBuildPhase", "src")]:
@@ -392,6 +506,8 @@ def generate(spec):
     w("/* Begin PBXTargetDependency section */")
     for host, emb, *_ in embeds:
         w(f"\t\t{gid('dep-' + emb)} /* PBXTargetDependency */ = {{\n\t\t\tisa = PBXTargetDependency;\n\t\t\ttarget = {gid('target-' + emb)} /* {emb} */;\n\t\t\ttargetProxy = {gid('proxy-' + emb)} /* PBXContainerItemProxy */;\n\t\t}};")
+    for test, host in tests:
+        w(f"\t\t{gid('dep-' + test)} /* PBXTargetDependency */ = {{\n\t\t\tisa = PBXTargetDependency;\n\t\t\ttarget = {gid('target-' + host)} /* {host} */;\n\t\t\ttargetProxy = {gid('proxy-' + test)} /* PBXContainerItemProxy */;\n\t\t}};")
     w("/* End PBXTargetDependency section */\n")
 
     w("/* Begin XCBuildConfiguration section */")
@@ -402,6 +518,7 @@ def generate(spec):
     config("cfg-project-Debug", "Debug", project_debug)
     config("cfg-project-Release", "Release", project_release)
     for name, prod, ptype, ftype, settings, *_ in targets:
+        settings = dict(settings, MARKETING_VERSION=VERSIONS[app_name])
         config(f"cfg-{name}-Debug", "Debug", settings)
         config(f"cfg-{name}-Release", "Release", settings)
     w("/* End XCBuildConfiguration section */\n")
@@ -426,9 +543,32 @@ def generate(spec):
 
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "project.pbxproj"), "w") as f:
-        f.write("\n".join(P))
+        f.write(canonical("\n".join(P)))
 
     container = f"container:{app_name}.xcodeproj"
+
+    def test_plan(plan, tests):
+        def ref(target):
+            return {"containerPath": f"container:{app_name}.xcodeproj", "identifier": gid("target-" + target), "name": target}
+        # English and the US region, so tests can match on-screen words and units.
+        options = {"targetForVariableExpansion": ref(app_name), "language": "en", "region": "US"}
+        if plan.endswith("UI"):
+            # UI tests drive a real simulator, where a slow frame can fail a good run: retry once before failing.
+            options.update({"testRepetitionMode": "retryOnFailure", "maximumTestRepetitions": 2})
+        else:
+            options["codeCoverage"] = True
+        # A hung test fails on its own instead of holding the CI machine until the job's timeout.
+        options.update({"testTimeoutsEnabled": True, "defaultTestExecutionTimeAllowance": 300 if plan.endswith("UI") else 120})
+        return {
+            "configurations": [{"id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{app_name}/{plan}")).upper(), "name": "Default", "options": {}}],
+            "defaultOptions": options,
+            "testTargets": [{"target": ref(t)} for t in tests],
+            "version": 1,
+        }
+
+    for plan, tests in test_plans:
+        with open(os.path.join(ROOT, "Apps", app_name, f"{plan}.xctestplan"), "w") as f:
+            f.write(json.dumps(test_plan(plan, tests), indent=2, sort_keys=True) + "\n")
 
     def scheme(target, buildable, launch_storekit=False):
         build_entries = f"""         <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
@@ -437,13 +577,22 @@ def generate(spec):
 """
         storekit = f"""      <StoreKitConfigurationFileReference identifier = "../../{app_name}.storekit"></StoreKitConfigurationFileReference>
 """ if launch_storekit else ""
+        # The app's scheme tests through its plans, the first being the default.
+        plans = test_plans if target == app_name else []
+        plan_refs = "".join(
+            f"""         <TestPlanReference reference = "container:{p}.xctestplan"{' default = "YES"' if i == 0 else ''}></TestPlanReference>
+""" for i, (p, *_) in enumerate(plans))
+        test_body = f""">
+      <TestPlans>
+{plan_refs}      </TestPlans>
+   </TestAction>""" if plans else "></TestAction>"
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion = "2700" version = "1.7">
    <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
       <BuildActionEntries>
 {build_entries}      </BuildActionEntries>
    </BuildAction>
-   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES"></TestAction>
+   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES"{test_body}
    <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{gid('target-' + target)}" BuildableName = "{buildable}" BlueprintName = "{target}" ReferencedContainer = "{container}"></BuildableReference>
@@ -468,6 +617,10 @@ def generate(spec):
 
 
 if __name__ == "__main__":
+    # --packages <App> prints the local packages an app links, for scripts that test just those.
+    if sys.argv[1:2] == ["--packages"]:
+        print(" ".join(APPS[sys.argv[2]]["packages"]))
+        sys.exit(0)
     names = sys.argv[1:] or list(APPS)
     for n in names:
         if n not in APPS:

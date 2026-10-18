@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "id": "5797B19B-C5BE-56A6-8316-0220C5893ACE",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "defaultTestExecutionTimeAllowance": 300,
+    "language": "en",
+    "maximumTestRepetitions": 2,
+    "region": "US",
+    "targetForVariableExpansion": {
+      "containerPath": "container:MindTrack.xcodeproj",
+      "identifier": "4E3F2E575251B519DCEDE83D",
+      "name": "MindTrack"
+    },
+    "testRepetitionMode": "retryOnFailure",
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:MindTrack.xcodeproj",
+        "identifier": "4E3F36737F4F4CE99A25AD5B",
+        "name": "MindTrackUITests"
+      }
+    }
+  ],
+  "version": 1
+}

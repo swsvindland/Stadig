@@ -7,76 +7,90 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4C1F00000000000000000001 /* LiftTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000002 /* LiftTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4C1F00000000000000000003 /* LiftTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000004 /* LiftTrackWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4C1F00000000000000000005 /* LiftTrackWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4C1F00000000000000000007 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000008 /* SystemCore */; };
-		4C1F00000000000000000009 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000A /* ExerciseLibrary */; };
-		4C1F0000000000000000000B /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000C /* SystemStore */; };
-		4C1F0000000000000000000D /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000000E /* HealthBridge */; };
-		4C1F0000000000000000000F /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000010 /* LiftEngine */; };
-		4C1F00000000000000000011 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000012 /* SystemCore */; };
-		4C1F00000000000000000013 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000014 /* SystemCore */; };
-		4C1F00000000000000000015 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000016 /* ExerciseLibrary */; };
-		4C1F00000000000000000017 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F00000000000000000018 /* HealthBridge */; };
-		4C1F00000000000000000019 /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000001A /* LiftEngine */; };
-		4C1F0000000000000000001B /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F0000000000000000001C /* SystemCore */; };
+		4C1F05F05AF3E271BBF9178C /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F4656AD64D1EB9D5E1A83 /* SystemCore */; };
+		4C1F086D11F50C2ED43B9779 /* LiftTrackWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4C1F8FF5241EF482F2E80307 /* LiftTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F13F97E8A1004A07BA9C0 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F4D1FEDB602A4856FCECC /* HealthBridge */; };
+		4C1F1C3629994C194D6A0BDE /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F1B7767CCDD2222A06DE6 /* SystemCore */; };
+		4C1F3D5D82663D06861D608E /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1FB666E42381AD215AA508 /* ExerciseLibrary */; };
+		4C1F4B0B49702571024D9A55 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F2908801A952F633063C1 /* HealthBridge */; };
+		4C1F57251A91A276793A443A /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F40C2F68AADFFA39F6663 /* SystemCore */; };
+		4C1F595714AB8D627FDD17E4 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1FF8092AAE5CB7705BBE92 /* SystemCore */; };
+		4C1F5FCDACFB001F7DD83488 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F7C3A652CBE38F5E1A2FA /* SystemStore */; };
+		4C1F697D5B822411494A2F48 /* LiftTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4C1F04C7ABC4EC1E88B77E5D /* LiftTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F7B7EA507411B3F7725C5 /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F2201F2C7E64C3222C40E /* LiftEngine */; };
+		4C1F835F934A900ADAF00E66 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F79889302F3CA596230B7 /* ExerciseLibrary */; };
+		4C1F8B78A2B0888568C4814C /* LiftTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C1FAED2321BE701EE35872F /* LiftTrackWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1FF7F19E0EE2376E01A1DC /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F305888CE3E3240BEC7D3 /* LiftEngine */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4C1F0000000000000000001D /* PBXContainerItemProxy */ = {
+		4C1F01761C79DFE0F3E81D1A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4C1F0000000000000000001E /* Project object */;
+			containerPortal = 4C1FFDC67401F61874349216 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4C1F0000000000000000001F;
+			remoteGlobalIDString = 4C1FDB510F80067E2686982F;
+			remoteInfo = LiftTrack;
+		};
+		4C1F0707C81C12469DF4408B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1FFDC67401F61874349216 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1F7450B2BF11DE2DD2C110;
+			remoteInfo = LiftTrackWatchWidgets;
+		};
+		4C1F4B6F5F3F68D4D3A950B8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1FFDC67401F61874349216 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1FDB510F80067E2686982F;
+			remoteInfo = LiftTrack;
+		};
+		4C1F62BD2F81E8F396B01372 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C1FFDC67401F61874349216 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1FED66670D0FB3CCEBA409;
 			remoteInfo = LiftTrackWidgets;
 		};
-		4C1F00000000000000000020 /* PBXContainerItemProxy */ = {
+		4C1F7E72D3A0806CA4D8C90F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4C1F0000000000000000001E /* Project object */;
+			containerPortal = 4C1FFDC67401F61874349216 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4C1F00000000000000000021;
+			remoteGlobalIDString = 4C1F89EFF873B7CB7AADD596;
 			remoteInfo = LiftTrackWatch;
-		};
-		4C1F00000000000000000022 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 4C1F0000000000000000001E /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 4C1F00000000000000000023;
-			remoteInfo = LiftTrackWatchWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		4C1F00000000000000000024 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				4C1F00000000000000000001 /* LiftTrackWidgets.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4C1F00000000000000000025 /* Embed Watch Content */ = {
+		4C1F3799DC44CD37B0D575C8 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				4C1F00000000000000000003 /* LiftTrackWatch.app in Embed Watch Content */,
+				4C1F8B78A2B0888568C4814C /* LiftTrackWatch.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000026 /* Embed Foundation Extensions */ = {
+		4C1F4E2757D7EA86BBBDD43B /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				4C1F00000000000000000005 /* LiftTrackWatchWidgets.appex in Embed Foundation Extensions */,
+				4C1F086D11F50C2ED43B9779 /* LiftTrackWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FC04D0737E5DD02F6C696 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4C1F697D5B822411494A2F48 /* LiftTrackWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -84,318 +98,422 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4C1F00000000000000000002 /* LiftTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiftTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		4C1F00000000000000000004 /* LiftTrackWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrackWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiftTrackWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		4C1F00000000000000000027 /* LiftTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4C1F00000000000000000028 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		4C1F00000000000000000029 /* Watch-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Watch-Info.plist"; sourceTree = "<group>"; };
-		4C1F0000000000000000002A /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
-		4C1F0000000000000000002B /* LiftTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiftTrack.entitlements; sourceTree = "<group>"; };
-		4C1F0000000000000000002C /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
-		4C1F0000000000000000002D /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
-		4C1F0000000000000000002E /* WatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchWidgets.entitlements; sourceTree = "<group>"; };
-		4C1F0000000000000000002F /* LiftTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = LiftTrack.storekit; sourceTree = "<group>"; };
+		4C1F04C7ABC4EC1E88B77E5D /* LiftTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiftTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F0E3AB57A37DB3B0DF0D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4C1F10D850C0FDF6610BBE63 /* WatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchWidgets.entitlements; sourceTree = "<group>"; };
+		4C1F212F4266D770CCB66AED /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		4C1F221F91C007C8DC5F984D /* LiftTrackUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiftTrackUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F2233885E0648999C24C2 /* LiftTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = LiftTrack.storekit; sourceTree = "<group>"; };
+		4C1F5BB8AF6C3A479AAEAFCA /* LiftTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F5D5220568D50FA1B3A26 /* LiftTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiftTrack.entitlements; sourceTree = "<group>"; };
+		4C1F623CE988F88B055A0E6E /* LiftTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiftTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F716E2B8F232CE0F87567 /* LiftTrackUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LiftTrackUI.xctestplan; sourceTree = "<group>"; };
+		4C1F78EF2FC409F6F08002D6 /* LiftTrack.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LiftTrack.xctestplan; sourceTree = "<group>"; };
+		4C1F8FF5241EF482F2E80307 /* LiftTrackWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiftTrackWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1F91A8CB506679904522FB /* Watch-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Watch-Info.plist"; sourceTree = "<group>"; };
+		4C1FAED2321BE701EE35872F /* LiftTrackWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftTrackWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C1FB6934A32C5D798A48F49 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
+		4C1FE80B03312856C4CD3DF9 /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4C1F00000000000000000030 /* iOS */ = {
+		4C1F27D8BC6A884B8FFE6DF9 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		4C1F31C954354DBA8438EDEC /* UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		4C1F3C26689915B6B73892A0 /* WatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchWidgets;
+			sourceTree = "<group>";
+		};
+		4C1F472DAB080BD717F9E062 /* iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = iOS;
 			sourceTree = "<group>";
 		};
-		4C1F00000000000000000031 /* Shared */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Shared;
-			sourceTree = "<group>";
-		};
-		4C1F00000000000000000032 /* Widgets */ = {
+		4C1F52F0ABFEBF5CFB641F48 /* Widgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Widgets;
 			sourceTree = "<group>";
 		};
-		4C1F00000000000000000033 /* Watch */ = {
+		4C1F944FC8BF17226E65C268 /* Watch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Watch;
 			sourceTree = "<group>";
 		};
-		4C1F00000000000000000034 /* WatchWidgets */ = {
+		4C1FB74BC20C71C0FD36EF17 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = WatchWidgets;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		4C1F00000000000000000035 /* Frameworks */ = {
+		4C1F072174272ECED5D8495A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C1F00000000000000000007 /* SystemCore in Frameworks */,
-				4C1F00000000000000000009 /* ExerciseLibrary in Frameworks */,
-				4C1F0000000000000000000B /* SystemStore in Frameworks */,
-				4C1F0000000000000000000D /* HealthBridge in Frameworks */,
-				4C1F0000000000000000000F /* LiftEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000036 /* Frameworks */ = {
+		4C1F146AC2F2C9500D7DC513 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C1F00000000000000000011 /* SystemCore in Frameworks */,
+				4C1F05F05AF3E271BBF9178C /* SystemCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000037 /* Frameworks */ = {
+		4C1F3823ACABC8A307DA76B8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C1F00000000000000000013 /* SystemCore in Frameworks */,
-				4C1F00000000000000000015 /* ExerciseLibrary in Frameworks */,
-				4C1F00000000000000000017 /* HealthBridge in Frameworks */,
-				4C1F00000000000000000019 /* LiftEngine in Frameworks */,
+				4C1F1C3629994C194D6A0BDE /* SystemCore in Frameworks */,
+				4C1F835F934A900ADAF00E66 /* ExerciseLibrary in Frameworks */,
+				4C1F5FCDACFB001F7DD83488 /* SystemStore in Frameworks */,
+				4C1F4B0B49702571024D9A55 /* HealthBridge in Frameworks */,
+				4C1FF7F19E0EE2376E01A1DC /* LiftEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000038 /* Frameworks */ = {
+		4C1F5C91D89058C0DE5FE53F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C1F0000000000000000001B /* SystemCore in Frameworks */,
+				4C1F595714AB8D627FDD17E4 /* SystemCore in Frameworks */,
+				4C1F3D5D82663D06861D608E /* ExerciseLibrary in Frameworks */,
+				4C1F13F97E8A1004A07BA9C0 /* HealthBridge in Frameworks */,
+				4C1F7B7EA507411B3F7725C5 /* LiftEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1F62BFB21918FDB2FFF112 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FE7A46465FD426C74CA7B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C1F57251A91A276793A443A /* SystemCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		4C1F00000000000000000039 = {
+		4C1F1DCF54F857520953703D /* Config */ = {
 			isa = PBXGroup;
 			children = (
-				4C1F00000000000000000030 /* iOS */,
-				4C1F00000000000000000031 /* Shared */,
-				4C1F00000000000000000032 /* Widgets */,
-				4C1F00000000000000000033 /* Watch */,
-				4C1F00000000000000000034 /* WatchWidgets */,
-				4C1F0000000000000000003A /* Config */,
-				4C1F0000000000000000002F /* LiftTrack.storekit */,
-				4C1F0000000000000000003B /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		4C1F0000000000000000003A /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				4C1F00000000000000000028 /* Info.plist */,
-				4C1F00000000000000000029 /* Watch-Info.plist */,
-				4C1F0000000000000000002A /* Widgets-Info.plist */,
-				4C1F0000000000000000002B /* LiftTrack.entitlements */,
-				4C1F0000000000000000002C /* Widgets.entitlements */,
-				4C1F0000000000000000002D /* Watch.entitlements */,
-				4C1F0000000000000000002E /* WatchWidgets.entitlements */,
+				4C1F0E3AB57A37DB3B0DF0D1 /* Info.plist */,
+				4C1F91A8CB506679904522FB /* Watch-Info.plist */,
+				4C1FB6934A32C5D798A48F49 /* Widgets-Info.plist */,
+				4C1F5D5220568D50FA1B3A26 /* LiftTrack.entitlements */,
+				4C1F212F4266D770CCB66AED /* Widgets.entitlements */,
+				4C1FE80B03312856C4CD3DF9 /* Watch.entitlements */,
+				4C1F10D850C0FDF6610BBE63 /* WatchWidgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
 		};
-		4C1F0000000000000000003B /* Products */ = {
+		4C1F20749AA77F28E33D1946 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4C1F00000000000000000027 /* LiftTrack.app */,
-				4C1F00000000000000000002 /* LiftTrackWidgets.appex */,
-				4C1F00000000000000000004 /* LiftTrackWatch.app */,
-				4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */,
+				4C1F5BB8AF6C3A479AAEAFCA /* LiftTrack.app */,
+				4C1F04C7ABC4EC1E88B77E5D /* LiftTrackWidgets.appex */,
+				4C1FAED2321BE701EE35872F /* LiftTrackWatch.app */,
+				4C1F8FF5241EF482F2E80307 /* LiftTrackWatchWidgets.appex */,
+				4C1F623CE988F88B055A0E6E /* LiftTrackTests.xctest */,
+				4C1F221F91C007C8DC5F984D /* LiftTrackUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4C1F8E31106B700B622142C7 = {
+			isa = PBXGroup;
+			children = (
+				4C1F472DAB080BD717F9E062 /* iOS */,
+				4C1FB74BC20C71C0FD36EF17 /* Shared */,
+				4C1F52F0ABFEBF5CFB641F48 /* Widgets */,
+				4C1F944FC8BF17226E65C268 /* Watch */,
+				4C1F3C26689915B6B73892A0 /* WatchWidgets */,
+				4C1F27D8BC6A884B8FFE6DF9 /* Tests */,
+				4C1F31C954354DBA8438EDEC /* UITests */,
+				4C1F1DCF54F857520953703D /* Config */,
+				4C1F2233885E0648999C24C2 /* LiftTrack.storekit */,
+				4C1F78EF2FC409F6F08002D6 /* LiftTrack.xctestplan */,
+				4C1F716E2B8F232CE0F87567 /* LiftTrackUI.xctestplan */,
+				4C1F20749AA77F28E33D1946 /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4C1F0000000000000000001F /* LiftTrackWidgets */ = {
+		4C1F7450B2BF11DE2DD2C110 /* LiftTrackWatchWidgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4C1F00000000000000000044 /* Build configuration list for PBXNativeTarget "LiftTrackWidgets" */;
+			buildConfigurationList = 4C1FCEBB2E705DBA56C009CE /* Build configuration list for PBXNativeTarget "LiftTrackWatchWidgets" */;
 			buildPhases = (
-				4C1F00000000000000000042 /* Sources */,
-				4C1F00000000000000000036 /* Frameworks */,
-				4C1F00000000000000000043 /* Resources */,
+				4C1FF789DD46F0470FCA4A07 /* Sources */,
+				4C1FE7A46465FD426C74CA7B /* Frameworks */,
+				4C1F261C49A842DFB96FF733 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4C1F00000000000000000031 /* Shared */,
-				4C1F00000000000000000032 /* Widgets */,
-			);
-			name = LiftTrackWidgets;
-			packageProductDependencies = (
-				4C1F00000000000000000012 /* SystemCore */,
-			);
-			productName = LiftTrackWidgets;
-			productReference = 4C1F00000000000000000002 /* LiftTrackWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		4C1F00000000000000000021 /* LiftTrackWatch */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 4C1F00000000000000000048 /* Build configuration list for PBXNativeTarget "LiftTrackWatch" */;
-			buildPhases = (
-				4C1F00000000000000000045 /* Sources */,
-				4C1F00000000000000000037 /* Frameworks */,
-				4C1F00000000000000000046 /* Resources */,
-				4C1F00000000000000000026 /* Embed Foundation Extensions */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				4C1F00000000000000000047 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				4C1F00000000000000000031 /* Shared */,
-				4C1F00000000000000000033 /* Watch */,
-			);
-			name = LiftTrackWatch;
-			packageProductDependencies = (
-				4C1F00000000000000000014 /* SystemCore */,
-				4C1F00000000000000000016 /* ExerciseLibrary */,
-				4C1F00000000000000000018 /* HealthBridge */,
-				4C1F0000000000000000001A /* LiftEngine */,
-			);
-			productName = LiftTrackWatch;
-			productReference = 4C1F00000000000000000004 /* LiftTrackWatch.app */;
-			productType = "com.apple.product-type.application";
-		};
-		4C1F00000000000000000023 /* LiftTrackWatchWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 4C1F0000000000000000004B /* Build configuration list for PBXNativeTarget "LiftTrackWatchWidgets" */;
-			buildPhases = (
-				4C1F00000000000000000049 /* Sources */,
-				4C1F00000000000000000038 /* Frameworks */,
-				4C1F0000000000000000004A /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				4C1F00000000000000000031 /* Shared */,
-				4C1F00000000000000000034 /* WatchWidgets */,
+				4C1F3C26689915B6B73892A0 /* WatchWidgets */,
+				4C1FB74BC20C71C0FD36EF17 /* Shared */,
 			);
 			name = LiftTrackWatchWidgets;
 			packageProductDependencies = (
-				4C1F0000000000000000001C /* SystemCore */,
+				4C1F40C2F68AADFFA39F6663 /* SystemCore */,
 			);
 			productName = LiftTrackWatchWidgets;
-			productReference = 4C1F00000000000000000006 /* LiftTrackWatchWidgets.appex */;
+			productReference = 4C1F8FF5241EF482F2E80307 /* LiftTrackWatchWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		4C1F00000000000000000040 /* LiftTrack */ = {
+		4C1F89EFF873B7CB7AADD596 /* LiftTrackWatch */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4C1F00000000000000000041 /* Build configuration list for PBXNativeTarget "LiftTrack" */;
+			buildConfigurationList = 4C1F2C12F8D477C1F7BBE9F6 /* Build configuration list for PBXNativeTarget "LiftTrackWatch" */;
 			buildPhases = (
-				4C1F0000000000000000003C /* Sources */,
-				4C1F00000000000000000035 /* Frameworks */,
-				4C1F0000000000000000003D /* Resources */,
-				4C1F00000000000000000024 /* Embed Foundation Extensions */,
-				4C1F00000000000000000025 /* Embed Watch Content */,
+				4C1F70C9C9A8AEEA9BAE12AE /* Sources */,
+				4C1F5C91D89058C0DE5FE53F /* Frameworks */,
+				4C1FB7C46CF0EFD6D386A554 /* Resources */,
+				4C1F4E2757D7EA86BBBDD43B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				4C1F0000000000000000003E /* PBXTargetDependency */,
-				4C1F0000000000000000003F /* PBXTargetDependency */,
+				4C1F1D06CABD2BCC00FCEB83 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4C1F00000000000000000030 /* iOS */,
-				4C1F00000000000000000031 /* Shared */,
+				4C1F944FC8BF17226E65C268 /* Watch */,
+				4C1FB74BC20C71C0FD36EF17 /* Shared */,
+			);
+			name = LiftTrackWatch;
+			packageProductDependencies = (
+				4C1FF8092AAE5CB7705BBE92 /* SystemCore */,
+				4C1FB666E42381AD215AA508 /* ExerciseLibrary */,
+				4C1F4D1FEDB602A4856FCECC /* HealthBridge */,
+				4C1F2201F2C7E64C3222C40E /* LiftEngine */,
+			);
+			productName = LiftTrackWatch;
+			productReference = 4C1FAED2321BE701EE35872F /* LiftTrackWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4C1FB68ABCE416919527F942 /* LiftTrackUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F9EA3681222FCAE90D050 /* Build configuration list for PBXNativeTarget "LiftTrackUITests" */;
+			buildPhases = (
+				4C1FB38178F2302DE0A5977C /* Sources */,
+				4C1F62BFB21918FDB2FFF112 /* Frameworks */,
+				4C1F2A9B2EF20B0C6E59A370 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C1FD615602702081584BC4B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F31C954354DBA8438EDEC /* UITests */,
+			);
+			name = LiftTrackUITests;
+			packageProductDependencies = (
+			);
+			productName = LiftTrackUITests;
+			productReference = 4C1F221F91C007C8DC5F984D /* LiftTrackUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		4C1FDB510F80067E2686982F /* LiftTrack */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F98D4B1F5A637166D13B2 /* Build configuration list for PBXNativeTarget "LiftTrack" */;
+			buildPhases = (
+				4C1FB62DF0F5EC126509E52F /* Sources */,
+				4C1F3823ACABC8A307DA76B8 /* Frameworks */,
+				4C1FFFD003BFB4208315C88C /* Resources */,
+				4C1FC04D0737E5DD02F6C696 /* Embed Foundation Extensions */,
+				4C1F3799DC44CD37B0D575C8 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C1F02B3DF5D75AF1DB7EEF8 /* PBXTargetDependency */,
+				4C1F390682EFD0F4B50F7598 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F472DAB080BD717F9E062 /* iOS */,
+				4C1FB74BC20C71C0FD36EF17 /* Shared */,
 			);
 			name = LiftTrack;
 			packageProductDependencies = (
-				4C1F00000000000000000008 /* SystemCore */,
-				4C1F0000000000000000000A /* ExerciseLibrary */,
-				4C1F0000000000000000000C /* SystemStore */,
-				4C1F0000000000000000000E /* HealthBridge */,
-				4C1F00000000000000000010 /* LiftEngine */,
+				4C1F1B7767CCDD2222A06DE6 /* SystemCore */,
+				4C1F79889302F3CA596230B7 /* ExerciseLibrary */,
+				4C1F7C3A652CBE38F5E1A2FA /* SystemStore */,
+				4C1F2908801A952F633063C1 /* HealthBridge */,
+				4C1F305888CE3E3240BEC7D3 /* LiftEngine */,
 			);
 			productName = LiftTrack;
-			productReference = 4C1F00000000000000000027 /* LiftTrack.app */;
+			productReference = 4C1F5BB8AF6C3A479AAEAFCA /* LiftTrack.app */;
 			productType = "com.apple.product-type.application";
+		};
+		4C1FED66670D0FB3CCEBA409 /* LiftTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F13B9F993106BAEC12D90 /* Build configuration list for PBXNativeTarget "LiftTrackWidgets" */;
+			buildPhases = (
+				4C1FCB2E3DCABAF95117179B /* Sources */,
+				4C1F146AC2F2C9500D7DC513 /* Frameworks */,
+				4C1F0ADA61CBEB296C0F506D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F52F0ABFEBF5CFB641F48 /* Widgets */,
+				4C1FB74BC20C71C0FD36EF17 /* Shared */,
+			);
+			name = LiftTrackWidgets;
+			packageProductDependencies = (
+				4C1F4656AD64D1EB9D5E1A83 /* SystemCore */,
+			);
+			productName = LiftTrackWidgets;
+			productReference = 4C1F04C7ABC4EC1E88B77E5D /* LiftTrackWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4C1FFFEF6665F6AB5E063486 /* LiftTrackTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C1F73DA935BAFFAC03C5111 /* Build configuration list for PBXNativeTarget "LiftTrackTests" */;
+			buildPhases = (
+				4C1F10DD47286ADEF0BCEAB1 /* Sources */,
+				4C1F072174272ECED5D8495A /* Frameworks */,
+				4C1F53038C89C74D57FA2A7A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C1F131A324A0775D6962D8B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C1F27D8BC6A884B8FFE6DF9 /* Tests */,
+			);
+			name = LiftTrackTests;
+			packageProductDependencies = (
+			);
+			productName = LiftTrackTests;
+			productReference = 4C1F623CE988F88B055A0E6E /* LiftTrackTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		4C1F0000000000000000001E /* Project object */ = {
+		4C1FFDC67401F61874349216 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
-					4C1F0000000000000000001F = {
+					4C1F7450B2BF11DE2DD2C110 = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4C1F00000000000000000021 = {
+					4C1F89EFF873B7CB7AADD596 = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4C1F00000000000000000023 = {
+					4C1FB68ABCE416919527F942 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4C1FDB510F80067E2686982F;
+					};
+					4C1FDB510F80067E2686982F = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4C1F00000000000000000040 = {
+					4C1FED66670D0FB3CCEBA409 = {
 						CreatedOnToolsVersion = 27.0;
+					};
+					4C1FFFEF6665F6AB5E063486 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4C1FDB510F80067E2686982F;
 					};
 				};
 			};
-			buildConfigurationList = 4C1F00000000000000000051 /* Build configuration list for PBXProject "LiftTrack" */;
+			buildConfigurationList = 4C1FA2A001965A6BE86BEC90 /* Build configuration list for PBXProject "LiftTrack" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 4C1F00000000000000000039;
+			mainGroup = 4C1F8E31106B700B622142C7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
-				4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */,
-				4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
-				4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
-				4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */,
+				4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
+				4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */,
+				4C1FA07496BCCFCC81C8E8A6 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
+				4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 4C1F0000000000000000003B /* Products */;
+			productRefGroup = 4C1F20749AA77F28E33D1946 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4C1F00000000000000000040 /* LiftTrack */,
-				4C1F0000000000000000001F /* LiftTrackWidgets */,
-				4C1F00000000000000000021 /* LiftTrackWatch */,
-				4C1F00000000000000000023 /* LiftTrackWatchWidgets */,
+				4C1FDB510F80067E2686982F /* LiftTrack */,
+				4C1FED66670D0FB3CCEBA409 /* LiftTrackWidgets */,
+				4C1F89EFF873B7CB7AADD596 /* LiftTrackWatch */,
+				4C1F7450B2BF11DE2DD2C110 /* LiftTrackWatchWidgets */,
+				4C1FFFEF6665F6AB5E063486 /* LiftTrackTests */,
+				4C1FB68ABCE416919527F942 /* LiftTrackUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		4C1F0000000000000000003D /* Resources */ = {
+		4C1F0ADA61CBEB296C0F506D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000043 /* Resources */ = {
+		4C1F261C49A842DFB96FF733 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000046 /* Resources */ = {
+		4C1F2A9B2EF20B0C6E59A370 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F0000000000000000004A /* Resources */ = {
+		4C1F53038C89C74D57FA2A7A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FB7C46CF0EFD6D386A554 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FFFD003BFB4208315C88C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -405,28 +523,42 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		4C1F0000000000000000003C /* Sources */ = {
+		4C1F10DD47286ADEF0BCEAB1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000042 /* Sources */ = {
+		4C1F70C9C9A8AEEA9BAE12AE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000045 /* Sources */ = {
+		4C1FB38178F2302DE0A5977C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C1F00000000000000000049 /* Sources */ = {
+		4C1FB62DF0F5EC126509E52F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FCB2E3DCABAF95117179B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C1FF789DD46F0470FCA4A07 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -436,25 +568,300 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		4C1F0000000000000000003E /* PBXTargetDependency */ = {
+		4C1F02B3DF5D75AF1DB7EEF8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4C1F0000000000000000001F /* LiftTrackWidgets */;
-			targetProxy = 4C1F0000000000000000001D /* PBXContainerItemProxy */;
+			target = 4C1FED66670D0FB3CCEBA409 /* LiftTrackWidgets */;
+			targetProxy = 4C1F62BD2F81E8F396B01372 /* PBXContainerItemProxy */;
 		};
-		4C1F0000000000000000003F /* PBXTargetDependency */ = {
+		4C1F131A324A0775D6962D8B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4C1F00000000000000000021 /* LiftTrackWatch */;
-			targetProxy = 4C1F00000000000000000020 /* PBXContainerItemProxy */;
+			target = 4C1FDB510F80067E2686982F /* LiftTrack */;
+			targetProxy = 4C1F01761C79DFE0F3E81D1A /* PBXContainerItemProxy */;
 		};
-		4C1F00000000000000000047 /* PBXTargetDependency */ = {
+		4C1F1D06CABD2BCC00FCEB83 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4C1F00000000000000000023 /* LiftTrackWatchWidgets */;
-			targetProxy = 4C1F00000000000000000022 /* PBXContainerItemProxy */;
+			target = 4C1F7450B2BF11DE2DD2C110 /* LiftTrackWatchWidgets */;
+			targetProxy = 4C1F0707C81C12469DF4408B /* PBXContainerItemProxy */;
+		};
+		4C1F390682EFD0F4B50F7598 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1F89EFF873B7CB7AADD596 /* LiftTrackWatch */;
+			targetProxy = 4C1F7E72D3A0806CA4D8C90F /* PBXContainerItemProxy */;
+		};
+		4C1FD615602702081584BC4B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1FDB510F80067E2686982F /* LiftTrack */;
+			targetProxy = 4C1F4B6F5F3F68D4D3A950B8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		4C1F00000000000000000052 /* Debug */ = {
+		4C1F12FF3E4CB53F956B711F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C1F19AC55FE0421346D8574 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftTrack;
+			};
+			name = Debug;
+		};
+		4C1F259045886AE9206F1EFF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		4C1F346DED21DA56118B38F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftTrack.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiftTrack";
+			};
+			name = Debug;
+		};
+		4C1F4D837056A96D5BA0EDDC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
+		4C1F5C8A4405677229885D2A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Watch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		4C1F6349CAFFDE69BB780223 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/LiftTrack.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4C1F8B5AF2D8B544B2F2CDE2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		4C1FA0792F8C21D1C4E29D26 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -484,36 +891,13 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = "$(WARNINGS_AS_ERRORS_ON_CI_$(CI))";
+				WARNINGS_AS_ERRORS_ON_CI_TRUE = YES;
+				WARNINGS_AS_ERRORS_ON_CI_true = YES;
 			};
 			name = Debug;
 		};
-		4C1F00000000000000000053 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-			};
-			name = Release;
-		};
-		4C1F00000000000000000054 /* Debug */ = {
+		4C1FA228933255FB0CAFB801 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -561,161 +945,58 @@
 			};
 			name = Debug;
 		};
-		4C1F00000000000000000055 /* Release */ = {
+		4C1FA375EE6C05D5380D77D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/LiftTrack.entitlements;
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
-				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAIN_APP";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftTrack.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiftTrack";
 			};
 			name = Release;
 		};
-		4C1F00000000000000000056 /* Debug */ = {
+		4C1FA91205B941B6A6D1BD8A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		4C1F00000000000000000057 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftTrack;
 			};
 			name = Release;
 		};
-		4C1F00000000000000000058 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Watch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
-				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "watchos watchsimulator";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.1;
-			};
-			name = Debug;
-		};
-		4C1F00000000000000000059 /* Release */ = {
+		4C1FB4008E7CAE941E7F995A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -753,11 +1034,11 @@
 			};
 			name = Release;
 		};
-		4C1F0000000000000000005A /* Debug */ = {
+		4C1FC9F473BF1B57498456E3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -766,105 +1047,89 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
+				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.1;
-			};
-			name = Debug;
-		};
-		4C1F0000000000000000005B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "watchos watchsimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4C1F00000000000000000041 /* Build configuration list for PBXNativeTarget "LiftTrack" */ = {
+		4C1F13B9F993106BAEC12D90 /* Build configuration list for PBXNativeTarget "LiftTrackWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4C1F00000000000000000054 /* Debug */,
-				4C1F00000000000000000055 /* Release */,
+				4C1F12FF3E4CB53F956B711F /* Debug */,
+				4C1FC9F473BF1B57498456E3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C1F00000000000000000044 /* Build configuration list for PBXNativeTarget "LiftTrackWidgets" */ = {
+		4C1F2C12F8D477C1F7BBE9F6 /* Build configuration list for PBXNativeTarget "LiftTrackWatch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4C1F00000000000000000056 /* Debug */,
-				4C1F00000000000000000057 /* Release */,
+				4C1F5C8A4405677229885D2A /* Debug */,
+				4C1FB4008E7CAE941E7F995A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C1F00000000000000000048 /* Build configuration list for PBXNativeTarget "LiftTrackWatch" */ = {
+		4C1F73DA935BAFFAC03C5111 /* Build configuration list for PBXNativeTarget "LiftTrackTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4C1F00000000000000000058 /* Debug */,
-				4C1F00000000000000000059 /* Release */,
+				4C1F346DED21DA56118B38F2 /* Debug */,
+				4C1FA375EE6C05D5380D77D7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C1F0000000000000000004B /* Build configuration list for PBXNativeTarget "LiftTrackWatchWidgets" */ = {
+		4C1F98D4B1F5A637166D13B2 /* Build configuration list for PBXNativeTarget "LiftTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4C1F0000000000000000005A /* Debug */,
-				4C1F0000000000000000005B /* Release */,
+				4C1FA228933255FB0CAFB801 /* Debug */,
+				4C1F6349CAFFDE69BB780223 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C1F00000000000000000051 /* Build configuration list for PBXProject "LiftTrack" */ = {
+		4C1F9EA3681222FCAE90D050 /* Build configuration list for PBXNativeTarget "LiftTrackUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4C1F00000000000000000052 /* Debug */,
-				4C1F00000000000000000053 /* Release */,
+				4C1F19AC55FE0421346D8574 /* Debug */,
+				4C1FA91205B941B6A6D1BD8A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1FA2A001965A6BE86BEC90 /* Build configuration list for PBXProject "LiftTrack" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1FA0792F8C21D1C4E29D26 /* Debug */,
+				4C1F259045886AE9206F1EFF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C1FCEBB2E705DBA56C009CE /* Build configuration list for PBXNativeTarget "LiftTrackWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C1F8B5AF2D8B544B2F2CDE2 /* Debug */,
+				4C1F4D837056A96D5BA0EDDC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -872,85 +1137,85 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
+		4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
 		};
-		4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */ = {
+		4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/ExerciseLibrary;
+			relativePath = ../../Packages/LiftEngine;
 		};
-		4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
+		4C1FA07496BCCFCC81C8E8A6 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemStore;
 		};
-		4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
+		4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/HealthBridge;
 		};
-		4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */ = {
+		4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/LiftEngine;
+			relativePath = ../../Packages/ExerciseLibrary;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4C1F00000000000000000008 /* SystemCore */ = {
+		4C1F1B7767CCDD2222A06DE6 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			package = 4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
 		};
-		4C1F0000000000000000000A /* ExerciseLibrary */ = {
+		4C1F2201F2C7E64C3222C40E /* LiftEngine */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
+			package = 4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
+			productName = LiftEngine;
+		};
+		4C1F2908801A952F633063C1 /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4C1F305888CE3E3240BEC7D3 /* LiftEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
+			productName = LiftEngine;
+		};
+		4C1F40C2F68AADFFA39F6663 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4C1F4656AD64D1EB9D5E1A83 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4C1F4D1FEDB602A4856FCECC /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4C1F79889302F3CA596230B7 /* ExerciseLibrary */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
 			productName = ExerciseLibrary;
 		};
-		4C1F0000000000000000000C /* SystemStore */ = {
+		4C1F7C3A652CBE38F5E1A2FA /* SystemStore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004E /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			package = 4C1FA07496BCCFCC81C8E8A6 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
 			productName = SystemStore;
 		};
-		4C1F0000000000000000000E /* HealthBridge */ = {
+		4C1FB666E42381AD215AA508 /* ExerciseLibrary */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
-			productName = HealthBridge;
-		};
-		4C1F00000000000000000010 /* LiftEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
-			productName = LiftEngine;
-		};
-		4C1F00000000000000000012 /* SystemCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
-			productName = SystemCore;
-		};
-		4C1F00000000000000000014 /* SystemCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
-			productName = SystemCore;
-		};
-		4C1F00000000000000000016 /* ExerciseLibrary */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004D /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
+			package = 4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
 			productName = ExerciseLibrary;
 		};
-		4C1F00000000000000000018 /* HealthBridge */ = {
+		4C1FF8092AAE5CB7705BBE92 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004F /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
-			productName = HealthBridge;
-		};
-		4C1F0000000000000000001A /* LiftEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F00000000000000000050 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */;
-			productName = LiftEngine;
-		};
-		4C1F0000000000000000001C /* SystemCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4C1F0000000000000000004C /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			package = 4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = 4C1F0000000000000000001E /* Project object */;
+	rootObject = 4C1FFDC67401F61874349216 /* Project object */;
 }

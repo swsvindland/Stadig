@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "id": "D1EC5A93-465A-505C-A381-394B6EC366CC",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": true,
+    "defaultTestExecutionTimeAllowance": 120,
+    "language": "en",
+    "region": "US",
+    "targetForVariableExpansion": {
+      "containerPath": "container:MacroTrack.xcodeproj",
+      "identifier": "4D2E69A7A02B68F88C8FB648",
+      "name": "MacroTrack"
+    },
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:MacroTrack.xcodeproj",
+        "identifier": "4D2E755E6ADE3050A7463B68",
+        "name": "MacroTrackTests"
+      }
+    }
+  ],
+  "version": 1
+}

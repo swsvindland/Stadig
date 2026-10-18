@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "id": "C4873765-3660-5838-A211-B0A5C397707D",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "defaultTestExecutionTimeAllowance": 300,
+    "language": "en",
+    "maximumTestRepetitions": 2,
+    "region": "US",
+    "targetForVariableExpansion": {
+      "containerPath": "container:MacroTrack.xcodeproj",
+      "identifier": "4D2E69A7A02B68F88C8FB648",
+      "name": "MacroTrack"
+    },
+    "testRepetitionMode": "retryOnFailure",
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:MacroTrack.xcodeproj",
+        "identifier": "4D2E256FEEAE6F335E6AC454",
+        "name": "MacroTrackUITests"
+      }
+    }
+  ],
+  "version": 1
+}

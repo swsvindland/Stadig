@@ -7,35 +7,49 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4D2E00000000000000000003 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000004 /* SystemCore */; };
-		4D2E00000000000000000005 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000006 /* SystemStore */; };
-		4D2E00000000000000000007 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000008 /* HealthBridge */; };
-		4D2E00000000000000000009 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000A /* NutritionEngine */; };
-		4D2E0000000000000000000B /* FoodDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000C /* FoodDatabase */; };
-		4D2E0000000000000000000D /* FoodIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E0000000000000000000E /* FoodIntelligence */; };
-		4D2E0000000000000000000F /* MealPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000010 /* MealPlanner */; };
-		4D2E00000000000000000011 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E00000000000000000012 /* SystemCore */; };
+		4D2E13E4859256E882D4008A /* FoodDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2ED4A06E193F96A0389D8C /* FoodDatabase */; };
+		4D2E1525EA15F9491EA57C77 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */; };
+		4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E6E52F11BBD748D232B06 /* NutritionEngine */; };
+		4D2E716C1F226D4FE0343661 /* MacroTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2EB6DD5B16FE37CE25BED1 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EEC29F2C791444BB6AEBD /* HealthBridge */; };
+		4D2EBE8EC3D2486AF8652BDD /* MealPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EF05702E4CD97E846AA31 /* MealPlanner */; };
+		4D2ECA034642BD1F60F09266 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E94BBBA06C1531E526B29 /* SystemCore */; };
+		4D2EEB0D911012BD08D627FC /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EDB9BE16BD8647B1BCD2D /* SystemCore */; };
+		4D2EEEDEFDEC9FF7965286E5 /* FoodIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4D2E00000000000000000013 /* PBXContainerItemProxy */ = {
+		4D2E055FE6F7DE1A329B1370 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4D2E00000000000000000014 /* Project object */;
+			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4D2E00000000000000000015;
+			remoteGlobalIDString = 4D2E69A7A02B68F88C8FB648;
+			remoteInfo = MacroTrack;
+		};
+		4D2E5D7BF606123017360D1F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D2E69A7A02B68F88C8FB648;
+			remoteInfo = MacroTrack;
+		};
+		4D2E84C10E089031E81068CC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D2E6F486D557E08E6A1A850;
 			remoteInfo = MacroTrackWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		4D2E00000000000000000016 /* Embed Foundation Extensions */ = {
+		4D2E0E51DE7B20B6F70D4771 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				4D2E00000000000000000001 /* MacroTrackWidgets.appex in Embed Foundation Extensions */,
+				4D2E716C1F226D4FE0343661 /* MacroTrackWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -43,45 +57,60 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4D2E00000000000000000002 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		4D2E00000000000000000017 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4D2E00000000000000000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		4D2E00000000000000000019 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
-		4D2E0000000000000000001A /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
-		4D2E0000000000000000001B /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
-		4D2E0000000000000000001C /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
+		4D2E0B78FB0B51F8F3B160A0 /* MacroTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E130BC256F94EEB45F10B /* MacroTrackUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrackUI.xctestplan; sourceTree = "<group>"; };
+		4D2E1505F9C153A9B800C7E0 /* MacroTrack.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.xctestplan; sourceTree = "<group>"; };
+		4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacroTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacroTrackUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E6F490B9D1E08B81AA99D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4D2E7442BF41C7414F8D1E14 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		4D2E9FAF660FB19AA0C76F33 /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
+		4D2EAE5DB26C5CC2E44E7AF2 /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
+		4D2EE5427AB0BBD55A1848C0 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4D2E0000000000000000001D /* Exceptions for "Catalogs" folder in "MacroTrack" target */ = {
+		4D2EE56C8DFA6AC9BBDF27BA /* Exceptions for "Catalogs" folder in "MacroTrack" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				.gitignore,
 				README.md,
 			);
-			target = 4D2E0000000000000000001E /* MacroTrack */;
+			target = 4D2E69A7A02B68F88C8FB648 /* MacroTrack */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4D2E0000000000000000001F /* iOS */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = iOS;
-			sourceTree = "<group>";
-		};
-		4D2E00000000000000000020 /* Shared */ = {
+		4D2E41625F3B0595DEC92B9E /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000021 /* Widgets */ = {
+		4D2E7D49058673643D9D0E77 /* UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		4D2E9E76452C0D63D776E3B1 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		4D2EAC60423EF8D6DDB414C2 /* Widgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Widgets;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000022 /* Catalogs */ = {
+		4D2EB5CA610FD775F740DF09 /* iOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		4D2EE759AA381145436E7D57 /* Catalogs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4D2E0000000000000000001D /* Exceptions for "Catalogs" folder in "MacroTrack" target */,
+				4D2EE56C8DFA6AC9BBDF27BA /* Exceptions for "Catalogs" folder in "MacroTrack" target */,
 			);
 			path = Catalogs;
 			sourceTree = "<group>";
@@ -89,180 +118,270 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		4D2E00000000000000000023 /* Frameworks */ = {
+		4D2E38DB8AA08C57E0DDA173 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4D2E00000000000000000003 /* SystemCore in Frameworks */,
-				4D2E00000000000000000005 /* SystemStore in Frameworks */,
-				4D2E00000000000000000007 /* HealthBridge in Frameworks */,
-				4D2E00000000000000000009 /* NutritionEngine in Frameworks */,
-				4D2E0000000000000000000B /* FoodDatabase in Frameworks */,
-				4D2E0000000000000000000D /* FoodIntelligence in Frameworks */,
-				4D2E0000000000000000000F /* MealPlanner in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E00000000000000000024 /* Frameworks */ = {
+		4D2E661B125A6F5B6F095914 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4D2E00000000000000000011 /* SystemCore in Frameworks */,
+				4D2EEB0D911012BD08D627FC /* SystemCore in Frameworks */,
+				4D2E1525EA15F9491EA57C77 /* SystemStore in Frameworks */,
+				4D2EB6DD5B16FE37CE25BED1 /* HealthBridge in Frameworks */,
+				4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */,
+				4D2E13E4859256E882D4008A /* FoodDatabase in Frameworks */,
+				4D2EEEDEFDEC9FF7965286E5 /* FoodIntelligence in Frameworks */,
+				4D2EBE8EC3D2486AF8652BDD /* MealPlanner in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E942A79E71D4F0C18FDFF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D2ECA034642BD1F60F09266 /* SystemCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2EC97F3751B7458922F4AB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		4D2E00000000000000000025 = {
+		4D2E12DD401F846BD5431438 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4D2E0000000000000000001F /* iOS */,
-				4D2E00000000000000000020 /* Shared */,
-				4D2E00000000000000000021 /* Widgets */,
-				4D2E00000000000000000022 /* Catalogs */,
-				4D2E00000000000000000026 /* Config */,
-				4D2E0000000000000000001C /* MacroTrack.storekit */,
-				4D2E00000000000000000027 /* Products */,
+				4D2E0B78FB0B51F8F3B160A0 /* MacroTrack.app */,
+				4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */,
+				4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */,
+				4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */,
 			);
+			name = Products;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000026 /* Config */ = {
+		4D2EB8C3F1FC3965E155458A /* Config */ = {
 			isa = PBXGroup;
 			children = (
-				4D2E00000000000000000018 /* Info.plist */,
-				4D2E00000000000000000019 /* Widgets-Info.plist */,
-				4D2E0000000000000000001A /* MacroTrack.entitlements */,
-				4D2E0000000000000000001B /* Widgets.entitlements */,
+				4D2E6F490B9D1E08B81AA99D /* Info.plist */,
+				4D2EE5427AB0BBD55A1848C0 /* Widgets-Info.plist */,
+				4D2E9FAF660FB19AA0C76F33 /* MacroTrack.entitlements */,
+				4D2E7442BF41C7414F8D1E14 /* Widgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
 		};
-		4D2E00000000000000000027 /* Products */ = {
+		4D2EC08B496F82E038C56D9D = {
 			isa = PBXGroup;
 			children = (
-				4D2E00000000000000000017 /* MacroTrack.app */,
-				4D2E00000000000000000002 /* MacroTrackWidgets.appex */,
+				4D2EB5CA610FD775F740DF09 /* iOS */,
+				4D2E41625F3B0595DEC92B9E /* Shared */,
+				4D2EAC60423EF8D6DDB414C2 /* Widgets */,
+				4D2EE759AA381145436E7D57 /* Catalogs */,
+				4D2E9E76452C0D63D776E3B1 /* Tests */,
+				4D2E7D49058673643D9D0E77 /* UITests */,
+				4D2EB8C3F1FC3965E155458A /* Config */,
+				4D2EAE5DB26C5CC2E44E7AF2 /* MacroTrack.storekit */,
+				4D2E1505F9C153A9B800C7E0 /* MacroTrack.xctestplan */,
+				4D2E130BC256F94EEB45F10B /* MacroTrackUI.xctestplan */,
+				4D2E12DD401F846BD5431438 /* Products */,
 			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4D2E00000000000000000015 /* MacroTrackWidgets */ = {
+		4D2E256FEEAE6F335E6AC454 /* MacroTrackUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E0000000000000000002E /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */;
+			buildConfigurationList = 4D2EEC9D2EA227D190B3FFB3 /* Build configuration list for PBXNativeTarget "MacroTrackUITests" */;
 			buildPhases = (
-				4D2E0000000000000000002C /* Sources */,
-				4D2E00000000000000000024 /* Frameworks */,
-				4D2E0000000000000000002D /* Resources */,
+				4D2E7E2D40CB51CFBB7B4DB6 /* Sources */,
+				4D2EC97F3751B7458922F4AB /* Frameworks */,
+				4D2EBBFDC02AEECE6BE8798B /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4D2ED2BC8C934AEEA2C368EB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4D2E00000000000000000020 /* Shared */,
-				4D2E00000000000000000021 /* Widgets */,
+				4D2E7D49058673643D9D0E77 /* UITests */,
 			);
-			name = MacroTrackWidgets;
+			name = MacroTrackUITests;
 			packageProductDependencies = (
-				4D2E00000000000000000012 /* SystemCore */,
 			);
-			productName = MacroTrackWidgets;
-			productReference = 4D2E00000000000000000002 /* MacroTrackWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
+			productName = MacroTrackUITests;
+			productReference = 4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		4D2E0000000000000000001E /* MacroTrack */ = {
+		4D2E69A7A02B68F88C8FB648 /* MacroTrack */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4D2E0000000000000000002B /* Build configuration list for PBXNativeTarget "MacroTrack" */;
+			buildConfigurationList = 4D2E197C855580E497CB2834 /* Build configuration list for PBXNativeTarget "MacroTrack" */;
 			buildPhases = (
-				4D2E00000000000000000028 /* Sources */,
-				4D2E00000000000000000023 /* Frameworks */,
-				4D2E00000000000000000029 /* Resources */,
-				4D2E00000000000000000016 /* Embed Foundation Extensions */,
+				4D2E92BABCE7D02E9D1B4E28 /* Sources */,
+				4D2E661B125A6F5B6F095914 /* Frameworks */,
+				4D2E006ACEEC3128DF949870 /* Resources */,
+				4D2E0E51DE7B20B6F70D4771 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				4D2E0000000000000000002A /* PBXTargetDependency */,
+				4D2E170BD795AC7309B3C484 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4D2E0000000000000000001F /* iOS */,
-				4D2E00000000000000000020 /* Shared */,
-				4D2E00000000000000000022 /* Catalogs */,
+				4D2E41625F3B0595DEC92B9E /* Shared */,
+				4D2EB5CA610FD775F740DF09 /* iOS */,
+				4D2EE759AA381145436E7D57 /* Catalogs */,
 			);
 			name = MacroTrack;
 			packageProductDependencies = (
-				4D2E00000000000000000004 /* SystemCore */,
-				4D2E00000000000000000006 /* SystemStore */,
-				4D2E00000000000000000008 /* HealthBridge */,
-				4D2E0000000000000000000A /* NutritionEngine */,
-				4D2E0000000000000000000C /* FoodDatabase */,
-				4D2E0000000000000000000E /* FoodIntelligence */,
-				4D2E00000000000000000010 /* MealPlanner */,
+				4D2EDB9BE16BD8647B1BCD2D /* SystemCore */,
+				4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */,
+				4D2EEC29F2C791444BB6AEBD /* HealthBridge */,
+				4D2E6E52F11BBD748D232B06 /* NutritionEngine */,
+				4D2ED4A06E193F96A0389D8C /* FoodDatabase */,
+				4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */,
+				4D2EF05702E4CD97E846AA31 /* MealPlanner */,
 			);
 			productName = MacroTrack;
-			productReference = 4D2E00000000000000000017 /* MacroTrack.app */;
+			productReference = 4D2E0B78FB0B51F8F3B160A0 /* MacroTrack.app */;
 			productType = "com.apple.product-type.application";
+		};
+		4D2E6F486D557E08E6A1A850 /* MacroTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E6ACDAAE8C69F9EC35646 /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */;
+			buildPhases = (
+				4D2EF69F3393365181525739 /* Sources */,
+				4D2E942A79E71D4F0C18FDFF /* Frameworks */,
+				4D2E58EA64D174A2EEB44ECC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E41625F3B0595DEC92B9E /* Shared */,
+				4D2EAC60423EF8D6DDB414C2 /* Widgets */,
+			);
+			name = MacroTrackWidgets;
+			packageProductDependencies = (
+				4D2E94BBBA06C1531E526B29 /* SystemCore */,
+			);
+			productName = MacroTrackWidgets;
+			productReference = 4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4D2E755E6ADE3050A7463B68 /* MacroTrackTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E3F961B1BB4026064B79D /* Build configuration list for PBXNativeTarget "MacroTrackTests" */;
+			buildPhases = (
+				4D2E73473987B4DAADB779CC /* Sources */,
+				4D2E38DB8AA08C57E0DDA173 /* Frameworks */,
+				4D2E8D5CAEAD53804F9B28B1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D2ECF5F19D54CE10EC2E045 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E9E76452C0D63D776E3B1 /* Tests */,
+			);
+			name = MacroTrackTests;
+			packageProductDependencies = (
+			);
+			productName = MacroTrackTests;
+			productReference = 4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		4D2E00000000000000000014 /* Project object */ = {
+		4D2E3EF59559A8B068CB6610 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
-					4D2E00000000000000000015 = {
+					4D2E256FEEAE6F335E6AC454 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4D2E69A7A02B68F88C8FB648;
+					};
+					4D2E69A7A02B68F88C8FB648 = {
 						CreatedOnToolsVersion = 27.0;
 					};
-					4D2E0000000000000000001E = {
+					4D2E6F486D557E08E6A1A850 = {
 						CreatedOnToolsVersion = 27.0;
+					};
+					4D2E755E6ADE3050A7463B68 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4D2E69A7A02B68F88C8FB648;
 					};
 				};
 			};
-			buildConfigurationList = 4D2E00000000000000000036 /* Build configuration list for PBXProject "MacroTrack" */;
+			buildConfigurationList = 4D2E513AA3067880CFB17079 /* Build configuration list for PBXProject "MacroTrack" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 4D2E00000000000000000025;
+			mainGroup = 4D2EC08B496F82E038C56D9D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
-				4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
-				4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
-				4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
-				4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
-				4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
-				4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */,
+				4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
+				4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4D2E74DFE55C3B76930CB026 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
+				4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
+				4D2EA4925F43231E360002E4 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
+				4D2EF9C8167C68B180CA70E7 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
+				4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 4D2E00000000000000000027 /* Products */;
+			productRefGroup = 4D2E12DD401F846BD5431438 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4D2E0000000000000000001E /* MacroTrack */,
-				4D2E00000000000000000015 /* MacroTrackWidgets */,
+				4D2E69A7A02B68F88C8FB648 /* MacroTrack */,
+				4D2E6F486D557E08E6A1A850 /* MacroTrackWidgets */,
+				4D2E755E6ADE3050A7463B68 /* MacroTrackTests */,
+				4D2E256FEEAE6F335E6AC454 /* MacroTrackUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		4D2E00000000000000000029 /* Resources */ = {
+		4D2E006ACEEC3128DF949870 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E0000000000000000002D /* Resources */ = {
+		4D2E58EA64D174A2EEB44ECC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E8D5CAEAD53804F9B28B1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2EBBFDC02AEECE6BE8798B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -272,14 +391,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		4D2E00000000000000000028 /* Sources */ = {
+		4D2E73473987B4DAADB779CC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4D2E0000000000000000002C /* Sources */ = {
+		4D2E7E2D40CB51CFBB7B4DB6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E92BABCE7D02E9D1B4E28 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2EF69F3393365181525739 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -289,15 +422,51 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		4D2E0000000000000000002A /* PBXTargetDependency */ = {
+		4D2E170BD795AC7309B3C484 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4D2E00000000000000000015 /* MacroTrackWidgets */;
-			targetProxy = 4D2E00000000000000000013 /* PBXContainerItemProxy */;
+			target = 4D2E6F486D557E08E6A1A850 /* MacroTrackWidgets */;
+			targetProxy = 4D2E84C10E089031E81068CC /* PBXContainerItemProxy */;
+		};
+		4D2ECF5F19D54CE10EC2E045 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D2E69A7A02B68F88C8FB648 /* MacroTrack */;
+			targetProxy = 4D2E055FE6F7DE1A329B1370 /* PBXContainerItemProxy */;
+		};
+		4D2ED2BC8C934AEEA2C368EB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D2E69A7A02B68F88C8FB648 /* MacroTrack */;
+			targetProxy = 4D2E5D7BF606123017360D1F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		4D2E00000000000000000037 /* Debug */ = {
+		4D2E1F14871B84662ECCF223 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		4D2E3786567C410F3895B3C9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -327,36 +496,13 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = "$(WARNINGS_AS_ERRORS_ON_CI_$(CI))";
+				WARNINGS_AS_ERRORS_ON_CI_TRUE = YES;
+				WARNINGS_AS_ERRORS_ON_CI_true = YES;
 			};
 			name = Debug;
 		};
-		4D2E00000000000000000038 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-			};
-			name = Release;
-		};
-		4D2E00000000000000000039 /* Debug */ = {
+		4D2E4A4E670900CFB6EA8305 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -401,7 +547,101 @@
 			};
 			name = Debug;
 		};
-		4D2E0000000000000000003A /* Release */ = {
+		4D2E4AA1247211252855A8D4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4D2E67DE2C8AEB66B419BB45 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4D2E6C60F6981988F3AE6279 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacroTrack.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacroTrack";
+			};
+			name = Release;
+		};
+		4D2E7C5E051E10177682C2A4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -446,100 +686,126 @@
 			};
 			name = Release;
 		};
-		4D2E0000000000000000003B /* Debug */ = {
+		4D2EDBEA6890A4C576CC769A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacroTrack.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacroTrack";
 			};
 			name = Debug;
 		};
-		4D2E0000000000000000003C /* Release */ = {
+		4D2EDC98D51968DA9880166A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MacroTrack;
 			};
 			name = Release;
+		};
+		4D2EDCB11E8B7BDBAF000ABC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MacroTrack;
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4D2E0000000000000000002B /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
+		4D2E197C855580E497CB2834 /* Build configuration list for PBXNativeTarget "MacroTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E00000000000000000039 /* Debug */,
-				4D2E0000000000000000003A /* Release */,
+				4D2E4A4E670900CFB6EA8305 /* Debug */,
+				4D2E7C5E051E10177682C2A4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4D2E0000000000000000002E /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */ = {
+		4D2E3F961B1BB4026064B79D /* Build configuration list for PBXNativeTarget "MacroTrackTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E0000000000000000003B /* Debug */,
-				4D2E0000000000000000003C /* Release */,
+				4D2EDBEA6890A4C576CC769A /* Debug */,
+				4D2E6C60F6981988F3AE6279 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4D2E00000000000000000036 /* Build configuration list for PBXProject "MacroTrack" */ = {
+		4D2E513AA3067880CFB17079 /* Build configuration list for PBXProject "MacroTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4D2E00000000000000000037 /* Debug */,
-				4D2E00000000000000000038 /* Release */,
+				4D2E3786567C410F3895B3C9 /* Debug */,
+				4D2E1F14871B84662ECCF223 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2E6ACDAAE8C69F9EC35646 /* Build configuration list for PBXNativeTarget "MacroTrackWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E67DE2C8AEB66B419BB45 /* Debug */,
+				4D2E4AA1247211252855A8D4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2EEC9D2EA227D190B3FFB3 /* Build configuration list for PBXNativeTarget "MacroTrackUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2EDCB11E8B7BDBAF000ABC /* Debug */,
+				4D2EDC98D51968DA9880166A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -547,78 +813,78 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
+		4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
 		};
-		4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/SystemStore;
-		};
-		4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
+		4D2E74DFE55C3B76930CB026 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/HealthBridge;
 		};
-		4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */ = {
+		4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/NutritionEngine;
+			relativePath = ../../Packages/MealPlanner;
 		};
-		4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */ = {
+		4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemStore;
+		};
+		4D2EA4925F43231E360002E4 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/FoodDatabase;
 		};
-		4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
+		4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/NutritionEngine;
+		};
+		4D2EF9C8167C68B180CA70E7 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/FoodIntelligence;
-		};
-		4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Packages/MealPlanner;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4D2E00000000000000000004 /* SystemCore */ = {
+		4D2E6E52F11BBD748D232B06 /* NutritionEngine */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
-			productName = SystemCore;
-		};
-		4D2E00000000000000000006 /* SystemStore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000030 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
-			productName = SystemStore;
-		};
-		4D2E00000000000000000008 /* HealthBridge */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000031 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
-			productName = HealthBridge;
-		};
-		4D2E0000000000000000000A /* NutritionEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000032 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
 			productName = NutritionEngine;
 		};
-		4D2E0000000000000000000C /* FoodDatabase */ = {
+		4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000033 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */;
-			productName = FoodDatabase;
+			package = 4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			productName = SystemStore;
 		};
-		4D2E0000000000000000000E /* FoodIntelligence */ = {
+		4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000034 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */;
+			package = 4D2EF9C8167C68B180CA70E7 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */;
 			productName = FoodIntelligence;
 		};
-		4D2E00000000000000000010 /* MealPlanner */ = {
+		4D2E94BBBA06C1531E526B29 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4D2E00000000000000000035 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */;
-			productName = MealPlanner;
-		};
-		4D2E00000000000000000012 /* SystemCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4D2E0000000000000000002F /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			package = 4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
+		};
+		4D2ED4A06E193F96A0389D8C /* FoodDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2EA4925F43231E360002E4 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */;
+			productName = FoodDatabase;
+		};
+		4D2EDB9BE16BD8647B1BCD2D /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
+		4D2EEC29F2C791444BB6AEBD /* HealthBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E74DFE55C3B76930CB026 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */;
+			productName = HealthBridge;
+		};
+		4D2EF05702E4CD97E846AA31 /* MealPlanner */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */;
+			productName = MealPlanner;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = 4D2E00000000000000000014 /* Project object */;
+	rootObject = 4D2E3EF59559A8B068CB6610 /* Project object */;
 }

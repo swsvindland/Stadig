@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "id": "827CC775-A41E-5BBE-8272-8305784BCE86",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "defaultTestExecutionTimeAllowance": 300,
+    "language": "en",
+    "maximumTestRepetitions": 2,
+    "region": "US",
+    "targetForVariableExpansion": {
+      "containerPath": "container:LiftTrack.xcodeproj",
+      "identifier": "4C1FDB510F80067E2686982F",
+      "name": "LiftTrack"
+    },
+    "testRepetitionMode": "retryOnFailure",
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:LiftTrack.xcodeproj",
+        "identifier": "4C1FB68ABCE416919527F942",
+        "name": "LiftTrackUITests"
+      }
+    }
+  ],
+  "version": 1
+}

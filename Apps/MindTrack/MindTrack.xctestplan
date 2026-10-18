@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "id": "A65D4743-6931-536F-B966-B575F141D0BA",
+      "name": "Default",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": true,
+    "defaultTestExecutionTimeAllowance": 120,
+    "language": "en",
+    "region": "US",
+    "targetForVariableExpansion": {
+      "containerPath": "container:MindTrack.xcodeproj",
+      "identifier": "4E3F2E575251B519DCEDE83D",
+      "name": "MindTrack"
+    },
+    "testTimeoutsEnabled": true
+  },
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:MindTrack.xcodeproj",
+        "identifier": "4E3F6905ABA4A442048F8528",
+        "name": "MindTrackTests"
+      }
+    }
+  ],
+  "version": 1
+}
