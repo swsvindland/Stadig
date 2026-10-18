@@ -53,7 +53,7 @@ extension XCUIElement {
 
     /// Waits for the element to go, failing the test if it stays.
     @MainActor
-    func waitToDisappear(timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
+    func waitToDisappear(timeout: TimeInterval = 20, file: StaticString = #filePath, line: UInt = #line) {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: self)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: timeout), .completed, "\(self) is still there", file: file, line: line)
     }

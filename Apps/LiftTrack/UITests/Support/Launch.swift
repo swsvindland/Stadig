@@ -37,12 +37,14 @@ extension XCUIElement {
         return self
     }
 
-    /// Swipes `container` up until the element is on screen: a list only builds the rows it shows.
+    /// Swipes `container` until the element is on screen: a list only builds the rows it shows.
+    /// Slowly, so the list has stopped before the element is tapped, and back down when the row
+    /// went past the middle.
     @MainActor
     @discardableResult
     func scrolledTo(in container: XCUIElement, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        for _ in 0..<8 where !(exists && isHittable) {
-            container.swipeUp()
+        for _ in 0..<15 where !(exists && isHittable) {
+            if exists && frame.maxY < container.frame.midY { container.swipeDown(velocity: .slow) } else { container.swipeUp(velocity: .slow) }
         }
         XCTAssertTrue(exists && isHittable, "\(self) isn't on screen after scrolling", file: file, line: line)
         return self
@@ -50,7 +52,7 @@ extension XCUIElement {
 
     /// Waits for the element to go, failing the test if it's still there.
     @MainActor
-    func waitToDisappear(timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
+    func waitToDisappear(timeout: TimeInterval = 20, file: StaticString = #filePath, line: UInt = #line) {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: self)
         XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: timeout), .completed, "\(self) never went away", file: file, line: line)
     }

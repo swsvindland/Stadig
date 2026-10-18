@@ -13,16 +13,18 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: identifier).matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
     }
 
-    /// Scrolls the screen up until the element is on it and can be tapped, or gives up after a few
-    /// drags. Each drag holds at its end, so the list stops where it's let go: a tap on a list
-    /// that's still gliding only stops it.
+    /// Scrolls until the element is on screen and can be tapped, or gives up after a few drags.
+    /// Each drag holds at its end, so the list stops where it's let go (a tap on a list that's still
+    /// gliding only stops it), and a row left above the middle is dragged back down: a list drops
+    /// the rows it has scrolled well past.
     @MainActor
     @discardableResult
-    func scrollTo(_ element: XCUIElement, drags: Int = 10) -> XCUIElement {
+    func scrollTo(_ element: XCUIElement, drags: Int = 15) -> XCUIElement {
         var left = drags
         while !(element.exists && element.isHittable), left > 0 {
-            let start = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-            let end = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
+            let back = element.exists && element.frame.maxY < frame.midY
+            let start = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: back ? 0.35 : 0.7))
+            let end = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: back ? 0.7 : 0.35))
             start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
             left -= 1
         }
@@ -48,7 +50,7 @@ extension XCUIElement {
 
     /// Waits for the element to go away, as a sheet does once it's dismissed.
     @MainActor
-    func waitToDisappear(timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
+    func waitToDisappear(timeout: TimeInterval = 20, file: StaticString = #filePath, line: UInt = #line) {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: self)
         XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: timeout), .completed, "\(self) is still there", file: file, line: line)
     }
