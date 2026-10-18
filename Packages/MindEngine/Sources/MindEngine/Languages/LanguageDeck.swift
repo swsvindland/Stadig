@@ -179,24 +179,34 @@ public final class LanguageDeck: @unchecked Sendable {
         }
     }
 
-    /// Sentences whose rarest word falls in `levels`, picked evenly through the range.
+    /// Sentences whose rarest word falls in `levels`, a sample spread across the range by id.
+    /// Each `skip` (a day, a test's own offset) gets a sample of its own.
     public func sentences(levels: ClosedRange<Int>, limit: Int, skip: Int = 0) -> [Sentence] {
+        let offset = Self.sampleOffset(skip)
         switch source {
         case .memory(let all):
             let inRange = all.filter { levels.contains($0.level) }
-            guard !inRange.isEmpty else { return [] }
-            let step = max(1, inRange.count / max(1, limit))
-            return Array(stride(from: skip % step, to: inRange.count, by: step).map { inRange[$0] }.prefix(limit))
+            return Array(inRange.sorted { (Self.sampleOrder($0.id, offset: offset), $0.id) < (Self.sampleOrder($1.id, offset: offset), $1.id) }
+                .prefix(limit))
         case .sqlite(let handle):
             var out: [Sentence] = []
-            // Sampled by id, so repeated tests see different sentences as `skip` moves on.
             Self.query(handle, """
                 SELECT id, jp, en, level, words FROM sentences WHERE level BETWEEN ? AND ?
-                ORDER BY (id * 2654435761 + ?) % 1000003 LIMIT ?
-                """, bind: [levels.lowerBound, levels.upperBound, skip, limit]) { out.append(Self.sentence($0)) }
+                ORDER BY (id * 2654435761 + ?) % 1000003, id LIMIT ?
+                """, bind: [levels.lowerBound, levels.upperBound, offset, limit]) { out.append(Self.sentence($0)) }
             return out
         }
     }
+
+    /// Where a sample starts for a `skip`. Hashed, because adding `skip` itself only turns one
+    /// fixed order a slot a day, and the same few sentences came back for months.
+    static func sampleOffset(_ skip: Int) -> Int {
+        var rng = SeededRandom("sentences", "\(skip)")
+        return Int(rng.next() % 1_000_003)
+    }
+
+    /// A sentence's place in the sample for an offset: the order the catalog query uses.
+    static func sampleOrder(_ id: Int, offset: Int) -> Int { (id &* 2_654_435_761 &+ offset) % 1_000_003 }
 
     // MARK: SQLite
 

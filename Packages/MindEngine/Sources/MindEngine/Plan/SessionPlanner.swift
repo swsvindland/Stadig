@@ -29,7 +29,8 @@ public struct StudyState: Sendable {
         self.reflections = reflections
         self.pieces = pieces.sorted { $0.date < $1.date }
         self.comparisons = comparisons.sorted { $0.date < $1.date }
-        self.lifeModes = lifeModes
+        // Deleted periods travel as tombstones so the delete reaches every app; the engine never sees them.
+        self.lifeModes = lifeModes.live
         self.calendar = calendar
         self.recommendations = recommendations
         self.today = today
@@ -49,6 +50,12 @@ public struct StudyState: Sendable {
     /// Review cards due, across every active course: Focus and Maintenance alike.
     public func due(on day: Day) -> [MemoryCard] {
         cards.values.filter { settings.has($0.domain) && $0.isDue(on: day) }
+    }
+
+    /// The due cards that can be asked: their catalog is installed and their item still exists.
+    /// Counts and warm-up minutes use these, so the plan matches what the reviews can show.
+    public func due(on day: Day, catalogs: Catalogs) -> [MemoryCard] {
+        due(on: day).filter { Subjects.module($0.domain).usable($0.key, catalogs: catalogs) }
     }
 
     /// Whether a Focus course still needs its placement. Maintenance courses keep what's known
@@ -122,17 +129,18 @@ public struct SessionPlan: Hashable, Sendable {
 public enum SessionPlanner {
     static func reviewSeconds(_ card: MemoryCard) -> Double { Subjects.module(card.domain).reviewSeconds(card) }
 
-    /// The Focus courses studied on a day, from the weekly split.
-    public static func domains(on day: Day, state: StudyState) -> [Domain] {
-        Split.week(starting: day.startOfWeek, settings: state.settings, priorities: priorities(state))[day] ?? []
+    /// The Focus courses studied on a day, from the weekly split. Pass `priorities` when they're
+    /// already worked out; they're computed otherwise.
+    public static func domains(on day: Day, state: StudyState, priorities: Set<Domain>? = nil) -> [Domain] {
+        Split.week(starting: day.startOfWeek, settings: state.settings, priorities: priorities ?? self.priorities(state))[day] ?? []
     }
 
     /// Lagging courses: stalled or slipping at the last check-ins, or named by the hub.
     public static func priorities(_ state: StudyState) -> Set<Domain> {
         var out: Set<Domain> = []
-        for domain in state.settings.focus where Analyst.trajectory(domain, state: state) == .stalled
-            || Analyst.trajectory(domain, state: state) == .regressing {
-            out.insert(domain)
+        for domain in state.settings.focus {
+            let trajectory = Analyst.trajectory(domain, state: state)
+            if trajectory == .stalled || trajectory == .regressing { out.insert(domain) }
         }
         for recommendation in state.recommendations where recommendation.to == .knowledge && recommendation.isActive(at: state.now)
             && recommendation.kind == .prioritise {
@@ -144,7 +152,7 @@ public enum SessionPlanner {
     }
 
     /// Today's session, or nil on a rest or paused day.
-    public static func today(_ state: StudyState, catalogs: Catalogs) -> SessionPlan? {
+    public static func today(_ state: StudyState, catalogs: Catalogs, priorities: Set<Domain>? = nil) -> SessionPlan? {
         if state.phase.isPaused { return nil }
         let placing = state.settings.focus.contains { state.needsPlacement($0, catalogs: catalogs) }
         if state.sessions.isEmpty || placing && state.sessions.allSatisfy({ $0.purpose == .placement }) {
@@ -154,7 +162,7 @@ public enum SessionPlanner {
                                     lastCheckIn: state.lastCheckIn) {
             return plan(.checkIn, domains: state.settings.domains, state: state, catalogs: catalogs)
         }
-        let domains = domains(on: state.today, state: state)
+        let domains = domains(on: state.today, state: state, priorities: priorities)
         guard !domains.isEmpty else { return nil }
         return plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, catalogs: catalogs)
     }
@@ -164,7 +172,7 @@ public enum SessionPlanner {
         let total = minutes ?? (kind == .extra ? 5 : state.settings.schedule.minutes)
         var parts: [PlanPart] = []
         var notes: [String] = []
-        let due = state.due(on: state.today)
+        let due = state.due(on: state.today, catalogs: catalogs)
         let dueSeconds = due.map(reviewSeconds).reduce(0, +)
 
         switch kind {

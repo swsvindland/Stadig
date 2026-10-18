@@ -47,9 +47,9 @@ enum WritingFixtures {
     }
 
     static func piece(_ exercise: WritingExercise, on day: Day, kind: WritingKind = .creative, taskID: String? = nil, words count: Int = 120,
-                      notes: String? = nil, text: String? = nil) -> WritingPiece {
+                      notes: String? = nil, text: String? = nil, id: UUID = UUID()) -> WritingPiece {
         let body = exercise == .franklinNotes ? "" : text ?? words(count, from: "\(exercise)\(day.iso)")
-        return WritingPiece(date: day.date().addingTimeInterval(18 * 3600), exercise: exercise, writingKind: kind, prompt: "Task \(taskID ?? "")",
+        return WritingPiece(id: id, date: day.date().addingTimeInterval(18 * 3600), exercise: exercise, writingKind: kind, prompt: "Task \(taskID ?? "")",
                             text: body, notes: notes, metrics: body.isEmpty ? [:] : WritingCheck.measure(body).dictionary, taskID: taskID)
     }
 
@@ -320,13 +320,16 @@ struct WritingScheduleTests {
         let done = BlindComparison(date: today.date(), older: oldPrompt.id, newer: newPrompt.id, pickedNewer: true)
         #expect(WritingSchedule.pairs(pieces, comparisons: [done], today: today).isEmpty)
 
-        // Over many pairs the newer piece lands first about half the time.
+        // Over many pairs the newer piece lands first about half the time. Fixed ids, so the count is
+        // the same on every run.
+        func id(_ n: Int) -> UUID { UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", n))! }
         let firsts = (0..<200).map { i -> Bool in
-            let a = WritingFixtures.piece(.prompt, on: start), b = WritingFixtures.piece(.prompt, on: start.adding(days: 50 + i % 3))
+            let a = WritingFixtures.piece(.prompt, on: start, id: id(2 * i))
+            let b = WritingFixtures.piece(.prompt, on: start.adding(days: 50 + i % 3), id: id(2 * i + 1))
             let pair = WritingSchedule.pair(a, b)
             return pair.first.id == b.id
         }
-        #expect((70...130).contains(firsts.filter { $0 }.count))
+        #expect((80...120).contains(firsts.filter { $0 }.count), "\(firsts.filter { $0 }.count) of 200")
 
         let benchmarks = [WritingFixtures.piece(.benchmark, on: start, taskID: "benchmark-creative"),
                           WritingFixtures.piece(.benchmark, on: start.adding(days: 84), taskID: "benchmark-creative")]
@@ -475,5 +478,66 @@ struct WritingProgressTests {
                                           tests: [grammar], on: start.adding(days: 30))
         #expect(WritingModule.series(.writing, state: state).map(\.score) == [65])
         #expect(WritingModule.label(.writing, state: state) == "Writing 65")
+    }
+}
+
+extension WritingCheckTests {
+    @Test("etc., et al. and initialisms run on into lower case without a false capital slip; etc. can still end a sentence")
+    func runOnAbbreviations() {
+        let text = "We packed tents, stoves, etc. and drove north. The U.S. and Canada agreed. Smith et al. found it in the Ph.D. thesis."
+        #expect(WritingCheck.slips(text).isEmpty, "\(WritingCheck.slips(text))")
+        #expect(WritingCheck.measure(text).sentences == 3)
+        #expect(WritingCheck.measure("We packed stoves, etc. Then we left.").sentences == 2)
+        #expect(notes("We stopped, etc. then we left.").isEmpty, "a run-on etc. is read as one sentence, as written")
+        #expect(notes("I said no. then we left.").contains { $0.contains("capital") }, "no isn't an abbreviation")
+    }
+}
+
+extension WritingScheduleTests {
+    @Test("Franklin notes whose passage left the library don't hold up grammar or new notes")
+    func orphanedNotes() throws {
+        let notes = WritingFixtures.piece(.franklinNotes, on: day.adding(days: -5), taskID: "retired-passage", notes: "gone")
+        #expect(WritingSchedule.waitingNotes([notes], library: library) == nil)
+        #expect(WritingSchedule.franklinDue([notes], today: day, library: library) == nil)
+        let held = WritingFixtures.piece(.franklinNotes, on: day.adding(days: -5), taskID: "creative-two", notes: "here")
+        #expect(WritingSchedule.franklinDue([notes, held], today: day, library: library)?.id == held.id)
+
+        // With only the orphan, the plan teaches grammar again and the rotation can take new notes.
+        let state = WritingFixtures.state(WritingFixtures.settings(), pieces: [WritingFixtures.piece(.benchmark, on: day.adding(days: -20),
+                                                                                                     taskID: "benchmark-creative"), notes], on: day)
+        var noteTexts: [String] = []
+        let parts = WritingModule.mainParts(.writing, minutes: 20, kind: .regular, state: state, catalogs: WritingFixtures.catalogs, notes: &noteTexts)
+        #expect(parts.contains { $0.kind == .learn }, "\(parts.map(\.title))")
+        #expect(WritingSchedule.task(state, minutes: 8, library: library)?.exercise != .franklinRewrite)
+    }
+
+    @Test("a skill in learning that the bank no longer has doesn't block the next one, in the plan or the session")
+    func retiredSkill() throws {
+        let bank = WritingFixtures.catalogs.writing
+        let now = day.date()
+        let retired = MemoryCard(key: .skill("retired-skill"), recent: [true], introduced: now - 86_400, updatedAt: now - 86_400)
+        let cards = [retired.key: retired]
+        let first = try #require(bank.skills.enumerated().min { ($0.element.level, $0.offset) < ($1.element.level, $1.offset) }?.element)
+        #expect(WritingPlan.next(cards, bank: bank)?.id == first.id)
+        #expect(WritingPlan.candidates(cards, bank: bank).first?.id == first.id)
+
+        let state = StudyState(settings: WritingFixtures.settings(), cards: [retired], today: day, now: now)
+        let plan = SessionPlan(day: day, kind: .regular, minutes: 5, domains: [.writing],
+                               parts: [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "")], headline: "", notes: [],
+                               planned: true)
+        let run = StudyRun(plan: plan, state: state, catalogs: WritingFixtures.catalogs, now: now)
+        guard case .lesson(.skill(let skill)) = run.step else { Issue.record("no lesson: \(String(describing: run.step))"); return }
+        #expect(skill.id == first.id)
+
+        // A skill with a lesson and nothing to ask isn't taught, planned or left in learning, even
+        // once it was started.
+        let empty = WritingSkill(id: "empty", title: "Empty", level: 0, lesson: "", example: "")
+        let thin = Catalogs(writing: WritingBank(skills: [empty] + bank.skills, items: bank.items, library: library))
+        let started = MemoryCard(key: empty.key, recent: [], introduced: now - 86_400, updatedAt: now - 86_400)
+        #expect(WritingPlan.next([:], bank: thin.writing)?.id == first.id && WritingPlan.next([started.key: started], bank: thin.writing)?.id == first.id)
+        let other = StudyRun(plan: plan, state: StudyState(settings: WritingFixtures.settings(), cards: [started], today: day, now: now), catalogs: thin,
+                             now: now)
+        guard case .lesson(.skill(let opening)) = other.step else { Issue.record("the part ended: \(String(describing: other.step))"); return }
+        #expect(opening.id == first.id)
     }
 }

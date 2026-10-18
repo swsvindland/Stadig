@@ -137,6 +137,8 @@ public enum WritingCheck {
     static let abbreviations: Set<String> = ["mr", "mrs", "ms", "dr", "st", "prof", "sr", "jr", "vs", "cf", "e.g", "i.e", "eg", "ie",
                                              "approx", "fig", "vol", "pp", "mt", "rev", "lt", "col", "capt", "sgt", "inc", "ltd",
                                              "dept", "a.m", "p.m"]
+    /// Words that can end a sentence or run on: "etc. and" runs on, "etc. Then" doesn't.
+    static let runOnAbbreviations: Set<String> = ["etc", "al", "viz"]
     static let closers: Set<Character> = ["\"", "”", "’", "'", ")", "]"]
     static let enders: Set<Character> = [".", "!", "?", "…"]
 
@@ -148,8 +150,9 @@ public enum WritingCheck {
     }
 
     /// Sentences split at line breaks and at a full stop, question or exclamation mark followed by
-    /// a space, except after an abbreviation or an initial, after an ellipsis that runs on in lower
-    /// case, and before a lower-case dialogue tag ("Where?" she asked).
+    /// a space, except after an abbreviation or an initial, after "etc.", "et al." or an initialism
+    /// ("U.S.") that runs on in lower case, after an ellipsis that does, and before a lower-case
+    /// dialogue tag ("Where?" she asked).
     static func sentences(_ chars: [Character], tokens: [Token]) -> [Sentence] {
         var bounds: [(Int, Int)] = []
         var start = 0
@@ -184,7 +187,8 @@ public enum WritingCheck {
             let ellipsis = c == "…" || j - i >= 2 && chars[i..<j].allSatisfy { $0 == "." }
             let word = wordBefore(chars, i)
             let initial = word.count == 1 && i > 0 && chars[i - 1].isUppercase
-            let breaks = !(c == "." && (abbreviations.contains(word) || initial)) && !(nextLower && (ellipsis || quoted))
+            let runsOn = c == "." && nextLower && (runOnAbbreviations.contains(word) || word.contains("."))
+            let breaks = !(c == "." && (abbreviations.contains(word) || initial)) && !(nextLower && (ellipsis || quoted)) && !runsOn
             if breaks {
                 bounds.append((start, j))
                 start = k

@@ -562,3 +562,117 @@ import AppKit
 
 func NSImageExists(_ symbol: String) -> Bool { NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil }
 #endif
+
+extension AnswerMatchTests {
+    @Test("numbers heard as digits match the words or kanji they were said as, past the first few")
+    func numbers() {
+        for (digits, words) in [("13", "trece"), ("16", "dieciséis"), ("21", "veintiuno"), ("22", "veintidós"), ("30", "treinta"),
+                                ("31", "treinta y uno"), ("100", "cien"), ("101", "ciento uno"), ("200", "doscientos"), ("555", "quinientos cincuenta y cinco"),
+                                ("1000", "mil"), ("2024", "dos mil veinticuatro"), ("21000", "veintiún mil")] {
+            #expect(AnswerMatch.matches(digits, expected: [words], language: .spanish), "\(digits) for \(words)")
+        }
+        #expect(!AnswerMatch.matches("30", expected: ["treinta y uno"], language: .spanish) && !AnswerMatch.matches("13", expected: ["tres"], language: .spanish))
+        #expect(AnswerMatch.coverage("Tiene 30 años", of: "Tiene treinta años.", words: [], language: .spanish) == 1)
+
+        for (digits, kanji) in [("12人", "十二人"), ("20", "二十"), ("100円", "百円"), ("400", "四百"), ("2024年", "二千二十四年"), ("2024年", "二〇二四年"),
+                                ("15000", "一万五千"), ("３人です", "三人です")] {
+            #expect(AnswerMatch.matches(digits, expected: [kanji], language: .japanese), "\(digits) for \(kanji)")
+        }
+        #expect(!AnswerMatch.matches("11人", expected: ["十二人"], language: .japanese))
+        let twelve = Word(id: 3, language: .japanese, rank: 900, text: "十二", kana: "じゅうに", meaning: "twelve", pos: "other")
+        let people = Word(id: 4, language: .japanese, rank: 100, text: "人", kana: "にん", meaning: "people")
+        #expect(AnswerMatch.coverage("子供が12人", of: "子供が十二人。", words: [twelve, people], language: .japanese) == 1)
+
+        // Big numbers as recognition writes them: digits with 万, and thousands commas.
+        for (heard, kanji) in [("1万円", "一万円"), ("3万5千円", "三万五千円"), ("30,000円", "三万円"), ("1億2000万", "一億二千万")] {
+            #expect(AnswerMatch.normalised(heard, language: .japanese) == AnswerMatch.normalised(kanji, language: .japanese), "\(heard) for \(kanji)")
+        }
+        // A number's own deck words (三, 百) are found in it, typed in kanji or heard as digits.
+        let three = Word(id: 5, language: .japanese, rank: 815, text: "三", kana: "さん", meaning: "three", pos: "number")
+        let hundred = Word(id: 6, language: .japanese, rank: 1341, text: "百", kana: "ひゃく", meaning: "hundred", pos: "number")
+        let yen = Word(id: 7, language: .japanese, rank: 300, text: "円", kana: "えん", meaning: "yen", pos: "noun")
+        for heard in ["三百円です", "300円です"] {
+            #expect(AnswerMatch.coverage(heard, of: "三百円です。", words: [three, hundred, yen], language: .japanese) == 1, "\(heard)")
+        }
+        // A run of numerals too long to add up is compared as written, never traps.
+        let long = String(repeating: "九", count: 25) + "十"
+        #expect(AnswerMatch.normalised(long, language: .japanese) == long && AnswerMatch.matches(long, expected: [long], language: .japanese))
+        #expect(AnswerMatch.normalised(String(repeating: "9", count: 25) + "万", language: .japanese).hasSuffix("万"))
+    }
+}
+
+extension FourSkillsTests {
+    @Test("turning speaking on before it's been tested keeps the three-skill score; only its test changes it")
+    func speakingTurnedOn() {
+        var settings = Fixtures.settings([.spanish])
+        settings.speaking = false
+        var store = Store(settings: settings)
+        let monday = Fixtures.monday
+        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 1200, placement: true, language: .spanish),
+                       result(.listening, bands: [0.8, 0.4], on: monday.adding(days: 1)),
+                       result(.languageReading, bands: [0.9, 0.6], on: monday.adding(days: 1)),
+                       result(.languageWriting, bands: [0.4], on: monday.adding(days: 2))]
+        let before = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 3)))
+        #expect(before.count == 1 && before[0].day == monday.adding(days: 2))
+        store.settings.speaking = true
+        let after = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 3)))
+        #expect(after.map(\.day) == before.map(\.day) && after.map(\.score) == before.map(\.score), "\(after)")
+
+        store.tests.append(result(.speaking, bands: [0.6, 0.3], on: monday.adding(days: 10)))
+        let measured = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 11)))
+        #expect(measured.map(\.day) == [monday.adding(days: 10)], "the four skills from the day all four are in")
+    }
+}
+
+extension LanguageSessionTests {
+    @Test("a new word's retry after a miss, and its first ask after a failed check, aren't the question just answered")
+    func learnRetries() throws {
+        let store = store(known: 0, skills: false)
+        let state = store.state(on: Fixtures.monday.adding(days: 1))
+        let plan = SessionPlan(day: state.today, kind: .regular, minutes: 5, domains: [.spanish],
+                               parts: [PlanPart(kind: .learn, domain: .spanish, minutes: 5, title: "New Spanish", detail: "", items: 1)],
+                               headline: "", notes: [], planned: true)
+        var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
+        var now = state.now
+        func miss(_ question: Question) {
+            now += 5
+            run.choose((question.correctChoice! + 1) % question.choices.count, now: now)
+            now += 1
+            run.next(now: now)
+        }
+        // Below the placement level: checked first.
+        guard case .question(let probe) = run.step, probe.kind == .probe else { Issue.record("no check: \(String(describing: run.step))"); return }
+        miss(probe)
+        guard case .lesson = run.step else { Issue.record("not taught after the miss"); return }
+        now += 20
+        run.next(now: now)
+        guard case .question(let first) = run.step, first.key == probe.key else { Issue.record("not asked after the lesson"); return }
+        #expect(first.id != probe.id)
+        miss(first)
+        guard case .question(let retry) = run.step, retry.key == first.key else { Issue.record("not asked again"); return }
+        #expect(retry.id != first.id)
+    }
+}
+
+extension LanguageContentTests {
+    @Test("a dialogue line's wrong options never mean the same, or say what would count for it")
+    func dialogueOptions() {
+        for language in Language.allCases {
+            let all = Dialogues.dialogues(language)
+            let lines = all.flatMap(\.lines)
+            for dialogue in all {
+                for line in dialogue.lines {
+                    let options = PracticeRunner.wrongOptions(for: line, in: lines, language: language)
+                    #expect(!options.contains { Question.normalised($0.english) == Question.normalised(line.english) }, "\(dialogue.id): \(line.english)")
+                    #expect(!options.contains { AnswerMatch.matches($0.text, expected: line.expected, language: language) }, "\(dialogue.id): \(line.text)")
+                    #expect(options.filter { $0.speaker == line.speaker }.count >= 3, "\(dialogue.id): enough left to choose from")
+                }
+            }
+        }
+        let thanks = Dialogues.dialogues(.japanese).flatMap(\.lines).first { $0.text == "ありがとうございます。" }
+        if let thanks {
+            #expect(!PracticeRunner.wrongOptions(for: thanks, in: Dialogues.dialogues(.japanese).flatMap(\.lines), language: .japanese)
+                .contains { $0.text == "ありがとうございました。" })
+        }
+    }
+}

@@ -24,12 +24,13 @@ enum WritingModule: SubjectModule {
             return [PlanPart(kind: .practice, domain: .writing, minutes: minutes, title: "Writing practice", detail: "Mixed items from what you've learned")]
         }
         let bank = catalogs.writing
-        if WritingSchedule.lastBenchmark(state.pieces) == nil, WritingSchedule.franklinDue(state.pieces, today: state.today) == nil,
+        let franklinDue = WritingSchedule.franklinDue(state.pieces, today: state.today, library: bank.library)
+        if WritingSchedule.lastBenchmark(state.pieces) == nil, franklinDue == nil,
            let task = WritingSchedule.benchmarkTask(state, library: bank.library) {
             notes.append("Writing starts with a benchmark piece: the same prompt comes back each term, so you can see how your writing changes.")
             return [benchmarkPart(task)]
         }
-        let grammar = WritingSchedule.franklinDue(state.pieces, today: state.today) == nil ? WritingPlan.next(state.cards, bank: bank) : nil
+        let grammar = franklinDue == nil ? WritingPlan.next(state.cards, bank: bank) : nil
         if let skill = grammar, minutes >= 16 {
             return [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "Next: \(skill.title)"),
                     composePart(state, minutes: minutes - 5, bank: bank)]

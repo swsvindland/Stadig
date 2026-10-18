@@ -54,6 +54,10 @@ public struct StudyRun: Sendable {
     private var budgets: [Double]
     private(set) var partSeconds = 0.0
     private var partAttemptStart = 0
+    /// A planned part was skipped before its time was up: the plan didn't run its course.
+    private var skippedPart = false
+    /// Extra practice comes once a run, so its reviews never repeat in rounds.
+    private var addedExtraPractice = false
     private(set) var stepShownAt = 0.0
     private(set) var lastNow: Date
     private(set) var asked = 0
@@ -96,8 +100,9 @@ public struct StudyRun: Sendable {
     /// Attempts since this part began.
     var partAttempts: [Attempt] { Array(session.attempts[min(partAttemptStart, session.attempts.count)...]) }
     var now: Date { lastNow }
-    /// Words up to here are checked rather than taught in a language.
-    func frontier(_ language: Language) -> Int { LanguagePlan.frontier(tests, language) }
+    /// Words up to here are checked rather than taught in a language. A placement earlier in this
+    /// run counts, so the first session's new words start above the level it just measured.
+    func frontier(_ language: Language) -> Int { LanguagePlan.frontier(tests + newTests, language) }
 
     // MARK: Driving it
 
@@ -152,6 +157,8 @@ public struct StudyRun: Sendable {
         tick(now: now)
         feedback = nil
         guard partIndex < runners.count else { return }
+        // A part that has used its time is over, not skipped; extra practice was never planned.
+        if partIndex < plan.parts.count && partSeconds < budget { skippedPart = true }
         finishPart()
         partIndex += 1
         partSeconds = 0
@@ -267,6 +274,8 @@ public struct StudyRun: Sendable {
             partIndex += 1
             partSeconds = 0
             partAttemptStart = session.attempts.count
+            // The plan is done once its own parts are: ending during extra practice still counts.
+            if partIndex == plan.parts.count { session.ranToEnd = !skippedPart }
             if partIndex < runners.count {
                 budgets[partIndex] += leftover
             } else if leftover >= 120 {
@@ -274,7 +283,8 @@ public struct StudyRun: Sendable {
             }
         }
         // Everything planned ran its course: the session counts in full, whatever the clock says.
-        session.ranToEnd = true
+        // With a part skipped it counts only on the time it took.
+        session.ranToEnd = !skippedPart
         return nil
     }
 
@@ -286,13 +296,18 @@ public struct StudyRun: Sendable {
     }
 
     /// Time left once the plan is done goes to reviews ahead of schedule in the session's
-    /// courses, so a 25-minute block stays one, unless there's nothing to review.
+    /// courses, so a 25-minute block stays one, unless there's nothing to review. Cards answered
+    /// or learned today stay out: a second review the same day would undo a miss's return
+    /// tomorrow and stretch the rest for nothing.
     private mutating func addExtraPractice(seconds: Double) {
-        guard plan.kind == .regular || plan.kind == .review || plan.kind == .placement else { return }
+        guard !addedExtraPractice, plan.kind == .regular || plan.kind == .review || plan.kind == .placement else { return }
         let domains = Set(plan.domains.filter { $0 != .reading })
-        let ahead = cards.values.filter { domains.contains($0.domain) && $0.memory != nil && !$0.isDue(on: today) && usable($0.key) }
-            .sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
+        let ahead = cards.values.filter { card in
+            guard domains.contains(card.domain), let memory = card.memory, !changedCards.contains(card.key) else { return false }
+            return Day(memory.lastReview) != today && !card.isDue(on: today) && usable(card.key)
+        }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
         guard !ahead.isEmpty else { return }
+        addedExtraPractice = true
         planParts.append(PlanPart(kind: .reviews, minutes: Int((seconds / 60).rounded()), title: "Extra practice",
                                   detail: "Reviews ahead of schedule"))
         budgets.append(seconds)

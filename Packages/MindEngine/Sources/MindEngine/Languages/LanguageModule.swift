@@ -125,9 +125,7 @@ enum LanguageModule: SubjectModule {
         let seed = state.today.iso
         switch part.kind {
         case .learn:
-            let items = LanguagePlan.next(count: part.items, cards: Set(state.cards.keys), deck: deck, readsKana: state.settings.readsKana,
-                                          frontier: frontier)
-            return LearnRunner(language: language, fresh: items)
+            return LearnRunner(language: language, count: part.items)
         case .sentences:
             return PracticeRunner(language: language, state: state, deck: deck, frontier: frontier)
         case .placement:
@@ -182,8 +180,14 @@ enum LanguageModule: SubjectModule {
         let skills = LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain)
         let tests = state.tests.filter { $0.domain == domain }
         let days = Set(tests.filter { LanguageSkills.skill($0.test) != nil }.map(\.day)).sorted()
-        let measured: [(day: Day, score: Double)] = days.compactMap { day in
-            LanguageSkills.score(LanguageSkills.levels(domain, tests: tests, on: day), skills: skills).map { (day, $0) }
+        func scored(_ skills: [LanguageSkill]) -> [(day: Day, score: Double)] {
+            days.compactMap { day in LanguageSkills.score(LanguageSkills.levels(domain, tests: tests, on: day), skills: skills).map { (day, $0) } }
+        }
+        var measured = scored(skills)
+        // Speaking just turned on and not tested yet: the three-skill score stands until it is,
+        // rather than a settings switch dropping the reading back to vocabulary.
+        if measured.isEmpty, skills.contains(.speaking), !tests.contains(where: { $0.test == .speaking }) {
+            measured = scored(skills.filter { $0 != .speaking })
         }
         if !measured.isEmpty { return measured }
         return tests.filter { $0.test == .vocabulary }.map { ($0.day, LanguageTests.vocabularyScore($0.score)) }

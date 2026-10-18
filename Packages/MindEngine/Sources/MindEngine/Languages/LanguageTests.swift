@@ -144,7 +144,7 @@ public enum LanguageTests {
     public static func reading(deck: LanguageDeck, seed: String, offset: Int) -> [Question] {
         var questions: [Question] = []
         for (band, levels) in listeningLevels.enumerated() {
-            // Offset from the listening test's sentences, so the two don't share any on a day.
+            // A sample of its own, so it mostly asks other sentences than the listening test that day.
             let pool = deck.sentences(levels: levels, limit: 24, skip: offset + 11)
             guard pool.count >= 4 else { continue }
             for sentence in pool.suffix(2) {

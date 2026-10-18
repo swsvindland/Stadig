@@ -24,8 +24,17 @@ protocol SubjectModule {
     static func reviewSeconds(_ card: MemoryCard) -> Double
     /// The course's 0–100 reading from its tests, oldest first. Only tests and real outcomes.
     static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)]
+    /// The last `count` points of `series`, for a trend. A subject whose series is costly to work
+    /// out computes only those.
+    static func recent(_ domain: Domain, state: StudyState, count: Int) -> [(day: Day, score: Double)]
     /// A few words for the stat card: "Japanese ~1,400 words".
     static func label(_ domain: Domain, state: StudyState) -> String
+}
+
+extension SubjectModule {
+    static func recent(_ domain: Domain, state: StudyState, count: Int) -> [(day: Day, score: Double)] {
+        Array(series(domain, state: state).suffix(count))
+    }
 }
 
 enum Subjects {
@@ -42,17 +51,19 @@ enum Subjects {
     static func runner(for part: PlanPart, state: StudyState, catalogs: Catalogs) -> any PartRunner {
         switch part.kind {
         case .reviews:
-            let due = state.due(on: state.today).filter { module($0.domain).usable($0.key, catalogs: catalogs) }
+            let due = state.due(on: state.today, catalogs: catalogs)
             // Most forgotten first; ties in key order, so a session is the same on every run.
             func retrievability(_ card: MemoryCard) -> Double {
                 card.memory.map { Scheduler.retrievability($0, at: state.today.date()) } ?? 0
             }
             return ReviewsRunner(queue: due.sorted { (retrievability($0), $0.key) < (retrievability($1), $1.key) }.map(\.key))
         case .practice:
-            // Review week: the soonest-due cards of the course, reviewed ahead of schedule.
+            // Review week: the soonest-due cards of the course, reviewed ahead of schedule. As with
+            // extra practice, a card answered today (in an earlier session) keeps its schedule.
             guard let domain = part.domain else { return EmptyRunner() }
-            let ahead = state.cards.values.filter {
-                $0.domain == domain && $0.memory != nil && !$0.isDue(on: state.today) && module(domain).usable($0.key, catalogs: catalogs)
+            let ahead = state.cards.values.filter { card in
+                guard card.domain == domain, let memory = card.memory else { return false }
+                return Day(memory.lastReview) != state.today && !card.isDue(on: state.today) && module(domain).usable(card.key, catalogs: catalogs)
             }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
             return ReviewsRunner(queue: Array(ahead.prefix(60)).map(\.key))
         default:

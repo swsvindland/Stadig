@@ -28,11 +28,21 @@ public enum WritingPlan {
         Set(cards.values.filter { $0.domain == .writing && $0.memory != nil }.map(\.key.item))
     }
 
-    /// Skills not yet started, easiest first. Skills have no prerequisites.
-    public static func next(_ cards: [CardKey: MemoryCard], bank: WritingBank) -> WritingSkill? {
-        let learning = cards.values.filter { $0.domain == .writing && $0.learning }.sorted { $0.introduced < $1.introduced }
-        if let current = learning.first, let skill = bank.skill(current.key.item) { return skill }
-        let started = Set(cards.values.filter { $0.domain == .writing }.map(\.key.item))
-        return bank.skills.filter { !started.contains($0.id) }.min { ($0.level, bank.skills.firstIndex(of: $0)!) < ($1.level, bank.skills.firstIndex(of: $1)!) }
+    /// The skill to learn next: the one in learning, else the easiest not yet started.
+    public static func next(_ cards: [CardKey: MemoryCard], bank: WritingBank) -> WritingSkill? { candidates(cards, bank: bank).first }
+
+    /// Skills to learn, in order: those in learning, oldest first, then those not yet started,
+    /// easiest first and in bank order. Skills have no prerequisites. A skill the bank no longer
+    /// has, or has no items for, is left out, so a content update can't hold up the rest or leave
+    /// a lesson with nothing to practise. The plan and the session both take their order from here.
+    public static func candidates(_ cards: [CardKey: MemoryCard], bank: WritingBank) -> [WritingSkill] {
+        let askable = Set(bank.items.map(\.skill))
+        let writing = cards.values.filter { $0.domain == .writing }
+        let learning = writing.filter(\.learning).sorted { ($0.introduced, $0.key) < ($1.introduced, $1.key) }
+            .compactMap { bank.skill($0.key.item) }.filter { askable.contains($0.id) }
+        let started = Set(writing.map(\.key.item))
+        let fresh = bank.skills.enumerated().filter { !started.contains($0.element.id) && askable.contains($0.element.id) }
+            .sorted { ($0.element.level, $0.offset) < ($1.element.level, $1.offset) }.map(\.element)
+        return learning + fresh
     }
 }

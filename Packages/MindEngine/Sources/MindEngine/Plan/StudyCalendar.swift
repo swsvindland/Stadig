@@ -68,7 +68,7 @@ public enum StudyCalendar {
     /// Vacation, illness and crunch mode pause Mind Track (a five-minute review is offered in
     /// crunch, never expected). An injury doesn't touch study.
     public static func pause(on day: Day, lifeModes: [LifeModePeriod]) -> LifeModeKind? {
-        for period in lifeModes where period.contains(day) {
+        for period in lifeModes where period.contains(day) && !period.isDeleted {
             switch period.kind {
             case .vacation, .illness, .crunch: return period.kind
             case .injury: continue

@@ -99,8 +99,10 @@ enum Numeracy {
         case 2:
             switch rng.int(0...2) {
             case 0:
-                let a = rng.int(2...8) * 10 + rng.int(3...9), b = rng.int(4...9)
-                let up = 10 - a % 10
+                // b always takes the sum past the ten, so the second step adds something.
+                let tens = rng.int(2...8), ones = rng.int(3...9)
+                let a = tens * 10 + ones, b = rng.int(max(4, 11 - ones)...9)
+                let up = 10 - ones
                 return .number("$\(a) + \(b)$", a + b, steps: ["Make the ten: $\(a) + \(up) = \(a + up)$, then $+ \(b - up)$ is $\(a + b)$."])
             case 1:
                 let a = rng.int(2...9) * 10 + rng.int(1...5), b = rng.int(6...9)
@@ -114,8 +116,9 @@ enum Numeracy {
             switch rng.int(0...2) {
             case 0:
                 let a = rng.int(21...69), b = rng.int(15...29)
-                return .number("$\(a) + \(b)$", a + b,
-                               steps: ["Tens first: $\(a) + \(b / 10 * 10) = \(a + b / 10 * 10)$.", "Then the ones: $+ \(b % 10)$ is $\(a + b)$."])
+                // A round b has no ones to add.
+                let ones = b % 10 == 0 ? [] : ["Then the ones: $+ \(b % 10)$ is $\(a + b)$."]
+                return .number("$\(a) + \(b)$", a + b, steps: ["Tens first: $\(a) + \(b / 10 * 10) = \(a + b / 10 * 10)$."] + ones)
             case 1:
                 let b = rng.int(17...39), a = b + rng.int(12...45)
                 let round = (b + 9) / 10 * 10
@@ -133,7 +136,8 @@ enum Numeracy {
                                        "Together: $\(a * b)$."])
             }
             let a = rng.int(120...480), b = rng.int(25...79)
-            return .number("$\(a) + \(b)$", a + b, steps: ["$\(a) + \(b / 10 * 10) = \(a + b / 10 * 10)$, then $+ \(b % 10)$ is $\(a + b)$."])
+            let ones = b % 10 == 0 ? "." : ", then $+ \(b % 10)$ is $\(a + b)$."
+            return .number("$\(a) + \(b)$", a + b, steps: ["$\(a) + \(b / 10 * 10) = \(a + b / 10 * 10)$\(ones)"])
         case 5:
             switch rng.int(0...2) {
             case 0:
@@ -178,9 +182,11 @@ enum Numeracy {
                                steps: [#"$\#(a) \times \#(b / 10 * 10) = \#(a * (b / 10 * 10))$ and $\#(a) \times \#(b % 10) = \#(a * (b % 10))$."#,
                                        "Together: $\(a * b)$."])
             }
-            let a = Rational(rng.int(2...19), 10), b = rng.int(3...9)
+            // The digits are kept as typed: a Rational is in lowest terms, so 0.5 is 1/2.
+            let digits = rng.int(2...19), b = rng.int(3...9)
+            let a = Rational(digits, 10)
             return .number(#"$\#(decimal(a)) \times \#(b)$"#, a * Rational(b),
-                           steps: [#"$\#(a.numerator) \times \#(b) = \#(a.numerator * b)$, then one decimal place back: $\#(decimal(a * Rational(b)))$."#])
+                           steps: [#"$\#(digits) \times \#(b) = \#(digits * b)$, then one decimal place back: $\#(decimal(a * Rational(b)))$."#])
         case 8:
             if rng.chance(0.5) {
                 let b = rng.int(3...9), q = rng.int(21...98)
@@ -192,9 +198,10 @@ enum Numeracy {
             return .number("$\(a)^{2}$", a * a, steps: [#"$\#(a)^{2} = \#(a) \times \#(a) = \#(a * a)$."#])
         case 9:
             if rng.chance(0.5) {
-                let a = Rational(rng.int(2...15), 10), b = Rational(rng.int(2...9), 10)
+                let aDigits = rng.int(2...15), bDigits = rng.int(2...9)
+                let a = Rational(aDigits, 10), b = Rational(bDigits, 10)
                 return .number(#"$\#(decimal(a)) \times \#(decimal(b))$"#, a * b,
-                               steps: [#"$\#(a.numerator * (a.denominator == 10 ? 1 : 10)) \times \#(b.numerator) = \#((a * b * Rational(100)).numerator)$, then two decimal places back: $\#(decimal(a * b))$."#])
+                               steps: [#"$\#(aDigits) \times \#(bDigits) = \#(aDigits * bDigits)$, then two decimal places back: $\#(decimal(a * b))$."#])
             }
             let a = rng.int(213...789), b = rng.int(3...9)
             return .number(#"$\#(a) \times \#(b)$"#, a * b,
@@ -212,10 +219,10 @@ enum Numeracy {
                 let a = rng.int(213...489), b = rng.int(150...420)
                 return .number("$1000 - \(a) - \(b)$", 1000 - a - b, steps: ["$\(a) + \(b) = \(a + b)$, and $1000 - \(a + b) = \(1000 - a - b)$."])
             default:
-                let b = Rational(rng.int(2...9), 10), q = rng.int(3...12)
-                let a = b * Rational(q)
+                let bDigits = rng.int(2...9), q = rng.int(3...12)
+                let b = Rational(bDigits, 10), a = b * Rational(q)
                 return .number(#"$\#(decimal(a)) \div \#(decimal(b))$"#, q,
-                               steps: [#"Times both by 10: $\#(decimal(a * Rational(10))) \div \#(b.numerator) = \#(q)$."#])
+                               steps: [#"Times both by 10: $\#(decimal(a * Rational(10))) \div \#(bDigits) = \#(q)$."#])
             }
         }
     }

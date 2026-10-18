@@ -218,6 +218,27 @@ public struct StudySession: Hashable, Codable, Sendable, Identifiable {
         guard finished else { return false }
         return ranToEnd || purpose == .checkIn || purpose == .placement || minutes >= Double(plannedMinutes) * 0.6
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id, purpose, start, end, plannedMinutes, domains, planned, attempts, reading, activeSeconds, ranToEnd, updatedAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        purpose = try c.decode(StudyKind.self, forKey: .purpose)
+        start = try c.decode(Date.self, forKey: .start)
+        end = try c.decodeIfPresent(Date.self, forKey: .end)
+        plannedMinutes = try c.decode(Int.self, forKey: .plannedMinutes)
+        // A course from a newer version on another device is left out rather than losing the session.
+        domains = try c.decode([String].self, forKey: .domains).compactMap(Domain.init(rawValue:))
+        planned = try c.decode(Bool.self, forKey: .planned)
+        attempts = try c.decode([Attempt].self, forKey: .attempts)
+        reading = try c.decodeIfPresent(ReadingLog.self, forKey: .reading)
+        activeSeconds = try c.decode(Double.self, forKey: .activeSeconds)
+        ranToEnd = try c.decode(Bool.self, forKey: .ranToEnd)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+    }
 }
 
 /// The honest measures. Tests measure and never schedule, and only these move a stat.

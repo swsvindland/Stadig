@@ -87,3 +87,67 @@ struct CourseTests {
         #expect(plan.parts.first { $0.kind == .learn }?.detail.contains("isn't installed") == true)
     }
 }
+
+extension CourseTests {
+    @Test("settings from a newer version decode: unknown courses, strands, kinds and genres are kept aside and written back")
+    func newerSettings() throws {
+        let json = #"{"id":"00000000-0000-0000-0000-00000000317D","courses":{"japanese":"focus","piano":"focus","maths":"paused","reading":"maintenance"},"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"mathsStrands":["numeracy","geometry","classic"],"writingKinds":["poetry","practical"],"genres":["fantasy","romance"],"updatedAt":0}"#
+        let settings = try JSONDecoder().decode(MindSettings.self, from: Data(json.utf8))
+        #expect(settings.courses == [.japanese: .focus, .reading: .maintenance])
+        #expect(settings.mathsStrands == [.numeracy, .classic] && settings.writingKinds == [.practical] && settings.genres == [.fantasy])
+
+        // Saving here (after a change) keeps what this version can't read.
+        var edited = settings
+        edited.speaking = false
+        let written = try JSONSerialization.jsonObject(with: JSONEncoder().encode(edited)) as? [String: Any]
+        let courses = try #require(written?["courses"] as? [String: String])
+        #expect(courses == ["japanese": "focus", "piano": "focus", "maths": "paused", "reading": "maintenance"])
+        #expect(written?["mathsStrands"] as? [String] == ["numeracy", "classic", "geometry"])
+        #expect(written?["writingKinds"] as? [String] == ["practical", "poetry"])
+        #expect(written?["genres"] as? [String] == ["fantasy", "romance"])
+        let again = try JSONDecoder().decode(MindSettings.self, from: JSONEncoder().encode(edited))
+        #expect(again == edited)
+    }
+
+    @Test("a first-version record with a subject listed twice migrates instead of trapping")
+    func duplicateOldDomains() throws {
+        let json = #"{"domains":["japanese","maths","japanese","piano"],"updatedAt":0}"#
+        let settings = try JSONDecoder().decode(MindSettings.self, from: Data(json.utf8))
+        #expect(settings.courses == [.japanese: .focus, .maths: .focus])
+    }
+
+    @Test("a session from a newer version keeps the courses this version knows")
+    func newerSession() throws {
+        let session = StudySession(purpose: .regular, start: monday.date(), end: monday.date() + 1500, plannedMinutes: 25, domains: [.japanese, .maths],
+                                   planned: true, activeSeconds: 1500, ranToEnd: true, updatedAt: monday.date())
+        var object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(session)) as? [String: Any])
+        #expect(try JSONDecoder().decode(StudySession.self, from: JSONEncoder().encode(session)) == session)
+        object["domains"] = ["japanese", "piano", "maths"]
+        let decoded = try JSONDecoder().decode(StudySession.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(decoded.domains == [.japanese, .maths] && decoded.counts && decoded.id == session.id)
+    }
+
+    @Test("a schedule change keeps the old one for the days before it, and settings without one read back with none")
+    func scheduleHistory() throws {
+        var settings = Fixtures.settings(days: 3)
+        let change = monday.adding(days: 30)
+        settings.schedule = StudySchedule(daysPerWeek: 4)
+        settings.recordScheduleChange(from: StudySchedule(daysPerWeek: 3), on: change)
+        // A second change the same day: the days before still had three.
+        settings.schedule = StudySchedule(daysPerWeek: 5)
+        settings.recordScheduleChange(from: StudySchedule(daysPerWeek: 4), on: change)
+        #expect(settings.earlierSchedules == [MindSettings.EarlierSchedule(until: change, schedule: StudySchedule(daysPerWeek: 3))])
+        #expect(settings.schedule(on: change.adding(days: -1)).daysPerWeek == 3 && settings.schedule(on: change).daysPerWeek == 5)
+        let again = try JSONDecoder().decode(MindSettings.self, from: JSONEncoder().encode(settings))
+        #expect(again == settings)
+
+        // Long-gone changes are dropped as new ones come.
+        settings.schedule = StudySchedule(daysPerWeek: 6)
+        settings.recordScheduleChange(from: StudySchedule(daysPerWeek: 5), on: change.adding(days: 60))
+        #expect(settings.earlierSchedules.map(\.until) == [change.adding(days: 60)])
+
+        let old = #"{"courses":{"japanese":"focus"},"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"updatedAt":0}"#
+        let decoded = try JSONDecoder().decode(MindSettings.self, from: Data(old.utf8))
+        #expect(decoded.earlierSchedules.isEmpty && decoded.schedule(on: monday).daysPerWeek == 4)
+    }
+}

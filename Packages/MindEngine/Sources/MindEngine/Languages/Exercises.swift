@@ -129,20 +129,31 @@ struct PracticeRunner: PartRunner {
 
     // MARK: The dialogue
 
+    /// Lines that can stand as wrong answers for `line`: never one with the same English, or one
+    /// that would count as saying it ("ありがとうございました" for "Thank you very much.").
+    static func wrongOptions(for line: Dialogue.Line, in lines: [Dialogue.Line], language: Language) -> [Dialogue.Line] {
+        let english = Question.normalised(line.english)
+        return lines.filter { other in
+            other != line && Question.normalised(other.english) != english
+                && !AnswerMatch.matches(other.text, expected: line.expected, language: language)
+        }
+    }
+
     mutating func dialogueStep(_ dialogue: Dialogue, _ index: Int, run: StudyRun) -> StudyRun.Step {
         let line = dialogue.lines[index]
         var rng = SeededRandom(run.seed, dialogue.id, "\(index)")
         let others = Dialogues.dialogues(language).filter { $0.id != dialogue.id }.shuffled(using: &rng).flatMap(\.lines)
         let id = "\(dialogue.key.raw).\(index).\(run.today.iso)"
+        let options = Self.wrongOptions(for: line, in: dialogue.lines + others, language: language)
         switch line.speaker {
         case .them:
-            let wrong = dialogue.lines.filter { $0 != line }.map(\.english) + others.map(\.english)
+            let wrong = options.map(\.english)
             return .question(.choosing(id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what did they say?",
                                        prompt: .audio(line.text, language), correct: line.english, wrong: wrong.shuffled(using: &rng),
                                        expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
         case .you:
             if muted {
-                let wrong = (dialogue.lines + others).filter { $0.speaker == .you && $0 != line }.map(\.text)
+                let wrong = options.filter { $0.speaker == .you }.map(\.text)
                 return .question(.choosing(id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what would you say?",
                                            prompt: .text("“\(line.english)”"), correct: line.text, wrong: wrong.shuffled(using: &rng),
                                            style: .foreign, expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))

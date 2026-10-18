@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import Testing
 import SystemCore
 @testable import MindEngine
@@ -256,5 +257,144 @@ struct QuickReviewTests {
         let plan = SessionPlanner.plan(.extra, domains: [], state: store.state(on: Fixtures.monday), catalogs: Catalogs(), minutes: 5)
         let part = try #require(plan.parts.first)
         #expect(plan.parts.count == 1 && part.kind == .reviews && part.minutes == 5, "\(plan.parts.map { ($0.kind, $0.minutes) })")
+    }
+}
+
+extension PlanTests {
+    @Test("Discipline judges each day by the schedule in force then: more days a week doesn't rescore the weeks before")
+    func scheduleChange() throws {
+        var store = Store(settings: Fixtures.settings(days: 3))
+        let threeDays = Set(store.settings.schedule.studyDays)
+        #expect(threeDays == [.monday, .wednesday, .friday])
+        for offset in 0...37 where threeDays.contains(monday.adding(days: offset).weekday) {
+            let day = monday.adding(days: offset)
+            store.sessions.append(StudySession(purpose: .regular, start: day.date().addingTimeInterval(64_800), end: day.date().addingTimeInterval(66_300),
+                                               plannedMinutes: 25, domains: [.japanese], planned: true, activeSeconds: 1500))
+        }
+        // On a Wednesday, four days a week from now on.
+        let change = monday.adding(days: 37)
+        let old = store.settings.schedule
+        store.settings.schedule = StudySchedule(daysPerWeek: 4)
+        store.settings.recordScheduleChange(from: old, on: change)
+        let state = store.state(on: change.adding(days: 1))
+        let score = Analyst.discipline(state)
+        #expect(score.rate == 1 && score.planned >= 10, "\(score)")
+        // Tuesday was a rest day then, though it's a study day now.
+        let week = Analyst.week(state)
+        #expect(week.first { $0.day == monday.adding(days: 36) }?.status == .rest, "\(week.map(\.status))")
+        #expect(week.first { $0.day == monday.adding(days: 35) }?.status == .done)
+
+        // Without the old schedule, every Tuesday and Thursday before would read as missed.
+        var forgotten = state
+        forgotten.settings.earlierSchedules = []
+        #expect((Analyst.discipline(forgotten).rate ?? 1) < 0.8)
+    }
+
+    @Test("the week shows the days before a schedule change as that schedule had them, as Discipline counts them")
+    func weekAcrossScheduleChange() {
+        var store = Store(settings: Fixtures.settings(days: 3))
+        let old = store.settings.schedule
+        // From the second week's Thursday: Tuesdays and Thursdays.
+        store.settings.schedule = StudySchedule(daysPerWeek: 2, preferredDays: [.tuesday, .thursday])
+        store.settings.recordScheduleChange(from: old, on: monday.adding(days: 10))
+        let state = store.state(on: monday.adding(days: 11))
+        let week = Analyst.week(state)
+        func day(_ offset: Int) -> StudyDay? { week.first { $0.day == monday.adding(days: offset) } }
+        #expect(day(7)?.status == .missed && day(7)?.domains.isEmpty == false, "Monday was a study day then: \(week.map(\.status))")
+        #expect(day(8)?.status == .rest && day(8)?.domains.isEmpty == true, "Tuesday was a rest day then")
+        #expect(day(9)?.status == .missed && day(10)?.status == .missed && day(11)?.status == .rest)
+        // Monday, Wednesday and Friday of the first week, then Monday, Wednesday and Thursday.
+        let discipline = Analyst.discipline(state)
+        #expect(discipline.planned == 6 && discipline.completed == 0, "\(discipline)")
+    }
+
+    @Test("a due card whose word left the catalog isn't counted, planned for or asked")
+    func unusableDueCards() throws {
+        var store = Store(settings: Fixtures.settings([.japanese], days: 7))
+        let now = monday.date()
+        var memory = Scheduler.known(stability: 2, at: now)
+        memory.due = now
+        let gone = MemoryCard(key: .word(999_999), memory: memory, introduced: now)
+        store.cards[gone.key] = gone
+        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.japanese], planned: true)]
+        store.tests = [TestResult(test: .vocabulary, date: now, score: 300, language: .japanese)]
+        let catalogs = Fixtures.catalogs(deck)
+        var state = store.state(on: monday.adding(days: 3))
+        #expect(state.due(on: state.today).count == 1 && state.due(on: state.today, catalogs: catalogs).isEmpty)
+        var analysis = Analyst.analyse(state, catalogs: catalogs)
+        #expect(analysis.dueToday == 0)
+        #expect(analysis.today?.parts.contains { $0.kind == .reviews } == false, "\(analysis.today?.parts.map(\.title) ?? [])")
+
+        let word = try #require(deck.word(100_020))
+        store.cards[word.key] = MemoryCard(key: word.key, memory: memory, introduced: now)
+        state = store.state(on: monday.adding(days: 3))
+        analysis = Analyst.analyse(state, catalogs: catalogs)
+        #expect(analysis.dueToday == 1)
+        #expect(analysis.today?.parts.first { $0.kind == .reviews }?.detail == "1 due: 1 Japanese word")
+    }
+}
+
+extension JapaneseMeasureTests {
+    /// A catalog file with a few thousand sentences, all in one band, as the app's catalogs store them.
+    func sentenceCatalog(count: Int) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: "mind-sentences-\(UUID().uuidString).db")
+        var db: OpaquePointer?
+        try #require(sqlite3_open(url.path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        var sql = """
+            CREATE TABLE words (id INTEGER, rank INTEGER, word TEXT, kana TEXT, kanji TEXT, meaning TEXT, meanings TEXT, pos TEXT, kanji_chars TEXT);
+            CREATE TABLE meta (key TEXT, value TEXT);
+            CREATE TABLE sentences (id INTEGER PRIMARY KEY, jp TEXT, en TEXT, level INTEGER, words TEXT, length INTEGER);
+            INSERT INTO words VALUES (1, 1, 'uno', 'uno', NULL, 'one', 'one', 'number', '');
+            BEGIN;
+            """
+        for i in 1...count {
+            // Ids spread like a real catalog's, with gaps.
+            sql += "INSERT INTO sentences VALUES (\(i * 7 + 1000), 'Frase \(i).', 'Sentence \(i).', \(1 + i % 500), '1', 10);\n"
+        }
+        sql += "COMMIT;"
+        try #require(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+        return url
+    }
+
+    @Test("sentence samples move on from day to day, and the in-memory deck samples like the catalog")
+    func sentenceSamples() throws {
+        let count = 5000
+        let url = try sentenceCatalog(count: count)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let catalog = try #require(LanguageDeck(url: url, language: .spanish))
+        let day = 20_744
+        let first = catalog.sentences(levels: 1...500, limit: 24, skip: day).map(\.id)
+        #expect(first.count == 24)
+        for later in [1, 7, 14, 42, 91] {
+            let next = catalog.sentences(levels: 1...500, limit: 24, skip: day + later).map(\.id)
+            #expect(Set(first).intersection(next).count <= 3, "\(later) days on, \(Set(first).intersection(next).count) of 24 again")
+        }
+        // The reading test's own offset gives it a different sample from listening's.
+        #expect(Set(first).intersection(catalog.sentences(levels: 1...500, limit: 24, skip: day + 11).map(\.id)).count <= 3)
+
+        let sentences = (1...count).map { i in Sentence(id: i * 7 + 1000, text: "Frase \(i).", english: "Sentence \(i).", level: 1 + i % 500, words: [1]) }
+        let memory = LanguageDeck(language: .spanish, words: [Word(id: 1, language: .spanish, rank: 1, text: "uno", kana: "uno", meaning: "one", pos: "number")],
+                                  sentences: sentences)
+        for skip in [0, day, day + 11] {
+            #expect(memory.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id) == catalog.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id))
+            #expect(memory.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id) == catalog.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id))
+        }
+    }
+
+    @Test("the real catalog, when it's been built: a check-in's tests ask other sentences than the last one's")
+    func realCatalogSamples() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appending(path: "../../../../Apps/MindTrack/Catalogs/japanese.db")
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let deck = try #require(LanguageDeck(url: url))
+        let day = 20_744
+        for levels in LanguageTests.listeningLevels {
+            let now = deck.sentences(levels: levels, limit: 24, skip: day).map(\.id)
+            let later = deck.sentences(levels: levels, limit: 24, skip: day + 49).map(\.id)
+            #expect(Set(now).intersection(later).count <= 4, "\(levels): \(Set(now).intersection(later).count) of 24 again seven weeks on")
+        }
+        let listening = LanguageTests.listening(deck: deck, seed: "t", offset: day).map(\.prompt)
+        let next = LanguageTests.listening(deck: deck, seed: "t", offset: day + 49).map(\.prompt)
+        #expect(Set(listening).intersection(next).count <= 1)
     }
 }

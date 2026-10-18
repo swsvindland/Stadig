@@ -3,9 +3,16 @@ import Foundation
 /// A book's barcode is its ISBN: an EAN-13 starting 978 or 979. Older books print a ten-digit
 /// ISBN, which converts.
 public enum ISBN {
-    /// Thirteen digits for a scanned or typed ISBN with a valid check digit, or nil.
+    /// Thirteen digits for a scanned or typed ISBN with a valid check digit, or nil. Digits typed
+    /// on another keyboard (full-width ９７８) come back as plain ones; anything else that counts as
+    /// a number (½, ①) isn't a digit of an ISBN.
     public static func normalize(_ raw: String) -> String? {
-        let characters = raw.uppercased().filter { $0.isNumber || $0 == "X" }
+        let characters = String(raw.uppercased().compactMap { character -> Character? in
+            if character == "X" { return "X" }
+            guard character.unicodeScalars.count == 1, character.unicodeScalars.first?.properties.numericType == .decimal,
+                  let value = character.wholeNumberValue else { return nil }
+            return Character(String(value))
+        })
         if characters.count == 13, characters.allSatisfy(\.isNumber), characters.hasPrefix("978") || characters.hasPrefix("979"),
            checkDigit13(String(characters.prefix(12))) == characters.last?.wholeNumberValue {
             return characters
@@ -68,6 +75,13 @@ public enum OpenLibrary {
                         fetchedAt: now, updatedAt: now)
     }
 
+    /// One entry of a list that reads as nil when it doesn't parse, so one odd record in a reply
+    /// doesn't lose the rest.
+    struct Lenient<T: Decodable>: Decodable {
+        var value: T?
+        init(from decoder: Decoder) throws { value = try? T(from: decoder) }
+    }
+
     private struct Search: Decodable {
         struct Doc: Decodable {
             var title: String?
@@ -78,13 +92,13 @@ public enum OpenLibrary {
             var subject: [String]?
             var cover_i: Int?
         }
-        var docs: [Doc]
+        var docs: [Lenient<Doc>]
     }
 
     public static func parseSearch(_ data: Data, now: Date = Date()) -> [BookMeta] {
         guard let search = try? JSONDecoder().decode(Search.self, from: data) else { return [] }
         return search.docs.compactMap { doc in
-            guard let title = doc.title, !title.isEmpty else { return nil }
+            guard let doc = doc.value, let title = doc.title, !title.isEmpty else { return nil }
             let isbns = (doc.isbn ?? []).compactMap(ISBN.normalize)
             return BookMeta(isbn: isbns.first { $0.hasPrefix("978") } ?? isbns.first, title: title,
                             author: doc.author_name?.first ?? "", pages: doc.number_of_pages_median, year: doc.first_publish_year,
@@ -132,19 +146,20 @@ public enum GoogleBooks {
                 var pageCount: Int?
                 var categories: [String]?
                 var imageLinks: [String: String]?
-                var industryIdentifiers: [Identifier]?
+                /// One without a value loses only itself, not the book.
+                var industryIdentifiers: [OpenLibrary.Lenient<Identifier>]?
             }
             var volumeInfo: Info
         }
-        var items: [Item]?
+        var items: [OpenLibrary.Lenient<Item>]?
     }
 
     public static func parse(_ data: Data, now: Date = Date()) -> [BookMeta] {
         guard let volumes = try? JSONDecoder().decode(Volumes.self, from: data) else { return [] }
         return (volumes.items ?? []).compactMap { item in
-            let info = item.volumeInfo
+            guard let info = item.value?.volumeInfo else { return nil }
             guard let title = info.title, !title.isEmpty else { return nil }
-            let isbn = (info.industryIdentifiers ?? []).sorted { $0.type == "ISBN_13" && $1.type != "ISBN_13" }
+            let isbn = (info.industryIdentifiers ?? []).compactMap(\.value).sorted { $0.type == "ISBN_13" && $1.type != "ISBN_13" }
                 .lazy.compactMap { ISBN.normalize($0.identifier) }.first
             // Covers come over http; the https address is the same image.
             let cover = (info.imageLinks?["thumbnail"] ?? info.imageLinks?["smallThumbnail"])?.replacingOccurrences(of: "http://", with: "https://")

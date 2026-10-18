@@ -34,16 +34,18 @@ public enum WritingSchedule {
 
     // MARK: The Franklin method
 
-    /// Notes taken and not yet rewritten, the oldest first.
-    public static func waitingNotes(_ pieces: [WritingPiece]) -> WritingPiece? {
+    /// Notes taken and not yet rewritten, the oldest first. Notes whose passage has left the
+    /// library can never be rewritten, so they don't wait (and hold up grammar and new notes).
+    public static func waitingNotes(_ pieces: [WritingPiece], library: WritingLibrary = .standard) -> WritingPiece? {
         pieces.filter { $0.exercise == .franklinNotes }.sorted { $0.date < $1.date }.first { notes in
             !pieces.contains { $0.exercise == .franklinRewrite && $0.taskID == notes.taskID && $0.date > notes.date }
+                && original(of: notes, library: library) != nil
         }
     }
 
     /// Notes ready to be rewritten today.
-    public static func franklinDue(_ pieces: [WritingPiece], today: Day) -> WritingPiece? {
-        waitingNotes(pieces).flatMap { $0.day.days(until: today) >= franklinGap ? $0 : nil }
+    public static func franklinDue(_ pieces: [WritingPiece], today: Day, library: WritingLibrary = .standard) -> WritingPiece? {
+        waitingNotes(pieces, library: library).flatMap { $0.day.days(until: today) >= franklinGap ? $0 : nil }
     }
 
     /// The passage notes were taken on: the person's own page, or the library's.
@@ -64,7 +66,8 @@ public enum WritingSchedule {
     /// The writing task for a session's composition part: a waiting Franklin rewrite, or the next
     /// exercise in the rotation.
     public static func task(_ state: StudyState, minutes: Int, library: WritingLibrary) -> WritingTask? {
-        if let notes = franklinDue(state.pieces, today: state.today), let task = rewriteTask(notes, minutes: minutes, library: library) {
+        if let notes = franklinDue(state.pieces, today: state.today, library: library),
+           let task = rewriteTask(notes, minutes: minutes, library: library) {
             return task
         }
         return nextExercise(state, minutes: minutes, library: library)
@@ -76,7 +79,7 @@ public enum WritingSchedule {
         let kinds = kinds(state.settings)
         let rotating: Set<WritingExercise> = [.prompt, .sceneRewrite, .practical, .argument, .franklinNotes]
         let done = state.pieces.filter { rotating.contains($0.exercise) }.count
-        let waiting = waitingNotes(state.pieces) != nil
+        let waiting = waitingNotes(state.pieces, library: library) != nil
         for step in 0..<(kinds.count * 4) {
             let n = done + step
             let kind = kinds[n % kinds.count]

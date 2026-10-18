@@ -89,15 +89,17 @@ extension MathTopic {
 public enum Analyst {
     public static func analyse(_ state: StudyState, catalogs: Catalogs) -> MindAnalysis {
         let phase = state.phase
-        let plan = SessionPlanner.today(state, catalogs: catalogs)
+        // Each course's trend is worked out once: the plan and the week both need it.
+        let priorities = SessionPlanner.priorities(state)
+        let plan = SessionPlanner.today(state, catalogs: catalogs, priorities: priorities)
         let doneToday = state.sessions.filter { $0.day == state.today && $0.finished }
         let todayDone = doneToday.contains { $0.planned && $0.counts }
-        let due = state.due(on: state.today)
+        let due = state.due(on: state.today, catalogs: catalogs)
         let discipline = discipline(state)
         let maths = mathsSummary(state)
         let writing = writingSummary(state, catalogs: catalogs)
         let reading = readingSummary(state)
-        var analysis = MindAnalysis(phase: phase, today: todayDone ? nil : plan, doneToday: doneToday, week: week(state),
+        var analysis = MindAnalysis(phase: phase, today: todayDone ? nil : plan, doneToday: doneToday, week: week(state, priorities: priorities),
                                     dueToday: due.count, actions: [], stats: stats(state), discipline: discipline,
                                     learned: learned(state, maths: maths, writing: writing, reading: reading),
                                     languages: state.settings.languages.map { languageSummary($0, state: state) },
@@ -116,7 +118,7 @@ public enum Analyst {
 
     /// Compares the last two readings: up, flat or down.
     public static func trajectory(_ domain: Domain, state: StudyState) -> Trajectory {
-        let points = series(domain, state: state)
+        let points = Subjects.module(domain).recent(domain, state: state, count: 2)
         guard points.count >= 2 else { return .notEnoughData }
         let change = points[points.count - 1].score - points[points.count - 2].score
         if change > 8 { return .ahead }
@@ -160,12 +162,12 @@ public enum Analyst {
     // MARK: Discipline
 
     /// Planned study days in the last four weeks with a session that counted. Rest days, paused
-    /// days and days before starting aren't counted; today counts only once it's done.
+    /// days and days before starting aren't counted; today counts only once it's done. Each day is
+    /// judged by the schedule in force then, so changing the days doesn't rescore the weeks before.
     public static func discipline(_ state: StudyState) -> DisciplineScore {
         let window = Discipline.window(ending: state.today)
         var items: [AdherenceItem] = []
-        let studyDays = Set(state.settings.schedule.studyDays)
-        for day in window.days where day >= state.start && studyDays.contains(day.weekday) {
+        for day in window.days where day >= state.start && state.settings.schedule(on: day).studyDays.contains(day.weekday) {
             guard StudyCalendar.pause(on: day, lifeModes: state.lifeModes) == nil else { continue }
             let done = state.sessions.contains { $0.day == day && $0.planned && $0.counts }
             if day == state.today && !done { continue }
@@ -176,12 +178,23 @@ public enum Analyst {
 
     // MARK: The week
 
-    static func week(_ state: StudyState) -> [StudyDay] {
+    /// The days before today show the split of the schedule in force then, as Discipline judges
+    /// them: a day that was a rest day wasn't missed, and one that was a study day was.
+    static func week(_ state: StudyState, priorities: Set<Domain>? = nil) -> [StudyDay] {
         let monday = state.today.startOfWeek
-        let split = Split.week(starting: monday, settings: state.settings, priorities: SessionPlanner.priorities(state))
+        let priorities = priorities ?? SessionPlanner.priorities(state)
+        var splits: [StudySchedule: [Day: [Domain]]] = [:]
+        func split(_ schedule: StudySchedule) -> [Day: [Domain]] {
+            if let known = splits[schedule] { return known }
+            var settings = state.settings
+            settings.schedule = schedule
+            let split = Split.week(starting: monday, settings: settings, priorities: priorities)
+            splits[schedule] = split
+            return split
+        }
         return (0..<7).map { offset in
             let day = monday.adding(days: offset)
-            let domains = split[day] ?? []
+            let domains = split(day < state.today ? state.settings.schedule(on: day) : state.settings.schedule)[day] ?? []
             let done = state.sessions.contains { $0.day == day && $0.planned && $0.counts }
             let status: StudyDay.Status
             if StudyCalendar.pause(on: day, lifeModes: state.lifeModes) != nil { status = .paused }

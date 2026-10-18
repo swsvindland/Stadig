@@ -574,3 +574,98 @@ struct ReadingTests {
         }
     }
 }
+
+extension ReadingTests {
+    /// A reader placed on Monday with no book on the go, on Tuesday's reading day.
+    func readingDay() -> (store: Store, state: StudyState) {
+        var store = Store(settings: Fixtures.settings([.reading], days: 7))
+        store.tests = [TestResult(test: .readingTest, date: Fixtures.monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
+        store.sessions = [StudySession(purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
+                                       domains: [.reading], planned: true)]
+        return (store, store.state(on: Fixtures.monday.adding(days: 1)))
+    }
+
+    @Test("'Not today' with no book on the go isn't the day's session done")
+    func notToday() throws {
+        var (store, state) = readingDay()
+        let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
+        var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
+        guard case .pickBook = run.step else { Issue.record("no book to pick: \(String(describing: run.step))"); return }
+        run.skipPart(now: state.now + 5)
+        #expect(run.isComplete)
+        run.finish(now: state.now + 8)
+        #expect(!run.session.ranToEnd && !run.session.counts)
+        store.save(run)
+        let after = store.state(on: state.today.adding(days: 1))
+        let discipline = Analyst.discipline(after)
+        #expect(discipline.planned == 2 && discipline.completed == 1, "\(discipline)")
+        #expect(Analyst.week(after).first { $0.day == state.today }?.status == .missed)
+    }
+
+    @Test("a second pick, page or reflection is ignored once the reading has moved on")
+    func repeatedTaps() throws {
+        let (_, state) = readingDay()
+        let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
+        var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
+        guard case .pickBook(let books) = run.step, let ladderBook = books.first else { Issue.record("no book to pick"); return }
+        run.pickBook(ladderBook, now: state.now + 5)
+        guard case .read(let book, let minutes) = run.step else { Issue.record("not reading"); return }
+        run.pickBook(books.last ?? ladderBook, now: state.now + 6)
+        #expect(run.books.filter { $0.status == .reading }.count == 1 && run.changedBooks == [book.id], "one book on the go")
+        guard case .read(let still, _) = run.step else { Issue.record("not reading"); return }
+        #expect(still.id == book.id)
+
+        let end = state.now + Double(minutes) * 60
+        run.finishReading(page: 30, finished: false, feel: nil, minutes: Double(minutes), focus: .held, now: end)
+        guard case .reflect = run.step else { Issue.record("no reflection"); return }
+        run.finishReading(page: 30, finished: false, feel: nil, minutes: Double(minutes), focus: .held, now: end + 1)
+        #expect(run.session.reading?.fromPage == 0 && run.session.reading?.toPage == 30, "\(String(describing: run.session.reading))")
+
+        run.reflect("A quiet chapter.", now: end + 30)
+        run.reflect("Saved twice.", now: end + 31)
+        #expect(run.newReflections.map(\.text) == ["A quiet chapter."])
+    }
+}
+
+extension ReadingTests {
+    @Test("an odd record in a lookup reply drops only itself, and ISBNs typed in full-width digits read as plain ones")
+    func untrustedReplies() throws {
+        let google = """
+        {"items": [{"kind": "books#volume"},
+                   {"volumeInfo": {"title": "Odd", "industryIdentifiers": [{"type": "OTHER"}, {"type": "ISBN_13", "identifier": "9780141439518"}]}},
+                   {"volumeInfo": {"title": "The Name of the Wind", "authors": ["Patrick Rothfuss"], "pageCount": 662}}]}
+        """
+        let books = GoogleBooks.parse(Data(google.utf8))
+        #expect(books.map(\.title) == ["Odd", "The Name of the Wind"], "an identifier without a value loses only itself")
+        #expect(books.first?.isbn == "9780141439518")
+        let search = """
+        {"docs": [{"title": "Piranesi", "number_of_pages_median": "many"}, {"title": "Jonathan Strange", "author_name": ["Susanna Clarke"]}]}
+        """
+        #expect(OpenLibrary.parseSearch(Data(search.utf8)).map(\.title) == ["Jonathan Strange"])
+        #expect(OpenLibrary.parseISBN(Data(#"{"ISBN:9780141439518": {"authors": []}}"#.utf8), isbn: "9780141439518") == nil)
+
+        #expect(ISBN.normalize("９７８０１４１４３９５１８") == "9780141439518")
+        #expect(ISBN.normalize("978-0-14-143951-8") == "9780141439518")
+        #expect(ISBN.normalize("978014143951½8") == "9780141439518", "½ isn't a digit, so it's dropped like a hyphen")
+        #expect(ISBN.normalize("①9780141439518") == "9780141439518")
+        #expect(ISBN.normalize("97801414395１9") == nil, "a wrong check digit, whatever the keyboard")
+    }
+
+    @Test("a trend reads only the last two points, and they're the full series' last two")
+    func recentReadings() {
+        var store = Store(settings: Fixtures.settings([.reading]))
+        store.tests = (0..<4).map { i in
+            TestResult(test: .readingTest, date: Fixtures.monday.adding(days: i * 42).date(), score: 0.8, detail: ["tier": Double(3 + i)])
+        }
+        store.books = (0..<6).map { i in
+            Book(ladderID: "book-\(i)", title: "Book \(i)", author: "A", tier: 4 + i % 3, pages: 300, genres: [], status: .finished,
+                 finished: Fixtures.monday.adding(days: 10 + i * 20), feel: [.easy, .right, .hard][i % 3])
+        }
+        let state = store.state(on: Fixtures.monday.adding(days: 200))
+        let full = ReadingPlan.series(state)
+        let recent = ReadingModule.recent(.reading, state: state, count: 2)
+        #expect(full.count == 10)
+        #expect(recent.map(\.day) == full.suffix(2).map(\.day) && recent.map(\.score) == full.suffix(2).map(\.score))
+        #expect(ReadingPlan.series(state, last: 50).map(\.score) == full.map(\.score))
+    }
+}

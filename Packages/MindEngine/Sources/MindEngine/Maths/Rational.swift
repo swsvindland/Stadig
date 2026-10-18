@@ -14,7 +14,8 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
         self.denominator = abs(denominator) / g
     }
 
-    /// "3/4", "-2", "0.75", "1 1/2", "−5" (a typographic minus), "2.5". Nil for anything else.
+    /// "3/4", "-2", "0.75", "1 1/2", "−5" (a typographic minus), "2.5". Nil for anything else,
+    /// including numbers too big to work with: this reads whatever is typed or pasted.
     public init?(parsing raw: String) {
         var text = raw.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "⁄", with: "/")
             .trimmingCharacters(in: .whitespaces)
@@ -22,19 +23,23 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
         if text.wholeMatch(of: /-?\d{1,3}(,\d{3})+(\.\d+)?/) != nil { text = text.replacingOccurrences(of: ",", with: "") }
         guard !text.isEmpty else { return nil }
         let parts = text.split(separator: " ")
-        if parts.count == 2, let whole = Int(parts[0]), let fraction = Rational(parsing: String(parts[1])), fraction.numerator >= 0 {
-            self = whole < 0 ? Rational(whole) - fraction : Rational(whole) + fraction
+        if parts.count == 2, let whole = Self.integer(parts[0]), let fraction = Rational(parsing: String(parts[1])), fraction.numerator >= 0 {
+            // Composed with checked arithmetic: "1000000000 1/10000000000" would overflow.
+            let (scaled, overflowScaling) = abs(whole).multipliedReportingOverflow(by: fraction.denominator)
+            let (numerator, overflowAdding) = scaled.addingReportingOverflow(fraction.numerator)
+            guard !overflowScaling, !overflowAdding else { return nil }
+            self.init(whole < 0 ? -numerator : numerator, fraction.denominator)
             return
         }
         if let slash = text.firstIndex(of: "/") {
-            guard let n = Int(text[..<slash].trimmingCharacters(in: .whitespaces)),
-                  let d = Int(text[text.index(after: slash)...].trimmingCharacters(in: .whitespaces)), d != 0 else { return nil }
+            guard let n = Self.integer(text[..<slash].trimmingCharacters(in: .whitespaces)),
+                  let d = Self.integer(text[text.index(after: slash)...].trimmingCharacters(in: .whitespaces)), d != 0 else { return nil }
             self.init(n, d)
             return
         }
         if let dot = text.firstIndex(of: ".") {
             let decimals = text[text.index(after: dot)...]
-            guard decimals.count <= 9, decimals.allSatisfy(\.isNumber), let whole = Int(text.replacingOccurrences(of: ".", with: "")) else {
+            guard decimals.count <= 9, decimals.allSatisfy(\.isNumber), let whole = Self.integer(text.replacingOccurrences(of: ".", with: "")) else {
                 return nil
             }
             var scale = 1
@@ -42,8 +47,15 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
             self.init(whole, scale)
             return
         }
-        guard let n = Int(text) else { return nil }
+        guard let n = Self.integer(text) else { return nil }
         self.init(n)
+    }
+
+    /// A whole number that fits. `Int.min` is left out: it has no positive counterpart, so
+    /// lowest terms would trap on it.
+    private static func integer<S: StringProtocol>(_ text: S) -> Int? {
+        guard let value = Int(text), value != .min else { return nil }
+        return value
     }
 
     public var double: Double { Double(numerator) / Double(denominator) }

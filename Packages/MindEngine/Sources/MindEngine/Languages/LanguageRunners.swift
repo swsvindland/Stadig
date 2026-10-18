@@ -12,23 +12,33 @@ struct LearnRunner: PartRunner {
     }
 
     let language: Language
-    var fresh: [LanguagePlan.NewItem]
+    /// New items the part asks for.
+    let count: Int
+    /// Chosen when the part starts, not when the run is built, so a vocabulary placement earlier
+    /// in the same session decides what's checked and what's taught.
+    var fresh: [LanguagePlan.NewItem]?
     var tasks: [Task] = []
     var wrong: [CardKey: Int] = [:]
     var tick = 0
     var current: Int?
 
-    init(language: Language, fresh: [LanguagePlan.NewItem]) {
+    init(language: Language, count: Int) {
         self.language = language
-        self.fresh = fresh
+        self.count = count
     }
 
     mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
         tick += 1
+        if fresh == nil {
+            fresh = run.catalogs.deck(language).map {
+                LanguagePlan.next(count: count, cards: Set(run.cards.keys), deck: $0, readsKana: run.settings.readsKana,
+                                  frontier: run.frontier(language))
+            } ?? []
+        }
         // A new item joins while fewer than four are in flight and there's time for it.
         let ready = tasks.indices.filter { tasks[$0].notBefore <= tick }
-        if ready.isEmpty, !fresh.isEmpty, tasks.count < 4, run.partSeconds < run.budget * 0.8 {
-            let item = fresh.removeFirst()
+        if ready.isEmpty, let item = fresh?.first, tasks.count < 4, run.partSeconds < run.budget * 0.8 {
+            fresh?.removeFirst()
             let probe = if case .probe = item { true } else { false }
             tasks.append(Task(item: item, stage: probe ? .probe : .teach, notBefore: tick))
         }
@@ -58,7 +68,9 @@ struct LearnRunner: PartRunner {
     }
 
     func question(for task: Task, run: StudyRun) -> Question? {
-        let seed = "learn.\(run.today.iso)"
+        // A retry after a miss, and the first ask after a failed check, get other choices in
+        // another order, so they can't be passed by remembering where the right one was.
+        let seed = "learn.\(run.today.iso).\(task.stage).\(wrong[task.item.key, default: 0])"
         switch task.item {
         case .kana(let kana):
             let introduced = KanaTable.all.filter { run.cards[$0.key] != nil || $0.group == kana.group }

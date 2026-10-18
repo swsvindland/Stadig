@@ -36,11 +36,15 @@ public enum ReadingPlan {
         var best = (level: 1.0, loss: Double.infinity)
         for step in 0...900 {
             let candidate = 1 + Double(step) / 100
-            let loss = evidence.map { e -> Double in
-                if candidate < e.low { return e.weight * (e.low - candidate) * (e.low - candidate) }
-                if candidate > e.high { return e.weight * (candidate - e.high) * (candidate - e.high) }
-                return 0
-            }.reduce(0, +)
+            // A plain sum: this runs 901 times for every point of the series.
+            var loss = 0.0
+            for e in evidence {
+                if candidate < e.low {
+                    loss += e.weight * (e.low - candidate) * (e.low - candidate)
+                } else if candidate > e.high {
+                    loss += e.weight * (candidate - e.high) * (candidate - e.high)
+                }
+            }
             if loss < best.loss - 1e-9 { best = (candidate, loss) }
         }
         return (best.level * 10).rounded() / 10
@@ -225,13 +229,16 @@ public enum ReadingPlan {
                            updated: state.now)
     }
 
-    /// The level after each test and each finished book, oldest first.
-    static func series(_ state: StudyState) -> [(day: Day, score: Double)] {
+    /// The level after each test and each finished book, oldest first; with `last`, only the
+    /// latest that many, since each point fits every piece of evidence up to it.
+    static func series(_ state: StudyState, last: Int? = nil) -> [(day: Day, score: Double)] {
         let tests = state.tests.filter { $0.test == .readingTest && $0.domain == .reading && $0.detail["tier"] != nil }.map(\.day)
         let books = state.books.filter { $0.language == nil && $0.done }.map(finishDay)
-        return Set(tests + books).sorted().compactMap { day in
-            level(books: state.books, tests: state.tests, on: day).map { (day, $0 * 10) }
+        var out: [(day: Day, score: Double)] = []
+        for day in Set(tests + books).sorted().reversed() where out.count < last ?? .max {
+            if let level = level(books: state.books, tests: state.tests, on: day) { out.append((day, level * 10)) }
         }
+        return out.reversed()
     }
 
     public static func summary(_ state: StudyState) -> ReadingSummary {

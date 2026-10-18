@@ -411,3 +411,96 @@ struct MathsTests {
         return Double(text.replacingOccurrences(of: ",", with: "")) ?? 0
     }
 }
+
+extension MathsTests {
+    /// Every "$x \times y = z$" and "$x \div y = z$" (or + and -) in a worked solution.
+    func sums(in steps: [String]) -> [(x: Rational, op: String, y: Rational, z: Rational)] {
+        steps.flatMap { step in
+            step.components(separatedBy: "$").enumerated().filter { $0.offset % 2 == 1 }.compactMap { _, maths -> (Rational, String, Rational, Rational)? in
+                let tokens = maths.replacingOccurrences(of: ",", with: "").split(separator: " ").map(String.init)
+                guard tokens.count == 5, tokens[3] == "=", let x = Rational(parsing: tokens[0]), let y = Rational(parsing: tokens[2]),
+                      let z = Rational(parsing: tokens[4]) else { return nil }
+                return (x, tokens[1], y, z)
+            }
+        }
+    }
+
+    @Test("the arithmetic in every worked step adds up, and 'make the ten' always crosses it")
+    func workedSteps() {
+        var checked = 0
+        for skill in NumeracySkill.allCases {
+            for level in 1...10 {
+                for seed in 0..<200 {
+                    let problem = skill.problem(level: level, seed: "\(seed)")
+                    for sum in sums(in: problem.steps) {
+                        let value: Rational? = switch sum.op {
+                        case #"\times"#: sum.x * sum.y
+                        case #"\div"#: sum.y == 0 ? nil : sum.x / sum.y
+                        case "+": sum.x + sum.y
+                        case "-": sum.x - sum.y
+                        default: nil
+                        }
+                        guard let value else { continue }
+                        checked += 1
+                        #expect(value == sum.z, "\(skill) \(level) #\(seed): \(problem.prompt) → \(problem.steps)")
+                    }
+                    // A step never adds or takes away a negative or nothing.
+                    #expect(!problem.steps.contains { $0.contains("$+ -") || $0.contains("$- -") || $0.contains("$+ 0$") || $0.contains("$- 0$") },
+                            "\(skill) \(level) #\(seed): \(problem.steps)")
+                }
+            }
+        }
+        #expect(checked > 3000, "\(checked) sums checked")
+    }
+
+    @Test("a decimal product is worked on its digits as written: 0.5 × 3 starts from 5 × 3, not 1 × 3")
+    func decimalDigits() throws {
+        var checked = 0
+        for skill in NumeracySkill.allCases {
+            for level in 1...10 {
+                for seed in 0..<200 {
+                    let problem = skill.problem(level: level, seed: "\(seed)")
+                    guard case .number(let answer, _) = problem.answer else { continue }
+                    for step in problem.steps {
+                        let places = step.contains("one decimal place back") ? 1 : step.contains("two decimal places back") ? 2 : 0
+                        guard places > 0 else { continue }
+                        let product = try #require(sums(in: [step]).first, "\(step)").z
+                        let back = try #require(step.components(separatedBy: "back: $").last?.split(separator: "$").first.flatMap { Rational(parsing: String($0)) })
+                        checked += 1
+                        #expect(product / Rational(places == 1 ? 10 : 100) == back && back == answer, "\(skill) \(level) #\(seed): \(problem.prompt) → \(step)")
+                    }
+                }
+            }
+        }
+        #expect(checked > 100, "\(checked) checked")
+    }
+
+    @Test("a price change shows its prices as decimals, never as fractions")
+    func percentageChangePrices() throws {
+        let topic = try #require(MathCurriculum.topic("percentages"))
+        var halves = 0
+        for seed in 0..<600 {
+            let problem = topic.problem(seed: "\(seed)")
+            guard problem.prompt.hasPrefix("A price goes from") else { continue }
+            #expect(!problem.prompt.contains(#"\frac"#), "\(problem.prompt)")
+            #expect(problem.steps.allSatisfy { !$0.contains(#"\frac{\frac"#) }, "\(problem.steps)")
+            if problem.prompt.contains(".5$") { halves += 1 }
+        }
+        #expect(halves > 0, "some prices land on a half")
+    }
+
+    @Test("typed answers too big to work with are refused, never trap")
+    func hugeTypedAnswers() {
+        for text in ["-9223372036854775808", "-9223372036854775808/1", "1/-9223372036854775808", "-922337203685477580.8",
+                     "-9,223,372,036,854,775,808", "1 1/9223372036854775807", "1000000000 1/10000000000", "999999999999999 1/999999999999999",
+                     "99999999999999999999"] {
+            #expect(Rational(parsing: text) == nil, "\(text)")
+        }
+        #expect(Rational(parsing: "9223372036854775807") == Rational(Int.max))
+        #expect(Rational(parsing: "2 1/2") == Rational(5, 2) && Rational(parsing: "-2 1/2") == Rational(-5, 2))
+        let question = Question(id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""), answer: .number(Rational(3, 4), tolerance: 0),
+                                expectedSeconds: 10)
+        #expect(!question.check(typed: "-9223372036854775808") && !question.check(typed: "1000000000 1/10000000000"))
+        #expect(question.check(typed: "6/8"))
+    }
+}

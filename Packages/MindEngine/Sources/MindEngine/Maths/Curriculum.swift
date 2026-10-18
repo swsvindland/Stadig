@@ -116,9 +116,11 @@ extension MathCurriculum {
             }
             let old = rng.pick([20, 40, 50, 80, 120, 200, 250, 400]), change = rng.pick([-50, -40, -25, -20, -10, 10, 15, 20, 25, 30, 50, 75, 100])
             let new = Rational(old * (100 + change), 100)
-            return .number(#"A price goes from $\#(old)$ to $\#(new.tex)$. What is the percentage change? (A fall is negative.)"#, change,
-                           steps: [#"Change: $\#(new.tex) - \#(old) = \#((new - Rational(old)).tex)$."#,
-                                   #"$\frac{\#((new - Rational(old)).tex)}{\#(old)} \times 100 = \#(change)\%$."#])
+            // Prices as decimals (57.5, not 115/2), as the numeracy price problems write them.
+            let price = Numeracy.decimal(new), difference = Numeracy.decimal(new - Rational(old))
+            return .number(#"A price goes from $\#(old)$ to $\#(price)$. What is the percentage change? (A fall is negative.)"#, change,
+                           steps: [#"Change: $\#(price) - \#(old) = \#(difference)$."#,
+                                   #"$\frac{\#(difference)}{\#(old)} \times 100 = \#(change)\%$."#])
         },
         MathTopic(id: "powers", title: "Powers and roots", level: 2, prerequisites: ["negative-numbers", "fractions-multiply"],
                   lesson: #"$a^{n}$ multiplies $a$ by itself $n$ times. A negative power is a reciprocal, $2^{-3} = \frac{1}{8}$, and a fractional power is a root, $27^{\frac{1}{3}} = 3$ and $8^{\frac{2}{3}} = 4$."#,

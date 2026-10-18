@@ -2,7 +2,8 @@ import Foundation
 import SystemCore
 
 /// Mind Track's own settings. One record. Decoding fills anything missing with its default, so a
-/// field added later never breaks a record saved before it.
+/// field added later never breaks a record saved before it, and keeps values it doesn't know (a
+/// course or genre from a newer version on another device) aside and writes them back unchanged.
 public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000317D")!
     /// Heavy Focus courses (languages and maths) past this spread the week too thin.
@@ -12,6 +13,9 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     /// Every active course and how hard it's pushed. Courses not here are off.
     public var courses: [Domain: CourseMode]
     public var schedule: StudySchedule
+    /// Schedules replaced in the last few weeks, so Discipline judges each day by the one in force
+    /// then: a change of days doesn't rewrite the weeks before it. See `recordScheduleChange`.
+    public var earlierSchedules: [EarlierSchedule]
     public var onboardedAt: Date?
     /// Nil until asked. False starts Japanese with hiragana and katakana.
     public var readsKana: Bool?
@@ -32,15 +36,36 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     /// Reminders at the usual study time when the day's session hasn't happened.
     public var reminders: Bool
     public var updatedAt: Date
+    /// Values a newer version wrote that this one can't read.
+    private var unrecognised = Unrecognised()
+
+    /// A schedule that was in force until a day, not including it.
+    public struct EarlierSchedule: Hashable, Codable, Sendable {
+        public var until: Day
+        public var schedule: StudySchedule
+
+        public init(until: Day, schedule: StudySchedule) {
+            self.until = until
+            self.schedule = schedule
+        }
+    }
+
+    struct Unrecognised: Hashable, Sendable {
+        var courses: [String: String] = [:]
+        var mathsStrands: [String] = []
+        var writingKinds: [String] = []
+        var genres: [String] = []
+    }
 
     public init(courses: [Domain: CourseMode] = [.japanese: .focus, .maths: .focus, .writing: .focus, .reading: .focus],
                 schedule: StudySchedule = StudySchedule(), onboardedAt: Date? = nil, readsKana: Bool? = nil,
                 mathsBackground: MathsBackground = .algebra, mathsStrands: [MathsStrand] = MathsStrand.allCases,
                 writingKinds: [WritingKind] = [.creative], genres: [Genre] = [], speaking: Bool = true, allowCloudAI: Bool = true,
-                autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date()) {
+                autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date(), earlierSchedules: [EarlierSchedule] = []) {
         id = Self.singletonID
         self.courses = courses
         self.schedule = schedule
+        self.earlierSchedules = earlierSchedules
         self.onboardedAt = onboardedAt
         self.readsKana = readsKana
         self.mathsBackground = mathsBackground
@@ -63,28 +88,67 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public func has(_ domain: Domain) -> Bool { courses[domain] != nil }
     public func mode(_ domain: Domain) -> CourseMode? { courses[domain] }
 
+    /// The schedule in force on a day.
+    public func schedule(on day: Day) -> StudySchedule {
+        earlierSchedules.sorted { $0.until < $1.until }.first { day < $0.until }?.schedule ?? schedule
+    }
+
+    /// Call after `schedule` changes, with the one it replaced: days before `day` keep being
+    /// judged by it. A second change on the same day keeps the schedule from before the first.
+    public mutating func recordScheduleChange(from previous: StudySchedule, on day: Day) {
+        guard previous != schedule else { return }
+        if earlierSchedules.last?.until != day { earlierSchedules.append(EarlierSchedule(until: day, schedule: previous)) }
+        // Discipline looks back four weeks and the week view one; older changes never matter.
+        earlierSchedules.removeAll { $0.until.days(until: day) > Discipline.windowDays + 7 }
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, courses, domains, schedule, onboardedAt, readsKana, mathsBackground, mathsStrands, writingKinds, genres, speaking,
-             allowCloudAI, autoPrioritise, reminders, updatedAt
+        case id, courses, domains, schedule, earlierSchedules, onboardedAt, readsKana, mathsBackground, mathsStrands, writingKinds, genres,
+             speaking, allowCloudAI, autoPrioritise, reminders, updatedAt
+    }
+
+    /// The values that parse, in order, and the raw ones that don't.
+    private static func split<T: RawRepresentable>(_ raw: [String]) -> (known: [T], unknown: [String]) where T.RawValue == String {
+        (raw.compactMap(T.init(rawValue:)), raw.filter { T(rawValue: $0) == nil })
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? Self.singletonID
-        if let courses = try c.decodeIfPresent([Domain: CourseMode].self, forKey: .courses) {
+        if let raw = try c.decodeIfPresent([String: String].self, forKey: .courses) {
+            var courses: [Domain: CourseMode] = [:]
+            for (key, value) in raw {
+                if let domain = Domain(rawValue: key), let mode = CourseMode(rawValue: value) {
+                    courses[domain] = mode
+                } else {
+                    unrecognised.courses[key] = value
+                }
+            }
             self.courses = courses
         } else {
-            // Version 1 kept a plain list of subjects: every one was a full course.
-            let old = try c.decodeIfPresent([Domain].self, forKey: .domains) ?? [.japanese, .maths, .writing, .reading]
-            courses = Dictionary(uniqueKeysWithValues: old.map { ($0, .focus) })
+            // Version 1 kept a plain list of subjects: every one was a full course. A repeat (from
+            // a hand-edited backup) counts once.
+            let old = try c.decodeIfPresent([String].self, forKey: .domains)?.compactMap(Domain.init(rawValue:))
+                ?? [.japanese, .maths, .writing, .reading]
+            courses = Dictionary(old.map { ($0, CourseMode.focus) }, uniquingKeysWith: { first, _ in first })
         }
         schedule = try c.decodeIfPresent(StudySchedule.self, forKey: .schedule) ?? StudySchedule()
+        earlierSchedules = try c.decodeIfPresent([EarlierSchedule].self, forKey: .earlierSchedules) ?? []
         onboardedAt = try c.decodeIfPresent(Date.self, forKey: .onboardedAt)
         readsKana = try c.decodeIfPresent(Bool.self, forKey: .readsKana)
         mathsBackground = try c.decodeIfPresent(MathsBackground.self, forKey: .mathsBackground) ?? .algebra
-        mathsStrands = try c.decodeIfPresent([MathsStrand].self, forKey: .mathsStrands) ?? MathsStrand.allCases
-        writingKinds = try c.decodeIfPresent([WritingKind].self, forKey: .writingKinds) ?? [.creative]
-        genres = try c.decodeIfPresent([Genre].self, forKey: .genres) ?? []
+        mathsStrands = MathsStrand.allCases
+        if let raw = try c.decodeIfPresent([String].self, forKey: .mathsStrands) {
+            (mathsStrands, unrecognised.mathsStrands) = Self.split(raw)
+        }
+        writingKinds = [.creative]
+        if let raw = try c.decodeIfPresent([String].self, forKey: .writingKinds) {
+            (writingKinds, unrecognised.writingKinds) = Self.split(raw)
+        }
+        genres = []
+        if let raw = try c.decodeIfPresent([String].self, forKey: .genres) {
+            (genres, unrecognised.genres) = Self.split(raw)
+        }
         speaking = try c.decodeIfPresent(Bool.self, forKey: .speaking) ?? true
         allowCloudAI = try c.decodeIfPresent(Bool.self, forKey: .allowCloudAI) ?? true
         autoPrioritise = try c.decodeIfPresent(Bool.self, forKey: .autoPrioritise) ?? true
@@ -95,14 +159,16 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(courses, forKey: .courses)
+        let courses = Dictionary(uniqueKeysWithValues: courses.map { ($0.key.rawValue, $0.value.rawValue) })
+        try c.encode(courses.merging(unrecognised.courses) { known, _ in known }, forKey: .courses)
         try c.encode(schedule, forKey: .schedule)
+        if !earlierSchedules.isEmpty { try c.encode(earlierSchedules, forKey: .earlierSchedules) }
         try c.encodeIfPresent(onboardedAt, forKey: .onboardedAt)
         try c.encodeIfPresent(readsKana, forKey: .readsKana)
         try c.encode(mathsBackground, forKey: .mathsBackground)
-        try c.encode(mathsStrands, forKey: .mathsStrands)
-        try c.encode(writingKinds, forKey: .writingKinds)
-        try c.encode(genres, forKey: .genres)
+        try c.encode(mathsStrands.map(\.rawValue) + unrecognised.mathsStrands, forKey: .mathsStrands)
+        try c.encode(writingKinds.map(\.rawValue) + unrecognised.writingKinds, forKey: .writingKinds)
+        try c.encode(genres.map(\.rawValue) + unrecognised.genres, forKey: .genres)
         try c.encode(speaking, forKey: .speaking)
         try c.encode(allowCloudAI, forKey: .allowCloudAI)
         try c.encode(autoPrioritise, forKey: .autoPrioritise)

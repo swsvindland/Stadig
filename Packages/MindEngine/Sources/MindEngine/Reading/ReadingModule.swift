@@ -64,6 +64,8 @@ enum ReadingModule: SubjectModule {
 
     static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)] { ReadingPlan.series(state) }
 
+    static func recent(_ domain: Domain, state: StudyState, count: Int) -> [(day: Day, score: Double)] { ReadingPlan.series(state, last: count) }
+
     static func label(_ domain: Domain, state: StudyState) -> String {
         ReadingPlan.level(books: state.books, tests: state.tests, on: state.today).map { "Reading tier \(ReadingPlan.format($0))" } ?? ""
     }
@@ -94,9 +96,11 @@ struct ReadingRunner: PartRunner {
         }
     }
 
+    /// Each response only in its own stage, so a second tap (a pick while the timer runs, a page
+    /// saved twice) can't add a book or rewrite the log.
     mutating func respond(_ response: StepResponse, _ run: inout StudyRun) -> Bool {
         switch response {
-        case .bookPicked(var book):
+        case .bookPicked(var book) where stage == .pick:
             book.status = .reading
             book.started = book.started ?? run.today
             book.updatedAt = run.now
@@ -105,7 +109,7 @@ struct ReadingRunner: PartRunner {
             bookID = book.id
             stage = .read
             return true
-        case .readingDone(let page, let finished, let feel, let minutes, let focus):
+        case .readingDone(let page, let finished, let feel, let minutes, let focus) where stage == .read:
             guard let id = bookID, let index = run.books.firstIndex(where: { $0.id == id }) else { return false }
             var book = run.books[index]
             let from = book.page
@@ -123,7 +127,7 @@ struct ReadingRunner: PartRunner {
                                              focus: counts ? focus : nil)
             stage = .reflect
             return true
-        case .reflection(let text):
+        case .reflection(let text) where stage == .reflect:
             guard let id = bookID else { return false }
             let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if !trimmed.isEmpty, let book = run.books.first(where: { $0.id == id }) {

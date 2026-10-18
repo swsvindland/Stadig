@@ -31,11 +31,15 @@ struct TopicsRunner: PartRunner {
         if domain == .maths {
             return (MathsPlan.inProgress(run.cards, strand: strand) + MathsPlan.frontier(run.cards, strand: strand)).map(\.id).first { !done.contains($0) }
         }
-        let learning = run.cards.values.filter { $0.domain == .writing && $0.learning }.sorted { ($0.introduced, $0.key) < ($1.introduced, $1.key) }
-            .map(\.key.item)
-        let started = Set(run.cards.values.filter { $0.domain == .writing }.map(\.key.item))
-        let fresh = run.catalogs.writing.skills.filter { !started.contains($0.id) }.sorted { $0.level < $1.level }.map(\.id)
-        return (learning + fresh).first { !done.contains($0) }
+        return WritingPlan.candidates(run.cards, bank: run.catalogs.writing).map(\.id).first { !done.contains($0) }
+    }
+
+    func question(_ id: String, kind: AttemptKind, run: StudyRun) -> Question? {
+        if domain == .maths {
+            return MathCurriculum.topic(id).map { $0.problem(seed: run.seed, data: run.catalogs.systemData).question(kind: kind, id: "\(id).\(run.seed)") }
+        }
+        let bank = run.catalogs.writing
+        return bank.item(for: id, seen: run.asked, seed: run.today.iso).map { bank.question($0, kind: kind, seed: run.seed) }
     }
 
     mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
@@ -64,14 +68,12 @@ struct TopicsRunner: PartRunner {
             current = nil
             return nil
         }
-        let kind: AttemptKind = probing ? .probe : .learn
-        if domain == .maths {
-            return MathCurriculum.topic(id).map {
-                .question($0.problem(seed: run.seed, data: run.catalogs.systemData).question(kind: kind, id: "\(id).\(run.seed)"))
-            }
-        }
-        let bank = run.catalogs.writing
-        return bank.item(for: id, seen: run.asked, seed: run.today.iso).map { .question(bank.question($0, kind: kind, seed: run.seed)) }
+        if let question = question(id, kind: probing ? .probe : .learn, run: run) { return .question(question) }
+        // Nothing to ask about it (a skill whose items left the bank): set it aside so the next
+        // one can start rather than ending the part.
+        done.insert(id)
+        current = nil
+        return next(&run)
     }
 
     mutating func record(_ question: Question, correct: Bool, _ run: inout StudyRun) {
