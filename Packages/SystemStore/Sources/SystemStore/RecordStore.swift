@@ -19,6 +19,7 @@ public final class RecordStore {
 
     /// Bumps on every local change (save, delete, erase, import) and when CloudKit delivers remote
     /// changes. `all` and `get` read it, so a SwiftUI view that calls them re-renders on its own.
+    /// `revision(of:)` says which kinds moved.
     public private(set) var revision: Int = 0
     /// Where the data lives, in words: "iCloud", "This device only" or "Memory only".
     public private(set) var syncStatus: String
@@ -26,11 +27,31 @@ public final class RecordStore {
     private let name: String
     private let container: ModelContainer?
     private let storeURL: URL?
+    /// Who this instance's saves are by in the store's history. The remote-change notification fires
+    /// for every save, this process's own included, so this is how a refresh tells CloudKit's
+    /// changes (and another process's) from the echo of a save it already accounted for.
+    private let author: String
     @ObservationIgnored private var context: ModelContext?
-    /// Decoded `all` results per record type; cleared on every change.
-    @ObservationIgnored private var cache: [ObjectIdentifier: Any] = [:]
+    /// Decoded `all` results by record kind. A local write clears only its own kind, so saving a
+    /// setting doesn't re-decode every photo; an erase or a remote change clears them all.
+    @ObservationIgnored private var cache: [String: Any] = [:]
+    /// The `revision` at which each kind last changed, and at which every kind did (an erase or a
+    /// remote change).
+    @ObservationIgnored private var kindRevisions: [String: Int] = [:]
+    @ObservationIgnored private var everyKindRevision = 0
     @ObservationIgnored private var remoteObserver: NotificationObservation?
-    @ObservationIgnored private var remoteRefreshPending = false
+    @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
+    @ObservationIgnored private var remoteChangeNoticed: ContinuousClock.Instant?
+    /// The newest history transaction already accounted for.
+    @ObservationIgnored private var historyToken: DefaultHistoryToken?
+    @ObservationIgnored private var changeObservers: [WeakChangeObservation] = []
+
+    /// A burst of remote-change notifications (a CloudKit import posts several) waits for this much
+    /// quiet before refreshing, but never longer than `remoteMaxDelay` after the first, so a long
+    /// import still shows up as it lands.
+    static let remoteQuietPeriod: Duration = .milliseconds(250)
+    static let remoteMaxDelay: Duration = .seconds(1)
+    private static let rowEntity = Schema.entityName(for: RecordRow.self)
 
     /// `cloudKitContainer`: e.g. "iCloud.dev.svindland.stadig.lift"; nil or `inMemory` keeps the data on
     /// this device only. If the CloudKit store can't open, falls back to a local store at the same
@@ -42,6 +63,8 @@ public final class RecordStore {
     /// `directory` overrides where the store file goes (Application Support/SystemStore by default).
     init(name: String, cloudKitContainer: String?, inMemory: Bool, directory: URL?) {
         self.name = name
+        let author = "RecordStore-\(UUID().uuidString)"
+        self.author = author
         let schema = Schema(versionedSchema: RecordStoreSchemaV1.self)
         var candidates: [(status: String, configuration: ModelConfiguration, url: URL?)] = []
         if !inMemory {
@@ -82,7 +105,7 @@ public final class RecordStore {
         container = opened?.container
         storeURL = opened?.url
         syncStatus = opened?.status ?? "Unavailable"
-        context = opened.map { Self.makeContext($0.container) }
+        context = opened.map { Self.makeContext($0.container, author: author) }
 
         if let opened {
             if opened.status != candidates.first?.status {
@@ -93,8 +116,10 @@ public final class RecordStore {
         }
 
         if storeURL != nil {
+            historyToken = newestHistoryToken()
             // NSPersistentStoreRemoteChangeNotification, with the store's URL under NSPersistentStoreURLKey
-            // ("storeURL"): posted when CloudKit imports changes (and for other writes to the store).
+            // ("storeURL"): posted when CloudKit imports changes, when another process writes the
+            // store, and after this store's own saves (which the refresh tells apart by author).
             let token = NotificationCenter.default.addObserver(
                 forName: Notification.Name("NSPersistentStoreRemoteChangeNotification"), object: nil, queue: .main
             ) { [weak self] note in
@@ -105,6 +130,27 @@ public final class RecordStore {
         }
     }
 
+    // MARK: Observing
+
+    /// The `revision` at which records of this type last changed: a local save, delete or import of
+    /// the kind, an erase, or a remote change (which may touch any kind). An app model can skip
+    /// re-reading the kinds that didn't move.
+    public func revision<T: StoredRecord>(of type: T.Type) -> Int {
+        _ = revision
+        return max(kindRevisions[T.kind] ?? 0, everyKindRevision)
+    }
+
+    /// Calls `handler` on the main actor when changes made elsewhere arrive (CloudKit importing
+    /// another device's edits, or another process writing the store), once per burst, after
+    /// `revision` has moved and the caches are cleared. This store's own writes don't call it: the
+    /// caller made them and knows. Keep the returned token alive; releasing it stops the calls.
+    public func observeChanges(_ handler: @escaping @MainActor @Sendable () -> Void) -> AnyObject {
+        let observation = RecordStoreObservation(handler)
+        changeObservers.removeAll { $0.observation == nil }
+        changeObservers.append(WeakChangeObservation(observation: observation))
+        return observation
+    }
+
     // MARK: Reading
 
     /// Every live record of a type: decoded, migrated if stored at an older schema version,
@@ -112,8 +158,7 @@ public final class RecordStore {
     /// written by a newer app version (a schema version this type doesn't know) are left out.
     public func all<T: StoredRecord>(_ type: T.Type) -> [T] {
         _ = revision
-        let key = ObjectIdentifier(type)
-        if let cached = cache[key] as? [T] { return cached }
+        if let cached = cache[T.kind] as? [T] { return cached }
 
         var newest: [UUID: RecordVersion] = [:]
         for row in fetchRows(kind: T.kind) {
@@ -126,7 +171,7 @@ public final class RecordStore {
             .filter { !$0.deleted }
             .sorted { ($0.updatedAt, $0.uuid.uuidString) > ($1.updatedAt, $1.uuid.uuidString) }
             .compactMap { decode(T.self, $0, decoder) }
-        cache[key] = records
+        cache[T.kind] = records
         return records
     }
 
@@ -167,6 +212,10 @@ public final class RecordStore {
             let incoming = RecordVersion(kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt,
                                          schemaVersion: T.schemaVersion, payload: payload, deleted: false)
             if let current = Self.newest(rows).map(RecordVersion.init) {
+                // A save in a deletion's own millisecond wins, unlike in `precedes`: it was made after
+                // the delete (an edit made before it is stamped earlier), as when Macro Track's
+                // `setState` deletes a day's status and saves it again under the same id. Writing it
+                // into every row of the record replaces the tombstone, so other devices agree.
                 if incoming.updatedAt.wholeMilliseconds < current.updatedAt.wholeMilliseconds {
                     storeLog.debug("Ignored an older \(T.kind, privacy: .public) \(record.id, privacy: .public)")
                     continue
@@ -180,7 +229,7 @@ public final class RecordStore {
             rowsByID[record.id] = result.rows
             if result.changed { changes += 1 }
         }
-        commit(changes, context)
+        commit(changes, kind: T.kind, context)
     }
 
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
@@ -193,7 +242,7 @@ public final class RecordStore {
         let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
         let tombstone = RecordVersion(kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
                                       payload: Data(), deleted: true)
-        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, context)
+        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context)
     }
 
     /// Removes every row of every kind. With iCloud on, that erases the data on every device.
@@ -208,7 +257,7 @@ public final class RecordStore {
             storeLog.error("\(self.name, privacy: .public): erase failed: \(String(describing: error), privacy: .public)")
             context.rollback()
         }
-        changed()
+        changed(kinds: nil)
     }
 
     // MARK: Backup
@@ -216,6 +265,40 @@ public final class RecordStore {
     /// The whole database (one entry per record, deletions included so they carry over) plus every
     /// file in the shared container, as a readable `BackupFile` JSON.
     public func exportBackup(app: AppID, shared: SharedContainer?) throws -> Data {
+        try Self.writeBackup(app: app, records: backupRecords(), shared: shared)
+    }
+
+    /// `exportBackup`, encoding off the main actor: for a store with years of records the JSON takes
+    /// seconds. Only reading the rows happens here.
+    public func exportBackup(app: AppID, shared: SharedContainer?) async throws -> Data {
+        let records = try backupRecords()
+        return try await Self.writeBackupDetached(app: app, records: records, shared: shared)
+    }
+
+    /// Merges a backup into the store: for each record the newest `updatedAt` wins (a deletion in
+    /// the backup that is newer than the stored copy deletes it). Payloads keep their schema version
+    /// and are migrated whenever they're read, so a backup from an older app version restores. Shared
+    /// files merge the same way (see `SharedContainer.restore`). Throws, changing nothing, if the data
+    /// isn't a backup, was written by another app than `app` (record kinds like "settings" and
+    /// "session" mean different things in each app), comes from a newer app version, or names an
+    /// invalid shared path. If writing the shared files fails after the records were saved, that
+    /// error is thrown with the records already restored and `revision` moved, so reload either way.
+    ///
+    /// The summary counts what changed: live records restored or updated, by kind, and shared files written.
+    @discardableResult
+    public func importBackup(_ data: Data, app: AppID, shared: SharedContainer?) throws -> BackupSummary {
+        try restore(BackupFile(data: data), app: app, shared: shared)
+    }
+
+    /// `importBackup`, reading the file off the main actor first: the JSON is the slow part of a big
+    /// backup. The merge itself runs here.
+    @discardableResult
+    public func importBackup(_ data: Data, app: AppID, shared: SharedContainer?) async throws -> BackupSummary {
+        let file = try await Self.readBackupDetached(data)
+        return try restore(file, app: app, shared: shared)
+    }
+
+    private func backupRecords() throws -> [BackupRecord] {
         guard let context else { throw SystemStoreError.storeUnavailable }
         var newest: [RowKey: RecordVersion] = [:]
         for row in try context.fetch(FetchDescriptor<RecordRow>()) {
@@ -224,29 +307,35 @@ public final class RecordStore {
             if let current = newest[key], !current.precedes(version) { continue }
             newest[key] = version
         }
-        let records = newest.values
+        return newest.values
             .sorted { ($0.kind, $0.updatedAt, $0.uuid.uuidString) < ($1.kind, $1.updatedAt, $1.uuid.uuidString) }
             .map(BackupRecord.init)
+    }
+
+    nonisolated private static func writeBackup(app: AppID, records: [BackupRecord], shared: SharedContainer?) throws -> Data {
         let file = BackupFile(app: app, created: Date(), records: records, shared: shared?.allFiles() ?? [:])
         return try SystemJSON.encoder(pretty: true).encode(file)
     }
 
-    /// Merges a backup into the store: for each record the newest `updatedAt` wins (a deletion in
-    /// the backup that is newer than the stored copy deletes it). Payloads keep their schema version
-    /// and are migrated whenever they're read, so a backup from an older app version restores. Shared
-    /// files merge the same way (see `SharedContainer.restore`). Throws, changing nothing, if the data
-    /// isn't a backup, comes from a newer app version, or names an invalid shared path.
-    ///
-    /// The summary counts what changed: live records restored or updated, by kind, and shared files written.
-    @discardableResult
-    public func importBackup(_ data: Data, shared: SharedContainer?) throws -> BackupSummary {
-        let file = try BackupFile(data: data)
+    /// `@concurrent`, so it runs on the global executor rather than the caller's (main) actor, also
+    /// if the package turns on nonisolated(nonsending) by default.
+    @concurrent nonisolated private static func writeBackupDetached(app: AppID, records: [BackupRecord],
+                                                                    shared: SharedContainer?) async throws -> Data {
+        try writeBackup(app: app, records: records, shared: shared)
+    }
+
+    @concurrent nonisolated private static func readBackupDetached(_ data: Data) async throws -> BackupFile {
+        try BackupFile(data: data)
+    }
+
+    private func restore(_ file: BackupFile, app: AppID, shared: SharedContainer?) throws -> BackupSummary {
+        guard file.app == app else { throw SystemStoreError.backupFromOtherApp(file.app) }
         guard let context else { throw SystemStoreError.storeUnavailable }
         if let shared { try shared.validate(paths: file.shared.keys) }
 
         var rowsByKey = Dictionary(grouping: try context.fetch(FetchDescriptor<RecordRow>())) { RowKey(kind: $0.kind, uuid: $0.uuid) }
         var summary = BackupSummary()
-        var changes = 0
+        var changedKinds: Set<String> = []
         for record in file.records {
             let incoming = RecordVersion(record)
             let key = RowKey(kind: record.kind, uuid: record.uuid)
@@ -255,34 +344,37 @@ public final class RecordStore {
             let result = write(incoming, into: rows, context: context)
             rowsByKey[key] = result.rows
             guard result.changed else { continue }
-            changes += 1
+            changedKinds.insert(incoming.kind)
             if !incoming.deleted {
                 summary.records += 1
                 summary.kinds[incoming.kind, default: 0] += 1
             }
         }
-        if changes > 0 {
+        if !changedKinds.isEmpty {
             do {
                 try context.save()
             } catch {
                 context.rollback()
-                changed()
+                changed(kinds: changedKinds)
                 throw error
             }
+            // Before the shared files, so a failure writing them can't leave the records saved but
+            // the caches and `revision` saying they aren't.
+            changed(kinds: changedKinds)
         }
         if let shared, !file.shared.isEmpty {
             summary.sharedFiles = try shared.merge(file.shared)
         }
-        if changes > 0 { changed() }
         storeLog.notice("\(self.name, privacy: .public): imported a backup from \(file.app.rawValue, privacy: .public): \(summary.records) records, \(summary.sharedFiles) shared files")
         return summary
     }
 
     // MARK: Internals
 
-    private static func makeContext(_ container: ModelContainer) -> ModelContext {
+    private static func makeContext(_ container: ModelContainer, author: String) -> ModelContext {
         let context = ModelContext(container)
         context.autosaveEnabled = false
+        context.author = author
         return context
     }
 
@@ -338,7 +430,7 @@ public final class RecordStore {
         return (rows, changed)
     }
 
-    private func commit(_ changes: Int, _ context: ModelContext) {
+    private func commit(_ changes: Int, kind: String, _ context: ModelContext) {
         guard changes > 0 else { return }
         do {
             try context.save()
@@ -346,27 +438,90 @@ public final class RecordStore {
             storeLog.error("\(self.name, privacy: .public): save failed: \(String(describing: error), privacy: .public)")
             context.rollback()
         }
-        changed()
+        changed(kinds: [kind])
     }
 
-    private func changed() {
-        cache.removeAll()
+    /// Records that `kinds` changed (nil: every kind), dropping their decoded caches.
+    private func changed(kinds: Set<String>?) {
         revision += 1
+        if let kinds {
+            for kind in kinds {
+                cache[kind] = nil
+                kindRevisions[kind] = revision
+            }
+        } else {
+            cache.removeAll()
+            kindRevisions.removeAll()
+            everyKindRevision = revision
+        }
     }
 
-    /// Coalesces a burst of remote-change notifications (a CloudKit import posts several) into one
-    /// refresh: a fresh context, so no stale object survives, and a revision bump.
+    /// Coalesces a burst of remote-change notifications into one refresh (see `remoteQuietPeriod`).
     func storeChangedRemotely(at url: URL?) {
         if let url, let storeURL,
            url.resolvingSymlinksInPath().standardizedFileURL != storeURL.resolvingSymlinksInPath().standardizedFileURL { return }
-        guard !remoteRefreshPending else { return }
-        remoteRefreshPending = true
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(250))
-            guard let self else { return }
-            self.remoteRefreshPending = false
-            if let container = self.container { self.context = Self.makeContext(container) }
-            self.changed()
+        let now = ContinuousClock.now
+        let first = remoteChangeNoticed ?? now
+        remoteChangeNoticed = first
+        remoteRefresh?.cancel()
+        let deadline = min(now + Self.remoteQuietPeriod, first + Self.remoteMaxDelay)
+        remoteRefresh = Task { [weak self] in
+            try? await Task.sleep(until: deadline, clock: .continuous)
+            guard !Task.isCancelled else { return }
+            self?.refreshAfterRemoteChange()
+        }
+    }
+
+    /// When the store holds changes this instance didn't make: a fresh context, so no stale object
+    /// survives, every cache cleared, a revision bump and the observers told. The echo of this
+    /// store's own saves changes nothing; they were accounted for when they were made.
+    private func refreshAfterRemoteChange() {
+        remoteRefresh = nil
+        remoteChangeNoticed = nil
+        let newest = newestHistoryToken()
+        let foreign = hasForeignChanges(since: historyToken)
+        historyToken = newest ?? historyToken
+        guard foreign else { return }
+        if let container { context = Self.makeContext(container, author: author) }
+        changed(kinds: nil)
+        changeObservers.removeAll { $0.observation == nil }
+        for observer in changeObservers {
+            observer.observation?.handler()
+        }
+    }
+
+    private func newestHistoryToken() -> DefaultHistoryToken? {
+        guard let context else { return nil }
+        var descriptor = HistoryDescriptor<DefaultHistoryTransaction>(sortBy: [SortDescriptor(\.transactionIdentifier, order: .reverse)])
+        descriptor.fetchLimit = 1
+        do {
+            return try context.fetchHistory(descriptor).first?.token
+        } catch {
+            storeLog.error("\(self.name, privacy: .public): couldn't read the store's history: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Whether a transaction after `token` by anyone but this instance changed a record row; one that
+    /// only touches CloudKit's bookkeeping doesn't count. The nil check is spelled out because the
+    /// predicate runs as SQL, where `author != x` is false for a NULL author.
+    private func hasForeignChanges(since token: DefaultHistoryToken?) -> Bool {
+        guard let context else { return false }
+        let author = self.author
+        let predicate: Predicate<DefaultHistoryTransaction>
+        if let token {
+            predicate = #Predicate { $0.token > token && ($0.author == nil || $0.author != author) }
+        } else {
+            predicate = #Predicate { $0.author == nil || $0.author != author }
+        }
+        do {
+            return try context.fetchHistory(HistoryDescriptor(predicate: predicate)).contains { transaction in
+                transaction.changes.contains { $0.changedPersistentIdentifier.entityName == Self.rowEntity }
+            }
+        } catch {
+            // Can't tell whose they are: refresh, the safe side.
+            storeLog.error("\(self.name, privacy: .public): couldn't read the store's history: \(String(describing: error), privacy: .public)")
+            return true
         }
     }
 
@@ -377,7 +532,7 @@ public final class RecordStore {
         guard let context else { return }
         context.insert(RecordRow(kind: kind, uuid: uuid, updatedAt: updatedAt, schemaVersion: schemaVersion,
                                  payload: payload, deleted: deleted))
-        commit(1, context)
+        commit(1, kind: kind, context)
     }
 
     func rows(kind: String) -> [RecordRow] { fetchRows(kind: kind) }
@@ -388,6 +543,17 @@ public final class RecordStore {
 struct RowKey: Hashable {
     var kind: String
     var uuid: UUID
+}
+
+/// A `RecordStore.observeChanges` registration; the store holds it weakly, so releasing it ends the calls.
+final class RecordStoreObservation {
+    let handler: @MainActor @Sendable () -> Void
+
+    init(_ handler: @escaping @MainActor @Sendable () -> Void) { self.handler = handler }
+}
+
+struct WeakChangeObservation {
+    weak var observation: RecordStoreObservation?
 }
 
 /// Removes a NotificationCenter block observer when released.

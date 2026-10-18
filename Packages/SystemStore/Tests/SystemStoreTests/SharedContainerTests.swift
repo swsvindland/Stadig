@@ -27,7 +27,18 @@ struct SharedContainerTests {
         try JSONSerialization.data(withJSONObject: object).write(to: url)
     }
 
-    @Test func fallsBackWithoutTheAppGroup() {
+    /// Whether an App Group this process isn't entitled to is unavailable here. The Mac checks the
+    /// sandbox; an iOS simulator may hand out any group's folder.
+    static let unentitledGroupIsUnavailable: Bool = {
+        #if os(macOS)
+        true
+        #else
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.dev.svindland.stadig.tests.unentitled") == nil
+        #endif
+    }()
+
+    @Test(.enabled(if: unentitledGroupIsUnavailable, "this platform hands out App Groups without the entitlement"))
+    func fallsBackWithoutTheAppGroup() {
         let directory = temporaryDirectory()
         let shared = SharedContainer(groupID: "group.dev.svindland.stadig.tests.\(UUID().uuidString)", fallbackDirectory: directory)
         #expect(!shared.isAppGroup)
@@ -125,6 +136,52 @@ struct SharedContainerTests {
         }
     }
 
+    @Test func writeIfChangedSkipsTheSameContent() throws {
+        let shared = temporarySharedContainer()
+        let url = shared.directory.appending(path: "apps/liftTrack/summary.json")
+        func strength(_ score: Double) -> StatReading {
+            StatReading(stat: .strength, score: score, label: "Intermediate", trend: .onPace, updated: t0)
+        }
+        var summary = AppSummary(app: .liftTrack, updated: t0, stats: [strength(40)])
+
+        #expect(try shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, stamp: \.updated, now: t0 + 60))
+        #expect(shared.read(.summary(.liftTrack))?.updated == t0 + 60, "stamped when written")
+        let written = try Data(contentsOf: url)
+
+        // The same content made a moment later, sub-millisecond dates and all, isn't written again.
+        summary.updated = Date()
+        summary.stats[0].updated = t0 + 0.0004
+        #expect(try !shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, stamp: \.updated, now: t0 + 120))
+        #expect(try Data(contentsOf: url) == written)
+
+        summary.stats[0].score = 41
+        #expect(try shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, stamp: \.updated, now: t0 + 180))
+        #expect(shared.read(.summary(.liftTrack)) == AppSummary(app: .liftTrack, updated: t0 + 180, stats: [strength(41)]))
+
+        // Several stamps: carried over for the comparison, and only the summary's moved on a write.
+        summary.stats[0].updated = t0 + 999
+        let carry: (inout AppSummary, AppSummary) -> Void = { new, old in
+            new.updated = old.updated
+            for i in new.stats.indices {
+                new.stats[i].updated = old.stats.first { $0.stat == new.stats[i].stat }?.updated ?? new.stats[i].updated
+            }
+        }
+        #expect(try !shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, now: t0 + 240,
+                                           carryOver: carry, stamp: { $0.updated = $1 }))
+    }
+
+    @Test func writeIfChangedUpgradesAnOlderFile() throws {
+        let shared = temporarySharedContainer()
+        try writeRaw(["schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
+                      "payload": [["body": "Sleep"]]],
+                     to: Self.notes.path, in: shared)
+        // The same notes, but the file is at schema 1: rewritten so it's at 2 on disk.
+        let notes = [Note(text: "Sleep", pinned: false)]
+        #expect(try shared.writeIfChanged(notes, to: Self.notes, by: .liftTrack, now: t0, carryOver: { _, _ in }, stamp: { _, _ in }))
+        #expect(shared.envelope(Self.notes)?.writtenBy == .liftTrack)
+        #expect(try !shared.writeIfChanged(notes, to: Self.notes, by: .liftTrack, now: t0, carryOver: { _, _ in }, stamp: { _, _ in }))
+    }
+
     @MainActor
     @Test func writesNotifyObservers() async throws {
         final class Counter { var value = 0 }
@@ -155,6 +212,20 @@ struct CSVTableTests {
             + "\" Dip\",Ünïcødé – ×,-5\r\n")
         #expect(Array(table.data.prefix(3)) == [0xEF, 0xBB, 0xBF])
         #expect(String(decoding: table.data.dropFirst(3), as: UTF8.self) == table.text)
+    }
+
+    @Test func formulasAreNeutralized() {
+        var table = CSVTable(header: ["Food", "Brand", "kcal"])
+        table.append(["+Proteinas", "@ Ease", "-5"])
+        table.append(["=HYPERLINK(\"http://x\",\"Open\")", "-foo", "-0.5"])
+        table.append(["-1+cmd|' /C calc'!A0", "\tTabbed", "+2.5"])
+        table.append(["Ünïcødé = fine", "a-b", "1e-3"])
+
+        #expect(table.text == "Food,Brand,kcal\r\n"
+            + "'+Proteinas,'@ Ease,-5\r\n"
+            + "\"'=HYPERLINK(\"\"http://x\"\",\"\"Open\"\")\",'-foo,-0.5\r\n"
+            + "'-1+cmd|' /C calc'!A0,'\tTabbed,+2.5\r\n"
+            + "Ünïcødé = fine,a-b,1e-3\r\n")
     }
 
     @Test func emptyTableIsJustTheHeader() {

@@ -66,10 +66,12 @@ public enum ExerciseSearch {
         }.filter { !$0.isEmpty && $0 != "s" }.map(stem)
     }
 
-    /// Edit distance of at most one, for typos in longer words ("tricpes", "lateal").
+    /// Edit distance of at most one, for typos in longer words ("tricpes", "lateal"). `a` is the
+    /// list's word, which must have five letters or more. Both are folded words, so plain ASCII:
+    /// their UTF-8 counts are their lengths, checked before anything is allocated.
     static func nearly(_ a: String, _ b: String) -> Bool {
+        if abs(a.utf8.count - b.utf8.count) > 1 || a.utf8.count < 5 { return false }
         let a = Array(a), b = Array(b)
-        if abs(a.count - b.count) > 1 || a.count < 5 { return false }
         var i = 0, j = 0, edits = 0
         while i < a.count && j < b.count {
             if a[i] == b[j] { i += 1; j += 1; continue }
@@ -99,10 +101,10 @@ public enum ExerciseSearch {
         }
         var scored: [(exercise: Exercise, score: Double, offset: Int)] = []
         for (offset, exercise) in exercises.enumerated() {
-            let name = words(exercise.name)
-            let aliases = exercise.aliases.flatMap(words)
-            let tags = exercise.muscles.flatMap { words($0.muscle.label) } + words(exercise.equipment.label)
-                + exercise.mobilityTargets.flatMap { words($0.label) }
+            let tokens = SearchTokens.of(exercise)
+            let name = tokens.name
+            let aliases = tokens.aliasWords
+            let tags = tokens.tags
             var score = 0.0
             var matched = true
             for term in terms {
@@ -119,7 +121,7 @@ public enum ExerciseSearch {
             guard matched else { continue }
             score -= Double(name.count) * 0.1
             if exercise.id == classic { score += 30 }
-            if name == terms { score += 20 } else if exercise.aliases.contains(where: { words($0) == terms }) { score += 15 }
+            if name == terms { score += 20 } else if tokens.aliases.contains(terms) { score += 15 }
             scored.append((exercise, score + boost(exercise), offset))
         }
         return scored.sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }.map(\.exercise)
@@ -134,7 +136,8 @@ public enum ExerciseSearch {
             return (classic, true)
         }
         func covered(_ exercise: Exercise) -> Bool {
-            let own = words(exercise.name) + exercise.aliases.flatMap(words)
+            let tokens = SearchTokens.of(exercise)
+            let own = tokens.name + tokens.aliasWords
             return terms.allSatisfy { term in own.contains { $0 == term || $0.hasPrefix(term) || nearly($0, term) } }
         }
         // Drop trailing words until something matches: "cable fly high to low" still finds a fly.
@@ -144,5 +147,33 @@ public enum ExerciseSearch {
             }
         }
         return (nil, false)
+    }
+}
+
+/// An exercise's searchable words, worked out once per bundled exercise rather than on every
+/// keystroke: folding, synonyms and stemming are the slow part of a search.
+struct SearchTokens: Sendable {
+    var name: [String]
+    /// Each alias's words, for exact alias matches.
+    var aliases: [[String]]
+    var aliasWords: [String]
+    /// Muscles, equipment and mobility targets.
+    var tags: [String]
+
+    init(_ exercise: Exercise) {
+        name = ExerciseSearch.words(exercise.name)
+        aliases = exercise.aliases.map(ExerciseSearch.words)
+        aliasWords = aliases.flatMap { $0 }
+        tags = exercise.muscles.flatMap { ExerciseSearch.words($0.muscle.label) } + ExerciseSearch.words(exercise.equipment.label)
+            + exercise.mobilityTargets.flatMap { ExerciseSearch.words($0.label) }
+    }
+
+    static let bundled: [String: SearchTokens] = ExerciseLibrary.byID.mapValues(SearchTokens.init)
+
+    /// The precomputed words for a bundled exercise, or fresh ones for a custom exercise (or one that
+    /// shares a bundled id but not its contents).
+    static func of(_ exercise: Exercise) -> SearchTokens {
+        if let tokens = bundled[exercise.id], ExerciseLibrary.byID[exercise.id] == exercise { return tokens }
+        return SearchTokens(exercise)
     }
 }

@@ -3,6 +3,13 @@ import Foundation
 import HealthKit
 import Observation
 
+/// Why a live workout didn't start.
+public enum LiveWorkoutError: Error, Sendable, Equatable {
+    /// A workout is already running. (One that is ending no longer counts: `end` lets it go before
+    /// it saves, so a new one can start while it does.)
+    case alreadyRunning
+}
+
 /// The Watch's live workout: HKWorkoutSession + HKLiveWorkoutBuilder, streaming heart rate.
 @MainActor @Observable
 public final class LiveWorkoutSession: NSObject {
@@ -30,17 +37,26 @@ public final class LiveWorkoutSession: NSObject {
     public override init() { super.init() }
 
     /// Starts a session and begins collecting. The workout carries `syncID` as its sync identifier
-    /// (version 1), so the phone can later replace it with a higher version.
+    /// (version 1), so the phone can later replace it with a higher version. Throws
+    /// `LiveWorkoutError.alreadyRunning` while another workout is live.
     public func start(activity: HKWorkoutActivityType = .traditionalStrengthTraining, syncID: UUID) async throws {
         try await begin(activity: activity, syncID: syncID)
     }
 
     /// Starts a workout for a session the iPhone leads: this Watch measures, the phone shows it.
-    /// The workout gets its sync id when the phone says it's done (``end(syncID:)``).
+    /// The workout gets its sync id when the phone says it's done (``end(syncID:)``). If it can't be
+    /// mirrored (the phone out of reach), the workout is discarded and the error thrown: nothing on
+    /// the Watch shows a workout the phone leads, so nothing could stop it.
     public func startMirrored(activity: HKWorkoutActivityType = .traditionalStrengthTraining) async throws {
         try await begin(activity: activity, syncID: nil)
-        try await session?.startMirroringToCompanionDevice()
-        isMirrored = true
+        guard let session else { return }
+        do {
+            try await session.startMirroringToCompanionDevice()
+        } catch {
+            if session === self.session { await discard() }
+            throw error
+        }
+        if session === self.session { isMirrored = true }
     }
 
     /// Sends data to the iPhone over a mirrored session.
@@ -50,7 +66,7 @@ public final class LiveWorkoutSession: NSObject {
     }
 
     private func begin(activity: HKWorkoutActivityType, syncID: UUID?) async throws {
-        guard session == nil else { return }
+        guard session == nil else { throw LiveWorkoutError.alreadyRunning }
         guard let store = HealthBridge.shared.store else { throw HKError(.errorHealthDataUnavailable) }
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = activity
@@ -96,9 +112,11 @@ public final class LiveWorkoutSession: NSObject {
     /// A mirrored workout takes its sync id here, from the phone's session.
     public func end(syncID: UUID? = nil) async -> Date? {
         guard let session, let builder else { return nil }
+        // Let go before the first await: a start, end or discard that comes while this one saves
+        // sees no workout rather than this ending one, and its callbacks are ignored from here.
+        reset()
         let endDate = Date()
         session.end()
-        defer { reset() }
         do {
             if let syncID { try await builder.addMetadata([HKMetadataKeySyncIdentifier: syncID.uuidString, HKMetadataKeySyncVersion: 1]) }
             try await builder.endCollection(at: endDate)

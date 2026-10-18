@@ -83,18 +83,31 @@ extension HealthBridge {
     // MARK: Food
 
     /// Saves (or replaces) foods as food correlations. Earlier copies are removed first, so a
-    /// nutrient cleared in an edit doesn't linger. One write for the batch.
+    /// nutrient cleared in an edit doesn't linger. One write for the batch. Runs after any earlier
+    /// save or delete of the same foods has finished, so an undo right after logging still wins.
     public func saveFoods(_ foods: [HealthFood]) async {
         guard let store, !foods.isEmpty,
               store.authorizationStatus(for: HKQuantityType(.dietaryEnergyConsumed)) == .sharingAuthorized else { return }
-        await deleteFoods(ids: foods.map(\.id))
+        await foodWrites.run(foods.map(\.id)) {
+            await Self.removeFoods(ids: foods.map(\.id), from: store)
+            await Self.writeFoods(foods, to: store)
+        }
+    }
+
+    /// Deletes foods saved under these ids, with their samples, after any save of them still on its way.
+    public func deleteFoods(ids: [UUID]) async {
+        guard let store, !ids.isEmpty else { return }
+        await foodWrites.run(ids) { await Self.removeFoods(ids: ids, from: store) }
+    }
+
+    private static func writeFoods(_ foods: [HealthFood], to store: HKHealthStore) async {
         let correlations: [HKCorrelation] = foods.compactMap { food in
             var samples = Set<HKSample>()
             for (type, key, value) in HealthTypes.dietaryValues(food.nutrients, micros: food.micros) where value > 0 {
                 guard store.authorizationStatus(for: type.type) == .sharingAuthorized else { continue }
                 samples.insert(HKQuantitySample(type: type.type, quantity: HKQuantity(unit: type.unit, doubleValue: value),
                                                 start: food.date, end: food.date, metadata: [
-                                                    HKMetadataKeySyncIdentifier: "\(food.id.uuidString).\(key)",
+                                                    HKMetadataKeySyncIdentifier: HealthTypes.syncIdentifier(food.id, key: key),
                                                     HKMetadataKeySyncVersion: food.version,
                                                     HKMetadataKeyFoodType: food.name,
                                                 ]))
@@ -110,14 +123,17 @@ extension HealthBridge {
         try? await store.save(correlations)
     }
 
-    /// Deletes foods saved under these ids, with their samples.
-    public func deleteFoods(ids: [UUID]) async {
-        guard let store, !ids.isEmpty else { return }
-        let keys = HealthTypes.dietary.map(\.key)
-        for type in HealthTypes.dietary {
-            let identifiers = ids.flatMap { id in keys.map { "\(id.uuidString).\($0)" } }
-            let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier, allowedValues: identifiers)
-            _ = try? await store.deleteObjects(of: type.type, predicate: predicate)
+    /// Each dietary type's samples by its own sync ids ("<id>.<key>"), every type at once: they don't
+    /// depend on each other, and one after another they're dozens of round trips to Health.
+    private static func removeFoods(ids: [UUID], from store: HKHealthStore) async {
+        await withTaskGroup(of: Void.self) { group in
+            for type in HealthTypes.dietary {
+                group.addTask {
+                    let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier,
+                                                                allowedValues: ids.map { HealthTypes.syncIdentifier($0, key: type.key) })
+                    _ = try? await store.deleteObjects(of: type.type, predicate: predicate)
+                }
+            }
         }
     }
 }
@@ -167,6 +183,9 @@ extension HealthTypes {
         // Millilitres: a glass of water on its own, or the fluid in a drink logged as food.
         Dietary(type: HKQuantityType(.dietaryWater), unit: .literUnit(with: .milli), key: "water"),
     ]
+
+    /// The sync id of a food's sample of one dietary type.
+    static func syncIdentifier(_ id: UUID, key: String) -> String { "\(id.uuidString).\(key)" }
 
     static func dietaryValues(_ n: Nutrients, micros: [String: Double] = [:]) -> [(Dietary, String, Double)] {
         var values: [String: Double?] = ["kcal": n.kcal, "protein": n.protein, "carbs": n.carbs, "fat": n.fat, "fiber": n.fiber,

@@ -152,6 +152,39 @@ struct SearchTests {
         #expect(ExerciseSearch.stem("press") == "press")
         #expect(ExerciseSearch.words("Farmer's Carry") == ["farmer", "carry"])
     }
+
+    @Test func oneTypoIsForgiven() {
+        #expect(ExerciseSearch.nearly("triceps", "tricpes"), "two letters swapped")
+        #expect(ExerciseSearch.nearly("lateral", "lateal"), "a letter dropped")
+        #expect(ExerciseSearch.nearly("lateral", "ateral") && ExerciseSearch.nearly("lateral", "laterals"), "at either end")
+        #expect(ExerciseSearch.nearly("lateral", "xlateral") && ExerciseSearch.nearly("lateral", "latxral"))
+        #expect(!ExerciseSearch.nearly("lateral", "latxrxl"), "two edits")
+        #expect(!ExerciseSearch.nearly("lateral", "lat"), "a prefix is the prefix check's job")
+        // The five-letter floor is on the list's word: "pres" may be a typo of "press", not the other way round.
+        #expect(ExerciseSearch.nearly("press", "pres"))
+        #expect(!ExerciseSearch.nearly("pres", "press"))
+        #expect(!ExerciseSearch.nearly("curl", "curs"))
+    }
+
+    @Test func matchDropsWordsItCantPlace() {
+        let fly = ExerciseSearch.match(library, "cable fly zigzag")
+        #expect(fly.exercise.map { $0.name.lowercased().contains("fly") } == true)
+        #expect(!fly.confident, "a dropped word isn't a confident match")
+        #expect(ExerciseSearch.match(library, "deadlfit").exercise?.id == "conventional-deadlift")
+        #expect(ExerciseSearch.match(library, "with the and").exercise == nil, "only stop words")
+    }
+
+    @Test func aCustomExerciseIsSearchedByItsOwnWords() throws {
+        // Same id as a bundled lift, different contents: its own name counts, not the bundled one's.
+        var custom = try #require(ExerciseLibrary.byID["barbell-back-squat"])
+        custom.name = "Zercher Thing"
+        custom.aliases = []
+        let list = [custom, Exercise.placeholder(id: "my-odd-lift")]
+        #expect(ExerciseSearch.search(list, "zercher").map(\.id) == ["barbell-back-squat"])
+        #expect(ExerciseSearch.search(list, "odd lift").map(\.id) == ["my-odd-lift"])
+        #expect(ExerciseSearch.search(list, "back squat").isEmpty)
+        #expect(ExerciseSearch.search(ExerciseLibrary.bundled, "back squat").first?.id == "barbell-back-squat")
+    }
 }
 
 @Suite("Drills")

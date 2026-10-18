@@ -80,9 +80,25 @@ public enum AIRouting {
 
 /// The apps' one interface to a language model. Every AI call goes through here.
 public actor SystemAI {
-    public let allowCloud: Bool
+    /// Answers one request on one engine: the engine, instructions, prompt and token limit.
+    typealias Runner = @Sendable (AIEngine, String, String, Int) async throws -> String
 
-    public init(allowCloud: Bool) { self.allowCloud = allowCloud }
+    public let allowCloud: Bool
+    private let currentAvailability: @Sendable (Bool) -> AIAvailability
+    private let runner: Runner
+
+    public init(allowCloud: Bool) {
+        self.init(allowCloud: allowCloud, availability: { SystemAI.availability(allowCloud: $0) }) { engine, instructions, prompt, maxTokens in
+            try await SystemAI.run(engine, instructions: instructions, prompt: prompt, maxTokens: maxTokens)
+        }
+    }
+
+    /// A model and availability of the caller's choosing, for tests.
+    init(allowCloud: Bool, availability: @escaping @Sendable (Bool) -> AIAvailability, runner: @escaping Runner) {
+        self.allowCloud = allowCloud
+        self.currentAvailability = availability
+        self.runner = runner
+    }
 
     /// Private Cloud Compute needs Apple's managed entitlement (com.apple.developer.private-cloud-compute).
     /// Without it the framework still reports it available, then stops the app on the first request
@@ -100,15 +116,21 @@ public actor SystemAI {
     }
 
     /// A reply in plain text: `instructions` say who the model is and how to answer; `prompt` is
-    /// the job. Throws `AIError`.
+    /// the job. Throws `AIError`, or `CancellationError` when the task is cancelled.
+    ///
+    /// Each engine is tried at most once: the first, then the other if the failure is one it might
+    /// not share. When both fail, the second engine's error is thrown, rather than bouncing between
+    /// them for as long as both keep failing.
     public func respond(instructions: String, prompt: String, weight: AIWeight, maxTokens: Int = 600) async throws -> String {
-        let state = Self.availability(allowCloud: allowCloud)
+        let state = currentAvailability(allowCloud)
         guard var engine = AIRouting.engine(weight, in: state) else { throw AIError.unavailable(state.reason ?? "Apple Intelligence isn't available.") }
+        var tried: Set<AIEngine> = [engine]
         while true {
+            try Task.checkCancellation()
             do {
-                return try await Self.run(engine, instructions: instructions, prompt: prompt, maxTokens: maxTokens)
+                return try await runner(engine, instructions, prompt, maxTokens)
             } catch let error as AIError {
-                guard let next = AIRouting.fallback(after: error, from: engine, in: state), next != engine else { throw error }
+                guard let next = AIRouting.fallback(after: error, from: engine, in: state), tried.insert(next).inserted else { throw error }
                 engine = next
             }
         }

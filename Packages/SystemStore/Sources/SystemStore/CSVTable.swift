@@ -27,10 +27,23 @@ public struct CSVTable: Sendable {
 
     /// Quotes a field that holds a comma, quote, line break or edge whitespace, doubling its quotes.
     /// Checked by scalar: Swift treats "\r\n" as one Character, so `contains("\n")` would miss it.
+    ///
+    /// A field a spreadsheet would run as a formula (one starting with =, +, -, @, a tab or a carriage
+    /// return, such as an Open Food Facts product called "+Proteinas" or "=HYPERLINK(…)") gets a leading
+    /// apostrophe, which Excel reads as "this is text". Plain numbers ("-5", "+2.5") are left alone so
+    /// they stay numbers. Numbers (the app) shows the apostrophe.
     static func field(_ value: String) -> String {
+        let value = isFormula(value) ? "'" + value : value
         let needsQuotes = value.unicodeScalars.contains { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }
             || value.first?.isWhitespace == true || value.last?.isWhitespace == true
         guard needsQuotes else { return value }
         return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
+    static func isFormula(_ value: String) -> Bool {
+        guard let first = value.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return false }
+        let plainNumber = (first == "-" || first == "+") && Double(value) != nil
+            && value.unicodeScalars.allSatisfy { ("0"..."9").contains($0) || ".eE+-".unicodeScalars.contains($0) }
+        return !plainNumber
     }
 }

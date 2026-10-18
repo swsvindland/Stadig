@@ -54,22 +54,25 @@ enum JSONValue: Codable, Sendable, Equatable {
     case array([JSONValue])
     case object([String: JSONValue])
 
+    /// Decodable can't ask a value's type, so each miss is a thrown error: the common leaf types go
+    /// first (a payload is mostly strings and numbers), integers before doubles so they stay whole.
+    /// JSONDecoder never reads a number as a Bool or the other way round, so the order is safe.
     init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self = .null
-        } else if let value = try? container.decode(Bool.self) {
-            self = .bool(value)
+        } else if let value = try? container.decode(String.self) {
+            self = .string(value)
         } else if let value = try? container.decode(Int64.self) {
             self = .int(value)
         } else if let value = try? container.decode(Double.self) {
             self = .double(value)
-        } else if let value = try? container.decode(String.self) {
-            self = .string(value)
-        } else if let value = try? container.decode([JSONValue].self) {
-            self = .array(value)
+        } else if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode([String: JSONValue].self) {
+            self = .object(value)
         } else {
-            self = .object(try container.decode([String: JSONValue].self))
+            self = .array(try container.decode([JSONValue].self))
         }
     }
 

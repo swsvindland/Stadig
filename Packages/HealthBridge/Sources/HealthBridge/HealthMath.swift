@@ -43,9 +43,14 @@ enum HealthMath {
     }
 
     /// Whole years between a date of birth and `date`; nil when the birth date is incomplete or later.
+    /// HealthKit gives the birth date in Gregorian components whatever the person's calendar, so
+    /// they're read in a Gregorian calendar (in `calendar`'s time zone): read in the Buddhist calendar,
+    /// 1990 would be 1447 CE and the age 579.
     static func age(birth: DateComponents, on date: Date, calendar: Calendar = .current) -> Int? {
-        guard birth.year != nil, let born = calendar.date(from: birth),
-              let years = calendar.dateComponents([.year], from: born, to: date).year, years >= 0 else { return nil }
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        guard birth.year != nil, let born = gregorian.date(from: birth),
+              let years = gregorian.dateComponents([.year], from: born, to: date).year, years >= 0 else { return nil }
         return years
     }
 

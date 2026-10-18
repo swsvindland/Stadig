@@ -1,4 +1,5 @@
 import Foundation
+import SystemCore
 
 /// Why a store, backup or shared-container operation refused or failed.
 public enum SystemStoreError: Error, LocalizedError, Sendable, Equatable {
@@ -8,6 +9,8 @@ public enum SystemStoreError: Error, LocalizedError, Sendable, Equatable {
     case notABackup
     /// The backup was written by a newer version of the app.
     case backupFromNewerVersion(formatVersion: Int)
+    /// The backup was written by another of the apps; it restores only there.
+    case backupFromOtherApp(AppID)
     /// A stored record was written by a newer version of the app than this one understands.
     case newerRecordSchema(kind: String, stored: Int, known: Int)
     /// A shared file on disk was written with a newer schema than this app knows; it isn't overwritten.
@@ -25,6 +28,8 @@ public enum SystemStoreError: Error, LocalizedError, Sendable, Equatable {
             "This file isn't a backup from The System."
         case .backupFromNewerVersion:
             "This backup was made by a newer version of the app. Update the app, then restore it."
+        case .backupFromOtherApp(let app):
+            "This backup is from \(app.displayName). Restore it there."
         case .newerRecordSchema(let kind, _, _):
             "Some \(kind) data was saved by a newer version of the app. Update the app to read it."
         case .newerSharedSchema(let path, _, _):

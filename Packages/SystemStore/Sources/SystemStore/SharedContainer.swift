@@ -88,6 +88,40 @@ public struct SharedContainer: Sendable {
         Self.postChange()
     }
 
+    /// `write`, skipped when the file at `key` already holds the same content, so readers aren't woken
+    /// and the payload's own "updated" stamp keeps saying when the content last changed. `carryOver`
+    /// copies the stamps that don't count as content from the file on disk into the new value before
+    /// the two are compared (as encoded bytes, so dates match to the millisecond they're stored at);
+    /// `stamp` dates the value when it is written. Returns whether it wrote.
+    @discardableResult
+    public func writeIfChanged<T>(_ value: T, to key: SharedKey<T>, by app: AppID, now: Date = Date(),
+                                  carryOver: (inout T, T) -> Void, stamp: (inout T, Date) -> Void) throws -> Bool {
+        var value = value
+        // Only against a file at the key's own schema version: an older one is rewritten, so it's
+        // upgraded on disk too.
+        if let url = try? fileURL(key.path), let data = coordinatedRead(url),
+           EnvelopeHeader.read(data)?.schemaVersion == key.schemaVersion,
+           let previous = try? key.decodeEnvelope(data)?.payload {
+            var unchanged = value
+            carryOver(&unchanged, previous)
+            let encoder = SystemJSON.encoder()
+            if try encoder.encode(unchanged) == encoder.encode(previous) { return false }
+        }
+        stamp(&value, now)
+        try write(value, to: key, by: app)
+        return true
+    }
+
+    /// `writeIfChanged` for a payload with one "updated" date: it's ignored in the comparison and set
+    /// to `now` when the value is written.
+    @discardableResult
+    public func writeIfChanged<T>(_ value: T, to key: SharedKey<T>, by app: AppID, stamp: WritableKeyPath<T, Date>,
+                                  now: Date = Date()) throws -> Bool {
+        try writeIfChanged(value, to: key, by: app, now: now,
+                           carryOver: { $0[keyPath: stamp] = $1[keyPath: stamp] },
+                           stamp: { $0[keyPath: stamp] = $1 })
+    }
+
     /// Deletes the file at `key`, if there is one, and posts `changeNotification`.
     public func remove<T>(_ key: SharedKey<T>) throws {
         let url = try fileURL(key.path)
@@ -128,6 +162,8 @@ public struct SharedContainer: Sendable {
     func merge(_ files: [String: Data]) throws -> Int {
         let targets = try files.keys.sorted().map { path in (path: path, url: try fileURL(path), data: files[path] ?? Data()) }
         var written = 0
+        // Announced even when a later file fails, so the files already written aren't missed.
+        defer { if written > 0 { Self.postChange() } }
         for target in targets {
             try FileManager.default.createDirectory(at: target.url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try coordinatedWrite(target.url, options: .forReplacing) { url in
@@ -142,7 +178,6 @@ public struct SharedContainer: Sendable {
                 written += 1
             }
         }
-        if written > 0 { Self.postChange() }
         return written
     }
 
@@ -267,7 +302,8 @@ public extension SharedKey where T == SharedProfile {
 }
 
 public extension SharedKey where T == [LifeModePeriod] {
-    static var lifeModes: SharedKey<[LifeModePeriod]> { SharedKey(path: "core/life-modes.json", schemaVersion: 1) }
+    /// Tombstones included (schema 2), so a delete in one app reaches the others; version 1 files decode as is.
+    static var lifeModes: SharedKey<[LifeModePeriod]> { SharedKey(path: "core/life-modes.json", schemaVersion: LifeModePeriod.schemaVersion) }
 }
 
 public extension SharedKey where T == SystemCalendar {

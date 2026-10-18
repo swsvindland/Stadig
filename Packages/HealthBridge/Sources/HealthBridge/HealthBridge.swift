@@ -12,6 +12,11 @@ public final class HealthBridge: @unchecked Sendable {
 
     #if canImport(HealthKit)
     private let lazyStore = Mutex<HKHealthStore?>(nil)
+    private let switchedOff = Mutex(false)
+    /// Food writes to Health, in order per food (see `WriteQueue`).
+    let foodWrites = WriteQueue()
+    /// Body measurement writes, in order per measurement, so a delete waits for a save on its way.
+    let measurementWrites = WriteQueue()
     #endif
 
     init() {}
@@ -19,13 +24,22 @@ public final class HealthBridge: @unchecked Sendable {
 
 #if canImport(HealthKit)
 extension HealthBridge {
-    /// Whether this device keeps Health data. Always false on the Mac.
+    /// Whether this device keeps Health data and the bridge may use it. Always false on the Mac,
+    /// and after `disable()`.
     public var isAvailable: Bool {
+        guard !switchedOff.withLock({ $0 }) else { return false }
         #if os(macOS)
-        false
+        return false
         #else
-        HKHealthStore.isHealthDataAvailable()
+        return HKHealthStore.isHealthDataAvailable()
         #endif
+    }
+
+    /// Switches Health off for the rest of the process: from then on the bridge behaves as if the
+    /// device kept no Health data (no permission prompts, empty reads, writes skipped, no live
+    /// workouts). UI tests and unit-test hosts call it before anything touches Health.
+    public func disable() {
+        switchedOff.withLock { $0 = true }
     }
 
     /// The one store, created on first use; nil when Health is unavailable.
@@ -225,7 +239,8 @@ extension HealthBridge {
     }
 
     /// Writes waist circumference and body fat % if present in the measurements. Keyed by the
-    /// measurement's id, so saving an edited entry replaces the earlier samples.
+    /// measurement's id, so saving an edited entry replaces the earlier samples, and a field cleared
+    /// in the edit removes its sample.
     public func saveMeasurements(_ measurements: BodyMeasurements) async {
         guard let store else { return }
         let calendar = Calendar.current
@@ -237,20 +252,45 @@ extension HealthBridge {
 
         func sample(_ type: HKQuantityType, _ quantity: HKQuantity, key: String) -> HKQuantitySample {
             HKQuantitySample(type: type, quantity: quantity, start: date, end: date, metadata: [
-                HKMetadataKeySyncIdentifier: "\(measurements.id.uuidString).\(key)",
+                HKMetadataKeySyncIdentifier: Self.measurementSyncIdentifier(measurements.id, key),
                 HKMetadataKeySyncVersion: version,
             ])
         }
         var samples: [HKQuantitySample] = []
+        var cleared: [(type: HKQuantityType, key: String)] = []
         if let waist = measurements.waistCm, waist > 0 {
-            samples.append(sample(HealthTypes.waist, HKQuantity(unit: HealthTypes.cm, doubleValue: waist), key: "waist"))
+            samples.append(sample(HealthTypes.waist, HKQuantity(unit: HealthTypes.cm, doubleValue: waist), key: Self.waistKey))
+        } else {
+            cleared.append((HealthTypes.waist, Self.waistKey))
         }
         if let bodyFat = measurements.bodyFatPercent, bodyFat > 0 {
-            samples.append(sample(HealthTypes.bodyFat, HKQuantity(unit: .percent(), doubleValue: bodyFat / 100), key: "bodyFat"))
+            samples.append(sample(HealthTypes.bodyFat, HKQuantity(unit: .percent(), doubleValue: bodyFat / 100), key: Self.bodyFatKey))
+        } else {
+            cleared.append((HealthTypes.bodyFat, Self.bodyFatKey))
         }
+        cleared.removeAll { store.authorizationStatus(for: $0.type) != .sharingAuthorized }
         samples.removeAll { store.authorizationStatus(for: $0.quantityType) != .sharingAuthorized }
-        guard !samples.isEmpty else { return }
-        try? await store.save(samples)
+        guard !cleared.isEmpty || !samples.isEmpty else { return }
+        let id = measurements.id
+        await measurementWrites.run([id]) { [samples, cleared] in
+            // A reading deleted here would otherwise come back as Health's latest body fat.
+            for field in cleared {
+                _ = try? await store.deleteObjects(of: field.type, predicate: Self.syncPredicate(Self.measurementSyncIdentifier(id, field.key)))
+            }
+            guard !samples.isEmpty else { return }
+            try? await store.save(samples)
+        }
+    }
+
+    /// Deletes the waist and body-fat samples saved for this measurement, after any save of it still
+    /// on its way.
+    public func deleteMeasurements(id: UUID) async {
+        guard let store else { return }
+        await measurementWrites.run([id]) {
+            for (type, key) in [(HealthTypes.waist, Self.waistKey), (HealthTypes.bodyFat, Self.bodyFatKey)] {
+                _ = try? await store.deleteObjects(of: type, predicate: Self.syncPredicate(Self.measurementSyncIdentifier(id, key)))
+            }
+        }
     }
 
     // MARK: Observation
@@ -278,6 +318,11 @@ extension HealthBridge {
     static let titleMetadataKey = "HealthBridgeTitle"
 
     static func energySyncIdentifier(_ id: UUID) -> String { "\(id.uuidString).energy" }
+
+    static let waistKey = "waist"
+    static let bodyFatKey = "bodyFat"
+
+    static func measurementSyncIdentifier(_ id: UUID, _ key: String) -> String { "\(id.uuidString).\(key)" }
 
     static func syncPredicate(_ identifier: String) -> NSPredicate {
         HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier, allowedValues: [identifier])
@@ -416,6 +461,7 @@ enum HealthTypes {
 
 extension HealthBridge {
     public var isAvailable: Bool { false }
+    public func disable() {}
     public func requestAuthorization(_ access: HealthAccess = .training) async -> Bool { false }
     public func requestAddedTypes(_ access: HealthAccess = .training) async {}
     public func dailySteps(since: Day) async -> [StepDay] { [] }
@@ -432,6 +478,7 @@ extension HealthBridge {
                                     energyKcal: Double?) async throws {}
     public func deleteWorkout(id: UUID) async {}
     public func saveMeasurements(_ measurements: BodyMeasurements) async {}
+    public func deleteMeasurements(id: UUID) async {}
     public func observeChanges(_ handler: @escaping @Sendable () -> Void) -> AnyObject? { nil }
     public func weighIns(since: Date, ownBundlePrefixes: [String]) async -> [HealthWeight] { [] }
     public func saveWeight(id: UUID, date: Date, kg: Double, version: Int) async {}

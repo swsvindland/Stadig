@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import SystemCore
 import Testing
 @testable import HealthBridge
@@ -47,6 +48,42 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         #expect(HealthMapping.activityType(for: .golf) == .other)
     }
 }
+
+@Suite struct DietaryTests {
+    func values(_ nutrients: Nutrients, micros: [String: Double] = [:]) -> [String: Double] {
+        Dictionary(uniqueKeysWithValues: HealthTypes.dietaryValues(nutrients, micros: micros).map { ($0.1, $0.2) })
+    }
+
+    @Test func macrosWinAndMissingValuesDropOut() {
+        let food = Nutrients(kcal: 210, protein: 12, carbs: 30, fat: 4, fiber: 5, sodium: 380)
+        let written = values(food, micros: ["kcal": 1, "fiber": 99, "vitaminD": 2.5, "water": 240, "notANutrient": 7])
+        #expect(written == ["kcal": 210, "protein": 12, "carbs": 30, "fat": 4, "fiber": 5, "sodium": 380, "vitaminD": 2.5, "water": 240])
+        #expect(values(Nutrients(kcal: 0, protein: 0, carbs: 0, fat: 0)).keys.sorted() == ["carbs", "fat", "kcal", "protein"],
+                "unknown sugar, saturated fat and sodium aren't written as zero")
+    }
+
+    @Test func unitsMatchTheCatalog() throws {
+        let byKey = Dictionary(uniqueKeysWithValues: HealthTypes.dietary.map { ($0.key, $0) })
+        #expect(byKey.count == HealthTypes.dietary.count, "one Health type per key")
+        let milligrams = HKUnit.gramUnit(with: .milli), micrograms = HKUnit.gramUnit(with: .micro)
+        for key in ["sodium", "potassium", "calcium", "iron", "magnesium", "zinc", "vitaminC", "caffeine", "cholesterol"] {
+            #expect(byKey[key]?.unit == milligrams, "\(key)")
+        }
+        for key in ["selenium", "vitaminA", "vitaminD", "vitaminK", "folate", "vitaminB12"] {
+            #expect(byKey[key]?.unit == micrograms, "\(key)")
+        }
+        let water = try #require(byKey["water"])
+        #expect(water.type == HKQuantityType(.dietaryWater))
+        #expect(water.unit == .literUnit(with: .milli))
+        #expect(byKey["kcal"]?.type == HKQuantityType(.dietaryEnergyConsumed))
+        #expect(byKey["satFat"]?.type == HKQuantityType(.dietaryFatSaturated))
+        for type in HealthTypes.dietary {
+            #expect(type.type.is(compatibleWith: type.unit), "\(type.key)")
+        }
+        #expect(HealthTypes.syncIdentifier(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, key: "kcal")
+                == "00000000-0000-0000-0000-000000000001.kcal")
+    }
+}
 #endif
 
 @Suite struct SleepTests {
@@ -67,6 +104,17 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         let hours = HealthMath.sleepHours(watch + phone, calendar: chicago)
         // 23:00–03:00 merged, then 03:00–06:00 merged into it: 7 hours.
         #expect(hours == [Day(year: 2026, month: 10, day: 15): 7])
+    }
+
+    @Test func nightsAcrossDaylightSavingChanges() {
+        // Chicago falls back at 2:00 on 1 November 2026 and springs forward at 2:00 on 8 March.
+        let fallBack = [DateInterval(start: date(2026, 10, 31, 22), end: date(2026, 11, 1, 6))]
+        #expect(HealthMath.sleepHours(fallBack, calendar: chicago) == [Day(year: 2026, month: 11, day: 1): 9], "the extra hour is slept")
+        let springForward = [DateInterval(start: date(2026, 3, 7, 22), end: date(2026, 3, 8, 6))]
+        #expect(HealthMath.sleepHours(springForward, calendar: chicago) == [Day(year: 2026, month: 3, day: 8): 7])
+        #expect(HealthMath.night(endingAt: date(2026, 11, 1, 11, 59), calendar: chicago) == Day(year: 2026, month: 11, day: 1))
+        #expect(HealthMath.night(endingAt: date(2026, 11, 1, 12), calendar: chicago) == Day(year: 2026, month: 11, day: 2))
+        #expect(HealthMath.night(endingAt: date(2026, 3, 8, 12), calendar: chicago) == Day(year: 2026, month: 3, day: 9))
     }
 
     @Test func nightsSplitAtNoon() {
@@ -120,6 +168,16 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         #expect(HealthMath.age(birth: DateComponents(year: 2030, month: 1, day: 1), on: date(2026, 10, 15, 12), calendar: chicago) == nil)
     }
 
+    @Test(arguments: [Calendar.Identifier.buddhist, .japanese, .republicOfChina, .persian, .hebrew, .islamicUmmAlQura])
+    func ageIsTheSameInEveryCalendar(_ identifier: Calendar.Identifier) {
+        // HealthKit's birth date is Gregorian whatever calendar the person uses.
+        var calendar = Calendar(identifier: identifier)
+        calendar.timeZone = chicago.timeZone
+        let birth = DateComponents(year: 1990, month: 10, day: 20)
+        #expect(HealthMath.age(birth: birth, on: date(2026, 10, 15, 12), calendar: calendar) == 35)
+        #expect(HealthMath.age(birth: birth, on: date(2026, 10, 20, 12), calendar: calendar) == 36)
+    }
+
     @Test func mergedDurationHandlesGapsAndContainment() {
         let base = date(2026, 1, 1, 0)
         let intervals = [
@@ -133,16 +191,26 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
 }
 
 @Suite struct UnavailableTests {
-    let bridge = HealthBridge.shared
-
     #if os(macOS)
     @Test func unavailableOnMac() {
-        #expect(!bridge.isAvailable)
+        #expect(!HealthBridge.shared.isAvailable)
     }
     #endif
 
-    @Test func everythingIsEmptyWhenUnavailable() async throws {
-        try #require(!bridge.isAvailable)
+    /// Where this device has Health (an iPhone simulator), the shared bridge is the real thing.
+    @Test(.enabled(if: !HealthBridge.shared.isAvailable, "Health data is available here"))
+    func everythingIsEmptyWhenUnavailable() async throws {
+        try await expectEverythingEmpty(HealthBridge.shared)
+    }
+
+    @Test func aDisabledBridgeIsUnavailableEverywhere() async throws {
+        let bridge = HealthBridge()
+        bridge.disable()
+        #expect(!bridge.isAvailable)
+        try await expectEverythingEmpty(bridge)
+    }
+
+    func expectEverythingEmpty(_ bridge: HealthBridge) async throws {
         let past = Date().addingTimeInterval(-30 * 86400)
         #expect(await bridge.requestAuthorization() == false)
         #expect(await bridge.latestBodyweight() == nil)
@@ -157,6 +225,39 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
                                              title: "Push", energyKcal: 250)
         await bridge.deleteWorkout(id: UUID())
         await bridge.saveMeasurements(BodyMeasurements(day: .today, bodyFatPercent: 15, waistCm: 82))
+        await bridge.deleteMeasurements(id: UUID())
+        await bridge.saveFoods([HealthFood(id: UUID(), date: past, name: "Oats", nutrients: Nutrients(kcal: 150, protein: 5, carbs: 27, fat: 3),
+                                           version: 1)])
+        await bridge.deleteFoods(ids: [UUID()])
+        #expect(await bridge.weighIns(since: past, ownBundlePrefixes: []).isEmpty)
         #expect(bridge.observeChanges {} == nil)
+    }
+}
+
+@Suite struct WriteQueueTests {
+    @Test func jobsForAnIDRunInTheOrderAsked() async {
+        let queue = WriteQueue()
+        let log = Mutex<[String]>([])
+        let (gate, open) = AsyncStream.makeStream(of: Void.self)
+        let food = UUID(), water = UUID()
+
+        async let save: Void = queue.run([food]) {
+            log.withLock { $0.append("save started") }
+            for await _ in gate { break }
+            log.withLock { $0.append("save finished") }
+        }
+        while log.withLock({ $0.isEmpty }) { await Task.yield() }
+        // Another food's job doesn't wait.
+        await queue.run([water]) { log.withLock { $0.append("water") } }
+        // An undo of the food waits for its save, however long Health takes.
+        async let undo: Void = queue.run([water, food]) { log.withLock { $0.append("undo") } }
+        for _ in 0..<200 { await Task.yield() }
+        #expect(log.withLock { $0 } == ["save started", "water"])
+
+        open.yield()
+        open.finish()
+        _ = await (save, undo)
+        #expect(log.withLock { $0 } == ["save started", "water", "save finished", "undo"])
+        #expect(queue.isIdle)
     }
 }
