@@ -119,6 +119,12 @@ public enum LanguageQuiz {
                          reveal: .word(word, kanji: []), rng: &rng)
     }
 
+    /// Words whose meaning says clearly which word to produce: nouns, verbs, adjectives, adverbs and
+    /// numbers. "Say it: “me”" could be several words, so pronouns and other grammar words aren't asked.
+    public static func producible(_ word: Word) -> Bool {
+        ["noun", "verb", "adjective", "i-adjective", "na-adjective", "adverb", "number"].contains(word.pos)
+    }
+
     /// Say or write a word from its meaning.
     public static func produce(_ word: Word, mode: SpeakingTask.Mode, kind: AttemptKind, seed: String, test: TestKind? = nil,
                                band: Int? = nil) -> SpeakingTask {

@@ -127,6 +127,7 @@ public enum Scaffolds {
     /// The kanji part of a word and how it's read, with the kana either side: 食べる is お-less
     /// "食" read "た" with "べる" after; お茶 is "お", then "茶" read "ちゃ".
     static func furigana(_ word: Word) -> (prefix: String, stem: String, reading: String, suffix: String)? {
+        guard word.hasKanji else { return nil }
         var text = Array(word.text), kana = Array(word.kana)
         var prefix = "", suffix = ""
         while let t = text.last, let k = kana.last, !t.isKanji, fold(t) == fold(k), text.count > 1 {
@@ -139,7 +140,7 @@ public enum Scaffolds {
             text.removeFirst()
             kana.removeFirst()
         }
-        guard !text.isEmpty, !kana.isEmpty else { return nil }
+        guard text.contains(where: \.isKanji), !kana.isEmpty else { return nil }
         return (prefix, String(text), String(kana), suffix)
     }
 

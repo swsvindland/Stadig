@@ -170,7 +170,7 @@ public enum LanguageTests {
         let language = deck.language
         var rng = SeededRandom(seed, "production", mode.rawValue, "\(band)")
         var out: [SpeakingTask] = []
-        if let word = deck.words.filter({ levels.contains($0.rank) && $0.pos != "interjection" }).shuffled(using: &rng).first {
+        if let word = deck.words.filter({ levels.contains($0.rank) && LanguageQuiz.producible($0) }).shuffled(using: &rng).first {
             out.append(LanguageQuiz.produce(word, mode: mode, kind: .test, seed: seed, test: test, band: band))
         }
         let short = deck.sentences(levels: levels, limit: 30, skip: offset + (mode == .say ? 23 : 37))

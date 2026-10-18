@@ -51,8 +51,7 @@ struct LessonView: View {
             if let example {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("In a sentence").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    SpeakButton(text: example.text, language: word.language, label: example.text, font: .title3)
-                    Text(example.english).font(.subheadline).foregroundStyle(.secondary)
+                    SentenceLine(sentence: example, language: word.language)
                 }
                 .card()
             }
@@ -103,6 +102,9 @@ struct WordCard: View {
             VStack(spacing: 4) {
                 if word.hasKanji { Text(word.kana).font(.title3).foregroundStyle(.secondary) }
                 Text(word.text).font(.system(size: 56, weight: .medium)).minimumScaleFactor(0.5).lineLimit(1)
+                if word.language.pack.pronunciation == .spanish, let guide = SpanishSounds.guide(word.text) {
+                    Text(guide).font(.title3).foregroundStyle(.secondary)
+                }
                 Text(word.meaning).font(.title2.weight(.semibold))
                 SpeakButton(text: word.reading, language: word.language, label: "Hear it", font: .subheadline)
             }
@@ -296,6 +298,10 @@ struct PromptView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
+        case .scaffolded(let text):
+            ScaffoldedText(text: text, size: text.text.count > 12 ? 30 : text.text.count > 6 ? 38 : 52, centred: true)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
         case .audio(let text, let language):
             VStack(spacing: 12) {
                 Button {
@@ -383,10 +389,7 @@ struct FeedbackPanel: View {
                 case .word(let word, let kanji):
                     WordCard(word: word, kanji: kanji)
                 case .sentence(let sentence, let language):
-                    VStack(alignment: .leading, spacing: 6) {
-                        SpeakButton(text: sentence.text, language: language, label: sentence.text, font: .title3)
-                        Text(sentence.english).font(.subheadline).foregroundStyle(.secondary)
-                    }
+                    SentenceLine(sentence: sentence, language: language)
                 case .steps(let steps):
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(Array(steps.enumerated()), id: \.offset) { _, step in MathText(source: step, size: 17) }

@@ -7,8 +7,6 @@ import SystemCore
 /// four skills has its own level from its own test, measured once there's enough to measure and
 /// again at every check-in.
 enum LanguageModule: SubjectModule {
-    /// A skill is first measured once the vocabulary test finds this many words.
-    static let skillCheckFrom = 150
     /// Skill checks in one regular session, at most.
     static let skillChecksPerSession = 2
 
@@ -65,7 +63,7 @@ enum LanguageModule: SubjectModule {
     /// after the vocabulary test fill in whichever haven't been, two at a time.
     static func skillChecks(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         guard let language = domain.language, let deck = catalogs.deck(language),
-              LanguagePlan.frontier(state.tests, language) >= skillCheckFrom else { return [] }
+              LanguagePlan.frontier(state.tests, language) >= LanguageSkills.measuredFrom else { return [] }
         let missing = testable(state, domain: domain).filter { skill in state.latest(LanguageSkills.test(skill), in: domain) == nil }
         return missing.prefix(skillChecksPerSession).compactMap { testPart(domain, $0, deck: deck) }
     }
@@ -109,7 +107,7 @@ enum LanguageModule: SubjectModule {
         let vocabulary = PlanPart(kind: .test(.vocabulary), domain: domain, minutes: 4, title: "\(domain.label) vocabulary",
                                   detail: "Five words from each frequency band, with “Don't know”")
         // A learner still on kana has nothing for the skill tests to find.
-        guard LanguagePlan.frontier(state.tests, deck.language) >= skillCheckFrom || state.latest(.listening, in: domain) != nil else {
+        guard LanguagePlan.frontier(state.tests, deck.language) >= LanguageSkills.measuredFrom || state.latest(.listening, in: domain) != nil else {
             return [vocabulary]
         }
         return [vocabulary] + testable(state, domain: domain).compactMap { testPart(domain, $0, deck: deck) }

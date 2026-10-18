@@ -83,56 +83,6 @@ private struct TestChart: View {
     }
 }
 
-private struct LanguageProgress: View {
-    @Environment(AppModel.self) private var model
-    let summary: LanguageSummary
-    let state: StudyState
-
-    var language: Language { summary.domain.language ?? .japanese }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                DomainBadge(domain: summary.domain)
-                Text(summary.domain.label).font(.headline)
-                Spacer()
-                if summary.mode == .maintenance { Pill(text: "Maintenance", color: .secondary) }
-            }
-            if let vocabulary = summary.vocabulary {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("About \(Int(vocabulary.score).formatted()) words").font(.title2.bold())
-                    Text("\(Int(vocabulary.detail["low"] ?? 0).formatted())–\(Int(vocabulary.detail["high"] ?? 0).formatted()) · \(LanguageTests.level(words: vocabulary.score, language: language))")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-                TestChart(points: state.tests.filter { $0.test == TestKind.vocabulary && $0.domain == summary.domain }.map { ($0.date, $0.score) },
-                          label: "Words", color: summary.domain.color)
-            } else if summary.domain == .japanese, state.settings.readsKana == false {
-                Text("\(summary.kanaLearned) of \(KanaTable.all.count) kana in. The word test comes once hiragana is.").foregroundStyle(.secondary)
-            }
-            if let listening = summary.listening {
-                LabeledContent("Listening, by ear", value: Format.percent(listening.score))
-            } else {
-                LabeledContent("Listening, by ear", value: "At the first check-in")
-            }
-            LabeledContent("Words learned here", value: "\(summary.wordsLearned)")
-            if let retention = summary.retention { LabeledContent("Recall on reviews", value: Format.percent(retention)) }
-            Divider()
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("The real thing").font(.subheadline.weight(.semibold))
-                    Text(summary.episodes.last.map { "Last: \(TestLine.text($0))" }
-                         ?? "Now and then, watch an episode without subtitles or have a conversation, and note how much you followed.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Log one") { model.episodeLanguage = language }.buttonStyle(.borderless)
-            }
-        }
-        .font(.subheadline)
-        .card()
-    }
-}
-
 private struct MathsProgress: View {
     let analysis: MindAnalysis
     let state: StudyState

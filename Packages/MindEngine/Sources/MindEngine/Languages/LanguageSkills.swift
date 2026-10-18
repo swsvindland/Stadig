@@ -34,6 +34,8 @@ public struct SkillLevel: Hashable, Sendable {
 /// rank of its rarest word), so a skill's level is how far into the language it reaches, on the
 /// vocabulary test's scale. Listening and speaking weigh most in the language's score.
 public enum LanguageSkills {
+    /// A skill is first measured once the vocabulary test finds this many words.
+    public static let measuredFrom = 150
     /// Reach in words where each level starts.
     public static let levelStarts = [100, 250, 500, 1000, 2000, 4000]
 

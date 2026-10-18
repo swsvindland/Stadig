@@ -130,63 +130,6 @@ private struct DomainHeader: View {
     }
 }
 
-private struct LanguagePlanCard: View {
-    @Environment(AppModel.self) private var model
-    let summary: LanguageSummary
-    let state: StudyState
-
-    var domain: Domain { summary.domain }
-
-    var body: some View {
-        let retention = summary.retention
-        let due = state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= state.today.adding(days: 6) } ?? false) }.count
-        let pace = LanguagePlan.newWords(retention: retention, dueThisWeek: due, minutes: state.settings.schedule.minutes, reviewWeek: false)
-        VStack(alignment: .leading, spacing: 12) {
-            DomainHeader(domain: domain, detail: "\(summary.wordsLearned) words in")
-            if model.catalogs.deck(for: domain) == nil {
-                Text("The \(domain.label) catalog isn't installed in this build.").font(.subheadline).foregroundStyle(.secondary)
-            } else if summary.mode == .maintenance {
-                LabeledContent("Maintenance", value: "Reviews only")
-                LabeledContent("Due this week", value: "\(due)")
-                LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
-            } else {
-                LabeledContent("New words a session", value: "\(pace.count)")
-                LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
-                if let reason = pace.reason { Text(reason).font(.footnote).foregroundStyle(.secondary) }
-                let upcoming = upcomingWords
-                if !upcoming.isEmpty {
-                    Text("Coming up").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    FlowLayout(spacing: 8, lineSpacing: 8) {
-                        ForEach(upcoming) { word in
-                            VStack(spacing: 0) {
-                                Text(word.text).font(.title3)
-                                Text(word.meaning).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(.insetBackground, in: .rect(cornerRadius: 10))
-                        }
-                    }
-                }
-            }
-        }
-        .font(.subheadline)
-        .card()
-    }
-
-    var upcomingWords: [Word] {
-        guard let deck = model.catalogs.deck(for: domain), let language = domain.language else { return [] }
-        let items = LanguagePlan.next(count: 8, cards: Set(state.cards.keys), deck: deck, readsKana: language == .japanese ? state.settings.readsKana : true,
-                                      frontier: LanguagePlan.frontier(state.tests, language))
-        return items.compactMap { item in
-            switch item {
-            case .teach(let word): word
-            case .probe, .kana: nil
-            }
-        }
-    }
-}
-
 private struct MathsPlanCard: View {
     let state: StudyState
 

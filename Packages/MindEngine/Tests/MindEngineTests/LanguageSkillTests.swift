@@ -131,12 +131,14 @@ struct ScaffoldTests {
         #expect(eat.prefix == "" && eat.stem == "食" && eat.reading == "た" && eat.suffix == "べる")
         let tea = try #require(Scaffolds.furigana(tea))
         #expect(tea.prefix == "お" && tea.stem == "茶" && tea.reading == "ちゃ")
+        #expect(Scaffolds.furigana(Word(id: 9, language: .japanese, rank: 10, text: "この", meaning: "this")) == nil, "kana needs no furigana")
     }
 
     @Test("in a sentence each word keeps its furigana until it's mastered, then loses it on its own")
     func perWord() {
-        let deck = LanguageDeck(language: .japanese, words: [eat, japan, book])
-        let sentence = Sentence(id: 1, text: "日本の本を食べました。", english: "I ate a Japanese book.", level: 500, words: [3, 4, 1])
+        let kono = Word(id: 6, language: .japanese, rank: 20, text: "この", meaning: "this")
+        let deck = LanguageDeck(language: .japanese, words: [eat, japan, book, kono])
+        let sentence = Sentence(id: 1, text: "この日本の本を食べました。", english: "I ate this Japanese book.", level: 500, words: [6, 3, 4, 1])
         let learning = Scaffolds.sentence(sentence, deck: deck, Scaffolds.Context(cards: [:], frontier: 0, readsKana: true))
         #expect(learning.text == sentence.text)
         #expect(learning.segments.filter { $0.help != nil }.map(\.text) == ["日本", "本", "食"], "日本 claims its 本 first")

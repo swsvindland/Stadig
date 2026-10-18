@@ -91,7 +91,7 @@ struct PracticeRunner: PartRunner {
                                                   help: Scaffolds.word(word, context), kind: .learn, seed: seed))
         case .sayWord, .write:
             if exercise == .sayWord && muted { return nil }
-            guard let word = nextWord(where: { _ in true }) else { return nil }
+            guard let word = nextWord(where: LanguageQuiz.producible) else { return nil }
             return speak(LanguageQuiz.produce(word, mode: exercise == .sayWord ? .say : .write, kind: .learn, seed: seed))
         case .sayBack, .dictation:
             if exercise == .sayBack && muted { return nil }
