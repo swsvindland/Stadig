@@ -2,11 +2,12 @@ import SwiftUI
 import LiftEngine
 import SystemCore
 
-/// The plain, low-key check-in at the end of a deload: mobility tests and a conditioning
-/// benchmark. No boss fights.
+/// The plain, low-key check-in at the end of a deload: tape measurements, mobility tests and a
+/// conditioning benchmark. No boss fights.
 struct CheckInView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var measuring = false
     @State private var values: [MobilityTest: Double] = [:]
     @State private var painful: Set<MobilityTest> = []
     @State private var benchmark: EnduranceBenchmark = .stairs10min
@@ -17,6 +18,19 @@ struct CheckInView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Button { measuring = true } label: {
+                        if let last = model.measurements.last, last.day >= .today.adding(days: -7) {
+                            Label("Measured \(Format.day(last.day))", systemImage: "checkmark.circle.fill")
+                        } else {
+                            Label("Add tape measurements", systemImage: "ruler")
+                        }
+                    }
+                } header: {
+                    Text("Tape")
+                } footer: {
+                    Text("The full set once a block: the next block's physique priorities and the left and right check come from it.")
+                }
                 Section {
                     Text("Take them fresh, the same way every time. Pain during a test means a physio, not more stretching.")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -80,6 +94,7 @@ struct CheckInView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(values.isEmpty && !hasBenchmark) }
             }
             .onAppear { benchmark = model.settings.benchmark }
+            .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
         }
     }
 

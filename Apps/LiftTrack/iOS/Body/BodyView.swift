@@ -20,6 +20,7 @@ struct BodyView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if let physique = model.analysis?.physique {
                         overview(physique)
+                        sides(physique)
                         if !physique.gaps.isEmpty { gaps(physique) }
                     }
                     waistTrend
@@ -50,7 +51,7 @@ struct BodyView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Label("Physique", systemImage: StatKind.physique.symbol).font(.headline).foregroundStyle(StatKind.physique.color)
             if p.latest == nil {
-                Text("Measure shoulders, waist, arms and thighs once a block. It takes two minutes with a tape.")
+                Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button { measuring = true } label: { Label("Add measurements", systemImage: "ruler").frame(maxWidth: .infinity) }.primaryAction()
             } else {
@@ -70,10 +71,22 @@ struct BodyView: View {
                         }
                     }
                     if let bf = p.bodyFatPercent {
+                        let source = switch p.bodyFatSource {
+                        case .health: "from Health"
+                        case .entered: "entered"
+                        case .tape, nil: "tape estimate, a soft signal"
+                        }
                         GridRow {
                             Text("Body fat").foregroundStyle(.secondary)
                             Text("\(Format.number(bf))%").monospacedDigit()
-                            Text(p.bodyFatEstimated ? "tape estimate, a soft signal" : "measured").font(.caption).foregroundStyle(.secondary)
+                            Text(source).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    if let ffmi = p.normalizedFFMI, let band = p.ffmiBand {
+                        GridRow {
+                            Text("FFMI").foregroundStyle(.secondary)
+                            Text(Format.number(ffmi, digits: 1)).monospacedDigit()
+                            Text(band.label.lowercased() + (p.bodyFatEstimated ? ", about ±1" : "")).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     if let latest = p.latest {
@@ -88,6 +101,45 @@ struct BodyView: View {
             }
         }
         .card()
+    }
+
+    /// Left against right for each limb measured on both sides, and any side that's lagging.
+    @ViewBuilder
+    private func sides(_ p: PhysiqueAnalysis) -> some View {
+        let limbs = Limb.allCases.compactMap { limb in p.latest?.sides(limb).map { (limb, $0) } }
+        if !limbs.isEmpty {
+            let length = model.units.length
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Left and right").font(.headline)
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                    GridRow {
+                        Text("")
+                        Text("Left").font(.caption).foregroundStyle(.secondary)
+                        Text("Right").font(.caption).foregroundStyle(.secondary)
+                    }
+                    ForEach(limbs, id: \.0) { item in
+                        let lagging = p.asymmetries.first { $0.limb == item.0 }?.smaller
+                        GridRow {
+                            Text(item.0.label).foregroundStyle(.secondary)
+                            Text(Format.length(item.1.left, unit: length)).monospacedDigit().fontWeight(lagging == .left ? .semibold : nil)
+                            Text(Format.length(item.1.right, unit: length)).monospacedDigit().fontWeight(lagging == .right ? .semibold : nil)
+                        }
+                    }
+                }
+                .font(.subheadline)
+                if p.asymmetries.isEmpty {
+                    Text("Even enough: a centimetre or so either way is normal, and tape readings vary that much.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(p.asymmetries) { asymmetry in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(asymmetry.finding).font(.caption).foregroundStyle(.secondary)
+                        Label(asymmetry.action, systemImage: "arrow.right.circle").font(.caption)
+                    }
+                }
+            }
+            .card()
+        }
     }
 
     private func gaps(_ p: PhysiqueAnalysis) -> some View {
@@ -216,18 +268,41 @@ struct MeasurementEditor: View {
                 DatePicker("Day", selection: Binding(get: { measurements.day.date() }, set: { measurements.day = Day($0) }), in: ...Date(),
                            displayedComponents: .date)
                 Section {
+                    NavigationLink("Where the tape goes") { MeasuringGuide() }
+                } footer: {
+                    Text("In the morning, before eating or training, the tape snug but not pressing in. Skip any you like.")
+                }
+                Section {
+                    MeasureField(label: "Neck", value: $measurements.neckCm, unit: unit)
                     MeasureField(label: "Shoulders", value: $measurements.shouldersCm, unit: unit)
                     MeasureField(label: "Chest", value: $measurements.chestCm, unit: unit)
-                    MeasureField(label: "Waist (at the navel)", value: $measurements.waistCm, unit: unit)
-                    MeasureField(label: "Hips", value: $measurements.hipsCm, unit: unit)
-                    MeasureField(label: "Neck", value: $measurements.neckCm, unit: unit)
-                    MeasureField(label: "Upper arm", value: $measurements.armCm, unit: unit)
-                    MeasureField(label: "Thigh", value: $measurements.thighCm, unit: unit)
-                    MeasureField(label: "Calf", value: $measurements.calfCm, unit: unit)
+                    MeasureField(label: "Waist at the navel", value: $measurements.waistCm, unit: unit)
+                    MeasureField(label: "Waist at its narrowest", value: $measurements.naturalWaistCm, unit: unit)
+                    MeasureField(label: "Hips, at the hip bones", value: $measurements.hipsCm, unit: unit)
+                    MeasureField(label: "Glutes, at the widest", value: $measurements.glutesCm, unit: unit)
                 } header: {
-                    Text("Tape")
+                    Text("Torso")
                 } footer: {
-                    Text("Skip any you like. Shoulders and waist give the ratio the program uses; neck and waist give a rough body-fat estimate.")
+                    Text("The waist at the navel matters most: leanness and the nutrition phase come from it.")
+                }
+                Section {
+                    ForEach(Limb.allCases) { limb in
+                        let keys = BodyMeasurements.sides(limb)
+                        SidesField(label: limb == .arm ? "Upper arm, flexed" : limb.label, left: $measurements[dynamicMember: keys.left],
+                                   right: $measurements[dynamicMember: keys.right], unit: unit)
+                    }
+                } header: {
+                    Text("Arms and legs")
+                } footer: {
+                    Text("Both sides, so a side that's lagging shows up.")
+                }
+                let unsided = Limb.allCases.filter { measurements[keyPath: BodyMeasurements.unsided($0)] != nil }
+                if !unsided.isEmpty {
+                    Section("Before sides were measured") {
+                        ForEach(unsided) { limb in
+                            MeasureField(label: limb.label, value: $measurements[dynamicMember: BodyMeasurements.unsided(limb)], unit: unit)
+                        }
+                    }
                 }
                 Section {
                     WeightField(label: "Body weight", kg: $measurements.weightKg, unit: model.units.weight)
@@ -260,6 +335,77 @@ struct MeasurementEditor: View {
                     .disabled(measurements.isEmpty)
                 }
             }
+        }
+    }
+}
+
+/// Left and right on one row, in the person's unit, stored in centimetres.
+struct SidesField: View {
+    let label: String
+    @Binding var left: Double?
+    @Binding var right: Double?
+    let unit: LengthUnit
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(label)
+            Spacer()
+            side("L", "Left", $left)
+            side("R", "Right", $right)
+            Text(unit.symbol).foregroundStyle(.secondary)
+        }
+    }
+
+    private func side(_ short: String, _ name: String, _ value: Binding<Double?>) -> some View {
+        HStack(spacing: 4) {
+            Text(short).font(.caption).foregroundStyle(.secondary)
+            TextField("—", value: Binding(get: { value.wrappedValue.map { (unit.fromCentimetres($0) * 10).rounded() / 10 } },
+                                          set: { value.wrappedValue = $0.map(unit.toCentimetres) }),
+                      format: .number.precision(.fractionLength(0...1)))
+                .keyboardType(.decimalPad)
+                // Next to its letter, so each value reads as that side's.
+                .multilineTextAlignment(.leading)
+                .frame(width: 52)
+                .accessibilityLabel("\(name) \(label.lowercased())")
+        }
+    }
+}
+
+/// Where each tape measurement goes, so every check-in is taken the same way.
+struct MeasuringGuide: View {
+    var body: some View {
+        List {
+            Section {
+                Text("In the morning, before eating or training. Keep the tape level and snug on the skin without pressing in, and breathe out normally before reading it. The same way every time matters more than any one reading.")
+                    .font(.subheadline)
+            }
+            Section("Torso") {
+                site("Neck", "Just below the larynx, the tape sloping slightly down at the front.")
+                site("Shoulders", "Around the widest point of the shoulders, arms relaxed at your sides.")
+                site("Chest", "Level with the nipples.")
+                site("Waist at the navel", "Level with the navel, relaxed, not sucked in.")
+                site("Waist at its narrowest", "The narrowest point between the ribs and the hips.")
+                site("Hips", "Around the top of the hip bones.")
+                site("Glutes", "Around the widest point of the buttocks, feet together.")
+            }
+            Section("Arms and legs") {
+                site("Upper arm", "Flexed, at the peak of the biceps, with the arm raised to shoulder height.")
+                site("Thigh", "Standing, just below the fold under the glutes.")
+                site("Calf", "Standing, at the widest point.")
+            }
+            Section {
+                Text("A centimetre between sides is normal, and a reading can vary that much. The program only acts on a difference that shows at two check-ins at least two weeks apart.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Where the tape goes")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func site(_ name: String, _ how: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(name).font(.subheadline.weight(.semibold))
+            Text(how).font(.caption).foregroundStyle(.secondary)
         }
     }
 }

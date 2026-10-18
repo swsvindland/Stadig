@@ -19,6 +19,8 @@ public struct LiftState: Sendable {
     /// Daily steps from Health, today's so far included.
     public var steps: [StepDay]
     public var bodyweightKg: Double?
+    /// A body-fat sample from Health in the last two weeks.
+    public var bodyFatPercent: Double?
     public var vo2Max: Double?
     public var restingHeartRate: Double?
     /// Macro Track's summary, when it's installed.
@@ -29,7 +31,7 @@ public struct LiftState: Sendable {
     public init(profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
                 activities: [ActivityLog] = [], measurements: [BodyMeasurements] = [], mobility: [MobilityResult] = [],
                 benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
-                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, vo2Max: Double? = nil,
+                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyFatPercent: Double? = nil, vo2Max: Double? = nil,
                 restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil, recommendations: [Recommendation] = [],
                 today: Day = .today) {
         self.profile = profile
@@ -46,6 +48,7 @@ public struct LiftState: Sendable {
         self.recovery = recovery
         self.steps = steps
         self.bodyweightKg = bodyweightKg
+        self.bodyFatPercent = bodyFatPercent
         self.vo2Max = vo2Max
         self.restingHeartRate = restingHeartRate
         self.nutrition = nutrition
@@ -220,7 +223,8 @@ public enum Analyst {
             }
         }
 
-        let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm, weightKg: state.bodyweightKg)
+        let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm, weightKg: state.bodyweightKg,
+                                        measuredBodyFat: state.bodyFatPercent)
         let agility = Agility.analyse(state.mobility)
         let conditioningMinutes = Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
             + Double(state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))

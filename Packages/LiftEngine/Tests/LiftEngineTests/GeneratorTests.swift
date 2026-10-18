@@ -162,6 +162,24 @@ struct GeneratorTests {
         #expect(lateral.contains { ($0.reason ?? "").contains("side-delt") })
     }
 
+    @Test func aLaggingSideTrainsOneSideAtATime() {
+        let start = Fixture.start.adding(days: -30)
+        let history = [BodyMeasurements(day: start, neckCm: 39, shouldersCm: 124, waistCm: 82, armLeftCm: 35, armRightCm: 37.2),
+                       BodyMeasurements(day: start.adding(days: 21), armLeftCm: 35.3, armRightCm: 37.4)]
+        let physique = Physique.analyse(history, sex: .male, heightCm: 180)
+        let action = physique.asymmetries.first?.action
+        #expect(physique.asymmetries.first?.smaller == .left)
+        let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), physique: physique))
+        for day in m.days where day.focus == .upper {
+            let slot = day.strengthSlots.first { $0.reason == action }
+            #expect(slot.map { Fixture.catalog.resolve($0.exerciseID).unilateral } == true, "\(day.name) has no one-sided arm work")
+        }
+        #expect(m.rationale.reasons.contains { $0.contains("left upper arm") })
+        // With auto-prioritisation off, nothing changes.
+        let plain = ProgramGenerator.generate(Fixture.input(Fixture.profile(), settings: LiftSettings(autoPrioritise: false), physique: physique))
+        #expect(!plain.days.flatMap(\.strengthSlots).contains { $0.reason == action })
+    }
+
     @Test func everyLegDayTrainsGlutesDirectly() {
         let direct: [MovementPattern] = [.hipThrust, .hipAbduction]
         for access in [EquipmentAccess.fullGym, .homeGym, .hotelGym] {

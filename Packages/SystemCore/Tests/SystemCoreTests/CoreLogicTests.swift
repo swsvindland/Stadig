@@ -474,6 +474,66 @@ struct StatsTests {
         #expect(analysis.gaps.allSatisfy { !$0.finding.lowercased().contains("fat") })
     }
 
+    @Test func tapeBodyFatUsesEachSexsSites() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        let m = BodyMeasurements(day: day, neckCm: 33, waistCm: 84, naturalWaistCm: 72, glutesCm: 100)
+        #expect(Physique.tapeBodyFat(m, sex: .female, heightCm: 165)
+                == Physique.navyBodyFat(sex: .female, heightCm: 165, neckCm: 33, waistCm: 72, hipsCm: 100))
+        #expect(Physique.tapeBodyFat(m, sex: .male, heightCm: 180)
+                == Physique.navyBodyFat(sex: .male, heightCm: 180, neckCm: 33, waistCm: 84, hipsCm: nil))
+        // Women's estimate needs the glutes; men's doesn't.
+        #expect(Physique.tapeBodyFat(BodyMeasurements(day: day, neckCm: 33, waistCm: 84), sex: .female, heightCm: 165) == nil)
+    }
+
+    @Test func ffmiComesFromTheBestBodyFatReading() {
+        let m = BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), weightKg: 80, bodyFatPercent: 15, neckCm: 39, waistCm: 84)
+        // 80 kg at 15% and 1.80 m: 68 kg lean, an FFMI of 20.99, already at the reference height.
+        let entered = Physique.analyse([m], sex: .male, heightCm: 180)
+        #expect(entered.bodyFatSource == .entered)
+        #expect(abs((entered.ffmi ?? 0) - 20.99) < 0.01)
+        #expect(abs((entered.normalizedFFMI ?? 0) - (entered.ffmi ?? 1)) < 0.001)
+        #expect(entered.ffmiBand == .lotsOfRoom)
+        // A recent Health reading beats a typed one: 72 kg lean is 22.2.
+        let health = Physique.analyse([m], sex: .male, heightCm: 180, measuredBodyFat: 10)
+        #expect(health.bodyFatSource == .health && health.bodyFatPercent == 10)
+        #expect(health.ffmiBand == .someRoom)
+        var untyped = m
+        untyped.bodyFatPercent = nil
+        #expect(Physique.analyse([untyped], sex: .male, heightCm: 180).bodyFatSource == .tape)
+        // Shorter people are adjusted up to the reference height.
+        let short = Physique.analyse([m], sex: .male, heightCm: 170)
+        #expect((short.normalizedFFMI ?? 0) > (short.ffmi ?? 0))
+    }
+
+    @Test func limbSizesUseTheBiggerSide() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        let m = BodyMeasurements(day: day, armCm: 30, armLeftCm: 35, armRightCm: 37)
+        #expect(m.size(.arm) == 37)
+        #expect(BodyMeasurements(day: day, armCm: 30).size(.arm) == 30)
+        #expect(m.sides(.thigh) == nil)
+    }
+
+    @Test func aSideCountsAsLaggingOnlyWhenItLasts() {
+        let start = Day(year: 2026, month: 1, day: 1)
+        func check(_ offset: Int, _ left: Double, _ right: Double) -> BodyMeasurements {
+            BodyMeasurements(day: start.adding(days: offset), armLeftCm: left, armRightCm: right)
+        }
+        // One reading apart is noise, and so are two within a fortnight.
+        #expect(Physique.asymmetries([check(0, 35, 37)]).isEmpty)
+        #expect(Physique.asymmetries([check(0, 35, 37), check(7, 35.1, 37)]).isEmpty)
+        // Apart at two check-ins two weeks apart: the left arm lags.
+        let lagging = Physique.asymmetries([check(0, 35, 37), check(14, 35.2, 37.1)])
+        #expect(lagging.first?.limb == .arm && lagging.first?.smaller == .left)
+        #expect(lagging.first.map { $0.magnitude > 0 && $0.magnitude < 1 } == true)
+        // Once flagged it holds while the sides are more than a centimetre apart, and clears inside one.
+        #expect(Physique.asymmetries([check(0, 35, 37), check(14, 35.2, 37.1), check(28, 35.9, 37.1)]).count == 1)
+        #expect(Physique.asymmetries([check(0, 35, 37), check(14, 35.2, 37.1), check(42, 36.6, 37.1)]).isEmpty)
+        // A centimetre either way is normal.
+        #expect(Physique.asymmetries([check(0, 36, 37), check(14, 36, 37)]).isEmpty)
+        // Readings with no side never count.
+        #expect(Physique.asymmetries([BodyMeasurements(day: start, armCm: 35), BodyMeasurements(day: start.adding(days: 20), armCm: 35)]).isEmpty)
+    }
+
     @Test func restKeepsMinimumsForHeavyCompounds() {
         let heavy = Rest.plan(role: .heavyCompound, reps: 5, defaultSeconds: 180, enduranceScore: 70, hrGuidance: true)
         #expect(!heavy.heartRateGuided && heavy.minimum >= 150)
