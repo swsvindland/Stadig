@@ -15,13 +15,17 @@ public enum LanguageQuiz {
         return order[reps % order.count]
     }
 
-    public static func question(_ word: Word, ask: WordAsk, kind: AttemptKind, deck: LanguageDeck, seed: String) -> Question {
+    /// A question about a word. `help` is its fading scaffold, shown when the meaning is asked
+    /// (never when the reading is, which it would give away).
+    public static func question(_ word: Word, ask: WordAsk, kind: AttemptKind, deck: LanguageDeck, seed: String,
+                                help: Scaffolded? = nil) -> Question {
         var rng = SeededRandom(seed, word.key.raw, ask.rawValue)
         let reveal = Reveal.word(word, kanji: deck.kanji(in: word))
         let id = "\(word.key.raw).\(ask.rawValue).\(seed)"
         switch ask {
         case .meaning:
-            return .choosing(id: id, key: word.key, kind: kind, instruction: "What does it mean?", prompt: .foreign(word.text, word.language),
+            let prompt = help.flatMap { $0.hasHelp ? Prompt.scaffolded($0) : nil } ?? .foreign(word.text, word.language)
+            return .choosing(id: id, key: word.key, kind: kind, instruction: "What does it mean?", prompt: prompt,
                              correct: word.meaning, wrong: wrongMeanings(for: word, deck: deck, rng: &rng), expectedSeconds: 6,
                              reveal: reveal, rng: &rng)
         case .reading:
@@ -69,6 +73,73 @@ public enum LanguageQuiz {
                                          rng: &rng)
         question.allowsDontKnow = kind == .test
         return question
+    }
+
+    // MARK: Practice beyond the drills
+
+    /// Read a sentence, pick what it means. The sentence keeps its scaffolding.
+    public static func read(_ sentence: Sentence, help: Scaffolded, others: [Sentence], kind: AttemptKind, seed: String) -> Question {
+        var question = self.sentence(sentence, language: help.language, kind: kind, others: others, seed: seed,
+                                     key: .practice(help.language, "reading"))
+        question.prompt = help.hasHelp ? .scaffolded(help) : .foreign(sentence.text, help.language)
+        question.instruction = "What does it say?"
+        question.allowsDontKnow = false
+        return question
+    }
+
+    /// Picture matching: hear or see the word, pick its picture.
+    public static func picture(_ word: Word, symbol: String, others: [String], heard: Bool, help: Scaffolded?, kind: AttemptKind,
+                               seed: String) -> Question {
+        var rng = SeededRandom(seed, word.key.raw, "picture")
+        let prompt: Prompt = heard ? .audio(word.reading, word.language)
+            : help.flatMap { $0.hasHelp ? Prompt.scaffolded($0) : nil } ?? .foreign(word.text, word.language)
+        return .choosing(id: "\(word.key.raw).picture.\(seed)", key: word.key, kind: kind, instruction: heard ? "Which did you hear?" : "Which is it?",
+                         prompt: prompt, correct: symbol, wrong: others.filter { $0 != symbol }.shuffled(using: &rng), style: .picture,
+                         expectedSeconds: 6, reveal: .word(word, kanji: []), rng: &rng)
+    }
+
+    /// Script recognition: a word's reading, then which way it's written. Lookalikes are words that
+    /// share a kanji or a length. Katakana words are given in romaji.
+    public static func script(_ word: Word, deck: LanguageDeck, kind: AttemptKind, seed: String) -> Question? {
+        guard word.language.pack.script == .kanaKanji else { return nil }
+        var rng = SeededRandom(seed, word.key.raw, "script")
+        let near = neighbours(of: word, deck: deck, rng: &rng)
+        if word.hasKanji {
+            let shared = near.filter { other in other.hasKanji && other.kanjiChars.contains { word.kanjiChars.contains($0) } }
+            let sameLength = near.filter { $0.hasKanji && $0.text.count == word.text.count }
+            return .choosing(id: "\(word.key.raw).script.\(seed)", key: word.key, kind: kind, instruction: "Which is it written?",
+                             prompt: .foreign(word.kana, word.language), correct: word.text, wrong: (shared + sameLength + near).map(\.text),
+                             style: .foreign, expectedSeconds: 7, reveal: .word(word, kanji: deck.kanji(in: word)), rng: &rng)
+        }
+        guard word.hasKatakana, let romaji = KanaTable.romaji(word.kana) else { return nil }
+        let katakana = near.filter(\.hasKatakana)
+        guard katakana.count >= 3 else { return nil }
+        return .choosing(id: "\(word.key.raw).script.\(seed)", key: word.key, kind: kind, instruction: "Which spells it?", prompt: .text(romaji),
+                         correct: word.text, wrong: katakana.map(\.text), style: .foreign, expectedSeconds: 7,
+                         reveal: .word(word, kanji: []), rng: &rng)
+    }
+
+    /// Say or write a word from its meaning.
+    public static func produce(_ word: Word, mode: SpeakingTask.Mode, kind: AttemptKind, seed: String, test: TestKind? = nil,
+                               band: Int? = nil) -> SpeakingTask {
+        let name = word.language.pack.name
+        return SpeakingTask(id: "\(word.key.raw).\(mode.rawValue).\(seed)", key: word.key, language: word.language, kind: kind, mode: mode,
+                            instruction: mode == .say ? "Say it in \(name)" : "Write it in \(name)", prompt: .text("“\(word.meaning)”"),
+                            expected: AnswerMatch.variants(word), answer: word.text, meaning: word.meaning,
+                            expectedSeconds: mode == .say ? 8 : 14, test: test, band: band)
+    }
+
+    /// Say a sentence back as it's heard, or write it down.
+    public static func produce(_ sentence: Sentence, deck: LanguageDeck, mode: SpeakingTask.Mode, kind: AttemptKind, seed: String,
+                               test: TestKind? = nil, band: Int? = nil) -> SpeakingTask {
+        let language = deck.language
+        let perCharacter = language.pack.script == .kanaKanji ? 0.6 : 0.25
+        return SpeakingTask(id: "sentence.\(sentence.id).\(mode.rawValue).\(seed)",
+                            key: .practice(language, mode == .say ? "speaking" : "writing"), language: language, kind: kind, mode: mode,
+                            instruction: mode == .say ? "Say it back" : "Write what you hear", prompt: .audio(sentence.text, language),
+                            expected: [sentence.text], shape: .sentence(sentence.text, words: sentence.words.compactMap(deck.word)),
+                            answer: sentence.text, meaning: sentence.english,
+                            expectedSeconds: (mode == .say ? 6 : 12) + Double(sentence.text.count) * perCharacter, test: test, band: band)
     }
 
     static func wrongMeanings(for word: Word, deck: LanguageDeck, rng: inout SeededRandom) -> [String] {

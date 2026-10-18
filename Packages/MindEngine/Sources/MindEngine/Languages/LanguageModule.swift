@@ -2,8 +2,16 @@ import Foundation
 import SystemCore
 
 /// Languages: one module for every pack. Placement is a vocabulary test from common words to rare;
-/// sessions teach new words (and, for Japanese without kana, kana first), then sentence listening.
+/// sessions teach new words (and, for Japanese without kana, kana first), then a practice block of
+/// real use: a dialogue, listening, speaking, reading and writing over what's known. Each of the
+/// four skills has its own level from its own test, measured once there's enough to measure and
+/// again at every check-in.
 enum LanguageModule: SubjectModule {
+    /// A skill is first measured once the vocabulary test finds this many words.
+    static let skillCheckFrom = 150
+    /// Skill checks in one regular session, at most.
+    static let skillChecksPerSession = 2
+
     static func needsPlacement(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> Bool {
         guard let language = domain.language, catalogs.deck(language) != nil else { return false }
         // Japanese without kana starts with hiragana; the vocabulary test waits.
@@ -18,22 +26,61 @@ enum LanguageModule: SubjectModule {
 
     static func mainParts(_ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
                           notes: inout [String]) -> [PlanPart] {
+        guard let language = domain.language else { return [] }
+        let practice = practicePart(domain, state: state)
         if kind == .review {
-            let practice = max(2, minutes / 2)
-            return [PlanPart(kind: .practice, domain: domain, minutes: practice, title: "\(domain.label) practice", detail: "Reviews ahead of schedule"),
-                    PlanPart(kind: .sentences, domain: domain, minutes: minutes - practice, title: "Listening",
-                             detail: "Sentences made of words you know")]
+            let reviews = max(2, minutes / 2)
+            var rest = practice
+            rest.minutes = minutes - reviews
+            return [PlanPart(kind: .practice, domain: domain, minutes: reviews, title: "\(domain.label) reviews", detail: "Reviews ahead of schedule"),
+                    rest]
         }
-        let learn = learnPart(domain, minutes: Int((Double(minutes) * 0.65).rounded()), session: state.settings.schedule.minutes, state: state,
+        let checks = skillChecks(domain, state: state, catalogs: catalogs)
+        if !checks.isEmpty {
+            notes.append("\(domain.label): measuring \(ListFormatter.localizedString(byJoining: checks.map { $0.title.lowercased() })) for the first time.")
+        }
+        let remaining = max(5, minutes - checks.map(\.minutes).reduce(0, +))
+        let learn = learnPart(domain, minutes: Int((Double(remaining) * 0.55).rounded()), session: state.settings.schedule.minutes, state: state,
                               catalogs: catalogs, notes: &notes)
         let known = state.cards.values.filter { $0.domain == domain && $0.memory != nil && !$0.key.isKana }.count
-        if let language = domain.language, known < 15 && LanguagePlan.frontier(state.tests, language) < 100 {
+        if known < 15 && LanguagePlan.frontier(state.tests, language) < 100 {
             var all = learn
-            all.minutes = minutes
-            return [all]
+            all.minutes = remaining
+            return checks + [all]
         }
-        return [learn, PlanPart(kind: .sentences, domain: domain, minutes: minutes - learn.minutes, title: "Listening",
-                                detail: "Sentences made of words you know")]
+        var rest = practice
+        rest.minutes = remaining - learn.minutes
+        return checks + [learn, rest]
+    }
+
+    /// The practice block. Its kind is the sentence practice's, run by `PracticeRunner`.
+    static func practicePart(_ domain: Domain, state: StudyState) -> PlanPart {
+        let speaking = state.settings.speaking
+        return PlanPart(kind: .sentences, domain: domain, minutes: 0, title: speaking ? "Listening and speaking" : "Listening and reading",
+                        detail: speaking ? "A dialogue, sentences by ear, saying and writing what you know"
+                            : "A dialogue, sentences by ear, reading and writing what you know")
+    }
+
+    /// The four skills, each measured once before the first check-in: the first regular sessions
+    /// after the vocabulary test fill in whichever haven't been, two at a time.
+    static func skillChecks(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
+        guard let language = domain.language, let deck = catalogs.deck(language),
+              LanguagePlan.frontier(state.tests, language) >= skillCheckFrom else { return [] }
+        let missing = LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain)
+            .filter { skill in state.latest(LanguageSkills.test(skill), in: domain) == nil }
+        return missing.prefix(skillChecksPerSession).compactMap { testPart(domain, $0, deck: deck) }
+    }
+
+    static func testPart(_ domain: Domain, _ skill: LanguageSkill, deck: LanguageDeck) -> PlanPart? {
+        guard deck.sentences(levels: 1...500, limit: 4).count >= 4 else { return nil }
+        let detail = switch skill {
+        case .listening: "Ten sentences by ear, easy to hard"
+        case .speaking: "Say words and sentences back, easy to hard"
+        case .reading: "Ten sentences from the page, easy to hard"
+        case .writing: "Write words and what you hear, easy to hard"
+        }
+        return PlanPart(kind: .test(LanguageSkills.test(skill)), domain: domain, minutes: 3, title: "\(domain.label) \(skill.label.lowercased())",
+                        detail: detail)
     }
 
     /// New material for a part of `minutes`, paced for a session of `session` minutes.
@@ -57,38 +104,50 @@ enum LanguageModule: SubjectModule {
                         items: pace.count)
     }
 
+    /// Vocabulary, then the four skills: plain tests, nothing taught.
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         guard let deck = catalogs.deck(for: domain) else { return [] }
-        var parts = [PlanPart(kind: .test(.vocabulary), domain: domain, minutes: 4, title: "\(domain.label) vocabulary",
-                              detail: "Five words from each frequency band, with “Don't know”")]
-        if deck.sentences(levels: 1...500, limit: 4).count >= 4 {
-            parts.append(PlanPart(kind: .test(.listening), domain: domain, minutes: 3, title: "\(domain.label) listening",
-                                  detail: "Ten sentences by ear, easy to hard"))
+        let vocabulary = PlanPart(kind: .test(.vocabulary), domain: domain, minutes: 4, title: "\(domain.label) vocabulary",
+                                  detail: "Five words from each frequency band, with “Don't know”")
+        // A learner still on kana has nothing for the skill tests to find.
+        guard LanguagePlan.frontier(state.tests, deck.language) >= skillCheckFrom || state.latest(.listening, in: domain) != nil else {
+            return [vocabulary]
         }
-        return parts
+        return [vocabulary] + LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain).compactMap { testPart(domain, $0, deck: deck) }
     }
 
     static func runner(for part: PlanPart, state: StudyState, catalogs: Catalogs) -> (any PartRunner)? {
         guard let language = part.domain?.language, let deck = catalogs.deck(language) else { return nil }
         let frontier = LanguagePlan.frontier(state.tests, language)
+        let seed = state.today.iso
         switch part.kind {
         case .learn:
             let items = LanguagePlan.next(count: part.items, cards: Set(state.cards.keys), deck: deck, readsKana: state.settings.readsKana,
                                           frontier: frontier)
             return LearnRunner(language: language, fresh: items)
         case .sentences:
-            return SentencesRunner(language: language, pool: sentencePool(deck, state: state, frontier: frontier))
+            return PracticeRunner(language: language, state: state, deck: deck, frontier: frontier)
         case .placement:
             return VocabularyRunner(language: language, queue: LanguageTests.vocabulary(band: 0, deck: deck, seed: "placement"), placement: true)
         case .test(.vocabulary):
-            return VocabularyRunner(language: language, queue: LanguageTests.vocabulary(band: 0, deck: deck, seed: state.today.iso),
-                                    placement: false)
+            return VocabularyRunner(language: language, queue: LanguageTests.vocabulary(band: 0, deck: deck, seed: seed), placement: false)
         case .test(.listening):
-            return QuestionListRunner(queue: LanguageTests.listening(deck: deck, seed: state.today.iso, offset: state.today.ordinal)) { attempts, run in
+            return QuestionListRunner(queue: LanguageTests.listening(deck: deck, seed: seed, offset: state.today.ordinal)) { attempts, run in
                 let tested = attempts.filter { $0.test == .listening }
                 guard tested.count >= 4 else { return }
                 run.newTests.append(LanguageTests.listeningResult(tested, date: run.now, language: language))
             }
+        case .test(.languageReading):
+            return QuestionListRunner(queue: LanguageTests.reading(deck: deck, seed: seed, offset: state.today.ordinal)) { attempts, run in
+                let tested = attempts.filter { $0.test == .languageReading }
+                guard tested.count >= 4 else { return }
+                run.newTests.append(LanguageTests.skillResult(.languageReading, tested, date: run.now, language: language, choices: true))
+            }
+        case .test(.speaking), .test(.languageWriting):
+            let mode: SpeakingTask.Mode = part.kind == .test(.speaking) ? .say : .write
+            // Speaking off since the plan was made: nothing to ask.
+            if mode == .say && !state.settings.speaking { return nil }
+            return ProductionTestRunner(language: language, mode: mode, deck: deck, seed: seed, offset: state.today.ordinal)
         default:
             return nil
         }
@@ -102,7 +161,7 @@ enum LanguageModule: SubjectModule {
         }
         guard let language = key.language, let deck = run.catalogs.deck(language), let id = key.wordID, let word = deck.word(id) else { return nil }
         let ask = kind == .learn ? .meaning : LanguageQuiz.ask(for: word, reps: reps)
-        return LanguageQuiz.question(word, ask: ask, kind: kind, deck: deck, seed: run.seed)
+        return LanguageQuiz.question(word, ask: ask, kind: kind, deck: deck, seed: run.seed, help: run.scaffold(word))
     }
 
     static func usable(_ key: CardKey, catalogs: Catalogs) -> Bool {
@@ -113,18 +172,18 @@ enum LanguageModule: SubjectModule {
 
     static func reviewSeconds(_ card: MemoryCard) -> Double { card.key.isKana ? 5 : 8 }
 
-    /// Vocabulary on a log scale, with listening when there is one. Self-rated episodes and
+    /// The four skills, listening and speaking weighted most, on every day a skill was tested once
+    /// they've all been measured; before that, vocabulary on its log scale. Self-rated episodes and
     /// conversations never count.
     static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)] {
-        var listening: Double?
-        var out: [(Day, Double)] = []
-        for test in state.tests where test.domain == domain && (test.test == .vocabulary || test.test == .listening) {
-            if test.test == .listening { listening = test.score * 100 }
-            guard let vocabulary = state.tests.last(where: { $0.test == .vocabulary && $0.domain == domain && $0.date <= test.date }) else { continue }
-            let words = LanguageTests.vocabularyScore(vocabulary.score)
-            out.append((test.day, listening.map { 0.6 * words + 0.4 * $0 } ?? words))
+        let skills = LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain)
+        let tests = state.tests.filter { $0.domain == domain }
+        let days = Set(tests.filter { LanguageSkills.skill($0.test) != nil }.map(\.day)).sorted()
+        let measured: [(day: Day, score: Double)] = days.compactMap { day in
+            LanguageSkills.score(LanguageSkills.levels(domain, tests: tests, on: day), skills: skills).map { (day, $0) }
         }
-        return out
+        if !measured.isEmpty { return measured }
+        return tests.filter { $0.test == .vocabulary }.map { ($0.day, LanguageTests.vocabularyScore($0.score)) }
     }
 
     static func label(_ domain: Domain, state: StudyState) -> String {

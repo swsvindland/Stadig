@@ -83,6 +83,13 @@ public enum KanaTable {
         lookalikes.first { $0.contains(kana) }?.filter { $0 != kana } ?? []
     }
 
+    /// Kana in romaji ("コーヒー" is "koohii"), or nil if it isn't all kana.
+    public static func romaji(_ text: String) -> String? {
+        let segments = Scaffolds.kana(text, Scaffolds.Context(cards: [:], frontier: 0, readsKana: false))
+        guard segments.allSatisfy({ $0.help != nil }) else { return nil }
+        return segments.compactMap(\.help).joined()
+    }
+
     public static func containsKatakana(_ text: String) -> Bool {
         text.unicodeScalars.contains { (0x30A1...0x30FA).contains($0.value) }
     }

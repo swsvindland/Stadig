@@ -25,6 +25,13 @@ public enum ScriptLayer: String, Codable, Sendable {
     case hangul
 }
 
+/// How a language's pronunciation scaffold is worked out from its spelling, if it has one.
+public enum Pronunciation: String, Codable, Sendable {
+    case none
+    /// Syllables with the stressed one in capitals, by Spanish spelling rules: co·ra·ZÓN.
+    case spanish
+}
+
 /// Everything that makes a language a language here: its catalog, voice, speech recognition and
 /// script layer. The skills, the scheduler and the tests are shared.
 public struct LanguagePack: Hashable, Sendable {
@@ -37,13 +44,15 @@ public struct LanguagePack: Hashable, Sendable {
     /// Card keys start with this: "jp.word.123".
     public var keyPrefix: String
     public var script: ScriptLayer
+    public var pronunciation: Pronunciation = .none
 
     public static func pack(_ language: Language) -> LanguagePack {
         switch language {
         case .japanese:
             LanguagePack(language: .japanese, name: "Japanese", locale: "ja-JP", catalog: "japanese", keyPrefix: "jp", script: .kanaKanji)
         case .spanish:
-            LanguagePack(language: .spanish, name: "Spanish", locale: "es-ES", catalog: "spanish", keyPrefix: "es", script: .none)
+            LanguagePack(language: .spanish, name: "Spanish", locale: "es-ES", catalog: "spanish", keyPrefix: "es", script: .none,
+                         pronunciation: .spanish)
         }
     }
 
