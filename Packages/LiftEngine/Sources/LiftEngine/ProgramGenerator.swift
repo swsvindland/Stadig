@@ -411,6 +411,7 @@ struct Builder {
                                             SessionBlockPlan(kind: .accessory, minutes: 0, slots: accessory)]))
         }
         addPhysiqueVolume(&days)
+        applyAsymmetries(&days)
         applyFatigueBudget(&days)
         // Spare time can only add sets the recovery budget has room for, shared across the week.
         let allowance = fatigueHeadroom / Double(max(1, days.count))
@@ -480,6 +481,44 @@ struct Builder {
                 }
                 break
             }
+        }
+    }
+
+    /// A side that measures smaller trains one side at a time, smaller side first so it sets the
+    /// reps. On each day the first accessory for that area (one already one-sided, if there is one)
+    /// becomes its one-sided version and moves to the front, like any priority, so a short session
+    /// keeps it.
+    mutating func applyAsymmetries(_ days: inout [PlannedDay]) {
+        guard input.settings.autoPrioritise, input.kind == .standard else { return }
+        for asymmetry in input.physique?.asymmetries ?? [] {
+            var applied = false
+            for d in days.indices {
+                guard let b = days[d].blocks.firstIndex(where: { $0.kind == .accessory }) else { continue }
+                let slots = days[d].blocks[b].slots
+                let trains = slots.indices.filter { i in
+                    input.catalog.resolve(slots[i].exerciseID).muscles
+                        .filter { $0.muscle.physiqueRegion == asymmetry.limb.region }.map(\.weight).reduce(0, +) >= 1
+                }
+                guard let s = trains.first(where: { input.catalog.resolve(slots[$0].exerciseID).unilateral }) ?? trains.first else { continue }
+                var slot = slots[s]
+                let current = input.catalog.resolve(slot.exerciseID)
+                if !current.unilateral {
+                    let dayUsed = Set(days[d].slots.map(\.exerciseID))
+                    let request = SlotRequest(role: .accessory, patterns: [current.pattern], muscles: current.primaryMuscles,
+                                              sets: slot.sets(week: 0))
+                    let options = strengthCandidates.filter { $0.unilateral && $0.pattern == current.pattern }
+                        .compactMap { e in score(e, for: request, dayUsed: dayUsed).map { (e, $0) } }
+                    guard let pick = options.max(by: { $0.1 < $1.1 })?.0 else { continue }
+                    slot.exerciseID = pick.id
+                    slot.repRange = pick.reps.hypertrophy
+                    slot.restSeconds = pick.rest.hypertrophy
+                }
+                slot.reason = asymmetry.action
+                days[d].blocks[b].slots.remove(at: s)
+                days[d].blocks[b].slots.insert(slot, at: 0)
+                applied = true
+            }
+            if applied { reasons.append("\(asymmetry.finding) \(asymmetry.action)") }
         }
     }
 

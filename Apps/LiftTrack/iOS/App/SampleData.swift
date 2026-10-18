@@ -18,8 +18,14 @@ enum SampleData {
         var settings = LiftSettings(selfReportedPhase: .maintaining, saveToHealth: false)
         let gym = Gym.preset(.fullGym, unit: .kg)
         settings.gymID = gym.id
+        // Two full check-ins, the left arm a little behind both times.
         model.completeOnboarding(profile: profile, settings: settings, gym: gym,
-                                 measurements: BodyMeasurements(day: start, weightKg: 82, neckCm: 39, shouldersCm: 116, waistCm: 86, armCm: 36))
+                                 measurements: BodyMeasurements(day: start, weightKg: 82, neckCm: 39, shouldersCm: 116, chestCm: 104, waistCm: 86,
+                                                                naturalWaistCm: 82, hipsCm: 94, glutesCm: 100, armLeftCm: 35.2, armRightCm: 37,
+                                                                thighLeftCm: 58, thighRightCm: 58.5, calfLeftCm: 38, calfRightCm: 38.2))
+        model.save(measurements: BodyMeasurements(day: .today.adding(days: -2), neckCm: 39, shouldersCm: 116.5, chestCm: 104.5, waistCm: 85,
+                                                  naturalWaistCm: 81, hipsCm: 93.5, glutesCm: 100, armLeftCm: 35.6, armRightCm: 37.4,
+                                                  thighLeftCm: 58.5, thighRightCm: 58.6, calfLeftCm: 38.1, calfRightCm: 38.2))
         // Move the assessment back three weeks.
         if var assessment = model.mesocycles.last {
             assessment.block.start = start

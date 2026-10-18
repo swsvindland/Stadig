@@ -45,6 +45,8 @@ final class AppModel {
     var steps: [StepDay] = []
     @ObservationIgnored private var stepsReadAt = Date.distantPast
     var bodyweightKg: Double?
+    /// From Health, only when it's from the last two weeks.
+    var bodyFatPercent: Double?
     var vo2Max: Double?
     var restingHeartRate: Double?
 
@@ -145,7 +147,7 @@ final class AppModel {
         guard let profile else { return nil }
         return LiftState(profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
                          measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
-                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, vo2Max: vo2Max,
+                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyFatPercent: bodyFatPercent, vo2Max: vo2Max,
                          restingHeartRate: restingHeartRate, nutrition: nutrition, recommendations: recommendations, today: today)
     }
 
@@ -518,13 +520,15 @@ final class AppModel {
         guard health.isAvailable else { return }
         let since = Calendar.current.date(byAdding: .day, value: -60, to: Date()) ?? Date()
         async let weight = health.latestBodyweight()
+        async let fat = health.latestBodyFat()
         async let recovery = health.recoveryDays(since: Day.today.adding(days: -42))
         async let vo2 = health.latestVO2Max()
         async let rhr = health.latestRestingHeartRate()
         async let steps = health.dailySteps(since: stepsSince)
         async let workouts = health.externalWorkouts(since: since, excludingBundlePrefixes: AppModel.ownBundlePrefixes)
-        let (w, r, v, h, s, outside) = await (weight, recovery, vo2, rhr, steps, workouts)
+        let (w, f, r, v, h, s, outside) = await (weight, fat, recovery, vo2, rhr, steps, workouts)
         bodyweightKg = w?.kg
+        bodyFatPercent = f.flatMap { $0.date > Date().addingTimeInterval(-14 * 86_400) ? $0.percent : nil }
         self.recovery = r
         vo2Max = v
         restingHeartRate = h

@@ -1,5 +1,28 @@
 import Foundation
 
+/// A limb measured on both sides.
+public enum Limb: String, CaseIterable, Codable, Sendable, Identifiable {
+    case arm, thigh, calf
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .arm: "Upper arm"
+        case .thigh: "Thigh"
+        case .calf: "Calf"
+        }
+    }
+
+    public var region: PhysiqueRegion {
+        switch self {
+        case .arm: .arms
+        case .thigh: .thighs
+        case .calf: .calves
+        }
+    }
+}
+
 /// Tape measurements, owned by Lift Track (weight belongs to Macro Track and Health). All in cm and
 /// kg; any field may be missing.
 public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
@@ -10,16 +33,36 @@ public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
     public var neckCm: Double?
     public var shouldersCm: Double?
     public var chestCm: Double?
+    /// At the navel: waist-to-height, shoulder-to-waist and men's tape body fat.
     public var waistCm: Double?
+    /// At its narrowest, between the ribs and the hips: waist-to-hip and women's tape body fat.
+    public var naturalWaistCm: Double?
+    /// Around the top of the hip bones. Entries from before glutes were measured took the widest
+    /// point here; the store moves those to glutes.
     public var hipsCm: Double?
+    /// The widest point around the buttocks.
+    public var glutesCm: Double?
+    /// Flexed, at the biceps peak.
+    public var armLeftCm: Double?
+    public var armRightCm: Double?
+    /// Standing, just below the glute fold.
+    public var thighLeftCm: Double?
+    public var thighRightCm: Double?
+    /// Standing, at the widest point.
+    public var calfLeftCm: Double?
+    public var calfRightCm: Double?
+    /// One reading with no side, from before both sides were measured: it counts for size, never
+    /// for symmetry.
     public var armCm: Double?
     public var thighCm: Double?
     public var calfCm: Double?
     public var note: String
 
     public init(id: UUID = UUID(), day: Day, weightKg: Double? = nil, bodyFatPercent: Double? = nil, neckCm: Double? = nil,
-                shouldersCm: Double? = nil, chestCm: Double? = nil, waistCm: Double? = nil, hipsCm: Double? = nil,
-                armCm: Double? = nil, thighCm: Double? = nil, calfCm: Double? = nil, note: String = "") {
+                shouldersCm: Double? = nil, chestCm: Double? = nil, waistCm: Double? = nil, naturalWaistCm: Double? = nil,
+                hipsCm: Double? = nil, glutesCm: Double? = nil, armCm: Double? = nil, armLeftCm: Double? = nil, armRightCm: Double? = nil,
+                thighCm: Double? = nil, thighLeftCm: Double? = nil, thighRightCm: Double? = nil, calfCm: Double? = nil,
+                calfLeftCm: Double? = nil, calfRightCm: Double? = nil, note: String = "") {
         self.id = id
         self.day = day
         self.weightKg = weightKg
@@ -28,7 +71,15 @@ public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
         self.shouldersCm = shouldersCm
         self.chestCm = chestCm
         self.waistCm = waistCm
+        self.naturalWaistCm = naturalWaistCm
         self.hipsCm = hipsCm
+        self.glutesCm = glutesCm
+        self.armLeftCm = armLeftCm
+        self.armRightCm = armRightCm
+        self.thighLeftCm = thighLeftCm
+        self.thighRightCm = thighRightCm
+        self.calfLeftCm = calfLeftCm
+        self.calfRightCm = calfRightCm
         self.armCm = armCm
         self.thighCm = thighCm
         self.calfCm = calfCm
@@ -45,25 +96,126 @@ public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
         return w / h
     }
 
-    public var isEmpty: Bool {
-        [weightKg, bodyFatPercent, neckCm, shouldersCm, chestCm, waistCm, hipsCm, armCm, thighCm, calfCm].allSatisfy { $0 == nil }
+    /// Where a limb's left and right readings live.
+    public static func sides(_ limb: Limb) -> (left: WritableKeyPath<BodyMeasurements, Double?>, right: WritableKeyPath<BodyMeasurements, Double?>) {
+        switch limb {
+        case .arm: (\.armLeftCm, \.armRightCm)
+        case .thigh: (\.thighLeftCm, \.thighRightCm)
+        case .calf: (\.calfLeftCm, \.calfRightCm)
+        }
     }
+
+    /// Where a limb's reading with no side lives.
+    public static func unsided(_ limb: Limb) -> WritableKeyPath<BodyMeasurements, Double?> {
+        switch limb {
+        case .arm: \.armCm
+        case .thigh: \.thighCm
+        case .calf: \.calfCm
+        }
+    }
+
+    /// Both sides, when both were measured.
+    public func sides(_ limb: Limb) -> (left: Double, right: Double)? {
+        let keys = Self.sides(limb)
+        guard let left = self[keyPath: keys.left], let right = self[keyPath: keys.right] else { return nil }
+        return (left, right)
+    }
+
+    /// A limb's size for proportions: the bigger side, so a lagging side isn't also counted as a
+    /// small limb, or a reading with no side.
+    public func size(_ limb: Limb) -> Double? {
+        let keys = Self.sides(limb)
+        let sided = [self[keyPath: keys.left], self[keyPath: keys.right]].compactMap { $0 }.max()
+        return sided ?? self[keyPath: Self.unsided(limb)]
+    }
+
+    static var fields: [WritableKeyPath<BodyMeasurements, Double?>] {
+        [\.weightKg, \.bodyFatPercent, \.neckCm, \.shouldersCm, \.chestCm, \.waistCm, \.naturalWaistCm, \.hipsCm, \.glutesCm,
+         \.armLeftCm, \.armRightCm, \.thighLeftCm, \.thighRightCm, \.calfLeftCm, \.calfRightCm, \.armCm, \.thighCm, \.calfCm]
+    }
+
+    public var isEmpty: Bool { Self.fields.allSatisfy { self[keyPath: $0] == nil } }
 
     /// Fills each missing field from an older entry, for "latest known" readings.
     public func filled(from older: BodyMeasurements) -> BodyMeasurements {
         var m = self
-        m.weightKg = m.weightKg ?? older.weightKg
-        m.bodyFatPercent = m.bodyFatPercent ?? older.bodyFatPercent
-        m.neckCm = m.neckCm ?? older.neckCm
-        m.shouldersCm = m.shouldersCm ?? older.shouldersCm
-        m.chestCm = m.chestCm ?? older.chestCm
-        m.waistCm = m.waistCm ?? older.waistCm
-        m.hipsCm = m.hipsCm ?? older.hipsCm
-        m.armCm = m.armCm ?? older.armCm
-        m.thighCm = m.thighCm ?? older.thighCm
-        m.calfCm = m.calfCm ?? older.calfCm
+        for key in Self.fields where m[keyPath: key] == nil { m[keyPath: key] = older[keyPath: key] }
         return m
     }
+}
+
+/// A side that has measured smaller at check-ins at least two weeks apart.
+public struct Asymmetry: Hashable, Codable, Sendable, Identifiable {
+    public var limb: Limb
+    public var smaller: BodySide
+    public var differenceCm: Double
+    /// Of the bigger side.
+    public var percent: Double
+    /// 0–1: 4% apart is the threshold, 10% the most.
+    public var magnitude: Double
+
+    public var id: Limb { limb }
+
+    public init(limb: Limb, smaller: BodySide, differenceCm: Double, percent: Double, magnitude: Double) {
+        self.limb = limb
+        self.smaller = smaller
+        self.differenceCm = differenceCm
+        self.percent = percent
+        self.magnitude = magnitude
+    }
+
+    var bigger: BodySide { smaller == .left ? .right : .left }
+
+    public var finding: String {
+        "Your \(smaller.label.lowercased()) \(limb.label.lowercased()) has measured smaller than the \(bigger.label.lowercased()) "
+            + "at two check-ins in a row (\(Int((percent * 100).rounded()))% less)."
+    }
+
+    public var action: String {
+        let work = switch limb {
+        case .arm: "Arm work goes"
+        case .thigh: "Leg accessories go"
+        case .calf: "Calf raises go"
+        }
+        return "\(work) one side at a time, \(smaller.label.lowercased()) first; the \(bigger.label.lowercased()) matches its reps."
+    }
+}
+
+/// Fat-free mass index against what's typical, for how much room is left to build.
+public enum FFMIBand: String, Sendable {
+    case lotsOfRoom, someRoom, nearCeiling
+
+    public var label: String {
+        switch self {
+        case .lotsOfRoom: "Lots of room to build"
+        case .someRoom: "Some room to build"
+        case .nearCeiling: "Near the natural ceiling"
+        }
+    }
+
+    /// Normalised FFMI where each band starts.
+    public static func thresholds(_ sex: BiologicalSex) -> (some: Double, near: Double) {
+        switch sex {
+        case .male: (22, 24)
+        case .female: (18.5, 20)
+        case .unspecified: (20.25, 22)
+        }
+    }
+
+    public static func of(_ normalized: Double, sex: BiologicalSex) -> FFMIBand {
+        let t = thresholds(sex)
+        return normalized >= t.near ? .nearCeiling : (normalized >= t.some ? .someRoom : .lotsOfRoom)
+    }
+}
+
+/// Where a body-fat reading came from, best first.
+public enum BodyFatSource: String, Sendable {
+    /// A Health sample from the last two weeks: a smart scale or a scan.
+    case health
+    /// Typed into a measurement entry.
+    case entered
+    /// The US Navy tape estimate: a soft signal, about ±3–4%.
+    case tape
 }
 
 /// A lagging area and what to do about it. The wording describes proportions and next steps,
@@ -90,14 +242,22 @@ public struct PhysiqueAnalysis: Hashable, Sendable {
     public var shoulderToWaist: Double?
     public var waistToHeight: Double?
     public var bodyFatPercent: Double?
-    /// Whether body fat was estimated from the tape (US Navy method) rather than measured.
-    public var bodyFatEstimated: Bool
+    public var bodyFatSource: BodyFatSource?
+    /// Lean mass over height squared.
+    public var ffmi: Double?
+    /// FFMI adjusted to a 1.8 m height, so people of different heights compare.
+    public var normalizedFFMI: Double?
+    public var ffmiBand: FFMIBand?
     public var gaps: [PhysiqueGap]
+    public var asymmetries: [Asymmetry]
     /// Change in waist over the window, cm; negative is smaller.
     public var waistTrend: Double?
 
     /// A 0–100 reading for the hub: proportion and leanness, never a judgement of looks.
     public var score: Double?
+
+    /// Whether body fat was estimated from the tape (US Navy method) rather than measured.
+    public var bodyFatEstimated: Bool { bodyFatSource == .tape }
 }
 
 public enum Physique {
@@ -125,8 +285,63 @@ public enum Physique {
         }
     }
 
+    /// The tape estimate with the sites the Navy method uses: the waist at the navel for men, at its
+    /// narrowest and the glutes at their widest for women.
+    public static func tapeBodyFat(_ m: BodyMeasurements, sex: BiologicalSex, heightCm: Double?) -> Double? {
+        guard let h = heightCm, let neck = m.neckCm else { return nil }
+        switch sex {
+        case .female:
+            guard let waist = m.naturalWaistCm ?? m.waistCm else { return nil }
+            return navyBodyFat(sex: sex, heightCm: h, neckCm: neck, waistCm: waist, hipsCm: m.glutesCm)
+        case .male, .unspecified:
+            guard let waist = m.waistCm else { return nil }
+            return navyBodyFat(sex: sex, heightCm: h, neckCm: neck, waistCm: waist, hipsCm: nil)
+        }
+    }
+
+    /// Lean mass over height squared, and adjusted to a 1.8 m height (Kouri et al., 1995).
+    public static func ffmi(weightKg: Double, bodyFatPercent: Double, heightCm: Double) -> (ffmi: Double, normalized: Double)? {
+        guard heightCm > 0, weightKg > 0, (2..<70).contains(bodyFatPercent) else { return nil }
+        let metres = heightCm / 100
+        let ffmi = weightKg * (1 - bodyFatPercent / 100) / (metres * metres)
+        return (ffmi, ffmi + 6.1 * (1.8 - metres))
+    }
+
+    // Symmetry: tape error is about half a centimetre to a centimetre, and a dominant side around a
+    // centimetre bigger is normal, so only a difference that lasts counts.
+    static let asymmetryMinimumCm = 1.5
+    static let asymmetryMinimumShare = 0.04
+    static let asymmetryClearsBelowCm = 1.0
+    static let asymmetryDaysApart = 14
+
+    /// Sides that measured apart at two check-ins at least two weeks apart. Once flagged, a side
+    /// stays flagged until a check-in shows them within a centimetre.
+    public static func asymmetries(_ history: [BodyMeasurements]) -> [Asymmetry] {
+        Limb.allCases.compactMap { limb in
+            let entries = history.sorted { $0.day < $1.day }.compactMap { m in m.sides(limb).map { (day: m.day, left: $0.left, right: $0.right) } }
+            func smaller(_ e: (day: Day, left: Double, right: Double)) -> BodySide { e.left < e.right ? .left : .right }
+            func apart(_ e: (day: Day, left: Double, right: Double)) -> Bool {
+                abs(e.left - e.right) >= max(asymmetryMinimumCm, max(e.left, e.right) * asymmetryMinimumShare)
+            }
+            var flagged: BodySide?
+            for (i, entry) in entries.enumerated() {
+                let side = smaller(entry)
+                if let f = flagged, f != side || abs(entry.left - entry.right) < asymmetryClearsBelowCm { flagged = nil }
+                guard flagged == nil, apart(entry) else { continue }
+                let earlier = entries[..<i].last { $0.day <= entry.day.adding(days: -asymmetryDaysApart) }
+                if let earlier, apart(earlier), smaller(earlier) == side { flagged = side }
+            }
+            guard let side = flagged, let last = entries.last else { return nil }
+            let difference = abs(last.left - last.right)
+            let share = difference / max(last.left, last.right)
+            return Asymmetry(limb: limb, smaller: side, differenceCm: difference, percent: share,
+                             magnitude: clamp((share - asymmetryMinimumShare) / 0.06, 0, 1))
+        }
+    }
+
+    /// `measuredBodyFat` is a recent Health sample; it beats a typed reading, which beats the tape.
     public static func analyse(_ history: [BodyMeasurements], sex: BiologicalSex, heightCm: Double?,
-                               weightKg: Double? = nil) -> PhysiqueAnalysis {
+                               weightKg: Double? = nil, measuredBodyFat: Double? = nil) -> PhysiqueAnalysis {
         let sorted = history.sorted { $0.day < $1.day }
         var latest: BodyMeasurements?
         for entry in sorted { latest = latest.map { entry.filled(from: $0) } ?? entry }
@@ -134,11 +349,13 @@ public enum Physique {
 
         let ratio = latest?.shoulderToWaist
         let wth = latest?.waistToHeight(heightCm: heightCm)
-        var bodyFat = latest?.bodyFatPercent
-        var estimated = false
-        if bodyFat == nil, let latest, let h = heightCm, let neck = latest.neckCm, let waist = latest.waistCm {
-            bodyFat = navyBodyFat(sex: sex, heightCm: h, neckCm: neck, waistCm: waist, hipsCm: latest.hipsCm)
-            estimated = bodyFat != nil
+        let readings: [(Double?, BodyFatSource)] = [(measuredBodyFat, .health), (latest?.bodyFatPercent, .entered),
+                                                    (latest.flatMap { tapeBodyFat($0, sex: sex, heightCm: heightCm) }, .tape)]
+        let best = readings.first { $0.0 != nil }
+        let bodyFat = best?.0
+        let source = best?.1
+        let lean = bodyFat.flatMap { bf in
+            latest?.weightKg.flatMap { kg in heightCm.flatMap { ffmi(weightKg: kg, bodyFatPercent: bf, heightCm: $0) } }
         }
 
         var gaps: [PhysiqueGap] = []
@@ -152,12 +369,12 @@ public enum Physique {
                     action: "Add side-delt and overhead volume this block."))
             }
         }
-        if let latest, let arm = latest.armCm, let neck = latest.neckCm, arm < neck * 0.95 {
+        if let latest, let arm = latest.size(.arm), let neck = latest.neckCm, arm < neck * 0.95 {
             gaps.append(PhysiqueGap(region: .arms, magnitude: clamp((neck - arm) / neck * 3, 0, 1),
                                     finding: "Upper arms measure smaller than the neck.",
                                     action: "Add direct biceps and triceps work; it costs little recovery."))
         }
-        if let latest, let thigh = latest.thighCm, let calf = latest.calfCm, thigh < calf * 1.5 {
+        if let latest, let thigh = latest.size(.thigh), let calf = latest.size(.calf), thigh < calf * 1.5 {
             gaps.append(PhysiqueGap(region: .thighs, magnitude: clamp((calf * 1.5 - thigh) / thigh, 0, 1),
                                     finding: "Thighs are small relative to calves.",
                                     action: "Add quad and hamstring volume."))
@@ -173,8 +390,9 @@ public enum Physique {
         if let wth { parts.append(clamp((0.62 - wth) / (0.62 - 0.42), 0, 1) * 100) }
         if !parts.isEmpty { score = parts.reduce(0, +) / Double(parts.count) }
 
-        return PhysiqueAnalysis(latest: latest, shoulderToWaist: ratio, waistToHeight: wth, bodyFatPercent: bodyFat,
-                                bodyFatEstimated: estimated, gaps: gaps.sorted { $0.magnitude > $1.magnitude },
+        return PhysiqueAnalysis(latest: latest, shoulderToWaist: ratio, waistToHeight: wth, bodyFatPercent: bodyFat, bodyFatSource: source,
+                                ffmi: lean?.ffmi, normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
+                                gaps: gaps.sorted { $0.magnitude > $1.magnitude }, asymmetries: asymmetries(sorted),
                                 waistTrend: waistTrend, score: score)
     }
 }

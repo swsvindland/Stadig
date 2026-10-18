@@ -38,7 +38,16 @@ nonisolated extension ActivityRecord: @retroactive StoredRecord {
 
 nonisolated extension MeasurementRecord: @retroactive StoredRecord {
     public static var kind: String { "measurement" }
-    public static var schemaVersion: Int { 1 }
+    public static var schemaVersion: Int { 2 }
+
+    /// 2 measures hips at the hip bones and glutes at the widest point, where "hips" was taken
+    /// before, so older hip readings move to glutes.
+    public static func migrate(_ json: inout [String: Any], from version: Int) throws {
+        if version == 1, var measurements = json["measurements"] as? [String: Any], let hips = measurements.removeValue(forKey: "hipsCm") {
+            measurements["glutesCm"] = hips
+            json["measurements"] = measurements
+        }
+    }
 }
 
 nonisolated extension ProgressPhoto: @retroactive StoredRecord {

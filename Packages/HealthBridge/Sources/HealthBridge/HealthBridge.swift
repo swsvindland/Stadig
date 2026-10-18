@@ -81,6 +81,12 @@ extension HealthBridge {
             .map { ($0.endDate, $0.quantity.doubleValue(for: HealthTypes.kg)) }
     }
 
+    /// The most recent body-fat sample (a smart scale or a scan), as a percentage.
+    public func latestBodyFat() async -> (percent: Double, date: Date)? {
+        guard let latest = await latest(HealthTypes.bodyFat, unit: .percent()) else { return nil }
+        return (latest.value * 100, latest.date)
+    }
+
     /// Latest height in cm.
     public func latestHeight() async -> Double? { await latest(HealthTypes.height, unit: HealthTypes.cm)?.value }
 
@@ -415,6 +421,7 @@ extension HealthBridge {
     public func dailySteps(since: Day) async -> [StepDay] { [] }
     public func latestBodyweight() async -> (kg: Double, date: Date)? { nil }
     public func bodyweights(since: Date) async -> [(date: Date, kg: Double)] { [] }
+    public func latestBodyFat() async -> (percent: Double, date: Date)? { nil }
     public func latestHeight() async -> Double? { nil }
     public func latestVO2Max() async -> Double? { nil }
     public func latestRestingHeartRate() async -> Double? { nil }

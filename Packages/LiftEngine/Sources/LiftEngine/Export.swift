@@ -59,10 +59,15 @@ public enum Export {
             })
         let measurements = ExportTable(
             name: "measurements",
-            header: ["day", "weight_kg", "body_fat_pct", "neck_cm", "shoulders_cm", "chest_cm", "waist_cm", "hips_cm", "arm_cm", "thigh_cm", "calf_cm", "note"],
+            // arm_cm, thigh_cm and calf_cm are readings from before both sides were measured.
+            header: ["day", "weight_kg", "body_fat_pct", "neck_cm", "shoulders_cm", "chest_cm", "waist_navel_cm", "waist_narrowest_cm",
+                     "hips_cm", "glutes_cm", "arm_left_cm", "arm_right_cm", "thigh_left_cm", "thigh_right_cm", "calf_left_cm", "calf_right_cm",
+                     "arm_cm", "thigh_cm", "calf_cm", "note"],
             rows: state.measurements.sorted { $0.day < $1.day }.map { m in
                 [m.day.iso, number(m.weightKg), number(m.bodyFatPercent), number(m.neckCm), number(m.shouldersCm), number(m.chestCm),
-                 number(m.waistCm), number(m.hipsCm), number(m.armCm), number(m.thighCm), number(m.calfCm), m.note]
+                 number(m.waistCm), number(m.naturalWaistCm), number(m.hipsCm), number(m.glutesCm), number(m.armLeftCm), number(m.armRightCm),
+                 number(m.thighLeftCm), number(m.thighRightCm), number(m.calfLeftCm), number(m.calfRightCm), number(m.armCm),
+                 number(m.thighCm), number(m.calfCm), m.note]
             })
         let tests = ExportTable(
             name: "tests",
