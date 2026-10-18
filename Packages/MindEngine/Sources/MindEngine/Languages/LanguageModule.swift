@@ -66,8 +66,7 @@ enum LanguageModule: SubjectModule {
     static func skillChecks(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         guard let language = domain.language, let deck = catalogs.deck(language),
               LanguagePlan.frontier(state.tests, language) >= skillCheckFrom else { return [] }
-        let missing = LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain)
-            .filter { skill in state.latest(LanguageSkills.test(skill), in: domain) == nil }
+        let missing = testable(state, domain: domain).filter { skill in state.latest(LanguageSkills.test(skill), in: domain) == nil }
         return missing.prefix(skillChecksPerSession).compactMap { testPart(domain, $0, deck: deck) }
     }
 
@@ -113,7 +112,13 @@ enum LanguageModule: SubjectModule {
         guard LanguagePlan.frontier(state.tests, deck.language) >= skillCheckFrom || state.latest(.listening, in: domain) != nil else {
             return [vocabulary]
         }
-        return [vocabulary] + LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain).compactMap { testPart(domain, $0, deck: deck) }
+        return [vocabulary] + testable(state, domain: domain).compactMap { testPart(domain, $0, deck: deck) }
+    }
+
+    /// The skills to test now: speaking only while speaking exercises are on (an earlier speaking
+    /// result still counts in the score).
+    static func testable(_ state: StudyState, domain: Domain) -> [LanguageSkill] {
+        LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain).filter { $0 != .speaking || state.settings.speaking }
     }
 
     static func runner(for part: PlanPart, state: StudyState, catalogs: Catalogs) -> (any PartRunner)? {
