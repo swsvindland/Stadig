@@ -23,6 +23,7 @@ enum SampleData {
         var tests: [TestResult] = []
         var reflections: [Reflection] = []
         var pieces: [WritingPiece] = []
+        var comparisons: [BlindComparison] = []
         var rng = SeededRandom(seed: 2026)
 
         for offset in 0..<60 {
@@ -30,7 +31,8 @@ enum SampleData {
             // A missed day now and then.
             if offset > 20 && rng.chance(0.08) { continue }
             let state = StudyState(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
-                                   reflections: reflections, pieces: pieces, today: day, now: day.date().addingTimeInterval(18.5 * 3600))
+                                   reflections: reflections, pieces: pieces, comparisons: comparisons, today: day,
+                                   now: day.date().addingTimeInterval(18.5 * 3600))
             guard let plan = SessionPlanner.today(state, catalogs: model.catalogs) else { continue }
             var run = StudyRun(plan: plan, state: state, catalogs: model.catalogs, now: state.now)
             var now = state.now
@@ -79,10 +81,17 @@ enum SampleData {
                     run.respond(.skip, now: now)
                 case .compose(let task):
                     now += Double(task.minutes) * 60
-                    run.respond(.written(text: rng.pick(sectionNotes), source: .typed), now: now)
-                case .compare:
+                    if task.reviewing != nil {
+                        run.respond(.skip, now: now)
+                    } else {
+                        run.submitWriting(SampleWriting.text(for: task, week: offset / 7), source: rng.chance(0.3) ? .handwritten : .typed,
+                                          misspelled: SampleWriting.misspelled, now: now)
+                    }
+                case .compare(let pair):
                     now += 90
-                    run.respond(.picked(1), now: now)
+                    // Mostly the newer piece: the sample student is getting better.
+                    let newer = pair.first.id == pair.newer.id ? 0 : 1
+                    run.respond(.picked(rng.chance(0.8) ? newer : 1 - newer), now: now)
                 }
             }
             run.finish(now: now)
@@ -97,11 +106,13 @@ enum SampleData {
             }
             reflections += run.newReflections
             pieces += run.newPieces
+            comparisons += run.newComparisons
         }
         tests.append(TestResult(test: .episode, date: start.adding(days: 52).date().addingTimeInterval(21 * 3600), score: 1.0 / 3,
                                 detail: ["rating": 1], language: .japanese))
         model.seed(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
                    pieces: pieces)
+        model.seedWriting(comparisons: comparisons)
     }
 
     /// The sample student: about 600 Japanese words to begin with; numeracy quick to level 6,

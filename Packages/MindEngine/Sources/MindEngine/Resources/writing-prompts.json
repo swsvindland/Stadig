@@ -1,0 +1,429 @@
+{
+  "prompts": [
+    {
+      "id": "creative-the-last-shift",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "It’s the last shift before the corner café closes for good. The owner is stacking chairs around the one regular who still hasn’t finished his tea."
+    },
+    {
+      "id": "creative-overdue-library-book",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A woman returns a library book forty years overdue. The librarian on duty is the one who lent it to her."
+    },
+    {
+      "id": "creative-services-at-three-am",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A motorway service station at three in the morning: one till open, a coach party queueing for coffee, someone asleep across three chairs. Describe it through the eyes of the person behind the till."
+    },
+    {
+      "id": "creative-first-night-sounds",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A child is spending their first night at their grandparents’ house and can’t get to sleep. Write the scene using only what they can hear."
+    },
+    {
+      "id": "creative-tent-in-the-rain",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A family is putting up a tent in a field just as the rain starts. Write the scene without using a single adjective."
+    },
+    {
+      "id": "creative-swapped-coats",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Two guests leave a wedding in each other’s identical coats. One of them finds something in the pocket they were never meant to see."
+    },
+    {
+      "id": "creative-moved-furniture",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Open with the line “You’ve moved the furniture.” Let the reader work out who is speaking, and why it matters, from what is said next."
+    },
+    {
+      "id": "creative-allotment-shed",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "An old man hands the key of his allotment shed to the young couple taking over his plot. Inside, every tool is labelled in his handwriting."
+    },
+    {
+      "id": "creative-first-bus-alone",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A nine-year-old takes the bus on their own for the first time, the exact fare clenched in one hand. Follow the journey stop by stop."
+    },
+    {
+      "id": "creative-empty-flat",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "The night before moving out, someone sits on the floor of their empty flat eating chips out of the paper. Every mark on the walls brings something back."
+    },
+    {
+      "id": "creative-pavement-piano",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "An upright piano has been left on the pavement with a sign taped to it: “Free to a good home.” A passer-by stops, lifts the lid and starts to play."
+    },
+    {
+      "id": "creative-lost-property",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "The lost property office at a big railway station, late on a Friday. A man comes to the counter asking for something nobody would ever think to hand in."
+    },
+    {
+      "id": "creative-early-swim",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A public swimming pool at half past six in the morning, as the first lane swimmers arrive. Describe it through smell, sound and temperature before anyone speaks."
+    },
+    {
+      "id": "creative-wrong-name-speech",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "At a leaving do, the manager giving the speech gets the leaver’s name wrong, twice, and nobody corrects him. Write it from the point of view of the person who is leaving."
+    },
+    {
+      "id": "creative-recipe-card",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A handwritten recipe card falls out of a second-hand cookbook. In the margin, in different ink, someone has written “Don’t tell Margaret.”"
+    },
+    {
+      "id": "creative-night-bus-strangers",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Two strangers on a night bus discover they grew up on the same street, thirty years apart. Tell it mostly through what they say to each other."
+    },
+    {
+      "id": "creative-driving-examiner",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A driving examiner’s last test before she retires is with a man in his seventies who is taking it for the very first time."
+    },
+    {
+      "id": "creative-tailor-fitting",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A tailor kneels to pin the hem of a suit for a nervous young man. Neither of them mentions what the suit is for."
+    },
+    {
+      "id": "creative-snow-at-break",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "The first snow of the winter starts falling during morning break in a primary school playground. Write it from the height of a six-year-old."
+    },
+    {
+      "id": "creative-last-strawberries",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "A market trader is calling out prices as the light goes at the end of the day. A customer starts to haggle over the last box of strawberries, and neither of them will back down."
+    },
+    {
+      "id": "creative-half-a-phone-call",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "In a quiet train carriage, a passenger takes a phone call that everyone can hear. Write only their half of the conversation, and let the reader guess the rest."
+    },
+    {
+      "id": "creative-fence-colours",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Two neighbours paint their sides of a shared fence on the same Saturday, in very different colours. Start at the moment they both step back to look."
+    },
+    {
+      "id": "creative-shop-first-morning",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "On her first morning running the shop she has just bought, a woman arrives to find the previous owner already waiting outside, ready to open up as usual."
+    },
+    {
+      "id": "creative-box-in-the-loft",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Helping their parents clear the loft before a move, someone finds a box labelled with their own name in handwriting they don’t recognise."
+    },
+    {
+      "id": "creative-hotel-out-of-season",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "The breakfast room of a seaside hotel out of season: one waiter, two guests and a toaster that only browns one side. Begin with the first thing anyone says."
+    },
+    {
+      "id": "creative-shared-lift",
+      "exercise": "prompt",
+      "kind": "creative",
+      "text": "Two people share a lift to the top floor of an office block. One of them is about to interview the other, and only one of them knows it."
+    },
+    {
+      "id": "argument-four-day-week",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should employers move to a four-day working week with no cut in pay? Pick a side, give your two strongest reasons with an example for each, and then answer the best objection to your view."
+    },
+    {
+      "id": "argument-car-free-city-centres",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should city centres be closed to private cars? Say where you stand, make your case with your two best reasons and whatever evidence you can bring, and deal with the objection a sceptic would raise first."
+    },
+    {
+      "id": "argument-school-uniform",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should schools make pupils wear a uniform? Take a position and support it with two reasons, each backed by a concrete example, before tackling the strongest argument on the other side."
+    },
+    {
+      "id": "argument-phones-at-school",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should smartphones be banned for the whole school day, breaks included? Choose a side, set out the two reasons that persuade you most, with evidence or examples, and show why the best counter-argument doesn’t change your mind."
+    },
+    {
+      "id": "argument-primary-homework",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should primary schools stop setting homework? Decide, then argue it: your two best reasons, something real to support each one, and a fair answer to the strongest point against you."
+    },
+    {
+      "id": "argument-service-in-the-price",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should restaurants scrap tipping and build the cost of service into their menu prices? Commit to one answer, give two reasons with examples from your own experience or reading, and respond to the objection you find hardest to answer."
+    },
+    {
+      "id": "argument-free-buses",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should local buses be free to ride, paid for out of taxes? Argue for or against with your two strongest reasons, support them with evidence, and take on the most serious objection head on."
+    },
+    {
+      "id": "argument-shops-take-cash",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should shops be required by law to accept cash? Pick a side, back it with two well-supported reasons, and then put the best case for the opposite view before showing where it falls down."
+    },
+    {
+      "id": "argument-video-referees",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Has video refereeing made football better? Give your verdict, support it with two reasons and specific matches or moments, and answer the fan who disagrees with you most."
+    },
+    {
+      "id": "argument-work-from-home",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should office workers have the right to work from home most of the week if their job allows it? State your position, defend it with your two best reasons and some evidence, and rebut the strongest objection."
+    },
+    {
+      "id": "argument-self-checkouts",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Are self-service checkouts a good thing for shoppers? Take a side, give two reasons with examples, and explain why the most convincing argument against you still falls short."
+    },
+    {
+      "id": "argument-out-of-hours-messages",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should employers be banned from contacting staff outside working hours, except in emergencies? Make the case for one side using your two best reasons, each with an example, and meet the strongest objection fairly."
+    },
+    {
+      "id": "argument-hosting-the-olympics",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Is hosting the Olympics worth the cost for a city? Decide which way you lean, give the two reasons that matter most with evidence, and answer the best argument from the other side."
+    },
+    {
+      "id": "argument-plastic-free-produce",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should supermarkets have to sell fruit and vegetables without plastic packaging? Take a clear stance, support it with your two most convincing reasons and examples, and answer the objection most likely to be thrown back at you."
+    },
+    {
+      "id": "argument-keep-the-library",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should every town keep its public library open, even as fewer people borrow books? Argue one side with two strong reasons and real examples, and answer the most persuasive point against you."
+    },
+    {
+      "id": "argument-tourist-tax",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should popular cities charge visitors a nightly tourist tax? Come down on one side, give two reasons with something concrete behind each, and show how you would answer the person most likely to disagree."
+    },
+    {
+      "id": "argument-scores-in-kids-sport",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should children’s sports matches keep score for players under ten? Choose your answer, support it with two reasons drawn from evidence or experience, and take on the strongest view on the other side."
+    },
+    {
+      "id": "argument-pocket-money-for-chores",
+      "exercise": "argument",
+      "kind": "argument",
+      "text": "Should children earn their pocket money by doing household chores? Take a side, give your two best reasons with examples, and then explain what you would say to someone who thinks the opposite."
+    },
+    {
+      "id": "practical-landlord-boiler",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You rent a flat and the boiler has broken for the third time this month. Rewrite this email to your landlord, Graham, so it sets out the problem plainly, asks for an engineer to come within 48 hours and drops the sarcasm.",
+      "source": "Hi Graham,\n\nJust a quick one, as I’m sure you’re very busy. The boiler has decided to stop working again, which makes three times this month, so that must be some kind of record. No rush, of course. It’s only November and we’ve only got a baby in the flat. I did mention this the last two times, but I’m guessing those emails never arrived. Anyway, whenever you get a moment, it would be lovely if someone could maybe have a look at some point.\n\nThanks so much,\nPriya"
+    },
+    {
+      "id": "practical-launch-date",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You manage a website project. The client, Dana, needs to know the launch has moved from the 7th to the 14th and must approve the new date by Thursday. Rewrite the email so she could act on the first two lines.",
+      "source": "Hi Dana,\n\nHope you had a good weekend. I wanted to give you a bit of an update on where we are with everything. The team has been working really hard on the new booking pages and we’re really pleased with how the designs are coming together, especially the mobile version, which I think you’ll love. We did hit a snag with the payment testing last week, which took longer than expected because the test accounts weren’t set up, but that’s sorted now. Because of that, we think it makes sense to look at going live on the 14th instead of the 7th, if that works on your side. Let us know what you think when you get a chance.\n\nBest,\nTom"
+    },
+    {
+      "id": "practical-supplier-chat",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re messaging Leon, a colleague, after the supplier Hartwell cancelled tomorrow’s meeting and the room booking was lost. Rewrite it so Leon knows what happened, that you want to rebook for Thursday, and that you need his sales figures by 5pm today either way.",
+      "source": "re the Hartwell thing — no go, they pulled out last night. thurs? or we push to next wk but then the board pack slips. need your numbers either way, today ideally. also K says the room’s gone so that’s that. lmk. sorry, on my phone, will explain later"
+    },
+    {
+      "id": "practical-bin-notice",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re putting up a notice in the shared hallway of your block of flats. Bin collection has moved from Monday to Wednesday, and black bags keep ending up in the recycling. Rewrite the notice so it’s friendly, gives the new day and asks for one clear thing.",
+      "source": "TO WHOEVER KEEPS DOING IT\n\nSome of us actually care about where we live. The recycling bins are NOT for black bags, as anyone who can read the lids will know. The council has changed the collection day as well, not that anyone here would notice. If this carries on, it will have to be reported.\n\nThank you SO much for your cooperation.\n\nA neighbour"
+    },
+    {
+      "id": "practical-meeting-summary",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You took notes at a project meeting and are sending a summary to colleagues who missed it. Rewrite it so they can see at a glance what was decided, who is doing what and by when.",
+      "source": "So we started a bit late because the projector wasn’t working, then Aisha went through the survey results, which were mostly positive, although a few people mentioned the sign-up form being confusing, and there was a long discussion about whether to redo the form now or after the summer, and in the end I think we agreed to do it now, and Marcus said he could have a draft by the 12th, and then we talked about the budget, which is tighter than we thought, so the printed leaflets are probably off unless Joy can find savings elsewhere, which she’s going to look into before the next meeting on the 20th, and there was something about the website photos as well but we ran out of time."
+    },
+    {
+      "id": "practical-house-sitter",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "Friends are looking after your house and your cat while you’re away for a week. Rewrite these instructions so they can follow them easily, with the things that really matter first.",
+      "source": "Thanks so much again for doing this. The cat is called Biscuit and she’s very friendly once she gets to know you, though she might hide for the first day, which is completely normal. There’s food in the cupboard by the back door; she has half a pouch in the morning and half at night, and the biscuits are just a treat. The plants are fine really, maybe water the big one on Wednesday. Oh, and the most important thing — the back door doesn’t lock unless you lift the handle right up first, otherwise it looks locked but isn’t. Bins go out on Thursday night. Her medicine is the white tablet in the fridge, one a day with food, she must have it. The Wi-Fi password is on the router."
+    },
+    {
+      "id": "practical-surgery-appointment",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re emailing your GP surgery to ask for an appointment about headaches that won’t go away. Rewrite it so the receptionist can see straight away what you need, how urgent it is and when you can come in: any weekday after 3pm, or Saturday morning.",
+      "source": "Hello,\n\nI’m not really sure who this goes to, so apologies if it’s the wrong place. For a while now I’ve been getting headaches, mostly in the afternoon, and I thought it was screens at work, but I’ve cut down and it hasn’t really helped. My sister had something similar years ago and it turned out to be her eyes, but I went to the optician in the spring and they said everything was fine. It’s not terrible, I can still work, but it’s happening most days now and it’s starting to get to me. Anyway, I wondered whether it would be possible to see someone at some point.\n\nThanks,\nHannah Okafor (date of birth 4 March 1988)"
+    },
+    {
+      "id": "practical-headphones-refund",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "Headphones you ordered online arrived with one side not working. Rewrite your message to the shop so it’s calm and asks for a full refund and a prepaid returns label, with the details they’ll need: order HX-20417, delivered on 3 June, £89.",
+      "source": "I cannot believe I have to write this. I waited two weeks for these headphones and the left side doesn’t work at all, which frankly is a joke for something that cost this much. I’ve already wasted an evening trying to fix it. I don’t want excuses, I don’t want to be told to turn them off and on again, I just want this sorted. This is the last time I’m ordering from you. Sort it out please."
+    },
+    {
+      "id": "practical-office-move-update",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "Your manager wants a weekly update on the office move. The furniture is on track, but the IT move will slip by two weeks unless they approve the bigger room for the network equipment by Friday. Rewrite the update in plain English so they can see what’s on track, what’s at risk and what you need from them.",
+      "source": "Quick sync on the workplace transition workstream. We’ve actioned the bulk of the stakeholder alignment and the furniture vendor is now in flight, though there’s some slippage risk on the critical path around the IT cutover piece, pending a go/no-go on the comms room spec. Bandwidth-wise the team is at capacity, so we may need to reprioritise deliverables or flex resourcing going forward. Happy to take this offline if helpful, but it would be good to land a steer on the comms room before we lose the slot. Will circle back next week with a refreshed RAG."
+    },
+    {
+      "id": "practical-volunteer-rota",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You coordinate volunteers at a community food bank. Next month’s free shifts are Saturday 6th and Saturday 20th, 9am to noon, and Tuesday 16th, 5pm to 7pm. Rewrite this group message so people know exactly which shifts are free and how to claim one by Friday, without the guilt trip.",
+      "source": "Hi all, as some of you will have noticed, the rota for next month is looking a bit thin again. I know everyone is busy, but it does tend to be the same few people stepping up every time, which isn’t really fair on them. It would be great if more people could get involved. There are a few gaps here and there, mainly at weekends, and a couple of the evening slots too. Anyway, have a think and let me know.\n\nThanks,\nBev"
+    },
+    {
+      "id": "practical-decline-a-talk",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’ve been invited to speak at a local business breakfast and you can’t do it. Rewrite your reply to the organiser, Rosa, so it says no clearly and kindly, and suggests your colleague Nadia Brook, who runs your training team and has spoken at events before.",
+      "source": "Hi Rosa,\n\nThank you so much for thinking of me, I’m really flattered, honestly. I’d love to do it in theory, and it sounds like a great event. The thing is, things are a bit mad here at the moment with the end of the quarter, and I’m not sure I’d be able to give it the time it deserves, which wouldn’t be fair on you or the audience. I’m so sorry. I feel terrible. Maybe there’s someone else who would be better? Or perhaps another time? Let me know what you think, and sorry again.\n\nBest,\nOwen"
+    },
+    {
+      "id": "practical-school-trip-letter",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re a primary school teacher writing to parents about a trip to Fernley Country Park on Wednesday 9 October. Children need wellies, a waterproof coat and a packed lunch, and the consent slip and £6 are due back by Friday 27 September. Rewrite the letter so a busy parent gets all of that from a quick read.",
+      "source": "Dear parents and carers,\n\nAs part of our topic on rivers this term, Year 4 will be going on a trip, which we’re all very excited about. The children will be learning about how rivers change along their course and will have the chance to do some hands-on activities, including measuring the speed of the water and looking for minibeasts, which is always a highlight. They will need suitable clothing, as it can get muddy, and a packed lunch unless they have requested a school one. We will be back in time for the end of the school day. Please return the slip if you haven’t already.\n\nMany thanks,\nMrs Adeyemi"
+    },
+    {
+      "id": "practical-flatmate-kitchen",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You share a flat and the state of the kitchen has become a sore point. Rewrite this message to your flatmate so it raises the problem directly, without sarcasm or blame, and suggests taking turns on alternate weeks.",
+      "source": "Hey, not sure if you’ve noticed, but the kitchen has developed its own ecosystem. I’ve washed up the last few nights, which is fine, I don’t mind, it’s not like I have anything else to do. Someone’s pan has been ‘soaking’ since Sunday. Just thought I’d mention it. No big deal. Also we’re out of washing-up liquid again, funnily enough."
+    },
+    {
+      "id": "practical-builder-quote",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You want a local builder to quote for rebuilding your garden wall: brick, about eight metres long and just over a metre high, with half of it knocked down in last week’s storm. Rewrite your enquiry so they can give a rough price, know you want the old wall taken away and know you’d like the work done before the end of next month.",
+      "source": "Hi, got your number off a neighbour. Wall needs doing, the one at the back, half of it came down in the storm. How much roughly? Also can you take the old one away or is that extra. Not urgent but sooner the better.\n\nCheers,\nDev"
+    },
+    {
+      "id": "practical-late-pottery-order",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You run a small online pottery shop and a customer’s order is a week late. Rewrite your reply so it apologises properly, gives the new date (posted on Monday, arriving by Wednesday) and offers free postage on their next order.",
+      "source": "Hi Mr Laing,\n\nThanks for your message. As stated on our website, all items are made to order and delivery times are an estimate only, so we can’t be held responsible for delays. We have had a very high volume of orders this month and our kiln was out of action for several days, which was outside our control. Your order is in the queue and will be sent as soon as possible.\n\nWe appreciate your patience.\n\nEllie\nFennick Studio"
+    },
+    {
+      "id": "practical-holiday-handover",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re off for two weeks and a colleague from another team is covering your work. Rewrite your handover so someone who doesn’t know your job could follow it. Here, PO means purchase orders, AP is the accounts payable team, FD is the finance director and recs are the monthly bank reconciliations.",
+      "source": "Main thing is the PO run — usual drill, Fri am, ping AP if anything’s stuck. Blenkin invoices go through the old portal, not the new one (don’t ask). If the FD chases the Q3 accruals, they’re in the shared drive under ‘FY close’, v4 not v5. Monthly recs mostly done, just the two flagged in red. Anything urgent, Jo knows the background. Shouldn’t be much else. Thanks for covering."
+    },
+    {
+      "id": "practical-pay-review",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You want to ask your manager, Fiona, for a pay review now that you look after the supplier accounts. Rewrite the email so it makes the request plainly, gives your reason briefly and suggests a half-hour meeting next week.",
+      "source": "Hi Fiona,\n\nI hope this isn’t a bad time, and please feel free to ignore this if it is. I’ve been meaning to write for a while. Since taking over the supplier accounts in March I’ve been doing quite a lot more than when I started, which I’m enjoying, and I think it’s gone reasonably well, although obviously that’s for you to judge. I was just sort of wondering, and there’s absolutely no pressure, whether at some point it might be possible to have a conversation about whether my salary still reflects the role, if that’s something that happens here. Totally understand if not.\n\nThanks,\nJosh"
+    },
+    {
+      "id": "practical-pothole-report",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re reporting a pothole to the council’s highways team. It’s outside 42 Station Parade, in the left-hand lane heading towards the roundabout, and about a metre across. Rewrite the report so they can find it, see why it’s dangerous and know you’re asking for it to be made safe within a week.",
+      "source": "To whom it may concern,\n\nI am writing, not for the first time, about the state of the roads around here, which have been getting worse for years while the council tax keeps going up. There is one particular hole near the shops that has become quite something, and I have seen at least two cyclists swerve into traffic to avoid it, and a delivery van lost a hubcap there on Tuesday. I really do think someone is going to get hurt. I would appreciate it if this could be looked at.\n\nYours faithfully,\nM. Danvers"
+    },
+    {
+      "id": "practical-spreadsheet-help",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’re stuck on a spreadsheet and want help from Ben, a colleague, in the team chat. Rewrite the message so the first line tells him what you need: ten minutes on a call before 2pm, because the report goes out at four.",
+      "source": "So I’ve been trying to get the regional totals to match the summary tab all morning and they’re out by about four hundred, which isn’t huge but Carla will definitely notice. I’ve checked the formulas on the first three regions and they look fine, though the North one has some hidden rows that I didn’t put there, and I think someone might have pasted values over the formulas at some point last week. I tried undoing it from the version history but it’s all a bit confusing. The report goes out at four."
+    },
+    {
+      "id": "practical-cottage-weekend",
+      "exercise": "practical",
+      "kind": "practical",
+      "text": "You’ve found a cottage for an October weekend away with five friends. It costs £720, so £120 each, and the owner needs a deposit by Friday. Rewrite your group message so everyone knows the cost and the deadline, and replies yes or no by Wednesday evening.",
+      "source": "Right, so I’ve been looking at places for the October weekend and found a really nice cottage near the coast. It’s got a wood burner and a big kitchen table, which I know Ana will love, and it’s about twenty minutes from the beach. It sleeps six, which is perfect. It’s not the cheapest but it’s not bad when you split it, and I think it’s worth it. The owner says someone else is interested though. What does everyone think?"
+    },
+    {
+      "id": "benchmark-creative",
+      "exercise": "benchmark",
+      "kind": "creative",
+      "text": "Choose a place you know well, such as a kitchen, a street, a workplace or a station platform, and write it at the moment something in it changes. Let the reader sense what it was like just before, and what is different now.",
+      "minutes": 12
+    },
+    {
+      "id": "benchmark-practical",
+      "exercise": "benchmark",
+      "kind": "practical",
+      "text": "You run a book club of eight people. The upstairs room at the Lantern café, where you’ve always met, closes for refurbishment from next month. There are two options: the library meeting room, which is free but must be empty by 8pm, or Lena’s flat, which is more relaxed but only has six chairs, so two people would need to bring their own. Write an email asking everyone to choose by Sunday evening so you can book, and make it easy to reply.",
+      "minutes": 12
+    },
+    {
+      "id": "benchmark-argument",
+      "exercise": "benchmark",
+      "kind": "argument",
+      "text": "Should everyone have to learn a second language at school until the age of sixteen? Take a side, give your two best reasons with evidence or examples, and answer the strongest objection to your view.",
+      "minutes": 12
+    }
+  ]
+}

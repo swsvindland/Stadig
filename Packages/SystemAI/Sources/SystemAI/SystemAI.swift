@@ -84,8 +84,14 @@ public actor SystemAI {
 
     public init(allowCloud: Bool) { self.allowCloud = allowCloud }
 
+    /// Private Cloud Compute needs Apple's managed entitlement (com.apple.developer.private-cloud-compute).
+    /// Without it the framework still reports it available, then stops the app on the first request
+    /// with a fatal error, so it's used only when the app says it has the entitlement: `SystemAIPrivateCloud`
+    /// set to true in its Info.plist. Until then, heavy jobs run on the device.
+    public static var privateCloudEntitled: Bool { Bundle.main.object(forInfoDictionaryKey: "SystemAIPrivateCloud") as? Bool ?? false }
+
     /// What can answer now. Needs iOS 27 / macOS 27 with Apple Intelligence; Private Cloud Compute
-    /// also needs the setting on.
+    /// also needs the setting on and the entitlement.
     public static func availability(allowCloud: Bool) -> AIAvailability {
         #if canImport(FoundationModels)
         if #available(iOS 27.0, macOS 27.0, *) { return FoundationBackend.availability(allowCloud: allowCloud) }
@@ -134,7 +140,7 @@ enum FoundationBackend {
         case .unavailable: reason = "Apple Intelligence isn't available right now."
         }
         var cloud = false
-        if allowCloud {
+        if allowCloud && SystemAI.privateCloudEntitled {
             let pcc = PrivateCloudComputeLanguageModel()
             cloud = pcc.isAvailable && !pcc.quotaUsage.isLimitReached
         }

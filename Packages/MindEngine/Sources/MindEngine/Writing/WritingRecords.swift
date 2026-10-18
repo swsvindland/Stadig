@@ -1,4 +1,5 @@
 import Foundation
+import SystemCore
 
 /// The kinds of writing to improve. More than one allowed; creative by default.
 public enum WritingKind: String, CaseIterable, Codable, Sendable, Identifiable {
@@ -16,9 +17,9 @@ public enum WritingKind: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var detail: String {
         switch self {
-        case .creative: "Stories, scenes, description."
-        case .practical: "Emails, docs and messages that are clear the first time."
-        case .argument: "Making a case and backing it up."
+        case .creative: "Stories, scenes, description: short prompts, scene rewrites and passages to imitate."
+        case .practical: "Emails, docs and messages that are clear the first time: rewriting terse or rambling ones."
+        case .argument: "Making a case, backing it up and answering the best objection."
         }
     }
 }
@@ -39,6 +40,34 @@ public enum WritingExercise: String, CaseIterable, Codable, Sendable {
     case argument
     /// The term's benchmark prompt, repeated every few months like a strength test.
     case benchmark
+
+    public var label: String {
+        switch self {
+        case .franklinNotes: "Franklin method: notes"
+        case .franklinRewrite: "Franklin method: rewrite"
+        case .prompt: "Short piece"
+        case .sceneRewrite: "Scene rewrite"
+        case .practical: "Practical rewrite"
+        case .argument: "Argument"
+        case .benchmark: "Benchmark piece"
+        }
+    }
+
+    /// "Two short pieces", "two scene rewrites".
+    public var plural: String {
+        switch self {
+        case .franklinNotes: "sets of notes"
+        case .franklinRewrite: "Franklin rewrites"
+        case .prompt: "short pieces"
+        case .sceneRewrite: "scene rewrites"
+        case .practical: "practical rewrites"
+        case .argument: "arguments"
+        case .benchmark: "benchmark pieces"
+        }
+    }
+
+    /// Exercises that leave a piece of the person's own prose behind: everything but the notes.
+    public var composes: Bool { self != .franklinNotes }
 }
 
 /// How a piece was written. Handwriting is read with on-device text recognition; typed and
@@ -47,29 +76,43 @@ public enum WritingSource: String, Codable, Sendable {
     case typed, handwritten
 }
 
-/// A writing task in a session.
+/// A writing task in a session. The same task comes back with `reviewing` set once it's written,
+/// to show the piece with notes on it (and, for a Franklin rewrite, the original beside it).
 public struct WritingTask: Hashable, Sendable, Identifiable {
     public var id: String
     public var exercise: WritingExercise
+    public var writingKind: WritingKind
     public var instruction: String
-    /// The passage to read (Franklin method), or the text to rewrite.
+    /// The passage to read (Franklin method), or the text to rewrite. For a Franklin rewrite it's
+    /// the original, kept back until the rewrite is done.
     public var source: String?
     /// Where the source came from: a book's title and author.
     public var sourceCredit: String?
     /// Notes taken earlier, for a Franklin rewrite.
     public var notes: String?
     public var minutes: Int
+    /// The prompt, practical task or passage it comes from, so repeats come as late as possible and
+    /// a benchmark is only ever compared with the same benchmark.
+    public var taskID: String?
+    /// The piece just written, shown back with notes on it. Nil while writing.
+    public var reviewing: UUID?
 
-    public init(id: String, exercise: WritingExercise, instruction: String, source: String? = nil, sourceCredit: String? = nil,
-                notes: String? = nil, minutes: Int) {
+    public init(id: String, exercise: WritingExercise, writingKind: WritingKind = .creative, instruction: String, source: String? = nil,
+                sourceCredit: String? = nil, notes: String? = nil, minutes: Int, taskID: String? = nil, reviewing: UUID? = nil) {
         self.id = id
         self.exercise = exercise
+        self.writingKind = writingKind
         self.instruction = instruction
         self.source = source
         self.sourceCredit = sourceCredit
         self.notes = notes
         self.minutes = minutes
+        self.taskID = taskID
+        self.reviewing = reviewing
     }
+
+    /// Whether the source is on screen while writing. A Franklin rewrite works from the notes alone.
+    public var showsSource: Bool { source != nil && (exercise != .franklinRewrite || reviewing != nil) }
 }
 
 /// An old and a new piece shown unlabelled, in random order: which is stronger?
@@ -105,11 +148,16 @@ public struct WritingPiece: Hashable, Codable, Sendable, Identifiable {
     public var feedback: String?
     /// Errors per 100 words, vocabulary range, sentence-length variety and the like.
     public var metrics: [String: Double]
+    /// The prompt, practical task or library passage it answered (`WritingTask.taskID`).
+    public var taskID: String?
+    /// The passage a Franklin piece works from, when it was a page of the person's own book rather
+    /// than one from the library.
+    public var original: String?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), date: Date, exercise: WritingExercise, writingKind: WritingKind, prompt: String, text: String,
                 source: WritingSource = .typed, notes: String? = nil, feedback: String? = nil, metrics: [String: Double] = [:],
-                updatedAt: Date = Date()) {
+                taskID: String? = nil, original: String? = nil, updatedAt: Date = Date()) {
         self.id = id
         self.date = date
         self.exercise = exercise
@@ -120,10 +168,15 @@ public struct WritingPiece: Hashable, Codable, Sendable, Identifiable {
         self.notes = notes
         self.feedback = feedback
         self.metrics = metrics
+        self.taskID = taskID
+        self.original = original
         self.updatedAt = updatedAt
     }
 
     public var words: Int { text.split { $0.isWhitespace || $0.isNewline }.count }
+    public var day: Day { Day(date) }
+    /// The AI's notes as separate fixes.
+    public var feedbackItems: [String] { (feedback ?? "").split(separator: "\n").map(String.init).filter { !$0.isEmpty } }
 }
 
 /// The result of a blind side-by-side: which piece the person picked, and the AI's second opinion.
