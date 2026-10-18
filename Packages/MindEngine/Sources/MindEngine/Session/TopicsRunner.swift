@@ -31,7 +31,8 @@ struct TopicsRunner: PartRunner {
         if domain == .maths {
             return (MathsPlan.inProgress(run.cards, strand: strand) + MathsPlan.frontier(run.cards, strand: strand)).map(\.id).first { !done.contains($0) }
         }
-        let learning = run.cards.values.filter { $0.domain == .writing && $0.learning }.map(\.key.item)
+        let learning = run.cards.values.filter { $0.domain == .writing && $0.learning }.sorted { ($0.introduced, $0.key) < ($1.introduced, $1.key) }
+            .map(\.key.item)
         let started = Set(run.cards.values.filter { $0.domain == .writing }.map(\.key.item))
         let fresh = run.catalogs.writing.skills.filter { !started.contains($0.id) }.sorted { $0.level < $1.level }.map(\.id)
         return (learning + fresh).first { !done.contains($0) }

@@ -8,9 +8,10 @@ public enum MathsPlan {
         Set(cards.values.filter { $0.domain == .maths && $0.memory != nil && matches($0.key, strand) }.map(\.key.item))
     }
 
-    /// Started and not yet mastered.
+    /// Started and not yet mastered, oldest first (by key when started together, so the order
+    /// never depends on the dictionary's).
     public static func inProgress(_ cards: [CardKey: MemoryCard], strand: MathsStrand? = nil) -> [MathTopic] {
-        cards.values.filter { $0.domain == .maths && $0.learning && matches($0.key, strand) }.sorted { $0.introduced < $1.introduced }
+        cards.values.filter { $0.domain == .maths && $0.learning && matches($0.key, strand) }.sorted { ($0.introduced, $0.key) < ($1.introduced, $1.key) }
             .compactMap { MathCurriculum.topic($0.key.item) }
     }
 
@@ -19,9 +20,9 @@ public enum MathsPlan {
     public static func frontier(_ cards: [CardKey: MemoryCard], strand: MathsStrand? = nil) -> [MathTopic] {
         let known = known(cards)
         let started = Set(cards.values.filter { $0.domain == .maths }.map(\.key.item))
-        return MathCurriculum.topics.filter { topic in
+        return MathCurriculum.topics.enumerated().filter { _, topic in
             (strand == nil || topic.strand == strand) && !started.contains(topic.id) && topic.prerequisites.allSatisfy(known.contains)
-        }.sorted { $0.level < $1.level }
+        }.sorted { ($0.element.level, $0.offset) < ($1.element.level, $1.offset) }.map(\.element)
     }
 
     public static func next(_ cards: [CardKey: MemoryCard], strand: MathsStrand? = nil) -> MathTopic? {

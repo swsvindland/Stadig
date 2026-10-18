@@ -82,7 +82,7 @@ struct ShelfView: View {
         .sheet(item: $editing) { book in BookEditor(book: book) { model.save(book: $0) } }
         .sheet(isPresented: $adding) {
             BookFinder(initialQuery: debugQuery) { book in
-                for var current in model.books where current.status == .reading {
+                for var current in model.books where current.status == .reading && current.language == book.language {
                     current.status = .abandoned
                     current.finished = model.today
                     model.save(book: current)

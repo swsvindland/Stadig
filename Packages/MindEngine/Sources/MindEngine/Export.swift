@@ -13,7 +13,7 @@ public enum MindExport {
     static func number(_ value: Double) -> String { String(format: "%.3f", value) }
 
     public static func tables(sessions: [StudySession], cards: [MemoryCard], tests: [TestResult], books: [Book],
-                              reflections: [Reflection], pieces: [WritingPiece] = []) -> [Table] {
+                              reflections: [Reflection], pieces: [WritingPiece] = [], comparisons: [BlindComparison] = []) -> [Table] {
         let sessionRows = sessions.sorted { $0.start < $1.start }.map { s in
             [iso(s.start), s.end.map(iso) ?? "", s.purpose.rawValue, s.domains.map(\.rawValue).joined(separator: " "), number(s.minutes),
              "\(s.plannedMinutes)", s.planned ? "yes" : "no", "\(s.attempts.count)", "\(s.attempts.filter(\.correct).count)",
@@ -46,6 +46,12 @@ public enum MindExport {
             [iso(p.date), p.exercise.rawValue, p.writingKind.rawValue, p.source.rawValue, "\(p.words)", p.prompt, p.text, p.feedback ?? "",
              p.metrics.sorted { $0.key < $1.key }.map { "\($0.key)=\(number($0.value))" }.joined(separator: " ")]
         }
+        let piecesByID = Dictionary(pieces.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func yesNo(_ value: Bool?) -> String { value.map { $0 ? "yes" : "no" } ?? "" }
+        let comparisonRows = comparisons.sorted { $0.date < $1.date }.map { c in
+            [iso(c.date), piecesByID[c.older].map { iso($0.date) } ?? "", piecesByID[c.newer].map { iso($0.date) } ?? "",
+             piecesByID[c.newer]?.exercise.rawValue ?? "", yesNo(c.pickedNewer), yesNo(c.aiPickedNewer)]
+        }
         return [
             Table(name: "sessions", header: ["start", "end", "kind", "domains", "minutes", "planned_minutes", "planned", "questions", "correct", "pages"],
                   rows: sessionRows),
@@ -57,6 +63,8 @@ public enum MindExport {
                   rows: bookRows),
             Table(name: "reflections", header: ["date", "book", "kind", "page", "text"], rows: reflectionRows),
             Table(name: "writing", header: ["date", "exercise", "kind", "source", "words", "prompt", "text", "feedback", "metrics"], rows: pieceRows),
+            Table(name: "blind_comparisons", header: ["date", "older_piece", "newer_piece", "exercise", "you_picked_newer", "ai_picked_newer"],
+                  rows: comparisonRows),
         ]
     }
 }

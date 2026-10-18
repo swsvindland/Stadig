@@ -257,10 +257,13 @@ final class AppModel {
                 self.pieces.append(piece)
             }
         }
-        let comparisons = run.newComparisons.filter { c in !self.comparisons.contains { $0.id == c.id } }
+        let comparisons = run.newComparisons.filter { comparison in self.comparisons.last { $0.id == comparison.id } != comparison }
         if !comparisons.isEmpty {
             store.save(comparisons)
-            self.comparisons += comparisons
+            for comparison in comparisons {
+                self.comparisons.removeAll { $0.id == comparison.id }
+                self.comparisons.append(comparison)
+            }
         }
         lastRevision = store.revision
     }
@@ -341,7 +344,7 @@ final class AppModel {
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return try MindExport.tables(sessions: sessions, cards: cards, tests: tests, books: books, reflections: reflections,
-                                     pieces: pieces).map { table in
+                                     pieces: pieces, comparisons: comparisons).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }
             let url = folder.appending(path: "\(table.name).csv")
