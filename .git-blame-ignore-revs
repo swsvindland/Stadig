@@ -1,0 +1,5 @@
+# Commits that only reformat code. GitHub skips them in blame; locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format every Swift file with swift-format
+b23e1ce068666cd9c8ec99e19da1459a46081c8e
