@@ -1,6 +1,9 @@
 import Foundation
 import SQLite3
 import Synchronization
+import os
+
+let catalogLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "catalog")
 
 /// A value bound to a statement parameter.
 enum SQLValue {
@@ -64,6 +67,9 @@ final class SQLiteConnection: @unchecked Sendable {
         sqlite3_close_v2(handle)
     }
 
+    /// Frees the pages this connection has cached.
+    func releaseMemory() { sqlite3_db_release_memory(handle) }
+
     private func prepared(_ sql: String) throws -> OpaquePointer {
         if let statement = statements[sql] { return statement }
         var statement: OpaquePointer?
@@ -99,19 +105,47 @@ final class SQLiteConnection: @unchecked Sendable {
 
 private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-/// Connections to one file, handed to one thread at a time; more open as threads need them.
+/// Connections to one file, handed to one thread at a time; more open as threads need them, and
+/// up to `kept` stay open for the next call. Each has its own page cache (up to 8 MB over the
+/// packaged-food catalog), so the burst of a meal's parallel lookups doesn't keep them all.
 final class ConnectionPool: Sendable {
     let url: URL
+    /// As many as one typed search runs against a catalog at once.
+    let kept: Int
     private let idle: Mutex<[SQLiteConnection]>
+    /// Reads that failed. A failed search reads as no results, so this is how tests see one.
+    let failures = Atomic<Int>(0)
 
-    init(url: URL) throws {
+    init(url: URL, kept: Int = 4) throws {
         self.url = url
+        self.kept = max(1, kept)
         idle = Mutex([try SQLiteConnection(url: url)])
     }
 
+    /// Connections open between calls.
+    var idleCount: Int { idle.withLock { $0.count } }
+
     func with<T>(_ body: (SQLiteConnection) throws -> T) throws -> T {
         let connection = try idle.withLock { $0.popLast() } ?? SQLiteConnection(url: url)
-        defer { idle.withLock { $0.append(connection) } }
+        defer { idle.withLock { if $0.count < kept { $0.append(connection) } } }
         return try body(connection)
+    }
+
+    /// A read whose failure the caller shows as nothing found: logged and counted, not thrown.
+    func read(_ body: (SQLiteConnection) throws -> Void) {
+        do {
+            try with(body)
+        } catch {
+            failures.add(1, ordering: .relaxed)
+            catalogLog.error("\(self.url.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// Closes every idle connection but one and empties that one's page cache.
+    func trim() {
+        idle.withLock { idle in
+            if idle.count > 1 { idle.removeSubrange(1...) }
+            idle.first?.releaseMemory()
+        }
     }
 }

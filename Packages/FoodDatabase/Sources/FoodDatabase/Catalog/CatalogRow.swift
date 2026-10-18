@@ -169,9 +169,16 @@ private struct JSONReader {
                     guard var code = hex() else { return nil }
                     if (0xD800..<0xDC00).contains(code), index + 1 < bytes.count, bytes[index] == UInt8(ascii: "\\"),
                        bytes[index + 1] == UInt8(ascii: "u") {
+                        let next = index
                         index += 2
                         guard let low = hex() else { return nil }
-                        code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
+                        if (0xDC00..<0xE000).contains(low) {
+                            code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
+                        } else {
+                            // A high surrogate without its low half is a replacement character, and
+                            // the escape after it is read on its own.
+                            index = next
+                        }
                     }
                     units.append(contentsOf: String(Character(Unicode.Scalar(code) ?? "\u{FFFD}")).utf8)
                 default: units.append(escape)

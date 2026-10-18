@@ -28,7 +28,9 @@ final class Catalog: Sendable {
     private let matchSQL: String
     /// Rows already read this launch, by rowid: each keystroke finds most of the last one's foods.
     private let read = Mutex<[Int64: Entry]>([:])
-
+    /// The generic catalog's rowids by food id, read on the first lookup by id: the file has no
+    /// index on id, and the meal planner and the person's foods look up dozens to hundreds by id.
+    private let rowids = Mutex<[String: Int64]?>(nil)
 
     /// Opens a catalog and reads its metadata; throws when the file isn't a catalog.
     init(url: URL, kind: Kind, region: String?) throws {
@@ -116,7 +118,7 @@ final class Catalog: Sendable {
     func match(_ expression: String, limit: Int, lead: String = "") -> [Hit] {
         var hits: [Hit] = []
         var fresh: [(Int64, Entry)] = []
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query(matchSQL, [.text(expression), .integer(Int64(candidates)), .text(lead.isEmpty ? "" : "\(lead)%"),
                                             .integer(Int64(limit))]) { row in
                 let rowid = row.int(0)
@@ -141,7 +143,7 @@ final class Catalog: Sendable {
     /// How many foods an expression matches, counting no further than `cap`.
     func count(_ expression: String, cap: Int = 2000) -> Int {
         var found = 0
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query("SELECT count(*) FROM (SELECT rowid FROM food_search WHERE food_search MATCH ? LIMIT ?)",
                                  [.text(expression), .integer(Int64(cap))]) { row in found = Int(row.int(0)) }
         }
@@ -151,7 +153,7 @@ final class Catalog: Sendable {
     /// Rows of the `terms` vocabulary: each word the catalog knows and how many foods use it.
     func terms(_ sql: String, _ parameters: [SQLValue]) -> [(term: String, foods: Int)] {
         var rows: [(term: String, foods: Int)] = []
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query(sql, parameters) { row in
                 if let term = row.string(0) { rows.append((term, Int(row.int(1)))) }
             }
@@ -167,12 +169,44 @@ final class Catalog: Sendable {
 
     /// The food with a stored id.
     func food(id: String) -> Food? {
-        first("SELECT \(columns) FROM foods WHERE id = ? LIMIT 1", [.text(id)])
+        guard kind == .generic, let rowids = rowidsByID() else { return first("SELECT \(columns) FROM foods WHERE id = ? LIMIT 1", [.text(id)]) }
+        guard let rowid = rowids[id] else { return nil }
+        return first("SELECT \(columns) FROM foods WHERE rowid = ?", [.integer(rowid)])
+    }
+
+    /// Every stored id's rowid, the first row's where two share one, as `WHERE id = ?` finds it.
+    /// Nil when the file can't be read, so lookups fall back to the scan rather than find nothing.
+    private func rowidsByID() -> [String: Int64]? {
+        rowids.withLock { cached in
+            if let cached { return cached }
+            var found: [String: Int64] = [:]
+            do {
+                try pool.with { connection in
+                    try connection.query("SELECT id, rowid FROM foods WHERE id IS NOT NULL ORDER BY rowid") { row in
+                        if let id = row.string(0), found[id] == nil { found[id] = row.int(1) }
+                    }
+                }
+            } catch {
+                catalogLog.error("\(self.pool.url.lastPathComponent, privacy: .public) ids: \(String(describing: error), privacy: .public)")
+                return nil
+            }
+            cached = found
+            return found
+        }
+    }
+
+    /// Reads that failed since the catalog opened.
+    var failures: Int { pool.failures.load(ordering: .relaxed) }
+
+    /// Forgets rows already read and closes spare connections; see `FoodCatalog.releaseMemory`.
+    func releaseMemory() {
+        read.withLock { $0.removeAll() }
+        pool.trim()
     }
 
     private func first(_ sql: String, _ parameters: [SQLValue]) -> Food? {
         var found: Food?
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query(sql, parameters) { row in found = found ?? food(row) }
         }
         return found

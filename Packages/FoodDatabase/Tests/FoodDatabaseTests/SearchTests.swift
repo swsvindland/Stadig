@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import FoodDatabase
 
@@ -165,6 +166,33 @@ struct GenericSearchTests {
         for query in ["rice", "white rice", "whi", "chicken", "chicken b", "chicken br", "brest"] {
             #expect(catalog.search(query, personal: mine).first?.personal == true, "\(query)")
         }
+    }
+}
+
+/// The app searches from detached tasks, task groups and `concurrentPerform` at once.
+@Suite("Search from many threads")
+struct ConcurrentSearchTests {
+    @Test("searches run at once give the answers they give one at a time, and after memory is released")
+    func parallel() {
+        let queries = ["chicken breast", "chiken", "white rice", "apples", "olive oil", "peanutbutter", "milk", "eggs", "coca cola", "greek yog"]
+        let serial = FoodCatalog(usda: Catalogs.usdaURL, off: Catalogs.offURL, region: "us")
+        let expected = queries.map { serial.search($0).map(\.food.id) }
+        // A fresh catalog, so the caches fill from every thread at once.
+        let catalog = FoodCatalog(usda: Catalogs.usdaURL, off: Catalogs.offURL, region: "us")
+        let runs = queries.count * 4
+        let found = Mutex<[[String]]>(Array(repeating: [], count: runs))
+        DispatchQueue.concurrentPerform(iterations: runs) { i in
+            let ids = i % 2 == 0 ? catalog.search(queries[i % queries.count]).map(\.food.id)
+                : catalog.candidates(name: queries[i % queries.count], brand: nil).map(\.food.id)
+            found.withLock { $0[i] = ids }
+        }
+        let candidates = queries.map { serial.candidates(name: $0, brand: nil).map(\.food.id) }
+        for (i, ids) in found.withLock({ $0 }).enumerated() {
+            #expect(ids == (i % 2 == 0 ? expected : candidates)[i % queries.count], "\(queries[i % queries.count])")
+        }
+        catalog.releaseMemory()
+        #expect(queries.map { catalog.search($0).map(\.food.id) } == expected)
+        #expect(catalog.failures == 0 && serial.failures == 0)
     }
 }
 

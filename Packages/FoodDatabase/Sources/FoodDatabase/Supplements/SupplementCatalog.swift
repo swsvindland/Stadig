@@ -11,6 +11,9 @@ public final class SupplementCatalog: Sendable {
     public let count: Int
     private let pool: ConnectionPool
 
+    /// Reads that failed since the catalog opened.
+    var failures: Int { pool.failures.load(ordering: .relaxed) }
+
     private static let columns = "id, name, brand, barcode, serving, data"
 
     public init(url: URL) throws {
@@ -31,7 +34,13 @@ public final class SupplementCatalog: Sendable {
 
     /// `supplements.db` from the app bundle, when it ships one.
     public static func standard() -> SupplementCatalog? {
-        Bundle.main.url(forResource: "supplements", withExtension: "db").flatMap { try? SupplementCatalog(url: $0) }
+        guard let url = Bundle.main.url(forResource: "supplements", withExtension: "db") else { return nil }
+        do {
+            return try SupplementCatalog(url: url)
+        } catch {
+            catalogLog.error("supplements.db didn't open: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     /// A label by any barcode form (UPC-A, EAN-13, UPC-E…).
@@ -51,16 +60,18 @@ public final class SupplementCatalog: Sendable {
     }
 
     /// Labels whose name and brand hold every word typed (the last as a prefix), the ones on the
-    /// market first, then the best full-text matches.
+    /// market first, then the best full-text matches. Every match is ranked: rows are in DSLD id
+    /// order, so a cap on matches would keep the oldest labels, and the most a two-letter prefix
+    /// matches ("mg", about 24,000) ranks in tens of milliseconds.
     public func search(_ query: String, limit: Int = 30) -> [SupplementFacts] {
         let words = query.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init).filter { !$0.isEmpty }
         guard !words.isEmpty, words.joined().count >= 2 else { return [] }
         let expression = words.enumerated().map { i, word in i == words.count - 1 ? "\"\(word)\"*" : "\"\(word)\"" }.joined(separator: " ")
         var found: [SupplementFacts] = []
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query("""
                 SELECT \(Self.columns) FROM (
-                  SELECT rowid, bm25(supplement_search, 3.0, 1.0) AS score FROM supplement_search WHERE supplement_search MATCH ? LIMIT 400
+                  SELECT rowid, bm25(supplement_search, 3.0, 1.0) AS score FROM supplement_search WHERE supplement_search MATCH ?
                 ) AS hit JOIN supplements ON supplements.id = hit.rowid
                 ORDER BY supplements.market DESC, hit.score LIMIT ?
                 """, [.text(expression), .integer(Int64(limit))]) { row in
@@ -72,7 +83,7 @@ public final class SupplementCatalog: Sendable {
 
     private func first(_ sql: String, _ parameters: [SQLValue]) -> SupplementFacts? {
         var found: SupplementFacts?
-        try? pool.with { connection in
+        pool.read { connection in
             try connection.query(sql, parameters) { row in found = found ?? Self.facts(row) }
         }
         return found

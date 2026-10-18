@@ -89,13 +89,18 @@ public struct PersonalFood: Hashable, Sendable {
     public var favorite: Bool
     public var lastCount: Double?
     public var lastUnitID: String?
+    /// Basis units (g, ml or servings) last logged, so a unit whose portion has since changed
+    /// isn't offered with the old count (see `FoodUnits.suggested`).
+    public var lastAmount: Double?
 
-    public init(food: Food, score: Double, favorite: Bool = false, lastCount: Double? = nil, lastUnitID: String? = nil) {
+    public init(food: Food, score: Double, favorite: Bool = false, lastCount: Double? = nil, lastUnitID: String? = nil,
+                lastAmount: Double? = nil) {
         self.food = food
         self.score = score
         self.favorite = favorite
         self.lastCount = lastCount
         self.lastUnitID = lastUnitID
+        self.lastAmount = lastAmount
     }
 }
 

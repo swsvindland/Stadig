@@ -5,7 +5,9 @@ import SystemCore
 public struct PortionUnit: Hashable, Codable, Sendable, Identifiable {
     public enum Kind: String, Codable, Sendable { case mass, volume, portion, energy, serving }
 
-    /// "g", "oz", "lb", "ml", "floz", "cup", "tbsp", "tsp", "serving", "portion:<index>", "kcal".
+    /// "g", "oz", "lb", "ml", "floz", "cup", "tbsp", "tsp", "serving", "portion:<index>", "kcal". A
+    /// portion's index is its place in the food's portions today, so a stored one is reopened with
+    /// `FoodUnits.logged`.
     public var id: String
     /// "g", "oz", "cup", "slice", "kcal", "serving".
     public var label: String
@@ -31,9 +33,13 @@ public enum FoodUnits {
     public static func units(for food: Food) -> [PortionUnit] { UnitTable(food).units }
 
     /// The unit and count to offer first: the last one used, else the food's own portion, else 100 g.
-    public static func suggested(for food: Food, lastUnitID: String? = nil, lastCount: Double? = nil) -> (unit: PortionUnit, count: Double) {
+    /// With `lastAmount` (the basis units last logged), the last unit is offered only while it
+    /// still holds that amount; see `logged`.
+    public static func suggested(for food: Food, lastUnitID: String? = nil, lastCount: Double? = nil,
+                                 lastAmount: Double? = nil) -> (unit: PortionUnit, count: Double) {
         let table = UnitTable(food)
-        if let lastUnitID, let lastCount, lastCount > 0, lastCount.isFinite, let unit = table.units.first(where: { $0.id == lastUnitID }) {
+        if let lastUnitID, let lastCount, lastCount > 0, lastCount.isFinite, let unit = table.units.first(where: { $0.id == lastUnitID }),
+           holds(unit, count: lastCount, amount: lastAmount) {
             return (unit, lastCount)
         }
         // "1 oz (28 g)" is 1 oz, though an ounce is 28.35 g.
@@ -46,6 +52,27 @@ public enum FoodUnits {
             ?? PortionUnit(id: food.basis.rawValue, label: food.basis.rawValue, kind: food.basis == .serving ? .serving : food.basis == .ml ? .volume : .mass,
                            amount: 1)
         return (unit, count)
+    }
+
+    /// The unit and count a logged entry reopens in: the unit it was logged in while the food still
+    /// has it and it still holds the amount logged (`amount`, in basis units), else the food's basis
+    /// unit counting that amount. A portion's id is its place in the catalog row, and a catalog
+    /// update can reword, drop or reorder portions, so "1 bar (40 g)" must not reopen as 1 g.
+    public static func logged(for food: Food, unitID: String?, count: Double?, amount: Double?) -> (unit: PortionUnit, count: Double) {
+        let offered = units(for: food)
+        if let unitID, let count, count > 0, count.isFinite, let unit = offered.first(where: { $0.id == unitID }),
+           holds(unit, count: count, amount: amount) {
+            return (unit, count)
+        }
+        if let amount, amount > 0, amount.isFinite, let basis = offered.first(where: { $0.id == food.basis.rawValue }) { return (basis, amount) }
+        return suggested(for: food)
+    }
+
+    /// Whether a count of a unit is the amount logged, give or take the 1% a reworded label moves
+    /// it. Without an amount (an entry from before amounts were kept) nothing says otherwise.
+    private static func holds(_ unit: PortionUnit, count: Double, amount: Double?) -> Bool {
+        guard let amount, amount > 0, amount.isFinite else { return true }
+        return abs(Self.amount(count, unit) / amount - 1) < 0.01
     }
 
     /// Basis units for a count of a unit.
@@ -74,7 +101,7 @@ public enum FoodUnits {
                 let servings = PortionUnit(id: "serving", label: "serving", kind: .serving, amount: 1)
                 text += " · \(format(amount, servings)) \(amount > 1 ? "servings" : "serving")"
             } else {
-                text += " · \(amount >= 10 ? String(Int(amount.rounded())) : trimmed(amount, places: 1)) \(food.basis.rawValue)"
+                text += " · \(trimmed(amount, places: amount >= 10 ? 0 : 1)) \(food.basis.rawValue)"
             }
         }
         return estimate ? "≈ \(text)" : text
@@ -107,21 +134,50 @@ public enum FoodUnits {
         unit.id == "g" || unit.id == "ml" || unit.kind == .energy ? 10 : 0.5
     }
 
-    /// "1 1/2", "1½", "0.5", ".5", "2,5" → a number; nil for anything else.
+    /// The most an amount can count: nobody logs a million of anything, and the bound keeps every
+    /// amount made from a count far below where converting it to a whole number traps.
+    static let maxCount = 1_000_000.0
+
+    /// "1 1/2", "1½", "0.5", ".5", "2,5", "１/２" → a number; nil for anything else.
     public static func parseCount(_ text: String) -> Double? {
-        var value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var value = asciiDigits(text.trimmingCharacters(in: .whitespacesAndNewlines))
         if let comma = value.firstIndex(of: ",") { value.replaceSubrange(comma...comma, with: ".") }
         value = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        if let match = Pattern(#"^(\d+)? ?([¼⅓½⅔¾])$"#).first(in: value), let glyph = glyphs.first(where: { $0.glyph == match[2] }) {
-            return Double(match[1] ?? "0")! + glyph.value
+        let count: Double?
+        if let match = glyphCount.first(in: value), let glyph = glyphs.first(where: { $0.glyph == match[2] }), let whole = Double(match[1] ?? "0") {
+            count = whole + glyph.value
+        } else if let match = fractionCount.first(in: value), let whole = Double(match[1] ?? "0"),
+                  let numerator = match[2].flatMap(Double.init), let denominator = match[3].flatMap(Double.init) {
+            count = denominator > 0 ? whole + numerator / denominator : nil
+        } else {
+            count = decimalCount.test(value) ? Double(value.hasPrefix(".") ? "0" + value : value) : nil
         }
-        if let match = Pattern(#"^(?:(\d+) )?(\d+)/(\d+)$"#).first(in: value) {
-            let denominator = Double(match[3]!)!
-            return denominator > 0 ? Double(match[1] ?? "0")! + Double(match[2]!)! / denominator : nil
-        }
-        return Pattern(#"^(?:\d+\.?\d*|\.\d+)$"#).test(value) ? Double(value.hasPrefix(".") ? "0" + value : value) : nil
+        guard let count, count.isFinite, count <= maxCount else { return nil }
+        return count
     }
 }
+
+// The patterns read ASCII digits only, since `Double` reads no others; `asciiDigits` maps the rest.
+private let glyphCount = Pattern(#"^([0-9]+)? ?([¼⅓½⅔¾])$"#)
+private let fractionCount = Pattern(#"^(?:([0-9]+) )?([0-9]+)/([0-9]+)$"#)
+private let decimalCount = Pattern(#"^(?:[0-9]+\.?[0-9]*|\.[0-9]+)$"#)
+
+/// Another script's digits and separators as ASCII: "１/２" from a Japanese keyboard, "١٫٥" from
+/// an Arabic one.
+private func asciiDigits(_ text: String) -> String {
+    if text.unicodeScalars.allSatisfy(\.isASCII) { return text }
+    var scalars = String.UnicodeScalarView()
+    for scalar in text.unicodeScalars {
+        if scalar.properties.numericType == .decimal, let digit = scalar.properties.numericValue, (0...9).contains(digit) {
+            scalars.append(Unicode.Scalar(UInt8(0x30 + Int(digit))))
+        } else {
+            scalars.append(separators[scalar] ?? scalar)
+        }
+    }
+    return String(scalars)
+}
+
+private let separators: [Unicode.Scalar: Unicode.Scalar] = ["\u{FF0F}": "/", "\u{2044}": "/", "\u{066B}": ".", "\u{FF0E}": ".", "\u{FF0C}": ","]
 
 // MARK: - Portions
 
@@ -187,10 +243,11 @@ func servingSize(_ food: Food) -> (weight: Double?, volume: Double?) {
 /// Size words describe a portion rather than count it: "2 large", not "2 larges".
 private let sizes: Set<String> = ["small", "medium", "large", "regular", "extra", "jumbo", "whole", "kid"]
 private let invariant = sizes.union(["g", "oz", "ml", "fl", "floz", "tbsp", "tsp", "kcal", "lb", "kg", "l", "fl oz"])
+private let qualifierStart = Pattern(#"\s*[,(]"#)
 
 /// "slice" is "slices" and "cup, chopped" is "cups, chopped"; units and sizes stay as they are.
 func plural(_ name: String) -> String {
-    let cut = Pattern(#"\s*[,(]"#).first(in: name)?.range.lowerBound
+    let cut = qualifierStart.first(in: name)?.range.lowerBound
     let head = cut.map { String(name[..<$0]) } ?? name
     var parts = head.components(separatedBy: " ")
     let last = parts.last ?? ""
@@ -318,6 +375,8 @@ struct UnitTable {
     }
 }
 
+private let bracketed = Pattern(#"\([^)]*\)"#)
+
 private func removingBrackets(_ text: String) -> String {
-    Pattern(#"\([^)]*\)"#).replacing(in: text, with: "")
+    bracketed.replacing(in: text, with: "")
 }

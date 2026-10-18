@@ -5,7 +5,7 @@ import Synchronization
 /// The offline catalogs, read-only: USDA's generic foods and, when the app ships it, Open Food
 /// Facts' packaged foods. Each file is opened in place (no copy) and one that fails to open leaves
 /// the other working. Thread-safe; search is synchronous and fast, so call it off the main actor.
-public final class FoodCatalog: @unchecked Sendable {
+public final class FoodCatalog: Sendable {
     /// The open catalogs, generic foods first.
     let catalogs: [Catalog]
     /// The phone's region as a catalog names a market ("us"), if it has one.
@@ -26,12 +26,22 @@ public final class FoodCatalog: @unchecked Sendable {
         let here = region.lowercased()
         self.region = here.count == 2 && here.unicodeScalars.allSatisfy({ $0.value >= 0x61 && $0.value <= 0x7A }) ? here : nil
         var catalogs: [Catalog] = []
-        if let usda, let catalog = try? Catalog(url: usda, kind: .generic, region: self.region) { catalogs.append(catalog) }
-        if let off, let catalog = try? Catalog(url: off, kind: .branded, region: self.region) { catalogs.append(catalog) }
+        if let usda, let catalog = Self.open(usda, kind: .generic, region: self.region) { catalogs.append(catalog) }
+        if let off, let catalog = Self.open(off, kind: .branded, region: self.region) { catalogs.append(catalog) }
         self.catalogs = catalogs
         let foods = Double(catalogs.reduce(0) { $0 + $1.foods })
         rare = foods / 4800
         uncommon = foods / 480
+    }
+
+    /// A catalog file, or nil (logged) when it isn't one: the other catalog still works without it.
+    private static func open(_ url: URL, kind: Catalog.Kind, region: String?) -> Catalog? {
+        do {
+            return try Catalog(url: url, kind: kind, region: region)
+        } catch {
+            catalogLog.error("\(url.lastPathComponent, privacy: .public) didn't open: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     /// USDA from this package, plus `off.db` from the app bundle when it ships one.
@@ -108,6 +118,18 @@ public final class FoodCatalog: @unchecked Sendable {
         }
         return nil
     }
+
+    /// Frees what searches keep for the launch (rows already read, spelling guesses, spare
+    /// connections and their page caches), for a memory warning or the move to the background.
+    /// Searches after it are as quick as the first ones after launch.
+    public func releaseMemory() {
+        for catalog in catalogs { catalog.releaseMemory() }
+        spellings.withLock { $0.removeAll() }
+        brandish.withLock { $0.removeAll() }
+    }
+
+    /// Reads that failed since the catalogs opened; each showed as nothing found.
+    var failures: Int { catalogs.reduce(0) { $0 + $1.failures } }
 
     /// Warm caches and pages in the background after launch.
     public func prewarm() {

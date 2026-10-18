@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import SystemCore
 import Testing
 @testable import FoodDatabase
@@ -44,6 +45,96 @@ struct CatalogTests {
         #expect(JSONValue.parse("[true,false,null,\"a\\nb\"]") == .array([.bool(true), .bool(false), .null, .string("a\nb")]))
         #expect(JSONValue.parse("[1,]") == nil)
         #expect(JSONValue.parse("-") == nil)
+    }
+
+    @Test("broken escapes and cut-off rows are refused or replaced, never a crash")
+    func malformed() {
+        func row(_ bytes: [UInt8], _ order: [String]?) -> RowData? { bytes.withUnsafeBufferPointer { RowData(data: $0, order: order) } }
+        func parse(_ bytes: [UInt8], _ order: [String]?) -> JSONValue? {
+            _ = row(bytes, order)
+            return bytes.withUnsafeBufferPointer { JSONValue.parse($0) }
+        }
+        // A high surrogate whose next escape isn't its low half stands alone, as does a lone low one.
+        #expect(JSONValue.parse(#"["\uD800\u0041"]"#) == .array([.string("\u{FFFD}A")]))
+        #expect(JSONValue.parse(#"["\uD800\uD800x"]"#) == .array([.string("\u{FFFD}\u{FFFD}x")]))
+        #expect(JSONValue.parse(#"["\uDC00x", "\uD800"]"#) == .array([.string("\u{FFFD}x"), .string("\u{FFFD}")]))
+        #expect(JSONValue.parse(#"["\uD83C\uDF53"]"#) == .array([.string("🍓")]))
+        #expect(JSONValue.parse(#"["\uD800\u12"]"#) == nil)
+        // Every cut, and every byte swapped for a piece of JSON syntax, in rows of both shapes, each
+        // read as its catalog reads it (an object row has no nutrient order).
+        let rows: [(json: String, order: [String]?)] = [
+            (#"["g",[97,8,9.4,3,null,250],[["1 pot (125 g)",125]]]"#, Self.order),
+            (#"{"basis":"g","nutrients":{"calories":32.0,"iron":null},"portions":[{"label":"1 \"x\" \uD83C\uDF53","amount":1e2}]}"#, nil),
+        ]
+        let syntax = Array(#""\u[]{},:-.eD8"#.utf8)
+        for (json, order) in rows {
+            let bytes = Array(json.utf8)
+            #expect(parse(bytes, order) != nil)
+            #expect(row(bytes, order)?.portions.count == 1)
+            for end in 0..<bytes.count { #expect(parse(Array(bytes[..<end]), order) == nil) }
+            for i in bytes.indices {
+                for byte in syntax {
+                    var changed = bytes
+                    changed[i] = byte
+                    _ = parse(changed, order)
+                }
+            }
+        }
+    }
+
+    @Test("every expression a search can build is valid full-text syntax")
+    func validExpressions() {
+        let catalog = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
+        for query in ["chicken breast", #"" OR - NEAR ( *"#, "crème", "rice", "x", "🍕", "Domino's 14\" pizza", "chiken", "1/2 cup", "a-b c*d"] {
+            _ = catalog.search(query)
+            _ = catalog.candidates(name: query, brand: "Mc'Test")
+        }
+        #expect(catalog.failures == 0)
+        // A bad one shows up as a failure, not just as nothing found.
+        #expect(catalog.catalogs[0].match(#""unclosed"#, limit: 1).isEmpty)
+        #expect(catalog.failures == 1)
+    }
+
+    @Test("generic foods are found by id as a search found them")
+    func byID() throws {
+        let catalog = FoodCatalog(usda: Catalogs.usdaURL, off: nil, region: "us")
+        let found = catalog.search("chicken", limit: 50).map(\.food)
+        #expect(found.count == 50)
+        for food in found { #expect(catalog.food(id: food.id) == food, "\(food.id)") }
+        #expect(catalog.food(id: "usda:0") == nil && catalog.food(id: "usda:") == nil)
+        #expect(catalog.failures == 0)
+    }
+
+    @Test("a burst of parallel reads leaves a few connections open, and releasing memory closes all but one")
+    func connections() throws {
+        final class Count: Sendable {
+            let value = Mutex(0)
+            func add() { value.withLock { $0 += 1 } }
+            var current: Int { value.withLock { $0 } }
+        }
+        let pool = try ConnectionPool(url: Catalogs.usdaURL, kept: 2)
+        let threads = 8
+        let entered = Count()
+        let done = DispatchGroup()
+        for _ in 0..<threads {
+            done.enter()
+            Thread {
+                pool.read { connection in
+                    entered.add()
+                    // Each holds its connection until all have one, so eight are open at once.
+                    for _ in 0..<10_000 where entered.current < threads { usleep(1000) }
+                    try connection.query("SELECT count(*) FROM foods") { _ in }
+                }
+                done.leave()
+            }.start()
+        }
+        done.wait()
+        #expect(entered.current == threads)
+        #expect(pool.idleCount == 2)
+        #expect(pool.failures.load(ordering: .relaxed) == 0)
+        pool.trim()
+        #expect(pool.idleCount == 1)
+        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 7793) } }
     }
 
     @Test("generic foods say how processed they are, and which are fermented")
@@ -140,5 +231,6 @@ struct CatalogTests {
             _ = catalog.search(query)
             _ = catalog.candidates(name: query, brand: "Mc'Test")
         }
+        #expect(catalog.failures == 0)
     }
 }

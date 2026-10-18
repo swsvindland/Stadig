@@ -5,9 +5,10 @@ import Testing
 
 @Suite("Implausible packaged foods")
 struct PlausibilityTests {
+    /// The id is the name and brand, so two brands' foods of one name stay two foods.
     func off(_ name: String, _ basis: FoodBasis = .g, kcal: Double, p: Double, c: Double, f: Double, fiber: Double? = nil,
              brand: String? = nil) -> Food {
-        Food(id: "off:\(abs(name.hashValue))", name: name, brand: brand, basis: basis,
+        Food(id: "off:\(name)|\(brand ?? "")", name: name, brand: brand, basis: basis,
              nutrients: Nutrients(kcal: kcal, protein: p, carbs: c, fat: f, fiber: fiber), source: .off)
     }
 
@@ -52,8 +53,10 @@ struct PlausibilityTests {
     func ranksBelow() {
         let powder = off("Flat White", .ml, kcal: 452, p: 21.8, c: 43.6, f: 19.2, brand: "Nestlé")
         let poured = off("Flat White", .ml, kcal: 55, p: 2, c: 6, f: 2, brand: "Nescafé Dolce Gusto")
+        #expect(powder.id != poured.id)
         let ranked = rankSearch("flat white", [powder, poured])
         #expect(ranked.map(\.food.id) == [poured.id, powder.id])
+        #expect(ranked.map(\.food.brand) == ["Nescafé Dolce Gusto", "Nestlé"])
     }
 }
 

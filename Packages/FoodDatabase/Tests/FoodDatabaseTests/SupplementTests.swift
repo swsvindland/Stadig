@@ -1,10 +1,44 @@
 import Foundation
+import SQLite3
 import SystemCore
 import Testing
 @testable import FoodDatabase
 
 @Suite("Supplements")
 struct SupplementTests {
+    static let catalogURL = Catalogs.package.appending(path: "../../Apps/MacroTrack/Catalogs/supplements.db").standardizedFileURL
+    static var hasCatalog: Bool { FileManager.default.fileExists(atPath: catalogURL.path) }
+
+    /// A supplements.db laid out as `Scripts/build-supplement-catalog.py` writes one, rows in DSLD id
+    /// order, each label a magnesium capsule.
+    static func catalog(_ labels: [(id: Int, name: String, market: Bool)]) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: "supplements-\(UUID().uuidString).db")
+        var handle: OpaquePointer?
+        guard sqlite3_open(url.path, &handle) == SQLITE_OK, let db = handle else { throw SQLiteError(code: 0, message: "cannot create \(url.path)") }
+        defer { sqlite3_close(db) }
+        func run(_ sql: String) throws {
+            guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw SQLiteError(code: 1, message: String(cString: sqlite3_errmsg(db))) }
+        }
+        try run("""
+            CREATE TABLE supplements (id INTEGER PRIMARY KEY, name TEXT NOT NULL, brand TEXT NOT NULL, barcode INTEGER, serving TEXT NOT NULL,
+                                      market INTEGER NOT NULL, data TEXT NOT NULL);
+            CREATE TABLE catalog_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO catalog_meta VALUES ('version', 'dsld-test');
+            BEGIN;
+            """)
+        for label in labels.sorted(by: { $0.id < $1.id }) {
+            try run("INSERT INTO supplements VALUES (\(label.id), '\(label.name)', 'Brand', NULL, '1 Capsule(s)', \(label.market ? 1 : 0), "
+                + #"'[["Magnesium",200,"mg"]]')"#)
+        }
+        try run("""
+            COMMIT;
+            CREATE VIRTUAL TABLE supplement_search USING fts5(name, brand, content='supplements', content_rowid='id',
+                                                              tokenize='unicode61 remove_diacritics 2', prefix='2 3', columnsize=0);
+            INSERT INTO supplement_search(supplement_search) VALUES ('rebuild');
+            """)
+        return url
+    }
+
     func value(_ name: String, _ amount: Double, _ unit: String) -> (String, Double)? {
         SupplementIngredients.read(name: name, amount: amount, unit: unit).map { ($0.key, $0.value) }
     }
@@ -142,9 +176,24 @@ struct SupplementTests {
         #expect(SupplementLabel.parse(lines: ["Nature Made", "Fish Oil", "Heart health support"]) == nil)
     }
 
-    @Test func theNIHCatalogFindsLabelsByBarcodeAndName() throws {
-        let url = Catalogs.package.appending(path: "../../Apps/MacroTrack/Catalogs/supplements.db").standardizedFileURL
-        try #require(FileManager.default.fileExists(atPath: url.path), "supplements.db isn't built; run Scripts/build-supplement-catalog.py")
+    @Test("search ranks every label that matches, so the newest ones on the market come first")
+    func searchRanksEveryMatch() throws {
+        // 500 old labels off the market, oldest first as DSLD numbers them, then the newest, still sold.
+        let old = (1...500).map { (id: $0, name: "Magnesium Oxide \($0)", market: false) }
+        let url = try Self.catalog(old + [(id: 341_521, name: "Magnesium Glycinate", market: true)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let catalog = try SupplementCatalog(url: url)
+        #expect(catalog.count == 501)
+        let found = catalog.search("magnesium")
+        #expect(found.count == 30)
+        #expect(found.first?.id == "dsld:341521")
+        #expect(catalog.search("magnesium gly").map(\.id) == ["dsld:341521"])
+        #expect(catalog.failures == 0)
+    }
+
+    @Test(.enabled(if: SupplementTests.hasCatalog, "needs Apps/MacroTrack/Catalogs/supplements.db"))
+    func theNIHCatalogFindsLabelsByBarcodeAndName() throws {
+        let url = Self.catalogURL
         let catalog = try SupplementCatalog(url: url)
         #expect(catalog.count > 100_000)
         // Nature Made Omega-3 Fish Oil 1200 mg, scanned as its UPC-A.
@@ -159,5 +208,12 @@ struct SupplementTests {
         #expect(found.contains { $0.brand == "Nature Made" && $0.name.localizedCaseInsensitiveContains("fish oil") })
         #expect(catalog.search("melatonin").count >= 10)
         #expect(catalog.search("x").isEmpty)
+        // Labels are in DSLD id order, so ranking only the first matches would leave out the newer ones.
+        var cutoff: Int64 = 0
+        try SQLiteConnection(url: url).query(#"SELECT rowid FROM supplement_search WHERE supplement_search MATCH '"magnesium"*' LIMIT 1 OFFSET 399"#) {
+            cutoff = $0.int(0)
+        }
+        #expect(catalog.search("magnesium").contains { (Int64($0.id.dropFirst(5)) ?? 0) > cutoff })
+        #expect(catalog.failures == 0)
     }
 }

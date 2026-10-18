@@ -119,6 +119,30 @@ struct UnitsTests {
         #expect(FoodUnits.parseCount(text) == nil)
     }
 
+    // A Japanese or Arabic keyboard, or a paste, types digits `Double` can't read.
+    @Test("amounts in other scripts' digits read as the same numbers", arguments: [
+        ("１/２", 0.5), ("١/٢", 0.5), ("٣½", 3.5), ("٢", 2.0), ("١٢٠", 120), ("１ １/２", 1.5), ("١٫٥", 1.5), ("1⁄2", 0.5),
+        // Full-width separators, as a Japanese keyboard types them.
+        ("\u{FF11}\u{FF0F}\u{FF12}", 0.5), ("\u{FF11}\u{FF0E}\u{FF15}", 1.5), ("\u{FF12}\u{FF0C}\u{FF15}", 2.5),
+        ("\u{FF11}\u{3000}\u{FF11}\u{FF0F}\u{FF12}", 1.5),
+    ])
+    func otherDigits(text: String, value: Double) {
+        #expect(FoodUnits.parseCount(text) == value)
+    }
+
+    @Test("an amount too large to be one isn't read as one", arguments: ["99999999999999999999", "1000001", "1/0.5", "²"])
+    func tooLarge(text: String) {
+        #expect(FoodUnits.parseCount(text) == nil)
+    }
+
+    @Test("a huge amount still makes a label")
+    func hugeLabel() throws {
+        let water = Self.with([("1 cup", 240)], basis: .ml, kcal: 0)
+        let cups = try unit(water, "cup")
+        #expect(FoodUnits.entryLabel(for: water, count: 1e17, unit: cups) == "1e+17 cups · 2.4e+19 ml")
+        #expect(FoodUnits.parseCount("1000000") == 1_000_000)
+    }
+
     @Test("amounts convert between units, rounded for the unit")
     func convert() throws {
         let bread = Self.bread
@@ -140,6 +164,43 @@ struct UnitsTests {
         #expect(FoodUnits.entryLabel(for: food, count: 300, unit: kcal) == "300 kcal · 167 g")
         #expect(FoodUnits.step(for: try unit(bread, "g")) == 10)
         #expect(FoodUnits.step(for: try unit(bread, "portion:0")) == 0.5)
+    }
+
+    // "1 bar (40 g)" logged, then a catalog update rewords, reorders or drops the food's portions.
+    @Test("a logged entry reopens in its unit only while that unit still holds the amount logged")
+    func reopened() throws {
+        let bar = Self.with([("1 bar (40 g)", 40)])
+        let logged = FoodUnits.logged(for: bar, unitID: "portion:0", count: 1, amount: 40)
+        #expect(logged.unit.label == "bar" && logged.count == 1)
+        // The label became a weight alone, so there is no bar to count: the 40 g logged stays 40 g.
+        let weighed = FoodUnits.logged(for: Self.with([("40 g", 40)]), unitID: "portion:0", count: 1, amount: 40)
+        #expect(weighed.unit.id == "g" && weighed.count == 40)
+        #expect(FoodUnits.logged(for: Self.with([]), unitID: "portion:0", count: 1, amount: 40).count == 40)
+        // Another portion took its place, so the same id is a different amount.
+        let moved = FoodUnits.logged(for: Self.with([("1 cup, chopped", 136), ("1 bar (40 g)", 40)]), unitID: "portion:0", count: 1, amount: 40)
+        #expect(moved.unit.id == "g" && moved.count == 40)
+        // A per-serving food's entry keeps its servings.
+        let serving = Self.with([("1 bar (40 g)", 1)], basis: .serving)
+        let servings = FoodUnits.logged(for: serving, unitID: "portion:9", count: 2, amount: 2)
+        #expect(servings.unit.id == "serving" && servings.count == 2)
+        // An entry from before amounts were kept trusts its unit while the food has it, and
+        // otherwise opens at the food's own default, with the count that goes with it.
+        #expect(FoodUnits.logged(for: bar, unitID: "portion:0", count: 2, amount: nil).count == 2)
+        let unknown = FoodUnits.logged(for: Self.with([("40 g", 40)]), unitID: "portion:0", count: 1, amount: nil)
+        #expect(unknown.unit.id == "g" && unknown.count == 40)
+        // Grams are grams whatever happened to the portions.
+        let grams = FoodUnits.logged(for: bar, unitID: "g", count: 55, amount: 55)
+        #expect(grams.unit.id == "g" && grams.count == 55)
+    }
+
+    @Test("logging again doesn't offer the last count of a portion that has since changed")
+    func rememberedPortionChanged() {
+        let bar = Self.with([("1 bar (40 g)", 40)])
+        let same = FoodUnits.suggested(for: bar, lastUnitID: "portion:0", lastCount: 2, lastAmount: 80)
+        #expect(same.unit.label == "bar" && same.count == 2)
+        let moved = Self.with([("1 cup, chopped", 136), ("1 bar (40 g)", 40)])
+        let offered = FoodUnits.suggested(for: moved, lastUnitID: "portion:0", lastCount: 2, lastAmount: 80)
+        #expect(offered.unit.label == "cup, chopped" && offered.count == 1, "the food's own default, not 2 cups")
     }
 
     @Test("logging again reopens at the last unit and count while the food still has that unit")
