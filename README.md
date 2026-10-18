@@ -109,11 +109,11 @@ Everything the hub and every app must agree on lives here, so scores are identic
   - Endurance: heart-rate zones, heart-rate-guided rest with minimums for heavy compounds, heart-rate recovery between sets, benchmarks.
   - Agility: five mobility tests, with the weakest becoming the limiter, and "see a physio" when a test hurts or worsens.
   - Physique: shoulder-to-waist and waist-to-height ratios, a tape body-fat estimate as a soft signal, and gaps described in neutral words.
-- **Steps** (`Steps`): a daily aim, never a stat, streak or ring.
+- **Steps** (`Steps`): a daily aim, never a stat or a streak.
   - It starts from your usual count (the four weeks before the current phase began), not a universal 10,000. Days under 1,000 steps (the phone on a desk) and illness days are unknown.
   - In a cut it heads for your usual plus about 2,000, at least the floor (8,000, or 7,000 from 60, where the benefit levels off in large cohort studies); a usual count over 12,000 is held. Otherwise it holds the usual count, lifted to the floor if it's under, and nothing over 10,000 is prescribed.
   - Each calendar week's aim is last week's average plus 1,000, never under the usual count and never past the target, so a missed week doesn't raise the next.
-  - It's judged as the last seven days' average, and shown only when there's something to do: always in a cut, otherwise while building to the floor or when steps slip more than 1,000 under the aim.
+  - It's judged as the last seven days' average. It asks for something (a walk) only when there's something to do: always in a cut, otherwise while building to the floor or when steps slip more than 1,000 under the aim.
 
 ### ExerciseLibrary
 
@@ -188,11 +188,11 @@ The program generator works like this:
 - crunch mode gives the minimum effective dose, with equipment stand-ins
 - injuries swap out what they must, and injury ramps ease lifts back in
 - a head cold means light work only
-- a gym with a sauna or steam room gets an optional session at the end, outside the session's time (Settings → Gym → Recovery). Rooms run hot and cold, so you read the thermometer and the minutes follow: the dose is minutes weighted by heat (twice as hard every 6 °C / 11 °F hotter, so 10 minutes at 190 °F is more than 20 at 175 °F), starting at ten minutes' worth at 80 °C (176 °F), capped by how hot the room is, and moved by how the last one felt (easy +15%, too much −20%, two just-rights in a row +5%). Time, temperature, rating and heart rate are kept apart from the lifting, so they never count as sets or calibrate ratings.
+- a gym with a sauna or steam room gets an optional session at the end, outside the session's time. Setup asks (no preset assumes one), and Settings → Gym → Recovery changes it. Rooms run hot and cold, so you read the thermometer and the minutes follow: the dose is minutes weighted by heat (twice as hard every 6 °C / 11 °F hotter, so 10 minutes at 190 °F is more than 20 at 175 °F), starting at ten minutes' worth at 80 °C (176 °F), capped by how hot the room is, and moved by how the last one felt (easy +15%, too much −20%, two just-rights in a row +5%). Time, temperature, rating and heart rate are kept apart from the lifting, so they never count as sets or calibrate ratings.
 
 **Analysis** produces the "Do this next" actions. Each one ends in a concrete step, e.g. "Next session, 82.5 kg for 3×5" for a stall. When Macro Track data exists, it adds cross-app context such as "Protein was under target 4 of the last 7 logged days." It also produces the day's quests (three at most), the training discipline score, and the summary published for the hub.
 
-**Steps** show on the Plan tab under the week strip: this week's aim, the last seven days against it, where it's heading and why. On a rest day with the week behind, a quest offers the gap as a brisk walk ("20-minute walk"), but not on lift or class days, while ill, with a hip, knee or ankle injury, or once today reaches the aim. A long day on foot nobody logged (15,000 steps and 7,000 over the usual) spends the Fatigue Budget as walking; a logged hike counts once, as the hike. The last eight weeks of steps and the aim are published for Macro Track. Health is asked again for steps only by people who already connected it.
+**Steps** show on the Today tab whenever there's an aim: today so far against it, the last seven days and their average, where it's heading and why. Without one, the card asks to connect Health (or waits for a week of steps). On a rest day with the week behind, a quest offers the gap as a brisk walk ("20-minute walk"), but not on lift or class days, while ill, with a hip, knee or ankle injury, or once today reaches the aim. A long day on foot nobody logged (15,000 steps and 7,000 over the usual) spends the Fatigue Budget as walking; a logged hike counts once, as the hike. The last eight weeks of steps and the aim are published for Macro Track. Health is asked again for steps only by people who already connected it.
 
 ### The Watch
 

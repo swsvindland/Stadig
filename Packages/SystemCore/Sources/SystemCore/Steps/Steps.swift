@@ -14,7 +14,8 @@ public struct StepDay: Hashable, Codable, Sendable {
 
 /// The daily step aim. It starts from the person's own usual count, not a universal 10,000, is set
 /// by the nutrition phase, and is judged as a weekly average so one quiet day doesn't matter.
-/// Not a stat, a streak or a ring: it's shown only when there's something to do.
+/// Not a stat or a streak: the aim and how the week is going are always there to look at, but
+/// it only asks for anything (a walk) when there's something to do.
 public struct StepAim: Hashable, Codable, Sendable {
     /// Usual steps a day before the current phase began.
     public var baseline: Int
@@ -29,13 +30,14 @@ public struct StepAim: Hashable, Codable, Sendable {
     /// Today so far.
     public var today: Int?
     public var energy: PhaseKind.Energy
-    /// Always in a cut; otherwise only while building up to the floor, or when steps have slipped.
-    public var shown: Bool
+    /// Whether there's something to do: always in a cut; otherwise only while building up to the
+    /// floor, or when steps have slipped. The walk quest waits for it.
+    public var actionable: Bool
     /// Why the aim is what it is, in plain words.
     public var reason: String
 
     public init(baseline: Int, target: Int, aim: Int, week: [StepDay], recent: Int?, today: Int?, energy: PhaseKind.Energy,
-                shown: Bool, reason: String) {
+                actionable: Bool, reason: String) {
         self.baseline = baseline
         self.target = target
         self.aim = aim
@@ -43,7 +45,7 @@ public struct StepAim: Hashable, Codable, Sendable {
         self.recent = recent
         self.today = today
         self.energy = energy
-        self.shown = shown
+        self.actionable = actionable
         self.reason = reason
     }
 
@@ -160,12 +162,17 @@ public enum Steps {
         case .maintenance, .surplus:
             if building {
                 reason = "About \(target.formatted()) a day is where the health benefit of walking levels off. Your usual is \(usual), so the aim rises about 1,000 a week."
+            } else if slipped {
+                let back = target < baseline - 250 ? "Getting back to \(target.formatted()) is plenty." : "Getting back there is the aim."
+                reason = "Steps have slipped from your usual \(usual) a day. \(back)"
+            } else if target < baseline - 250 {
+                reason = "Your usual is \(usual) a day, past where the health benefit of walking levels off. Anything over \(target.formatted()) is a bonus."
             } else {
-                reason = "Steps have slipped from your usual \(usual) a day. Getting back there is the aim."
+                reason = "Your usual \(usual) a day is where the health benefit of walking levels off. Holding it is the aim."
             }
         }
         return StepAim(baseline: baseline, target: target, aim: aim, week: week, recent: recent, today: byDay[today], energy: energy,
-                       shown: energy == .deficit || building || slipped, reason: reason)
+                       actionable: energy == .deficit || building || slipped, reason: reason)
     }
 
     /// Long days on foot nobody logged (a hike, a day of sightseeing), as minutes of walking beyond

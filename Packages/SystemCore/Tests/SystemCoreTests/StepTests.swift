@@ -49,23 +49,27 @@ struct StepTests {
         #expect(Steps.target(baseline: 5_000, energy: .surplus, age: 35) == 8_000)
     }
 
-    @Test func shownOnlyWhenThereIsSomethingToDo() {
+    @Test func actionableOnlyWhenThereIsSomethingToDo() {
         let anchor = today.adding(days: -30)
         let before = days(anchor.adding(days: -28), anchor.adding(days: -1), 9_200)
-        // Maintaining at the usual count: nothing to say.
+        // Maintaining at the usual count: an aim to look at, but nothing to do.
         let steady = Steps.aim(days: before + days(anchor, today, 9_300), anchor: anchor, energy: .maintenance, age: 35, today: today)
-        #expect(steady?.aim == 9_000 && steady?.shown == false && steady?.onTrack == true)
-        // Slipped by more than 1,000 a day: shown, and it says so.
+        #expect(steady?.aim == 9_000 && steady?.actionable == false && steady?.onTrack == true)
+        #expect(steady?.reason.contains("Holding it") == true)
+        // Walking well past 10,000: held at 10,000, and the rest is a bonus.
+        let busy = Steps.aim(days: days(anchor.adding(days: -28), today, 13_000), anchor: anchor, energy: .maintenance, age: 35, today: today)
+        #expect(busy?.aim == 10_000 && busy?.actionable == false && busy?.reason.contains("bonus") == true)
+        // Slipped by more than 1,000 a day: something to do, and it says so.
         let slipped = Steps.aim(days: before + days(anchor, today.adding(days: -8), 9_000) + days(today.adding(days: -7), today, 7_000),
                                 anchor: anchor, energy: .maintenance, age: 35, today: today)
-        #expect(slipped?.shown == true && slipped?.onTrack == false && slipped?.gap == 2_000)
+        #expect(slipped?.actionable == true && slipped?.onTrack == false && slipped?.gap == 2_000)
         #expect(slipped?.reason.contains("slipped") == true)
-        // Below the floor: shown while it builds.
+        // Below the floor: something to do while it builds.
         let low = Steps.aim(days: days(anchor.adding(days: -28), today, 5_000), anchor: anchor, energy: .maintenance, age: 35, today: today)
-        #expect(low?.shown == true && low?.target == 8_000 && low?.aim == 6_000)
-        // A cut: always shown, even on track.
+        #expect(low?.actionable == true && low?.target == 8_000 && low?.aim == 6_000)
+        // A cut: always something to do, even on track.
         let cut = Steps.aim(days: before + days(anchor, today, 11_500), anchor: anchor, energy: .deficit, age: 35, today: today)
-        #expect(cut?.shown == true && cut?.target == 11_000 && cut?.onTrack == true)
+        #expect(cut?.actionable == true && cut?.target == 11_000 && cut?.onTrack == true)
         // The week shown is the last seven complete days, today kept apart.
         #expect(cut?.week.map(\.day) == DayRange(today.adding(days: -7), today.adding(days: -1)).days && cut?.today == 11_500)
     }

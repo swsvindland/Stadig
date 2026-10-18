@@ -252,7 +252,7 @@ struct GymEditor: View {
             } header: {
                 Text("Recovery")
             } footer: {
-                Text("Sessions end with an optional 15 minutes in the sauna (or 10 in the steam room), outside the time you train.")
+                Text("Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt.")
             }
             Section("Loads") {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")

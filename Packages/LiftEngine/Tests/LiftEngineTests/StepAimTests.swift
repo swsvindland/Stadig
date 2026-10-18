@@ -28,7 +28,7 @@ struct StepAimTests {
         let steps = try! #require(a.steps)
         #expect(steps.baseline == 8_000 && steps.target == 10_000)
         // Last week averaged 6,000: back to the usual 8,000 first.
-        #expect(steps.aim == 8_000 && steps.recent == 6_000 && steps.onTrack == false && steps.shown)
+        #expect(steps.aim == 8_000 && steps.recent == 6_000 && steps.onTrack == false && steps.actionable)
         // Without Health steps there's nothing to show.
         var none = cutting()
         none.steps = []

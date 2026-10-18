@@ -21,6 +21,8 @@ struct OnboardingView: View {
     @State private var waist: Double?
     @State private var shoulders: Double?
     @State private var reusedProfile = false
+    /// A sauna or steam room where they train: no preset assumes one.
+    @State private var rooms: Set<Apparatus> = []
 
     private var steps: [Step] {
         Step.allCases.filter { step in
@@ -224,6 +226,17 @@ struct OnboardingView: View {
                 .pickerStyle(.segmented)
             }
             .card()
+            VStack(alignment: .leading, spacing: 10) {
+                Text("After training").font(.headline)
+                ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { room in
+                    Toggle(room.label, isOn: Binding(get: { rooms.contains(room) }, set: { on in
+                        if on { rooms.insert(room) } else { rooms.remove(room) }
+                    }))
+                }
+                Text("Sessions end with an optional sauna or steam room, timed from its thermometer.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            .card()
         }
     }
 
@@ -345,6 +358,7 @@ struct OnboardingView: View {
         profile.createdBy = reusedProfile ? profile.createdBy : .liftTrack
         var gym = Gym.preset(profile.equipment, unit: profile.units.weight)
         gym.name = profile.equipment.label
+        gym.apparatus.formUnion(rooms)
         var measurements: BodyMeasurements?
         if bodyweight != nil || waist != nil || shoulders != nil {
             measurements = BodyMeasurements(day: .today, weightKg: bodyweight, shouldersCm: shoulders, waistCm: waist)

@@ -1,5 +1,7 @@
 import SwiftUI
+import Charts
 import ExerciseLibrary
+import HealthBridge
 import LiftEngine
 import SystemCore
 
@@ -28,6 +30,11 @@ struct TodayView: View {
                         if !analysis.quests.isEmpty {
                             SectionHeader(title: "Later today")
                             ForEach(analysis.quests) { quest in QuestRow(quest: quest) }
+                        }
+                        if let steps = analysis.steps {
+                            StepsCard(steps: steps)
+                        } else if HealthBridge.shared.isAvailable {
+                            StepsWaitingCard(connected: !model.steps.isEmpty) { Task { await model.connectHealth() } }
                         }
                         outside(analysis)
                     }
@@ -305,6 +312,100 @@ struct ActionCard: View {
         case .measure: "Measure"
         default: "Do it"
         }
+    }
+}
+
+/// The daily step aim: today so far against it, the last seven days, and why. It's judged on the
+/// week's average, so one quiet day doesn't matter, and it asks for a walk only when the week is
+/// behind.
+struct StepsCard: View {
+    let steps: StepAim
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Label("Steps", systemImage: "figure.walk").font(.headline)
+                Spacer()
+                Text("Aim \(steps.aim.formatted()) a day").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+            }
+            today
+            Chart {
+                ForEach(steps.week, id: \.day) { day in
+                    BarMark(x: .value("Day", day.day.weekday.short), y: .value("Steps", day.steps))
+                        .foregroundStyle(day.steps >= steps.aim ? Color.indigo : Color.indigo.opacity(0.35))
+                        .cornerRadius(4)
+                }
+                RuleMark(y: .value("Aim", steps.aim))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                    .foregroundStyle(.secondary)
+            }
+            .chartYAxis(.hidden)
+            .chartXAxis { AxisMarks { AxisValueLabel() } }
+            .frame(height: 84)
+            .accessibilityHidden(true)
+            week
+            if steps.target > steps.aim {
+                Text("Heading for \(steps.target.formatted()) a day.").font(.subheadline)
+            }
+            Text(steps.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .card()
+        .accessibilityElement(children: .combine)
+    }
+
+    private var today: some View {
+        let count = steps.today ?? 0
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(count.formatted()).font(.title2.bold().monospacedDigit())
+                Text("today").font(.subheadline).foregroundStyle(.secondary)
+                Spacer()
+                if count >= steps.aim {
+                    Label("Aim reached", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(.green)
+                } else {
+                    Text("\((steps.aim - count).formatted()) to go").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                }
+            }
+            ProgressView(value: Double(min(count, steps.aim)), total: Double(steps.aim)).tint(.indigo)
+        }
+    }
+
+    @ViewBuilder
+    private var week: some View {
+        if let recent = steps.recent, let onTrack = steps.onTrack {
+            let average = Steps.round(recent, to: 100).formatted()
+            if onTrack {
+                Label("\(average) a day over the last week: on track", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline).foregroundStyle(.green)
+            } else {
+                Label("\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill")
+                    .font(.subheadline).foregroundStyle(.orange)
+            }
+        } else {
+            Label("Too few days with your phone or Watch to judge the week yet", systemImage: "questionmark.circle")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// No step aim yet: Health isn't sharing steps, or hasn't a week of them to find the usual count.
+struct StepsWaitingCard: View {
+    let connected: Bool
+    let connect: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Steps", systemImage: "figure.walk").font(.headline)
+            if connected {
+                Text("A daily aim comes once Health has a week of steps from your phone or Watch. It starts from your usual count, not a universal 10,000.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                Text("Lift Track sets a daily step aim from your usual count, read from Apple Health. Already connected? Turn on Steps for Lift Track in the Health app, under Profile → Apps.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                Button("Connect Apple Health", action: connect).secondaryAction().controlSize(.small)
+            }
+        }
+        .card()
     }
 }
 

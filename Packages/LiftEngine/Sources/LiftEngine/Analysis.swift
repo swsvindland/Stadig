@@ -412,7 +412,7 @@ public enum Analyst {
     /// and gone once today reaches the aim.
     static func walkQuest(_ state: LiftState, _ a: LiftAnalysis) -> Quest? {
         let today = state.today
-        guard let steps = a.steps, steps.shown, steps.onTrack == false, let recent = steps.recent, (steps.today ?? 0) < steps.aim,
+        guard let steps = a.steps, steps.actionable, steps.onTrack == false, let recent = steps.recent, (steps.today ?? 0) < steps.aim,
               next(a)?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
               !state.profile.recurring.contains(where: { $0.weekdays.contains(today.weekday) }),
               !state.illnessDays.contains(today),

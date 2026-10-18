@@ -1,5 +1,4 @@
 import SwiftUI
-import Charts
 import ExerciseLibrary
 import LiftEngine
 import SystemCore
@@ -18,7 +17,6 @@ struct PlanView: View {
                     if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
                         header(mesocycle, block: block, analysis: analysis)
                         WeekStrip(block: block, today: model.today, vacations: vacations)
-                        if let steps = analysis.steps, steps.shown { StepsCard(steps: steps) }
                         nextBlockPrompt(analysis, block: block)
                         if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorities(mesocycle) }
                         SectionHeader(title: "Days", detail: "\(mesocycle.days.count) a week")
@@ -203,60 +201,6 @@ struct WeekStrip: View {
         case .deload: "Deload"
         case .loading(let i): "W\(i + 1)"
         default: "W\(index + 1)"
-        }
-    }
-}
-
-/// The daily step aim: this week's number, the last seven days against it, and why. Shown only
-/// when there's something to do, so it isn't another ring to close.
-struct StepsCard: View {
-    let steps: StepAim
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Label("Steps", systemImage: "figure.walk").font(.headline)
-                Spacer()
-                Text("\(steps.aim.formatted()) a day").font(.headline.monospacedDigit())
-            }
-            Chart {
-                ForEach(steps.week, id: \.day) { day in
-                    BarMark(x: .value("Day", day.day.weekday.short), y: .value("Steps", day.steps))
-                        .foregroundStyle(day.steps >= steps.aim ? Color.indigo : Color.indigo.opacity(0.35))
-                        .cornerRadius(4)
-                }
-                RuleMark(y: .value("Aim", steps.aim))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                    .foregroundStyle(.secondary)
-            }
-            .chartYAxis(.hidden)
-            .chartXAxis { AxisMarks { AxisValueLabel() } }
-            .frame(height: 84)
-            .accessibilityHidden(true)
-            status
-            if steps.target > steps.aim {
-                Text("Heading for \(steps.target.formatted()) a day.").font(.subheadline)
-            }
-            Text(steps.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-        }
-        .card()
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder
-    private var status: some View {
-        if let recent = steps.recent, let onTrack = steps.onTrack {
-            let average = Steps.round(recent, to: 100).formatted()
-            if onTrack {
-                Label("\(average) a day over the last week", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline).foregroundStyle(.green)
-            } else {
-                Label("\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill")
-                    .font(.subheadline).foregroundStyle(.orange)
-            }
-        } else {
-            Label("Too few days with your phone or Watch to tell yet", systemImage: "questionmark.circle")
-                .font(.subheadline).foregroundStyle(.secondary)
         }
     }
 }
