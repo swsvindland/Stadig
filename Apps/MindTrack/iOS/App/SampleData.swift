@@ -14,7 +14,7 @@ enum SampleData {
         let start = today.adding(days: -60)
         let ladder = ReadingLadder.standard
         var settings = MindSettings(schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
-                                    mathsBackground: .algebra, genres: [.fantasy, .sciFi, .nonfiction])
+                                    mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
         settings.updatedAt = start.date()
         var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { $0.book(status: .readBefore) }
         if books.isEmpty { books = ladder.books.filter { $0.tier == 3 }.prefix(2).map { $0.book(status: .readBefore) } }
@@ -104,8 +104,8 @@ enum SampleData {
                    pieces: pieces)
     }
 
-    /// The sample student: about 600 Japanese words to begin with, solid maths to level 5 and
-    /// shakier above, and the basic writing skills.
+    /// The sample student: about 600 Japanese words to begin with; numeracy quick to level 6,
+    /// algebra solid to level 5 and statistics to 3, shakier above; and the basic writing skills.
     static func chance(_ question: Question, cards: [CardKey: MemoryCard], catalogs: Catalogs) -> Double {
         let key = question.key
         switch key.domain {
@@ -115,16 +115,39 @@ enum SampleData {
             if let id = key.wordID, let word = catalogs.deck(for: key.domain)?.word(id), word.rank <= 600 { return 0.92 }
             return question.kind == .learn ? 0.85 : 0.25
         case .maths:
-            let level = MathCurriculum.topic(key.item)?.level ?? 10
-            if level <= 5 { return 0.92 }
+            if let numeracy = key.numeracy { return numeracy.level <= 6 ? 0.92 : numeracy.level == 7 ? 0.5 : 0.15 }
+            let topic = MathCurriculum.topic(key.item)
+            let level = topic?.level ?? 10, solid = topic?.strand == .discrete ? 3 : 5
+            if level <= solid { return 0.92 }
             if question.kind == .test && cards[key]?.memory == nil { return 0.2 }
-            return level <= 7 ? 0.8 : 0.55
+            return level <= solid + 2 ? 0.8 : 0.55
         case .writing:
             let level = WritingBank.standard.skill(key.item)?.level ?? 3
             return [0.92, 0.8, 0.65][min(2, max(0, level - 1))]
         case .reading:
             return 1
         }
+    }
+
+    /// Eight weeks of what Lift Track and Macro Track would publish: steps most days, strength
+    /// three days a week, and food logged on most days with protein hit on about two in three.
+    static func systemData(ending today: Day) -> SystemData {
+        var rng = SeededRandom(seed: 314)
+        var steps: [SystemData.Point] = [], training: [SystemData.Point] = [], protein: [SystemData.Point] = []
+        var hits: [Day: Bool] = [:]
+        for offset in 1...56 {
+            let day = today.adding(days: -offset)
+            let trains = [.monday, .wednesday, .friday].contains(day.weekday)
+            let weekend = day.weekday == .saturday || day.weekday == .sunday
+            if rng.chance(0.93) { steps.append(.init(day: day, value: Double(rng.int(5200...9800) + (weekend ? 1800 : 0) + (trains ? 600 : 0)))) }
+            if trains && rng.chance(0.9) { training.append(.init(day: day, value: Double(rng.int(50...75)))) }
+            if offset <= 28 && rng.chance(0.85) {
+                let grams = Double(rng.int(110...190))
+                protein.append(.init(day: day, value: grams))
+                hits[day] = grams >= 140
+            }
+        }
+        return SystemData(steps: steps, training: training, protein: protein, proteinHits: hits)
     }
 
     static let sectionNotes = [

@@ -154,7 +154,8 @@ private struct SessionSummary: View {
                         let words = learned.filter { $0.domain == language }.count
                         if words > 0 { Label("\(words) new in \(language.label)", systemImage: language.symbol) }
                     }
-                    let topics = learned.filter { $0.domain == .maths }.count
+                    // Topics a placement or quick check found known weren't mastered here.
+                    let topics = learned.filter { $0.domain == .maths && !$0.knownBefore }.count
                     if topics > 0 { Label("\(topics) maths topic\(topics == 1 ? "" : "s") mastered", systemImage: Domain.maths.symbol) }
                     let skills = learned.filter { $0.domain == .writing }.count
                     if skills > 0 { Label("\(skills) writing skill\(skills == 1 ? "" : "s") mastered", systemImage: Domain.writing.symbol) }
@@ -165,7 +166,7 @@ private struct SessionSummary: View {
                         let words = run.newPieces.map(\.words).reduce(0, +)
                         Label("\(words) words written", systemImage: Domain.writing.symbol)
                     }
-                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary }, id: \.id) { test in
+                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.domain == .maths }, id: \.id) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
                     }
                 }
@@ -203,10 +204,13 @@ enum TestLine {
         case .languageWriting: return "\(language) writing: \(Format.percent(test.score)) right"
         case .episode: return "\(language) episode without subtitles: \(rating)"
         case .conversation: return "\(language) conversation: \(rating)"
-        case .numeracy: return "Numeracy: \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
-        case .mathsPlacement: return "Maths: placed at level \(Int(test.detail["level"] ?? 0)) of 10"
-        case .maths: return "Maths check: \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
-        case .discrete: return "Discrete and statistics: \(Format.percent(test.score)) right"
+        case .numeracy:
+            return "Numeracy: level \(Int(test.detail["level"] ?? 0)) of 10 · \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
+        case .mathsPlacement: return "\(MathsStrand.classic.label): placed at level \(Int(test.detail["level"] ?? 0)) of 10"
+        case .maths, .discrete:
+            let strand = MathsStrand(test: test.test)?.label ?? test.test.label
+            if test.placement { return "\(strand): placed at level \(Int(test.detail["level"] ?? 0)) of 10" }
+            return "\(strand): level \(Int(test.detail["reach"] ?? 0)) reached · \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
         case .writing: return "Writing\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
         case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"

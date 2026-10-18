@@ -133,31 +133,6 @@ private struct LanguageProgress: View {
     }
 }
 
-private struct MathsProgress: View {
-    let analysis: MindAnalysis
-    let state: StudyState
-
-    var body: some View {
-        let summary = analysis.maths
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                DomainBadge(domain: .maths)
-                Text("Maths").font(.headline)
-            }
-            Text("Level \(summary.highestLevel) of 10").font(.title2.bold())
-            LabeledContent("Topics known", value: "\(summary.known) of \(summary.total)")
-            if let check = state.tests.last(where: { $0.test == TestKind.maths }) {
-                LabeledContent("Last check", value: "\(Format.percent(check.score)) right · \(Format.seconds(check.detail["seconds"] ?? 0)) a problem")
-                TestChart(points: Analyst.series(.maths, state: state).map { ($0.day.date(), $0.score) }, label: "Maths", color: .blue)
-            } else {
-                LabeledContent("Mixed check", value: "At the first check-in")
-            }
-        }
-        .font(.subheadline)
-        .card()
-    }
-}
-
 private struct WritingProgress: View {
     let analysis: MindAnalysis
     let state: StudyState

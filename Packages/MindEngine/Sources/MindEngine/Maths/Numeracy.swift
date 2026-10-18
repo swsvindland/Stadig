@@ -19,6 +19,17 @@ public enum NumeracySkill: String, CaseIterable, Codable, Sendable, Identifiable
         }
     }
 
+    /// One word, for a row of levels.
+    public var short: String {
+        switch self {
+        case .arithmetic: "Arithmetic"
+        case .estimation: "Estimates"
+        case .percentages: "Percent"
+        case .fractions: "Fractions"
+        case .units: "Units"
+        }
+    }
+
     /// Seconds a fluent answer takes at a level: a quick sum at level 1, a two-step conversion at 10.
     public func target(_ level: Int) -> Double {
         let base: Double = switch self {
@@ -365,13 +376,14 @@ enum Numeracy {
             return .number(#"Decrease $\#(n)$ by $\#(p)\%$."#, Rational(n) - change,
                            steps: [#"$\#(p)\%$ of $\#(n)$ is $\#(decimal(change))$."#, "$\(n) - \(decimal(change)) = \(decimal(Rational(n) - change))$."])
         case 6:
-            let (from, to) = rng.pick([(40, 50), (80, 100), (25, 30), (60, 75), (50, 80), (20, 23), (120, 150), (200, 260)])
             if rng.chance(0.5) {
+                let (from, to) = rng.pick([(40, 50), (80, 100), (25, 30), (60, 75), (50, 80), (20, 23), (120, 150), (200, 260)])
                 return .number(#"A price goes from $\#(from)$ to $\#(to)$. By what percentage did it rise?"#, Rational(100 * (to - from), from),
                                steps: [#"It rose $\#(to - from)$, out of the starting $\#(from)$: $\frac{\#(to - from)}{\#(from)} = \#(decimal(Rational(100 * (to - from), from)))\%$."#])
             }
-            return .number(#"A price falls from $\#(to)$ to $\#(from)$. By what percentage did it fall?"#, Rational(100 * (to - from), to),
-                           steps: [#"It fell $\#(to - from)$, out of the starting $\#(to)$: $\frac{\#(to - from)}{\#(to)} = \#(decimal(Rational(100 * (to - from), to)))\%$."#])
+            let (from, to) = rng.pick([(50, 40), (100, 80), (30, 24), (75, 60), (80, 50), (40, 30), (150, 120), (200, 150)])
+            return .number(#"A price falls from $\#(from)$ to $\#(to)$. By what percentage did it fall?"#, Rational(100 * (from - to), from),
+                           steps: [#"It fell $\#(from - to)$, out of the starting $\#(from)$: $\frac{\#(from - to)}{\#(from)} = \#(decimal(Rational(100 * (from - to), from)))\%$."#])
         case 7:
             let p = rng.pick([10, 20, 25, 40, 50]), before = rng.int(2...12) * 20
             if rng.chance(0.5) {
@@ -529,7 +541,7 @@ enum Numeracy {
         case 5:
             let speed = rng.pick([40, 48, 60, 80, 90, 100, 120])
             if rng.chance(0.5) {
-                let minutes = rng.pick([15, 20, 30, 45, 90])
+                let minutes = rng.pick([15, 30, 45, 90])
                 let value = Rational(speed * minutes, 60)
                 return .number("At \(speed) km/h, how many km do you go in \(minutes) minutes?", value,
                                steps: [#"$\#(minutes)$ minutes is $\#(Rational(minutes, 60).tex)$ of an hour: $\#(speed) \times \#(Rational(minutes, 60).tex) = \#(decimal(value))$ km."#])
@@ -604,7 +616,11 @@ enum Numeracy {
     /// A terminating fraction as a decimal: 3/4 is "0.75", -5/2 is "-2.5".
     static func decimal(_ value: Rational) -> String { value.decimal ?? String(format: "%.2f", value.double) }
 
-    static func oneDecimal(_ value: Double) -> String { String(format: "%.1f", value) }
+    /// "3.1", and "5" rather than "5.0".
+    static func oneDecimal(_ value: Double) -> String {
+        let text = String(format: "%.1f", value)
+        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+    }
 
     /// "12,000".
     static func grouped(_ n: Int) -> String {

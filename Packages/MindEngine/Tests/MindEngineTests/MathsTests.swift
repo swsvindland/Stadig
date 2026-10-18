@@ -33,6 +33,9 @@ struct MathsTests {
                     case .number(let value, let tolerance):
                         #expect(question.check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description), "\(label) = \(value)")
                         if skill == .arithmetic, let truth = evaluate(problem.prompt) { #expect(truth == value, "\(label) = \(value), not \(truth)") }
+                        if skill != .fractions && !problem.prompt.contains("fraction") {
+                            #expect(value.decimal != nil, "\(label) = \(value): outside fractions, answers are plain decimals")
+                        }
                     }
                 }
             }

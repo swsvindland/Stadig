@@ -59,6 +59,9 @@ public enum MathsPlan {
         return done % 3 == 2 ? options[1] : options[0]
     }
 
+    /// About how many problems the first placement asks, for the strands chosen.
+    public static func placementProblems(_ settings: MindSettings) -> Int { MathsPlacementRunner.sizes(settings.strands).reduce(0, +) }
+
     static func matches(_ key: CardKey, _ strand: MathsStrand?) -> Bool {
         guard let strand else { return true }
         return MathCurriculum.topic(key.item)?.strand == strand

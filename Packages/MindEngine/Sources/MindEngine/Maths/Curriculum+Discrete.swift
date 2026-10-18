@@ -227,7 +227,7 @@ extension MathCurriculum {
                 let rolls = rng.int(2...3)
                 let none = Rational(5, 6).power(rolls)
                 return .number("A fair die is rolled \(rolls) times. What's the probability of at least one six?", 1 - none,
-                               steps: [#"No six: $\left(\frac{5}{6}\right)^{\#(rolls)} = \#(none.tex)$."#, #"At least one: $1 - \#(none.tex) = \#((1 - none).tex)$."#])
+                               steps: [#"No six: $(\frac{5}{6})^{\#(rolls)} = \#(none.tex)$."#, #"At least one: $1 - \#(none.tex) = \#((1 - none).tex)$."#])
             default:
                 let p = rng.pick([9, 8, 7]), times = rng.int(2...3)
                 let value = Rational(p, 10).power(times)
@@ -337,7 +337,9 @@ extension MathCurriculum {
                                before - after, steps: ["Absolute change: $\(before) - \(after) = \(before - after)$ per 1,000."])
             default:
                 return .number("A pill cuts the risk of a stroke from \(before) in 1,000 to \(after) in 1,000. How many people need to take it to prevent one stroke?",
-                               Rational(1000, before - after), steps: [#"$\#(before - after)$ fewer per 1,000, so $\frac{1000}{\#(before - after)} = \#(Numeracy.decimal(Rational(1000, before - after)))$ people."#])
+                               Rational(1000, before - after),
+                               steps: [before - after == 1 ? "One fewer stroke per 1,000 people, so 1,000 people take it for one of them to benefit."
+                                                           : #"$\#(before - after)$ fewer per 1,000, so $\frac{1000}{\#(before - after)} = \#(Numeracy.decimal(Rational(1000, before - after)))$ people."#])
             }
         },
         MathTopic(id: "base-rates", title: "Base rates", level: 7, prerequisites: ["conditional-probability"],

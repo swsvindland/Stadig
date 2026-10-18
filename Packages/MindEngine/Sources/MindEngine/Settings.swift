@@ -15,7 +15,8 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public var onboardedAt: Date?
     /// Nil until asked. False starts Japanese with hiragana and katakana.
     public var readsKana: Bool?
-    /// The classic ladder's placement start, until the adaptive per-strand placement replaces it.
+    /// What the first version asked about school maths. Kept so old records decode; placement is
+    /// a test of each strand now, and nothing reads this.
     public var mathsBackground: MathsBackground
     /// Maths strands in the order that matters to this person; numeracy is always kept up.
     public var mathsStrands: [MathsStrand]

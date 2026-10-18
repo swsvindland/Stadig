@@ -72,7 +72,7 @@ enum MathSource {
     static let symbols: [String: String] = [
         "times": "×", "div": "÷", "cdot": "·", "pm": "±", "le": "≤", "ge": "≥", "neq": "≠", "approx": "≈", "to": "→",
         "infty": "∞", "pi": "π", "theta": "θ", "circ": "°", "ldots": "…", "%": "%", ",": "\u{2009}", " ": " ", "quad": "\u{2003}",
-        "{": "{", "}": "}",
+        "{": "{", "}": "}", "cup": "∪", "cap": "∩", "mid": "|", "sum": "∑", "in": "∈", "neg": "¬", "land": "∧", "lor": "∨",
     ]
     static let functions: Set<String> = ["sin", "cos", "tan", "ln", "log", "exp"]
 
@@ -171,6 +171,7 @@ enum MathSource {
             case "int": return [.bigOp("∫", sup: nil, sub: nil)]
             case "lim": return [.bigOp("lim", sup: nil, sub: nil)]
             case "left", "right": return []
+            case "bar": return argument() + [.atom("\u{0304}", .symbol)]
             case "text":
                 guard !done, characters[index] == "{" else { return [] }
                 index += 1
@@ -198,6 +199,7 @@ enum MathSource {
             (#"\frac"#, " fraction "), (#"\sqrt"#, " square root of "), (#"\int"#, " integral "), (#"\lim"#, " limit "),
             ("^", " to the power "), ("_", " sub "), (#"\times"#, " times "), (#"\div"#, " divided by "), (#"\pi"#, " pi "),
             (#"\theta"#, " theta "), (#"\to"#, " approaches "), (#"\infty"#, " infinity "), (#"\le"#, " at most "), (#"\ge"#, " at least "),
+            (#"\cup"#, " union "), (#"\cap"#, " intersection "), (#"\mid"#, " given "), (#"\sum"#, " the sum of "), (#"\bar"#, " mean of "),
             (#"\,"#, " "), ("{", " "), ("}", " "), ("\\", ""),
         ]
         for (from, to) in words { text = text.replacingOccurrences(of: from, with: to) }

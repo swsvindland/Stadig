@@ -20,8 +20,9 @@ final class AppModel {
 
     let store: RecordStore
     let shared: SharedContainer
-    /// The language packs the build ships, the writing bank and the reading ladder.
-    let catalogs: Catalogs
+    /// The language packs the build ships, the writing bank and the reading ladder, with the
+    /// numbers Lift Track and Macro Track publish for statistics problems.
+    private(set) var catalogs: Catalogs
     let purchases = Purchases()
     let speech = Speech()
 
@@ -102,7 +103,7 @@ final class AppModel {
         if store.revision != lastRevision, run == nil { reload() }
     }
 
-    /// What Lift Track and the hub published, and life modes set anywhere.
+    /// What Lift Track, Macro Track and the hub published, and life modes set anywhere.
     func readShared(recompute again: Bool = true) {
         let calendar = shared.read(.calendar)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .knowledge }
@@ -112,10 +113,16 @@ final class AppModel {
             merged[period.id] = period
         }
         let lifeModes = merged.values.sorted { $0.start < $1.start }
-        guard calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes else { return }
+        var systemData = SystemData(lift: shared.read(.summary(.liftTrack)), macro: shared.read(.summary(.macroTrack)), nutrition: shared.read(.nutrition))
+        #if DEBUG
+        if systemData.isEmpty, ProcessInfo.processInfo.arguments.contains("-seedSampleData") { systemData = SampleData.systemData(ending: .today) }
+        #endif
+        guard calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes
+            || systemData != catalogs.systemData else { return }
         self.calendar = calendar
         self.recommendations = recommendations
         self.lifeModes = lifeModes
+        catalogs.systemData = systemData
         if again { recompute() }
     }
 

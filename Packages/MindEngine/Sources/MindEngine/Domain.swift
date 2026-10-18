@@ -101,8 +101,8 @@ public struct StudySchedule: Hashable, Codable, Sendable {
     public var weeklyMinutes: Int { daysPerWeek * minutes }
 }
 
-/// How far someone got with maths. The v2 doc replaces asking this with an adaptive placement per
-/// strand; it only sets where the classic ladder's placement opens until that lands.
+/// How far someone got with maths at school, as the first version asked. Kept so old settings
+/// decode; nothing reads it now that placement is a short test of each strand.
 public enum MathsBackground: String, CaseIterable, Codable, Sendable, Identifiable {
     case basics, algebra, precalculus, calculus
 
