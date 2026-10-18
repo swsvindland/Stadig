@@ -68,11 +68,13 @@ public enum WritingCoach {
 
     // MARK: The blind second opinion
 
+    /// Weaknesses first, then the verdict: reading both before choosing makes the small model less
+    /// likely to pick whichever came first.
     public static let comparisonInstructions = """
     You judge writing blind. You'll see two short pieces, A and B, each with the task it was written for. Decide which is the \
     stronger piece of writing for its task: clearer, better organised, more precise, and more vivid or persuasive as the task \
-    needs. Don't favour the longer one for its length. Answer with the single letter A or B on the first line, then one short \
-    sentence saying why.
+    needs. Don't favour the longer one for its length, or the first one for coming first. Write one line naming piece A's main \
+    weakness, one line naming piece B's, then a last line that is exactly "Stronger: A" or "Stronger: B".
     """
 
     /// The pair as the model sees it: in the order shown, or swapped. It's asked both ways, since
@@ -82,10 +84,13 @@ public enum WritingCoach {
         return "Piece A\nTask: \(a.prompt)\n\n\(a.text)\n\n---\n\nPiece B\nTask: \(b.prompt)\n\n\(b.text)"
     }
 
-    /// 0 for A, 1 for B, from the first line of a reply.
+    /// 0 for A, 1 for B: from a "Stronger: B" line, or else a letter alone on the first line.
     public static func pick(from reply: String) -> Int? {
-        guard let line = reply.split(whereSeparator: \.isNewline).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
-        else { return nil }
+        let lines = reply.split(whereSeparator: \.isNewline).map(String.init)
+        if let verdict = lines.reversed().lazy.compactMap({ $0.firstMatch(of: /(?i:stronger)\W*(?:(?i:piece)\s+)?([AB])\b/) }).first {
+            return verdict.1 == "A" ? 0 : 1
+        }
+        guard let line = lines.first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else { return nil }
         let text = String(line)
         // "Piece B is stronger", or the letter on its own: "A", "**B**.", "A: clearer". Not "A clearer piece…".
         guard let match = text.firstMatch(of: /^\W*(?i:piece)\s+([AB])\b/) ?? text.firstMatch(of: /^\W*([AB])(?:\W*$|[.:)*,]|\s+[-–—]\s)/)

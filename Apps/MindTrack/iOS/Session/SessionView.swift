@@ -161,9 +161,12 @@ private struct SessionSummary: View {
                     if let reading = run.session.reading, reading.pages > 0 {
                         Label("\(reading.pages) pages read", systemImage: Domain.reading.symbol)
                     }
-                    if !run.newPieces.isEmpty {
+                    if run.newPieces.contains(where: { !$0.text.isEmpty }) {
                         let words = run.newPieces.map(\.words).reduce(0, +)
                         Label("\(words) words written", systemImage: Domain.writing.symbol)
+                    }
+                    if run.newPieces.contains(where: { $0.exercise == .franklinNotes }) {
+                        Label("Notes kept for a Franklin rewrite next time", systemImage: "text.book.closed")
                     }
                     ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary }, id: \.id) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
@@ -207,7 +210,7 @@ enum TestLine {
         case .mathsPlacement: return "Maths: placed at level \(Int(test.detail["level"] ?? 0)) of 10"
         case .maths: return "Maths check: \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
         case .discrete: return "Discrete and statistics: \(Format.percent(test.score)) right"
-        case .writing: return "Writing\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
+        case .writing: return "Grammar\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
         case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
         case .readingTest: return "Reading test: tier \(Int(test.detail["tier"] ?? test.score))"

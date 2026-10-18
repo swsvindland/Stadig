@@ -32,6 +32,10 @@ struct MindTrackApp: App {
         if let i = arguments.firstIndex(of: "-study"), arguments.indices.contains(i + 1), let domain = Domain(rawValue: arguments[i + 1]) {
             model.startSession([domain])
         }
+        // -checkIn writing starts a check-in of that subject now, whatever the calendar says.
+        if let i = arguments.firstIndex(of: "-checkIn"), arguments.indices.contains(i + 1), let domain = Domain(rawValue: arguments[i + 1]) {
+            model.debugCheckIn([domain])
+        }
         if let i = arguments.firstIndex(of: "-steps"), arguments.indices.contains(i + 1), let steps = Int(arguments[i + 1]) {
             model.debugSteps(steps)
         }

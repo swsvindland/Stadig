@@ -261,25 +261,6 @@ struct TopicMap: View {
     }
 }
 
-private struct WritingPlanCard: View {
-    let analysis: MindAnalysis
-    let state: StudyState
-
-    var body: some View {
-        let summary = analysis.writing
-        VStack(alignment: .leading, spacing: 10) {
-            DomainHeader(domain: .writing, detail: "\(summary.known) of \(summary.total) skills")
-            if let next = summary.next {
-                LabeledContent("Next", value: next)
-            } else {
-                Text("Every skill is in: sessions keep them sharp with mixed practice.").foregroundStyle(.secondary)
-            }
-        }
-        .font(.subheadline)
-        .card()
-    }
-}
-
 private struct ReadingPlanCard: View {
     @Environment(AppModel.self) private var model
     let analysis: MindAnalysis

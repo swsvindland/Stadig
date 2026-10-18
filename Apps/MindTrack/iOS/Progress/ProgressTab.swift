@@ -16,7 +16,7 @@ struct ProgressTab: View {
                         StatCards(stats: analysis.stats)
                         ForEach(analysis.languages, id: \.domain) { LanguageProgress(summary: $0, state: state) }
                         if state.settings.has(.maths) { MathsProgress(analysis: analysis, state: state) }
-                        if state.settings.has(.writing) { WritingProgress(analysis: analysis, state: state) }
+                        if state.settings.has(.writing) { WritingProgressCard(analysis: analysis, state: state) }
                         if state.settings.has(.reading) { ReadingProgress(analysis: analysis, state: state) }
                         SectionHeader(title: "Discipline")
                         DisciplineGauge(score: analysis.discipline).card()
@@ -152,29 +152,6 @@ private struct MathsProgress: View {
             } else {
                 LabeledContent("Mixed check", value: "At the first check-in")
             }
-        }
-        .font(.subheadline)
-        .card()
-    }
-}
-
-private struct WritingProgress: View {
-    let analysis: MindAnalysis
-    let state: StudyState
-
-    var body: some View {
-        let summary = analysis.writing
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                DomainBadge(domain: .writing)
-                Text("Writing").font(.headline)
-            }
-            if let check = summary.check {
-                Text("\(Format.percent(check.score)) right").font(.title2.bold())
-                Text(check.placement ? "On the placement" : "At the last check-in").font(.subheadline).foregroundStyle(.secondary)
-                TestChart(points: state.tests.filter { $0.test == TestKind.writing }.map { ($0.date, $0.score * 100) }, label: "Writing", color: .orange)
-            }
-            LabeledContent("Skills in", value: "\(summary.known) of \(summary.total)")
         }
         .font(.subheadline)
         .card()

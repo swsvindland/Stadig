@@ -17,9 +17,9 @@ public enum WritingKind: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var detail: String {
         switch self {
-        case .creative: "Stories, scenes, description."
-        case .practical: "Emails, docs and messages that are clear the first time."
-        case .argument: "Making a case and backing it up."
+        case .creative: "Stories, scenes, description: short prompts, scene rewrites and passages to imitate."
+        case .practical: "Emails, docs and messages that are clear the first time: rewriting terse or rambling ones."
+        case .argument: "Making a case, backing it up and answering the best objection."
         }
     }
 }
@@ -50,6 +50,19 @@ public enum WritingExercise: String, CaseIterable, Codable, Sendable {
         case .practical: "Practical rewrite"
         case .argument: "Argument"
         case .benchmark: "Benchmark piece"
+        }
+    }
+
+    /// "Two short pieces", "two scene rewrites".
+    public var plural: String {
+        switch self {
+        case .franklinNotes: "sets of notes"
+        case .franklinRewrite: "Franklin rewrites"
+        case .prompt: "short pieces"
+        case .sceneRewrite: "scene rewrites"
+        case .practical: "practical rewrites"
+        case .argument: "arguments"
+        case .benchmark: "benchmark pieces"
         }
     }
 

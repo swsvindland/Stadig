@@ -140,8 +140,8 @@ extension WritingSchedule {
     /// A line for Today and the plan: what this piece of writing will be.
     public static func detail(_ task: WritingTask) -> String {
         switch task.exercise {
-        case .franklinNotes: "Franklin method: read a passage\(task.sourceCredit.map { " from \($0)" } ?? "") and take notes"
-        case .franklinRewrite: "Franklin method: rewrite\(task.sourceCredit.map { " the passage from \($0)" } ?? " your passage") from your notes"
+        case .franklinNotes: "Franklin method: read a passage and take notes\(task.sourceCredit.map { " (\($0))" } ?? "")"
+        case .franklinRewrite: "Franklin method: rewrite the passage from your notes\(task.sourceCredit.map { " (\($0))" } ?? "")"
         case .sceneRewrite: "Scene rewrite\(task.sourceCredit.map { ": \($0)" } ?? "")"
         case .practical: "Practical rewrite: make a message clear"
         case .argument: "Argument: make a case"

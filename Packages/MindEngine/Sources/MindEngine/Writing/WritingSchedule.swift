@@ -10,8 +10,9 @@ public enum WritingSchedule {
     public static let franklinGap = 2
     /// A benchmark comes back about once a term: every other check-in.
     public static let benchmarkGap = 77
-    /// An older and a newer piece in a blind pair are at least six weeks apart.
-    public static let pairGap = 42
+    /// An older and a newer piece in a blind pair are at least five weeks apart, which the first
+    /// check-in (about seven weeks in) can just reach.
+    public static let pairGap = 35
     public static let pairsPerCheckIn = 2
     /// Shorter pieces say too little to compare or measure.
     public static let minimumWords = 40
@@ -193,7 +194,7 @@ public enum WritingSchedule {
 
     /// Older and newer pieces to set side by side at a check-in: the newest benchmark against the
     /// one a term before it, then recent pieces against one of the same exercise and kind from at
-    /// least six weeks earlier. No pair twice, and no piece judged as the newer one twice.
+    /// least five weeks earlier. No pair twice, and no piece judged as the newer one twice.
     public static func pairs(_ pieces: [WritingPiece], comparisons: [BlindComparison], today: Day,
                              limit: Int = pairsPerCheckIn) -> [BlindPair] {
         let eligible = comparable(pieces)
@@ -230,7 +231,7 @@ public enum WritingSchedule {
         let newerFirst = rng.chance(0.5)
         let prompt = older.taskID != nil && older.taskID == newer.taskID
             ? "Both were written for the same prompt. Which is the stronger piece of writing?"
-            : "Two \(newer.exercise.label.lowercased()) pieces, each with its task. Which is the stronger piece of writing?"
+            : "Two \(newer.exercise.plural), each with its task. Which is the stronger piece of writing?"
         return BlindPair(id: "\(older.id).\(newer.id)", first: newerFirst ? newer : older, second: newerFirst ? older : newer, prompt: prompt)
     }
 

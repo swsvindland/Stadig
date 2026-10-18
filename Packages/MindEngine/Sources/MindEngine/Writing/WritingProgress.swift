@@ -101,7 +101,7 @@ public enum WritingProgress {
             }
             var direction = WritingTrend.Direction.notEnoughData
             if values.count >= trendMinimum {
-                // The last few pieces against those from about six weeks before them (or, early
+                // The last few pieces against those from about five weeks before them (or, early
                 // on, the ones just before), so a week's ups and downs don't read as a trend.
                 let size = min(trendWindow, values.count / 2)
                 let recent = values.suffix(size)

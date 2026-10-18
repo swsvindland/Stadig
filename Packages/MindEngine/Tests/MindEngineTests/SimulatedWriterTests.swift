@@ -43,7 +43,8 @@ struct Writer {
     mutating func pick(_ pair: BlindPair) -> Int {
         let a = WritingCheck.measure(pair.first.text, misspelled: ["recieve"]).errorsPer100
         let b = WritingCheck.measure(pair.second.text, misspelled: ["recieve"]).errorsPer100
-        if abs(a - b) < 1.5 { return rng.chance(0.5) ? 0 : 1 }
+        // Too close to call: a coin toss for newer or older, whichever side each is shown on.
+        if abs(a - b) < 1 { return rng.chance(0.5) == (pair.first.id == pair.newer.id) ? 0 : 1 }
         return a < b ? 0 : 1
     }
 }

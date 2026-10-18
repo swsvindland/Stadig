@@ -168,6 +168,8 @@ struct WritingCoachTests {
         #expect(WritingCoach.pick(from: "\nPiece B is stronger.") == 1)
         #expect(WritingCoach.pick(from: "A clearer piece is the second one.") == nil)
         #expect(WritingCoach.pick(from: "Both are good.") == nil)
+        #expect(WritingCoach.pick(from: "A rambles in the middle.\nB ends abruptly.\nStronger: B") == 1)
+        #expect(WritingCoach.pick(from: "A: vague.\nB: flat.\n**Stronger: piece A**") == 0)
 
         let old = WritingFixtures.piece(.prompt, on: Fixtures.monday)
         let new = WritingFixtures.piece(.prompt, on: Fixtures.monday.adding(days: 50))
@@ -297,7 +299,7 @@ struct WritingScheduleTests {
                 "the new benchmark is set beside last term's: \(parts)")
     }
 
-    @Test("blind pairs: older and newer of the same exercise, six weeks apart, in a fixed random order, never twice")
+    @Test("blind pairs: older and newer of the same exercise, five weeks apart, in a fixed random order, never twice")
     func pairs() throws {
         let start = Fixtures.monday
         let oldPrompt = WritingFixtures.piece(.prompt, on: start, taskID: "creative-a")
