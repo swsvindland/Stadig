@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/Scripts/format-swift-hook.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
