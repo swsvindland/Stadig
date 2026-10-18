@@ -291,6 +291,19 @@ public struct ExerciseLog: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+extension [LoggedSet] {
+    /// Each exercise's sets, exercises in the order they first appear and sets in their own order.
+    func groupedByExercise() -> [(exerciseID: String, sets: [LoggedSet])] {
+        var order: [String] = []
+        var sets: [String: [LoggedSet]] = [:]
+        for set in self {
+            if sets[set.exerciseID] == nil { order.append(set.exerciseID) }
+            sets[set.exerciseID, default: []].append(set)
+        }
+        return order.map { ($0, sets[$0] ?? []) }
+    }
+}
+
 public struct ConditioningLog: Codable, Hashable, Sendable {
     public var exerciseID: String
     public var minutes: Int
@@ -354,12 +367,15 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var averageHeartRate: Double?
     /// The sauna or steam room afterwards (nil in sessions saved before it was kept).
     public var heat: [HeatLog]?
+    /// The time zone the session was done in, so its day stays put when the phone travels (nil in
+    /// sessions saved before it was kept, which read in the phone's zone).
+    public var timeZoneID: String?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), start: Date, end: Date, title: String, mesocycleID: UUID? = nil, dayID: UUID? = nil, planned: Bool = true,
                 deload: Bool = false, exercises: [ExerciseLog] = [], conditioning: [ConditioningLog] = [], mobility: [String] = [],
                 feedback: SessionFeedback? = nil, device: String = "iPhone", averageHeartRate: Double? = nil, heat: [HeatLog]? = nil,
-                updatedAt: Date = Date()) {
+                timeZoneID: String? = TimeZone.current.identifier, updatedAt: Date = Date()) {
         self.id = id
         self.start = start
         self.end = end
@@ -375,10 +391,12 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
         self.device = device
         self.averageHeartRate = averageHeartRate
         self.heat = heat
+        self.timeZoneID = timeZoneID
         self.updatedAt = updatedAt
     }
 
-    public var day: Day { Day(start) }
+    /// The day the session was done, where it was done: a late session stays on its day after a flight.
+    public var day: Day { Day(start, timeZone: timeZoneID.flatMap(TimeZone.init(identifier:)) ?? .current) }
     public var minutes: Int { max(1, Int(end.timeIntervalSince(start) / 60)) }
     public var sets: [LoggedSet] { exercises.flatMap(\.sets) }
     public var workSets: [LoggedSet] { sets.filter { $0.kind.countsAsWork } }

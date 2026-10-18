@@ -131,6 +131,165 @@ struct SessionTests {
         #expect(live.items[index].exerciseID == alternative.id)
         #expect(live.items[index].plan.substitutedFor == original)
     }
+
+    @Test("a swap partway through an exercise keeps each exercise's sets its own")
+    func swapAfterLoggedSets() throws {
+        let profile = Fixture.profile()
+        let m = ProgramGenerator.generate(Fixture.input(profile))
+        let ctx = context(profile)
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx), device: "Test", now: start)
+        let index = try #require(live.items.firstIndex { $0.plan.role == .main && $0.plan.workSets.count >= 3 })
+        let original = live.items[index].exerciseID
+        let options = Substitutions.candidates(for: Fixture.catalog.resolve(original), in: Fixture.catalog.all, availability: nil)
+        let replacement = try #require(options.first)
+        // The replacement has a history of its own, far lighter than the lift it replaces.
+        let lastWeek = Fixture.start.adding(days: -7).date().addingTimeInterval(18 * 3600)
+        let history = [replacement.id: (0..<3).map {
+            LoggedSet(exerciseID: replacement.id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 30, reps: 10, rating: .orange,
+                      bodyweightKg: 80)
+        }]
+        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+                                     history: history, enduranceScore: 50, heartRateGuidedRest: true)
+        let work = live.items[index].sets.indices.filter { live.items[index].sets[$0].prescription.kind != .warmup }
+        for (n, set) in work.prefix(2).enumerated() {
+            live.log(item: index, set: set, reps: 8, loadKg: 100, rating: .orange, environment: env,
+                     now: start.addingTimeInterval(Double(n + 1) * 180))
+        }
+        live.swap(item: index, to: replacement, environment: env, now: start.addingTimeInterval(540))
+        let prescribed = live.items[index].sets.filter(\.isOpen).map(\.prescription)
+        #expect(!prescribed.isEmpty && prescribed.allSatisfy { ($0.loadKg ?? 0) < 60 }, "\(prescribed)")
+
+        // Correcting a set of the first lift leaves the replacement's sets as they were prescribed.
+        let corrected = try #require(live.items[index].sets.firstIndex { $0.logged?.exerciseID == original })
+        live.edit(item: index, set: corrected, reps: 8, loadKg: 102.5, rating: .green, environment: env)
+        #expect(live.items[index].sets[corrected].logged?.loadKg == 102.5)
+        #expect(live.items[index].sets.filter(\.isOpen).map(\.prescription) == prescribed)
+
+        let open = try #require(live.items[index].nextSet)
+        live.log(item: index, set: open, reps: 10, loadKg: 30, rating: .orange, environment: env, now: start.addingTimeInterval(720))
+        let record = live.record(feedback: nil, now: start.addingTimeInterval(3600))
+        let logs = record.exercises.filter { $0.slotID == live.items[index].plan.slotID }
+        #expect(logs.map(\.exerciseID) == [original, replacement.id])
+        #expect(logs.map(\.sets.count) == [2, 1])
+        #expect(logs.allSatisfy { log in log.sets.allSatisfy { $0.exerciseID == log.exerciseID } })
+        #expect(logs.map(\.substitutedFor) == [nil, original])
+
+        // The analysis files every set under its own exercise, also in a session saved as one log.
+        func analysedHistory(_ record: SessionRecord) -> [String: [LoggedSet]] {
+            Analyst.analyse(LiftState(profile: profile, settings: LiftSettings(), gym: ctx.gym, catalog: Fixture.catalog, sessions: [record],
+                                      bodyweightKg: 80, today: Fixture.start)).history
+        }
+        var saved = record
+        saved.exercises = [ExerciseLog(slotID: logs[0].slotID, exerciseID: replacement.id, sets: logs.flatMap(\.sets), substitutedFor: original)]
+        for analysed in [analysedHistory(record), analysedHistory(saved)] {
+            #expect(analysed[original]?.count == 2)
+            #expect(analysed[replacement.id]?.map(\.loadKg) == [30])
+        }
+        let exported = Export.tables(LiftState(profile: profile, settings: LiftSettings(), gym: ctx.gym, catalog: Fixture.catalog, sessions: [saved]))
+        #expect(exported[1].rows.map { $0[3] } == [original, original, replacement.id])
+    }
+
+    @Test("a stand-in that must never go to failure never gets the planned lift's rep-out")
+    func repOutsFollowTheStandIn() throws {
+        let profile = Fixture.profile(experience: .novice)
+        let availability = Gym.preset(.fullGym, unit: .kg).availability
+        let all = Fixture.catalog.all
+        // A safe-to-fail lift on the avoid list whose best stand-in mustn't be taken to failure.
+        let pair = all.lazy.filter { $0.kind == .strength && $0.safetyTier == .safeToFail && !$0.timed && availability.allows($0) }
+            .compactMap { planned -> (Exercise, Exercise)? in
+                guard let standIn = Substitutions.candidates(for: planned, in: all, availability: availability, avoid: [planned.id]).first,
+                      standIn.safetyTier == .neverToFailure, !standIn.timed else { return nil }
+                return (planned, standIn)
+            }.first
+        let (planned, standIn) = try #require(pair)
+        let slot = SlotPlan(exerciseID: planned.id, role: .main, sets: [3], repRange: RepRange(8, 12), restSeconds: 120)
+        let day = PlannedDay(name: "Full body A", focus: .full, blocks: [SessionBlockPlan(kind: .main, minutes: 20, slots: [slot])])
+        let m = Mesocycle(block: TrainingBlock(kind: .assessment, start: Fixture.start, loadingWeeks: 4, deloadWeeks: 0), split: .fullBody,
+                          days: [day], priorities: [], rationale: Rationale(headline: ""), minutesPerSession: 60, phase: .assumedMaintenance)
+        let lastWeek = Fixture.start.adding(weeks: 1).date().addingTimeInterval(18 * 3600)
+        let history = Dictionary(uniqueKeysWithValues: [planned.id, standIn.id].map { id in
+            (id, (0..<3).map { LoggedSet(exerciseID: id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 40, reps: 10, rating: .orange,
+                                         bodyweightKg: 80) })
+        })
+        func plan(avoid: Set<String>) throws -> PlannedItem {
+            var ctx = context(profile, history: history)
+            ctx.settings.avoid = avoid
+            return try #require(SessionPlanner.plan(day, of: m, on: Fixture.start.adding(weeks: 2), context: ctx).items.first)
+        }
+        // As planned, the lift is the session's rep-out.
+        #expect(try plan(avoid: []).sets.last?.kind == .repOut)
+        let swapped = try plan(avoid: [planned.id])
+        #expect(swapped.exerciseID == standIn.id)
+        #expect(!swapped.sets.contains { $0.kind == .repOut }, "\(standIn.id) is never taken to failure")
+    }
+
+    @Test("crunch mode's stand-in gym is the same every time it's asked for")
+    func crunchGymIsStable() {
+        let profile = Fixture.profile()
+        let crunch = LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: Fixture.start,
+                                    end: Fixture.start.adding(days: 7), createdBy: .liftTrack)
+        let ctx = context(profile, life: LifeModes.effects(on: Fixture.start, periods: [crunch]))
+        #expect(ctx.todaysGym == ctx.todaysGym)
+        #expect(ctx.todaysGym.access == .hotelGym && ctx.todaysGym.id != ctx.gym.id)
+    }
+
+    @Test("a session keeps the day it was done on after the phone travels")
+    func sessionDayKeepsItsTimeZone() throws {
+        // 23:30 on Sunday 18 October in Pago Pago (UTC-11) is already Monday nearly everywhere else.
+        let pagoPago = try #require(TimeZone(identifier: "Pacific/Pago_Pago"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = pagoPago
+        let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 23, minute: 30)))
+        let plan = SessionPlan(day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
+                               assessment: false, minimumEffectiveDose: false, items: [], notes: [], quests: [])
+        let record = LiveSession(plan: plan, device: "Test", now: start)
+            .record(feedback: nil, now: start.addingTimeInterval(3600), timeZone: pagoPago)
+        #expect(record.timeZoneID == "Pacific/Pago_Pago")
+        #expect(record.day == Day(year: 2026, month: 10, day: 18))
+
+        // Saved before the zone was kept: read in the phone's zone, as before.
+        var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(record)) as? [String: Any])
+        json.removeValue(forKey: "timeZoneID")
+        let old = try JSONDecoder().decode(SessionRecord.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(old.timeZoneID == nil)
+        #expect(old.id == record.id && old.title == record.title)
+        #expect(old.day == Day(old.start))
+    }
+
+    @Test("adding a set after a rep-out, extending and ending rest, and the heart-rate cap")
+    func smallerMoves() throws {
+        let profile = Fixture.profile()
+        let m = ProgramGenerator.generate(Fixture.input(profile))
+        let ctx = context(profile)
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx), device: "Test", now: start)
+        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+                                     history: [:], enduranceScore: 50, heartRateGuidedRest: false)
+        let index = try #require(live.items.firstIndex { $0.plan.isStrength && $0.plan.supersetGroup == nil })
+        let last = live.items[index].sets.count - 1
+        live.items[index].sets[last].prescription.kind = .repOut
+        live.log(item: index, set: last, reps: 12, loadKg: 60, rating: nil, environment: env, now: start.addingTimeInterval(60))
+        // One more after a rep-out is an ordinary hard set at the weight just used.
+        live.addSet(item: index, now: start.addingTimeInterval(70))
+        let added = try #require(live.items[index].sets.last?.prescription)
+        #expect(added.kind == .working && added.targetRIR == 1 && added.loadKg == 60)
+        // Extending counts from when the rest would have ended; skipping the exercise ends it.
+        let rest = try #require(live.rest)
+        live.extendRest(by: 30, now: start.addingTimeInterval(80))
+        #expect(live.rest?.endsAt == rest.endsAt.addingTimeInterval(30))
+        live.skip(item: index, now: start.addingTimeInterval(90))
+        #expect(live.rest == nil && live.items[index].isDone)
+        // Moving an item later lands it before the one at the destination.
+        let first = live.items[0].id
+        live.moveItem(from: 0, to: 2)
+        #expect(live.items[1].id == first)
+        // A long session keeps the last 4,000 heart-rate readings.
+        let zones = HeartRateZones(resting: 60, maximum: 190)
+        for second in 0..<4_010 { live.record(heartRate: 120, zones: zones, now: start.addingTimeInterval(Double(second))) }
+        #expect(live.heartRateSamples.count == 4_000)
+        #expect(live.heartRateSamples.first?.date == start.addingTimeInterval(10))
+    }
 }
 
 @Suite("A whole assessment")
@@ -232,5 +391,50 @@ struct GymTests {
         #expect(abs(WeightUnit.lb.fromKilograms(lb.round(WeightUnit.lb.toKilograms(225), down: true)) - 225) < 0.01)
         let db = Gym.preset(.hotelGym, unit: .kg).increments(for: .dumbbell)
         #expect(db.round(40, down: true) <= 22.5)
+    }
+
+    @Test("weighted pull-ups and dips start the crown at one zero, then the smallest plate")
+    func beltLoadsStartAtOneZero() {
+        let belt = Gym.preset(.fullGym, unit: .kg).increments(for: .bodyweight)
+        let crown = belt.around(0)
+        #expect(Array(crown.prefix(2)) == [0, 1.25])
+        #expect(Set(crown).count == crown.count)
+        #expect(belt.step(0, direction: 1) == 1.25)
+        #expect(belt.step(1.25, direction: -1) == 0)
+        // A bar goes from nothing to the empty bar.
+        #expect(Array(Gym.preset(.fullGym, unit: .kg).increments(for: .barbell).around(0).prefix(2)) == [0, 20])
+    }
+
+    @Test("plates per side are the fewest for every load, in kg and lb")
+    func platesPerSide() throws {
+        // The exhaustive search over every cent the calculator used to run.
+        func reference(_ bar: GymIncrements, _ kg: Double) -> [Double]? {
+            let perSide = GymIncrements.cents((bar.gym.unit.fromKilograms(kg) - bar.base) / 2)
+            guard perSide >= 0 else { return nil }
+            let sizes = bar.gym.plates.map(GymIncrements.cents).sorted(by: >)
+            var best: [Int: [Int]] = [0: []]
+            if perSide > 0 {
+                for total in 1...perSide {
+                    var choice: [Int]?
+                    for size in sizes {
+                        if let rest = best[total - size], rest.count + 1 < choice?.count ?? .max { choice = [size] + rest }
+                    }
+                    if let choice { best[total] = choice }
+                }
+            }
+            return best[perSide].map { $0.sorted(by: >).map { Double($0) / 100 } }
+        }
+        let kg = Gym.preset(.fullGym, unit: .kg).increments(for: .barbell)
+        for load in stride(from: 20.0, through: 150, by: 1.25) { #expect(kg.platesPerSide(load) == reference(kg, load), "\(load) kg") }
+        let lb = Gym.preset(.fullGym, unit: .lb).increments(for: .barbell)
+        for load in stride(from: 45.0, through: 315, by: 5) {
+            let kilograms = WeightUnit.lb.toKilograms(load)
+            #expect(lb.platesPerSide(kilograms) == reference(lb, kilograms), "\(load) lb")
+        }
+        #expect(lb.platesPerSide(WeightUnit.lb.toKilograms(225)) == [45, 45])
+        #expect(kg.platesPerSide(20) == [])
+        #expect(kg.platesPerSide(15) == nil, "lighter than the bar")
+        #expect(kg.platesPerSide(21) == nil, "half a kilo a side isn't makeable")
+        #expect(Gym.preset(.fullGym, unit: .kg).increments(for: .dumbbell).platesPerSide(20) == nil)
     }
 }

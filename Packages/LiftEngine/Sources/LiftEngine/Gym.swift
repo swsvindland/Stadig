@@ -149,9 +149,16 @@ public struct GymIncrements: LoadIncrements, Hashable {
         return gym.unit.toKilograms(best)
     }
 
+    /// Every load up to a limit with nothing on the bar or the belt first. Belt and vest loads
+    /// already start at 0; a second 0 would be a crown detent that does nothing.
+    private func loadsFromZero(upTo limit: Double) -> [Double] {
+        let loads = self.loads(upTo: limit)
+        return loads.first == 0 ? loads : [0] + loads
+    }
+
     public func step(_ kg: Double, direction: Int) -> Double {
         let current = gym.unit.fromKilograms(max(kg, 0))
-        let loads = [0] + self.loads(upTo: current + 100)
+        let loads = loadsFromZero(upTo: current + 100)
         let next = direction > 0 ? loads.first { $0 > current + 1e-9 } : loads.last { $0 < current - 1e-9 }
         return gym.unit.toKilograms(next ?? (direction > 0 ? current : 0))
     }
@@ -159,30 +166,36 @@ public struct GymIncrements: LoadIncrements, Hashable {
     /// Loads near a target, for the Watch's crown.
     public func around(_ kg: Double?, below: Int = 12, above: Int = 16) -> [Double] {
         let target = gym.unit.fromKilograms(max(kg ?? 0, 0))
-        let loads = [0] + self.loads(upTo: max(target * 1.6, target + 60))
+        let loads = loadsFromZero(upTo: max(target * 1.6, target + 60))
         let index = loads.firstIndex { $0 >= target - 1e-9 } ?? loads.count - 1
         let lo = max(0, index - below), hi = min(loads.count - 1, index + above)
         return loads[lo...hi].map { gym.unit.toKilograms($0) }
     }
 
     /// Plates for one side of the bar, heaviest first; nil when not plate-loaded or not makeable.
+    /// The fewest plates, found in steps of the plates' common divisor (every kg plate is a multiple
+    /// of 1.25): a 180 kg squat is 64 totals to try rather than 8,000, on every redraw of the logger.
     public func platesPerSide(_ kg: Double) -> [Double]? {
         guard equipment.platePaired else { return nil }
         let perSide = Self.cents((gym.unit.fromKilograms(kg) - base) / 2)
-        guard perSide >= 0 else { return nil }
-        let sizes = gym.plates.map(Self.cents).sorted(by: >)
-        var best: [Int: [Int]] = [0: []]
-        if perSide > 0 {
-            for total in 1...perSide {
-                var choice: [Int]?
-                for size in sizes {
-                    if let rest = best[total - size], choice == nil || rest.count + 1 < choice!.count { choice = [size] + rest }
-                }
-                if let choice { best[total] = choice }
+        guard perSide > 0 else { return perSide == 0 ? [] : nil }
+        let sizes = gym.plates.map(Self.cents).filter { $0 > 0 }.sorted(by: >)
+        let unit = sizes.reduce(0, Self.gcd)
+        guard unit > 0, perSide % unit == 0 else { return nil }
+        let steps = perSide / unit
+        var best: [[Int]?] = Array(repeating: nil, count: steps + 1)
+        best[0] = []
+        for total in 1...steps {
+            var choice: [Int]?
+            for size in sizes where size / unit <= total {
+                if let rest = best[total - size / unit], rest.count + 1 < choice?.count ?? .max { choice = [size] + rest }
             }
+            best[total] = choice
         }
-        return best[perSide].map { $0.sorted(by: >).map { Double($0) / 100 } }
+        return best[steps].map { $0.sorted(by: >).map { Double($0) / 100 } }
     }
+
+    private static func gcd(_ a: Int, _ b: Int) -> Int { b == 0 ? a : gcd(b, a % b) }
 }
 
 /// Every total a set of plates can make, computed once per plate set and reused: progression

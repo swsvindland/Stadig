@@ -44,7 +44,8 @@ public struct LiftState: Sendable {
         self.mobility = mobility
         self.benchmarks = benchmarks
         self.mesocycles = mesocycles
-        self.lifeModes = lifeModes
+        // Deleted periods travel as tombstones so the delete reaches every app; the engine never sees them.
+        self.lifeModes = lifeModes.live
         self.recovery = recovery
         self.steps = steps
         self.bodyweightKg = bodyweightKg
@@ -133,9 +134,18 @@ public struct LiftAnalysis: Sendable {
     public var endurance: EnduranceAnalysis
     public var phase: NutritionPhase
     public var life: LifeModeEffects
+    /// The current mesocycle as stored: the latest one started (a next block planned ahead waits for
+    /// its start). What "Deload now" and the next block's planning edit and save.
     public var mesocycle: Mesocycle?
-    /// The current block after vacations and any early deload.
+    /// The current block after vacations: what the calendar, the Plan screen and today's session follow.
     public var block: TrainingBlock?
+    /// A block accepted to start after the current one.
+    public var upcoming: Mesocycle?
+    /// The stored block with its deload moved to today, when the Fatigue Budget calls for one after two
+    /// loading weeks: what "Deload now" saves as the mesocycle's block (or its deload start, end and
+    /// reason). In the stored block's dates, so a block a vacation pushed back still deloads today once
+    /// reshaped. Not the plan until it's taken.
+    public var suggestedDeload: TrainingBlock?
     public var next: NextSession?
     public var assessment: AssessmentStatus?
     public var actions: [NextAction]
@@ -152,16 +162,20 @@ public enum Analyst {
     public static func analyse(_ state: LiftState) -> LiftAnalysis {
         let today = state.today
         let sessions = state.sessions.sorted { $0.start < $1.start }
+        // By each set's own exercise: sessions saved before a mid-exercise swap was split into two logs
+        // hold both exercises' sets under the replacement.
         var history: [String: [LoggedSet]] = [:]
         for session in sessions {
-            for log in session.exercises { history[log.exerciseID, default: []].append(contentsOf: log.sets) }
+            for set in session.sets { history[set.exerciseID, default: []].append(set) }
         }
 
         // Trust is rebuilt from the evidence every time, so every device agrees.
         var trust = TrustState(experience: state.profile.experience)
         for session in sessions {
             for log in session.exercises {
-                trust.record(Calibration.observations(sets: log.sets, exercise: state.catalog.resolve(log.exerciseID)))
+                for group in log.sets.groupedByExercise() {
+                    trust.record(Calibration.observations(sets: group.sets, exercise: state.catalog.resolve(group.exerciseID)))
+                }
             }
         }
 
@@ -201,13 +215,26 @@ public enum Analyst {
         let phase = state.phase
         let life = LifeModes.effects(on: today, periods: state.lifeModes)
 
-        // The current mesocycle, reshaped around vacations.
+        // The current mesocycle: the latest one started, so a next block accepted during the deload
+        // waits for its start (and keeps the deload and check-in). Before any has started, the first
+        // one coming. Planned twice for one start, the later plan wins.
+        let ordered = state.mesocycles.sorted { ($0.block.start, $0.createdAt) < ($1.block.start, $1.createdAt) }
+        let mesocycle = ordered.last { $0.block.start <= today } ?? ordered.last { $0.block.start == ordered.first?.block.start }
+        // The next start after that, by the same rule: an earlier plan for that start is superseded.
+        let later = ordered.filter { $0.block.start > max(today, mesocycle?.block.start ?? today) }
+        let upcoming = later.last { $0.block.start == later.first?.block.start }
+        // Reshaped around vacations. The planner, the widget and the assessment read the block from
+        // the mesocycle, so they get the reshaped one too and agree with the calendar.
         let vacations = state.lifeModes.compactMap { period -> DayRange? in
             if case .vacation = period.kind { return period.range(openUntil: today) }
             return nil
         }
-        let mesocycle = state.mesocycles.sorted { $0.block.start < $1.block.start }.last
-        var block = mesocycle.map { BlockScheduler.reflow($0.block, vacations: vacations) }
+        let reshaped = mesocycle.map { mesocycle in
+            var reshaped = mesocycle
+            reshaped.block = BlockScheduler.reflow(mesocycle.block, vacations: vacations)
+            return reshaped
+        }
+        let block = reshaped?.block
 
         // Stalls, read by phase and fatigue.
         var stalls: [StallReport] = []
@@ -228,7 +255,7 @@ public enum Analyst {
         let agility = Agility.analyse(state.mobility)
         let conditioningMinutes = Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
             + Double(state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))
-        let hrrPoints = sessions.flatMap(\.sets).compactMap { set in set.heartRateDrop60.map { (day: Day(set.date), drop: $0) } }
+        let hrrPoints = sessions.flatMap { session in session.sets.compactMap { set in set.heartRateDrop60.map { (day: session.day, drop: $0) } } }
         let endurance = Endurance.analyse(vo2Max: state.vo2Max, restingHeartRate: state.restingHeartRate, benchmarks: state.benchmarks,
                                           hrrTrend: HeartRateRecovery.trend(hrrPoints), weeklyConditioningMinutes: conditioningMinutes / 4,
                                           sex: state.profile.sex, age: state.profile.age(on: today))
@@ -239,22 +266,34 @@ public enum Analyst {
         let discipline = Discipline.score(adherence, exempt: LifeModes.exemptDays(in: window, periods: state.lifeModes), window: window)
 
         var next: NextSession?
-        if let mesocycle, !mesocycle.days.isEmpty {
-            next = nextSession(mesocycle, sessions: sessions, profile: state.profile, today: today)
+        if let reshaped, !reshaped.days.isEmpty {
+            next = nextSession(reshaped, sessions: sessions, profile: state.profile, today: today)
         }
         var assessment: AssessmentStatus?
-        if let mesocycle, mesocycle.block.kind == .assessment {
-            assessment = Assessment.status(mesocycle, sessions: sessions, trust: trust, strength: strength, catalog: state.catalog, today: today)
+        if let reshaped, reshaped.block.kind == .assessment {
+            assessment = Assessment.status(reshaped, sessions: sessions, trust: trust, strength: strength, catalog: state.catalog, today: today)
         }
 
-        // An early deload, when the budget says so.
-        if let current = block, let moved = BlockScheduler.deloadEarly(current, today: today, fatigue: fatigue) { block = moved }
+        // An early deload, when the budget says so: offered, and only the plan once it's taken, so the
+        // calendar the other apps read never shows a deload the sessions don't have. Judged on the
+        // reshaped block, but saved on the stored one, which a vacation at its start still pushes back:
+        // its dates go back by as much, so once reshaped again the deload starts today.
+        var suggestedDeload: TrainingBlock?
+        if let stored = mesocycle?.block, let block, let moved = BlockScheduler.deloadEarly(block, today: today, fatigue: fatigue) {
+            let shift = stored.start.days(until: block.start)
+            var taken = stored
+            taken.deloadStart = moved.deloadStart?.adding(days: -shift)
+            taken.endOverride = moved.endOverride?.adding(days: -shift)
+            taken.deloadReason = moved.deloadReason
+            if BlockScheduler.reflow(taken, vacations: vacations).week(of: today) == .deload { suggestedDeload = taken }
+        }
 
-        let calendar = BlockScheduler.calendar(blocks: block.map { [$0] } ?? [], today: today)
+        let upcomingBlock = upcoming.map { BlockScheduler.reflow($0.block, vacations: vacations) }
+        let calendar = BlockScheduler.calendar(blocks: [block, upcomingBlock].compactMap { $0 }, today: today)
         var analysis = LiftAnalysis(trust: trust, history: history, strength: strength, stalls: stalls, fatigue: fatigue, discipline: discipline,
                                     physique: physique, agility: agility, endurance: endurance, phase: phase, life: life, mesocycle: mesocycle,
-                                    block: block, next: next, assessment: assessment, actions: [], quests: [], calendar: calendar,
-                                    adherence: adherence)
+                                    block: block, upcoming: upcoming, suggestedDeload: suggestedDeload, next: next, assessment: assessment,
+                                    actions: [], quests: [], calendar: calendar, adherence: adherence)
         analysis.heat = sessions.flatMap { $0.heat ?? [] }.sorted { $0.date < $1.date }
         analysis.steps = stepAim
         analysis.actions = actions(state, analysis)
@@ -297,7 +336,9 @@ public enum Analyst {
                 day >= first && day <= today && schedule.trainingDays.contains(day.weekday)
                     && LifeModes.effects(on: day, periods: state.lifeModes).trainingExpected
             }
-            let done = sessions.filter { $0.planned && $0.day >= week && $0.day <= week.adding(days: 6) && $0.day <= today }.count
+            // Sessions before the window (or the program) opened belong to days that aren't counted.
+            let counted = max(week, first)
+            let done = sessions.filter { $0.planned && $0.day >= counted && $0.day <= week.adding(days: 6) && $0.day <= today }.count
             for (i, day) in trainingDays.prefix(schedule.daysPerWeek).enumerated() {
                 // Today's session isn't missed yet.
                 if day == today, done <= i { continue }
@@ -305,8 +346,11 @@ public enum Analyst {
             }
             week = week.adding(days: 7)
         }
+        // Classes count from the first full day: on the day the program starts there's none yet.
+        let yesterday = today.adding(days: -1)
+        guard first <= yesterday else { return items }
         for recurring in state.profile.recurring {
-            for day in DayRange(first, today.adding(days: -1)).days where recurring.weekdays.contains(day.weekday) {
+            for day in DayRange(first, yesterday).days where recurring.weekdays.contains(day.weekday) {
                 guard LifeModes.effects(on: day, periods: state.lifeModes).trainingExpected else { continue }
                 let attended = state.activities.contains { $0.type == recurring.activity && abs($0.day.days(until: day)) <= 1 }
                 // Unlogged classes are unknown, not missed.
@@ -344,7 +388,7 @@ public enum Analyst {
                                    detail: detail, action: action, priority: 5 + Double(stall.weeks) * 0.2))
         }
 
-        if a.fatigue.action == .deloadEarly, let block = a.block, case .loading = block.week(of: today) {
+        if a.suggestedDeload != nil {
             list.append(NextAction(id: "deload-early", kind: .deloadEarly, stat: .vitality, title: "Deload now",
                                    detail: a.fatigue.signals.prefix(3).joined(separator: " "),
                                    action: "Take this week as the deload: lighter and shorter, then a fresh block.", priority: 9))
@@ -400,7 +444,7 @@ public enum Analyst {
                                   day: today, timeOfDay: .evening, priority: overflow.stat == .agility ? 2 : 1))
             }
         }
-        if let limiter = a.agility.limiter, !list.contains(where: { $0.stat == .agility }), next(a)?.scheduledToday != true {
+        if let limiter = a.agility.limiter, !list.contains(where: { $0.stat == .agility }), a.next?.scheduledToday != true {
             list.append(Quest(id: "lift-\(today.iso)-mobility", title: "10 min \(limiter.label.lowercased()) mobility",
                               detail: "Your weakest mobility test.", stat: .agility, source: .liftTrack, minutes: 10, day: today,
                               timeOfDay: .evening, priority: 1.5))
@@ -409,15 +453,13 @@ public enum Analyst {
         return Quests.forDay(today, from: list)
     }
 
-    private static func next(_ a: LiftAnalysis) -> NextSession? { a.next }
-
     /// A walk on a rest day when the week's steps are behind the aim: the gap to the aim as minutes
     /// of brisk walking. Not on lift or class days, while ill, or with a hip, knee or ankle injury,
     /// and gone once today reaches the aim.
     static func walkQuest(_ state: LiftState, _ a: LiftAnalysis) -> Quest? {
         let today = state.today
         guard let steps = a.steps, steps.actionable, steps.onTrack == false, let recent = steps.recent, (steps.today ?? 0) < steps.aim,
-              next(a)?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
+              a.next?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
               !state.profile.recurring.contains(where: { $0.weekdays.contains(today.weekday) }),
               !state.illnessDays.contains(today),
               !a.life.injuries.contains(where: { $0.parts.contains { [.hip, .knee, .ankle].contains($0.joint) } }) else { return nil }
@@ -435,7 +477,8 @@ public enum Analyst {
         let today = state.today
         var stats: [StatReading] = []
         if let overall = a.strength.overall {
-            stats.append(StatReading(stat: .strength, score: overall, label: StrengthStandards.level(for: overall), trend: strengthTrend(a)))
+            stats.append(StatReading(stat: .strength, score: overall, label: StrengthStandards.level(for: overall),
+                                     trend: strengthTrend(a, catalog: state.catalog)))
         }
         if let score = a.physique.score { stats.append(StatReading(stat: .physique, score: score, label: "Proportions", trend: .notEnoughData)) }
         if let score = a.endurance.score {
@@ -476,9 +519,11 @@ public enum Analyst {
                           stalls: a.stalls, phaseUsed: a.phase, steps: steps)
     }
 
-    static func strengthTrend(_ a: LiftAnalysis) -> Trajectory {
-        let slopes = a.history.compactMap { _, sets -> Double? in
-            let bests = StrengthEstimator.sessionBests(sets, basis: .external, trust: a.trust).suffix(8).map(\.e1rm)
+    /// Each exercise's e1RM over its last eight sessions, by its own load basis: assisted lifts get
+    /// stronger as the assistance falls, and bodyweight work counts the body.
+    static func strengthTrend(_ a: LiftAnalysis, catalog: ExerciseCatalog) -> Trajectory {
+        let slopes = a.history.compactMap { id, sets -> Double? in
+            let bests = StrengthEstimator.sessionBests(sets, basis: catalog.resolve(id).loadBasis, trust: a.trust).suffix(8).map(\.e1rm)
             guard bests.count >= 4, let first = bests.first, first > 0 else { return nil }
             return (bests.map { $0 / first }).slope
         }

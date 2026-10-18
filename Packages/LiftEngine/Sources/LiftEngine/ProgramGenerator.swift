@@ -186,9 +186,7 @@ public enum ProgramGenerator {
         lifting.blocks = day.blocks.filter { $0.kind == .main || $0.kind == .accessory }
         lifting.overflow = []
         // A longer day today adds only what a day's share of the recovery budget has room for.
-        let budget = FatigueBudget.weeklySystemicBudget(experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
-                                                        phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
-                                                        assessment: input.fatigue, outside: .zero)
+        let budget = builder.weeklyBudget(outside: .zero)
         let cost = lifting.strengthSlots.map { Double($0.sets(week: 0)) * input.catalog.resolve($0.exerciseID).fatigue.systemic }.reduce(0, +)
         let allowance = max(0, budget / Double(max(1, input.profile.schedule.daysPerWeek)) - cost)
         return builder.fitTime(lifting, minutes: minutes, allowance: allowance)
@@ -250,7 +248,8 @@ struct Builder {
             }
             if let target, rec.kind != .deloadNow { list.append(TrainingPriority(target: target, emphasis: sign, reason: rec.reason, source: .hub)) }
         }
-        priorities = list
+        // Two sources can name the same target (two hub recommendations, say); one priority each.
+        priorities = list.mergedByID()
     }
 
     /// −1…+1: how much this slot's work is wanted this block.
@@ -371,7 +370,7 @@ struct Builder {
         if e > 0.3 { sets += 1 } else if e < -0.3 { sets -= 1 }
         // Two sets at least: one set of a lift is rarely worth walking over to the equipment for.
         let start = max(2, Int(sets.rounded()))
-        let weeks = input.kind == .assessment ? input.loadingWeeks : input.loadingWeeks
+        let weeks = input.loadingWeeks
         // Volume ramps across a standard block for wanted work: a set more from the middle on.
         return (0..<max(1, weeks)).map { week in
             if input.kind == .standard, e > 0, week >= weeks / 2 { return start + 1 }
@@ -454,7 +453,7 @@ struct Builder {
             return nil
         }.filter { seen.insert($0.0).inserted }
         for (region, reason) in wanted {
-            let request: SlotRequest? = switch region {
+            let request: SlotRequest = switch region {
             case .shoulders: Templates.lateral
             case .arms: Templates.curl
             case .chest: Templates.fly
@@ -464,7 +463,6 @@ struct Builder {
             case .glutes: Templates.hipThrust
             case .core: Templates.abs
             }
-            guard let request else { continue }
             for index in days.indices {
                 let day = days[index]
                 let fits = switch region {
@@ -522,6 +520,17 @@ struct Builder {
         }
     }
 
+    /// The week's systemic recovery budget after training outside the gym. Only a standard block
+    /// follows the nutrition phase.
+    func weeklyBudget(outside: FatigueLoad) -> Double {
+        FatigueBudget.weeklySystemicBudget(experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
+                                           phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
+                                           assessment: input.fatigue, outside: outside)
+    }
+
+    /// Lifts costing at least this much whole-body fatigue are the ones worth swapping for cheaper work.
+    static let costlySystemic = 0.6
+
     /// Spend the systemic budget on the highest-SFR options, trim before cutting total work, and
     /// fill cheap local volume freely.
     mutating func applyFatigueBudget(_ days: inout [PlannedDay]) {
@@ -532,9 +541,7 @@ struct Builder {
         if !input.profile.recurring.isEmpty {
             reasons.append("Planned around \(input.profile.recurring.map(\.summary).joined(separator: "; ")): it spends the same recovery.")
         }
-        let budget = FatigueBudget.weeklySystemicBudget(experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
-                                                        phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
-                                                        assessment: input.fatigue, outside: outside)
+        let budget = weeklyBudget(outside: outside)
         func cost() -> Double {
             days.flatMap(\.strengthSlots).map { Double($0.sets(week: 0)) * input.catalog.resolve($0.exerciseID).fatigue.systemic }.reduce(0, +)
         }
@@ -543,17 +550,21 @@ struct Builder {
         let swapFirst = input.fatigue?.action == .reduceSystemic || cost() > budget * 1.1
         if swapFirst {
             var swapped: [String] = []
+            // Scored lifts stay unless the person is beat up and stalled; the assessment needs them all.
+            let protectScored = input.fatigue?.action != .reduceSystemic || input.kind == .assessment
             let slots = days.enumerated().flatMap { d, day in day.blocks.enumerated().flatMap { b, block in block.slots.indices.map { (d, b, $0) } } }
-            let ranked = slots.sorted {
+            // The costliest of the lifts that may be swapped: a protected squat and deadlift at the top
+            // mustn't use up the turns of the RDL and rack pull behind them.
+            let ranked = slots.filter { d, b, s in
+                let exercise = input.catalog.resolve(days[d].blocks[b].slots[s].exerciseID)
+                return exercise.fatigue.systemic >= Self.costlySystemic && !(exercise.strength != nil && protectScored)
+            }.sorted {
                 input.catalog.resolve(days[$0.0].blocks[$0.1].slots[$0.2].exerciseID).fatigue.systemic >
                     input.catalog.resolve(days[$1.0].blocks[$1.1].slots[$1.2].exerciseID).fatigue.systemic
             }
-            for (d, b, s) in ranked.prefix(2) {
+            for (d, b, s) in ranked where swapped.count < 2 {
                 let slot = days[d].blocks[b].slots[s]
                 let exercise = input.catalog.resolve(slot.exerciseID)
-                guard exercise.fatigue.systemic >= 0.6 else { continue }
-                // Scored lifts stay unless the person is beat up and stalled; the assessment needs them all.
-                if exercise.strength != nil, input.fatigue?.action != .reduceSystemic || input.kind == .assessment { continue }
                 let dayUsed = Set(days[d].slots.map(\.exerciseID))
                 // The cheaper options, ranked the same way slots are chosen: stimulus and the same muscles first.
                 let request = SlotRequest(role: .accessory, patterns: MovementPattern.allCases, muscles: exercise.primaryMuscles, sets: slot.sets(week: 0))
@@ -576,9 +587,8 @@ struct Builder {
         }
 
         // Still over: trim a set from the costliest accessories, protecting heavy compounds in a cut.
-        var guardCount = 0
-        while cost() > budget, guardCount < 40 {
-            guardCount += 1
+        var trimmed = 0
+        while cost() > budget, trimmed < 40 {
             var best: (Int, Int, Int, Double)?
             for d in days.indices {
                 for b in days[d].blocks.indices {
@@ -594,6 +604,7 @@ struct Builder {
             }
             guard let (d, b, s, _) = best else { break }
             days[d].blocks[b].slots[s].sets = days[d].blocks[b].slots[s].sets.map { max(2, $0 - 1) }
+            trimmed += 1
         }
         // Everything at two sets and still over: the costliest accessory goes, rather than lifts at one set.
         var dropped: [String] = []
@@ -611,7 +622,7 @@ struct Builder {
             dropped.append(input.catalog.resolve(days[d].blocks[b].slots[s].exerciseID).name)
             days[d].blocks[b].slots.remove(at: s)
         }
-        if guardCount > 1 || !dropped.isEmpty {
+        if trimmed > 0 || !dropped.isEmpty {
             reasons.append("Some sets trimmed\(dropped.isEmpty ? "" : " (and \(dropped.joined(separator: ", ")) left out)") to stay within your recovery budget, so sessions can come in under your time.")
         }
         fatigueHeadroom = max(0, budget - cost())
@@ -638,8 +649,16 @@ struct Builder {
     func fitTime(_ day: PlannedDay, minutes: Int, allowance: Double = .infinity) -> PlannedDay {
         var day = day
         let short = minutes <= 35
-        var main = day.blocks.first { $0.kind == .main }?.slots ?? []
-        var accessory = day.blocks.first { $0.kind == .accessory }?.slots ?? []
+        // Supersets and a drill in the rests are a short session's, decided again for this length: a
+        // day stored at 30 minutes and given an hour today gets its full rests back.
+        let unpaired = { (slot: SlotPlan) -> SlotPlan in
+            var slot = slot
+            slot.supersetGroup = nil
+            slot.restFiller = nil
+            return slot
+        }
+        var main = (day.blocks.first { $0.kind == .main }?.slots ?? []).map(unpaired)
+        var accessory = (day.blocks.first { $0.kind == .accessory }?.slots ?? []).map(unpaired)
         let resolve = { (slot: SlotPlan) in input.catalog.resolve(slot.exerciseID) }
         let mainSeconds = main.map { Self.seconds(for: $0, exercise: resolve($0)) }.reduce(0, +)
         let accessorySeconds = accessory.map { Self.seconds(for: $0, exercise: resolve($0)) }.reduce(0, +)
@@ -758,17 +777,18 @@ struct Builder {
                     SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(10, 10), restSeconds: 15,
                              seconds: $0.timed ? min(45, $0.seconds ?? 45) : nil)
                 }
-            blocks.append(SessionBlockPlan(kind: .warmup, minutes: m, slots: slots))
+            blocks.append(SessionBlockPlan(kind: .warmup, minutes: m, slots: Self.stableIDs(slots, in: day, block: .warmup)))
         }
         let limiterTarget = input.agility?.limiter ?? (lowerBody ? .hips : .shoulders)
         let limiterDrills = Drills.mobility(for: limiterTarget, in: input.catalog.all, availability: availability)
         if let m = allocation[.limiter], !limiterDrills.isEmpty {
             let drills = limiterDrills.prefix(m >= 4 ? 2 : 1)
-            blocks.append(SessionBlockPlan(kind: .limiter, minutes: m, slots: drills.map {
+            let slots = drills.map {
                 SlotPlan(exerciseID: $0.id, role: .mobility, sets: [2], repRange: RepRange(8, 8), restSeconds: 15,
                          seconds: $0.timed ? ($0.seconds ?? 45) : nil,
                          reason: input.agility?.limiter == nil ? nil : "Your weakest mobility test: \(limiterTarget.label.lowercased()).")
-            }))
+            }
+            blocks.append(SessionBlockPlan(kind: .limiter, minutes: m, slots: Self.stableIDs(slots, in: day, block: .limiter)))
         } else if short, let drill = limiterDrills.first, !main.isEmpty {
             main[0].restFiller = drill.id
         } else if !limiterDrills.isEmpty, input.agility?.limiter != nil {
@@ -783,26 +803,40 @@ struct Builder {
             if let m = allocation[.conditioning], let pick = options.first {
                 let spec = pick.conditioning ?? ConditioningSpec(style: style, zones: style == .steady ? 2...3 : 4...5)
                 let plan = ConditioningPlan(minutes: m, zones: spec.zones, style: spec.style, workSeconds: spec.workSeconds, restSeconds: spec.restSeconds)
-                blocks.append(SessionBlockPlan(kind: .conditioning, minutes: m, slots: [
-                    SlotPlan(exerciseID: pick.id, role: .conditioning, sets: [1], repRange: RepRange(1, 1), restSeconds: 0, seconds: m * 60,
-                             conditioning: plan, reason: priorities.first { $0.target == .conditioning }?.reason)
-                ]))
+                let slot = SlotPlan(exerciseID: pick.id, role: .conditioning, sets: [1], repRange: RepRange(1, 1), restSeconds: 0, seconds: m * 60,
+                                    conditioning: plan, reason: priorities.first { $0.target == .conditioning }?.reason)
+                blocks.append(SessionBlockPlan(kind: .conditioning, minutes: m, slots: Self.stableIDs([slot], in: day, block: .conditioning)))
             } else {
                 overflow.append(OverflowItem(kind: .conditioning, title: style == .steady ? "20 min Zone 2" : "15 min intervals", minutes: 20, stat: .endurance))
             }
         }
         if input.settings.includeCooldown {
             if let m = allocation[.cooldown] {
-                let muscles = Array(Set((main + accessory).flatMap { resolve($0).primaryMuscles }))
-                let stretches = Drills.stretches(for: muscles, in: input.catalog.all).prefix(3)
-                blocks.append(SessionBlockPlan(kind: .cooldown, minutes: m, slots: stretches.map {
+                // The main lifts' muscles first, in order: through a Set the three kept would change from
+                // one launch to the next.
+                var seen = Set<Muscle>()
+                let muscles = (main + accessory).flatMap { resolve($0).primaryMuscles }.filter { seen.insert($0).inserted }
+                let stretches = Drills.stretches(for: muscles, in: input.catalog.all).prefix(3).map {
                     SlotPlan(exerciseID: $0.id, role: .stretch, sets: [1], repRange: RepRange(1, 1), restSeconds: 10, seconds: $0.seconds ?? 45)
-                }))
+                }
+                blocks.append(SessionBlockPlan(kind: .cooldown, minutes: m, slots: Self.stableIDs(stretches, in: day, block: .cooldown)))
             }
         }
         day.blocks = blocks.sorted { $0.kind < $1.kind }
         day.overflow = overflow
         return day
+    }
+
+    /// The slots fitting adds (warm-up, mobility, conditioning, cool-down) take ids from the day, so
+    /// fitting the same day again gives the same ids, as planning it twice does. The salt's high bit
+    /// keeps them clear of the ids SessionPlanner derives from the day.
+    static func stableIDs(_ slots: [SlotPlan], in day: PlannedDay, block: SessionBlockKind) -> [SlotPlan] {
+        let kind = SessionBlockKind.allCases.firstIndex(of: block) ?? 0
+        return slots.enumerated().map { index, slot in
+            var slot = slot
+            slot.id = UUID(day.id, salt: (1 << 40) + kind * 1_000 + index)
+            return slot
+        }
     }
 
     // MARK: Why

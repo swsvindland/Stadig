@@ -127,10 +127,14 @@ public struct PlanningContext: Sendable {
         self.sessionIndexInWeek = sessionIndexInWeek
     }
 
-    /// The gym for today: crunch mode turns the equipment down.
+    /// The gym for today: crunch mode turns the equipment down. The same every time it's asked for
+    /// (its id and date come from the person's gym), so the Watch's copy only changes when it does.
     public var todaysGym: Gym {
         guard let access = life.equipment, access != gym.access else { return gym }
         var temporary = Gym.preset(access, unit: gym.unit)
+        // Never salted with 0, which would give back the gym's own id.
+        temporary.id = UUID(gym.id, salt: (EquipmentAccess.allCases.firstIndex(of: access) ?? 0) + 1)
+        temporary.updatedAt = gym.updatedAt
         temporary.name = "\(access.label) (crunch)"
         return temporary
     }
@@ -171,106 +175,75 @@ public enum SessionPlanner {
         for injury in life.injuries { notes.append("\(injury.summary): exercises that load it are swapped or skipped.") }
         for ramp in life.injuryRamps { notes.append("Ramping \(ramp.injury.parts.map(\.label).joined(separator: ", ").lowercased()) work back in at \(Int(ramp.loadFactor * 100))% of normal load.") }
 
+        var items: [PlannedItem] = []
+        var quests: [Quest] = []
+        let droppedConditioning = med && day.blocks.contains { $0.kind == .conditioning }
+        let slots = resolveSlots(day, med: med, light: light, availability: availability, context: context, notes: &notes)
+
         // Rep-outs: where and how many.
         let wantsRepOuts = (!deload || checkIn) && !med && !light && !life.reentry
             && FailurePolicy.wantsRepOut(trust: context.trust, assessment: assessment, checkIn: checkIn, sessionIndexInWeek: context.sessionIndexInWeek)
-        var repOutsLeft = wantsRepOuts ? FailurePolicy.capPerSession(experience: experience, assessment: assessment || checkIn) : 0
+        let repOutCap = wantsRepOuts ? FailurePolicy.capPerSession(experience: experience, assessment: assessment || checkIn) : 0
+        let repOutSlots = chooseRepOuts(slots, cap: repOutCap, checkIn: checkIn, hasSafeties: gym.hasSafeties, context: context)
 
-        var used = Set<String>()
-        var items: [PlannedItem] = []
-        var quests: [Quest] = []
-        var droppedConditioning = false
-
-        let strengthSlots = day.blocks.filter { $0.kind == .main || $0.kind == .accessory }.flatMap { b in b.slots.map { (b.kind, $0) } }
-        // Rep-out picks: safe-to-fail anchors first, then scored lifts that have earned it (never deadlifts outside a check-in).
-        var repOutSlots = Set<UUID>()
-        if repOutsLeft > 0 {
-            let ranked = strengthSlots.compactMap { kind, slot -> (UUID, Int)? in
-                let exercise = catalog.resolve(slot.exerciseID)
-                guard FailurePolicy.allowsRepOut(exercise, trust: context.trust, experience: experience, hasSafeties: gym.hasSafeties),
-                      exercise.pattern != .hinge || checkIn, !exercise.timed, !(context.history[exercise.id] ?? []).isEmpty else { return nil }
-                let rank = exercise.safetyTier == .safeToFail ? 0 : (kind == .main ? 1 : 2)
-                return (slot.id, rank)
-            }.sorted { $0.1 < $1.1 }
-            for (id, _) in ranked where repOutsLeft > 0 {
-                repOutSlots.insert(id)
-                repOutsLeft -= 1
-            }
-        }
-
-        for planBlock in day.blocks {
-            if med, planBlock.kind != .main { if planBlock.kind == .conditioning { droppedConditioning = true }; continue }
-            if light, planBlock.kind == .conditioning || planBlock.kind == .accessory { continue }
-            for slot in planBlock.slots {
-                var exercise = catalog.resolve(slot.exerciseID)
-                var substitutedFor: String?
-                if !availability.allows(exercise) || life.excludes(exercise) || context.settings.avoid.contains(exercise.id) {
-                    let options = Substitutions.candidates(for: exercise, in: catalog.all, availability: availability, injuries: life.injuries,
-                                                           avoid: context.settings.avoid.union(used))
-                    guard let replacement = options.first else {
-                        notes.append("\(exercise.name) skipped today: nothing suitable with this equipment.")
-                        continue
-                    }
-                    substitutedFor = exercise.id
-                    exercise = replacement
+        for resolved in slots {
+            let slot = resolved.slot
+            let exercise = resolved.exercise
+            let substitutedFor = resolved.substitutedFor
+            switch slot.role {
+            case .main, .accessory:
+                let rir: Double = assessment ? (week < 2 ? 3 : 2) : (med ? 2 : Progression.targetRIR(week: week, of: block.loadingWeeks))
+                var sets = slot.sets(week: week)
+                if med { sets = 2 }
+                if life.reentry { sets = max(slot.role == .main ? 2 : 1, sets - 1) }
+                let target = SlotTarget(sets: sets, repRange: slot.repRange, targetRIR: rir, deload: deload,
+                                        repOut: repOutSlots.contains(slot.id))
+                let progression = ProgressionContext(
+                    exercise: exercise, increments: gym.increments(for: exercise.equipment), trust: context.trust,
+                    phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),
+                    bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
+                let prescription = Progression.prescribe(target, progression)
+                var all = prescription.sets
+                let increments = gym.increments(for: exercise.equipment)
+                if slot.role == .main, let first = all.first, let load = first.loadKg, first.kind != .findingWeight {
+                    all = Progression.rampUp(to: load, reps: first.targetReps, exercise: exercise, increments: increments,
+                                             bodyweightKg: context.bodyweightKg) + all
+                } else if slot.role == .main, let first = all.first, first.kind == .findingWeight,
+                          let guess = StartingLoad.estimate(exercise, reps: first.targetReps, bodyweightKg: context.bodyweightKg,
+                                                            sex: context.profile.sex, experience: context.profile.experience) {
+                    // No working weight yet, but still a heavy lift: warm up toward a guess at it, on the light side.
+                    all = Progression.rampUp(to: increments.round(guess * 0.9, down: true), reps: first.targetReps, exercise: exercise,
+                                             increments: increments, bodyweightKg: context.bodyweightKg) + all
                 }
-                used.insert(exercise.id)
-
-                switch slot.role {
-                case .main, .accessory:
-                    let rir: Double = assessment ? (week < 2 ? 3 : 2) : (med ? 2 : Progression.targetRIR(week: week, of: block.loadingWeeks))
-                    var sets = slot.sets(week: week)
-                    if med { sets = 2 }
-                    if life.reentry { sets = max(slot.role == .main ? 2 : 1, sets - 1) }
-                    let target = SlotTarget(sets: sets, repRange: slot.repRange, targetRIR: rir, deload: deload,
-                                            repOut: repOutSlots.contains(slot.id))
-                    let progression = ProgressionContext(
-                        exercise: exercise, increments: gym.increments(for: exercise.equipment), trust: context.trust,
-                        phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),
-                        bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
-                    let prescription = Progression.prescribe(target, progression)
-                    var all = prescription.sets
-                    let increments = gym.increments(for: exercise.equipment)
-                    if slot.role == .main, let first = all.first, let load = first.loadKg, first.kind != .findingWeight {
-                        all = Progression.rampUp(to: load, reps: first.targetReps, exercise: exercise, increments: increments,
-                                                 bodyweightKg: context.bodyweightKg) + all
-                    } else if slot.role == .main, let first = all.first, first.kind == .findingWeight,
-                              let guess = StartingLoad.estimate(exercise, reps: first.targetReps, bodyweightKg: context.bodyweightKg,
-                                                                sex: context.profile.sex, experience: context.profile.experience) {
-                        // No working weight yet, but still a heavy lift: warm up toward a guess at it, on the light side.
-                        all = Progression.rampUp(to: increments.round(guess * 0.9, down: true), reps: first.targetReps, exercise: exercise,
-                                                 increments: increments, bodyweightKg: context.bodyweightKg) + all
-                    }
-                    let rest = Rest.plan(role: exercise.restRole, reps: prescription.sets.first?.targetReps ?? slot.repRange.middle,
-                                         defaultSeconds: slot.restSeconds, enduranceScore: context.enduranceScore,
-                                         hrGuidance: context.settings.heartRateGuidedRest)
-                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: planBlock.kind, exerciseID: exercise.id, role: slot.role, sets: all,
-                                             repRange: slot.repRange, rest: rest, seconds: slot.seconds, supersetGroup: med ? nil : slot.supersetGroup,
-                                             restFiller: slot.restFiller, reason: slot.reason, note: prescription.reason, mode: prescription.mode,
-                                             substitutedFor: substitutedFor))
-                case .mobility, .warmup, .stretch, .recovery:
-                    let count = max(1, slot.sets(week: week))
-                    let sets = (0..<count).map { _ in
-                        SetPrescription(kind: .working, loadKg: nil, targetReps: slot.repRange.middle, targetRIR: 5, seconds: slot.seconds)
-                    }
-                    // Warm-ups, drills and stretches flow straight on: no rest timer.
-                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: planBlock.kind, exerciseID: exercise.id, role: slot.role, sets: sets,
-                                             repRange: slot.repRange, rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
-                                             seconds: slot.seconds, reason: slot.reason))
-                case .conditioning:
-                    var plan = slot.conditioning ?? ConditioningPlan(minutes: 15, zones: 2...3, style: .steady)
-                    if deload {
-                        // Zone 2 stays in a deload; intervals don't.
-                        plan.style = .steady
-                        plan.zones = 2...2
-                        plan.workSeconds = nil
-                        plan.restSeconds = nil
-                    }
-                    items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: .conditioning, exerciseID: exercise.id, role: .conditioning,
-                                             sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 3, seconds: plan.minutes * 60)],
-                                             repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
-                                             seconds: plan.minutes * 60, conditioning: plan, reason: slot.reason))
+                let rest = Rest.plan(role: exercise.restRole, reps: prescription.sets.first?.targetReps ?? slot.repRange.middle,
+                                     defaultSeconds: slot.restSeconds, enduranceScore: context.enduranceScore,
+                                     hrGuidance: context.settings.heartRateGuidedRest)
+                items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: resolved.block, exerciseID: exercise.id, role: slot.role, sets: all,
+                                         repRange: slot.repRange, rest: rest, seconds: slot.seconds, supersetGroup: med ? nil : slot.supersetGroup,
+                                         restFiller: slot.restFiller, reason: slot.reason, note: prescription.reason, mode: prescription.mode,
+                                         substitutedFor: substitutedFor))
+            case .mobility, .warmup, .stretch, .recovery:
+                let count = max(1, slot.sets(week: week))
+                let sets = (0..<count).map { _ in
+                    SetPrescription(kind: .working, loadKg: nil, targetReps: slot.repRange.middle, targetRIR: 5, seconds: slot.seconds)
                 }
+                // Warm-ups, drills and stretches flow straight on: no rest timer.
+                items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: resolved.block, exerciseID: exercise.id, role: slot.role, sets: sets,
+                                         repRange: slot.repRange, rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
+                                         seconds: slot.seconds, reason: slot.reason))
+            case .conditioning:
+                var plan = slot.conditioning ?? ConditioningPlan(minutes: 15, zones: 2...3, style: .steady)
+                if deload {
+                    // Zone 2 stays in a deload; intervals don't.
+                    plan.style = .steady
+                    plan.zones = 2...2
+                    plan.workSeconds = nil
+                    plan.restSeconds = nil
+                }
+                items.append(PlannedItem(id: UUID(slot.id, salt: date.ordinal), slotID: slot.id, block: .conditioning, exerciseID: exercise.id, role: .conditioning,
+                                         sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 3, seconds: plan.minutes * 60)],
+                                         repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false),
+                                         seconds: plan.minutes * 60, conditioning: plan, reason: slot.reason))
             }
         }
 
@@ -314,6 +287,64 @@ public enum SessionPlanner {
         return SessionPlan(id: UUID(day.id, salt: date.ordinal), day: date, title: title, mesocycleID: mesocycle.id, dayID: day.id,
                            week: blockWeek == .deload ? nil : week,
                            deload: deload, checkIn: checkIn, assessment: assessment, minimumEffectiveDose: med, items: items, notes: notes, quests: quests)
+    }
+
+    /// A slot and the exercise it gets today.
+    struct ResolvedSlot {
+        var block: SessionBlockKind
+        var slot: SlotPlan
+        var exercise: Exercise
+        /// The planned exercise, when a stand-in replaced it.
+        var substitutedFor: String?
+    }
+
+    /// Each slot's exercise for today, in order: the planned one, or the best stand-in when the gym,
+    /// an injury or the avoid list rules it out (never one already used today). Blocks the day leaves
+    /// out are skipped (all but the main lifts at the minimum dose; accessories and conditioning
+    /// when ill), and so is a slot with nothing suitable, with a note saying so.
+    static func resolveSlots(_ day: PlannedDay, med: Bool, light: Bool, availability: Availability, context: PlanningContext,
+                             notes: inout [String]) -> [ResolvedSlot] {
+        let catalog = context.catalog
+        let life = context.life
+        var used = Set<String>()
+        var resolved: [ResolvedSlot] = []
+        for planBlock in day.blocks {
+            if med, planBlock.kind != .main { continue }
+            if light, planBlock.kind == .conditioning || planBlock.kind == .accessory { continue }
+            for slot in planBlock.slots {
+                var exercise = catalog.resolve(slot.exerciseID)
+                var substitutedFor: String?
+                if !availability.allows(exercise) || life.excludes(exercise) || context.settings.avoid.contains(exercise.id) {
+                    let options = Substitutions.candidates(for: exercise, in: catalog.all, availability: availability, injuries: life.injuries,
+                                                           avoid: context.settings.avoid.union(used))
+                    guard let replacement = options.first else {
+                        notes.append("\(exercise.name) skipped today: nothing suitable with this equipment.")
+                        continue
+                    }
+                    substitutedFor = exercise.id
+                    exercise = replacement
+                }
+                used.insert(exercise.id)
+                resolved.append(ResolvedSlot(block: planBlock.kind, slot: slot, exercise: exercise, substitutedFor: substitutedFor))
+            }
+        }
+        return resolved
+    }
+
+    /// Where today's rep-outs go, up to the cap: safe-to-fail anchors first, then scored lifts that
+    /// have earned it (never deadlifts outside a check-in), and only on lifts with a history to test.
+    /// Judged on the exercise actually done, so a stand-in that mustn't go to failure never gets one.
+    static func chooseRepOuts(_ slots: [ResolvedSlot], cap: Int, checkIn: Bool, hasSafeties: Bool, context: PlanningContext) -> Set<UUID> {
+        guard cap > 0 else { return [] }
+        let ranked = slots.compactMap { resolved -> (UUID, Int)? in
+            guard resolved.block == .main || resolved.block == .accessory else { return nil }
+            let exercise = resolved.exercise
+            guard FailurePolicy.allowsRepOut(exercise, trust: context.trust, experience: context.profile.experience, hasSafeties: hasSafeties),
+                  exercise.pattern != .hinge || checkIn, !exercise.timed, !(context.history[exercise.id] ?? []).isEmpty else { return nil }
+            let rank = exercise.safetyTier == .safeToFail ? 0 : (resolved.block == .main ? 1 : 2)
+            return (resolved.slot.id, rank)
+        }.sorted { $0.1 < $1.1 }
+        return Set(ranked.prefix(cap).map(\.0))
     }
 }
 

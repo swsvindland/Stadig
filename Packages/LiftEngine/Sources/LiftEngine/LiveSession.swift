@@ -75,6 +75,36 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     public var isDone: Bool { skipped || sets.allSatisfy { !$0.isOpen } }
     public var nextSet: Int? { skipped ? nil : sets.firstIndex { $0.isOpen } }
     public var loggedSets: [LoggedSet] { sets.compactMap(\.logged) }
+
+    /// Adapts the exercise's open work sets to a rated set: the next one gets the adjustment and its
+    /// message, and every later one the same numbers; a rep-out keeps its kind. Nil when no open
+    /// work set is left after it.
+    mutating func adjustOpenSets(after logged: LoggedSet, at index: Int, environment: SessionEnvironment) -> SetAdjustment? {
+        guard let next = sets.indices.first(where: { $0 > index && sets[$0].isOpen && sets[$0].prescription.kind != .warmup }) else { return nil }
+        let exercise = environment.catalog.resolve(exerciseID)
+        let context = Autoregulation.Context(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
+                                             repRange: plan.repRange, verifiedAlready: verified, hasSafeties: environment.gym.hasSafeties)
+        let result = Autoregulation.next(after: logged, planned: sets[next].prescription, context: context)
+        if result.kind == .verify { verified = true }
+        for later in sets.indices where later >= next && sets[later].isOpen {
+            var updated = result.next
+            if sets[later].prescription.kind == .repOut {
+                updated.kind = .repOut
+                updated.targetRIR = 0
+                updated.stopAtFormBreakdown = sets[later].prescription.stopAtFormBreakdown
+            }
+            sets[later].prescription = updated
+            sets[later].note = later == next ? result.message : nil
+        }
+        return result
+    }
+
+    /// A finding-weight set with no load yet takes the weight just used.
+    mutating func carryFindingWeight(of logged: LoggedSet, after index: Int) {
+        for later in sets.indices where later > index && sets[later].isOpen && sets[later].prescription.loadKg == nil {
+            sets[later].prescription.loadKg = logged.loadKg
+        }
+    }
 }
 
 public struct RestState: Codable, Hashable, Sendable {
@@ -156,7 +186,6 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
                              heartRatePeak: Double? = nil, environment: SessionEnvironment, now: Date = Date()) -> SetAdjustment? {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return nil }
         var item = items[index]
-        let exercise = environment.catalog.resolve(item.exerciseID)
         let prescription = item.sets[setIndex].prescription
         let restBefore = rest.map { Int(now.timeIntervalSince($0.started)) }
         let logged = LoggedSet(exerciseID: item.exerciseID, date: now, kind: prescription.kind, loadKg: loadKg ?? prescription.loadKg ?? 0,
@@ -166,36 +195,14 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         item.sets[setIndex].logged = logged
         var adjustment: SetAdjustment?
         if item.plan.isStrength, prescription.kind != .warmup, rating != nil,
-           let next = item.sets.indices.first(where: { $0 > setIndex && item.sets[$0].isOpen && item.sets[$0].prescription.kind != .warmup }) {
-            let context = Autoregulation.Context(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
-                                                 repRange: item.plan.repRange, verifiedAlready: item.verified,
-                                                 hasSafeties: environment.gym.hasSafeties)
-            let result = Autoregulation.next(after: logged, planned: item.sets[next].prescription, context: context)
+           let result = item.adjustOpenSets(after: logged, at: setIndex, environment: environment) {
             adjustment = result
-            if result.kind == .verify { item.verified = true }
-            // The adjustment carries to every remaining set; a rep-out keeps its kind.
-            for later in item.sets.indices where later >= next && item.sets[later].isOpen {
-                let kind = item.sets[later].prescription.kind
-                var updated = result.next
-                if kind == .repOut {
-                    updated.kind = .repOut
-                    updated.targetRIR = 0
-                    updated.stopAtFormBreakdown = item.sets[later].prescription.stopAtFormBreakdown
-                }
-                item.sets[later].prescription = updated
-                item.sets[later].note = later == next ? result.message : nil
-            }
             message = result.message
             lastAdjustment = result.kind
         } else {
             message = nil
         }
-        // A finding-weight set with no load yet takes the weight just used.
-        if prescription.kind == .findingWeight {
-            for later in item.sets.indices where later > setIndex && item.sets[later].isOpen && item.sets[later].prescription.loadKg == nil {
-                item.sets[later].prescription.loadKg = logged.loadKg
-            }
-        }
+        if prescription.kind == .findingWeight { item.carryFindingWeight(of: logged, after: setIndex) }
         items[index] = item
         if !item.plan.isStrength, item.isDone, !mobilityDone.contains(item.exerciseID) { mobilityDone.append(item.exerciseID) }
         startRest(after: index, environment: environment, now: now)
@@ -228,7 +235,6 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     mutating func replay(item index: Int, environment: SessionEnvironment) {
         var item = items[index]
         guard item.plan.isStrength else { return }
-        let exercise = environment.catalog.resolve(item.exerciseID)
         for i in item.sets.indices where item.sets[i].isOpen {
             if let planned = item.sets[i].planned { item.sets[i].prescription = planned }
             item.sets[i].note = nil
@@ -236,32 +242,10 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         item.verified = false
         var last: SetAdjustment?
         for k in item.sets.indices {
-            guard let logged = item.sets[k].logged, logged.kind != .warmup else { continue }
-            if logged.rating != nil,
-               let next = item.sets.indices.first(where: { $0 > k && item.sets[$0].isOpen && item.sets[$0].prescription.kind != .warmup }) {
-                let context = Autoregulation.Context(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
-                                                     repRange: item.plan.repRange, verifiedAlready: item.verified,
-                                                     hasSafeties: environment.gym.hasSafeties)
-                let result = Autoregulation.next(after: logged, planned: item.sets[next].prescription, context: context)
-                if result.kind == .verify { item.verified = true }
-                for later in item.sets.indices where later >= next && item.sets[later].isOpen {
-                    let kind = item.sets[later].prescription.kind
-                    var updated = result.next
-                    if kind == .repOut {
-                        updated.kind = .repOut
-                        updated.targetRIR = 0
-                        updated.stopAtFormBreakdown = item.sets[later].prescription.stopAtFormBreakdown
-                    }
-                    item.sets[later].prescription = updated
-                    item.sets[later].note = later == next ? result.message : nil
-                }
-                last = result
-            }
-            if logged.kind == .findingWeight {
-                for later in item.sets.indices where later > k && item.sets[later].isOpen && item.sets[later].prescription.loadKg == nil {
-                    item.sets[later].prescription.loadKg = logged.loadKg
-                }
-            }
+            // Sets logged before a swap belong to the exercise swapped out: they say nothing about this one's load.
+            guard let logged = item.sets[k].logged, logged.kind != .warmup, logged.exerciseID == item.exerciseID else { continue }
+            if logged.rating != nil, let result = item.adjustOpenSets(after: logged, at: k, environment: environment) { last = result }
+            if logged.kind == .findingWeight { item.carryFindingWeight(of: logged, after: k) }
         }
         items[index] = item
         message = last?.message
@@ -432,7 +416,8 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
 
     // MARK: Finish
 
-    public func record(feedback: SessionFeedback?, now: Date = Date()) -> SessionRecord {
+    /// The finished session, its day kept in the time zone it was done in.
+    public func record(feedback: SessionFeedback?, now: Date = Date(), timeZone: TimeZone = .current) -> SessionRecord {
         var exercises: [ExerciseLog] = []
         var conditioning: [ConditioningLog] = []
         let samples = heartRateSamples.map { (date: $0.date, bpm: $0.bpm) }
@@ -449,7 +434,13 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
                     }
                 }
             }
-            exercises.append(ExerciseLog(slotID: item.plan.slotID, exerciseID: item.exerciseID, sets: sets, substitutedFor: item.plan.substitutedFor))
+            // A swap partway through leaves the first exercise's sets in the item: each exercise
+            // keeps its own log, so its history and progression never see the other's loads.
+            let planned = item.plan.substitutedFor ?? item.plan.exerciseID
+            for group in sets.groupedByExercise() {
+                exercises.append(ExerciseLog(slotID: item.plan.slotID, exerciseID: group.exerciseID, sets: group.sets,
+                                             substitutedFor: group.exerciseID == planned ? nil : planned))
+            }
         }
         let average = samples.isEmpty ? nil : samples.map(\.bpm).reduce(0, +) / Double(samples.count)
         // Heat is kept apart from lifting: it isn't a set, and its rating isn't a rating of strength.
@@ -462,6 +453,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         return SessionRecord(id: id, start: startedAt, end: now, title: plan.title, mesocycleID: plan.mesocycleID, dayID: plan.dayID,
                              planned: plan.mesocycleID != nil, deload: plan.deload, exercises: exercises, conditioning: conditioning,
                              mobility: mobilityDone.filter { id in !items.contains { $0.exerciseID == id && $0.plan.role == .recovery } },
-                             feedback: feedback, device: device, averageHeartRate: average, heat: heat.isEmpty ? nil : heat, updatedAt: now)
+                             feedback: feedback, device: device, averageHeartRate: average, heat: heat.isEmpty ? nil : heat,
+                             timeZoneID: timeZone.identifier, updatedAt: now)
     }
 }

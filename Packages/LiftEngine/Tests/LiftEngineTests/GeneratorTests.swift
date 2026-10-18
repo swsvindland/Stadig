@@ -261,4 +261,60 @@ struct GeneratorTests {
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(recurring: [bjj])))
         #expect(m.rationale.reasons.contains { $0.contains("BJJ") })
     }
+
+    @Test("over budget, the costliest lift that may be swapped is, before any set is trimmed")
+    func overBudgetSwapsBeforeTrimming() throws {
+        let bjj = RecurringActivity(activity: .bjj, weekdays: [.monday, .tuesday, .thursday, .saturday], minutes: 90, intensity: 8)
+        let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 4, minutes: 90, recurring: [bjj])))
+        #expect(m.rationale.reasons.contains { $0.hasPrefix("To fit your recovery budget") }, "\(m.rationale.reasons)")
+        let swapped = m.days.flatMap(\.strengthSlots).filter { ($0.reason ?? "").hasPrefix("Swapped in for") }
+        #expect(!swapped.isEmpty)
+        for slot in swapped {
+            let name = (slot.reason ?? "").dropFirst("Swapped in for ".count).prefix { $0 != ":" }
+            let replaced = try #require(Fixture.catalog.all.first { $0.name == name }, "\(name)")
+            #expect(replaced.fatigue.systemic >= Builder.costlySystemic && replaced.strength == nil)
+            #expect(Fixture.catalog.resolve(slot.exerciseID).fatigue.systemic < replaced.fatigue.systemic)
+        }
+        // The scored lifts stay: only being beat up and stalled swaps those.
+        let categories = Set(m.days.flatMap(\.strengthSlots).compactMap { Fixture.catalog.resolve($0.exerciseID).strength?.category })
+        #expect(categories == Set(StrengthCategory.allCases), "\(categories)")
+    }
+
+    @Test("a single trimmed set is still explained")
+    func oneTrimIsExplained() throws {
+        var builder = Builder(input: Fixture.input(Fixture.profile()))
+        let budget = builder.weeklyBudget(outside: .zero)
+        // Cheap enough never to be swapped, and a week of it just over budget by less than one set.
+        let exercise = try #require(Fixture.catalog.of(kind: .strength).first { (0.3..<0.5).contains($0.fatigue.systemic) })
+        let total = Int((budget / exercise.fatigue.systemic).rounded(.down)) + 1
+        let sets = Array(repeating: 3, count: total / 3 - (total % 3 == 1 ? 1 : 0)) + (total % 3 == 1 ? [4] : total % 3 == 2 ? [2] : [])
+        #expect(sets.reduce(0, +) == total)
+        let slots = sets.map { SlotPlan(exerciseID: exercise.id, role: .accessory, sets: [$0], repRange: RepRange(10, 15), restSeconds: 60) }
+        var days = [PlannedDay(name: "A", focus: .full, blocks: [SessionBlockPlan(kind: .accessory, minutes: 0, slots: slots)])]
+        builder.applyFatigueBudget(&days)
+        #expect(days.flatMap(\.strengthSlots).map { $0.sets(week: 0) }.reduce(0, +) == total - 1)
+        #expect(builder.reasons.contains { $0.hasPrefix("Some sets trimmed") }, "\(builder.reasons)")
+    }
+
+    @Test("a 30-minute day given an hour today gets its rests back, and refits the same way every time")
+    func refitLongerUndoesTheShortCuts() throws {
+        var settings = LiftSettings()
+        settings.includeCooldown = true
+        let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 3, minutes: 30), settings: settings))
+        let day = m.days[0]
+        #expect(day.strengthSlots.contains { $0.supersetGroup != nil || $0.restFiller != nil })
+        let input = Fixture.input(Fixture.profile(days: 3, minutes: 60), settings: settings)
+        let longer = ProgramGenerator.refit(day, minutes: 60, input: input)
+        #expect(longer.strengthSlots.allSatisfy { $0.supersetGroup == nil && $0.restFiller == nil })
+        #expect(longer.blocks.contains { $0.kind == .limiter })
+        #expect(ProgramGenerator.refit(day, minutes: 60, input: input) == longer, "ids and cool-down included")
+        // The cool-down starts with the main lifts' muscles.
+        let cooldown = try #require(longer.blocks.first { $0.kind == .cooldown }?.slots.first)
+        let lift = try #require(longer.blocks.first { $0.kind == .main }?.slots.first)
+        let trained = Fixture.catalog.resolve(lift.exerciseID).primaryMuscles
+        #expect(trained.contains { Fixture.catalog.resolve(cooldown.exerciseID).weight(of: $0) > 0 })
+        // Shorter again, the pairing comes back.
+        let shorter = ProgramGenerator.refit(longer, minutes: 30, input: Fixture.input(Fixture.profile(days: 3, minutes: 30), settings: settings))
+        #expect(shorter.strengthSlots.contains { $0.supersetGroup != nil || $0.restFiller != nil })
+    }
 }

@@ -26,7 +26,8 @@ public enum Export {
             rows: state.sessions.sorted { $0.start < $1.start }.flatMap { session in
                 session.exercises.flatMap { log in
                     log.sets.enumerated().map { index, set in
-                        [session.id.uuidString, date(session.start), session.title, log.exerciseID, catalog.resolve(log.exerciseID).name,
+                        // The set's own exercise: a log saved before mid-exercise swaps were split holds two.
+                        [session.id.uuidString, date(session.start), session.title, set.exerciseID, catalog.resolve(set.exerciseID).name,
                          String(index + 1), set.kind.rawValue, number(set.loadKg), String(set.reps), set.targetReps.map(String.init) ?? "",
                          set.rating?.label ?? "", number(set.bodyweightKg), set.restBeforeSeconds.map(String.init) ?? "",
                          number(set.heartRatePeak), number(set.heartRateDrop60), set.seconds.map(String.init) ?? ""]
