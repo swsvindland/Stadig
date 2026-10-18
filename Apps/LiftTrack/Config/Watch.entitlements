@@ -8,7 +8,7 @@
 	<array/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.dev.svindland.system</string>
+		<string>group.dev.svindland.stadig</string>
 	</array>
 </dict>
 </plist>

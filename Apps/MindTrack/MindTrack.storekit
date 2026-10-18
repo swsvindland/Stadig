@@ -13,7 +13,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "dev.svindland.mindtrack.unlock",
+      "productID" : "dev.svindland.stadig.mind.unlock",
       "referenceName" : "Mind Track unlock",
       "type" : "NonConsumable"
     }

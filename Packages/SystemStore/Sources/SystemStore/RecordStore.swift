@@ -32,7 +32,7 @@ public final class RecordStore {
     @ObservationIgnored private var remoteObserver: NotificationObservation?
     @ObservationIgnored private var remoteRefreshPending = false
 
-    /// `cloudKitContainer`: e.g. "iCloud.dev.svindland.lifttrack"; nil or `inMemory` keeps the data on
+    /// `cloudKitContainer`: e.g. "iCloud.dev.svindland.stadig.lift"; nil or `inMemory` keeps the data on
     /// this device only. If the CloudKit store can't open, falls back to a local store at the same
     /// file, then to memory, logging why. Never crashes.
     public convenience init(name: String, cloudKitContainer: String?, inMemory: Bool = false) {

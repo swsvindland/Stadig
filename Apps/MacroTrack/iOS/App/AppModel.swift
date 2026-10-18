@@ -8,7 +8,7 @@ import NutritionEngine
 import SystemCore
 import SystemStore
 
-let appLog = Logger(subsystem: "dev.svindland.macrotrack", category: "app")
+let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
 enum AppTab: Hashable {
     case today, plan, progress
@@ -37,6 +37,9 @@ struct Toast: Identifiable, Equatable {
 @MainActor @Observable
 final class AppModel {
     static let shared = AppModel()
+    /// What Health records this app wrote carry as their source: the current id and the one it had
+    /// before the 2026-10 rename, so samples saved before it still count as the app's own.
+    static let ownBundlePrefixes = ["dev.svindland.stadig.macro", "dev.svindland.macrotrack"]
 
     let store: RecordStore
     let shared: SharedContainer
@@ -109,7 +112,7 @@ final class AppModel {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         let memory = arguments.contains("-inMemoryStore")
-        store = RecordStore(name: "MacroTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.macrotrack", inMemory: memory)
+        store = RecordStore(name: "MacroTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.macro", inMemory: memory)
         shared = SharedContainer()
         catalog = FoodCatalog.standard()
         supplementCatalog = SupplementCatalog.standard()
@@ -637,7 +640,7 @@ final class AppModel {
         let health = HealthBridge.shared
         guard health.isAvailable else { return }
         let start = (settings.assessmentStart ?? .today).adding(days: -60)
-        let samples = await health.weighIns(since: start.date(), ownBundlePrefix: "dev.svindland.macrotrack")
+        let samples = await health.weighIns(since: start.date(), ownBundlePrefixes: AppModel.ownBundlePrefixes)
         let known = Set(weighIns.map(\.id))
         let new = samples.filter { !known.contains($0.id) }.map { WeighIn(id: $0.id, date: $0.date, kg: $0.kg, source: .health($0.id)) }
         if !new.isEmpty { store.save(new) }

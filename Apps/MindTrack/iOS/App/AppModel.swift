@@ -5,7 +5,7 @@ import MindEngine
 import SystemCore
 import SystemStore
 
-let appLog = Logger(subsystem: "dev.svindland.mindtrack", category: "app")
+let appLog = Logger(subsystem: "dev.svindland.stadig.mind", category: "app")
 
 enum AppTab: Hashable {
     case today, plan, progress
@@ -58,7 +58,7 @@ final class AppModel {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         let memory = arguments.contains("-inMemoryStore")
-        store = RecordStore(name: "MindTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.mindtrack", inMemory: memory)
+        store = RecordStore(name: "MindTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.mind", inMemory: memory)
         shared = SharedContainer()
         deck = JapaneseDeck.bundled()
         #if DEBUG

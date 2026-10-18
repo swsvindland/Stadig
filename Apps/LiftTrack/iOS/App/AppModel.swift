@@ -7,7 +7,7 @@ import LiftEngine
 import SystemCore
 import SystemStore
 
-let appLog = Logger(subsystem: "dev.svindland.lifttrack", category: "app")
+let appLog = Logger(subsystem: "dev.svindland.stadig.lift", category: "app")
 
 enum AppTab: Hashable {
     case today, plan, progress, body
@@ -18,6 +18,9 @@ enum AppTab: Hashable {
 @MainActor @Observable
 final class AppModel {
     static let shared = AppModel()
+    /// What Health records this app wrote carry as their source: the current id and the one it had
+    /// before the 2026-10 rename, so samples saved before it still count as the app's own.
+    static let ownBundlePrefixes = ["dev.svindland.stadig.lift", "dev.svindland.lifttrack"]
 
     let store: RecordStore
     let shared: SharedContainer
@@ -75,7 +78,7 @@ final class AppModel {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         let memory = arguments.contains("-inMemoryStore")
-        store = RecordStore(name: "LiftTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.lifttrack", inMemory: memory)
+        store = RecordStore(name: "LiftTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.lift", inMemory: memory)
         shared = SharedContainer()
         #if DEBUG
         if arguments.contains("-resetData") { store.eraseAll() }
@@ -519,7 +522,7 @@ final class AppModel {
         async let vo2 = health.latestVO2Max()
         async let rhr = health.latestRestingHeartRate()
         async let steps = health.dailySteps(since: stepsSince)
-        async let workouts = health.externalWorkouts(since: since, excludingBundlePrefix: "dev.svindland.lifttrack")
+        async let workouts = health.externalWorkouts(since: since, excludingBundlePrefixes: AppModel.ownBundlePrefixes)
         let (w, r, v, h, s, outside) = await (weight, recovery, vo2, rhr, steps, workouts)
         bodyweightKg = w?.kg
         self.recovery = r

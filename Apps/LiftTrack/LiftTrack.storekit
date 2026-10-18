@@ -13,7 +13,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "dev.svindland.lifttrack.unlock",
+      "productID" : "dev.svindland.stadig.lift.unlock",
       "referenceName" : "Lift Track unlock",
       "type" : "NonConsumable"
     }

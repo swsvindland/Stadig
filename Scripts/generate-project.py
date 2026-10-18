@@ -95,12 +95,12 @@ lift_app = dict(swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Lift Track saves progress photos you choose, for your own comparison.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Lift Track can take progress photos for your own comparison.",
     "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.lifttrack",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift",
 })
 
 lift_widgets = dict(swift_common, **ios_widgets_common, **{
     "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.lifttrack.widgets",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.widgets",
 })
 
 lift_watch = dict(swift_common, **{
@@ -112,10 +112,10 @@ lift_watch = dict(swift_common, **{
     "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track shows your heart rate during a session and uses it to time rests.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves sessions you run on your Watch to Apple Health.",
     "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
-    "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": "dev.svindland.lifttrack",
+    "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": "dev.svindland.stadig.lift",
     "INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp": "YES",
     "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.lifttrack.watchkitapp",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.watchkitapp",
     "SDKROOT": "watchos",
     "SKIP_INSTALL": "YES",
     "SUPPORTED_PLATFORMS": "watchos watchsimulator",
@@ -130,7 +130,7 @@ lift_watch_widgets = dict(swift_common, **{
     "INFOPLIST_FILE": "Config/Widgets-Info.plist",
     "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
     "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks @executable_path/../../Frameworks",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.lifttrack.watchkitapp.widgets",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.watchkitapp.widgets",
     "SDKROOT": "watchos",
     "SKIP_INSTALL": "YES",
     "SUPPORTED_PLATFORMS": "watchos watchsimulator",
@@ -183,12 +183,12 @@ macro_app = dict(swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.",
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Macro Track can log a meal from a photo you choose.",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.macrotrack",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro",
 })
 
 macro_widgets = dict(swift_common, **ios_widgets_common, **{
     "INFOPLIST_KEY_CFBundleDisplayName": "Macro Track",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.macrotrack.widgets",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro.widgets",
 })
 
 MACRO_PACKAGES = ["SystemCore", "SystemStore", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner"]
@@ -218,7 +218,7 @@ mind_app = {**swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
     "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.mindtrack",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
     # The doc puts this one on the Mac too (sheet music and study at a desk): the iPad app runs there as is.
     "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "YES",
 }}

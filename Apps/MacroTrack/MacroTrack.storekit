@@ -13,7 +13,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "dev.svindland.macrotrack.unlock",
+      "productID" : "dev.svindland.stadig.macro.unlock",
       "referenceName" : "Macro Track unlock",
       "type" : "NonConsumable"
     }

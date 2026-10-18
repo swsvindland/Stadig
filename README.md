@@ -133,7 +133,7 @@ Injury filtering is deterministic: an exercise is excluded when it stresses the 
 Each app owns its own **SwiftData + CloudKit** database: one generic `RecordRow`, one JSON payload per record, CloudKit-compatible. On top of that it provides:
 
 - **Records:** schema versioning and step-by-step migration from day one, newest-wins dedupe of rows CloudKit delivers twice, and soft deletes that sync.
-- **The shared App Group container** (`group.dev.svindland.system`): versioned envelopes, coordinated writes, and change notifications across apps. It holds the profile, life modes, the calendar, each app's summary, Macro Track's nutrition summary and the hub's recommendations and quests.
+- **The shared App Group container** (`group.dev.svindland.stadig`): versioned envelopes, coordinated writes, and change notifications across apps. It holds the profile, life modes, the calendar, each app's summary, Macro Track's nutrition summary and the hub's recommendations and quests.
 - **Backups:** the full backup file and restore (merge, newest wins), and CSV export.
 
 ### HealthBridge
@@ -308,17 +308,19 @@ Scripts/publish-catalogs.sh           # after rebuilding a catalog: upload them 
 
 **Macro Track DEBUG launch arguments:** `-seedSampleData` (three and a half weeks of a person eating a little under a true maintenance of 2,600 kcal, logged from real catalog foods), `-seedPlan` (also starts the recommended plan), `-inMemoryStore`, `-resetData`, `-unlocked`, `-tab plan|progress`, `-log search|scan|camera|describe|quickAdd` to open a logger, `-seedSupplements` (a fish oil, a multivitamin morning and evening, a pre-workout on training days and a sleep gummy at bedtime, two weeks of them taken, coffee most mornings, energy drinks some afternoons and some water, with drinks turned on), `-showSupplements` or `-showSettings` to open those screens, and `-liveScanDemo`, which feeds the live scanner (`-log scan`, or Supplements → Scan the bottle) a rendered package and a label taller than the screen, panned frame by frame through the real OCR, since the simulator has no camera.
 
-**Mind Track DEBUG launch arguments:** `-seedSampleData` (eight and a half weeks of study through the assessment, a block, a review week and its check-in, every session planned and run by the real engine and answered by a student with a true level in each subject), `-inMemoryStore`, `-resetData`, `-onboarded` (skips setup and starts the first session), `-startSession`, `-study japanese|maths|writing|reading` to start a session of one subject, `-steps N` to answer N steps of it, `-tab plan|progress` and `-showSettings`. Bundle id `dev.svindland.mindtrack`, iCloud container `iCloud.dev.svindland.mindtrack`, in-app purchase `dev.svindland.mindtrack.unlock`, URL scheme `mindtrack://start`, `plan`, `progress`.
+**Mind Track DEBUG launch arguments:** `-seedSampleData` (eight and a half weeks of study through the assessment, a block, a review week and its check-in, every session planned and run by the real engine and answered by a student with a true level in each subject), `-inMemoryStore`, `-resetData`, `-onboarded` (skips setup and starts the first session), `-startSession`, `-study japanese|maths|writing|reading` to start a session of one subject, `-steps N` to answer N steps of it, `-tab plan|progress` and `-showSettings`. Bundle id `dev.svindland.stadig.mind`, iCloud container `iCloud.dev.svindland.stadig.mind`, in-app purchase `dev.svindland.stadig.mind.unlock`, URL scheme `mindtrack://start`, `plan`, `progress`.
 
 **Signing:** the generator sets `DEVELOPMENT_TEAM` to `9HAG9PT8LJ` for every target. Identifiers:
 
 | | Lift Track | Macro Track |
 |---|---|---|
-| Bundle ids | `dev.svindland.lifttrack` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.macrotrack` (`.widgets`) |
-| iCloud container | `iCloud.dev.svindland.lifttrack` | `iCloud.dev.svindland.macrotrack` |
-| App Group | `group.dev.svindland.system`, shared by the whole family | same |
-| In-app purchase | `dev.svindland.lifttrack.unlock` (non-consumable) | `dev.svindland.macrotrack.unlock` (non-consumable) |
+| Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`) |
+| iCloud container | `iCloud.dev.svindland.stadig.lift` | `iCloud.dev.svindland.stadig.macro` |
+| App Group | `group.dev.svindland.stadig`, shared by the whole family | same |
+| In-app purchase | `dev.svindland.stadig.lift.unlock` (non-consumable) | `dev.svindland.stadig.macro.unlock` (non-consumable) |
 | URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
+
+Mind Track is `dev.svindland.stadig.mind`, with `iCloud.dev.svindland.stadig.mind` and `dev.svindland.stadig.mind.unlock`. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
 
 ## Tests: the logic is the product
 

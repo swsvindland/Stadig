@@ -129,10 +129,11 @@ extension HealthBridge {
     // MARK: Workouts and heart rate
 
     /// Workouts written by other apps since `since`, oldest first. Sources whose bundle identifier
-    /// starts with `excludingBundlePrefix` (this app and its Watch app) are skipped. Intensity comes
+    /// starts with one of `excludingBundlePrefixes` (this app and its Watch app, under any id it has
+    /// had) are skipped. Intensity comes
     /// from average heart rate against an age-based max when both are known, else the activity's
     /// typical intensity.
-    public func externalWorkouts(since: Date, excludingBundlePrefix: String) async -> [ActivityLog] {
+    public func externalWorkouts(since: Date, excludingBundlePrefixes: [String]) async -> [ActivityLog] {
         guard let store else { return [] }
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.workout(HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate))],
@@ -143,7 +144,7 @@ extension HealthBridge {
         var logs: [ActivityLog] = []
         for workout in workouts {
             let source = workout.sourceRevision.source
-            if !excludingBundlePrefix.isEmpty, source.bundleIdentifier.hasPrefix(excludingBundlePrefix) { continue }
+            if source.bundleIdentifier.hasAnyPrefix(excludingBundlePrefixes) { continue }
             var heartRate = workout.statistics(for: HealthTypes.heartRate)?.averageQuantity()?.doubleValue(for: HealthTypes.bpm)
             if heartRate == nil {
                 heartRate = await averageHeartRate(store: store, from: workout.startDate, to: workout.endDate)
@@ -418,14 +419,14 @@ extension HealthBridge {
     public func latestVO2Max() async -> Double? { nil }
     public func latestRestingHeartRate() async -> Double? { nil }
     public func recoveryDays(since: Day) async -> [RecoveryDay] { [] }
-    public func externalWorkouts(since: Date, excludingBundlePrefix: String) async -> [ActivityLog] { [] }
+    public func externalWorkouts(since: Date, excludingBundlePrefixes: [String]) async -> [ActivityLog] { [] }
     public func heartRateSamples(from: Date, to: Date) async -> [(date: Date, bpm: Double)] { [] }
     public func saveStrengthWorkout(id: UUID, version: Int, start: Date, end: Date, title: String,
                                     energyKcal: Double?) async throws {}
     public func deleteWorkout(id: UUID) async {}
     public func saveMeasurements(_ measurements: BodyMeasurements) async {}
     public func observeChanges(_ handler: @escaping @Sendable () -> Void) -> AnyObject? { nil }
-    public func weighIns(since: Date, ownBundlePrefix: String) async -> [HealthWeight] { [] }
+    public func weighIns(since: Date, ownBundlePrefixes: [String]) async -> [HealthWeight] { [] }
     public func saveWeight(id: UUID, date: Date, kg: Double, version: Int) async {}
     public func deleteWeight(id: UUID) async {}
     public func saveFoods(_ foods: [HealthFood]) async {}
@@ -433,3 +434,10 @@ extension HealthBridge {
 }
 
 #endif
+
+extension String {
+    /// Whether this starts with any of `prefixes`; empty prefixes match nothing.
+    func hasAnyPrefix(_ prefixes: [String]) -> Bool {
+        prefixes.contains { !$0.isEmpty && hasPrefix($0) }
+    }
+}

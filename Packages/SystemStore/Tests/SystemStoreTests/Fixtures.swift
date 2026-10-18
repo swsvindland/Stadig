@@ -50,7 +50,7 @@ func temporaryDirectory() -> URL {
 
 /// A shared container in a fresh temporary directory, with a group ID no process is entitled to.
 func temporarySharedContainer() -> SharedContainer {
-    SharedContainer(groupID: "group.dev.svindland.system.tests.\(UUID().uuidString)", fallbackDirectory: temporaryDirectory())
+    SharedContainer(groupID: "group.dev.svindland.stadig.tests.\(UUID().uuidString)", fallbackDirectory: temporaryDirectory())
 }
 
 @MainActor

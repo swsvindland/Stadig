@@ -176,7 +176,7 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(exportedAs: "dev.svindland.mindtrack-backup"), .json]) { result in
+        .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(exportedAs: "dev.svindland.stadig.mind-backup"), .json]) { result in
             switch result {
             case .success(let url):
                 do {

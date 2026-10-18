@@ -18,7 +18,7 @@ nonisolated struct MacroSnapshot: Codable, Hashable, Sendable {
     var weighedToday = false
     var updated = Date()
 
-    static let groupID = "group.dev.svindland.system"
+    static let groupID = "group.dev.svindland.stadig"
     static let empty = MacroSnapshot(day: "")
     static let sample = MacroSnapshot(day: isoDay(Date()), kcal: 1240, kcalTarget: 2300, protein: 96, proteinTarget: 170, carbs: 130,
                                       carbsTarget: 240, fat: 42, fatTarget: 70, badge: nil, weighedToday: true)

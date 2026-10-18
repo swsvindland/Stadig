@@ -12,7 +12,7 @@ final class Purchases {
     /// StoreKit is never asked, and the Unlock rows are hidden. Turn on before release.
     static let enabled = false
 
-    static let productID = "dev.svindland.macrotrack.unlock"
+    static let productID = "dev.svindland.stadig.macro.unlock"
 
     private(set) var product: Product?
     private(set) var unlocked = false

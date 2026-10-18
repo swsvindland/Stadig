@@ -151,7 +151,7 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         #expect(await bridge.latestVO2Max() == nil)
         #expect(await bridge.latestRestingHeartRate() == nil)
         #expect(await bridge.recoveryDays(since: Day.today.adding(days: -14)).isEmpty)
-        #expect(await bridge.externalWorkouts(since: past, excludingBundlePrefix: "com.example.lifttrack").isEmpty)
+        #expect(await bridge.externalWorkouts(since: past, excludingBundlePrefixes: ["com.example.lifttrack"]).isEmpty)
         #expect(await bridge.heartRateSamples(from: past, to: Date()).isEmpty)
         try await bridge.saveStrengthWorkout(id: UUID(), version: 1, start: past, end: past.addingTimeInterval(3600),
                                              title: "Push", energyKcal: 250)

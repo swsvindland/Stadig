@@ -49,9 +49,9 @@ public struct HealthFood: Hashable, Sendable {
 extension HealthBridge {
     // MARK: Weight
 
-    /// Body mass samples since `since`, oldest first, leaving out the ones this app wrote (they're
-    /// already its own manual weigh-ins).
-    public func weighIns(since: Date, ownBundlePrefix: String) async -> [HealthWeight] {
+    /// Body mass samples since `since`, oldest first, leaving out the ones this app wrote under any
+    /// of `ownBundlePrefixes` (they're already its own manual weigh-ins).
+    public func weighIns(since: Date, ownBundlePrefixes: [String]) async -> [HealthWeight] {
         guard let store else { return [] }
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: HealthTypes.bodyMass,
@@ -60,7 +60,7 @@ extension HealthBridge {
         guard let samples = try? await descriptor.result(for: store) else { return [] }
         return samples.compactMap { sample in
             let source = sample.sourceRevision.source
-            if !ownBundlePrefix.isEmpty, source.bundleIdentifier.hasPrefix(ownBundlePrefix) { return nil }
+            if source.bundleIdentifier.hasAnyPrefix(ownBundlePrefixes) { return nil }
             return HealthWeight(id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
                                 sourceName: source.name)
         }

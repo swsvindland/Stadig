@@ -15,7 +15,7 @@ nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVide
     }
 
     let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "dev.svindland.macrotrack.camera")
+    private let queue = DispatchQueue(label: "dev.svindland.stadig.macro.camera")
     private let handlers = Mutex(Handlers())
     private var device: AVCaptureDevice?
     private var configured = false

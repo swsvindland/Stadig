@@ -29,7 +29,7 @@ struct SharedContainerTests {
 
     @Test func fallsBackWithoutTheAppGroup() {
         let directory = temporaryDirectory()
-        let shared = SharedContainer(groupID: "group.dev.svindland.system.tests.\(UUID().uuidString)", fallbackDirectory: directory)
+        let shared = SharedContainer(groupID: "group.dev.svindland.stadig.tests.\(UUID().uuidString)", fallbackDirectory: directory)
         #expect(!shared.isAppGroup)
         #expect(shared.directory == directory)
     }

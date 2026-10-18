@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 import SQLite3
 
-let mindLog = Logger(subsystem: "dev.svindland.mindtrack", category: "engine")
+let mindLog = Logger(subsystem: "dev.svindland.stadig.mind", category: "engine")
 
 /// A word in the deck, in the order it's taught: how common it is in everyday sentences.
 public struct Word: Hashable, Sendable, Identifiable {

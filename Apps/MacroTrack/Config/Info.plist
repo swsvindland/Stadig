@@ -29,7 +29,7 @@
 			<key>UTTypeDescription</key>
 			<string>Macro Track Backup</string>
 			<key>UTTypeIdentifier</key>
-			<string>dev.svindland.macrotrack-backup</string>
+			<string>dev.svindland.stadig.macro-backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

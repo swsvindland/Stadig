@@ -13,7 +13,7 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     var badge: String?
     var updated = Date()
 
-    static let groupID = "group.dev.svindland.system"
+    static let groupID = "group.dev.svindland.stadig"
     static let empty = WidgetSnapshot(title: "Lift Track", detail: "Open Lift Track to set up")
     static let sample = WidgetSnapshot(title: "Upper A", detail: "Week 2 · 2 reps in reserve",
                                        exercises: ["Barbell Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown"],

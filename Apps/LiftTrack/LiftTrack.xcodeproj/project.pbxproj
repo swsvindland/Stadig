@@ -541,7 +541,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -587,7 +587,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -624,7 +624,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -658,7 +658,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -690,11 +690,11 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.lifttrack;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -728,11 +728,11 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.lifttrack;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -767,7 +767,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -801,7 +801,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.lifttrack.watchkitapp.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.lift.watchkitapp.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;

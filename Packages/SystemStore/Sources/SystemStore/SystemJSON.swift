@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-let storeLog = Logger(subsystem: "dev.svindland.system", category: "store")
+let storeLog = Logger(subsystem: "dev.svindland.stadig", category: "store")
 
 /// The JSON coding every System payload, shared file and backup uses.
 ///

@@ -34,7 +34,7 @@ struct LogFoodControl: ControlWidget {
 
 struct WeighInControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "dev.svindland.macrotrack.control.weigh") {
+        StaticControlConfiguration(kind: "dev.svindland.stadig.macro.control.weigh") {
             ControlWidgetButton(action: OpenLoggerIntent(entry: .weigh)) {
                 Label("Weigh In", systemImage: "scalemass")
             }
@@ -45,7 +45,7 @@ struct WeighInControl: ControlWidget {
 }
 
 func logControl(kind: String, entry: LoggerEntryPoint, title: LocalizedStringResource, symbol: String) -> some ControlWidgetConfiguration {
-    StaticControlConfiguration(kind: "dev.svindland.macrotrack.control.\(kind)") {
+    StaticControlConfiguration(kind: "dev.svindland.stadig.macro.control.\(kind)") {
         ControlWidgetButton(action: OpenLoggerIntent(entry: entry)) {
             Label(title, systemImage: symbol)
         }

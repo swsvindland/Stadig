@@ -29,7 +29,7 @@
 			<key>UTTypeDescription</key>
 			<string>Mind Track Backup</string>
 			<key>UTTypeIdentifier</key>
-			<string>dev.svindland.mindtrack-backup</string>
+			<string>dev.svindland.stadig.mind-backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

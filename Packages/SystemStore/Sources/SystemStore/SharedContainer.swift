@@ -7,9 +7,9 @@ import SystemCore
 /// `{schemaVersion, writtenBy, writtenAt, payload}`, that the apps and the hub publish for each other.
 /// Synchronous, coordinated file IO; the files are small.
 public struct SharedContainer: Sendable {
-    public static let groupID = "group.dev.svindland.system"
+    public static let groupID = "group.dev.svindland.stadig"
     /// The Darwin notification posted after every write, so other apps (and widgets) can reload.
-    public static let changeNotification = "dev.svindland.system.changed"
+    public static let changeNotification = "dev.svindland.stadig.changed"
 
     /// Where the files live: `SystemShared` inside the App Group, or the fallback.
     public let directory: URL
