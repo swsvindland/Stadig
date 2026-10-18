@@ -20,8 +20,10 @@ struct LaunchOptionsTests {
         let plain = LaunchOptions(arguments: ["App"])
         #expect(!plain.usesInMemoryStore && !plain.isQuiet && !plain.isHostingTests)
 
+        #if DEBUG
         let memory = LaunchOptions(arguments: ["App", "-inMemoryStore"])
         #expect(memory.usesInMemoryStore && !memory.isQuiet)
+        #endif
 
         let hosting = LaunchOptions(arguments: ["App"], environment: ["XCTestConfigurationFilePath": "/tmp/x.xctestconfiguration"])
         #expect(hosting.isHostingTests && hosting.usesInMemoryStore && hosting.isQuiet)

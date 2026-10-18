@@ -29,8 +29,15 @@ public struct LaunchOptions: Sendable {
         #endif
     }
 
-    /// Keep nothing between launches: the store lives in memory and never syncs.
-    public var usesInMemoryStore: Bool { isHostingTests || isUITesting || has("-inMemoryStore") }
+    /// Keep nothing between launches: the store lives in memory and never syncs. `-inMemoryStore` is
+    /// honoured in DEBUG builds only, like `-uiTesting`.
+    public var usesInMemoryStore: Bool {
+        #if DEBUG
+        isHostingTests || isUITesting || has("-inMemoryStore")
+        #else
+        isHostingTests
+        #endif
+    }
 
     /// No Health, notification, camera or other permission prompts, and no system services that
     /// would show one.
