@@ -95,6 +95,9 @@ lift_app = dict(swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Lift Track saves progress photos you choose, for your own comparison.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Lift Track can take progress photos for your own comparison.",
     "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
+    # Xcode moved these two out of Config/Info.plist into build settings.
+    "INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates": "NO",
+    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift",
 })
 

@@ -100,10 +100,21 @@ func render(_ variant: Variant, size: Int = 1024, inset: CGFloat = 0, corner: CG
     return rep.representation(using: .png, properties: [:])!
 }
 
+/// The same image without an alpha channel: App Store Connect rejects app icons that have one,
+/// even when every pixel is opaque.
+func opaque(_ png: Data) -> Data {
+    let image = NSBitmapImageRep(data: png)!.cgImage!
+    let ctx = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
+                        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])!
+}
+
 func write(_ data: Data, _ path: String) throws {
     let url = assets.appending(path: path)
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try data.write(to: url)
+    try (path.hasSuffix(".png") ? opaque(data) : data).write(to: url)
 }
 
 let info = #""info" : { "author" : "xcode", "version" : 1 }"#
@@ -127,7 +138,7 @@ try write(Data(appIcon.utf8), "AppIcon.appiconset/Contents.json")
 // watchOS: one round-cropped 1024 image.
 let watchIcon = watchAssets.appending(path: "AppIcon.appiconset")
 try FileManager.default.createDirectory(at: watchIcon, withIntermediateDirectories: true)
-try render(.light).write(to: watchIcon.appending(path: "icon-watch.png"))
+try opaque(render(.light)).write(to: watchIcon.appending(path: "icon-watch.png"))
 try Data(#"{ "images" : [ { "filename" : "icon-watch.png", "idiom" : "universal", "platform" : "watchos", "size" : "1024x1024" } ], "info" : { "author" : "xcode", "version" : 1 } }"#.utf8)
     .write(to: watchIcon.appending(path: "Contents.json"))
 print("Icons written to \(assets.path) and \(watchAssets.path)")

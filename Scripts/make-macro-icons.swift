@@ -70,10 +70,21 @@ func render(_ variant: Variant, size: Int = 1024) -> Data {
     return rep.representation(using: .png, properties: [:])!
 }
 
+/// The same image without an alpha channel: App Store Connect rejects app icons that have one,
+/// even when every pixel is opaque.
+func opaque(_ png: Data) -> Data {
+    let image = NSBitmapImageRep(data: png)!.cgImage!
+    let ctx = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
+                        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])!
+}
+
 func write(_ data: Data, _ path: String) throws {
     let url = assets.appending(path: path)
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try data.write(to: url)
+    try (path.hasSuffix(".png") ? opaque(data) : data).write(to: url)
 }
 
 try write(render(.light), "AppIcon.appiconset/icon-ios.png")

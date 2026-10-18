@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -18,21 +16,18 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>workout-processing</string>
 	</array>
-	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
-	<false/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>dev.svindland.stadig.lift-backup</string>
-			<key>UTTypeDescription</key>
-			<string>Lift Track Backup</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.json</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Lift Track Backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>dev.svindland.stadig.lift-backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
