@@ -135,16 +135,78 @@ public enum LanguageTests {
 
     /// The share understood, weighting harder sentences more, corrected for guessing.
     public static func listeningResult(_ attempts: [Attempt], date: Date, language: Language) -> TestResult {
-        let tested = attempts.filter { $0.test == .listening && $0.band != nil }
-        var weighted = 0.0, weights = 0.0
+        skillResult(.listening, attempts, date: date, language: language, choices: true)
+    }
+
+    // MARK: The other skills
+
+    /// Reading: the listening test's levels from the page, with no sound and no scaffolds.
+    public static func reading(deck: LanguageDeck, seed: String, offset: Int) -> [Question] {
+        var questions: [Question] = []
+        for (band, levels) in listeningLevels.enumerated() {
+            // Offset from the listening test's sentences, so the two don't share any on a day.
+            let pool = deck.sentences(levels: levels, limit: 24, skip: offset + 11)
+            guard pool.count >= 4 else { continue }
+            for sentence in pool.suffix(2) {
+                var question = LanguageQuiz.sentence(sentence, language: deck.language, kind: .test, others: pool, seed: seed,
+                                                     key: .practice(deck.language, "reading"))
+                question.prompt = .foreign(sentence.text, deck.language)
+                question.instruction = "What does it say?"
+                question.expectedSeconds = 8 + Double(sentence.text.count) * (deck.language.pack.script == .kanaKanji ? 0.4 : 0.15)
+                question.test = .languageReading
+                question.band = band
+                questions.append(question)
+            }
+        }
+        return questions
+    }
+
+    /// Speaking or writing at one level: a word to produce from its meaning, and a sentence of that
+    /// level to say back or write down as it's heard.
+    public static func production(_ mode: SpeakingTask.Mode, band: Int, deck: LanguageDeck, seed: String, offset: Int) -> [SpeakingTask] {
+        guard listeningLevels.indices.contains(band) else { return [] }
+        let levels = listeningLevels[band]
+        let test: TestKind = mode == .say ? .speaking : .languageWriting
+        let language = deck.language
+        var rng = SeededRandom(seed, "production", mode.rawValue, "\(band)")
+        var out: [SpeakingTask] = []
+        if let word = deck.words.filter({ levels.contains($0.rank) && LanguageQuiz.producible($0) }).shuffled(using: &rng).first {
+            out.append(LanguageQuiz.produce(word, mode: mode, kind: .test, seed: seed, test: test, band: band))
+        }
+        let short = deck.sentences(levels: levels, limit: 30, skip: offset + (mode == .say ? 23 : 37))
+            .filter { language.pack.script == .kanaKanji ? $0.text.count <= 16 : $0.text.split(separator: " ").count <= 7 }
+        if let sentence = short.shuffled(using: &rng).first {
+            out.append(LanguageQuiz.produce(sentence, deck: deck, mode: mode, kind: .test, seed: seed, test: test, band: band))
+        }
+        return out
+    }
+
+    /// Whether a production test goes on to the next band: not after one with nothing right.
+    public static func continueProduction(after band: Int, attempts: [Attempt]) -> Bool {
+        band + 1 < listeningLevels.count && attempts.contains { $0.band == band && $0.correct }
+    }
+
+    /// Any banded skill test: each band's share (corrected for guessing where there were choices),
+    /// harder bands weighing more in the score, and the reach in words for the skill's level.
+    public static func skillResult(_ kind: TestKind, _ attempts: [Attempt], date: Date, language: Language, choices: Bool,
+                                   placement: Bool = false) -> TestResult {
+        let tested = attempts.filter { $0.test == kind && $0.band != nil }
+        var weighted = 0.0, weights = 0.0, words = 0.0
         var detail: [String: Double] = [:]
         for band in Set(tested.compactMap(\.band)).sorted() {
-            let share = known(tested.filter { $0.band == band })
+            let inBand = tested.filter { $0.band == band }
+            let share = choices ? known(inBand) : Double(inBand.filter(\.correct).count) / Double(inBand.count)
             let weight = Double(band + 1)
             weighted += share * weight
             weights += weight
+            words += share * Double(listeningLevels[band].count)
             detail["band\(band)"] = share
         }
-        return TestResult(test: .listening, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail, language: language)
+        // Bands not reached weigh in as nothing, so stopping early can't flatter the score.
+        for band in listeningLevels.indices where detail["band\(band)"] == nil { weights += Double(band + 1) }
+        detail["words"] = words.rounded()
+        detail["asked"] = Double(tested.count)
+        return TestResult(test: kind, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail, placement: placement,
+                          language: language)
     }
 }

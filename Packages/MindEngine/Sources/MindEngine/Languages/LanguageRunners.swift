@@ -66,7 +66,8 @@ struct LearnRunner: PartRunner {
         case .teach(let word), .probe(let word):
             guard let deck = run.catalogs.deck(language) else { return nil }
             let ask: LanguageQuiz.WordAsk = task.stage == .second ? (word.hasKanji ? .reading : .listening) : .meaning
-            return LanguageQuiz.question(word, ask: ask, kind: task.stage == .probe ? .probe : .learn, deck: deck, seed: seed)
+            return LanguageQuiz.question(word, ask: ask, kind: task.stage == .probe ? .probe : .learn, deck: deck, seed: seed,
+                                         help: run.scaffold(word))
         }
     }
 
@@ -111,21 +112,6 @@ struct LearnRunner: PartRunner {
             run.graduate(task.item.key, memory: Scheduler.first(.again, at: run.now))
         }
         tasks = []
-    }
-}
-
-/// Sentences heard, then understood: practice that's never scheduled.
-struct SentencesRunner: PartRunner {
-    let language: Language
-    var pool: [Sentence]
-    var used = 0
-
-    mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
-        guard run.partSeconds < run.budget, used < pool.count else { return nil }
-        let sentence = pool[used]
-        used += 1
-        return .question(LanguageQuiz.sentence(sentence, language: language, kind: .learn, others: pool, seed: run.today.iso,
-                                               key: .practice(language, "sentences")))
     }
 }
 

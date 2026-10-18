@@ -57,7 +57,8 @@ public struct StudyState: Sendable {
         settings.mode(domain) == .focus && Subjects.module(domain).needsPlacement(domain, state: self, catalogs: catalogs)
     }
 
-    public var currentBook: Book? { books.filter { $0.status == .reading }.max { $0.updatedAt < $1.updatedAt } }
+    /// The English book on the go. A reader in a language being learned has its own level; see `GradedReaders`.
+    public var currentBook: Book? { books.filter { $0.status == .reading && $0.language == nil }.max { $0.updatedAt < $1.updatedAt } }
 
     public var lastCheckIn: Day? { sessions.last { $0.purpose == .checkIn && $0.finished }?.day }
 }

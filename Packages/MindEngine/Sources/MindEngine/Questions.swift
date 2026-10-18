@@ -41,6 +41,9 @@ public enum Prompt: Hashable, Sendable {
     case foreign(String, Language, reading: String? = nil)
     /// The language spoken in its own voice, not shown, until it's answered.
     case audio(String, Language)
+    /// The language with its fading scaffold: furigana, romaji or a stress guide on each item not
+    /// yet mastered.
+    case scaffolded(Scaffolded)
     /// Text with inline maths between dollar signs: "Solve $3x + 5 = 20$".
     case math(String)
 }

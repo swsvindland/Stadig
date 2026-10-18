@@ -121,7 +121,7 @@ private struct StepView: View {
         case .passage(let passage):
             PassageView(passage: passage)
         case .speak(let task):
-            SpeakView(task: task)
+            SpeakView(task: task, feedback: run.feedback)
         case .compose(let task):
             ComposeView(task: task)
         case .compare(let pair):
@@ -201,10 +201,9 @@ enum TestLine {
         case .vocabulary:
             let low = Int(test.detail["low"] ?? test.score), high = Int(test.detail["high"] ?? test.score)
             return "About \(Int(test.score).formatted()) \(language) words known (\(low.formatted())–\(high.formatted()))"
-        case .listening: return "\(language) listening: \(Format.percent(test.score)) understood"
-        case .speaking: return "\(language) speaking: \(Format.percent(test.score)) understood"
-        case .languageReading: return "\(language) reading: \(Format.percent(test.score)) understood"
-        case .languageWriting: return "\(language) writing: \(Format.percent(test.score)) right"
+        case .listening, .speaking, .languageReading, .languageWriting:
+            let level = LanguageSkills.level(test)
+            return "\(language) \(test.test.label.lowercased()): level \(level?.level ?? 0), about \((level?.words ?? 0).formatted()) words' reach"
         case .episode: return "\(language) episode without subtitles: \(rating)"
         case .conversation: return "\(language) conversation: \(rating)"
         case .numeracy:

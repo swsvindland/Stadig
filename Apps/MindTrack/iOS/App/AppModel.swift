@@ -275,7 +275,7 @@ final class AppModel {
     }
 
     func start(book: LadderBook) {
-        for var current in books where current.status == .reading {
+        for var current in books where current.status == .reading && current.language == nil {
             current.status = .abandoned
             current.finished = today
             current.updatedAt = Date()
@@ -385,6 +385,10 @@ final class AppModel {
                     if let index = question.correctChoice { run.choose(right ? index : (index + 1) % question.choices.count, now: now) }
                     else if case .number(let value, _) = question.answer { run.type(right ? value.description : "0", now: now) }
                 case .pickBook(let options): if let first = options.first { run.pickBook(first, now: now) }
+                case .speak(let task):
+                    if run.feedback != nil { run.next(now: now); return }
+                    let said = n % 3 != 2 ? task.answer : ""
+                    run.respond(task.mode == .say ? .spoken(transcript: said, seconds: 3) : .written(text: said.isEmpty ? "?" : said, source: .typed), now: now)
                 default: break
                 }
             }

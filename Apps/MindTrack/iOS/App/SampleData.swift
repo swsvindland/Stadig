@@ -15,6 +15,11 @@ enum SampleData {
         let ladder = ReadingLadder.standard
         var settings = MindSettings(schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
                                     mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
+        // -sampleSpanish adds Spanish as a second Focus language, on a six-day week.
+        if ProcessInfo.processInfo.arguments.contains("-sampleSpanish") {
+            settings.courses[.spanish] = .focus
+            settings.schedule = StudySchedule(daysPerWeek: 6)
+        }
         settings.updatedAt = start.date()
         var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { $0.book(status: .readBefore) }
         if books.isEmpty { books = ladder.books.filter { $0.tier == 3 }.prefix(2).map { $0.book(status: .readBefore) } }
@@ -76,9 +81,12 @@ enum SampleData {
                 case .passage(let passage):
                     now += Double(passage.words) / 4
                     run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
-                case .speak:
-                    now += 10
-                    run.respond(.skip, now: now)
+                case .speak(let task):
+                    now += task.expectedSeconds
+                    let said = rng.chance(task.band.map { bandChance($0) } ?? 0.85) ? task.answer : ""
+                    run.respond(task.mode == .say ? .spoken(transcript: said, seconds: task.expectedSeconds) : .written(text: said, source: .typed),
+                                now: now)
+                    if run.feedback != nil { run.next(now: now + 3) }
                 case .compose(let task):
                     now += Double(task.minutes) * 60
                     if task.reviewing != nil {
@@ -110,6 +118,14 @@ enum SampleData {
         }
         tests.append(TestResult(test: .episode, date: start.adding(days: 52).date().addingTimeInterval(21 * 3600), score: 1.0 / 3,
                                 detail: ["rating": 1], language: .japanese))
+        tests.append(TestResult(test: .conversation, date: start.adding(days: 40).date().addingTimeInterval(13 * 3600), score: 2.0 / 3,
+                                detail: ["rating": 2], language: .japanese))
+        if let reader = GradedReaders.reader("ja.graded-readers-2") {
+            var book = reader.book(status: .reading, started: start.adding(days: 30))
+            book.page = 18
+            book.updatedAt = start.adding(days: 50).date()
+            books.append(book)
+        }
         model.seed(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
                    pieces: pieces)
         model.seedWriting(comparisons: comparisons)
@@ -121,7 +137,7 @@ enum SampleData {
         let key = question.key
         switch key.domain {
         case .japanese, .spanish:
-            if key.wordID == nil && !key.isKana { return 0.6 }
+            if key.wordID == nil && !key.isKana { return question.band.map { bandChance($0) } ?? 0.75 }
             if let memory = cards[key]?.memory { return min(0.95, Scheduler.retrievability(memory, at: Date()) + 0.05) }
             if let id = key.wordID, let word = catalogs.deck(for: key.domain)?.word(id), word.rank <= 600 { return 0.92 }
             return question.kind == .learn ? 0.85 : 0.25
@@ -160,6 +176,8 @@ enum SampleData {
         }
         return SystemData(steps: steps, training: training, protein: protein, proteinHits: hits)
     }
+    /// Sentences get harder band by band: the sample student follows the first thousand words' worth well.
+    static func bandChance(_ band: Int) -> Double { [0.9, 0.75, 0.4, 0.15, 0.05][min(4, band)] }
 
     static let sectionNotes = [
         "The heist plan finally came together, and the cost of it is starting to show.",
