@@ -2,6 +2,7 @@ import CoreGraphics
 import CoreText
 import Foundation
 import FoodDatabase
+import FoundationModels
 import Synchronization
 import SystemCore
 import Testing
@@ -102,6 +103,45 @@ final class ScriptedModel: MealModel {
         guard let picks else { throw MealAIError.busy }
         return picks(prompt)
     }
+}
+
+/// A language model that answers each request with the next scripted reply (JSON for the
+/// requested shape), so `FoundationMealModel` runs without Apple's models.
+@available(macOS 27.0, iOS 27.0, *)
+struct ScriptedLanguageModel: LanguageModel {
+    /// The replies still to give and what was asked; shared by every executor the session makes.
+    final class Script: Hashable, Sendable {
+        let replies: Mutex<[String]>
+        let prewarms = Mutex(0)
+        let requests = Mutex(0)
+
+        init(_ replies: [String]) { self.replies = Mutex(replies) }
+
+        static func == (a: Script, b: Script) -> Bool { a === b }
+        func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
+    }
+
+    struct Executor: LanguageModelExecutor {
+        let script: Script
+
+        init(configuration: Script) throws { script = configuration }
+
+        func prewarm(model: ScriptedLanguageModel, transcript: Transcript) { script.prewarms.withLock { $0 += 1 } }
+
+        nonisolated(nonsending) func respond(to request: LanguageModelExecutorGenerationRequest, model: ScriptedLanguageModel,
+                                             streamingInto channel: LanguageModelExecutorGenerationChannel) async throws {
+            script.requests.withLock { $0 += 1 }
+            let reply = script.replies.withLock { $0.isEmpty ? "{}" : $0.removeFirst() }
+            await channel.send(.response(action: .appendText(reply, tokenCount: 10)))
+        }
+    }
+
+    let script: Script
+
+    init(_ script: Script) { self.script = script }
+
+    var capabilities: LanguageModelCapabilities { LanguageModelCapabilities([.guidedGeneration]) }
+    var executorConfiguration: Script { script }
 }
 
 /// A small solid image, for code paths that only need one.

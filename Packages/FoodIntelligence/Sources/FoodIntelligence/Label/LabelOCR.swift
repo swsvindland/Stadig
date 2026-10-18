@@ -20,6 +20,19 @@ public enum LabelOCR {
         level(try await recognize(image))
     }
 
+    /// A label photo read without a model, from one recognition: Vision's passes are the slow part,
+    /// so the boxes and the lines come from the same one. `suggestedName` and `brand` are nil.
+    public static func label(in image: CGImage) async throws -> LabelResult {
+        parse(try await recognize(image))
+    }
+
+    /// Positions read two-column panels; the lines are the fallback for anything else.
+    static func parse(_ boxes: [TextBox]) -> LabelResult {
+        let lines = rows(boxes)
+        return LabelResult(reading: NutritionLabel.parse(boxes: level(boxes)) ?? NutritionLabel.parse(lines: lines), lines: lines,
+                           suggestedName: nil, brand: nil)
+    }
+
     /// One frame of a live scan, read once as it comes (upright: the camera turns it). Several a
     /// second on a phone; `LiveLabel` and `LiveSupplementLabel` put the frames together.
     public static func frame(_ pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation = .up) async throws -> FrameText {
@@ -186,7 +199,14 @@ public struct FrameText: Sendable {
     init(_ boxes: [LabelOCR.TextBox]) {
         self.boxes = LabelOCR.level(boxes)
         lines = LabelOCR.rows(boxes)
-        regions = self.boxes.map { CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height) }
+        // Where the text really is: levelling turns every box about the frame's corner, which keeps
+        // the rows for the parser but moves the boxes off the text on screen.
+        regions = boxes.map { box in
+            let xs = [box.topLeft.x, box.topRight.x, box.bottomLeft.x, box.bottomRight.x].map { $0 / box.aspect }
+            let ys = [box.topLeft.y, box.topRight.y, box.bottomLeft.y, box.bottomRight.y]
+            let (left, right) = (xs.min() ?? 0, xs.max() ?? 0), (top, bottom) = (ys.min() ?? 0, ys.max() ?? 0)
+            return CGRect(x: left, y: top, width: right - left, height: bottom - top)
+        }
         headline = Self.headline(self.boxes)
     }
 

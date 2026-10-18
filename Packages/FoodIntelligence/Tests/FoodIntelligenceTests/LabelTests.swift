@@ -36,6 +36,46 @@ struct LabelTests {
         #expect(LabelOCR.rows(boxes) == ["Calories 230", "Total Fat 8g 10%"])
     }
 
+    @Test func aTiltedFramesRegionsStayOnTheText() throws {
+        // A portrait camera frame held 10° off level, with boxes in height units (x scaled by the aspect).
+        let aspect = 0.5625, tilt = 10 * Double.pi / 180
+        func box(_ text: String, centre: (x: Double, y: Double), width: Double, height: Double = 0.03) -> Box {
+            let (ux, uy) = (cos(tilt) * width / 2, sin(tilt) * width / 2)
+            let (vx, vy) = (-sin(tilt) * height / 2, cos(tilt) * height / 2)
+            let c = (x: centre.x * aspect, y: centre.y)
+            return Box(text: text, topLeft: (c.x - ux - vx, c.y - uy - vy), topRight: (c.x + ux - vx, c.y + uy - vy),
+                       bottomLeft: (c.x - ux + vx, c.y - uy + vy), bottomRight: (c.x + ux + vx, c.y + uy + vy), aspect: aspect)
+        }
+        let text = FrameText([box("Total Fat 8g", centre: (0.5, 0.5), width: 0.3), box("Protein 3g", centre: (0.8, 0.9), width: 0.15)])
+        let middle = try #require(text.regions.first)
+        #expect(abs(middle.midX - 0.5) < 0.005 && abs(middle.midY - 0.5) < 0.005, "\(middle)")
+        let corner = try #require(text.regions.last)
+        #expect(abs(corner.midX - 0.8) < 0.005 && abs(corner.midY - 0.9) < 0.005, "\(corner)")
+        #expect(text.regions.allSatisfy { $0.minX >= 0 && $0.maxX <= 1 })
+        // The parser still gets the rows level.
+        #expect(text.lines == ["Total Fat 8g", "Protein 3g"])
+        // An empty frame reads as nothing.
+        let empty = FrameText([])
+        #expect(empty.boxes.isEmpty && empty.lines.isEmpty && empty.regions.isEmpty && empty.headline == nil)
+    }
+
+    @Test func aLabelsBoxesAndLinesComeFromOneRecognition() throws {
+        let boxes = [
+            Box(text: "Nutrition Facts", x: 0.05, y: 0.05, width: 0.6, height: 0.06),
+            Box(text: "Serving size 2/3 cup (55g)", x: 0.05, y: 0.15, width: 0.7, height: 0.03),
+            Box(text: "Calories", x: 0.05, y: 0.25, width: 0.3, height: 0.05), Box(text: "230", x: 0.8, y: 0.25, width: 0.15, height: 0.05),
+            Box(text: "Total Fat 8g", x: 0.05, y: 0.35, width: 0.4, height: 0.03), Box(text: "10%", x: 0.85, y: 0.35, width: 0.1, height: 0.03),
+            Box(text: "Total Carbohydrate 37g", x: 0.05, y: 0.42, width: 0.6, height: 0.03),
+            Box(text: "Protein 3g", x: 0.05, y: 0.49, width: 0.3, height: 0.03),
+        ]
+        let result = LabelOCR.parse(boxes)
+        #expect(result.lines.contains("Calories 230"))
+        let reading = try #require(result.reading)
+        #expect(reading.nutrients.kcal == 230 && reading.nutrients.fat == 8 && reading.nutrients.carbs == 37 && reading.nutrients.protein == 3)
+        #expect(reading.servingGrams == 55)
+        #expect(result.suggestedName == nil && result.brand == nil)
+    }
+
     @Test func aThinParseIsFilledOnlyWithPrintedNumbers() throws {
         let lines = ["Nutrition Facts", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%", "Sodium 1,160mg 50%",
                      "Total Carbohydrate 37g", "Protein 3g"]
@@ -71,6 +111,21 @@ struct LabelTests {
         #expect(LabelAssist.isThin(nil) && LabelAssist.isThin(parsed) && !LabelAssist.isThin(filled))
     }
 
+    @Test func aThinParseTakesAValueOnlyFromItsOwnRow() throws {
+        let lines = ["Nutrition Facts", "Serving size 1 bar (40g)", "Calories 190", "Total Fat 7g 9%", "Sodium 150mg 7%",
+                     "Total Carbohydrate 22g 8%", "Dietary Fiber 3g 11%", "Protein 10g 20%"]
+        // 9 is fat's % Daily Value and 7 is fat's own grams: neither is fiber, sodium or sugar.
+        let guess = LabelGuess(name: "Bar", brand: "Unknown",
+                               values: [.kcal: 190, .fat: 7, .carbs: 22, .protein: 10, .fiber: 9, .sodium: 7, .sugar: 7])
+        let read = try #require(LabelAssist.fill(nil, with: guess, lines: lines))
+        #expect(read.nutrients.fiber == nil)
+        #expect(read.nutrients.sodium == nil)
+        #expect(read.nutrients.sugar == nil)
+        #expect(read.nutrients.protein == 10)
+        #expect(read.missing == ["saturatedFat", "fiber", "sugar", "sodium"])
+        #expect(guess.brand == nil)
+    }
+
     @Test(.needsVisionOCR) func ocrReadsARenderedPanelInEitherOrientation() async throws {
         let rows = sampleLabel
         for sideways in [false, true] {
@@ -80,6 +135,8 @@ struct LabelTests {
             #expect(lines.first?.contains("Nutrition") == true, "\(sideways): \(lines)")
         }
         #expect(try await LabelOCR.lines(in: blankImage()).isEmpty)
+        let label = try await LabelOCR.label(in: renderLabel(rows, sideways: true))
+        #expect(label.reading?.nutrients.kcal == 230, "\(label.lines)")
     }
 
     @Test(.needsVisionOCR) func aPhotographedSupplementPanelReadsIntoNutrients() async throws {

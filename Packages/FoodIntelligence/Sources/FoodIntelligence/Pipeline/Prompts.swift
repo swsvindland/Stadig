@@ -64,8 +64,15 @@ enum Prompts {
     /// prewarmed instructions, so a single prewarmed session serves whichever comes next.
     static let mealInstructions = mealBase + "\n" + photoInstructions
 
+    /// The most of a typed or dictated description the API accepts and the model reads. One limit
+    /// for both: the model never sees less than the foods are grounded in, so a long dictated log
+    /// can't lose its last foods without a word.
+    static let descriptionLimit = 2000
+    /// A photo's note is a few words beside the picture.
+    static let noteLimit = 500
+
     static func meal(description: String, photo: Bool) -> String {
-        let said = FoodText.clean(description, limit: 500)
+        let said = FoodText.clean(description, limit: photo ? noteLimit : descriptionLimit)
         if photo {
             return said.isEmpty
                 ? "Say what this photo shows, then list the foods in it, if there are any."

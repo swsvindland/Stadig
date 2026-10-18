@@ -57,7 +57,7 @@ enum MealAnalysis {
             Trace.note("  \(food.name): sure \(row.sure) tied \(row.tied) " + row.matches.prefix(4).map { "\($0.food.name) [\($0.score)]" }.joined(separator: " | "))
         }
         let chosen = Matching.choices(picks, found: found, asked: asked)
-        let items = seen.indices.map { Drafting.item(seen[$0], found[$0], chosen: chosen[$0], said: description, catalog: catalog) }
+        let items = seen.indices.map { Drafting.item(seen[$0], found[$0], chosen: chosen[$0], said: description, meal: seen, catalog: catalog) }
         return MealDraft(scene: scene, isFood: true, items: items)
     }
 
@@ -85,7 +85,9 @@ enum Trace {
 
 /// A seen food and its match as a guessed diary item.
 enum Drafting {
-    static func item(_ seen: SeenFood, _ found: Candidates, chosen: Int?, said: String, catalog: any MealCatalog) -> GuessedItem {
+    /// `meal` is every food seen with this one.
+    static func item(_ seen: SeenFood, _ found: Candidates, chosen: Int?, said: String, meal: [SeenFood] = [], catalog: any MealCatalog)
+        -> GuessedItem {
         let brand = seen.brand.nilIfEmpty
         guard let chosen, found.matches.indices.contains(chosen) else {
             return GuessedItem(seenName: seen.label ?? seen.name, seenBrand: brand, match: nil, alternatives: [], unit: nil, count: seen.quantity,
@@ -97,7 +99,7 @@ enum Drafting {
         return GuessedItem(seenName: seen.label ?? seen.name, seenBrand: brand, match: match,
                            alternatives: Matching.alternatives(found.matches, chosen: chosen, branded: brand != nil),
                            unit: unit, count: count, nutrients: FoodUnits.nutrients(match.food, count: count, unit: unit),
-                           sure: found.sure, approximate: !resolved.exact || !stated(seen, in: said))
+                           sure: found.sure, approximate: !resolved.exact || !stated(seen, in: said, among: meal))
     }
 
     /// The catalog's own unit for a resolved amount, so the portion editor opens on it: the same id
@@ -143,13 +145,28 @@ enum Drafting {
     private static let leadingDigits = Pattern(#"^[\d.]+"#)
 
     /// Whether the person said how much: the unit ("2 slices", "8 oz", "a can of") or a count right
-    /// before the food ("two eggs", "a banana"). A photo's amount, or one the model chose, is a guess.
-    static func stated(_ seen: SeenFood, in said: String) -> Bool {
+    /// before the food ("two eggs", "a banana"). A unit said of another of the meal's foods ("toast
+    /// and 2 slices of bacon") is that food's. A photo's amount, or one the model chose, is a guess.
+    static func stated(_ seen: SeenFood, in said: String, among meal: [SeenFood] = []) -> Bool {
         let tokens = FoodText.tokens(said)
         guard !tokens.isEmpty else { return false }
         let unit = Measures.unitKey(seen.unit)
-        if unit != "piece", tokens.contains(where: { Measures.unitKey(leadingDigits.replacing(in: $0, with: "")) == unit }) { return true }
-        let names = FoodText.nameWords(seen.name).map(FoodText.stem)
+        func stems(_ food: SeenFood) -> [String] { FoodText.nameWords(food.name).map(FoodText.stem) }
+        func naming(_ words: [String], _ names: [String]) -> Bool {
+            names.contains { name in words.contains { FoodText.same($0, name) || FoodText.same(name, $0) } }
+        }
+        let names = stems(seen)
+        if unit != "piece" {
+            let others = meal.filter { $0 != seen }.map(stems)
+            for segment in StatedAmounts.segments(said) {
+                let words = FoodText.tokens(segment)
+                for (i, token) in words.enumerated() where Measures.unitKey(leadingDigits.replacing(in: token, with: "")) == unit {
+                    // "Ate 3 slices" and "a can of soda" name no other food, so they can be this one's.
+                    let after = words[(i + 1)...].filter { !FoodText.stopWords.contains($0) }.map(FoodText.stem)
+                    if naming(after, names) || !others.contains(where: { naming(after, $0) }) { return true }
+                }
+            }
+        }
         for (i, token) in tokens.enumerated() where countTokens.contains(token) || Double(token) != nil {
             var j = i + 1
             while j < tokens.count, sizeTokens.contains(tokens[j]) { j += 1 }

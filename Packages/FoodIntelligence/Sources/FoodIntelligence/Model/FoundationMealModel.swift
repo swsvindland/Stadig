@@ -115,6 +115,8 @@ struct FoundationMealModel: MealModel {
             let reply = try await session.respond(to: text, generating: LabelOutput.self, options: options(300),
                                                   contextOptions: context(schema: true))
             trace("check label", session, warm: warm, since: start)
+            // A scan checks every couple of seconds; the next check starts as warm as this one.
+            await pool.prewarm(Prompts.liveLabelInstructions, model: model)
             return LabelGuess(reply.content)
         }
     }
@@ -127,6 +129,7 @@ struct FoundationMealModel: MealModel {
             let reply = try await session.respond(to: text, generating: SupplementPanelOutput.self, options: options(800),
                                                   contextOptions: context(schema: true))
             trace("check supplement", session, warm: warm, since: start)
+            await pool.prewarm(Prompts.liveSupplementInstructions, model: model)
             let output = reply.content
             return SupplementReply(name: output.name, brand: output.brand, servingSize: output.servingSize,
                                    lines: output.lines.map { SupplementReply.Line(name: $0.name, amount: $0.amount, unit: $0.unit) })
@@ -157,6 +160,17 @@ struct FoundationMealModel: MealModel {
 
     /// Runs a request, retrying a busy model twice; failures come out as `MealAIError`.
     private func attempt<T>(_ request: () async throws -> T) async throws -> T {
+        try await Retry.whileBusy(classify: ModelErrors.classify, request)
+    }
+}
+
+/// A busy model is asked again after a pause, twice; anything else fails at once.
+enum Retry {
+    static let pauses: [Duration] = [.milliseconds(400), .milliseconds(1000)]
+
+    /// Failures come out as `classify` names them; cancellation passes through, during a pause too.
+    static func whileBusy<T>(classify: (any Error) -> MealAIError, pause: (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+                             _ request: () async throws -> T) async throws -> T {
         var retries = 0
         while true {
             do {
@@ -164,10 +178,10 @@ struct FoundationMealModel: MealModel {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                let reason = ModelErrors.classify(error)
-                guard reason == .busy, retries < 2 else { throw reason }
+                let reason = classify(error)
+                guard reason == .busy, retries < pauses.count else { throw reason }
+                try await pause(pauses[retries])
                 retries += 1
-                try await Task.sleep(for: .milliseconds(retries == 1 ? 400 : 1000))
             }
         }
     }

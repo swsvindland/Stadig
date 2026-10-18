@@ -54,7 +54,7 @@ public actor MealAI {
     /// `isFood == false` with the scene when the photo shows no food.
     public func recognize(photo: CGImage, note: String?, personal: [PersonalFood]) async throws -> MealGuess {
         let start = ContinuousClock.now
-        let note = FoodText.clean(note ?? "", limit: 500)
+        let note = FoodText.clean(note ?? "", limit: Prompts.noteLimit)
         let state = state()
         guard let engine = MealEngines.engine(photo: true, in: state) else {
             // No model can see here, but a note can still be read on its own.
@@ -76,7 +76,7 @@ public actor MealAI {
     /// "two eggs, toast with butter and a flat white". Throws `notFood` when it names no food.
     public func recognize(description: String, personal: [PersonalFood]) async throws -> MealGuess {
         let start = ContinuousClock.now
-        let said = FoodText.clean(description, limit: 2000)
+        let said = FoodText.clean(description, limit: Prompts.descriptionLimit)
         guard !said.isEmpty else { throw MealAIError.notFood("Describe what you ate.") }
         let state = state()
         guard let engine = MealEngines.engine(photo: false, in: state) else {
@@ -96,11 +96,8 @@ public actor MealAI {
     /// FoodDatabase's parser reads the values; the model only suggests a name, and fills gaps in a
     /// thin parse with values printed in the text.
     public func readLabel(photo: CGImage) async throws -> LabelResult {
-        let boxes = try await LabelOCR.recognize(photo)
-        let lines = LabelOCR.rows(boxes)
-        // Positions read two-column panels; the lines are the fallback for anything else.
-        return try await nameLabel(reading: NutritionLabel.parse(boxes: LabelOCR.level(boxes)) ?? NutritionLabel.parse(lines: lines),
-                                   lines: lines)
+        let read = try await LabelOCR.label(in: photo)
+        return try await nameLabel(reading: read.reading, lines: read.lines)
     }
 
     /// A panel already read (live, from many frames) → its name and brand from all the text seen,

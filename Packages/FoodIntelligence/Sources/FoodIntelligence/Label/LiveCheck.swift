@@ -41,7 +41,7 @@ enum LiveCheck {
     static func label(_ guess: LabelGuess, panel: [String]) -> LabelCheck {
         let printed = Printed(panel)
         var values: [String: Double] = [:]
-        for (field, value) in guess.values where printed.contains(value) { values[field.key] = value }
+        for (field, value) in guess.values where printed.contains(value, as: field) { values[field.key] = value }
         let grams = guess.servingGrams.flatMap { printed.contains($0) ? $0 : nil }
         // "2/3 cup (55g)" is measured as 2/3 cup; a serving given only by weight has no measure.
         let measure = guess.servingSize.flatMap { size -> String? in
@@ -64,18 +64,21 @@ enum LiveCheck {
         }
         let serving = reply.servingSize.flatMap(SupplementServing.parse).flatMap { printed.contains($0.count) ? $0 : nil }
         let name = reply.name.map { FoodText.clean($0, limit: 60) }.flatMap { $0.isEmpty ? nil : $0 }
-        let brand = reply.brand.map { FoodText.clean($0, limit: 60) }.flatMap { $0.isEmpty || $0.lowercased() == "none" ? nil : $0 }
+        let brand = Brands.clean(reply.brand, limit: 60)
         let facts = SupplementFacts(id: "custom:\(UUID().uuidString)", name: name ?? "", brand: brand, servingCount: serving?.count ?? 1,
                                     unit: serving?.unit ?? "serving", ingredients: ingredients, source: .label)
         return SupplementCheck(name: name, brand: brand, facts: facts)
     }
 
-    /// The numbers printed in some text, with words for small counts ("two softgels").
+    /// The amounts printed in some text, with words for small counts ("two softgels"). A % Daily
+    /// Value is not an amount, so it never vouches for one.
     struct Printed {
+        let lines: [String]
         let numbers: [Double]
 
         init(_ lines: [String]) {
-            numbers = LabelAssist.numbers(in: lines) + Self.words.filter { word, _ in
+            self.lines = lines
+            numbers = LabelAssist.amounts(in: lines) + Self.words.filter { word, _ in
                 lines.contains { $0.lowercased().contains(word) }
             }.map(\.value)
         }
@@ -84,6 +87,66 @@ enum LiveCheck {
             value.isFinite && value >= 0 && numbers.contains { abs($0 - value) < 0.01 }
         }
 
+        /// The value is printed on the field's own row: "Total Sugars 12g" for sugar, not "Includes
+        /// 10g Added Sugars", and not another row's number. A model that mixes up two rows would
+        /// otherwise pass, and its value counts twice against the frames' reads.
+        func contains(_ value: Double, as field: LabelGuess.Field) -> Bool {
+            guard value.isFinite, value >= 0, let row = Self.rows[field] else { return false }
+            for (i, line) in lines.enumerated() {
+                guard let label = row.firstRange(in: line) else { continue }
+                let end = Self.rowEnd(of: field, in: line, after: label.upperBound)
+                // "Calories per gram: Fat 9 Carbohydrate 4" is a footnote up to the row; "Calories
+                // from Fat 70" and "Sodium Less than 2,400mg" name the row, not its amount.
+                if Self.footnote.matches(String(line[..<end])) || Self.notAmount.matches(String(line[label.lowerBound..<end])) { continue }
+                var amounts = LabelAssist.amounts(in: [String(line[label.upperBound..<end])])
+                // A big number can land on a line of its own, under its label.
+                if amounts.isEmpty, i + 1 < lines.count {
+                    let next = lines[i + 1]
+                    if !Self.footnote.matches(next), !Self.notAmount.matches(next), !Self.rowStarts.contains(where: { $0.matches(next) }) {
+                        amounts = LabelAssist.amounts(in: [next])
+                    }
+                }
+                if amounts.contains(where: { abs($0 - value) < 0.01 }) { return true }
+            }
+            return false
+        }
+
+        /// Where a field's row ends on a line OCR joined with more: at another row's label, or once
+        /// its amount is past at its own label again or a footnote, so a bilingual "Total Fat / Grasa
+        /// Total 8g" is one row, "Calories 250 Calories from Fat 110" two, and a linear label's
+        /// "Protein 2g. *Percent Daily Values are based on a 2,000 calorie diet" keeps its protein.
+        private static func rowEnd(of field: LabelGuess.Field, in line: String, after start: String.Index) -> String.Index {
+            let amount = line[start...].firstIndex(where: \.isNumber) ?? line.endIndex
+            let others = rows.filter { $0.key != field }.map(\.value) + [otherRows]
+            let past = [rows[field], footnote].compactMap { $0?.firstRange(in: line, from: amount)?.lowerBound }
+            return (others.compactMap { $0.firstRange(in: line, from: start)?.lowerBound } + past).min() ?? line.endIndex
+        }
+
         private static let words: [String: Double] = ["one": 1, "two": 2, "three": 3, "four": 4]
+
+        // The row labels FoodDatabase's NutritionLabel reads the panel with (private there, so copied).
+        private static let rows: [LabelGuess.Field: Pattern] = [
+            .kcal: Pattern(#"\bcalories\b|\bcal[oó]r[ií]as\b"#),
+            .fat: Pattern(#"\btotal\s*fat\b|\bfat,?\s*total\b|\bgrasa\s*total\b|^fat\b"#),
+            .saturatedFat: Pattern(#"\bsat(?:urated|\.)?\s*fat\b"#),
+            .carbs: Pattern(#"\btotal\s*carb(?:ohydrates?|s|\.)?|\bcarbohydrates?\b|\bcarbs?\b\.?"#),
+            .fiber: Pattern(#"\b(?:dietary\s*)?fib(?:er|re)\b"#),
+            // "Includes 10g Added Sugars" and "Sugar Alcohol" are other rows.
+            .sugar: Pattern(#"\btotal\s*sugars?\b|^sugars?\b(?!\s*alc)"#),
+            .protein: Pattern(#"\bprotein\b|\bprote[ií]nas?\b"#),
+            .sodium: Pattern(#"\bsodium\b"#),
+        ]
+        /// The panel's other rows, which end a joined row too: "Total Sugars 12g (Incl. 10g Added
+        /// Sugars)", "Protein 3g Vitamin D 2mcg".
+        private static let otherRows = Pattern(
+            #"\btrans\.?\s*fat\b|\bcholest(?:erol|\.)?|\bincl(?:udes|\.)?(?!\w)|\badded\s*sugars?\b|\bsugars?\b|\bvit(?:amin|\.)?\s*[a-z](?:\d|\b)"#
+                + #"|\bcalcium\b|\biron\b|\bpotas(?:sium|\.)?|\bfat\s*cal\b|\bcalories\s*from\s*fat\b"#)
+        private static let rowStarts = Array(rows.values) + [otherRows]
+        /// Footnote lines, whose numbers are never this food's: "Calories per gram: Fat 9 …", "a
+        /// 2,000 calorie diet".
+        private static let footnote = Pattern(#"per\s*gram|calorie\s*diet|calories\s*a\s*day"#)
+        /// Rows that name a nutrient without giving this food's amount. A % Daily Value needs no
+        /// entry: `LabelAssist.amounts` never reads one, so "Total Fat 7g (9% DV)" still gives 7.
+        private static let notAmount = Pattern(#"from\s*fat|fat\s*cal\b|lowered|less\s*than\s*\d[\d,]+"#)
     }
 }

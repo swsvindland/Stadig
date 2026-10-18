@@ -199,6 +199,49 @@ struct SeenFoodsTests {
         #expect(SeenFoods.read(reply([item("chai", 1, "cup", 240)]), description: "a chai").map(\.name) == ["chai"])
     }
 
+    @Test func anEspressoDrinksMilkAndSizeComeFromItsOwnItem() {
+        func cup(_ description: String, _ items: [MealReply.Item]) -> [String] {
+            SeenFoods.read(reply(items), description: description).map { "\(Int($0.quantity)) \($0.name)" }
+        }
+        // Another food's almond or size word is not the drink's.
+        #expect(cup("a latte and an almond croissant", [item("latte", 1, "cup", 350), item("almond croissant", 1, "piece", 70)])
+            == ["60 espresso", "280 whole milk", "1 almond croissant"])
+        #expect(cup("a latte and a large croissant", [item("latte", 1, "cup", 350), item("croissant", 1, "piece", 70)])
+            == ["60 espresso", "280 whole milk", "1 croissant"])
+        #expect(cup("a small latte and a big muffin", [item("latte", 1, "cup", 350), item("muffin", 1, "piece", 110)])
+            == ["45 espresso", "210 whole milk", "1 muffin"])
+        #expect(cup("a latte with an almond croissant", [item("latte", 1, "cup", 350), item("almond croissant", 1, "piece", 70)])
+            == ["60 espresso", "280 whole milk", "1 almond croissant"])
+        // Two drinks, each with its own milk, by name or by what was ordered.
+        let named = cup("an oat milk latte and a soy cappuccino", [item("oat milk latte", 1, "cup", 350), item("soy cappuccino", 1, "cup", 180)])
+        #expect(named == ["60 espresso", "280 oat milk", "60 espresso", "120 soy milk"])
+        let ordered = cup("an oat milk latte and a soy cappuccino", [item("latte", 1, "cup", 350), item("cappuccino", 1, "cup", 180)])
+        #expect(ordered == ["60 espresso", "280 oat milk", "60 espresso", "120 soy milk"])
+        #expect(cup("a latte with oat milk", [item("latte", 1, "cup", 350)]) == ["60 espresso", "280 oat milk"])
+        #expect(cup("a 2% latte", [item("latte", 1, "cup", 350)]) == ["60 espresso", "280 2% milk"])
+    }
+
+    @Test func milkOrCoffeeOrderedOnItsOwnIsKept() {
+        func names(_ description: String, _ items: [MealReply.Item]) -> [String] {
+            SeenFoods.read(reply(items), description: description).map(\.name)
+        }
+        #expect(names("a mocha and a glass of milk", [item("Mocha", 1, "cup", 300), item("Milk", 1, "glass", 250)])
+            == ["espresso", "whole milk", "chocolate syrup", "Milk"])
+        #expect(names("cereal with milk and a latte", [item("Cereal", 1, "cup", 40), item("Milk", 1, "cup", 240), item("Latte", 1, "cup", 350)])
+            == ["Cereal", "Milk", "espresso", "whole milk"])
+        #expect(names("a latte and a coffee", [item("Latte", 1, "cup", 350), item("Coffee", 1, "cup", 240)]) == ["espresso", "whole milk", "Coffee"])
+        // The drink's own milk, said with it, is still absorbed.
+        #expect(names("a latte with oat milk", [item("latte", 1, "cup", 350), item("oat milk", 1, "cup", 240)]) == ["espresso", "oat milk"])
+        // A photo's milk beside a latte is the latte's, and its kind is the latte's milk.
+        let photo = SeenFoods.read(reply([item("oat milk", 1, "cup", 240), item("latte", 1, "cup", 350)], scene: "a latte", food: true), photo: true)
+        #expect(photo.map(\.name) == ["espresso", "oat milk"])
+        // So is a milk added "with" the drink, in a photo's note or after a comma.
+        let noted = SeenFoods.read(reply([item("latte", 1, "cup", 350), item("oat milk", 1, "cup", 240)], scene: "a latte", food: true),
+                                   description: "with oat milk", photo: true)
+        #expect(noted.map(\.name) == ["espresso", "oat milk"])
+        #expect(names("a latte, with oat milk", [item("latte", 1, "cup", 350), item("oat milk", 1, "cup", 240)]) == ["espresso", "oat milk"])
+    }
+
     @Test func theDishADescriptionNames() throws {
         let chain = try #require(Chain.find(in: "big mac from mcdonalds and a banana"))
         let (dish, others) = SeenFoods.dishNamed(by: chain)
@@ -232,6 +275,40 @@ struct StatedAmountTests {
                                description: "large pepperoni, ate 3 slices", photo: true).first?.quantity == 3)
         // "150 g" in the unit field is 150 g.
         #expect(read("", [item("Greek yogurt", 1, "150 g", 150)]) == ["150 g Greek yogurt 150"])
+    }
+
+    @Test func fractionsAndQuantityWordsAreReadWhole() {
+        // "1/2" is a half, not 1 with "/2 bagel" left over.
+        #expect(read("1/2 bagel with cream cheese", [item("bagel", 0.5, "piece", 50), item("cream cheese", 1, "tbsp", 15)])
+            == ["0.5 piece bagel 50", "1 tbsp cream cheese 15"])
+        #expect(read("1/2 bagel", [item("bagel", 1, "piece", 100)]) == ["0.5 piece bagel 50"])
+        #expect(read("1 1/2 slices of toast", [item("Toast", 1, "slice", 30)]) == ["1.5 slices Toast 45"])
+        #expect(read("1½ slices of toast", [item("Toast", 1, "slice", 30)]) == ["1.5 slices Toast 45"])
+        #expect(read("3/4 cup of oats", [item("Oats", 1, "cup", 80)]) == ["0.75 cup Oats 60"])
+        // An article before a quantity word or an amount gives way to it.
+        #expect(read("a couple of slices of pizza", [item("Pizza", 2, "slice", 220)]) == ["2 slice Pizza 220"])
+        #expect(read("a couple of slices of pizza", [item("Pizza", 1, "slice", 110)]) == ["2 slices Pizza 220"])
+        #expect(read("a dozen eggs", [item("Eggs", 1, "piece", 50)]) == ["12 piece Eggs 600"])
+        #expect(read("a pair of eggs", [item("Eggs", 1, "piece", 50)]) == ["2 piece Eggs 100"])
+        #expect(read("a half dozen eggs", [item("Eggs", 1, "piece", 50)]) == ["6 piece Eggs 300"])
+        #expect(read("half a dozen eggs", [item("Eggs", 1, "piece", 50)]) == ["6 piece Eggs 300"])
+        #expect(read("an 8 oz steak", [item("Steak", 1, "piece", 170)]) == ["8 oz Steak 226.796"])
+        // "A few" and "a handful" say no amount: the model's stands.
+        #expect(read("a few cookies", [item("Cookies", 3, "piece", 45)]) == ["3 piece Cookies 45"])
+        #expect(read("a bunch of grapes", [item("Grapes", 20, "piece", 100)]) == ["20 piece Grapes 100"])
+        // A plain article still counts one.
+        #expect(read("a banana", [item("Banana", 2, "piece", 236)]) == ["1 piece Banana 118"])
+    }
+
+    @Test func aFatLevelOrASizeIsNotACount() {
+        #expect(read("cereal with 2% milk", [item("Cereal", 1, "cup", 40), item("2% milk", 1, "glass", 250)])
+            == ["1 cup Cereal 40", "1 glass 2% milk 250"])
+        #expect(read("6 inch turkey sub", [item("Turkey sub", 1, "sandwich", 230)]) == ["1 sandwich Turkey sub 230"])
+        #expect(read("a 12-inch pizza", [item("Pizza", 1, "pizza", 800)]) == ["1 pizza Pizza 800"])
+        #expect(read("12-inch pizza", [item("Pizza", 1, "pizza", 800)]) == ["1 pizza Pizza 800"])
+        // Nor is the start of a longer number.
+        #expect(read("cereal with 1.5% milk", [item("Cereal", 1, "cup", 40), item("1.5% milk", 2, "glass", 500)])
+            == ["1 cup Cereal 40", "2 glass 1.5% milk 500"])
     }
 
     @Test func aDescribedWholeDishKeepsItsToppings() {

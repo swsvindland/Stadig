@@ -49,7 +49,22 @@ enum Amounts {
         let portions = Measures.portions(of: food)
         if serving {
             let first = portions.first { $0.index == 0 }.map(portionUnit)
-            guard let measured else { return done(quantity, first ?? .basis, count: quantity, exact: true) }
+            guard let measured else {
+                // A serving of "3 cookies" counts cookies: three of them are one serving, not three,
+                // and a "piece" of it is a cookie. A count of something the serving doesn't hold is
+                // only a guess. The food's name says what a piece or "2 large" is, but "a pack of
+                // peanut butter crackers" counts packs, not crackers.
+                if unit != "serving", let held = Measures.servingCount(food) {
+                    let counted = unit == "piece" || FoodText.sizes.contains(unit)
+                    let said = counted ? FoodText.nameWords(seen.name).map(FoodText.stem) : [unit]
+                    let pieces = counted && held.count > 1
+                    guard pieces || said.contains(where: { FoodText.same($0, held.noun) || FoodText.same(held.noun, $0) }) else {
+                        return done(quantity, first ?? .basis, count: quantity, exact: false)
+                    }
+                    return done(quantity / held.count, first ?? .basis, exact: true)
+                }
+                return done(quantity, first ?? .basis, count: quantity, exact: true)
+            }
             // "30 g" is 30 g worth of servings, not 30 of them. Without a serving weight it is one
             // serving, which is only a guess.
             let size = Measures.servingSize(food)

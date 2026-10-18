@@ -19,17 +19,15 @@ struct LabelGuess: Sendable, Equatable {
 
     init(name: String?, brand: String?, servingSize: String? = nil, servingGrams: Double? = nil, values: [Field: Double] = [:]) {
         self.name = name.map { FoodText.clean($0, limit: 60) }?.nilIfEmpty
-        self.brand = brand.map { FoodText.clean($0, limit: 60) }?.nilIfEmpty.flatMap { Self.noBrand.matches($0) ? nil : $0 }
+        self.brand = Brands.clean(brand, limit: 60)
         self.servingSize = servingSize.map { FoodText.clean($0, limit: 40) }?.nilIfEmpty
         self.servingGrams = servingGrams
         self.values = values
     }
-
-    private static let noBrand = Pattern(#"^(?:none|n/?a|unknown|generic|-)$"#)
 }
 
 /// Fills gaps in a thin label parse with values the model copied, keeping only numbers that are
-/// actually printed in the OCR text: the model may read, never invent.
+/// actually printed in the OCR text, each on its own row: the model may read, never invent.
 enum LabelAssist {
     /// Fewer fields than this and the parse is worth a second reader.
     static let thinFields = 4
@@ -37,14 +35,10 @@ enum LabelAssist {
     static func isThin(_ reading: LabelReading?) -> Bool { (reading?.fieldsRead ?? 0) < thinFields }
 
     static func fill(_ reading: LabelReading?, with guess: LabelGuess, lines: [String]) -> LabelReading? {
-        let printed = numbers(in: lines)
-        func verified(_ value: Double?) -> Double? {
-            guard let value, value >= 0, value.isFinite else { return nil }
-            return printed.contains { abs($0 - value) < 0.01 } ? value : nil
-        }
-        let values = guess.values.compactMapValues(verified)
-        let grams = verified(guess.servingGrams)
-        let serving = guess.servingSize.flatMap { size in numbers(in: [size]).allSatisfy { verified($0) != nil } ? size : nil }
+        let printed = LiveCheck.Printed(lines)
+        let values = guess.values.filter { printed.contains($0.value, as: $0.key) }
+        let grams = guess.servingGrams.flatMap { printed.contains($0) ? $0 : nil }
+        let serving = guess.servingSize.flatMap { size in numbers(in: [size]).allSatisfy(printed.contains) ? size : nil }
 
         guard var reading else {
             let kcal = values[.kcal]
@@ -91,11 +85,18 @@ enum LabelAssist {
     }
 
     private static let number = Pattern(#"\d+(?:[.,]\d+)*"#)
+    // Not a shorter part of a longer number either: "10%" is not 1.
+    private static let amount = Pattern(#"\d+(?:[.,]\d+)*(?!\d|[.,]\d|\s*%)"#)
 
     /// Every number printed in the text, reading a comma as a thousands separator and as a decimal point.
-    static func numbers(in lines: [String]) -> [Double] {
+    static func numbers(in lines: [String]) -> [Double] { read(number, in: lines) }
+
+    /// The same without the % Daily Values, which are never a value's amount.
+    static func amounts(in lines: [String]) -> [Double] { read(amount, in: lines) }
+
+    private static func read(_ pattern: Pattern, in lines: [String]) -> [Double] {
         lines.flatMap { line in
-            number.allMatches(in: line).flatMap { match -> [Double] in
+            pattern.allMatches(in: line).flatMap { match -> [Double] in
                 let text = match[0]
                 return [Double(text.replacingOccurrences(of: ",", with: "")), Double(text.replacingOccurrences(of: ",", with: "."))]
                     .compactMap { $0 }

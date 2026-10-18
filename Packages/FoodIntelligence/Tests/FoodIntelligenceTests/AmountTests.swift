@@ -120,6 +120,37 @@ struct AmountTests {
         }
     }
 
+    @Test func aServingOfSeveralPiecesCountsThePieces() {
+        // A label read without its grams: one serving is three cookies.
+        let oreos = food("Oreo", basis: .serving, portions: [("1 serving (3 cookies)", 1)])
+        let serving = CountUnit.measure("serving", perUnit: 1)
+        #expect(resolve(seen("oreos", quantity: 3, unit: "cookie"), oreos) == ResolvedAmount(amount: 1, unit: serving, count: 1, exact: true))
+        #expect(resolve(seen("oreos", quantity: 6, unit: "cookies"), oreos).amount == 2)
+        #expect(resolve(seen("oreo cookies", quantity: 3), oreos).amount == 1)
+        let two = resolve(seen("oreos", quantity: 2, unit: "cookie"), oreos)
+        #expect(two.amount == 0.67 && two.exact)
+        // Servings are still servings.
+        #expect(resolve(seen("oreos", quantity: 2, unit: "serving"), oreos) == ResolvedAmount(amount: 2, unit: serving, count: 2, exact: true))
+        // A count of something the serving doesn't hold is a guess, even when the food's name holds it.
+        #expect(!resolve(seen("oreos", quantity: 3, unit: "slice"), oreos).exact)
+        let crackers = food(basis: .serving, portions: [("1 serving (6 crackers)", 1)])
+        let pack = resolve(seen("peanut butter crackers", quantity: 1, unit: "pack"), crackers)
+        #expect(pack.amount == 1 && !pack.exact)
+        #expect(resolve(seen("eggs", quantity: 2, unit: "large"), food(basis: .serving, portions: [("1 serving (2 eggs)", 1)])).amount == 1)
+        let bars = food(basis: .serving, portions: [("1 serving (2 bars)", 1)])
+        #expect(resolve(seen("protein bar", quantity: 1), bars).amount == 0.5)
+        #expect(Measures.servingCount(bars)?.count == 2 && Measures.servingCount(bars)?.noun == "bar")
+        // Half a bar a serving: a bar is two servings, but a "piece" of something unnamed says nothing.
+        let half = food(basis: .serving, portions: [("1 serving (1/2 bar)", 1)])
+        #expect(resolve(seen("granola", quantity: 1, unit: "bar"), half) == ResolvedAmount(amount: 2, unit: serving, count: 2, exact: true))
+        #expect(resolve(seen("granola bar", quantity: 1), half).amount == 2)
+        #expect(!resolve(seen("granola", quantity: 1), half).exact)
+        // One of something, or a measure, is left to the other rules.
+        #expect(Measures.servingCount(food(basis: .serving, portions: [("1 serving (1 scoop)", 1)])) == nil)
+        #expect(Measures.servingCount(food(basis: .serving, portions: [("1 serving (2 tbsp (32g))", 1)])) == nil)
+        #expect(Measures.servingCount(food(basis: .serving, portions: [("1 serving (30 g)", 1)])) == nil)
+    }
+
     @Test func theCatalogsOwnUnitIsUsedWhenItHasOne() {
         let egg = food("Egg", portions: [("1 cup", 243), ("1 large", 46)])
         let large = PortionUnit(id: "u:large", label: "large", kind: .portion, amount: 46)
@@ -152,5 +183,18 @@ struct AmountTests {
         #expect(!Drafting.stated(seen("Butter", unit: "tbsp"), in: said))
         #expect(Drafting.stated(seen("Banana"), in: "a protein shake with a large banana"))
         #expect(!Drafting.stated(seen("Eggs", quantity: 2), in: ""))
+    }
+
+    @Test func aUnitSaidOfAnotherFoodIsThatFoods() {
+        let (toast, bacon) = (seen("Toast", unit: "slice"), seen("Bacon", quantity: 2, unit: "slice"))
+        let said = "toast and 2 slices of bacon"
+        #expect(!Drafting.stated(toast, in: said, among: [toast, bacon]))
+        #expect(Drafting.stated(bacon, in: said, among: [toast, bacon]))
+        #expect(Drafting.stated(toast, in: "a slice of toast and 2 slices of bacon", among: [toast, bacon]))
+        // A unit with no food after it, or a food the model calls something else, is still said.
+        let pizza = seen("Pepperoni pizza", quantity: 3, unit: "slice"), knots = seen("Garlic knots", quantity: 2)
+        #expect(Drafting.stated(pizza, in: "large pepperoni from dominos, ate 3 slices", among: [pizza, knots]))
+        let cola = seen("Cola", unit: "can")
+        #expect(Drafting.stated(cola, in: "a can of soda and fries", among: [cola, seen("French fries", unit: "serving")]))
     }
 }

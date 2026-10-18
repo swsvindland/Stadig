@@ -67,6 +67,52 @@ struct LiveScanTests {
         #expect(LiveCheck.label(LabelGuess(name: nil, brand: nil, servingSize: "55g"), panel: ["Serving size 55g"]).servingLabel == nil)
     }
 
+    @Test func aModelsCheckKeepsAValueOnlyFromItsOwnRow() {
+        let panel = ["Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%",
+                     "Saturated Fat 1g 5%", "Sodium 160mg 7%", "Total Carbohydrate 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
+                     "Includes 10g Added Sugars 20%", "Protein 3g"]
+        // Sugar from the added-sugars row, sodium from a % Daily Value, fiber from the servings
+        // count and fat from saturated fat's row are all mix-ups.
+        let mixed = LabelGuess(name: nil, brand: nil, values: [.sugar: 10, .sodium: 7, .fiber: 8, .fat: 1, .protein: 3, .kcal: 230])
+        #expect(LiveCheck.label(mixed, panel: panel).values == ["protein": 3, "kcal": 230])
+        let right = LabelGuess(name: nil, brand: nil, values: [.sugar: 12, .sodium: 160, .fiber: 4, .fat: 8, .saturatedFat: 1, .carbs: 37])
+        #expect(LiveCheck.label(right, panel: panel).values == ["sugar": 12, "sodium": 160, "fiber": 4, "fat": 8, "saturatedFat": 1, "carbs": 37])
+        // Rows OCR joined, or a number on the line under its label, still count.
+        let joined = ["Total Fat 8g 10% Saturated Fat 1g 5%", "Calories", "230", "Calories per gram: Fat 9 Carbohydrate 4 Protein 4"]
+        let check = LiveCheck.label(LabelGuess(name: nil, brand: nil, values: [.fat: 8, .saturatedFat: 1, .kcal: 230, .carbs: 4]), panel: joined)
+        #expect(check.values == ["fat": 8, "saturatedFat": 1, "kcal": 230])
+        #expect(!LiveCheck.Printed(joined).contains(1, as: .fat))
+    }
+
+    @Test func aModelsCheckReadsBilingualLinearAndOldFormatRows() {
+        func kept(_ values: [LabelGuess.Field: Double], _ panel: [String]) -> [String: Double] {
+            LiveCheck.label(LabelGuess(name: nil, brand: nil, values: values), panel: panel).values
+        }
+        // A row's Spanish label is still its own row.
+        #expect(kept([.kcal: 230, .fat: 8, .protein: 3], ["Calories/Calorías 230", "Total Fat/Grasa Total 8g 10%", "Protein/Proteínas 3g"])
+            == ["kcal": 230, "fat": 8, "protein": 3])
+        // A linear label's % DV is skipped, not the row, and "Incl. 10g Added Sugars" is another row.
+        let linear = ["Amount per serving: Calories 190, Total Fat 7g (9% DV), Sat. Fat 2.5g (13% DV),",
+                      "Sodium 150mg (7% DV), Total Carb. 22g (8% DV), Fiber 3g (11% DV), Total Sugars 12g (Incl. 10g Added Sugars, 20% DV),",
+                      "Protein 10g. *Percent Daily Values are based on a 2,000 calorie diet."]
+        let all: [LabelGuess.Field: Double] = [.kcal: 190, .fat: 7, .saturatedFat: 2.5, .sodium: 150, .carbs: 22, .fiber: 3, .sugar: 12, .protein: 10]
+        #expect(kept(all, linear) == ["kcal": 190, "fat": 7, "saturatedFat": 2.5, "sodium": 150, "carbs": 22, "fiber": 3, "sugar": 12, "protein": 10])
+        #expect(kept([.sugar: 10, .fat: 9, .kcal: 2000], linear).isEmpty)
+        // The old format printed calories from fat on the calories row.
+        let old = ["Calories 250 Calories from Fat 110", "Total Fat 12g 18%"]
+        #expect(kept([.kcal: 250], old) == ["kcal": 250])
+        #expect(kept([.kcal: 110], old).isEmpty)
+    }
+
+    @Test func aModelsSupplementCheckDropsADailyValueAndANonBrand() {
+        let panel = ["Supplement Facts", "Serving Size 1 Softgel", "Vitamin D3 25 mcg 125%"]
+        let reply = SupplementReply(name: "Vitamin D3", brand: "N/A", servingSize: "1 softgel",
+                                    lines: [.init(name: "Vitamin D3", amount: 125, unit: "mcg")])
+        let check = LiveCheck.supplement(reply, panel: panel)
+        #expect(check.facts.ingredients.isEmpty, "125 is the % Daily Value, not the amount")
+        #expect(check.brand == nil)
+    }
+
     @Test func aModelsSupplementCheckKeepsTrackedPrintedLines() throws {
         let panel = ["Supplement Facts", "Serving Size Two Softgels", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
                      "DHA 450 mg †", "Lemon Oil 10 mg †"]

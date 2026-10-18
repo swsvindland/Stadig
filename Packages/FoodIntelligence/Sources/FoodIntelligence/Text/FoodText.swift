@@ -17,6 +17,13 @@ struct Pattern: Sendable {
         regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
+    /// Where the first match is, at or after `start`. The text before `start` still counts for `\b`,
+    /// and `^` is only ever the text's start.
+    func firstRange(in text: String, from start: String.Index? = nil) -> Range<String.Index>? {
+        let range = NSRange((start ?? text.startIndex)..., in: text)
+        return regex.firstMatch(in: text, options: [.withTransparentBounds, .withoutAnchoringBounds], range: range).flatMap { Range($0.range, in: text) }
+    }
+
     /// The first match's text, or one of its groups.
     func firstMatch(in text: String, group: Int = 0) -> String? {
         guard let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
@@ -126,6 +133,17 @@ enum FoodText {
     /// Trimmed, single-spaced and at most `limit` characters.
     static func clean(_ value: String, limit: Int = 80) -> String {
         String(value.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(limit))
+    }
+}
+
+/// Brands as the model writes them, which is sometimes a way of saying there isn't one.
+enum Brands {
+    private static let none = Pattern(#"^(?:none|n/?a|unknown|generic|homemade|no brand|unbranded|-)$"#)
+
+    /// The brand cleaned, or nil when it's empty or says there is none ("None", "N/A", "generic").
+    static func clean(_ value: String?, limit: Int = 80) -> String? {
+        let brand = FoodText.clean(value ?? "", limit: limit)
+        return brand.isEmpty || none.matches(brand) ? nil : brand
     }
 }
 

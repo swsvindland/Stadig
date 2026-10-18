@@ -44,8 +44,7 @@ enum SeenFoods {
         var keys: Set<String> = []
         for item in reply.items {
             var name = FoodText.clean(item.name)
-            let maker = FoodText.clean(item.brand)
-            var brand = noBrand.matches(maker) ? "" : maker
+            var brand = Brands.clean(item.brand) ?? ""
             let chain = Chain.find(in: brand.isEmpty ? name : brand)
             if let chain, brand.isEmpty {
                 // "dominos pepperoni pizza" is Domino's "pepperoni pizza".
@@ -167,7 +166,6 @@ enum SeenFoods {
 
     // MARK: Words
 
-    private static let noBrand = Pattern(#"^(?:none|n/?a|unknown|generic|homemade|no brand|unbranded|-)$"#)
     private static let edgeLinks = Pattern(#"^\W*(?:from|at|by)\b|\b(?:from|at|by)\W*$"#)
     private static let leadingCount = Pattern(#"^[\d./\s]+"#)
     private static let chatter = Pattern(#"\b(?:i|had|ate|got|some|my|a|an|the|from|at|of|for|lunch|dinner|breakfast)\b"#)

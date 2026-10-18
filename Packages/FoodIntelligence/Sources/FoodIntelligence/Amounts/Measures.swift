@@ -141,4 +141,16 @@ enum Measures {
         }
         return (weight, volume)
     }
+
+    /// How many of something one serving of a per-serving food holds, when its first portion says
+    /// and it isn't one: "1 serving (3 cookies)" is 3 of a "cookie", "1 serving (1/2 bar)" half a
+    /// "bar". Weights and volumes are left to `servingSize`.
+    static func servingCount(_ food: Food) -> (count: Double, noun: String)? {
+        guard let portion = food.portions.first, let serving = parsePortion(portion, index: 0), measureKey(serving.name) == "serving",
+              let inside = brackets.firstMatch(in: portion.label).map({ String($0.dropFirst().dropLast()) }),
+              let held = parsePortion(Portion(label: inside, amount: portion.amount), index: 0), measureKey(held.name) == nil
+        else { return nil }
+        let count = held.count / portion.amount
+        return count.isFinite && count > 0 && abs(count - 1) > 1e-9 ? (count, held.noun) : nil
+    }
 }

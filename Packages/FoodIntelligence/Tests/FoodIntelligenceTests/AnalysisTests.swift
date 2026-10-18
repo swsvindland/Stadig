@@ -94,6 +94,32 @@ struct AnalysisTests {
         #expect(model.requests.withLock { $0[0].1 }.contains(#"The person says: "large pepperoni from dominos, ate 3 slices""#))
     }
 
+    @Test func anAmountSaidOfOneFoodLeavesTheOtherAnEstimate() async throws {
+        let toast = food("Bread, toasted", kcal: 290, portions: [("1 slice", 30)])
+        let bacon = food("Bacon, cooked", kcal: 540, portions: [("1 slice", 8)])
+        let model = ScriptedModel(reply([item("Toast", 1, "slice", 30), item("Bacon", 2, "slice", 16)]))
+        let draft = try await run(model, FakeCatalog(scripted: ["toast": [match(toast, 3)], "bacon": [match(bacon, 3)]]),
+                                  description: "toast and 2 slices of bacon")
+        #expect(draft.items.map(\.approximate) == [true, false], "the person said how much bacon, not how much toast")
+    }
+
+    @Test func aLongDescriptionReachesTheModelWhole() async throws {
+        // A dictated day, with its last foods past the 500th character.
+        let day = "for breakfast I had two scrambled eggs on sourdough toast with butter and a flat white, then mid morning "
+            + "an apple and a handful of almonds, for lunch a chicken caesar salad with croutons and parmesan and a diet coke, "
+            + "in the afternoon a protein bar and a coffee with oat milk, for dinner salmon with rice and broccoli and a glass "
+            + "of white wine, and after dinner a square of dark chocolate, some strawberries with whipped cream, a few crackers "
+            + "with cheddar cheese and a cup of chamomile tea with honey, and before bed a banana and a protein shake"
+        #expect(try #require(day.range(of: "a banana")).lowerBound.utf16Offset(in: day) > 500)
+        let model = ScriptedModel(reply([item("banana", 1, "piece", 118), item("protein shake", 1, "cup", 300)]))
+        _ = try await run(model, FakeCatalog(), description: day)
+        let prompt = try #require(model.requests.withLock { $0.first?.1 })
+        #expect(prompt.contains("a banana and a protein shake"), "\(prompt)")
+        #expect(Prompts.meal(description: String(repeating: "egg ", count: 600), photo: false).count > Prompts.descriptionLimit)
+        // A photo's note is a few words.
+        #expect(Prompts.meal(description: String(repeating: "egg ", count: 600), photo: true).count < Prompts.noteLimit + 100)
+    }
+
     @Test func thePersonsOwnFoodsArePreferred() async throws {
         let oats = food("My overnight oats", id: "custom:oats", basis: .serving, kcal: 380, portions: [("1 jar", 1)], source: .custom)
         let model = ScriptedModel(reply([item("overnight oats", 1, "jar", 300)]))
