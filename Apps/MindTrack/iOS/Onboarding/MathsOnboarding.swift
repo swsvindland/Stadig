@@ -9,6 +9,7 @@ struct MathsOnboarding: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Maths").font(.title.bold())
+                .accessibilityIdentifier("onboarding.mathsTitle")
             Text("Three strands, each with its own level. The first session places each one with a short test that steps up and down, so there's nothing to remember about school.")
                 .foregroundStyle(.secondary)
             ForEach(MathsStrand.allCases) { strand in
@@ -35,6 +36,7 @@ struct MathsOnboarding: View {
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityHint(strand == .numeracy ? "Always on" : "")
+                .accessibilityIdentifier("onboarding.strand.\(strand.rawValue)")
             }
             if MathsChoices.both(settings) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -68,6 +70,7 @@ struct MathsSettings: View {
                     model.save(settings: s)
                 }))
                 .disabled(strand == .numeracy)
+                .accessibilityIdentifier("settings.strand.\(strand.rawValue)")
             }
             if MathsChoices.both(settings) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -106,6 +109,7 @@ enum MathsChoices {
                 Text(MathsStrand.discrete.label).tag(MathsStrand.discrete)
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("maths.mattersMore")
         }
     }
 }

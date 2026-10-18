@@ -13,6 +13,7 @@ struct ReadingOnboarding: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Reading").font(.title.bold())
+                .accessibilityIdentifier("onboarding.readingTitle")
             Text("Your level comes from a short reading test in the first session: a few passages, a few questions each. Here, only what you're reading now and what you've read in the last twelve months.")
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
@@ -29,6 +30,7 @@ struct ReadingOnboarding: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(on ? .isSelected : [])
+                        .accessibilityIdentifier("onboarding.genre.\(genre.rawValue)")
                     }
                 }
             }
@@ -77,10 +79,12 @@ private struct BookList: View {
                     Spacer()
                     Button("Remove", systemImage: "minus.circle") { remove(book) }
                         .labelStyle(.iconOnly).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("onboarding.removeBook.\(book.id)")
                 }
             }
             if let add {
                 Button(add, systemImage: "plus", action: adding).font(.subheadline)
+                    .accessibilityIdentifier("onboarding.addBook")
             }
         }
         .card()
@@ -105,11 +109,13 @@ struct ReadingSettings: View {
                     s.genres = on ? s.genres + [genre] : s.genres.filter { $0 != genre }
                     model.save(settings: s)
                 }))
+                .accessibilityIdentifier("settings.genre.\(genre.rawValue)")
             }
             Button("Your shelf", systemImage: "books.vertical") {
                 dismiss()
                 model.showShelf = true
             }
+            .accessibilityIdentifier("settings.shelf")
         } header: {
             Text("Reading")
         } footer: {

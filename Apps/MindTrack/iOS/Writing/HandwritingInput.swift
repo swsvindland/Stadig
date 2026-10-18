@@ -49,8 +49,11 @@ struct HandwritingPad: UIViewRepresentable {
         func canvasViewDrawingDidChange(_ canvas: PKCanvasView) { drawing.wrappedValue = canvas.drawing }
     }
 
-    /// The drawing as dark ink on white, cropped to what's written, for text recognition.
-    static func image(of drawing: PKDrawing) -> CGImage? {
+    /// The drawing as dark ink on white, cropped to what's written, for text recognition. A full
+    /// page is two large bitmaps, so it's drawn off the main actor.
+    @concurrent nonisolated static func inkImage(of drawing: PKDrawing) async -> CGImage? { image(of: drawing) }
+
+    nonisolated static func image(of drawing: PKDrawing) -> CGImage? {
         guard !drawing.strokes.isEmpty else { return nil }
         let bounds = drawing.bounds.insetBy(dx: -24, dy: -24)
         var ink: UIImage?

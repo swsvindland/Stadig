@@ -12,7 +12,7 @@ struct ReadingProgress: View {
 
     var body: some View {
         let reading = analysis.reading
-        let series = Analyst.series(.reading, state: state)
+        let series = model.series(.reading)
         let tests = state.tests.filter { $0.test == .readingTest && $0.domain == .reading }
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {

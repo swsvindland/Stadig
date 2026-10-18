@@ -1,5 +1,6 @@
 import SwiftUI
 import MindEngine
+import SystemCore
 
 /// Two pieces, unlabelled and in random order: which is stronger? The AI judges the same pair
 /// blind while the person reads, and its pick is kept back until theirs is in. Picking the newer
@@ -37,6 +38,7 @@ struct CompareView: View {
                         }
                         .primaryAction()
                         .controlSize(.large)
+                        .accessibilityIdentifier("compare.pick.\(index)")
                     }
                 }
             }
@@ -44,7 +46,7 @@ struct CompareView: View {
         .task(id: pair.id) { WritingAssistant.shared.requestOpinion(on: pair, model: model) }
         #if DEBUG
         .task {
-            if ProcessInfo.processInfo.arguments.contains("-autoPick") { pick(pair.first.id == pair.newer.id ? 0 : 1) }
+            if LaunchOptions.current.has("-autoPick") { pick(pair.first.id == pair.newer.id ? 0 : 1) }
         }
         #endif
     }

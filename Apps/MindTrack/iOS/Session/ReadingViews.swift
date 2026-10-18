@@ -21,11 +21,14 @@ struct PickBookView: View {
                         LadderBookRow(book: book)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("pickBook.book.\(book.id)")
                 }
                 Button("Add a book of your own", systemImage: "plus") { addingOwn = true }
+                    .accessibilityIdentifier("pickBook.addOwn")
                     .padding(.top, 4)
                 Button("Not today") { model.act { $0.skipPart(now: Date()) } }
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("pickBook.notToday")
             }
             .padding(20)
             .readableWidth(640)
@@ -119,6 +122,7 @@ struct ReadingTimerView: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("reading.done")
             }
         }
         .sheet(isPresented: $logging) {
@@ -201,7 +205,20 @@ struct PageSheet: View {
     @State private var feel: BookFeel?
     @State private var focus: ReadingFocus?
 
+    /// Where the bookmark was.
+    var from: Int { book.page }
+
+    /// The page given, kept within the book.
+    var bookmark: Int {
+        var read = book
+        read.page = page
+        return read.normalized().page
+    }
+
     init(book: Book, finished: Bool = false, asksFocus: Bool = false, save: @escaping (Int, Bool, BookFeel?, ReadingFocus?) -> Void) {
+        // Kept within its bounds: a page count corrected below the bookmark (another edition)
+        // mustn't make the range run backwards.
+        let book = book.normalized()
         self.book = book
         self.asksFocus = asksFocus
         self.save = save
@@ -214,14 +231,17 @@ struct PageSheet: View {
             Form {
                 Section {
                     Toggle("I finished it", isOn: $finished)
+                        .accessibilityIdentifier("pageSheet.finished")
                     if !finished {
-                        Stepper(value: $page, in: book.page...book.pages, step: 1) {
+                        Stepper(value: $page, in: from...book.pages, step: 1) {
                             LabeledContent("Now on page", value: "\(page)")
                         }
+                        .accessibilityIdentifier("pageSheet.stepper")
                         TextField("Page", value: $page, format: .number).keyboardType(.numberPad)
+                            .accessibilityIdentifier("pageSheet.page")
                     }
                 } footer: {
-                    if !finished { Text("\(max(0, page - book.page)) pages this time.") }
+                    if !finished { Text("\(max(0, page - from)) pages this time.") }
                 }
                 if asksFocus {
                     Section {
@@ -249,12 +269,13 @@ struct PageSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        save(min(page, book.pages), finished, finished ? (feel ?? .right) : nil, asksFocus ? focus : nil)
+                        save(bookmark, finished, finished ? (feel ?? .right) : nil, asksFocus ? focus : nil)
                         dismiss()
                     }
                     .disabled(finished && feel == nil)
+                    .accessibilityIdentifier("pageSheet.save")
                 }
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("pageSheet.cancel") }
             }
         }
         .presentationDetents([.medium, .large])
@@ -295,6 +316,7 @@ struct ReflectView: View {
                     }
                     .secondaryAction()
                     .controlSize(.large)
+                    .accessibilityIdentifier("reflect.skip")
                     Button {
                         let note = text
                         model.act { $0.reflect(note, now: Date()) }
@@ -304,6 +326,7 @@ struct ReflectView: View {
                     .primaryAction()
                     .controlSize(.large)
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("reflect.save")
                 }
             }
         }
@@ -344,8 +367,11 @@ struct BookEditor: View {
             Form {
                 Section {
                     TextField("Title", text: $title)
+                        .accessibilityIdentifier("bookEditor.title")
                     TextField("Author", text: $author)
+                        .accessibilityIdentifier("bookEditor.author")
                     Stepper(value: $pages, in: 40...2000, step: 10) { LabeledContent("Pages", value: "\(pages)") }
+                        .accessibilityIdentifier("bookEditor.pages")
                     Picker("Genre", selection: $genre) { ForEach(Genre.allCases) { Text($0.label).tag($0) } }
                 }
                 Section {
@@ -376,13 +402,14 @@ struct BookEditor: View {
             .navigationTitle(book == nil ? "Add a book" : "Edit book")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookEditor.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         save(edited)
                         dismiss()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || (finishedBefore && feel == nil))
+                    .accessibilityIdentifier("bookEditor.save")
                 }
             }
             .onAppear(perform: fill)
@@ -412,7 +439,8 @@ struct BookEditor: View {
             edited.page = edited.pages
             edited.finished = edited.finished ?? Day.today
         }
-        return edited
+        // Fewer pages than the bookmark (another edition): the bookmark moves to the end.
+        return edited.normalized()
     }
 
     func fill() {

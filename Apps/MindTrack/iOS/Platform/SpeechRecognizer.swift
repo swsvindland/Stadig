@@ -4,6 +4,7 @@ import Observation
 import OSLog
 import Speech
 import MindEngine
+import SystemCore
 
 /// Listens for a spoken answer in the language being learned, on the device: Apple's SpeechAnalyzer
 /// with a transcriber for the language's locale, its model downloaded the first time a language is
@@ -31,8 +32,21 @@ final class SpeechRecognizer {
     @ObservationIgnored private var input: AsyncStream<AnalyzerInput>.Continuation?
     @ObservationIgnored private var results: Task<Void, Never>?
     @ObservationIgnored private var settled = ""
+    /// Moves with every start, finish and cancel. A start checks it after each wait (permission, the
+    /// model's download, the analyzer starting) and gives up if it moved: the step was left meanwhile.
+    @ObservationIgnored private var attempt = 0
+    /// A start is on its way, so a second tap doesn't start another.
+    @ObservationIgnored private var starting = false
 
     var isListening: Bool { status == .listening }
+
+    /// Getting ready or wrapping up: the microphone button waits.
+    var isBusy: Bool {
+        switch status {
+        case .preparing, .finishing: true
+        case .idle, .listening, .unavailable: false
+        }
+    }
 
     /// Whether this device can recognise a language on the device, without asking for anything.
     func supports(_ language: Language) async -> Bool {
@@ -41,8 +55,10 @@ final class SpeechRecognizer {
         return await DictationTranscriber.supportedLocale(equivalentTo: locale) != nil
     }
 
-    /// The microphone and speech recognition, asked for once.
+    /// The microphone and speech recognition, asked for once. Never under tests or UI tests, whose
+    /// runs a permission alert would block: speaking is skipped there (or faked, with `-fakeSpeech`).
     func authorise() async -> Bool {
+        guard !LaunchOptions.current.isQuiet else { return false }
         guard await AVAudioApplication.requestRecordPermission() else { return false }
         return await Self.speechAuthorisation() == .authorized
     }
@@ -53,59 +69,81 @@ final class SpeechRecognizer {
 
     /// Starts listening in a language.
     func start(_ language: Language) async {
-        guard analyzer == nil else { return }
+        guard analyzer == nil, !starting else { return }
+        starting = true
+        attempt += 1
+        let mine = attempt
+        defer { if attempt == mine { starting = false } }
         heard = ""
         settled = ""
-        guard await authorise() else {
+        let authorised = await authorise()
+        guard attempt == mine else { return }
+        guard authorised else {
             status = .unavailable("Allow the microphone and speech recognition for Mind Track in Settings to answer out loud.")
             return
         }
         let name = language.pack.name
         let locale = Locale(identifier: language.pack.locale)
         let module: any SpeechModule
+        // What reads the transcriber's results, started only once listening really begins.
+        let listen: () -> Task<Void, Never>
         if SpeechTranscriber.isAvailable, let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
             let transcriber = SpeechTranscriber(locale: supported, transcriptionOptions: [], reportingOptions: [.volatileResults],
                                                 attributeOptions: [])
             module = transcriber
-            results = Task { [weak self] in
-                do {
-                    for try await result in transcriber.results { self?.receive(String(result.text.characters), final: result.isFinal) }
-                } catch {
-                    appLog.error("Speech results ended: \(error.localizedDescription)")
+            listen = { [weak self] in
+                Task { [weak self] in
+                    do {
+                        for try await result in transcriber.results { self?.receive(String(result.text.characters), final: result.isFinal) }
+                    } catch {
+                        appLog.error("Speech results ended: \(error.localizedDescription)")
+                    }
                 }
             }
         } else if let supported = await DictationTranscriber.supportedLocale(equivalentTo: locale) {
             let transcriber = DictationTranscriber(locale: supported, preset: .progressiveShortDictation)
             module = transcriber
-            results = Task { [weak self] in
-                do {
-                    for try await result in transcriber.results { self?.receive(String(result.text.characters), final: result.isFinal) }
-                } catch {
-                    appLog.error("Speech results ended: \(error.localizedDescription)")
+            listen = { [weak self] in
+                Task { [weak self] in
+                    do {
+                        for try await result in transcriber.results { self?.receive(String(result.text.characters), final: result.isFinal) }
+                    } catch {
+                        appLog.error("Speech results ended: \(error.localizedDescription)")
+                    }
                 }
             }
         } else {
+            guard attempt == mine else { return }
             status = .unavailable("This device can't recognise \(name) on the device.")
             return
         }
+        guard attempt == mine else { return }
         do {
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+                guard attempt == mine else { return }
                 status = .preparing("Getting \(name) speech recognition ready…")
+                // The first time a language is used this can take a while, and the step may be left.
                 try await request.downloadAndInstall()
+                guard attempt == mine else { return }
             }
             guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
                 throw SpeechError.noFormat
             }
+            guard attempt == mine else { return }
             let analyzer = SpeechAnalyzer(modules: [module])
             let (stream, continuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
             self.analyzer = analyzer
             input = continuation
-            try Self.record()
+            results = listen()
+            try AudioSession.startListening()
             try startEngine(converting: format, into: continuation)
             try await analyzer.start(inputSequence: stream)
+            // A cancel while the analyzer started has torn it down already.
+            guard attempt == mine else { return }
             lastChange = Date()
             status = .listening
         } catch {
+            guard attempt == mine else { return }
             appLog.error("Couldn't start listening: \(error.localizedDescription)")
             await cancel()
             status = .unavailable("Speech recognition couldn't start. Try again in a moment.")
@@ -114,32 +152,45 @@ final class SpeechRecognizer {
 
     /// Stops listening and returns everything heard.
     func finish() async -> String {
-        guard let analyzer else { return heard }
+        guard let analyzer else {
+            // Nothing is listening, so nothing should say it is.
+            if status == .listening { status = .idle }
+            return heard
+        }
+        attempt += 1
+        let mine = attempt
+        starting = false
         status = .finishing
         stopEngine()
         input?.finish()
         input = nil
+        let results = results
         do { try await analyzer.finalizeAndFinishThroughEndOfInput() } catch { appLog.error("Speech didn't finish: \(error.localizedDescription)") }
         await results?.value
+        let said = heard
+        // Cancelled meanwhile (the step was left), and perhaps listening again since: leave that be.
+        guard attempt == mine else { return said }
         self.analyzer = nil
-        results = nil
-        Self.play()
+        self.results = nil
+        AudioSession.stopListening()
         status = .idle
-        return heard
+        return said
     }
 
-    /// Stops without an answer (the step was left).
+    /// Stops without an answer (the step was left), including a start still on its way.
     func cancel() async {
+        attempt += 1
+        starting = false
         stopEngine()
         input?.finish()
         input = nil
-        if let analyzer { await analyzer.cancelAndFinishNow() }
-        analyzer = nil
+        let analyzer = analyzer
+        self.analyzer = nil
         results?.cancel()
         results = nil
-        Self.play()
-        if case .unavailable = status { return }
-        status = .idle
+        AudioSession.stopListening()
+        if case .unavailable = status {} else { status = .idle }
+        if let analyzer { await analyzer.cancelAndFinishNow() }
     }
 
     private func receive(_ text: String, final: Bool) {
@@ -182,17 +233,6 @@ final class SpeechRecognizer {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
         }
-    }
-
-    private static func record() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
-        try session.setActive(true, options: .notifyOthersOnDeactivation)
-    }
-
-    /// Back to playback for the voice, as `Speech` sets it up.
-    private static func play() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
     }
 
     enum SpeechError: Error { case noFormat }

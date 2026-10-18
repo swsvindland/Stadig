@@ -42,6 +42,7 @@ struct TodayView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Settings", systemImage: "gearshape") { model.showSettings = true }
+                        .accessibilityIdentifier("today.settings")
                 }
             }
         }
@@ -71,6 +72,7 @@ private struct SessionCard: View {
                 if plan.kind != .regular { Pill(text: plan.kind.label, color: .accentColor) }
             }
             Text(plan.headline).font(.title2.bold())
+                .accessibilityIdentifier("today.headline")
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(plan.parts) { part in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -94,6 +96,7 @@ private struct SessionCard: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("today.start")
         }
         .card(padding: 18)
     }
@@ -106,6 +109,7 @@ private struct DoneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Done for today", systemImage: "checkmark.circle.fill").font(.title3.bold()).foregroundStyle(.green)
+                .accessibilityIdentifier("today.done")
             Text("\(Format.minutes(session.minutes)) of \(ListFormatter.localizedString(byJoining: session.domains.map(\.label))).")
                 .foregroundStyle(.secondary)
             StudyMoreMenu()
@@ -118,6 +122,7 @@ private struct RestCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Rest day", systemImage: "moon.zzz.fill").font(.title3.bold())
+                .accessibilityIdentifier("today.rest")
             Text("Rest is part of the plan, and spacing is what makes memory stick. Nothing is expected today.")
                 .foregroundStyle(.secondary)
             StudyMoreMenu()
@@ -132,6 +137,7 @@ private struct PausedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Mind Track is paused", systemImage: kind.symbol).font(.title3.bold())
+                .accessibilityIdentifier("today.paused")
             Text(detail).foregroundStyle(.secondary)
         }
         .card(padding: 18)
@@ -156,19 +162,23 @@ private struct StudyMoreMenu: View {
             Menu {
                 ForEach(settings.domains) { domain in
                     Button(domain.label, systemImage: domain.symbol) { model.startSession(domain == .maths && settings.has(.writing) ? [.maths, .writing] : [domain]) }
+                        .accessibilityIdentifier("today.studyAnyway.\(domain.rawValue)")
                 }
                 if (model.analysis?.dueToday ?? 0) > 0 {
                     Button("Five minutes of reviews", systemImage: "arrow.triangle.2.circlepath") { model.startExtraReview() }
+                        .accessibilityIdentifier("today.studyAnyway.reviews")
                 }
             } label: {
                 Label("Study anyway", systemImage: "plus")
             }
             .secondaryAction()
+            .accessibilityIdentifier("today.studyAnyway")
         }
     }
 }
 
-private struct ActionCard: View {
+/// Something worth doing today, and the button that starts it.
+struct ActionCard: View {
     @Environment(AppModel.self) private var model
     let action: MindAction
 
@@ -176,15 +186,16 @@ private struct ActionCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(action.title).font(.headline)
             Text(action.detail).font(.subheadline).foregroundStyle(.secondary)
-            Button(buttonTitle) { perform() }
+            Button(Self.buttonTitle(action.command)) { Self.perform(action.command, model: model) }
                 .secondaryAction()
+                .accessibilityIdentifier("today.action.\(action.id)")
         }
         .card()
     }
 
-    var buttonTitle: String {
-        switch action.kind {
-        case .extraReview: action.id == "pile" ? "Ten minutes of reviews" : "Five minutes"
+    static func buttonTitle(_ command: MindAction.Command) -> String {
+        switch command {
+        case .extraReview(let minutes): "\(spelledOut(minutes)) minutes of reviews"
         case .pickBook: "Choose a book"
         case .stalledBook: "Open the shelf"
         case .catchUp: "Catch up now"
@@ -192,14 +203,26 @@ private struct ActionCard: View {
         }
     }
 
-    func perform() {
-        switch action.kind {
-        case .extraReview: model.startExtraReview(minutes: action.id == "pile" ? 10 : 5)
+    /// Written out ("Ten"), as the menu's "Five minutes of reviews" and the actions' own titles write
+    /// a few minutes. In English whatever the region, like the words around it.
+    private static func spelledOut(_ count: Int) -> String {
+        let words = spellOut.string(from: count as NSNumber) ?? "\(count)"
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
+    private static let spellOut: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .spellOut
+        formatter.locale = Locale(identifier: "en")
+        return formatter
+    }()
+
+    static func perform(_ command: MindAction.Command, model: AppModel) {
+        switch command {
+        case .extraReview(let minutes): model.startExtraReview(minutes: minutes)
         case .pickBook, .stalledBook: model.showShelf = true
-        case .episode: model.episodeLanguage = Language.allCases.first { action.id == "episode.\($0.domain.rawValue)" } ?? .japanese
-        case .catchUp:
-            let yesterday = model.today.adding(days: -1)
-            if let day = model.analysis?.week.first(where: { $0.day == yesterday }) { model.startSession(day.domains) }
+        case .episode(let language): model.episodeLanguage = language
+        case .catchUp(let domains): model.startSession(domains)
         }
     }
 }
@@ -250,7 +273,9 @@ struct EpisodeSheet: View {
                         Text("A conversation").tag(TestKind.conversation)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("episode.kind")
                     TextField(test == .episode ? "What did you watch? (optional)" : "Who with, or where? (optional)", text: $title)
+                        .accessibilityIdentifier("episode.title")
                 }
                 Section {
                     Picker("How much did you follow?", selection: $rating) {
@@ -267,12 +292,13 @@ struct EpisodeSheet: View {
             .navigationTitle(language.domain.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("episode.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         model.logEpisode(rating: rating, title: title, language: language, test: test)
                         dismiss()
                     }
+                    .accessibilityIdentifier("episode.save")
                 }
             }
         }

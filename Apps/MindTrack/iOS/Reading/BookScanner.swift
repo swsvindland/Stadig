@@ -3,6 +3,7 @@ import SwiftUI
 import Synchronization
 import UIKit
 import MindEngine
+import SystemCore
 
 /// The back camera watching for a book's barcode: its ISBN, an EAN-13 starting 978 or 979. The
 /// same pattern as Macro Track's scanner (the camera's own barcode detector, on its own queue),
@@ -24,7 +25,10 @@ nonisolated final class ISBNCamera: NSObject, @unchecked Sendable, AVCaptureMeta
 
     /// Asks for the camera if it hasn't been allowed, then starts. False when it's not allowed.
     func start(found: @escaping @Sendable (String) -> Void) async -> Bool {
-        guard await AVCaptureDevice.requestAccess(for: .video) else { return false }
+        // No camera prompt under tests or UI tests.
+        guard !LaunchOptions.current.isQuiet, await AVCaptureDevice.requestAccess(for: .video) else { return false }
+        // The scanner closed while access was asked for: `stop` has run, so don't start after it.
+        guard !Task.isCancelled else { return false }
         handler.withLock { $0 = found }
         queue.async { [self] in
             configure()
@@ -70,10 +74,17 @@ nonisolated final class ISBNCamera: NSObject, @unchecked Sendable, AVCaptureMeta
         }
     }
 
+    /// The detector reports a barcode in view on every frame: the first ISBN takes the handler, so
+    /// one scan is one answer. `start` sets it again for the next scan.
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard let handler = handler.withLock({ $0 }) else { return }
         for case let code as AVMetadataMachineReadableCodeObject in metadataObjects {
-            if let value = code.stringValue, let isbn = ISBN.normalize(value) { handler(isbn) }
+            guard let value = code.stringValue, let isbn = ISBN.normalize(value) else { continue }
+            let found = handler.withLock { current in
+                defer { current = nil }
+                return current
+            }
+            found?(isbn)
+            return
         }
     }
 }
@@ -108,6 +119,7 @@ struct BookScannerView: View {
     @State private var torch = false
     @State private var denied = false
     @State private var typed = ""
+    @State private var done = false
 
     var body: some View {
         NavigationStack {
@@ -137,6 +149,7 @@ struct BookScannerView: View {
                                 Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill")
                             }
                             .accessibilityLabel(torch ? "Turn the light off" : "Turn the light on")
+                            .accessibilityIdentifier("bookScanner.torch")
                         }
                     }
                 } else {
@@ -145,7 +158,7 @@ struct BookScannerView: View {
             }
             .navigationTitle("Scan the barcode")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookScanner.cancel") } }
         }
         .task {
             guard ISBNCamera.isAvailable else { return }
@@ -165,8 +178,10 @@ struct BookScannerView: View {
                     .keyboardType(.numberPad)
                     .font(.title3.monospacedDigit())
                     .onSubmit { if let isbn = ISBN.normalize(typed) { finish(isbn) } }
+                    .accessibilityIdentifier("bookScanner.isbn")
                 Button("Look up") { if let isbn = ISBN.normalize(typed) { finish(isbn) } }
                     .disabled(ISBN.normalize(typed) == nil)
+                    .accessibilityIdentifier("bookScanner.lookUp")
             } footer: {
                 Text(denied ? "Camera access is off for Mind Track. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
                      : "Type the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
@@ -175,6 +190,8 @@ struct BookScannerView: View {
     }
 
     func finish(_ isbn: String) {
+        guard !done else { return }
+        done = true
         camera.stop()
         found(isbn)
         dismiss()

@@ -19,6 +19,7 @@ struct ProgressTab: View {
                         if state.settings.has(.writing) { WritingProgressCard(analysis: analysis, state: state) }
                         if state.settings.has(.reading) { ReadingProgress(analysis: analysis, state: state) }
                         SectionHeader(title: "Discipline")
+                            .accessibilityIdentifier("progress.discipline")
                         DisciplineGauge(score: analysis.discipline).card()
                     }
                 }
@@ -43,6 +44,7 @@ private struct StatCards: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(reading.stat.label).font(.headline)
+                                .accessibilityIdentifier("progress.stat.\(reading.stat.rawValue)")
                             Spacer()
                             Label(reading.trend.label, systemImage: reading.trend.symbol).font(.caption.weight(.semibold))
                                 .foregroundStyle(reading.trend.color)

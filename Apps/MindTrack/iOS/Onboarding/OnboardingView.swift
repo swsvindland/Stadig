@@ -12,7 +12,10 @@ struct OnboardingView: View {
     @State private var settings = MindSettings(onboardedAt: nil)
     @State private var books: [Book] = []
 
-    var pages: [Page] {
+    var pages: [Page] { Self.pages(for: settings) }
+
+    /// The pages a setup shows: a subject's own page only while it's a Focus course.
+    static func pages(for settings: MindSettings) -> [Page] {
         var pages: [Page] = [.welcome, .courses, .schedule]
         if settings.focus.contains(where: \.isLanguage) { pages.append(.languages) }
         if settings.mode(.maths) == .focus { pages.append(.maths) }
@@ -50,6 +53,7 @@ struct OnboardingView: View {
                             }
                             .secondaryAction()
                             .controlSize(.large)
+                            .accessibilityIdentifier("onboarding.back")
                         }
                         Button {
                             if page == .ready { finish() } else { withAnimation { move(1) } }
@@ -59,6 +63,7 @@ struct OnboardingView: View {
                         .primaryAction()
                         .controlSize(.large)
                         .disabled(page == .courses && settings.focus.isEmpty)
+                        .accessibilityIdentifier("onboarding.next")
                     }
                 }
             }
@@ -67,22 +72,25 @@ struct OnboardingView: View {
         #if DEBUG
         .onAppear {
             // -onboardingPage courses|schedule|languages|maths|writing|reading|ready opens on that page.
-            let arguments = ProcessInfo.processInfo.arguments
-            if let i = arguments.firstIndex(of: "-onboardingPage"), arguments.indices.contains(i + 1),
-               let start = Page(rawValue: arguments[i + 1]) { page = start }
+            if let start = LaunchOptions.current.value(after: "-onboardingPage").flatMap(Page.init(rawValue:)) { page = start }
         }
         #endif
     }
 
-    func move(_ by: Int) {
+    func move(_ by: Int) { page = Self.page(from: page, moving: by, in: pages) }
+
+    /// The page `by` pages on, staying within the setup. A page that's gone (its course turned off)
+    /// counts as the first.
+    static func page(from page: Page, moving by: Int, in pages: [Page]) -> Page {
         let index = pages.firstIndex(of: page) ?? 0
-        page = pages[clamp(index + by, 0, pages.count - 1)]
+        return pages[clamp(index + by, 0, pages.count - 1)]
     }
 
     var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: "brain.head.profile").font(.system(size: 56)).foregroundStyle(.tint)
             Text("Mind Track").font(.largeTitle.bold())
+                .accessibilityIdentifier("onboarding.welcomeTitle")
             Text("Lift Track for the mind: focused 25-minute sessions that find your level, then train it.").font(.title3)
             VStack(alignment: .leading, spacing: 12) {
                 Label("The first sessions find where you are in each subject", systemImage: "scope")
@@ -98,6 +106,7 @@ struct OnboardingView: View {
     var courses: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("What do you want to train?").font(.title.bold())
+                .accessibilityIdentifier("onboarding.coursesTitle")
             Text("Focus courses get full sessions. Maintenance keeps what you know with a few minutes of reviews. Two or three Focus courses at once is plenty.")
                 .foregroundStyle(.secondary)
             CoursePicker(settings: $settings)
@@ -108,6 +117,7 @@ struct OnboardingView: View {
     var schedule: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("When do you study?").font(.title.bold())
+                .accessibilityIdentifier("onboarding.scheduleTitle")
             Text("Focus courses rotate across the week like a training split. Reviews from every course open each session.")
                 .foregroundStyle(.secondary)
             ScheduleEditor(settings: $settings)
@@ -119,6 +129,7 @@ struct OnboardingView: View {
     var ready: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Your first session").font(.largeTitle.bold())
+                .accessibilityIdentifier("onboarding.readyTitle")
             Text("About \(settings.schedule.minutes) minutes to find your level, then the first new material. Answer honestly: “Don't know” is always better than a guess.")
                 .font(.title3)
             VStack(alignment: .leading, spacing: 10) {
@@ -172,6 +183,7 @@ struct CoursePicker: View {
                         Text("Off").tag(Choice.off)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("onboarding.course.\(domain.rawValue)")
                 }
                 .card()
             }
@@ -205,10 +217,12 @@ struct ScheduleEditor: View {
                     in: 1...7) {
                 LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
             }
+            .accessibilityIdentifier("onboarding.daysPerWeek")
             Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { settings.schedule.minutes = $0 })) {
                 ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("onboarding.sessionLength")
         }
         .card()
     }

@@ -13,6 +13,8 @@ struct SettingsView: View {
     @State private var backupURL: URL?
     @State private var importing = false
     @State private var message: String?
+    /// A backup being made or restored: the JSON takes a while for years of sessions.
+    @State private var working: String?
     @State private var editingLifeMode: LifeModePeriod?
 
     var body: some View {
@@ -31,6 +33,7 @@ struct SettingsView: View {
                         } label: {
                             Label(domain.label, systemImage: domain.symbol)
                         }
+                        .accessibilityIdentifier("settings.course.\(domain.rawValue)")
                     }
                     if let warning = CourseLoad.check(settings).warning {
                         Label(warning, systemImage: "exclamationmark.triangle.fill").font(.footnote).symbolRenderingMode(.multicolor)
@@ -48,6 +51,7 @@ struct SettingsView: View {
                     }), in: 1...7) {
                         LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
                     }
+                    .accessibilityIdentifier("settings.daysPerWeek")
                     Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { minutes in
                         var s = settings
                         s.schedule.minutes = minutes
@@ -55,11 +59,13 @@ struct SettingsView: View {
                     })) {
                         ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
                     }
+                    .accessibilityIdentifier("settings.sessionLength")
                     Toggle("Give lagging subjects more days", isOn: Binding(get: { settings.autoPrioritise }, set: { on in
                         var s = settings
                         s.autoPrioritise = on
                         model.save(settings: s)
                     }))
+                    .accessibilityIdentifier("settings.autoPrioritise")
                 } header: {
                     Text("Schedule")
                 } footer: {
@@ -84,20 +90,31 @@ struct SettingsView: View {
                         }
                     }
                     .foregroundStyle(.primary)
+                    // The id too: two periods of one kind (an illness now, another booked) are two rows.
+                    .accessibilityIdentifier("settings.lifeMode.\(period.kind.identifier).\(period.id)")
                 }
+                // No end yet: the editor offers the one every app's editor does (a week, or open for an
+                // illness) and saves what it shows.
                 Menu {
                     Button("Vacation", systemImage: "airplane") {
-                        editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, end: model.today.adding(days: 6), createdBy: .knowledge)
+                        editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, createdBy: .knowledge)
                     }
+                    .accessibilityIdentifier("settings.startVacation")
                     Button("Ill", systemImage: "thermometer.medium") {
                         editingLifeMode = LifeModePeriod(kind: .illness(.systemic), start: model.today, createdBy: .knowledge)
                     }
+                    .accessibilityIdentifier("settings.startIllness")
                     Button("Crunch", systemImage: "briefcase.fill") {
-                        editingLifeMode = LifeModePeriod(kind: .crunch(CrunchDials()), start: model.today, end: model.today.adding(days: 6), createdBy: .knowledge)
+                        editingLifeMode = LifeModePeriod(kind: .crunch(CrunchDials()), start: model.today, createdBy: .knowledge)
                     }
+                    .accessibilityIdentifier("settings.startCrunch")
                 } label: {
+                    // The whole row opens it, not just the words.
                     Label("Start a life mode", systemImage: "plus")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
                 }
+                .accessibilityIdentifier("settings.startLifeMode")
             } header: {
                 Text("Life")
             } footer: {
@@ -107,16 +124,33 @@ struct SettingsView: View {
                 Button("Export CSV files", systemImage: "tablecells") {
                     do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
                 }
+                .accessibilityIdentifier("settings.exportCSV")
                 if !exportURLs.isEmpty {
                     ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
+                        .accessibilityIdentifier("settings.shareCSV")
                 }
                 Button("Make a backup file", systemImage: "externaldrive") {
-                    do { backupURL = try model.backupFile() } catch { message = error.localizedDescription }
+                    working = "Making the backup…"
+                    Task {
+                        defer { working = nil }
+                        do { backupURL = try await model.backupFile() } catch { message = error.localizedDescription }
+                    }
                 }
+                .disabled(working != nil)
+                .accessibilityIdentifier("settings.makeBackup")
                 if let backupURL {
                     ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
+                        .accessibilityIdentifier("settings.shareBackup")
                 }
                 Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+                    .disabled(working != nil)
+                    .accessibilityIdentifier("settings.restore")
+                if let working {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text(working).foregroundStyle(.secondary)
+                    }
+                }
                 LabeledContent("Sync", value: model.store.syncStatus)
             }
             Section {
@@ -147,7 +181,9 @@ struct SettingsView: View {
                         Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                     } else {
                         Button("Unlock Mind Track", systemImage: "lock.open") { model.showPaywall = true }
+                            .accessibilityIdentifier("settings.unlock")
                         Button("Restore purchase") { Task { await purchases.restore() } }
+                            .accessibilityIdentifier("settings.restorePurchase")
                     }
                 }
             }
@@ -159,15 +195,19 @@ struct SettingsView: View {
             if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
         }
         .navigationTitle("Settings")
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(exportedAs: "dev.svindland.stadig.mind-backup"), .json]) { result in
             switch result {
             case .success(let url):
-                do {
-                    let summary = try model.restore(from: url)
-                    message = "Restored \(summary.records) records."
-                } catch {
-                    message = error.localizedDescription
+                working = "Restoring…"
+                Task {
+                    defer { working = nil }
+                    do {
+                        let summary = try await model.restore(from: url)
+                        message = "Restored \(summary.records) records."
+                    } catch {
+                        message = error.localizedDescription
+                    }
                 }
             case .failure(let error):
                 message = error.localizedDescription
@@ -191,6 +231,7 @@ struct AISettings: View {
                 s.allowCloudAI = on
                 model.save(settings: s)
             }))
+            .accessibilityIdentifier("settings.privateCloud")
             let state = SystemAI.availability(allowCloud: settings.allowCloudAI)
             LabeledContent("Status", value: state.privateCloud ? "On device and Private Cloud Compute" : state.onDevice ? "On device" : "Unavailable")
             if let reason = state.reason { Text(reason).font(.footnote).foregroundStyle(.secondary) }
@@ -202,53 +243,98 @@ struct AISettings: View {
     }
 }
 
-/// Start, adjust or end a vacation, illness or crunch.
+/// Start, adjust or end a vacation, illness or crunch. Works as Lift Track's editor does, with
+/// SystemCore's editing rules: only an illness (or injury) can be open-ended, one without an end
+/// yet is offered a week, the end shown is the end saved, and it's never before the start.
 struct LifeModeEditor: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State var period: LifeModePeriod
-    @State private var hasEnd = true
+    @State private var period: LifeModePeriod
+    @State private var openEnded: Bool
+
+    init(period: LifeModePeriod) {
+        _period = State(initialValue: period)
+        _openEnded = State(initialValue: period.end == nil && period.kind.allowsOpenEnd)
+    }
+
+    private var isNew: Bool { !model.lifeModes.contains { $0.id == period.id } }
+
+    private var edited: LifeModePeriod { period.edited(openEnded: openEnded) }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     Label(period.kind.label, systemImage: period.kind.symbol).font(.headline)
-                    DatePicker("Starts", selection: Binding(get: { period.start.date() }, set: { period.start = Day($0) }), displayedComponents: .date)
-                    Toggle("Has an end date", isOn: $hasEnd)
-                    if hasEnd {
-                        DatePicker("Ends", selection: Binding(get: { (period.end ?? period.start).date() }, set: { period.end = Day($0) }),
-                                   in: period.start.date()..., displayedComponents: .date)
+                    DatePicker(
+                        "Starts", selection: Binding(get: { period.start.date() }, set: { period.moveStart(to: Day($0)) }),
+                        displayedComponents: .date
+                    )
+                    .accessibilityIdentifier("lifeMode.start")
+                    if period.kind.allowsOpenEnd {
+                        Toggle("Until it's better", isOn: $openEnded)
+                            .accessibilityIdentifier("lifeMode.openEnded")
+                    }
+                    if !(openEnded && period.kind.allowsOpenEnd) {
+                        DatePicker(
+                            "Ends", selection: Binding(get: { period.editorEnd.date() }, set: { period.moveEnd(to: Day($0)) }),
+                            in: period.start.date()..., displayedComponents: .date
+                        )
+                        .accessibilityIdentifier("lifeMode.end")
                     }
                 }
-                if model.lifeModes.contains(where: { $0.id == period.id }) {
+                if !isNew {
                     Section {
-                        Button("End today") {
-                            period.end = model.today
-                            model.save(lifeMode: period)
-                            dismiss()
+                        if let ended = Self.endedToday(edited, today: model.today) {
+                            Button("End today") {
+                                model.save(lifeMode: ended)
+                                dismiss()
+                            }
+                            .accessibilityIdentifier("lifeMode.endToday")
                         }
                         Button("Delete", role: .destructive) {
                             model.delete(lifeMode: period.id)
                             dismiss()
                         }
+                        .accessibilityIdentifier("lifeMode.delete")
                     }
                 }
             }
             .navigationTitle(period.kind.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if !hasEnd { period.end = nil }
-                        model.save(lifeMode: period)
+                        model.save(lifeMode: edited)
                         dismiss()
                     }
+                    .disabled(!edited.isValid)
+                    .accessibilityIdentifier("lifeMode.save")
                 }
             }
-            .onAppear { hasEnd = period.end != nil }
         }
         .presentationDetents([.medium])
+    }
+
+    /// What End today writes, or nil for a period that hasn't started: it has nothing to end (delete
+    /// it instead), and ending it today would put the end before the start.
+    static func endedToday(_ period: LifeModePeriod, today: Day) -> LifeModePeriod? {
+        guard period.start <= today else { return nil }
+        var ended = period
+        ended.end = today
+        return ended
+    }
+}
+
+extension LifeModeKind {
+    /// For accessibility identifiers: one word per kind.
+    var identifier: String {
+        switch self {
+        case .vacation: "vacation"
+        case .crunch: "crunch"
+        case .injury: "injury"
+        case .illness: "illness"
+        }
     }
 }

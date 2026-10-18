@@ -25,19 +25,25 @@ struct BookFinder: View {
     @State private var draft: BookDraft?
     @State private var saved: Book?
     @State private var search: Task<Void, Never>?
+    /// The ISBN just scanned, looked up already: the query set to it doesn't search again.
+    @State private var scannedISBN: String?
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     Button(ISBNCamera.isAvailable ? "Scan the barcode" : "Type the ISBN", systemImage: "barcode.viewfinder") { scanning = true }
+                        .accessibilityIdentifier("bookFinder.scan")
                     if CoverCamera.isAvailable {
                         Button("Photograph the cover", systemImage: "camera") { photographing = true }
+                            .accessibilityIdentifier("bookFinder.photograph")
                     }
                     PhotosPicker(selection: $photo, matching: .images) {
                         Label("Choose a photo of the cover", systemImage: "photo.on.rectangle")
                     }
+                    .accessibilityIdentifier("bookFinder.photo")
                     Button("Enter it yourself", systemImage: "square.and.pencil") { draft = BookDraft(title: query) }
+                        .accessibilityIdentifier("bookFinder.enter")
                 } footer: {
                     Text("Covers are read on your iPhone. Lookups go to Open Library, then Google Books, and are kept for next time.")
                 }
@@ -59,6 +65,7 @@ struct BookFinder: View {
                                 FoundRow(title: book.title, author: book.author, detail: "Tier \(book.tier)\(book.levelledFromText ? " · levelled from its text" : "")")
                             }
                             .foregroundStyle(.primary)
+                            .accessibilityIdentifier("bookFinder.ladder.\(book.id)")
                         }
                     }
                 }
@@ -79,7 +86,7 @@ struct BookFinder: View {
             .onChange(of: query) { runSearch(now: false) }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookFinder.cancel") } }
             .sheet(isPresented: $scanning) {
                 BookScannerView { isbn in lookUp(isbn) }
             }
@@ -113,9 +120,13 @@ struct BookFinder: View {
 
     /// Ladder and cached matches straight away; the catalogues after a pause in typing.
     func runSearch(now: Bool) {
-        search?.cancel()
-        message = nil
         let text = query.trimmingCharacters(in: .whitespaces)
+        if !now, let scannedISBN, ISBN.normalize(text) == scannedISBN { return }
+        scannedISBN = nil
+        search?.cancel()
+        // A search cut short leaves nothing running until a new one starts.
+        searching = false
+        message = nil
         results = BookLookup.local(text, model: model)
         guard text.count >= 3 else { return }
         search = Task {
@@ -136,11 +147,14 @@ struct BookFinder: View {
     }
 
     func lookUp(_ isbn: String) {
+        search?.cancel()
+        scannedISBN = isbn
         query = isbn
         searching = true
         message = nil
-        Task {
+        search = Task {
             let meta = await BookLookup.isbn(isbn, model: model)
+            guard !Task.isCancelled else { return }
             searching = false
             if let meta { pick(meta) } else { message = "No catalogue knows ISBN \(isbn). Search by title, or enter it yourself." }
         }

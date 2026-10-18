@@ -1,8 +1,10 @@
+import MindEngine
 import SwiftUI
 
 // Maths drawn natively from the small TeX subset the problems are written in: fractions, roots,
 // powers and indices, integrals and limits, and the usual symbols. Text around it wraps; each piece
-// of maths stays whole, aligned on the text baseline.
+// of maths stays whole, aligned on the text baseline. MindEngine's MathSource parses it, once for
+// drawing here and for VoiceOver.
 
 /// Text with inline maths between dollar signs.
 struct MathText: View {
@@ -23,187 +25,6 @@ struct MathText: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(MathSource.spoken(source))
-    }
-}
-
-indirect enum MathNode: Hashable {
-    enum Style: Hashable { case variable, number, symbol, function, text }
-
-    case atom(String, Style)
-    case fraction([MathNode], [MathNode])
-    case binom([MathNode], [MathNode])
-    case root([MathNode])
-    case scripts(base: [MathNode], sup: [MathNode]?, sub: [MathNode]?)
-    /// ∫ with limits to its right; lim with what it approaches below.
-    case bigOp(String, sup: [MathNode]?, sub: [MathNode]?)
-
-    var isTall: Bool {
-        switch self {
-        case .fraction, .binom, .root: true
-        case .bigOp(let op, let sup, let sub): op == "lim" ? sub != nil : (sup != nil || sub != nil)
-        case .scripts(let base, _, _): base.contains(where: \.isTall)
-        case .atom: false
-        }
-    }
-}
-
-enum MathSource {
-    enum Piece { case word(String), math([MathNode]) }
-
-    /// Splits text into words (which wrap) and maths (which doesn't).
-    static func pieces(_ source: String) -> [Piece] {
-        var out: [Piece] = []
-        for (index, segment) in source.components(separatedBy: "$").enumerated() {
-            if index % 2 == 1 {
-                if !segment.isEmpty { out.append(.math(parse(segment))) }
-            } else {
-                var words = segment.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
-                // Punctuation straight after maths belongs to it: "$x = 4$." keeps its full stop on the same line.
-                if index > 0, let first = words.first, !first.isEmpty, case .math(let nodes)? = out.last {
-                    out[out.count - 1] = .math(nodes + [.atom(first, .text)])
-                    words.removeFirst()
-                }
-                out += words.filter { !$0.isEmpty }.map(Piece.word)
-            }
-        }
-        return out
-    }
-
-    static let symbols: [String: String] = [
-        "times": "×", "div": "÷", "cdot": "·", "pm": "±", "le": "≤", "ge": "≥", "neq": "≠", "approx": "≈", "to": "→",
-        "infty": "∞", "pi": "π", "theta": "θ", "circ": "°", "ldots": "…", "%": "%", ",": "\u{2009}", " ": " ", "quad": "\u{2003}",
-        "{": "{", "}": "}", "cup": "∪", "cap": "∩", "mid": "|", "sum": "∑", "in": "∈", "neg": "¬", "land": "∧", "lor": "∨",
-    ]
-    static let functions: Set<String> = ["sin", "cos", "tan", "ln", "log", "exp"]
-
-    static func parse(_ text: String) -> [MathNode] {
-        var parser = Parser(characters: Array(text))
-        return parser.row()
-    }
-
-    struct Parser {
-        let characters: [Character]
-        var index = 0
-
-        var done: Bool { index >= characters.count }
-
-        mutating func row(untilBrace: Bool = false) -> [MathNode] {
-            var nodes: [MathNode] = []
-            while !done {
-                let c = characters[index]
-                if c == "}" {
-                    index += 1
-                    if untilBrace { return nodes }
-                    continue
-                }
-                if c == "^" || c == "_" {
-                    index += 1
-                    let argument = self.argument()
-                    attach(argument, superscript: c == "^", to: &nodes)
-                    continue
-                }
-                nodes += item()
-            }
-            return nodes
-        }
-
-        /// One script or command argument: a {group} or a single item.
-        mutating func argument() -> [MathNode] {
-            guard !done else { return [] }
-            if characters[index] == "{" {
-                index += 1
-                return row(untilBrace: true)
-            }
-            return item()
-        }
-
-        mutating func attach(_ script: [MathNode], superscript: Bool, to nodes: inout [MathNode]) {
-            let last = nodes.popLast() ?? .atom("", .text)
-            switch last {
-            case .bigOp(let op, let sup, let sub):
-                nodes.append(.bigOp(op, sup: superscript ? script : sup, sub: superscript ? sub : script))
-            case .scripts(let base, let sup, let sub) where (superscript ? sup : sub) == nil:
-                nodes.append(.scripts(base: base, sup: superscript ? script : sup, sub: superscript ? sub : script))
-            default:
-                nodes.append(.scripts(base: [last], sup: superscript ? script : nil, sub: superscript ? nil : script))
-            }
-        }
-
-        mutating func item() -> [MathNode] {
-            let c = characters[index]
-            if c == "{" {
-                index += 1
-                return row(untilBrace: true)
-            }
-            if c == "\\" { return command() }
-            index += 1
-            if c.isNumber || c == "." {
-                var digits = String(c)
-                while !done, characters[index].isNumber || (characters[index] == "." && index + 1 < characters.count && characters[index + 1].isNumber) {
-                    digits.append(characters[index])
-                    index += 1
-                }
-                return [.atom(digits, .number)]
-            }
-            if c.isLetter { return [.atom(String(c), .variable)] }
-            if c == "-" { return [.atom("−", .symbol)] }
-            if c == "'" { return [.atom("′", .symbol)] }
-            return [.atom(String(c), c == " " ? .text : .symbol)]
-        }
-
-        mutating func command() -> [MathNode] {
-            index += 1
-            guard !done else { return [] }
-            var name = ""
-            if characters[index].isLetter {
-                while !done, characters[index].isLetter {
-                    name.append(characters[index])
-                    index += 1
-                }
-            } else {
-                name = String(characters[index])
-                index += 1
-            }
-            switch name {
-            case "frac": return [.fraction(argument(), argument())]
-            case "binom": return [.binom(argument(), argument())]
-            case "sqrt": return [.root(argument())]
-            case "int": return [.bigOp("∫", sup: nil, sub: nil)]
-            case "lim": return [.bigOp("lim", sup: nil, sub: nil)]
-            case "left", "right": return []
-            case "bar": return argument() + [.atom("\u{0304}", .symbol)]
-            case "text":
-                guard !done, characters[index] == "{" else { return [] }
-                index += 1
-                var words = ""
-                while !done, characters[index] != "}" {
-                    words.append(characters[index])
-                    index += 1
-                }
-                index += 1
-                return [.atom(words, .text)]
-            default:
-                if MathSource.functions.contains(name) { return [.atom(name, .function)] }
-                if let symbol = MathSource.symbols[name] {
-                    return [.atom(symbol, name == "pi" || name == "theta" ? .variable : .symbol)]
-                }
-                return [.atom(name, .text)]
-            }
-        }
-    }
-
-    /// Something VoiceOver can read: the maths with its symbols spelled out.
-    static func spoken(_ source: String) -> String {
-        var text = source.replacingOccurrences(of: "$", with: "")
-        let words: [(String, String)] = [
-            (#"\frac"#, " fraction "), (#"\sqrt"#, " square root of "), (#"\int"#, " integral "), (#"\lim"#, " limit "),
-            ("^", " to the power "), ("_", " sub "), (#"\times"#, " times "), (#"\div"#, " divided by "), (#"\pi"#, " pi "),
-            (#"\theta"#, " theta "), (#"\to"#, " approaches "), (#"\infty"#, " infinity "), (#"\le"#, " at most "), (#"\ge"#, " at least "),
-            (#"\cup"#, " union "), (#"\cap"#, " intersection "), (#"\mid"#, " given "), (#"\sum"#, " the sum of "), (#"\bar"#, " mean of "),
-            (#"\,"#, " "), ("{", " "), ("}", " "), ("\\", ""),
-        ]
-        for (from, to) in words { text = text.replacingOccurrences(of: from, with: to) }
-        return text.split(separator: " ").joined(separator: " ")
     }
 }
 
@@ -245,7 +66,7 @@ struct MathRow: View {
     static func font(_ style: MathNode.Style, _ size: CGFloat) -> Font {
         switch style {
         case .variable: .system(size: size, design: .serif).italic()
-        case .number, .function, .symbol: .system(size: size, design: .serif)
+        case .number, .function, .symbol, .command: .system(size: size, design: .serif)
         case .text: .system(size: size)
         }
     }

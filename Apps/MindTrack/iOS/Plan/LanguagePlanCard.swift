@@ -12,10 +12,13 @@ struct LanguagePlanCard: View {
     var domain: Domain { summary.domain }
     var language: Language { domain.language ?? .japanese }
 
+    /// New words a session and the week's reviews, from the pacing sessions use, so the card says
+    /// what they'll teach.
+    var pace: (count: Int, reason: String?, dueThisWeek: Int) { LanguagePlan.pace(domain, state: state, reviewWeek: state.phase.isReview) }
+
     var body: some View {
         let retention = summary.retention
-        let due = state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= state.today.adding(days: 6) } ?? false) }.count
-        let pace = LanguagePlan.newWords(retention: retention, dueThisWeek: due, minutes: state.settings.schedule.minutes, reviewWeek: false)
+        let pace = self.pace
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 DomainBadge(domain: domain)
@@ -29,7 +32,7 @@ struct LanguagePlanCard: View {
                 SkillLevels(domain: domain, state: state, compact: true)
                 if summary.mode == .maintenance {
                     LabeledContent("Maintenance", value: "Reviews only")
-                    LabeledContent("Due this week", value: "\(due)")
+                    LabeledContent("Due this week", value: "\(pace.dueThisWeek)")
                     LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
                 } else {
                     LabeledContent("New words a session", value: "\(pace.count)")

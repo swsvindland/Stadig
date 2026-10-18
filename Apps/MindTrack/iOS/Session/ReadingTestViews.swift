@@ -34,6 +34,7 @@ struct PassageView: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("passage.done")
             }
         }
         .onAppear { shown = Date() }

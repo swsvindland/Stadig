@@ -1,5 +1,6 @@
 import SwiftUI
 import MindEngine
+import SystemCore
 
 /// "Can't speak now" holds for a while, so a later part of the session doesn't ask again straight away.
 @MainActor
@@ -43,6 +44,7 @@ struct SpeakView: View {
                         listening
                     } else {
                         TextField("Write it here", text: $written, axis: .vertical)
+                            .accessibilityIdentifier("speak.written")
                             .font(.title2)
                             .padding(14)
                             .background(.cardBackground, in: .rect(cornerRadius: 14))
@@ -73,9 +75,10 @@ struct SpeakView: View {
             if case .audio(let text, let language) = task.prompt, feedback == nil { model.speech.speak(text, language: language) }
             if task.mode == .write && feedback == nil { typing = true }
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-fakeSpeech"), task.mode == .say, feedback == nil {
+            if LaunchOptions.current.has("-fakeSpeech"), task.mode == .say, feedback == nil {
                 Task {
                     try? await Task.sleep(for: .seconds(1))
+                    guard isCurrent else { return }
                     let said = task.answer
                     model.act { $0.respond(.spoken(transcript: said, seconds: 2), now: Date()) }
                 }
@@ -85,10 +88,12 @@ struct SpeakView: View {
         .onDisappear { Task { await recognizer.cancel() } }
         .task(id: recognizer.isListening) {
             // Stops on its own after a pause once something's been said, or after fifteen seconds.
-            guard recognizer.isListening else { return }
+            // Only a step waiting for something said listens for it.
+            guard task.mode == .say, feedback == nil, recognizer.isListening else { return }
             let started = Date()
             while !Task.isCancelled, recognizer.isListening {
-                try? await Task.sleep(for: .milliseconds(250))
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                guard recognizer.isListening else { return }
                 let quiet = Date().timeIntervalSince(recognizer.lastChange)
                 if (!recognizer.heard.isEmpty && quiet > 1.6) || Date().timeIntervalSince(started) > 15 {
                     await submitSpeech()
@@ -112,7 +117,9 @@ struct SpeakView: View {
             }
             .buttonStyle(.glassProminent)
             .buttonBorderShape(.circle)
+            .disabled(recognizer.isBusy)
             .accessibilityLabel(recognizer.isListening ? "Stop listening" : "Start speaking")
+            .accessibilityIdentifier("speak.mic")
             switch recognizer.status {
             case .idle: Text("Tap, then say it in \(task.language.pack.name)").font(.subheadline).foregroundStyle(.secondary)
             case .preparing(let message): ProgressView(message).font(.subheadline)
@@ -136,6 +143,7 @@ struct SpeakView: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("speak.continue")
         } else if task.mode == .say {
             HStack(spacing: 12) {
                 Button {
@@ -147,6 +155,7 @@ struct SpeakView: View {
                 }
                 .secondaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("speak.cantSpeak")
                 if task.kind == .test {
                     Button {
                         Task { await recognizer.cancel() }
@@ -156,6 +165,7 @@ struct SpeakView: View {
                     }
                     .secondaryAction()
                     .controlSize(.large)
+                    .accessibilityIdentifier("speak.dontKnow")
                 }
             }
         } else {
@@ -167,11 +177,13 @@ struct SpeakView: View {
                 }
                 .secondaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("speak.skip")
                 Button(action: check) {
                     Text("Check").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("speak.check")
                 .disabled(written.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -185,8 +197,17 @@ struct SpeakView: View {
 
     func submitSpeech() async {
         let said = await recognizer.finish()
+        // Finishing takes a moment, and the step may have moved on meanwhile (skipped, or the
+        // session ended): what was heard answers this task or nothing.
+        guard isCurrent else { return }
         let seconds = Date().timeIntervalSince(shown)
         model.act { $0.respond(.spoken(transcript: said, seconds: seconds), now: Date()) }
+    }
+
+    /// This task is the step on screen, still waiting for its answer.
+    var isCurrent: Bool {
+        guard case .speak(let current)? = model.run?.step else { return false }
+        return current.id == task.id && model.run?.feedback == nil
     }
 }
 

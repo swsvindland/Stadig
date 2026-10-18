@@ -38,7 +38,9 @@ nonisolated extension Reflection: @retroactive StoredRecord {
 
 nonisolated extension LifeModeRecord: @retroactive StoredRecord {
     public static var kind: String { "life-mode" }
-    public static var schemaVersion: Int { 1 }
+    /// 2: the period can be a tombstone (`deletedAt`). A build that knows only 1 would save it back
+    /// without the delete, so it leaves these alone; version 1 payloads read as they are.
+    public static var schemaVersion: Int { 2 }
 }
 
 nonisolated extension WritingPiece: @retroactive StoredRecord {

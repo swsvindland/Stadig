@@ -10,13 +10,13 @@ enum SampleData {
     @MainActor
     static func seedIfEmpty(_ model: AppModel) {
         guard model.settings == nil else { return }
-        let today = Day.today
+        let today = model.today
         let start = today.adding(days: -60)
         let ladder = ReadingLadder.standard
         var settings = MindSettings(schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
                                     mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
         // -sampleSpanish adds Spanish as a second Focus language, on a six-day week.
-        if ProcessInfo.processInfo.arguments.contains("-sampleSpanish") {
+        if LaunchOptions.current.has("-sampleSpanish") {
             settings.courses[.spanish] = .focus
             settings.schedule = StudySchedule(daysPerWeek: 6)
         }
@@ -56,7 +56,7 @@ enum SampleData {
                     run.next(now: now)
                 case .question(let question):
                     now += question.expectedSeconds * Double.random(in: 0.6...1.3, using: &rng)
-                    let p = chance(question, cards: run.cards, catalogs: model.catalogs)
+                    let p = chance(question, cards: run.cards, catalogs: model.catalogs, now: now)
                     if question.allowsDontKnow && p < 0.3 && rng.chance(0.7) {
                         run.dontKnow(now: now)
                         now += 3
@@ -141,12 +141,12 @@ enum SampleData {
 
     /// The sample student: about 600 Japanese words to begin with; numeracy quick to level 6,
     /// algebra solid to level 5 and statistics to 3, shakier above; and the basic writing skills.
-    static func chance(_ question: Question, cards: [CardKey: MemoryCard], catalogs: Catalogs) -> Double {
+    static func chance(_ question: Question, cards: [CardKey: MemoryCard], catalogs: Catalogs, now: Date) -> Double {
         let key = question.key
         switch key.domain {
         case .japanese, .spanish:
             if key.wordID == nil && !key.isKana { return question.band.map { bandChance($0) } ?? 0.75 }
-            if let memory = cards[key]?.memory { return min(0.95, Scheduler.retrievability(memory, at: Date()) + 0.05) }
+            if let memory = cards[key]?.memory { return min(0.95, Scheduler.retrievability(memory, at: now) + 0.05) }
             if let id = key.wordID, let word = catalogs.deck(for: key.domain)?.word(id), word.rank <= 600 { return 0.92 }
             return question.kind == .learn ? 0.85 : 0.25
         case .maths:

@@ -40,6 +40,7 @@ struct ReadingPlanCard: View {
                 Text("No book on the go. The ladder suggests tier \(reading.targetTier) next.").foregroundStyle(.secondary)
             }
             Button("Your shelf", systemImage: "books.vertical") { model.showShelf = true }
+                .accessibilityIdentifier("plan.shelf")
         }
         .font(.subheadline)
         .card()

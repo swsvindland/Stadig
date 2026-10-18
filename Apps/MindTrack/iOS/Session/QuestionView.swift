@@ -24,6 +24,7 @@ struct LessonView: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("lesson.continue")
             }
         }
         .onAppear(perform: speakIfLanguage)
@@ -158,7 +159,6 @@ struct QuestionView: View {
     let question: Question
     let feedback: StudyRun.Feedback?
     @State private var typed = ""
-    @State private var played = false
     @FocusState private var typing: Bool
 
     var body: some View {
@@ -188,16 +188,21 @@ struct QuestionView: View {
             return correct ? .success : .error
         }
         .onAppear {
+            guard feedback == nil else { return }
             if case .audio(let text, let language) = question.prompt { model.speech.speak(text, language: language) }
             if case .number = question.answer { typing = true }
         }
+        // Answered: the field stays on screen with what was typed, and the keyboard goes.
+        .onChange(of: feedback == nil) { _, waiting in if !waiting { typing = false } }
         .task(id: feedback) {
             // Tests move straight on: they measure, they don't teach. So does a timed problem
             // answered right and quickly; a slow one stays to show the quicker way.
-            if let feedback, question.kind == .test || (question.timed && feedback.correct && question.fluent(model.run?.answered.last?.seconds)) {
-                try? await Task.sleep(for: .milliseconds(question.kind == .test ? 450 : 700))
-                model.act { $0.next(now: Date()) }
-            }
+            guard let feedback, question.kind == .test || (question.timed && feedback.correct && question.fluent(model.run?.answered.last?.seconds))
+            else { return }
+            do { try await Task.sleep(for: .milliseconds(question.kind == .test ? 450 : 700)) } catch { return }
+            // Continue, or skipping the part, may have moved on already: moving on again would skip
+            // whatever came next (a topic's lesson, say). Only this answered question moves on.
+            model.act { $0.next(after: question.id, now: Date()) }
         }
     }
 
@@ -212,6 +217,7 @@ struct QuestionView: View {
                         model.act { $0.choose(index, now: Date()) }
                     }
                     .disabled(feedback != nil)
+                    .accessibilityIdentifier("question.choice.\(index)")
                 }
             }
         case .number(_, let tolerance):
@@ -225,6 +231,7 @@ struct QuestionView: View {
                     .disabled(feedback != nil)
                     .submitLabel(.done)
                     .onSubmit(check)
+                    .accessibilityIdentifier("question.answer")
                 Text(tolerance > 0 ? "A decimal, rounded as asked" : "A whole number, a fraction like 3/4, or a decimal")
                     .font(.caption).foregroundStyle(.secondary)
                 if let feedback, !feedback.correct {
@@ -251,12 +258,15 @@ struct QuestionView: View {
         if feedback != nil {
             if question.kind != .test {
                 Button {
-                    model.act { $0.next(now: Date()) }
+                    // From this question only: a second tap, or the auto-advance landing first,
+                    // mustn't skip the step after it.
+                    model.act { $0.next(after: question.id, now: Date()) }
                 } label: {
                     Text("Continue").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("question.continue")
             }
         } else {
             HStack(spacing: 12) {
@@ -268,6 +278,7 @@ struct QuestionView: View {
                     }
                     .secondaryAction()
                     .controlSize(.large)
+                    .accessibilityIdentifier("question.dontKnow")
                 }
                 if case .number = question.answer {
                     Button(action: check) {
@@ -276,6 +287,7 @@ struct QuestionView: View {
                     .primaryAction()
                     .controlSize(.large)
                     .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("question.check")
                 }
             }
         }
@@ -316,7 +328,9 @@ struct PromptView: View {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Play again")
+                .accessibilityIdentifier("prompt.play")
                 Button("Slower") { model.speech.speak(text, language: language, slow: true) }.font(.subheadline)
+                    .accessibilityIdentifier("prompt.slower")
                 if revealed { Text(text).font(.title2).multilineTextAlignment(.center) }
             }
             .frame(maxWidth: .infinity)
@@ -396,6 +410,7 @@ struct FeedbackPanel: View {
                 Label(verdict, systemImage: feedback.correct ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill")
                     .font(.headline)
                     .foregroundStyle(feedback.correct ? .green : .orange)
+                    .accessibilityIdentifier("question.verdict")
                 switch question.reveal {
                 case .word(let word, let kanji):
                     WordCard(word: word, kanji: kanji)

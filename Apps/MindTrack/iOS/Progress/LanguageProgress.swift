@@ -13,7 +13,7 @@ struct LanguageProgress: View {
     var language: Language { summary.domain.language ?? .japanese }
 
     var body: some View {
-        let series = Analyst.series(summary.domain, state: state)
+        let series = model.series(summary.domain)
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 DomainBadge(domain: summary.domain)
@@ -156,6 +156,7 @@ struct RealWorldSection: View {
                 Label("The real thing", systemImage: "person.2.wave.2").font(.subheadline.weight(.semibold))
                 Spacer()
                 Button("Log one") { model.episodeLanguage = language }.buttonStyle(.borderless)
+                    .accessibilityIdentifier("progress.logEpisode.\(language.domain.rawValue)")
             }
             if logs.isEmpty {
                 Text("The benchmark that matters: an episode without subtitles, or a real conversation. Now and then, try one and note how much you followed. It's never scored.")

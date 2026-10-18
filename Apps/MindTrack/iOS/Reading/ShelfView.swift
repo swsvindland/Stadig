@@ -26,12 +26,16 @@ struct ShelfView: View {
                 Section("Reading now") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(current.title).font(.headline)
+                            .accessibilityIdentifier("shelf.current")
                         Text([current.author, tierText(current), "page \(current.page) of \(current.pages)", current.format?.label.lowercased()]
                             .compactMap { $0 }.joined(separator: " · ")).font(.subheadline).foregroundStyle(.secondary)
                     }
                     Button("Finished it", systemImage: "checkmark") { finishing = current }
+                        .accessibilityIdentifier("shelf.finished")
                     Button("Edit", systemImage: "pencil") { editing = current }
+                        .accessibilityIdentifier("shelf.edit")
                     Button("Set it aside", systemImage: "xmark.bin", role: .destructive) { settingAside = current }
+                        .accessibilityIdentifier("shelf.setAside")
                 }
             }
             Section {
@@ -51,8 +55,10 @@ struct ShelfView: View {
                         }
                     }
                     .foregroundStyle(.primary)
+                    .accessibilityIdentifier("shelf.suggestion.\(book.id)")
                 }
                 Button("Add a book", systemImage: "plus") { adding = true }
+                    .accessibilityIdentifier("shelf.addBook")
             } header: {
                 Text("Suggested next")
             } footer: {
@@ -78,27 +84,27 @@ struct ShelfView: View {
             }
         }
         .navigationTitle("Your shelf")
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("shelf.done") } }
         .sheet(item: $editing) { book in BookEditor(book: book) { model.save(book: $0) } }
         .sheet(isPresented: $adding) {
             BookFinder(initialQuery: debugQuery) { book in
-                for var current in model.books where current.status == .reading && current.language == book.language {
-                    current.status = .abandoned
-                    current.finished = model.today
-                    model.save(book: current)
-                }
                 var book = book
                 book.started = model.today
-                model.save(book: book)
+                model.startReading(book)
             }
         }
         .sheet(item: $finishing) { book in
-            PageSheet(book: book, finished: true) { _, _, feel, _ in
+            // Switching "I finished it" off logs the page instead: the book carries on.
+            PageSheet(book: book, finished: true) { page, finished, feel, _ in
                 var done = book
-                done.status = .finished
-                done.page = book.pages
-                done.finished = model.today
-                done.feel = feel ?? .right
+                if finished {
+                    done.status = .finished
+                    done.page = book.pages
+                    done.finished = model.today
+                    done.feel = feel ?? .right
+                } else {
+                    done.page = page
+                }
                 model.save(book: done)
             }
         }
@@ -124,8 +130,7 @@ struct ShelfView: View {
 
     var debugQuery: String {
         #if DEBUG
-        let arguments = ProcessInfo.processInfo.arguments
-        if let i = arguments.firstIndex(of: "-findBook"), arguments.indices.contains(i + 1) { return arguments[i + 1] }
+        if let query = LaunchOptions.current.value(after: "-findBook") { return query }
         #endif
         return ""
     }
@@ -211,12 +216,13 @@ struct SetAsideSheet: View {
             .navigationTitle("Set it aside")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("setAside.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Set aside") {
                         save(feel)
                         dismiss()
                     }
+                    .accessibilityIdentifier("setAside.save")
                 }
             }
         }

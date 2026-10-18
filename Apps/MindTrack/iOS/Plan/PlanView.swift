@@ -28,6 +28,7 @@ struct PlanView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Settings", systemImage: "gearshape") { model.showSettings = true }
+                        .accessibilityIdentifier("plan.settings")
                 }
             }
         }
@@ -41,6 +42,7 @@ private struct BlockCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(analysis.phase.label).font(.title2.bold())
+                .accessibilityIdentifier("plan.phase")
             Text(detail).font(.subheadline).foregroundStyle(.secondary)
             if state.calendar != nil {
                 Label("Review weeks follow Lift Track's deloads", systemImage: "link").font(.caption).foregroundStyle(.secondary)

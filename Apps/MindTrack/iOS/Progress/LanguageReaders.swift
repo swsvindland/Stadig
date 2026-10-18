@@ -18,6 +18,7 @@ struct ReadersSection: View {
                 Label("Books in \(language.pack.name)", systemImage: "books.vertical").font(.subheadline.weight(.semibold))
                 Spacer()
                 Button(current == nil ? "Choose one" : "Update") { showing = true }.buttonStyle(.borderless)
+                    .accessibilityIdentifier("progress.readers.\(language.domain.rawValue)")
             }
             if let current {
                 VStack(alignment: .leading, spacing: 2) {
@@ -52,21 +53,27 @@ struct ReaderSheet: View {
                             Text("\(current.author) · level \(current.tier)").font(.subheadline).foregroundStyle(.secondary)
                         }
                         Stepper("Page \(page) of \(current.pages)", value: $page, in: 0...current.pages, step: 5)
+                            .accessibilityIdentifier("readers.page")
                         Button("Save the page") { save(current, page: page) }.disabled(page == current.page)
+                            .accessibilityIdentifier("readers.savePage")
                         Button("I've finished it") { finishing = true }
+                            .accessibilityIdentifier("readers.finished")
                         Button("Put it down", role: .destructive) {
                             var book = current
                             book.status = .abandoned
                             book.finished = model.today
                             model.save(book: book)
                         }
+                        .accessibilityIdentifier("readers.putDown")
                     } header: {
                         Text("Reading now")
                     }
-                    .onAppear { page = current.page }
+                    // Starting another reader from the list below keeps this section on screen.
+                    .onChange(of: current.id, initial: true) { page = current.page }
                     .confirmationDialog("How did it feel?", isPresented: $finishing, titleVisibility: .visible) {
                         ForEach(BookFeel.allCases) { feel in
                             Button(feel.label) { finish(current, feel: feel) }
+                                .accessibilityIdentifier("readers.feel.\(feel.rawValue)")
                         }
                     } message: {
                         Text("Easy or just right moves your \(language.pack.name) reading level up; a slog holds it.")
@@ -94,7 +101,7 @@ struct ReaderSheet: View {
             }
             .navigationTitle("\(language.pack.name) readers")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("readers.done") } }
         }
     }
 
@@ -134,6 +141,7 @@ private struct ReaderRow: View {
                         .foregroundStyle(.secondary)
                 } else {
                     Button("Start reading") { model.start(reader: reader) }.font(.caption.weight(.semibold))
+                        .accessibilityIdentifier("readers.start.\(reader.id)")
                 }
                 if let free = reader.free { Link("Read it free", destination: free).font(.caption.weight(.semibold)) }
             }
@@ -147,11 +155,6 @@ extension AppModel {
     /// Starts a reader. Another reader in the same language on the go is put down; English books
     /// and other languages' readers carry on.
     func start(reader: GradedReader) {
-        for var current in books where current.status == .reading && current.language == reader.language {
-            current.status = .abandoned
-            current.finished = today
-            save(book: current)
-        }
-        save(book: reader.book(status: .reading, started: today))
+        startReading(reader.book(status: .reading, started: today))
     }
 }

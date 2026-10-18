@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import StoreKit
 import SwiftUI
+import SystemCore
 
 /// The one-time unlock. No subscription. The assessment, every session in it, your history,
 /// export and backup always work without it: your data is yours. Sessions after the
@@ -13,6 +14,9 @@ final class Purchases {
     static let enabled = false
 
     static let productID = "dev.svindland.stadig.mind.unlock"
+    /// The last entitlement StoreKit confirmed, so a buyer isn't shown the paywall in the moment
+    /// before it answers at launch (a session started from a link, say). StoreKit corrects it.
+    private static let ownedKey = "purchases.unlocked"
 
     private(set) var product: Product?
     private(set) var unlocked = false
@@ -22,14 +26,17 @@ final class Purchases {
     @ObservationIgnored private var updates: Task<Void, Never>?
 
     init() {
-        if !Self.enabled { unlocked = true }
+        // Tests and UI tests start from what they ask for (`-unlocked`), never a run before theirs.
+        unlocked = !Self.enabled || (!LaunchOptions.current.isQuiet && UserDefaults.standard.bool(forKey: Self.ownedKey))
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { unlocked = true }
+        if LaunchOptions.current.has("-unlocked") { unlocked = true }
         #endif
     }
 
     func start() async {
         guard Self.enabled else { return }
+        // Entitlements are on the device: they answer before the product, which needs the network.
+        await refresh()
         if updates == nil {
             updates = Task { [weak self] in
                 for await update in Transaction.updates {
@@ -45,7 +52,6 @@ final class Purchases {
         } catch {
             self.error = error.localizedDescription
         }
-        await refresh()
     }
 
     func refresh() async {
@@ -59,8 +65,11 @@ final class Purchases {
                 owned = true
             }
         }
+        // What StoreKit said, before the DEBUG override: a run with `-unlocked` mustn't leave the
+        // next one without it unlocked.
+        UserDefaults.standard.set(owned, forKey: Self.ownedKey)
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { owned = true }
+        if LaunchOptions.current.has("-unlocked") { owned = true }
         #endif
         unlocked = owned
     }
@@ -70,9 +79,18 @@ final class Purchases {
         purchasing = true
         defer { purchasing = false }
         do {
-            let result = try await product.purchase()
-            if case .success(let verification) = result, case .verified(let transaction) = verification {
+            switch try await product.purchase() {
+            case .success(.verified(let transaction)):
                 await transaction.finish()
+            case .success(.unverified(_, let failure)):
+                self.error = "The App Store couldn't confirm the purchase: \(failure.localizedDescription)"
+            case .pending:
+                // Ask to Buy: it arrives through `Transaction.updates` once it's approved.
+                self.error = "Waiting for approval. Mind Track unlocks as soon as it's given."
+            case .userCancelled:
+                break
+            @unknown default:
+                break
             }
             await refresh()
         } catch {
@@ -115,6 +133,7 @@ struct PaywallView: View {
                     Text(purchases.product.map { "Unlock for \($0.displayPrice)" } ?? "Unlock").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
+                .accessibilityIdentifier("paywall.buy")
                 .controlSize(.large)
                 .disabled(purchases.product == nil || purchases.purchasing)
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
@@ -122,7 +141,9 @@ struct PaywallView: View {
                 Text("Part of The System bundle on the App Store, with Lift Track and Macro Track.").font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
         }
+        // A purchase confirmed late (StoreKit answering at launch, Ask to Buy approved) closes it.
+        .onChange(of: purchases.unlocked) { _, unlocked in if unlocked { dismiss() } }
     }
 }

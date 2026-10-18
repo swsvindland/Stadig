@@ -3,6 +3,7 @@ import PencilKit
 import PhotosUI
 import SwiftUI
 import MindEngine
+import SystemCore
 
 /// Write something: a prompt, a rewrite, a practical task, Franklin notes. Typed, written with
 /// Apple Pencil, or written on paper and scanned; handwriting is read on the device into text to
@@ -59,11 +60,18 @@ private struct ComposeEditor: View {
     @State private var photo: PhotosPickerItem?
     @State private var ownPage: String?
     @State private var sourceShown = true
+    /// A draft left from an earlier go at this task has been looked for; until then nothing is kept,
+    /// so an empty editor can't overwrite it.
+    @State private var draftLoaded = false
+    @State private var handedIn = false
 
     var pad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
     var pencil: Bool { pad && input == .pencil }
     var notesOnly: Bool { task.exercise == .franklinNotes }
     var words: Int { text.split { $0.isWhitespace || $0.isNewline }.count }
+    var draftKey: String { WritingDrafts.key(task) }
+    /// Changes whenever something worth keeping does.
+    var draftVersion: String { "\(text.hashValue).\(drawing.strokes.count).\(ownPage?.hashValue ?? 0)" }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -98,6 +106,14 @@ private struct ComposeEditor: View {
             }, cancel: { scanning = nil })
             .ignoresSafeArea()
         }
+        .task { await restoreDraft() }
+        .task(id: draftVersion) {
+            // Kept a moment after typing pauses, and when the step is left.
+            guard draftLoaded else { return }
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            keepDraft()
+        }
+        .onDisappear(perform: keepDraft)
         .photosPicker(isPresented: $choosingPhoto, selection: $photo, matching: .images)
         .onChange(of: photo) { _, item in
             guard let item else { return }
@@ -110,18 +126,18 @@ private struct ComposeEditor: View {
         }
         #if DEBUG
         .task {
-            let arguments = ProcessInfo.processInfo.arguments
-            if arguments.contains("-pencil") { input = .pencil }
+            let launch = LaunchOptions.current
+            if launch.has("-pencil") { input = .pencil }
             // -readImage page.png reads a picture from the app's Documents as handwriting.
-            if let i = arguments.firstIndex(of: "-readImage"), arguments.indices.contains(i + 1),
-               let image = UIImage(contentsOfFile: URL.documentsDirectory.appending(path: arguments[i + 1]).path()) {
+            if let name = launch.value(after: "-readImage"),
+               let image = UIImage(contentsOfFile: URL.documentsDirectory.appending(path: name).path()) {
                 read(into: .writing) { try await TextRecognizer.read(image) }
-                if arguments.contains("-handIn") {
+                if launch.has("-handIn") {
                     while reading { try? await Task.sleep(for: .milliseconds(200)) }
                     handIn()
                 }
             }
-            if arguments.contains("-autoWrite") {
+            if launch.has("-autoWrite") {
                 text = SampleWriting.text(for: task, week: 8)
                 handIn()
             }
@@ -173,6 +189,7 @@ private struct ComposeEditor: View {
                 Text("Read from your page. Trim it to a paragraph or two.").font(.caption).foregroundStyle(.secondary)
                 Button("Use the passage Mind Track chose", systemImage: "arrow.uturn.backward") { self.ownPage = nil }
                     .font(.subheadline)
+                    .accessibilityIdentifier("compose.useChosenPassage")
             } else {
                 Text(original).font(.body).lineSpacing(3)
                 if let credit = task.sourceCredit { Text(credit).font(.caption).foregroundStyle(.secondary) }
@@ -180,15 +197,18 @@ private struct ComposeEditor: View {
                     Menu {
                         if DocumentScanner.isAvailable {
                             Button("Scan a page", systemImage: "doc.viewfinder") { scanning = .ownPage }
+                                .accessibilityIdentifier("compose.scanOwnPage")
                         }
                         Button("Choose a photo of a page", systemImage: "photo") {
                             photoTarget = .ownPage
                             choosingPhoto = true
                         }
+                        .accessibilityIdentifier("compose.photoOwnPage")
                     } label: {
                         Label("Use a page of \(book.title) instead", systemImage: "book")
                     }
                     .font(.subheadline)
+                    .accessibilityIdentifier("compose.ownPage")
                 }
             }
         }
@@ -218,6 +238,7 @@ private struct ComposeEditor: View {
                     .padding(8)
                     .scrollContentBackground(.hidden)
                     .accessibilityLabel(notesOnly ? "Your notes" : "Your piece")
+                    .accessibilityIdentifier("compose.text")
                 if text.isEmpty {
                     Text(notesOnly ? "A few words for each sentence’s point" : "Start writing")
                         .foregroundStyle(.tertiary).padding(.horizontal, 13).padding(.vertical, 16).allowsHitTesting(false)
@@ -239,14 +260,17 @@ private struct ComposeEditor: View {
         Menu {
             if DocumentScanner.isAvailable {
                 Button("Scan a written page", systemImage: "doc.viewfinder") { scanning = .writing }
+                    .accessibilityIdentifier("compose.scanPaper")
             }
             Button("Choose a photo of it", systemImage: "photo") {
                 photoTarget = .writing
                 choosingPhoto = true
             }
+            .accessibilityIdentifier("compose.photoPaper")
         } label: {
             Label("Written on paper", systemImage: "doc.text.viewfinder").font(.subheadline)
         }
+        .accessibilityIdentifier("compose.paper")
     }
 
     @ViewBuilder var bottom: some View {
@@ -254,17 +278,25 @@ private struct ComposeEditor: View {
             HStack(spacing: 12) {
                 Button(erasing ? "Pen" : "Eraser", systemImage: erasing ? "pencil.tip" : "eraser") { erasing.toggle() }
                     .secondaryAction().controlSize(.large)
+                    .accessibilityIdentifier("compose.eraser")
                 Button("Keyboard", systemImage: "keyboard") { input = .keyboard }
                     .secondaryAction().controlSize(.large)
+                    .accessibilityIdentifier("compose.keyboard")
                 Button {
-                    guard let image = HandwritingPad.image(of: drawing) else { return }
-                    read(into: .writing) { try await TextRecognizer.read([image]) }
+                    // The strokes read are taken off the page once they're text, so writing more
+                    // and reading again doesn't read the first paragraph twice.
+                    let page = drawing
+                    read(into: .writing, onRead: { drawing = PKDrawing(strokes: drawing.strokes.dropFirst(page.strokes.count)) }) {
+                        guard let image = await HandwritingPad.inkImage(of: page) else { return "" }
+                        return try await TextRecognizer.read([image])
+                    }
                 } label: {
                     Label(reading ? "Reading…" : "Read my handwriting", systemImage: "text.viewfinder").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
                 .controlSize(.large)
                 .disabled(drawing.strokes.isEmpty || reading)
+                .accessibilityIdentifier("compose.readHandwriting")
             }
         } else {
             Button(action: handIn) {
@@ -272,13 +304,15 @@ private struct ComposeEditor: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("compose.handIn")
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || reading)
         }
     }
 
     /// Reads a page into text: handwriting into the piece (for checking before it's handed in),
-    /// or a printed page of the book being read in place of the library's passage.
-    func read(into target: Target, _ work: @escaping () async throws -> String) {
+    /// or a printed page of the book being read in place of the library's passage. `onRead` runs
+    /// once handwriting has gone into the piece.
+    func read(into target: Target, onRead: (() -> Void)? = nil, _ work: @escaping () async throws -> String) {
         reading = true
         problem = nil
         Task {
@@ -294,6 +328,7 @@ private struct ComposeEditor: View {
                     text = text.isEmpty ? found : text + "\n\n" + found
                     source = .handwritten
                     input = .keyboard
+                    onRead?()
                 case .ownPage:
                     ownPage = found
                 }
@@ -309,10 +344,35 @@ private struct ComposeEditor: View {
         guard !written.isEmpty else { return }
         let misspelled = notesOnly ? [] : WritingAssistant.misspelled(written)
         let own = notesOnly ? ownPage?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+        let before = model.run?.newPieces.count ?? 0
         model.act { $0.submitWriting(written, source: source, misspelled: misspelled, original: own?.isEmpty == false ? own : nil, now: Date()) }
+        if (model.run?.newPieces.count ?? 0) > before {
+            handedIn = true
+            let (key, drafts) = (draftKey, model.drafts)
+            Task { await drafts.remove(key) }
+        }
         if case .compose(let next)? = model.run?.step, let id = next.reviewing, let piece = model.run?.piece(id) {
             WritingAssistant.shared.requestNotes(for: piece, source: task.source, model: model)
         }
+    }
+
+    /// What was written last time this task came round, unless something's been written already.
+    func restoreDraft() async {
+        defer { draftLoaded = true }
+        guard let draft = await model.drafts.draft(draftKey), text.isEmpty, drawing.strokes.isEmpty, ownPage == nil else { return }
+        text = draft.text
+        if draft.handwritten { source = .handwritten }
+        ownPage = draft.ownPage
+        if let data = draft.drawing {
+            do { drawing = try PKDrawing(data: data) } catch { appLog.error("Couldn't read the handwriting draft: \(error.localizedDescription)") }
+        }
+    }
+
+    /// Keeps the piece so far on the device until it's handed in.
+    func keepDraft() {
+        guard draftLoaded, !handedIn else { return }
+        let (text, handwritten, drawing, ownPage, key, drafts) = (text, source == .handwritten, drawing, ownPage, draftKey, model.drafts)
+        Task { await drafts.save(text: text, handwritten: handwritten, drawing: drawing, ownPage: ownPage, for: key) }
     }
 }
 
@@ -360,6 +420,7 @@ private struct PieceReview: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("pieceReview.done")
             }
         }
         .task(id: pieceID) {
@@ -372,16 +433,21 @@ private struct PieceReview: View {
 
 /// A piece with its slips marked.
 enum MarkedText {
-    static func text(_ text: String, slips: [WritingSlip]) -> Text {
+    static func text(_ text: String, slips: [WritingSlip]) -> Text { Text(attributed(text, slips: slips)) }
+
+    /// The text with each slip underlined. Offsets count Characters, as the checker's do; a slip
+    /// that doesn't lie inside the text (one from before an edit) is left unmarked, since indexing
+    /// past either end would trap.
+    static func attributed(_ text: String, slips: [WritingSlip]) -> AttributedString {
         var marked = AttributedString(text)
         let count = marked.characters.count
-        for slip in slips where slip.offset + slip.length <= count {
+        for slip in slips where slip.offset >= 0 && slip.length > 0 && slip.offset <= count && slip.length <= count - slip.offset {
             let start = marked.characters.index(marked.startIndex, offsetBy: slip.offset)
             let end = marked.characters.index(start, offsetBy: slip.length)
             marked[start..<end].underlineStyle = Text.LineStyle(pattern: .solid, color: .orange)
             marked[start..<end].backgroundColor = Color.orange.opacity(0.14)
         }
-        return Text(marked)
+        return marked
     }
 }
 
@@ -447,9 +513,11 @@ struct NotesCard: View {
             case .failed(let message):
                 Text("No notes this time. \(message)").font(.callout).foregroundStyle(.secondary)
                 Button("Try again", systemImage: "arrow.clockwise", action: retry).font(.subheadline)
+                    .accessibilityIdentifier("pieceReview.retry")
             case nil where !asked:
                 Text("Two or three specific fixes from Apple Intelligence, never a grade.").font(.callout).foregroundStyle(.secondary)
                 Button("Ask for notes", systemImage: "text.bubble", action: retry).font(.subheadline)
+                    .accessibilityIdentifier("pieceReview.askForNotes")
             case .working, nil:
                 HStack(spacing: 10) {
                     ProgressView()

@@ -11,6 +11,7 @@ struct LanguageOnboarding: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Languages").font(.title.bold())
+                .accessibilityIdentifier("onboarding.languagesTitle")
             Text("The aim is understanding real people and being understood, not conjugation tables. The first session finds how many words you know already.")
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 10) {
@@ -30,6 +31,7 @@ struct LanguageOnboarding: View {
                         Text("Not yet").tag(false)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("onboarding.kana")
                     Text(settings.readsKana == false ? "You'll start with hiragana, with romaji under each kana until it sticks. Words follow once hiragana is in." : "You'll start with a word test to find your vocabulary.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
@@ -40,6 +42,7 @@ struct LanguageOnboarding: View {
                 Toggle(isOn: $settings.speaking) {
                     Label("Speaking exercises", systemImage: "mic.fill").font(.headline)
                 }
+                .accessibilityIdentifier("onboarding.speaking")
                 .onChange(of: settings.speaking) { _, on in if on { ask() } }
                 Text("You answer out loud and on-device speech recognition checks you. Nothing leaves the phone. Off skips speaking without leaving a gap; turn it on again in Settings.")
                     .font(.footnote).foregroundStyle(.secondary)
@@ -49,6 +52,7 @@ struct LanguageOnboarding: View {
                             .font(.footnote).foregroundStyle(.orange)
                     } else if allowed == nil {
                         Button("Allow the microphone", systemImage: "mic") { ask() }.secondaryAction()
+                            .accessibilityIdentifier("onboarding.allowMicrophone")
                     }
                 }
             }
@@ -85,6 +89,7 @@ private struct TwoLanguages: View {
                     ForEach(CourseMode.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .accessibilityIdentifier("onboarding.languageMode.\(domain.rawValue)")
             }
             if settings.has(.japanese), settings.has(.spanish) {
                 Text(settings.readsKana == false
@@ -115,6 +120,7 @@ struct LanguageSettings: View {
                     s.readsKana = on
                     model.save(settings: s)
                 }))
+                .accessibilityIdentifier("settings.readsKana")
             }
             Toggle("Speaking exercises", isOn: Binding(get: { settings.speaking }, set: { on in
                 var s = settings
@@ -122,10 +128,12 @@ struct LanguageSettings: View {
                 model.save(settings: s)
                 if on { Task { _ = await recognizer.authorise() } }
             }))
+            .accessibilityIdentifier("settings.speaking")
             if settings.speaking, recognizer.permissionDenied {
                 Button("Allow the microphone in Settings", systemImage: "mic.slash") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
+                .accessibilityIdentifier("settings.allowMicrophone")
             }
             ForEach(settings.languages) { domain in
                 if let language = domain.language {
@@ -144,9 +152,10 @@ struct LanguageSettings: View {
         } footer: {
             Text("Speaking is checked by on-device speech recognition, leniently: being understood is the bar. Turn it off for a while if you're often somewhere you can't talk; nothing is missed. Help under new words fades as each one is mastered. The dialogues and the list of graded readers were written for Mind Track.")
         }
-        .task {
+        // Again when a language is turned on, which keeps this section on screen.
+        .task(id: settings.languages) {
             for domain in settings.languages {
-                if let language = domain.language { recognises[language] = await recognizer.supports(language) }
+                if let language = domain.language, recognises[language] == nil { recognises[language] = await recognizer.supports(language) }
             }
         }
     }

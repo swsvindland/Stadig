@@ -89,7 +89,12 @@ enum BookLookup {
     static func search(_ query: String, model: AppModel) async -> Results {
         var results = local(query, model: model)
         if let isbn = ISBN.normalize(query) {
-            if let meta = await self.isbn(isbn, model: model) { results.found.insert(meta, at: 0) } else { results.unreachable = true }
+            // No catalogue knowing the ISBN isn't being offline.
+            if let meta = await self.isbn(isbn, model: model) {
+                results.found.insert(meta, at: 0)
+            } else {
+                results.unreachable = !(await reachable())
+            }
             return results
         }
         var online: [BookMeta] = []

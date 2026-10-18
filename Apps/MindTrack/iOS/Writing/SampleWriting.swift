@@ -134,7 +134,7 @@ extension AppModel {
     /// short piece too, so a forced check-in (`-checkIn writing`) has an older and a newer one to compare.
     func seedWriting(comparisons: [BlindComparison]) {
         store.save(comparisons)
-        if ProcessInfo.processInfo.arguments.contains("-samplePair"), let first = sessions.first {
+        if LaunchOptions.current.has("-samplePair"), let first = sessions.first {
             let text = SampleWriting.slips(SampleWriting.creative[0], count: 3)
             store.save(WritingPiece(date: first.start.addingTimeInterval(3 * 86_400), exercise: .prompt, writingKind: .creative,
                                     prompt: "It’s the last shift before the corner café closes for good. Write about three paragraphs.",
@@ -149,7 +149,7 @@ extension AppModel {
     func debugCheckIn(_ domains: [Domain]) {
         guard let state else { return }
         run = StudyRun(plan: SessionPlanner.plan(.checkIn, domains: domains, state: state, catalogs: catalogs), state: state, catalogs: catalogs,
-                       now: Date())
+                       now: now())
     }
 }
 #endif
@@ -168,8 +168,7 @@ struct WritingDebugScreen: ViewModifier {
             .onAppear {
                 guard !Self.opened else { return }
                 Self.opened = true
-                let arguments = ProcessInfo.processInfo.arguments
-                if let i = arguments.firstIndex(of: "-writingScreen"), arguments.indices.contains(i + 1) { screen = arguments[i + 1] }
+                screen = LaunchOptions.current.value(after: "-writingScreen")
             }
             .fullScreenCover(item: Binding(get: { screen.map(Screen.init) }, set: { screen = $0?.id })) { screen in
                 NavigationStack {

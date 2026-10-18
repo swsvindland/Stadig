@@ -43,9 +43,13 @@ enum CoverReader {
     }
 
     static func read(_ image: UIImage, ai: SystemAI) async -> CoverText.Guess? {
-        guard let picture = image.bookCoverImage(), let lines = try? await lines(in: picture) else { return nil }
+        guard let picture = await coverPicture(image), let lines = try? await lines(in: picture) else { return nil }
         return await guess(lines, ai: ai)
     }
+
+    /// Decoding a camera photo and scaling it down takes a few hundred milliseconds: off the main
+    /// actor, so the "Reading the cover…" spinner keeps turning.
+    @concurrent nonisolated private static func coverPicture(_ image: UIImage) async -> CGImage? { image.bookCoverImage() }
 }
 
 /// The camera, for a photo of the cover.
@@ -78,8 +82,9 @@ struct CoverCamera: UIViewControllerRepresentable {
 }
 
 extension UIImage {
-    /// Upright and at most `maxDimension` on its long side, as text recognition wants it.
-    func bookCoverImage(maxDimension: CGFloat = 2000) -> CGImage? {
+    /// Upright and at most `maxDimension` on its long side, as text recognition wants it. Safe off
+    /// the main actor.
+    nonisolated func bookCoverImage(maxDimension: CGFloat = 2000) -> CGImage? {
         let longest = max(size.width, size.height)
         let scale = longest > maxDimension ? maxDimension / longest : 1
         let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())

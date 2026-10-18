@@ -145,7 +145,7 @@ extension AppModel {
     /// A comparison changed after its session: the AI's second opinion arriving late.
     func save(comparison: BlindComparison) {
         var comparison = comparison
-        comparison.updatedAt = Date()
+        comparison.updatedAt = now()
         store.save(comparison)
         reload()
     }

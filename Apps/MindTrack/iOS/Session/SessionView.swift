@@ -12,33 +12,40 @@ struct SessionView: View {
             Group {
                 if let run = model.run {
                     if let step = run.step {
+                        // A screen per step: answering keeps it (with what was typed, and its
+                        // haptic), the next step replaces it.
                         StepView(step: step, run: run)
-                            .id(stepID(step, run))
+                            .id(model.stepScreen)
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                     } else {
                         SessionSummary(run: run)
                     }
                 }
             }
-            .animation(.snappy, value: model.run.map { stepID($0.step, $0) })
+            .animation(.snappy, value: model.stepScreen)
+            .animation(.snappy, value: model.run?.feedback == nil)
             .background(.pageBackground)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("End", systemImage: "xmark") {
                         if model.run?.isComplete == true { model.endSession() } else { confirmingEnd = true }
                     }
+                    .accessibilityIdentifier("session.end")
                 }
                 ToolbarItem(placement: .principal) { SessionHeader() }
                 ToolbarItem(placement: .primaryAction) { Clock() }
             }
             .confirmationDialog("End the session?", isPresented: $confirmingEnd, titleVisibility: .visible) {
                 Button("End session", role: .destructive) { model.endSession() }
+                    .accessibilityIdentifier("session.endConfirm")
                 if let part = model.run?.currentPart, model.run.map({ $0.partIndex < $0.planParts.count - 1 }) ?? false {
                     Button("Skip \(part.title.lowercased())") { model.act { $0.skipPart(now: Date()) } }
+                        .accessibilityIdentifier("session.skipPart")
                 }
                 Button("Keep going", role: .cancel) {}
+                    .accessibilityIdentifier("session.keepGoing")
             } message: {
-                Text("Everything answered so far is kept, and anything half-learned comes back tomorrow.")
+                Text(endMessage)
             }
         }
         .task {
@@ -51,8 +58,10 @@ struct SessionView: View {
         }
     }
 
-    func stepID(_ step: StudyRun.Step?, _ run: StudyRun) -> String {
-        "\(run.session.attempts.count).\(run.partIndex).\(run.feedback == nil).\(step.map { "\($0)".prefix(60) } ?? "end")"
+    var endMessage: String {
+        let kept = "Everything answered so far is kept, and anything half-learned comes back tomorrow."
+        guard case .compose(let task)? = model.run?.step, task.reviewing == nil else { return kept }
+        return kept + " The piece you're writing stays on this device and comes back with its task."
     }
 }
 
@@ -60,7 +69,7 @@ extension AppModel {
     /// Advances the session clock without saving: the clock is saved with the next answer.
     func tick() {
         guard var current = run else { return }
-        current.tick(now: Date())
+        current.tick(now: now())
         run = current
     }
 }
@@ -73,6 +82,7 @@ private struct SessionHeader: View {
             VStack(spacing: 1) {
                 Text(part.title).font(.subheadline.weight(.semibold))
                 Text("Part \(run.partIndex + 1) of \(run.planParts.count)").font(.caption2).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("session.part")
             }
         }
     }
@@ -134,6 +144,8 @@ private struct StepView: View {
 private struct SessionSummary: View {
     @Environment(AppModel.self) private var model
     let run: StudyRun
+    /// Set on appearing, so the success haptic plays once the summary is up.
+    @State private var shown = false
 
     var body: some View {
         let attempts = run.session.attempts.filter { $0.kind != .test }
@@ -145,6 +157,7 @@ private struct SessionSummary: View {
             VStack(alignment: .leading, spacing: 16) {
                 Image(systemName: "checkmark.seal.fill").font(.system(size: 48)).foregroundStyle(.tint)
                 Text(run.plan.kind == .checkIn ? "Check-in done" : "Session done").font(.largeTitle.bold())
+                    .accessibilityIdentifier("summary.title")
                 VStack(alignment: .leading, spacing: 10) {
                     Label(Format.minutes(run.session.minutes), systemImage: "clock")
                     if !attempts.isEmpty {
@@ -183,12 +196,14 @@ private struct SessionSummary: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("summary.done")
                 .padding(.top, 8)
             }
             .padding(24)
             .readableWidth(560)
         }
-        .sensoryFeedback(.success, trigger: true)
+        .onAppear { shown = true }
+        .sensoryFeedback(.success, trigger: shown)
     }
 }
 
@@ -207,16 +222,27 @@ enum TestLine {
         case .episode: return "\(language) episode without subtitles: \(rating)"
         case .conversation: return "\(language) conversation: \(rating)"
         case .numeracy:
-            return "Numeracy: level \(Int(test.detail["level"] ?? 0)) of 10 · \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
-        case .mathsPlacement: return "\(MathsStrand.classic.label): placed at level \(Int(test.detail["level"] ?? 0)) of 10"
+            let level = test.detail["level"].map { "level \(Int($0)) of 10 · " } ?? ""
+            return "Numeracy: \(level)\(Format.percent(test.score)) right\(pace(test))"
+        case .mathsPlacement: return "\(MathsStrand.classic.label): \(placed(test))"
         case .maths, .discrete:
             let strand = MathsStrand(test: test.test)?.label ?? test.test.label
-            if test.placement { return "\(strand): placed at level \(Int(test.detail["level"] ?? 0)) of 10" }
-            return "\(strand): level \(Int(test.detail["reach"] ?? 0)) reached · \(Format.percent(test.score)) right, \(Format.seconds(test.detail["seconds"] ?? 0)) a problem"
+            if test.placement { return "\(strand): \(placed(test))" }
+            let reach = test.detail["reach"].map { "level \(Int($0)) reached · " } ?? ""
+            return "\(strand): \(reach)\(Format.percent(test.score)) right\(pace(test))"
         case .writing: return "Grammar\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
         case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
-        case .readingTest: return "Reading test: tier \(ReadingPlan.format(test.detail["tier"] ?? 0)), \(Int(test.detail["wpm"] ?? 0)) words a minute"
+        case .readingTest:
+            // A result saved without its details says less rather than "tier 0".
+            let parts = [test.detail["tier"].map { "tier \(ReadingPlan.format($0))" }, test.detail["wpm"].map { "\(Int($0)) words a minute" }]
+            let said = parts.compactMap { $0 }.joined(separator: ", ")
+            return said.isEmpty ? "Reading test done" : "Reading test: \(said)"
         }
     }
+
+    /// ", 6 s a problem", when the time was kept.
+    private static func pace(_ test: TestResult) -> String { test.detail["seconds"].map { ", \(Format.seconds($0)) a problem" } ?? "" }
+
+    private static func placed(_ test: TestResult) -> String { test.detail["level"].map { "placed at level \(Int($0)) of 10" } ?? "placed" }
 }
