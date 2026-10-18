@@ -88,9 +88,11 @@ public actor SystemAI {
     private let runner: Runner
 
     public init(allowCloud: Bool) {
-        self.init(allowCloud: allowCloud, availability: { SystemAI.availability(allowCloud: $0) }) { engine, instructions, prompt, maxTokens in
-            try await SystemAI.run(engine, instructions: instructions, prompt: prompt, maxTokens: maxTokens)
-        }
+        self.init(
+            allowCloud: allowCloud, availability: { SystemAI.availability(allowCloud: $0) },
+            runner: { engine, instructions, prompt, maxTokens in
+                try await SystemAI.run(engine, instructions: instructions, prompt: prompt, maxTokens: maxTokens)
+            })
     }
 
     /// A model and availability of the caller's choosing, for tests.

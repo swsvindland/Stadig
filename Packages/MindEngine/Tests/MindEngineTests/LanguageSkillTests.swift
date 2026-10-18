@@ -497,7 +497,7 @@ struct LanguageContentTests {
     @Test("every picture is a real SF Symbol")
     func pictures() {
         for (meaning, symbol) in Pictures.symbols {
-            #expect(NSImageExists(symbol), "\(meaning): \(symbol)")
+            #expect(systemSymbolExists(symbol), "\(meaning): \(symbol)")
         }
         let dog = Word(id: 1, language: .spanish, rank: 1, text: "el perro", meaning: "dog")
         #expect(Pictures.symbol(for: dog) == "dog.fill")
@@ -560,7 +560,7 @@ struct LanguageContentTests {
 #if canImport(AppKit)
 import AppKit
 
-func NSImageExists(_ symbol: String) -> Bool { NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil }
+func systemSymbolExists(_ symbol: String) -> Bool { NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil }
 #endif
 
 extension AnswerMatchTests {

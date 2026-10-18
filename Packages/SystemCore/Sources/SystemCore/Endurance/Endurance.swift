@@ -2,7 +2,9 @@ import Foundation
 
 /// A fixed, repeatable conditioning test, taken about every four weeks at the end of a deload.
 public enum EnduranceBenchmark: String, CaseIterable, Codable, Sendable, Identifiable {
-    case row2k, bike12min, stairs10min, run2_4k
+    case row2k, bike12min, stairs10min
+    /// Stored as "run2_4k", the name it had first.
+    case run2400m = "run2_4k"
 
     public var id: String { rawValue }
 
@@ -11,7 +13,7 @@ public enum EnduranceBenchmark: String, CaseIterable, Codable, Sendable, Identif
         case .row2k: "2 km row"
         case .bike12min: "12-minute bike"
         case .stairs10min: "10-minute StairMaster"
-        case .run2_4k: "2.4 km run"
+        case .run2400m: "2.4 km run"
         }
     }
 
@@ -20,7 +22,7 @@ public enum EnduranceBenchmark: String, CaseIterable, Codable, Sendable, Identif
         case .row2k: "Row 2,000 m as fast as you can hold. Same damper every time."
         case .bike12min: "Ride as far as you can in 12 minutes. Same bike and resistance every time."
         case .stairs10min: "Climb as many floors as you can in 10 minutes at a level you choose once and keep."
-        case .run2_4k: "Run 2.4 km as fast as you can hold, on the same route or treadmill incline."
+        case .run2400m: "Run 2.4 km as fast as you can hold, on the same route or treadmill incline."
         }
     }
 
@@ -28,7 +30,7 @@ public enum EnduranceBenchmark: String, CaseIterable, Codable, Sendable, Identif
 
     public var measure: Measure {
         switch self {
-        case .row2k, .run2_4k: .timeSeconds
+        case .row2k, .run2400m: .timeSeconds
         case .bike12min: .distanceMeters
         case .stairs10min: .floors
         }
@@ -42,7 +44,7 @@ public enum EnduranceBenchmark: String, CaseIterable, Codable, Sendable, Identif
         case .row2k: .rower
         case .bike12min: .bike
         case .stairs10min: .stairClimber
-        case .run2_4k: .treadmill
+        case .run2400m: .treadmill
         }
     }
 
@@ -135,14 +137,14 @@ public enum Rest {
     public static func plan(role: RestRole, reps: Int, defaultSeconds: Int, enduranceScore: Double?, hrGuidance: Bool) -> RestPlan {
         var target = Double(defaultSeconds)
         if let score = enduranceScore, score < 40 { target *= 1.15 }
-        let target_ = Int((target / 15).rounded() * 15)
+        let roundedTarget = Int((target / 15).rounded() * 15)
         switch role {
         case .heavyCompound:
-            return RestPlan(target: max(target_, 150), minimum: 150, heartRateGuided: false)
+            return RestPlan(target: max(roundedTarget, 150), minimum: 150, heartRateGuided: false)
         case .compound:
-            return RestPlan(target: target_, minimum: reps <= 6 ? 120 : 75, heartRateGuided: hrGuidance && reps > 6)
+            return RestPlan(target: roundedTarget, minimum: reps <= 6 ? 120 : 75, heartRateGuided: hrGuidance && reps > 6)
         case .accessory:
-            return RestPlan(target: target_, minimum: 45, heartRateGuided: hrGuidance)
+            return RestPlan(target: roundedTarget, minimum: 45, heartRateGuided: hrGuidance)
         }
     }
 

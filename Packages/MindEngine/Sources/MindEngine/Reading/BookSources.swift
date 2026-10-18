@@ -60,17 +60,22 @@ public enum OpenLibrary {
         var title: String
         var subtitle: String?
         var authors: [Named]?
-        var number_of_pages: Int?
-        var publish_date: String?
+        var numberOfPages: Int?
+        var publishDate: String?
         var subjects: [Named]?
         var cover: [String: String]?
+
+        enum CodingKeys: String, CodingKey {
+            case title, subtitle, authors, subjects, cover
+            case numberOfPages = "number_of_pages", publishDate = "publish_date"
+        }
     }
 
     public static func parseISBN(_ data: Data, isbn: String, now: Date = Date()) -> BookMeta? {
         guard let editions = try? JSONDecoder().decode([String: Edition].self, from: data),
               let edition = editions["ISBN:\(isbn)"] ?? editions.values.first else { return nil }
         return BookMeta(isbn: isbn, title: edition.title, author: edition.authors?.map(\.name).joined(separator: ", ") ?? "",
-                        pages: edition.number_of_pages, year: edition.publish_date.flatMap(year), subjects: (edition.subjects ?? []).prefix(20).map(\.name),
+                        pages: edition.numberOfPages, year: edition.publishDate.flatMap(year), subjects: (edition.subjects ?? []).prefix(20).map(\.name),
                         coverURL: (edition.cover?["medium"] ?? edition.cover?["small"]).flatMap(URL.init(string:)), source: "openlibrary",
                         fetchedAt: now, updatedAt: now)
     }
@@ -85,12 +90,18 @@ public enum OpenLibrary {
     private struct Search: Decodable {
         struct Doc: Decodable {
             var title: String?
-            var author_name: [String]?
-            var first_publish_year: Int?
-            var number_of_pages_median: Int?
+            var authorName: [String]?
+            var firstPublishYear: Int?
+            var numberOfPagesMedian: Int?
             var isbn: [String]?
             var subject: [String]?
-            var cover_i: Int?
+            var coverID: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case title, isbn, subject
+                case authorName = "author_name", firstPublishYear = "first_publish_year"
+                case numberOfPagesMedian = "number_of_pages_median", coverID = "cover_i"
+            }
         }
         var docs: [Lenient<Doc>]
     }
@@ -101,8 +112,8 @@ public enum OpenLibrary {
             guard let doc = doc.value, let title = doc.title, !title.isEmpty else { return nil }
             let isbns = (doc.isbn ?? []).compactMap(ISBN.normalize)
             return BookMeta(isbn: isbns.first { $0.hasPrefix("978") } ?? isbns.first, title: title,
-                            author: doc.author_name?.first ?? "", pages: doc.number_of_pages_median, year: doc.first_publish_year,
-                            subjects: Array((doc.subject ?? []).prefix(20)), coverURL: doc.cover_i.map(coverURL), source: "openlibrary",
+                            author: doc.authorName?.first ?? "", pages: doc.numberOfPagesMedian, year: doc.firstPublishYear,
+                            subjects: Array((doc.subject ?? []).prefix(20)), coverURL: doc.coverID.map(coverURL), source: "openlibrary",
                             fetchedAt: now, updatedAt: now)
         }
     }

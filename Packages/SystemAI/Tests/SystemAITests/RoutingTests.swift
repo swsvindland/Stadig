@@ -43,7 +43,7 @@ struct RespondTests {
     @Test("when both engines fail, each is asked once and the second's error is thrown")
     func bothFailing() async {
         let log = CallLog()
-        let ai = SystemAI(allowCloud: true, availability: { _ in Self.both }) { engine, _, _, _ in
+        let ai = SystemAI(allowCloud: true, availability: always(Self.both)) { engine, _, _, _ in
             log.append(engine)
             throw engine == .privateCloud ? AIError.network : AIError.tooLong
         }
@@ -53,7 +53,7 @@ struct RespondTests {
         #expect(log.calls.withLock { $0 } == [.privateCloud, .onDevice])
 
         let failing = CallLog()
-        let alwaysFailed = SystemAI(allowCloud: true, availability: { _ in Self.both }) { engine, _, _, _ in
+        let alwaysFailed = SystemAI(allowCloud: true, availability: always(Self.both)) { engine, _, _, _ in
             failing.append(engine)
             throw AIError.failed("Nope")
         }
@@ -66,7 +66,7 @@ struct RespondTests {
     @Test("a failure the other engine might not share falls back once and returns its answer")
     func fallbackAnswers() async throws {
         let log = CallLog()
-        let ai = SystemAI(allowCloud: true, availability: { _ in Self.both }) { engine, _, prompt, _ in
+        let ai = SystemAI(allowCloud: true, availability: always(Self.both)) { engine, _, prompt, _ in
             log.append(engine)
             if engine == .privateCloud { throw AIError.quotaReached(nil) }
             return "Device: \(prompt)"
@@ -78,7 +78,7 @@ struct RespondTests {
     @Test("a refusal isn't retried, and nothing available says why")
     func refusalAndUnavailable() async {
         let log = CallLog()
-        let ai = SystemAI(allowCloud: true, availability: { _ in Self.both }) { engine, _, _, _ in
+        let ai = SystemAI(allowCloud: true, availability: always(Self.both)) { engine, _, _, _ in
             log.append(engine)
             throw AIError.refused
         }
@@ -86,7 +86,7 @@ struct RespondTests {
         #expect(log.calls.withLock { $0 } == [.onDevice])
 
         let off = AIAvailability(onDevice: false, privateCloud: false, reason: "Off")
-        let none = SystemAI(allowCloud: false, availability: { _ in off }) { _, _, _, _ in
+        let none = SystemAI(allowCloud: false, availability: always(off)) { _, _, _, _ in
             Issue.record("nothing should be asked")
             return ""
         }
@@ -96,7 +96,7 @@ struct RespondTests {
     @Test("a cancelled request stops instead of falling back")
     func cancellation() async {
         let log = CallLog()
-        let ai = SystemAI(allowCloud: true, availability: { _ in Self.both }) { engine, _, _, _ in
+        let ai = SystemAI(allowCloud: true, availability: always(Self.both)) { engine, _, _, _ in
             log.append(engine)
             withUnsafeCurrentTask { $0?.cancel() }
             throw AIError.busy
@@ -113,4 +113,9 @@ final class CallLog: Sendable {
     let calls = Mutex<[AIEngine]>([])
 
     func append(_ engine: AIEngine) { calls.withLock { $0.append(engine) } }
+}
+
+/// Availability that never changes, for a test's SystemAI.
+func always(_ availability: AIAvailability) -> @Sendable (Bool) -> AIAvailability {
+    { _ in availability }
 }
