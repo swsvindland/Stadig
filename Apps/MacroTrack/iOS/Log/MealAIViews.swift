@@ -1,8 +1,8 @@
-import SwiftUI
-import PhotosUI
 import FoodDatabase
 import FoodIntelligence
 import NutritionEngine
+import PhotosUI
+import SwiftUI
 import SystemCore
 
 /// What the person reads when the model can't help.
@@ -42,10 +42,12 @@ struct PhotoLogView: View {
     var body: some View {
         Group {
             if let guess {
-                MealReviewView(guess: guess, source: .photo, search: { text in
-                    query = text
-                    mode = .search
-                }, close: close)
+                MealReviewView(
+                    guess: guess, source: .photo,
+                    search: { text in
+                        query = text
+                        mode = .search
+                    }, close: close)
             } else if working {
                 AnalyzingView(image: image, engine: model.ai.availability.onDeviceVision ? "on your iPhone" : "with Private Cloud Compute")
             } else {
@@ -56,14 +58,17 @@ struct PhotoLogView: View {
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { picked in
                 showCamera = false
-                if let picked { analyze(picked) }
+                if let picked { analyze { await PhotoInput.prepare(picked, maxDimension: 1280) } }
             }
             .ignoresSafeArea()
         }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self), let picked = UIImage(data: data) { analyze(picked) }
+            // Cleared, so choosing the same photo again after a failure is a change.
+            pickerItem = nil
+            analyze {
+                guard let data = try await item.loadTransferable(type: Data.self) else { return nil }
+                return await PhotoInput.prepare(data, maxDimension: 1280)
             }
         }
         .onAppear {
@@ -99,13 +104,25 @@ struct PhotoLogView: View {
         }
     }
 
-    func analyze(_ picked: UIImage) {
-        image = picked
-        guard let cg = picked.prepared() else { return }
+    /// Reads a photo: loaded and downsampled off the main thread, then named by the model.
+    func analyze(_ photo: @escaping () async throws -> CGImage?) {
         working = true
         error = nil
+        image = nil
         Task {
             defer { working = false }
+            let prepared: CGImage?
+            do {
+                prepared = try await photo()
+            } catch {
+                self.error = "Couldn't load that photo. If it's in iCloud, check your connection and try again."
+                return
+            }
+            guard let cg = prepared else {
+                error = "Couldn't open that photo. Try another."
+                return
+            }
+            image = UIImage(cgImage: cg)
             do {
                 let result = try await model.ai.recognize(photo: cg, note: note.isEmpty ? nil : note, personal: model.personal)
                 if !result.isFood || result.items.isEmpty {
@@ -135,17 +152,21 @@ struct DescribeLogView: View {
     var body: some View {
         Group {
             if let guess {
-                MealReviewView(guess: guess, source: .description, search: { text in
-                    query = text
-                    mode = .search
-                }, close: close)
+                MealReviewView(
+                    guess: guess, source: .description,
+                    search: { text in
+                        query = text
+                        mode = .search
+                    }, close: close)
             } else if working {
                 AnalyzingView(image: nil, engine: model.ai.availability.onDevice ? "on your iPhone" : "with Private Cloud Compute")
             } else {
                 Form {
                     if !model.ai.canDescribe {
                         Section {
-                            Label(model.ai.availability.reason ?? "Describing meals isn't available on this iPhone.", systemImage: "exclamationmark.triangle")
+                            Label(
+                                model.ai.availability.reason ?? "Describing meals isn't available on this iPhone.",
+                                systemImage: "exclamationmark.triangle")
                             Button("Search instead") { mode = .search }
                         }
                     }
@@ -156,7 +177,9 @@ struct DescribeLogView: View {
                             .submitLabel(.go)
                             .onSubmit(analyze)
                     } footer: {
-                        Text("Type or dictate with the keyboard's microphone. Brands and amounts help: \"a Big Mac and medium fries\", \"a plate of spaghetti bolognese\".")
+                        Text(
+                            "Type or dictate with the keyboard's microphone. Brands and amounts help: \"a Big Mac and medium fries\", \"a plate of spaghetti bolognese\"."
+                        )
                     }
                     if let error {
                         Section { Text(error).foregroundStyle(.secondary) }
@@ -250,15 +273,18 @@ struct MealReviewView: View {
                     ReviewRow(item: $item, search: search)
                 }
             } footer: {
-                Text("\(guess.engine == .onDevice ? "On device" : "Private Cloud Compute") · \(Format.number(guess.seconds)) s. Amounts marked ≈ are estimates; nutrients always come from the food database.")
+                Text(
+                    "\(guess.engine == .onDevice ? "On device" : "Private Cloud Compute") · \(Format.number(guess.seconds)) s. Amounts marked ≈ are estimates; nutrients always come from the food database."
+                )
             }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
                 let entries = chosen.compactMap { item -> FoodEntry? in
                     guard let food = item.food, let unit = item.unit else { return nil }
-                    return model.entry(for: food, count: item.count, unit: unit, source: source,
-                                       confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
+                    return model.entry(
+                        for: food, count: item.count, unit: unit, source: source,
+                        confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
                 }
                 model.log(entries)
                 close()
@@ -303,11 +329,12 @@ private struct ReviewRow: View {
                         Text("Saw “\(item.seen.seenName)”").font(.caption).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 10) {
-                        Stepper(value: Binding(get: { item.count }, set: { item.count = max(0.25, $0) }), in: 0.25...50, step: step) {
+                        Stepper(value: Binding(get: { item.count }, set: { item.count = max(range.lowerBound, $0) }), in: range, step: step) {
                             Text("\(item.seen.approximate ? "≈ " : "")\(item.amount)").font(.subheadline.monospacedDigit())
                         }
                     }
-                    Text("\(Format.kcal(item.nutrients.kcal)) · \(Format.macros(item.nutrients))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    Text("\(Format.kcal(item.nutrients.kcal)) · \(Format.macros(item.nutrients))").font(.caption.monospacedDigit()).foregroundStyle(
+                        .secondary)
                 } else {
                     Text(item.seen.seenName).font(.body)
                     Text("No good match in the food database").font(.caption).foregroundStyle(.secondary)
@@ -328,7 +355,18 @@ private struct ReviewRow: View {
         .opacity(item.included || item.food == nil ? 1 : 0.55)
     }
 
-    var step: Double { item.count < 2 ? 0.25 : item.count < 10 ? 0.5 : 1 }
+    /// What ± adds: 10 g, ml or kcal (an estimate is often 350 g), else a quarter, a half or a
+    /// whole one of the unit as the count grows.
+    var step: Double {
+        if let unit = item.unit, FoodUnits.step(for: unit) >= 10 { return FoodUnits.step(for: unit) }
+        return item.count < 2 ? 0.25 : item.count < 10 ? 0.5 : 1
+    }
+
+    /// From one step up to well past the estimate, so the amount is always inside it.
+    var range: ClosedRange<Double> {
+        let byTens = item.unit.map { FoodUnits.step(for: $0) >= 10 } ?? false
+        return byTens ? step...max(5000, item.count * 4) : 0.25...max(50, item.count * 2)
+    }
 
     func swap(to food: Food) {
         let units = FoodUnits.units(for: food)

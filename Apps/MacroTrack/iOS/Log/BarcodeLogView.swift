@@ -1,7 +1,7 @@
-import SwiftUI
 import FoodDatabase
 import FoodIntelligence
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// Point at a barcode; the food opens with the usual portion ready to add. Codes the catalog
@@ -60,6 +60,12 @@ struct BarcodeLogView: View {
         .navigationTitle("Scan")
         // Back from the portion: scan the next thing.
         .onChange(of: portion) { _, now in if now == nil { scanID = UUID() } }
+        // Wherever the read was started from (the scanner's menu has no message of its own).
+        .alert("Couldn't read the label", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") { error = nil }
+        } message: {
+            Text(error ?? "")
+        }
         .fullScreenCover(isPresented: $capturingLabel) {
             CameraPicker { image in
                 capturingLabel = false
@@ -95,15 +101,16 @@ struct BarcodeLogView: View {
             Button("Search by name") { mode = .search }
             Button("Scan again") {
                 missing = nil
+                error = nil
                 scanning = true
             }
-            if let error { Text(error).font(.footnote).foregroundStyle(.secondary) }
         }
     }
 
     func handle(_ code: String, symbology: Barcode.Symbology? = nil) {
         let digits = code.filter(\.isNumber)
         guard !digits.isEmpty else { return }
+        error = nil
         if let outcome = lookup(digits, symbology) {
             finish(outcome)
         } else {
@@ -136,10 +143,14 @@ struct BarcodeLogView: View {
     }
 
     func read(_ image: UIImage) {
-        guard let cg = image.prepared(maxDimension: 2000) else { return }
+        error = nil
         readingLabel = true
         Task {
             defer { readingLabel = false }
+            guard let cg = await PhotoInput.prepare(image, maxDimension: 2000) else {
+                error = "Couldn't open that photo. Try again."
+                return
+            }
             do {
                 let result = try await model.ai.readLabel(photo: cg)
                 if result.reading == nil {
@@ -166,6 +177,10 @@ struct LabelReviewView: View {
     @State private var protein = ""
     @State private var carbs = ""
     @State private var fat = ""
+    @State private var filled = false
+    /// The food a Save made, and the fields it was made from: back from the portion and saved
+    /// again unchanged, it's the same food rather than a second copy.
+    @State private var lastSave: (food: Food, fields: [String])?
 
     var body: some View {
         Form {
@@ -193,16 +208,20 @@ struct LabelReviewView: View {
             }
             .primaryAction()
             .padding()
-            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || Double(kcal) == nil)
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || Format.parse(kcal) == nil)
         }
         .onAppear {
+            // Once: this view appears again on the way back from the portion, and the person's
+            // corrections must survive that.
+            guard !filled else { return }
+            filled = true
             name = result.suggestedName ?? ""
             brand = result.brand ?? ""
             if let n = result.reading?.nutrients {
-                kcal = Format.number(n.kcal, digits: 0)
-                protein = Format.number(n.protein)
-                carbs = Format.number(n.carbs)
-                fat = Format.number(n.fat)
+                kcal = Format.editable(n.kcal, digits: 0)
+                protein = Format.editable(n.protein, digits: 1)
+                carbs = Format.editable(n.carbs, digits: 1)
+                fat = Format.editable(n.fat, digits: 1)
             }
         }
     }
@@ -213,7 +232,9 @@ struct LabelReviewView: View {
         var notes: [String] = []
         let core = ["kcal": "calories", "protein": "protein", "carbs": "carbs", "fat": "fat"]
         let missing = reading.missing.compactMap { core[$0] }
-        if !missing.isEmpty { notes.append("Couldn't read \(missing.joined(separator: ", ")); fill \(missing.count == 1 ? "it" : "them") in from the label.") }
+        if !missing.isEmpty {
+            notes.append("Couldn't read \(missing.joined(separator: ", ")); fill \(missing.count == 1 ? "it" : "them") in from the label.")
+        }
         if reading.estimatedCalories { notes.append("Calories were worked out from fat, carbs and protein.") }
         if reading.warnings.contains(.caloriesMismatch) { notes.append("Calories don't add up from the macros: one number may be misread.") }
         if reading.warnings.contains(.partOverTotal) { notes.append("A part is more than its total (like sugars over carbs): check those lines.") }
@@ -240,14 +261,23 @@ struct LabelReviewView: View {
 
     func save() {
         guard var reading = result.reading else { return }
-        func value(_ s: String) -> Double { Double(s.replacingOccurrences(of: ",", with: ".")) ?? 0 }
+        let fields = [name, brand, kcal, protein, carbs, fat]
+        if let lastSave, lastSave.fields == fields {
+            saved(lastSave.food)
+            return
+        }
+        func value(_ s: String) -> Double { Format.parse(s) ?? 0 }
         reading.nutrients.kcal = value(kcal)
         reading.nutrients.protein = value(protein)
         reading.nutrients.carbs = value(carbs)
         reading.nutrients.fat = value(fat)
-        let food = reading.food(name: name.trimmingCharacters(in: .whitespaces),
-                                brand: brand.trimmingCharacters(in: .whitespaces).isEmpty ? nil : brand, barcode: barcode)
-        saved(model.save(customFood: food))
+        let food = reading.food(
+            name: name.trimmingCharacters(in: .whitespaces),
+            brand: brand.trimmingCharacters(in: .whitespaces).isEmpty ? nil : brand, barcode: barcode)
+        // Corrected after an earlier save: the same food, updated.
+        let kept = model.save(customFood: food, replacing: lastSave.flatMap { CustomFoodRecord.recordID(fromFoodID: $0.food.id) })
+        lastSave = (kept, fields)
+        saved(kept)
     }
 }
 
@@ -264,8 +294,9 @@ struct SupplementFoundView: View {
         ContentUnavailableView {
             Label(supplement.name, systemImage: supplement.facts.form.symbol)
         } description: {
-            Text([supplement.facts.brand, own ? supplement.scheduleLabel : "A supplement: add it to your stack to tick it off each day."]
-                .compactMap { $0 }.joined(separator: "\n"))
+            Text(
+                [supplement.facts.brand, own ? supplement.scheduleLabel : "A supplement: add it to your stack to tick it off each day."]
+                    .compactMap { $0 }.joined(separator: "\n"))
         } actions: {
             if own {
                 Button("Take \(supplement.facts.amountLabel(supplement.doses.first?.count ?? supplement.facts.servingCount)) now") {

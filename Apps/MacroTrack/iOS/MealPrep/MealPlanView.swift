@@ -1,6 +1,6 @@
-import SwiftUI
 import MealPlanner
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 extension Format {
@@ -70,13 +70,19 @@ struct MealPlanView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    let planID: UUID
-    @State var page: Page = .week
+    /// The plan shown: the one opened, or the one made from here with "New plan…".
+    @State private var planID: UUID
+    @State private var page: Page
     @State private var request = ""
     @State private var working = false
     @State private var changed: String?
     @State private var showSetup = false
     @State private var confirmDelete = false
+
+    init(planID: UUID, page: Page = .week) {
+        _planID = State(initialValue: planID)
+        _page = State(initialValue: page)
+    }
 
     var body: some View {
         if let plan = model.mealPlans.first(where: { $0.id == planID }) {
@@ -86,6 +92,7 @@ struct MealPlanView: View {
                         ForEach(Page.allCases) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("mealPlan.page")
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                 }
@@ -102,16 +109,22 @@ struct MealPlanView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }
+                            .disabled(model.swappableRecipes(in: plan).isEmpty)
                         Button("New plan…", systemImage: "square.and.pencil") { showSetup = true }
-                        ShareLink(item: GroceryPage.text(plan, unit: model.units.weight)) { Label("Share grocery list", systemImage: "square.and.arrow.up") }
+                        ShareLink(item: GroceryPage.text(plan, unit: model.units.weight)) {
+                            Label("Share grocery list", systemImage: "square.and.arrow.up")
+                        }
                         Button("Delete plan", systemImage: "trash", role: .destructive) { confirmDelete = true }
                     } label: {
                         Image(systemName: "ellipsis")
                     }
                     .accessibilityLabel("Plan options")
+                    .accessibilityIdentifier("mealPlan.options")
+                    // While a request is being read, so the plan it's for can't be deleted or replaced under it.
+                    .disabled(working)
                 }
             }
-            .sheet(isPresented: $showSetup) { MealPlanSetup() }
+            .sheet(isPresented: $showSetup) { MealPlanSetup { planID = $0.id } }
             .confirmationDialog("Delete this week's plan?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete plan", role: .destructive) {
                     model.deleteMealPlan(plan)
@@ -121,8 +134,9 @@ struct MealPlanView: View {
                 Text("Meals already logged from it stay in your log.")
             }
         } else {
-            ContentUnavailableView("No meal plan", systemImage: "takeoutbag.and.cup.and.straw",
-                                   description: Text("Plan a week from the Plan tab."))
+            ContentUnavailableView(
+                "No meal plan", systemImage: "takeoutbag.and.cup.and.straw",
+                description: Text("Plan a week from the Plan tab."))
         }
     }
 
@@ -134,10 +148,12 @@ struct MealPlanView: View {
                     .submitLabel(.go)
                     .onSubmit { change(plan) }
                     .disabled(working)
+                    .accessibilityIdentifier("mealPlan.request")
                 if working {
                     ProgressView()
                 } else if !request.isEmpty {
                     Button("Change") { change(plan) }.buttonStyle(.borderless).fontWeight(.semibold)
+                        .accessibilityIdentifier("mealPlan.change")
                 }
             }
             if let changed {
@@ -155,16 +171,19 @@ struct MealPlanView: View {
                 Text("Sized to \(Format.kcal(plan.targets.kcal)) and \(Format.grams(plan.targets.protein)) protein.")
                     .font(.caption).foregroundStyle(.secondary)
                 ForEach(plan.unplanned(on: plan.start), id: \.slot) { open in
-                    Label("\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
-                          systemImage: open.slot.symbol)
-                        .font(.caption).foregroundStyle(.secondary)
+                    Label(
+                        "\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
+                        systemImage: open.slot.symbol
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
 
         Section("Dishes") {
+            let swappable = Set(model.swappableRecipes(in: plan))
             ForEach(plan.recipes) { recipe in
-                RecipeRow(recipe: recipe) { model.swap(recipe.id, in: plan) }
+                RecipeRow(recipe: recipe, swap: swappable.contains(recipe.id) ? { model.swap(recipe.id, in: plan) } : nil)
             }
         }
 
@@ -208,11 +227,12 @@ struct MealPlanView: View {
     }
 }
 
-/// A dish: what's in it, its numbers per serving, and a swap.
+/// A dish: what's in it, its numbers per serving, and a swap while it's still to come (one kept
+/// only for the days it was eaten can't be).
 struct RecipeRow: View {
     @Environment(AppModel.self) private var model
     let recipe: PlannedRecipe
-    let swap: () -> Void
+    let swap: (() -> Void)?
 
     var body: some View {
         let n = recipe.nutrients
@@ -220,19 +240,26 @@ struct RecipeRow: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(recipe.title).font(.subheadline.weight(.semibold))
-                    Text("\(recipe.servings) × \(recipe.slots.map { $0.label.lowercased() }.joined(separator: " and "))\(recipe.madeOnTheDay ? " · made on the day" : "")")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        "\(recipe.servings) × \(recipe.slots.map { $0.label.lowercased() }.joined(separator: " and "))\(recipe.madeOnTheDay ? " · made on the day" : "")"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(action: swap) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
+                if let swap {
+                    Button(action: swap) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Swap \(recipe.title)")
+                    .accessibilityIdentifier("mealPlan.swap")
                 }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Swap \(recipe.title)")
             }
-            Text(recipe.items.filter { !$0.onTheDay }.map { "\(Format.portion($0.grams, unit: model.units.weight)) \($0.name.lowercased())" }
-                .joined(separator: " · "))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(
+                recipe.items.filter { !$0.onTheDay }.map { "\(Format.portion($0.grams, unit: model.units.weight)) \($0.name.lowercased())" }
+                    .joined(separator: " · ")
+            )
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             let topping = recipe.items.filter(\.onTheDay)
             if !topping.isEmpty {
                 Text("When eating: \(topping.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: ", "))")
@@ -248,7 +275,9 @@ struct RecipeRow: View {
         }
         .padding(.vertical, 2)
         .contextMenu {
-            Button("Swap for something else", systemImage: "arrow.triangle.2.circlepath", action: swap)
+            if let swap {
+                Button("Swap for something else", systemImage: "arrow.triangle.2.circlepath", action: swap)
+            }
         }
     }
 }
@@ -377,8 +406,10 @@ struct PrepPage: View {
                         Text("Made on the day: \(pack.contents.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: ", ")).")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        Text("Each: \(pack.contents.map { "\(Format.portion($0.grams, unit: unit)) \($0.name.lowercased())" }.joined(separator: ", ")).")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(
+                            "Each: \(pack.contents.map { "\(Format.portion($0.grams, unit: unit)) \($0.name.lowercased())" }.joined(separator: ", "))."
+                        )
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         if !pack.onTheDay.isEmpty {
                             Text("When eating, add \(pack.onTheDay.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: " and ")).")
                                 .font(.caption).foregroundStyle(.secondary)

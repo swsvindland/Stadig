@@ -38,14 +38,16 @@ struct OpenLoggerIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         #if MAIN_APP
         let model = AppModel.shared
+        model.refreshDay()
         guard model.onboarded else { return .result() }
         model.selectedDay = model.today
-        model.loggerTime = nil
+        // In place of whatever sheet was up: only one shows at a time.
+        model.dismissSheets()
         switch entry {
-        case .search: model.logger = .search
-        case .camera: model.logger = .camera
-        case .scan: model.logger = .scan
-        case .describe: model.logger = .describe
+        case .search: model.openLogger(.search)
+        case .camera: model.openLogger(.camera)
+        case .scan: model.openLogger(.scan)
+        case .describe: model.openLogger(.describe)
         case .weigh: model.showWeighIn = true
         }
         #endif

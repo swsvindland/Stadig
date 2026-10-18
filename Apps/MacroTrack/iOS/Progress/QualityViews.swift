@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 extension Processing {
@@ -71,7 +71,8 @@ struct ProcessingBar: View {
         }
         .frame(height: 12)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Processing.allCases.compactMap { g in report.shares[g].map { "\(g.label) \(Format.percent($0))" } }.joined(separator: ", "))
+        .accessibilityLabel(
+            Processing.allCases.compactMap { g in report.shares[g].map { "\(g.label) \(Format.percent($0))" } }.joined(separator: ", "))
     }
 }
 
@@ -90,8 +91,10 @@ struct QualityCard: View {
                 }
             }
             if report.days.count < QualityAnalyst.minimumDays {
-                Text("After three complete days of logging, this shows how much of what you eat is whole food, how much is ultra-processed, and how often something fermented is in it.")
-                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "After three complete days of logging, this shows how much of what you eat is whole food, how much is ultra-processed, and how often something fermented is in it."
+                )
+                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
                 processing
                 Divider()
@@ -110,11 +113,14 @@ struct QualityCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 ProcessingBar(report: report)
                 legend
-                row(title: "Ultra-processed", value: Format.percent(report.share(.ultraProcessed) ?? 0),
+                row(
+                    title: "Ultra-processed", value: Format.percent(report.share(.ultraProcessed) ?? 0),
                     aim: "under \(Format.percent(QualityAnalyst.ultraAim))", status: report.ultraStatus)
                 if !report.ultraSources.isEmpty, report.ultraStatus != .good {
-                    Text("Most from \(report.ultraSources.prefix(2).map { "\(Format.shortName($0.name)) (\(Format.percent($0.share)))" }.joined(separator: " and ")).")
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "Most from \(report.ultraSources.prefix(2).map { "\(Format.shortName($0.name)) (\(Format.percent($0.share)))" }.joined(separator: " and "))."
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 if report.ultraStatus != .good {
                     Text("People eat more, and gain more fat, on the same macros when most of it is ultra-processed.")
@@ -126,8 +132,10 @@ struct QualityCard: View {
                 }
             }
         } else {
-            Text("Too little of what was logged says how processed it is (\(Format.percent(report.coverage)) of the calories). Foods from the catalogs and barcodes usually do; quick adds and your own foods don't.")
-                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(
+                "Too little of what was logged says how processed it is (\(Format.percent(report.coverage)) of the calories). Foods from the catalogs and barcodes usually do; quick adds and your own foods don't."
+            )
+            .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -150,12 +158,15 @@ struct QualityCard: View {
 
     var fermented: some View {
         VStack(alignment: .leading, spacing: 4) {
-            row(title: "Fermented foods", value: "\(report.fermentedDays) of \(report.days.count) days",
+            row(
+                title: "Fermented foods", value: "\(report.fermentedDays) of \(report.days.count) days",
                 aim: "most days", status: report.fermentedStatus)
-            Text(report.fermentedFoods.isEmpty
-                 ? "In a Stanford trial, yogurt, kefir, kimchi or sauerkraut every day made gut bacteria more varied and lowered markers of inflammation."
-                 : "From \(report.fermentedFoods.prefix(2).map(Format.shortName).joined(separator: " and ")).")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(
+                report.fermentedFoods.isEmpty
+                    ? "In a Stanford trial, yogurt, kefir, kimchi or sauerkraut every day made gut bacteria more varied and lowered markers of inflammation."
+                    : "From \(report.fermentedFoods.prefix(2).map(Format.shortName).joined(separator: " and "))."
+            )
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -198,27 +209,33 @@ struct QualityActionRow: View {
                 }
                 .buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)
                 .accessibilityLabel("Log \(fix.portion) of \(Format.shortName(fix.food))")
+                .accessibilityIdentifier("qualityAction.log")
             }
         }
         .contextMenu {
             Button("Not now", systemImage: "eye.slash") { model.hideNutrient(Self.hideKey(kind)) }
+                .accessibilityIdentifier("qualityAction.notNow")
         }
     }
 
     var title: String {
         switch kind {
         case .ultra: "\(Format.percent(report.share(.ultraProcessed) ?? 0)) of calories were ultra-processed this week"
-        case .fermented: report.fermentedDays == 0 ? "Nothing fermented this week" : "Fermented food on \(report.fermentedDays) of \(report.days.count) days"
+        case .fermented:
+            report.fermentedDays == 0 ? "Nothing fermented this week" : "Fermented food on \(report.fermentedDays) of \(report.days.count) days"
         }
     }
 
     var detail: String {
         switch kind {
         case .ultra:
-            let top = report.ultraSources.first.map { " The most came from \(Format.shortName($0.name)), \(Format.percent($0.share)) of calories." } ?? ""
-            return "The aim is under \(Format.percent(QualityAnalyst.ultraAim)): on the same macros, people eat more and gain more fat when most of it is ultra-processed.\(top)"
+            let top =
+                report.ultraSources.first.map { " The most came from \(Format.shortName($0.name)), \(Format.percent($0.share)) of calories." } ?? ""
+            return
+                "The aim is under \(Format.percent(QualityAnalyst.ultraAim)): on the same macros, people eat more and gain more fat when most of it is ultra-processed.\(top)"
         case .fermented:
-            return "Yogurt, kefir, kimchi or sauerkraut most days: in a Stanford trial, a daily habit made gut bacteria more varied and lowered markers of inflammation."
+            return
+                "Yogurt, kefir, kimchi or sauerkraut most days: in a Stanford trial, a daily habit made gut bacteria more varied and lowered markers of inflammation."
         }
     }
 

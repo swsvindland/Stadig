@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 extension Format {
@@ -91,7 +91,8 @@ struct NutrientsCard: View {
                 Text("Vitamins and minerals").font(.headline)
                 Spacer()
                 if !report.days.isEmpty {
-                    Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+                    Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(
+                        .secondary)
                 }
             }
             if report.days.count < MicroAnalyst.minimumDays {
@@ -128,10 +129,13 @@ struct AllNutrientsView: View {
                             Text("Listed for \(Format.percent(reading.coverage)) of the calories eaten").font(.caption2).foregroundStyle(.tertiary)
                         }
                         if reading.supplemented > 0 {
-                            Text("\(Format.nutrient(reading.supplemented, reading.nutrient.unit)) a day from supplements").font(.caption2).foregroundStyle(.secondary)
+                            Text("\(Format.nutrient(reading.supplemented, reading.nutrient.unit)) a day from supplements").font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                         if reading.overUpper, let upper = reading.upper {
-                            Text("Over the safe upper limit of \(Format.nutrient(upper, reading.nutrient.unit)) a day").font(.caption2.weight(.medium)).foregroundStyle(.orange)
+                            Text("Over the safe upper limit of \(Format.nutrient(upper, reading.nutrient.unit)) a day").font(
+                                .caption2.weight(.medium)
+                            ).foregroundStyle(.orange)
                         }
                         if reading.status != .ok, reading.status != .unknown, !reading.sources.isEmpty {
                             Text("Most from \(reading.sources.prefix(2).joined(separator: " and "))").font(.caption2).foregroundStyle(.secondary)
@@ -140,7 +144,9 @@ struct AllNutrientsView: View {
                     .padding(.vertical, 2)
                 }
             } footer: {
-                Text("Daily targets are the US National Academies' recommended intakes for your age and sex; fiber is 14 g per 1,000 kcal and saturated fat under 10% of calories. Supplements you tick off count too, and where there's a safe upper limit, going over it is flagged.")
+                Text(
+                    "Daily targets are the US National Academies' recommended intakes for your age and sex; fiber is 14 g per 1,000 kcal and saturated fat under 10% of calories. Supplements you tick off count too, and where there's a safe upper limit, going over it is flagged."
+                )
             }
         }
         .navigationTitle("Nutrients")
@@ -157,14 +163,21 @@ struct NutrientActionRow: View {
         let low = reading.status == .low
         let fix = model.microFix.flatMap { $0.nutrient.key == reading.nutrient.key ? $0 : nil }
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(reading.overUpper ? Color.orange : Color.accentColor).frame(width: 24)
+            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(reading.overUpper ? Color.orange : Color.accentColor).frame(
+                width: 24)
             VStack(alignment: .leading, spacing: 3) {
-                Text(reading.overUpper ? "\(reading.nutrient.label) is over the safe upper limit" : "\(reading.nutrient.label) has run \(low ? "low" : "high") this week")
-                    .font(.subheadline.weight(.semibold))
+                Text(
+                    reading.overUpper
+                        ? "\(reading.nutrient.label) is over the safe upper limit"
+                        : "\(reading.nutrient.label) has run \(low ? "low" : "high") this week"
+                )
+                .font(.subheadline.weight(.semibold))
                 Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if let fix {
-                    Text("\(fix.yours ? "Your " : "")\(Format.shortName(fix.food)), \(fix.portion), adds \(Format.nutrient(fix.amount, fix.nutrient.unit)).")
-                        .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "\(fix.yours ? "Your " : "")\(Format.shortName(fix.food)), \(fix.portion), adds \(Format.nutrient(fix.amount, fix.nutrient.unit))."
+                    )
+                    .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
                 } else if reading.overUpper, let source = reading.sources.first {
                     Text("Most is from \(source): take it every other day, or a lower strength.")
                         .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
@@ -180,10 +193,12 @@ struct NutrientActionRow: View {
                 }
                 .buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)
                 .accessibilityLabel("Log \(fix.portion) of \(Format.shortName(fix.food))")
+                .accessibilityIdentifier("nutrientAction.log")
             }
         }
         .contextMenu {
             Button("Not now", systemImage: "eye.slash") { model.hideNutrient(reading.nutrient.key) }
+                .accessibilityIdentifier("nutrientAction.notNow")
         }
     }
 
@@ -191,10 +206,12 @@ struct NutrientActionRow: View {
         let unit = reading.nutrient.unit
         let amount = reading.daily ?? reading.measured
         if reading.overUpper, let upper = reading.upper {
-            return "About \(Format.nutrient(amount, unit)) a day, \(Format.nutrient(reading.supplemented, unit)) of it from supplements. The safe upper limit is \(Format.nutrient(upper, unit))."
+            return
+                "About \(Format.nutrient(amount, unit)) a day, \(Format.nutrient(reading.supplemented, unit)) of it from supplements. The safe upper limit is \(Format.nutrient(upper, unit))."
         }
         let target = reading.target.map { Format.nutrient($0, unit) } ?? "?"
-        return "About \(Format.nutrient(amount, unit)) a day of \(reading.nutrient.goal == .atLeast ? "" : "at most ")\(target). \(reading.nutrient.why)"
+        return
+            "About \(Format.nutrient(amount, unit)) a day of \(reading.nutrient.goal == .atLeast ? "" : "at most ")\(target). \(reading.nutrient.why)"
     }
 }
 
@@ -210,12 +227,13 @@ struct PortionNutrients: View {
         let n = FoodUnits.nutrients(food, count: count, unit: unit)
         let micros = FoodUnits.micros(food, count: count, unit: unit)
         let rows = Micronutrients.all.compactMap { info -> (NutrientInfo, Double, Double?)? in
-            let value: Double? = switch info.key {
-            case "fiber": n.fiber
-            case "sodium": n.sodium
-            case "saturatedFat": n.saturatedFat
-            default: micros[info.key]
-            }
+            let value: Double? =
+                switch info.key {
+                case "fiber": n.fiber
+                case "sodium": n.sodium
+                case "saturatedFat": n.saturatedFat
+                default: micros[info.key]
+                }
             guard let value else { return nil }
             return (info, value, target(info.key).map { $0 > 0 ? value / $0 : 0 })
         }
@@ -227,7 +245,8 @@ struct PortionNutrients: View {
                         Spacer()
                         Text(Format.nutrient(value, info.unit)).font(.subheadline.monospacedDigit())
                         if let share {
-                            Text(Format.percent(share)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+                            Text(Format.percent(share)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(
+                                width: 44, alignment: .trailing)
                         }
                     }
                 }

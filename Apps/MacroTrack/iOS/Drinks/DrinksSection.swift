@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// Water and caffeine on Today, for people who turned drinks on: a tap for a glass, a tap for a
@@ -30,6 +30,7 @@ struct DrinksSection: View {
                     } label: {
                         Text(analysis.caffeine?.cutBack == nil ? "Cut back" : "Cutting back").font(.subheadline)
                     }
+                    .accessibilityIdentifier("drinks.cutBack")
                 }
                 .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet() }
             }
@@ -38,8 +39,9 @@ struct DrinksSection: View {
 
     func hydrationOn(_ day: Day) -> HydrationDay? {
         guard let profile = model.profile else { return nil }
-        return Hydration.day(day, water: model.water, entries: model.entries,
-                             target: model.settings.waterTarget ?? Hydration.target(sex: profile.sex))
+        return Hydration.day(
+            day, water: model.water, entries: model.entries,
+            target: model.settings.waterTarget ?? Hydration.target(sex: profile.sex))
     }
 
     func waterRow(_ h: HydrationDay) -> some View {
@@ -49,8 +51,10 @@ struct DrinksSection: View {
                 Image(systemName: "drop.fill").foregroundStyle(.cyan).frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Format.volume(h.total, ounces: ounces)).font(.subheadline.weight(.semibold).monospacedDigit())
-                    Text("of \(Format.volume(h.target, ounces: ounces))\(h.drinks > 0 ? " · \(Format.volume(h.drinks, ounces: ounces)) from drinks" : "")")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    Text(
+                        "of \(Format.volume(h.target, ounces: ounces))\(h.drinks > 0 ? " · \(Format.volume(h.drinks, ounces: ounces)) from drinks" : "")"
+                    )
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
                 .layoutPriority(1)
                 Spacer(minLength: 4)
@@ -105,7 +109,8 @@ struct DrinksSection: View {
             return "Over today's \(Format.mg(c.limit))\(c.cutBack != nil ? " step" : ""). Decaf, or half-caf, for anything else today."
         }
         if c.atBedtime >= Caffeine.bedtimeConcern {
-            return "About \(Format.mg(c.atBedtime)) will still be active at \(bedtime). Caffeine before \(Format.time(c.cutoff)) leaves less in the way of deep sleep."
+            return
+                "About \(Format.mg(c.atBedtime)) will still be active at \(bedtime). Caffeine before \(Format.time(c.cutoff)) leaves less in the way of deep sleep."
         }
         if let cut = c.cutBack, c.limit > cut.goal {
             return "Cutting back: up to \(Format.mg(c.limit)) this week, \(Format.mg(cut.goal)) from \(Format.day(cut.reachesGoal))."
@@ -125,10 +130,7 @@ struct DrinksSection: View {
                 ForEach(model.usualDrinks) { entry in
                     chip(Format.shortName(entry.name), symbol: nil, detail: entry.amountLabel) { model.logAgain(drink: entry) }
                 }
-                chip("Other", symbol: "magnifyingglass") {
-                    model.loggerTime = nil
-                    model.logger = .search
-                }
+                chip("Other", symbol: "magnifyingglass") { model.openLogger(.search) }
             }
             .padding(.vertical, 2)
         }
@@ -203,7 +205,9 @@ struct CaffeineCutBackSheet: View {
                             LabeledContent("Goal", value: "\(Format.mg(goal)) a day")
                         }
                     } footer: {
-                        Text(average.map { "You've averaged \(Format.mg($0)) a day this past week." } ?? "Log your coffee and energy drinks for a few days and this starts from your real average.")
+                        Text(
+                            average.map { "You've averaged \(Format.mg($0)) a day this past week." }
+                                ?? "Log your coffee and energy drinks for a few days and this starts from your real average.")
                     }
                     Section("The plan") {
                         let plan = CaffeineCutBack(start: model.today, from: from, goal: goal)
@@ -211,8 +215,10 @@ struct CaffeineCutBackSheet: View {
                             let day = model.today.adding(weeks: week)
                             LabeledContent(week == 0 ? "This week" : "From \(Format.day(day))", value: "up to \(Format.mg(plan.limit(on: day)))")
                         }
-                        Text("A fifth less each week (at least 25 mg) keeps withdrawal headaches and fog mild. A coffee is about 95 mg, an energy drink 150–300 mg.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(
+                            "A fifth less each week (at least 25 mg) keeps withdrawal headaches and fog mild. A coffee is about 95 mg, an energy drink 150–300 mg."
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                     Section {
                         Button("Start cutting back") {
@@ -242,16 +248,14 @@ struct CaffeineCutBackSheet: View {
 
     var average: Double? { model.analysis?.caffeine?.weekAverage }
 
-    var bedtimeDate: Date {
-        Calendar.current.startOfDay(for: Date()).addingTimeInterval(Double(model.settings.minutes(.bedtime)) * 60)
-    }
+    var bedtimeDate: Date { Day.today.at(minutes: model.settings.minutes(.bedtime)) }
 
     func setBedtime(_ date: Date) {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-        var s = model.settings
-        var times = s.doseTimes ?? [:]
-        times[.bedtime] = (parts.hour ?? 22) * 60 + (parts.minute ?? 30)
-        s.doseTimes = times
-        model.save(settings: s)
+        model.updateSettings { s in
+            var times = s.doseTimes ?? [:]
+            times[.bedtime] = (parts.hour ?? 22) * 60 + (parts.minute ?? 30)
+            s.doseTimes = times
+        }
     }
 }

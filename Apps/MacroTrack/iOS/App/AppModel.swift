@@ -1,10 +1,10 @@
-import Foundation
-import Observation
-import OSLog
 import FoodDatabase
+import Foundation
 import HealthBridge
 import MealPlanner
 import NutritionEngine
+import OSLog
+import Observation
 import SystemCore
 import SystemStore
 
@@ -28,21 +28,27 @@ struct Toast: Identifiable, Equatable {
     /// Glasses of water and supplement doses the Undo takes back.
     var undoWater: [UUID] = []
     var undoDoses: [UUID] = []
+    /// Entries just deleted, which the Undo brings back.
+    var deleted: [FoodEntry] = []
 
-    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty }
+    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty }
 }
 
 /// The app's state: Macro Track's own synced records, what Lift Track and the hub published, what
 /// Health knows, and the analysis computed from all of it.
 @MainActor @Observable
 final class AppModel {
-    static let shared = AppModel()
+    static let shared = AppModel(launch: .current)
     /// What Health records this app wrote carry as their source: the current id and the one it had
     /// before the 2026-10 rename, so samples saved before it still count as the app's own.
     static let ownBundlePrefixes = ["dev.svindland.stadig.macro", "dev.svindland.macrotrack"]
 
     let store: RecordStore
     let shared: SharedContainer
+    /// Where the widgets' snapshot goes: the App Group, or a fresh folder when nothing is kept.
+    let widgetURL: URL?
+    /// Whether this model talks to the notification center and WidgetKit: not in tests or UI tests.
+    let usesSystemServices: Bool
     let catalog: FoodCatalog
     let purchases = Purchases()
     let ai = MealAIService()
@@ -85,8 +91,15 @@ final class AppModel {
 
     // Presentation.
     var tab: AppTab = .today
-    var logger: LogMode?
-    /// When a logger's foods were eaten; nil is now (or this time of day, on a past day).
+    /// The logger on screen. Closing it, by Done, a swipe or a link opening something else, drops
+    /// its picked time here rather than in the sheet's onDismiss, which runs after the close
+    /// animation: a "+" on a moment tapped meanwhile would lose its time to it.
+    var logger: LogMode? {
+        didSet { if logger == nil { loggerTime = nil } }
+    }
+    /// When a logger's foods were eaten; nil is now (or this time of day, on a past day). Only while
+    /// the logger is open: it's cleared when the logger closes or the day changes, so a later one-tap
+    /// log doesn't land at a time picked hours (or a day) before.
     var loggerTime: Date?
     var showSettings = false
     var showPaywall = false
@@ -95,32 +108,74 @@ final class AppModel {
     var toast: Toast?
     var today: Day = .today
     /// The day Today shows and logs to: today, or a day being caught up.
-    var selectedDay: Day = .today
+    var selectedDay: Day = .today {
+        didSet { if selectedDay != oldValue { loggerTime = nil } }
+    }
 
     @ObservationIgnored private var sharedObserver: AnyObject?
+    @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
+    @ObservationIgnored private var healthReads = HealthReads()
+    /// Where the last read of Health's weigh-ins left off, kept on this device; nil reads them all.
+    @ObservationIgnored private(set) var weightAnchor: Data?
     @ObservationIgnored private var lastRevision = -1
+    /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
+    @ObservationIgnored private var readRevisions: [String: Int] = [:]
     @ObservationIgnored private var foodCache: [String: Food] = [:]
     @ObservationIgnored private var personalTask: Task<Void, Never>?
     @ObservationIgnored private var fixTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
+    /// Where "Not now" on a suggestion is remembered between launches; nil keeps it for this run.
+    @ObservationIgnored private let defaults: UserDefaults?
+    @ObservationIgnored private var hiddenUntil: [String: Date] = [:]
     /// Bumped by "another plan", so each shuffle is a different week.
     @ObservationIgnored var planVariation = 0
 
-    init() {
-        let arguments = ProcessInfo.processInfo.arguments
-        let memory = arguments.contains("-inMemoryStore")
-        store = RecordStore(name: "MacroTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.macro", inMemory: memory)
-        shared = SharedContainer()
-        catalog = FoodCatalog.standard()
-        supplementCatalog = SupplementCatalog.standard()
+    /// Macro Track's own synced store and the App Group, or, when nothing is to be kept (tests, UI
+    /// tests, `-inMemoryStore`), an in-memory store and a fresh folder for the shared files and the
+    /// widgets' snapshot, so a test or a sample run never writes where the other apps and the
+    /// widgets read.
+    convenience init(launch: LaunchOptions) {
+        // Tests and UI tests: no Health prompts, reads or writes, from before anything asks.
+        if launch.isQuiet { HealthBridge.shared.disable() }
+        let memory = launch.usesInMemoryStore
+        let store = RecordStore(name: "MacroTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.macro", inMemory: memory)
+        let (shared, widgetURL) = Self.sharing(keepingNothing: memory)
         #if DEBUG
-        if arguments.contains("-resetData") { store.eraseAll() }
+        if launch.has("-resetData") { store.eraseAll() }
         #endif
+        self.init(store: store, shared: shared, widgetURL: widgetURL, defaults: memory ? nil : .standard, usesSystemServices: !launch.isQuiet)
+    }
+
+    /// Where the shared files and the widgets' snapshot go: the App Group, or a fresh folder of the
+    /// launch's own when nothing is kept, never the App Group (a simulator may hand out a folder for
+    /// any group id, so a made-up one isn't enough).
+    static func sharing(keepingNothing: Bool) -> (SharedContainer, URL?) {
+        guard keepingNothing else { return (SharedContainer(), MacroSnapshot.appGroupURL) }
+        let folder = URL.temporaryDirectory.appending(path: "MacroTrack \(UUID().uuidString)", directoryHint: .isDirectory)
+        let shared = SharedContainer(directory: folder.appending(path: "SystemShared", directoryHint: .isDirectory))
+        return (shared, folder.appending(path: "widget.json"))
+    }
+
+    /// A model over these: what tests build, over an in-memory store and a temporary container.
+    init(
+        store: RecordStore, shared: SharedContainer, widgetURL: URL?, defaults: UserDefaults? = nil,
+        catalog: FoodCatalog = .standard(), supplementCatalog: SupplementCatalog? = .standard(), usesSystemServices: Bool = false
+    ) {
+        self.store = store
+        self.shared = shared
+        self.widgetURL = widgetURL
+        self.defaults = defaults
+        self.catalog = catalog
+        self.supplementCatalog = supplementCatalog
+        self.usesSystemServices = usesSystemServices
+        weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
         reload()
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
+        // Another device's changes, as CloudKit imports them while the app is open or woken for them.
+        storeObserver = store.observeChanges { [weak self] in self?.reloadIfChanged() }
         // Open the catalogs and warm the search index off the main thread, so the first search is instant.
         let catalog = catalog
         Task.detached(priority: .utility) { catalog.prewarm() }
@@ -132,34 +187,84 @@ final class AppModel {
 
     // MARK: Loading
 
-    /// Reads everything from the store and recomputes. Cheap enough to call after every change.
+    /// Re-reads the kinds of record that changed since the last read, then recomputes. Unchanged
+    /// kinds aren't read or sorted again, but the analysis still runs over everything, so it's work
+    /// in proportion to the history.
     func reload() {
-        lastRevision = store.revision
-        profile = store.all(ProfileRecord.self).first?.profile
-        settings = store.all(MacroSettings.self).first ?? MacroSettings()
-        entries = store.all(FoodEntry.self).sorted { $0.date < $1.date }
-        weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date }
-        dayStatus = store.all(DayStatus.self)
-        plan = store.all(PhasePlan.self).first
-        checkIns = store.all(CheckIn.self).sorted { $0.day < $1.day }
-        customFoods = store.all(CustomFoodRecord.self)
-        favorites = Set(store.all(FavoriteRecord.self).map(\.foodID))
-        supplements = store.all(Supplement.self).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date }
-        water = store.all(WaterLog.self).sorted { $0.date < $1.date }
-        reloadMealPlans()
+        if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
+        if needsReading(MacroSettings.self) { settings = Self.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID) }
+        let entriesChanged = needsReading(FoodEntry.self)
+        if entriesChanged { entries = store.all(FoodEntry.self).sorted { $0.date < $1.date } }
+        if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
+        if needsReading(DayStatus.self) { dayStatus = store.all(DayStatus.self) }
+        if needsReading(PhasePlan.self) { plan = store.all(PhasePlan.self).first }
+        if needsReading(CheckIn.self) { checkIns = Self.ordered(store.all(CheckIn.self)) }
+        let customChanged = needsReading(CustomFoodRecord.self)
+        if customChanged { customFoods = store.all(CustomFoodRecord.self) }
+        let favoritesChanged = needsReading(FavoriteRecord.self)
+        if favoritesChanged { favorites = Set(store.all(FavoriteRecord.self).map(\.foodID)) }
+        if needsReading(Supplement.self) {
+            supplements = store.all(Supplement.self).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        }
+        if needsReading(SupplementLog.self) { supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date } }
+        if needsReading(WaterLog.self) { water = store.all(WaterLog.self).sorted { $0.date < $1.date } }
+        if needsReading(MealPlan.self) { reloadMealPlans() }
+        applyAISetting()
         readShared(recompute: false)
         recompute()
-        refreshPersonal()
+        if entriesChanged || customChanged || favoritesChanged { refreshPersonal() }
+        lastRevision = store.revision
+    }
+
+    /// Whether records of a kind changed since this model last read them, noting that it's reading them now.
+    private func needsReading<T: StoredRecord>(_ type: T.Type) -> Bool {
+        let revision = store.revision(of: type)
+        guard readRevisions[T.kind] != revision else { return false }
+        readRevisions[T.kind] = revision
+        return true
     }
 
     func reloadMealPlans() {
+        readRevisions[MealPlan.kind] = store.revision(of: MealPlan.self)
         mealPlans = store.all(MealPlan.self).sorted { $0.start < $1.start }
+    }
+
+    /// The settings record in force. There's normally one; a second appears when setup was finished
+    /// on a new device before the first device's settings had synced in. The one set up first wins,
+    /// so the person's settings aren't shadowed by the new device's defaults.
+    static func inForce(_ all: [MacroSettings]) -> MacroSettings? {
+        all.min { a, b in
+            switch (a.onboardedAt, b.onboardedAt) {
+            case (let x?, let y?): x != y ? x < y : a.updatedAt > b.updatedAt
+            case (.some, nil): true
+            case (nil, .some): false
+            case (nil, nil): a.updatedAt > b.updatedAt
+            }
+        }
+    }
+
+    /// Check-ins by day, and within a day oldest first, as the analysis orders them: the last of a
+    /// day is the one in force (a plan started after the day's check-in, or two devices before they synced).
+    static func ordered(_ checkIns: [CheckIn]) -> [CheckIn] {
+        checkIns.sorted { $0.day != $1.day ? $0.day < $1.day : $0.updatedAt < $1.updatedAt }
     }
 
     /// Picks up changes that arrived from iCloud.
     func reloadIfChanged() {
         if store.revision != lastRevision { reload() }
+    }
+
+    /// Catches up with the store and the calendar, for the ways in that don't make the scene active
+    /// (Siri, Shortcuts, a notification's button), where `today` can still be yesterday.
+    func refreshDay() {
+        reloadIfChanged()
+        if today != .today { recompute() }
+    }
+
+    /// Rebuilds the AI engine when the Private Cloud Compute setting changed: on this device, on
+    /// another device (synced), or when a new device's synced opt-out arrives after launch.
+    private func applyAISetting() {
+        if ai.allowCloud != settings.allowCloudAI { ai.configure(catalog: catalog, allowCloud: settings.allowCloudAI) }
     }
 
     /// What other apps and the hub published. Our own writes notify us too, so this only
@@ -168,13 +273,9 @@ final class AppModel {
         let lift = shared.read(.summary(.liftTrack))
         let calendar = shared.read(.calendar)
         let sharedProfile = shared.read(.profile)
-        var merged: [UUID: LifeModePeriod] = [:]
-        for period in store.all(LifeModeRecord.self).map(\.period) + (shared.read(.lifeModes) ?? []) {
-            if let existing = merged[period.id], existing.updatedAt >= period.updatedAt { continue }
-            merged[period.id] = period
-        }
-        let lifeModes = merged.values.sorted { $0.start < $1.start }
-        let changed = lift != self.lift || calendar != self.calendar || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes
+        let lifeModes = syncLifeModes()
+        let adopted = adopt(sharedProfile)
+        let changed = adopted || lift != self.lift || calendar != self.calendar || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes
         guard changed else { return }
         self.lift = lift
         self.calendar = calendar
@@ -183,11 +284,47 @@ final class AppModel {
         if again { recompute() }
     }
 
+    /// Takes up a newer shared profile once set up: units, sex, birth year, height and training days
+    /// are edited in Lift Track, which writes them to the shared file. Onboarding reads the shared
+    /// one itself.
+    private func adopt(_ newer: SharedProfile?) -> Bool {
+        guard onboarded, let newer, let profile, Self.milliseconds(newer.updatedAt) > Self.milliseconds(profile.updatedAt) else { return false }
+        store.save(ProfileRecord(newer))
+        self.profile = newer
+        return true
+    }
+
+    /// Life modes from every app: the shared file and this app's synced copies merged, the newest
+    /// edit or delete of each winning (deletes are kept as tombstones so they keep spreading). What
+    /// came from elsewhere is kept here too, so it reaches this app on the person's other devices,
+    /// and the merged list goes back to the file, so the other apps hear about this app's changes and
+    /// what iCloud brought. The file goes first so that on a tie its copy wins and no app rewrites it.
+    private func syncLifeModes() -> [LifeModePeriod] {
+        let own = store.all(LifeModeRecord.self).map(\.period)
+        let file = shared.read(.lifeModes) ?? []
+        let merged = LifeModePeriod.merge([file, own])
+        let mine = Dictionary(own.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let arrived = merged.filter { mine[$0.id] != $0 }
+        if !arrived.isEmpty { store.save(arrived.map(LifeModeRecord.init)) }
+        if merged != file {
+            do {
+                try shared.write(merged, to: .lifeModes, by: .macroTrack)
+            } catch {
+                appLog.error("Couldn't share the life modes: \(error.localizedDescription)")
+            }
+        }
+        return merged.live
+    }
+
+    /// Whole milliseconds, the precision the store and the shared container keep.
+    private static func milliseconds(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
+
     var state: MacroState? {
         guard let profile else { return nil }
-        return MacroState(profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
-                          lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
-                          supplementLogs: supplementLogs, water: water, today: today)
+        return MacroState(
+            profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
+            lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
+            supplementLogs: supplementLogs, water: water, today: today)
     }
 
     func recompute() {
@@ -205,50 +342,62 @@ final class AppModel {
         // The weekly check-in applies itself: small, capped steps, explained on Today.
         if let due = analysis.dueCheckIn, plan != nil, onboarded {
             store.save(due)
-            checkIns = store.all(CheckIn.self).sorted { $0.day < $1.day }
+            checkIns = Self.ordered(store.all(CheckIn.self))
+            readRevisions[CheckIn.kind] = store.revision(of: CheckIn.self)
             lastRevision = store.revision
             self.analysis = MacroAnalyst.analyse(self.state ?? state)
         }
         publish()
         refreshMicroFix()
         refreshFermentedFix()
-        SupplementReminders.schedule(self)
+        if usesSystemServices { SupplementReminders.schedule(self) }
     }
 
     /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
-    private func refreshFermentedFix() {
+    /// `force` searches again with the latest personal foods, keeping the current one on screen
+    /// until the new one is found.
+    private func refreshFermentedFix(force: Bool = false) {
         guard analysis?.quality.fermentedStatus == .off else {
+            fermentedTask?.cancel()
+            fermentedTask = nil
             fermentedFix = nil
             return
         }
-        guard fermentedFix == nil, fermentedTask == nil else { return }
-        let catalog = catalog, personal = personal
+        guard force || (fermentedFix == nil && fermentedTask == nil) else { return }
+        fermentedTask?.cancel()
+        let catalog = catalog
+        let personal = personal
         fermentedTask = Task.detached(priority: .utility) { [weak self] in
             let fix = FermentedFix.find(personal: personal, catalog: catalog)
             await MainActor.run {
-                guard let self else { return }
+                guard let self, !Task.isCancelled else { return }
                 self.fermentedTask = nil
-                if self.analysis?.quality.fermentedStatus == .off { self.fermentedFix = fix }
+                if self.analysis?.quality.fermentedStatus == .off, self.fermentedFix != fix { self.fermentedFix = fix }
             }
         }
     }
 
-    /// Finds a food for the shortest watched nutrient off the main thread, when it changes.
-    private func refreshMicroFix() {
+    /// Finds a food for the shortest watched nutrient off the main thread, when it changes. `force`
+    /// searches again with the latest personal foods, keeping the current one on screen meanwhile.
+    private func refreshMicroFix(force: Bool = false) {
         let short = analysis?.micros.flagged.first { $0.nutrient.goal == .atLeast && $0.status == .low }
         guard let short, let target = short.target else {
+            fixTask?.cancel()
             microFix = nil
             fixKey = nil
             return
         }
-        guard fixKey != short.nutrient.key || microFix == nil else { return }
+        guard force || fixKey != short.nutrient.key || microFix == nil else { return }
+        // A fix for another nutrient is no use while this one is found.
+        if fixKey != short.nutrient.key { microFix = nil }
         fixKey = short.nutrient.key
         fixTask?.cancel()
-        let catalog = catalog, personal = personal
+        let catalog = catalog
+        let personal = personal
         fixTask = Task.detached(priority: .utility) { [weak self] in
             let fix = MicroFix.find(for: short.nutrient, target: target, personal: personal, catalog: catalog)
             await MainActor.run {
-                guard let self, !Task.isCancelled, self.fixKey == short.nutrient.key else { return }
+                guard let self, !Task.isCancelled, self.fixKey == short.nutrient.key, self.microFix != fix else { return }
                 self.microFix = fix
             }
         }
@@ -265,12 +414,12 @@ final class AppModel {
             nutrition.updated = last.nutrition.updated
             summary.updated = last.summary.updated
         }
+        // Unchanged since the last publish: nothing to read or write. Otherwise the files are compared
+        // too, so a launch doesn't rewrite them and wake the other apps for nothing.
         if lastPublished.map({ $0.nutrition != nutrition || $0.summary != summary }) ?? true {
-            nutrition.updated = Date()
-            summary.updated = Date()
             do {
-                try shared.write(nutrition, to: .nutrition, by: .macroTrack)
-                try shared.write(summary, to: .summary(.macroTrack), by: .macroTrack)
+                try shared.writeIfChanged(nutrition, to: .nutrition, by: .macroTrack, stamp: \.updated)
+                try shared.writeIfChanged(summary, to: .summary(.macroTrack), by: .macroTrack, stamp: \.updated)
                 lastPublished = (nutrition, summary)
             } catch {
                 appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
@@ -291,7 +440,9 @@ final class AppModel {
 
     func food(barcode: String, symbology: Barcode.Symbology? = nil) -> Food? {
         let keys = Set(Barcode.keys(for: barcode, symbology: symbology) + [barcode])
-        if let own = customFoods.first(where: { food in food.food.barcode.map { keys.contains($0) || Barcode.keys(for: $0).contains(where: keys.contains) } ?? false }) {
+        if let own = customFoods.first(where: { food in
+            food.food.barcode.map { keys.contains($0) || Barcode.keys(for: $0).contains(where: keys.contains) } ?? false
+        }) {
             return own.food
         }
         return catalog.food(barcode: barcode, symbology: symbology)
@@ -327,21 +478,31 @@ final class AppModel {
                 guard let food = foods[id] ?? known[id] ?? catalog.food(id: id) else { continue }
                 foods[id] = food
                 let usage = byFood[id]
-                result.append(PersonalFood(food: food, score: (usage?.score ?? 0) + (favorites.contains(id) ? 2 : 0), favorite: favorites.contains(id),
-                                           lastCount: usage?.last.count, lastUnitID: usage?.last.unitID))
+                result.append(
+                    PersonalFood(
+                        food: food, score: (usage?.score ?? 0) + (favorites.contains(id) ? 2 : 0), favorite: favorites.contains(id),
+                        lastCount: usage?.last.count, lastUnitID: usage?.last.unitID, lastAmount: usage?.last.grams))
             }
             let found = foods
             await MainActor.run {
                 guard let self, !Task.isCancelled else { return }
+                let before = self.personal.map(Self.fixInput)
                 self.personal = result
                 self.foodCache.merge(found) { a, _ in a }
-                // A fix found before the person's own foods were known may have a better one now.
-                self.microFix = nil
-                self.refreshMicroFix()
-                self.fermentedFix = nil
-                self.refreshFermentedFix()
+                // A fix found before these foods were known may have a better one now. The current
+                // one stays on screen until the search is done.
+                if result.map(Self.fixInput) != before {
+                    self.refreshMicroFix(force: true)
+                    self.refreshFermentedFix(force: true)
+                }
             }
         }
+    }
+
+    /// What of a personal food the nutrient and fermented searches use: which food, in what order,
+    /// at what usual portion.
+    nonisolated private static func fixInput(_ p: PersonalFood) -> String {
+        "\(p.food.id)|\(p.lastUnitID ?? "")|\(p.lastCount ?? 0)|\(p.lastAmount ?? 0)"
     }
 
     func personalFood(_ id: String) -> PersonalFood? { personal.first { $0.food.id == id } }
@@ -357,9 +518,11 @@ final class AppModel {
         reload()
     }
 
+    /// Saves one of the person's own foods; `replacing` updates the food a save made earlier (a
+    /// label corrected after saving it once) instead of adding a second with the same barcode.
     @discardableResult
-    func save(customFood food: Food) -> Food {
-        let record = CustomFoodRecord(food: food)
+    func save(customFood food: Food, replacing id: UUID? = nil) -> Food {
+        let record = CustomFoodRecord(id: id ?? UUID(), food: food)
         store.save(record)
         foodCache[record.food.id] = record.food
         reload()
@@ -368,42 +531,63 @@ final class AppModel {
 
     // MARK: Logging
 
-    /// When something logged now was eaten: the time picked in the logger, else now; on a past
-    /// day being caught up, the same time of day there.
+    /// Opens a logger, its foods eaten at `time` (nil is now). The time lasts while the logger is open.
+    func openLogger(_ mode: LogMode, at time: Date? = nil) {
+        loggerTime = time
+        logger = mode
+    }
+
+    /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
+    /// open: only one shows at a time. A screen's own sheet (an entry being edited) gives way by
+    /// itself when one of these presents: SwiftUI replaces it (LoggingUITests checks that).
+    func dismissSheets() {
+        logger = nil
+        showWeighIn = false
+        showSupplements = false
+        showSettings = false
+        showPaywall = false
+    }
+
+    /// When something logged now was eaten: the time picked in the open logger, else now; on a
+    /// past day being caught up, the same time of day there.
     func logDate() -> Date {
         if let loggerTime { return loggerTime }
         let now = Date()
         guard selectedDay != today else { return now }
-        return selectedDay.date().addingTimeInterval(now.timeIntervalSince(Calendar.current.startOfDay(for: now)))
+        return selectedDay.at(sameTimeAs: now)
     }
 
     /// The selected day at a time of day, for the logger's time choices.
     func onSelectedDay(_ time: Date) -> Date {
-        let calendar = Calendar.current
-        let parts = calendar.dateComponents([.hour, .minute], from: time)
-        return calendar.date(bySettingHour: parts.hour ?? 12, minute: parts.minute ?? 0, second: 0, of: selectedDay.date()) ?? time
+        let clock = Calendar(identifier: .gregorian).dateComponents([.hour, .minute], from: time)
+        return selectedDay.at(hour: clock.hour ?? 12, minute: clock.minute ?? 0)
     }
 
-    /// A ready-to-save entry for a food and portion, timed for the selected day. A drink keeps its
-    /// fluid, and its caffeine when the catalog didn't list it (a café latte, a can without it).
-    func entry(for food: Food, count: Double, unit: PortionUnit, source: EntrySource, confidence: Double? = nil) -> FoodEntry {
+    /// A ready-to-save entry for a food and portion, timed for the selected day (or at `date`). A
+    /// drink keeps its fluid, and its caffeine when the catalog didn't list it (a café latte, a can
+    /// without it).
+    func entry(for food: Food, count: Double, unit: PortionUnit, source: EntrySource, confidence: Double? = nil, date: Date? = nil) -> FoodEntry {
         let amount = FoodUnits.amount(count, unit)
         var micros = FoodUnits.micros(food, count: count, unit: unit)
-        let drink = Hydration.isDrink("\(food.name) \(food.brand ?? "")")
+        let drink =
+            Hydration.isDrink("\(food.name) \(food.brand ?? "")")
             || (food.basis == .ml && !Self.notDrunk.contains { food.name.localizedCaseInsensitiveContains($0) })
         if drink, micros["caffeine"] == nil, let mg = Caffeine.estimate(name: food.name, brand: food.brand, grams: amount) {
             micros["caffeine"] = mg
         }
-        return FoodEntry(date: logDate(), name: food.name, brand: food.brand, foodID: food.id,
-                         amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
-                         grams: amount, unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
-                         micros: micros, processing: food.processing, fermented: food.fermented,
-                         fluid: drink ? amount : nil, source: source, confidence: confidence)
+        return FoodEntry(
+            date: date ?? logDate(), name: food.name, brand: food.brand, foodID: food.id,
+            amountLabel: FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: confidence != nil),
+            grams: amount, unitID: unit.id, count: count, nutrients: FoodUnits.nutrients(food, count: count, unit: unit),
+            micros: micros, processing: food.processing, fermented: food.fermented,
+            fluid: drink ? amount : nil, source: source, confidence: confidence)
     }
 
     /// Foods sold by the millilitre that aren't drunk.
-    private static let notDrunk = ["oil", "sauce", "syrup", "vinegar", "dressing", "ketchup", "mayo", "honey", "cream", "creamer", "soup",
-                                   "spray", "extract", "marinade", "gravy"]
+    private static let notDrunk = [
+        "oil", "sauce", "syrup", "vinegar", "dressing", "ketchup", "mayo", "honey", "cream", "creamer", "soup",
+        "spray", "extract", "marinade", "gravy",
+    ]
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health.
     func log(_ new: [FoodEntry], message: String? = nil) {
@@ -427,17 +611,38 @@ final class AppModel {
         if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods([Self.healthFood(entry)]) } }
     }
 
+    /// Deletes entries (and their Health samples), with "Deleted … Undo": a whole moment goes in two taps.
     func delete(entries ids: [UUID]) {
+        let gone = Set(ids)
+        let removed = entries.filter { gone.contains($0.id) }
         for id in ids { store.delete(FoodEntry.self, id: id) }
         reload()
         Task { await HealthBridge.shared.deleteFoods(ids: ids) }
+        if !removed.isEmpty {
+            toast = Toast(message: removed.count == 1 ? "Deleted \(removed[0].name)" : "Deleted \(removed.count) foods", deleted: removed)
+        }
     }
 
     func undo(_ toast: Toast) {
         if !toast.undo.isEmpty { delete(entries: toast.undo) }
         if !toast.undoWater.isEmpty { delete(water: toast.undoWater) }
         if !toast.undoDoses.isEmpty { delete(doses: toast.undoDoses) }
+        if !toast.deleted.isEmpty { bringBack(toast.deleted) }
         self.toast = nil
+    }
+
+    /// Deleted entries saved again, stamped now: the store keeps whichever is newer, and the delete
+    /// is newer than the entries as they were.
+    private func bringBack(_ deleted: [FoodEntry]) {
+        let now = Date()
+        let restored = deleted.map { entry in
+            var entry = entry
+            entry.updatedAt = now
+            return entry
+        }
+        store.save(restored)
+        reload()
+        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(restored.map(Self.healthFood)) } }
     }
 
     /// One tap from the Log again row: the same food and amount, now.
@@ -459,16 +664,20 @@ final class AppModel {
         return nearby ? nil : LogAgain.usualMoment(near: now, entries: entries)
     }
 
-    func quickAdd(name: String, nutrients: Nutrients) {
-        log([FoodEntry(date: logDate(), name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving", nutrients: nutrients,
-                       source: .quickAdd)])
+    func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {
+        log([
+            FoodEntry(
+                date: date ?? logDate(), name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving", nutrients: nutrients,
+                source: .quickAdd)
+        ])
     }
 
     static func healthFood(_ e: FoodEntry) -> HealthFood {
         var micros = e.micros ?? [:]
         if let fluid = e.fluid { micros["water"] = fluid }
-        return HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros,
-                          version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
+        return HealthFood(
+            id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros,
+            version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
     }
 
     func entries(on day: Day) -> [FoodEntry] { entries.filter { $0.day == day } }
@@ -493,13 +702,16 @@ final class AppModel {
     // MARK: Nutrients
 
     /// "Not now" on a nutrient's action hides it for three days.
-    func hideNutrient(_ key: String) {
-        UserDefaults.standard.set(Date().addingTimeInterval(3 * 86400), forKey: "hideNutrient.\(key)")
+    func hideNutrient(_ key: String, now: Date = Date()) {
+        let until = now.addingTimeInterval(3 * 86400)
+        hiddenUntil[key] = until
+        defaults?.set(until, forKey: "hideNutrient.\(key)")
         recompute()
     }
 
-    func isNutrientHidden(_ key: String) -> Bool {
-        (UserDefaults.standard.object(forKey: "hideNutrient.\(key)") as? Date).map { $0 > Date() } ?? false
+    func isNutrientHidden(_ key: String, now: Date = Date()) -> Bool {
+        let until = hiddenUntil[key] ?? defaults?.object(forKey: "hideNutrient.\(key)") as? Date
+        return until.map { $0 > now } ?? false
     }
 
     // MARK: Weight
@@ -539,32 +751,58 @@ final class AppModel {
 
     func save(settings: MacroSettings) {
         var settings = settings
-        settings.updatedAt = Date()
+        // Later than the copy it edits, even one from a device whose clock runs ahead: the store
+        // keeps the newest, so an edit stamped before it would be dropped and the toggle snap back.
+        settings.updatedAt = max(Date(), settings.updatedAt.addingTimeInterval(0.001))
         store.save(settings)
         reload()
     }
+
+    /// Changes the stored settings rather than the copy in memory, so an edit can't undo a change
+    /// that synced in from another device a moment before.
+    func updateSettings(_ change: (inout MacroSettings) -> Void) {
+        var s = storedSettings
+        change(&s)
+        save(settings: s)
+    }
+
+    /// The settings as the store has them now.
+    private var storedSettings: MacroSettings { Self.inForce(store.all(MacroSettings.self)) ?? settings }
 
     func save(profile: SharedProfile) {
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .macroTrack)
+        share(profile)
         reload()
     }
 
-    /// Saves the shared setup answers and Macro Track's own, and starts the assessment.
+    private func share(_ profile: SharedProfile) {
+        do {
+            try shared.write(profile, to: .profile, by: .macroTrack)
+        } catch {
+            appLog.error("Couldn't share the profile: \(error.localizedDescription)")
+        }
+    }
+
+    /// Saves the shared setup answers and Macro Track's own, and starts the assessment. Read from
+    /// the store, not the copies in memory: when setup was already done on another device and has
+    /// just synced in, it's kept as it is (its profile, settings and assessment), not started again.
     func completeOnboarding(profile: SharedProfile, history: DietHistory, weightKg: Double?) {
-        var profile = profile
-        profile.updatedAt = Date()
-        store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .macroTrack)
-        var s = settings
-        s.onboardedAt = Date()
-        s.assessmentStart = .today
-        s.dietHistory = history
-        s.updatedAt = Date()
-        store.save(s)
-        if let weightKg, !weighIns.contains(where: { $0.day == .today }) {
+        let synced = Self.inForce(store.all(MacroSettings.self))
+        if synced?.onboardedAt == nil || store.all(ProfileRecord.self).isEmpty {
+            var profile = profile
+            profile.updatedAt = Date()
+            store.save(ProfileRecord(profile))
+            share(profile)
+            var s = synced ?? MacroSettings(id: MacroSettings.singletonID)
+            s.onboardedAt = Date()
+            s.assessmentStart = .today
+            s.dietHistory = history
+            s.updatedAt = Date()
+            store.save(s)
+        }
+        if let weightKg, !store.all(WeighIn.self).contains(where: { $0.day == .today }) {
             store.save(WeighIn(date: Date(), kg: weightKg))
         }
         reload()
@@ -580,12 +818,12 @@ final class AppModel {
         for old in store.all(PhasePlan.self) where old.id != plan.id { store.delete(PhasePlan.self, id: old.id) }
         store.save(plan)
         let weight = analysis.trend.latest?.trend ?? latestWeighIn?.kg ?? 80
-        let phase = plan.phase(on: today)
-        let kcal = Targets.calories(maintenance: analysis.maintenance.kcal, phase: phase, weightKg: weight)
-        let m = Targets.macros(kcal: kcal, referenceKg: analysis.referenceKg, phase: phase?.kind)
-        store.save(CheckIn(day: today, expenditure: analysis.maintenance.kcal, kcal: kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
-                           status: .updated, reason: "Starting \(phase?.kind.label.lowercased() ?? "the plan") from maintenance of about \(Int(analysis.maintenance.kcal)) kcal."))
-        var s = settings
+        // It has the day's id, so it replaces a check-in made today rather than sitting beside it
+        // (on another device too). Earlier versions gave each a random id: those go.
+        let first = CheckIns.start(plan, today: today, maintenance: analysis.maintenance.kcal, weightKg: weight, referenceKg: analysis.referenceKg)
+        for old in store.all(CheckIn.self) where old.day == today && old.id != first.id { store.delete(CheckIn.self, id: old.id) }
+        store.save(first)
+        var s = storedSettings
         s.phaseOverride = nil
         s.updatedAt = Date()
         store.save(s)
@@ -606,22 +844,27 @@ final class AppModel {
 
     // MARK: Life modes
 
-    func save(lifeMode period: LifeModePeriod) {
-        var period = period
+    /// Saves a period (the dates put in order) and shares it with the other apps; one an editor
+    /// shouldn't have offered (an open-ended trip, an injury with no body part) isn't saved.
+    @discardableResult
+    func save(lifeMode period: LifeModePeriod) -> Bool {
+        var period = period.normalized()
+        guard period.isValid else {
+            appLog.error("Not saving an invalid \(period.kind.label, privacy: .public) period")
+            return false
+        }
         period.updatedAt = Date()
         store.save(LifeModeRecord(period))
-        var all = shared.read(.lifeModes) ?? []
-        all.removeAll { $0.id == period.id }
-        all.append(period)
-        try? shared.write(all, to: .lifeModes, by: .macroTrack)
+        // Shared by the reload, merged with the file.
         reload()
+        return true
     }
 
+    /// A delete is kept as a tombstone and shared like an edit, so it reaches the app that made the
+    /// period and the person's other devices instead of being brought back by their copies.
     func delete(lifeMode id: UUID) {
-        store.delete(LifeModeRecord.self, id: id)
-        var all = shared.read(.lifeModes) ?? []
-        all.removeAll { $0.id == id }
-        try? shared.write(all, to: .lifeModes, by: .macroTrack)
+        guard let period = lifeModes.first(where: { $0.id == id }) else { return }
+        store.save(LifeModeRecord(period.deleted(at: Date())))
         reload()
     }
 
@@ -629,27 +872,84 @@ final class AppModel {
 
     func connectHealth() async {
         _ = await HealthBridge.shared.requestAuthorization(.nutrition)
+        healthReads.permissionAsked()
         await refreshHealth()
-        if healthObserver == nil {
-            healthObserver = HealthBridge.shared.observeChanges { Task { @MainActor in await AppModel.shared.refreshHealth() } }
+        startHealthObserving()
+    }
+
+    /// Weigh-ins from a scale arrive while the app runs. Asks nothing: without permission the query
+    /// just doesn't report, so it's started at every launch, not only by "Connect Apple Health".
+    func startHealthObserving() {
+        guard healthObserver == nil, HealthBridge.shared.isAvailable else { return }
+        healthReads.observerStarted(at: Date())
+        healthObserver = HealthBridge.shared.observeChanges { [weak self] in
+            Task { @MainActor in await self?.refreshHealth(.changed) }
         }
     }
 
-    /// Weigh-ins other apps and scales wrote, back to a month before the assessment, and height.
-    func refreshHealth() async {
+    /// `refreshHealth`, unless it ran in the last few minutes: for each return to the app, since the
+    /// observer hears nothing while the app is suspended (a morning weigh-in on a smart scale).
+    func refreshHealthIfStale(now: Date = Date()) async {
+        await refreshHealth(.returned, now: now)
+    }
+
+    /// Weigh-ins other apps and scales wrote, back to two months before the assessment, those
+    /// deleted in Health, and height.
+    func refreshHealth() async { await refreshHealth(.asked) }
+
+    private func refreshHealth(_ reason: HealthReads.Reason, now: Date = Date()) async {
         let health = HealthBridge.shared
-        guard health.isAvailable else { return }
-        let start = (settings.assessmentStart ?? .today).adding(days: -60)
-        let samples = await health.weighIns(since: start.date(), ownBundlePrefixes: AppModel.ownBundlePrefixes)
-        let known = Set(weighIns.map(\.id))
-        let new = samples.filter { !known.contains($0.id) }.map { WeighIn(id: $0.id, date: $0.date, kg: $0.kg, source: .health($0.id)) }
-        if !new.isEmpty { store.save(new) }
-        if var profile, profile.heightCm == nil, let height = await health.latestHeight() {
-            profile.heightCm = height
-            save(profile: profile)
+        guard health.isAvailable, healthReads.shouldRead(reason, now: now) else { return }
+        let since = (settings.assessmentStart ?? .today).adding(days: -60).date()
+        let anchor = weightAnchor
+        // Nil when the read failed: the anchor stays where it was and nothing changes.
+        if let changes = await health.weighInChanges(after: anchor, since: since, ownBundlePrefixes: Self.ownBundlePrefixes) {
+            let whole = healthReads.readsWholeWindow(since: since, anchored: anchor != nil)
+            let window = whole ? await health.weighIns(since: since, ownBundlePrefixes: Self.ownBundlePrefixes) : []
+            merge(changes, window: window)
+            healthReads.windowRead(since: since)
         }
+        // Taken again once Health answers, so a profile that arrived meanwhile isn't written over.
+        if let before = newestProfile, before.heightCm == nil, let height = await health.latestHeight(), var newest = newestProfile,
+            newest.heightCm == nil
+        {
+            newest.heightCm = height
+            save(profile: newest)
+        }
+    }
+
+    /// The newer of this app's profile and the shared one, so an edit made in Lift Track isn't
+    /// written over with an older copy. Nil before setup.
+    private var newestProfile: SharedProfile? {
+        guard let own = profile else { return nil }
+        return sharedProfile.map { $0.updatedAt > own.updatedAt ? $0 : own } ?? own
+    }
+
+    /// What a read of Health found: weigh-ins other apps and scales added (and any in `window`, the
+    /// whole window read again) come in, and those deleted in Health leave, ignored or not. Only
+    /// weigh-ins read from Health go, matched by sample id: one typed here has an id of its own. The
+    /// anchor is kept on this device for the next read.
+    func merge(_ changes: HealthWeightChanges, window: [HealthWeight] = []) {
+        let gone = changes.deletedIDs
+        let known = Set(weighIns.map(\.id))
+        var seen = Set<UUID>()
+        let new = (changes.added + window)
+            .filter { !gone.contains($0.id) && !known.contains($0.id) && seen.insert($0.id).inserted }
+            .map { WeighIn(id: $0.id, date: $0.date, kg: $0.kg, source: .health($0.id)) }
+        let deleted = weighIns.filter { weighIn in
+            guard case .health(let sample) = weighIn.source else { return false }
+            return gone.contains(sample)
+        }
+        weightAnchor = changes.anchor
+        defaults?.set(changes.anchor, forKey: Self.weightAnchorKey)
+        guard !new.isEmpty || !deleted.isEmpty else { return }
+        if !new.isEmpty { store.save(new) }
+        for weighIn in deleted { store.delete(WeighIn.self, id: weighIn.id) }
         reload()
     }
+
+    /// Where the anchor for Health's weigh-ins is kept. Not synced: it counts in this device's Health database.
+    static let weightAnchorKey = "health.weightAnchor"
 
     /// The latest Health weight, for onboarding's prefill.
     func healthWeight() async -> Double? { await HealthBridge.shared.latestBodyweight()?.kg }
@@ -660,8 +960,10 @@ final class AppModel {
         let folder = URL.temporaryDirectory.appending(path: "Macro Track Export \(Day.today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try NutritionExport.tables(entries: entries, weighIns: weighIns, checkIns: checkIns, days: dayStatus,
-                                          supplements: supplementLogs, water: water).map { table in
+        return try NutritionExport.tables(
+            entries: entries, weighIns: weighIns, checkIns: checkIns, days: dayStatus,
+            supplements: supplementLogs, water: water
+        ).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }
             let url = folder.appending(path: "\(table.name).csv")
@@ -672,19 +974,44 @@ final class AppModel {
 
     func backupFile() throws -> URL {
         let data = try store.exportBackup(app: .macroTrack, shared: shared)
-        let url = URL.temporaryDirectory.appending(path: "Macro Track \(Day.today.iso).macrobackup")
+        let url = Self.backupURL()
         try data.write(to: url, options: .atomic)
         return url
     }
 
+    /// `backupFile()` with the encoding and the write off the main actor: years of records take seconds.
+    func backupFile() async throws -> URL {
+        let data = try await store.exportBackup(app: .macroTrack, shared: shared)
+        let url = Self.backupURL()
+        try await Task.detached(priority: .userInitiated) { try data.write(to: url, options: .atomic) }.value
+        return url
+    }
+
+    private static func backupURL() -> URL {
+        URL.temporaryDirectory.appending(path: "Macro Track \(Day.today.iso).macrobackup")
+    }
+
+    /// Merges a backup in. Refuses another app's backup before writing anything.
     @discardableResult
     func restore(from url: URL) throws -> BackupSummary {
+        let data = try Self.readBackup(url)
+        // Reloaded even when it throws: the records may be in though the shared files failed.
+        defer { reload() }
+        return try store.importBackup(data, app: .macroTrack, shared: shared)
+    }
+
+    /// `restore(from:)` with the reading and decoding off the main actor, for a big backup.
+    @discardableResult
+    func restore(from url: URL) async throws -> BackupSummary {
+        let data = try await Task.detached(priority: .userInitiated) { try Self.readBackup(url) }.value
+        defer { reload() }
+        return try await store.importBackup(data, app: .macroTrack, shared: shared)
+    }
+
+    nonisolated private static func readBackup(_ url: URL) throws -> Data {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let data = try Data(contentsOf: url)
-        let summary = try store.importBackup(data, shared: shared)
-        reload()
-        return summary
+        return try Data(contentsOf: url)
     }
 
     #if DEBUG

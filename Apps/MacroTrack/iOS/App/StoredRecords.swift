@@ -1,6 +1,6 @@
 import CryptoKit
-import Foundation
 import FoodDatabase
+import Foundation
 import MealPlanner
 import NutritionEngine
 import SystemCore
@@ -25,6 +25,12 @@ nonisolated struct CustomFoodRecord: Codable, Hashable, Sendable, Identifiable {
     }
 
     static func foodID(_ id: UUID) -> String { "custom:\(id.uuidString)" }
+
+    /// The record id inside a food id `foodID(_:)` made; nil for a catalog food's.
+    static func recordID(fromFoodID foodID: String) -> UUID? {
+        guard foodID.hasPrefix("custom:") else { return nil }
+        return UUID(uuidString: String(foodID.dropFirst("custom:".count)))
+    }
 }
 
 /// A starred food, from any catalog.
@@ -42,8 +48,10 @@ nonisolated struct FavoriteRecord: Codable, Hashable, Sendable, Identifiable {
     /// The same food always gets the same record, so starring on two devices can't duplicate it.
     static func id(for foodID: String) -> UUID {
         let digest = Array(SHA256.hash(data: Data(foodID.utf8)))
-        var bytes = (digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7], digest[8], digest[9],
-                     digest[10], digest[11], digest[12], digest[13], digest[14], digest[15])
+        var bytes = (
+            digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7], digest[8], digest[9],
+            digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
+        )
         bytes.6 = (bytes.6 & 0x0F) | 0x50
         bytes.8 = (bytes.8 & 0x3F) | 0x80
         return UUID(uuid: bytes)
@@ -53,6 +61,10 @@ nonisolated struct FavoriteRecord: Codable, Hashable, Sendable, Identifiable {
 nonisolated extension MacroSettings: @retroactive StoredRecord {
     public static var kind: String { "settings" }
     public static var schemaVersion: Int { 1 }
+
+    /// The id new settings get, so two devices that set up before syncing save one record. Settings
+    /// made before it have a random id; `AppModel.inForce` picks between records when there are two.
+    static let singletonID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0x50, 0, 0x80, 0, 0, 0, 0, 0, 0x5E, 0x77))
 }
 
 nonisolated extension FoodEntry: @retroactive StoredRecord {
@@ -92,7 +104,9 @@ nonisolated extension FavoriteRecord: StoredRecord {
 
 nonisolated extension LifeModeRecord: @retroactive StoredRecord {
     public static var kind: String { "life-mode" }
-    public static var schemaVersion: Int { 1 }
+    /// 2 added the period's `deletedAt` (a delete is a tombstone that syncs): a version that only
+    /// knows 1 would read a deleted period as live, so it leaves these out. 1 needs no change.
+    public static var schemaVersion: Int { 2 }
 }
 
 nonisolated extension ProfileRecord: @retroactive StoredRecord {

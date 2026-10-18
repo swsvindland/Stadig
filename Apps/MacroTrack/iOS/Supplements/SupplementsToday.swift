@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 extension SupplementForm {
@@ -34,13 +34,15 @@ struct SupplementsSection: View {
                         summary(doses)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("supplements.summary")
                 } else {
                     let times = DoseTime.allCases.filter { time in doses.contains { $0.dose.time == time } }
                     ForEach(times) { time in
                         let group = doses.filter { $0.dose.time == time }
                         TimeRow(time: time, minutes: model.settings.minutes(time), open: group.filter(\.open).count) {
-                            model.take(group.filter(\.open), on: day,
-                                       message: "Took \(group.filter(\.open).count) \(time.label.lowercased()) supplements")
+                            model.take(
+                                group.filter(\.open), on: day,
+                                message: "Took \(group.filter(\.open).count) \(time.label.lowercased()) supplements")
                         }
                         ForEach(group) { dose in
                             DoseRow(dose: dose, day: day, edit: { editing = dose.supplement })
@@ -71,11 +73,13 @@ struct SupplementsSection: View {
                         Image(systemName: "plus.circle").font(.title3)
                     }
                     .accessibilityLabel("Take an extra dose")
+                    .accessibilityIdentifier("supplements.takeExtra")
                     Button {
                         model.showSupplements = true
                     } label: {
                         Text("Edit").font(.subheadline)
                     }
+                    .accessibilityIdentifier("supplements.edit")
                 }
                 .sheet(item: $editing) { supplement in
                     NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }
@@ -114,6 +118,7 @@ private struct TimeRow: View {
             Spacer()
             if open >= 2 {
                 Button("Take all", action: takeAll)
+                    .accessibilityIdentifier("supplements.takeAll.\(time.rawValue)")
                     .font(.caption.weight(.semibold))
                     .buttonStyle(.bordered).buttonBorderShape(.capsule).controlSize(.small)
             }
@@ -151,6 +156,7 @@ private struct DoseRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("supplements.dose")
         .sensoryFeedback(.success, trigger: dose.taken) { _, taken in taken }
         .swipeActions(edge: .trailing) {
             if dose.skipped {
@@ -164,7 +170,9 @@ private struct DoseRow: View {
             if !dose.skipped { Button("Skip today", systemImage: "minus.circle") { model.skip(dose, on: day) } }
             Button("Edit \(dose.supplement.name)", systemImage: "pencil", action: edit)
         }
-        .accessibilityLabel("\(dose.supplement.name), \(dose.supplement.facts.amountLabel(dose.dose.count)), \(dose.taken ? "taken" : dose.skipped ? "skipped" : "not taken yet")")
+        .accessibilityLabel(
+            "\(dose.supplement.name), \(dose.supplement.facts.amountLabel(dose.dose.count)), \(dose.taken ? "taken" : dose.skipped ? "skipped" : "not taken yet")"
+        )
         .accessibilityHint(dose.taken ? "Marks it not taken" : "Marks it taken")
     }
 
@@ -190,8 +198,10 @@ struct SupplementsCard: View {
                 }
             }
             if model.activeSupplements.isEmpty {
-                Text("Scan the bottle, say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged.")
-                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "Scan the bottle, say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged."
+                )
+                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Add supplements") { model.showSupplements = true }.primaryAction()
             } else {
                 VStack(alignment: .leading, spacing: 6) {

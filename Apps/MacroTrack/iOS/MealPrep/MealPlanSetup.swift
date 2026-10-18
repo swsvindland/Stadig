@@ -1,17 +1,22 @@
-import SwiftUI
 import MealPlanner
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// What to plan this week: which meals to prep, the diet, what to leave out, and when.
 struct MealPlanSetup: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    /// The plan made, for a screen that shows it.
+    var made: ((MealPlan) -> Void)?
     @State private var preferences = PlanPreferences()
     @State private var tomorrow = false
     @State private var request = ""
     @State private var working = false
     @State private var loaded = false
+    /// Reading the request and making the plan; cancelled with the sheet, so a cancelled sheet
+    /// can't still replace the week that's there.
+    @State private var planning: Task<Void, Never>?
 
     /// Things people commonly leave out, as the words the planner reads.
     static let leaveOut: [(word: String, label: String)] = [
@@ -24,9 +29,13 @@ struct MealPlanSetup: View {
             Form {
                 Section {
                     ForEach(MealSlot.allCases) { slot in
-                        Toggle(isOn: Binding(get: { preferences.slots.contains(slot) }, set: { on in
-                            if on { preferences.slots.insert(slot) } else { preferences.slots.remove(slot) }
-                        })) {
+                        Toggle(
+                            isOn: Binding(
+                                get: { preferences.slots.contains(slot) },
+                                set: { on in
+                                    if on { preferences.slots.insert(slot) } else { preferences.slots.remove(slot) }
+                                })
+                        ) {
                             Label(slot.label, systemImage: slot.symbol)
                         }
                     }
@@ -71,8 +80,10 @@ struct MealPlanSetup: View {
 
                 Section("Start") {
                     Picker("Start", selection: $tomorrow) {
-                        Text("\(Format.day(model.planStart(tomorrow: false), style: .dateTime.weekday(.wide).month().day())), prep \(Format.prepDay(model.planStart(tomorrow: false).adding(days: -1), today: model.today))")
-                            .tag(false)
+                        Text(
+                            "\(Format.day(model.planStart(tomorrow: false), style: .dateTime.weekday(.wide).month().day())), prep \(Format.prepDay(model.planStart(tomorrow: false).adding(days: -1), today: model.today))"
+                        )
+                        .tag(false)
                         Text("Tomorrow, prep today").tag(true)
                     }
                     .pickerStyle(.inline)
@@ -82,8 +93,15 @@ struct MealPlanSetup: View {
             .navigationTitle("Plan a week")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        planning?.cancel()
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("mealPlanSetup.cancel")
+                }
             }
+            .onDisappear { planning?.cancel() }
             .safeAreaInset(edge: .bottom) {
                 Button {
                     make()
@@ -97,6 +115,7 @@ struct MealPlanSetup: View {
                 }
                 .primaryAction()
                 .disabled(preferences.slots.isEmpty || working)
+                .accessibilityIdentifier("mealPlanSetup.make")
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
@@ -113,15 +132,18 @@ struct MealPlanSetup: View {
 
     func make() {
         working = true
-        Task {
+        planning = Task {
             var preferences = preferences
             let text = request.trimmingCharacters(in: .whitespacesAndNewlines)
             if !text.isEmpty {
                 let change = await PlanAssistant().read(text, allowCloud: model.settings.allowCloudAI)
                 preferences = change.applied(to: preferences)
             }
-            model.makeMealPlan(preferences: preferences, start: model.planStart(tomorrow: tomorrow))
+            // The reader answers even when cancelled, so check before replacing anything.
+            guard !Task.isCancelled else { return }
+            let plan = model.makeMealPlan(preferences: preferences, start: model.planStart(tomorrow: tomorrow))
             working = false
+            made?(plan)
             dismiss()
         }
     }
@@ -138,8 +160,12 @@ struct MealPrepCard: View {
                 Text("Meal prep").font(.headline)
                 Spacer()
                 if let plan = model.mealPlan {
-                    Text(plan.start > model.today ? "Prep \(Format.prepDay(plan.prepDay, today: model.today))" : "Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        plan.start > model.today
+                            ? "Prep \(Format.prepDay(plan.prepDay, today: model.today))"
+                            : "Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
             }
             if let plan = model.mealPlan {
@@ -159,6 +185,7 @@ struct MealPrepCard: View {
                 Text("A week of meals sized to your targets, with the grocery list and a timed prep: an hour or two on Sunday and the week is done.")
                     .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Plan a week") { showSetup = true }.primaryAction()
+                    .accessibilityIdentifier("mealPrep.planWeek")
             }
         }
         .card()
@@ -190,9 +217,11 @@ struct PlannedMealsSection: View {
                     }
                 }
                 ForEach(plan.unplanned(on: day), id: \.slot) { open in
-                    Label("\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
-                          systemImage: open.slot.symbol)
-                        .font(.caption).foregroundStyle(.secondary)
+                    Label(
+                        "\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
+                        systemImage: open.slot.symbol
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
             } header: {
                 NavigationLink {
@@ -226,6 +255,7 @@ struct PlannedMealsSection: View {
                 Button("Log") { model.logPlanned(meal, in: plan) }
                     .buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)
                     .accessibilityLabel("Log \(recipe.title)")
+                    .accessibilityIdentifier("mealPrep.logMeal")
             }
         }
     }

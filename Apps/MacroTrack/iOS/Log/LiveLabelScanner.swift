@@ -1,8 +1,8 @@
-import SwiftUI
-import Synchronization
 import FoodDatabase
 import FoodIntelligence
 import NutritionEngine
+import SwiftUI
+import Synchronization
 import SystemCore
 
 /// What a live scan ended in.
@@ -44,7 +44,21 @@ nonisolated struct FrameBox: @unchecked Sendable {
 /// the package's name from its front.
 @MainActor @Observable
 final class LiveScan {
-    enum Kind { case food, supplement }
+    nonisolated enum Kind: Sendable { case food, supplement }
+
+    /// What one frame's text says, parsed off the main thread before it's merged: a panel is a
+    /// couple of dozen patterns over every box, five times a second.
+    nonisolated enum Parsed: Sendable {
+        case food(LabelFrame)
+        case supplement(SupplementFacts?)
+
+        static func read(_ text: FrameText, as kind: Kind) -> Parsed {
+            switch kind {
+            case .food: .food(NutritionLabel.frame(boxes: text.boxes))
+            case .supplement: .supplement(SupplementLabel.parse(lines: text.lines))
+            }
+        }
+    }
 
     let kind: Kind
     private(set) var label = LiveLabel()
@@ -79,19 +93,17 @@ final class LiveScan {
         self.finish = finish
     }
 
-    func add(_ text: FrameText, aspect: Double) {
+    func add(_ text: FrameText, parsed: Parsed, aspect: Double) {
         guard !finished else { return }
         regions = text.regions
         frameAspect = aspect
         if let headline = text.headline { headlines[headline, default: 0] += 1 }
         let panel: Bool
-        switch kind {
-        case .food:
-            let frame = NutritionLabel.frame(boxes: text.boxes)
+        switch parsed {
+        case .food(let frame):
             panel = frame.isPanel
             label.add(frame)
-        case .supplement:
-            let facts = SupplementLabel.parse(lines: text.lines)
+        case .supplement(let facts):
             panel = facts != nil
             supplementLabel.add(facts)
         }
@@ -113,8 +125,10 @@ final class LiveScan {
         ai.prewarmCheck(supplement: kind == .supplement)
         checkTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                guard let self, !self.finished else { return }
+                // A cancelled sleep ends the loop: one more check here would take `checking` and
+                // turn away the final check that review is about to start.
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                guard let self, !self.finished, !Task.isCancelled else { return }
                 await self.check(ai, onDeviceOnly: true, minimumNew: 3)
             }
         }
@@ -205,7 +219,8 @@ final class LiveScan {
         if ready {
             guard kind == .food else { return "Got it. Review, or keep going for the rest of the lines." }
             let more = LiveLabel.secondary.filter { !label.value($0).isLocked }.map(Self.word)
-            return more.isEmpty ? "Got it. Review when you're ready." : "Got it. Review, or keep going for \(ListFormatter.localizedString(byJoining: more))."
+            return more.isEmpty
+                ? "Got it. Review when you're ready." : "Got it. Review, or keep going for \(ListFormatter.localizedString(byJoining: more))."
         }
         if kind == .food {
             let missing = label.missingCore.map(Self.word)
@@ -269,9 +284,11 @@ struct LiveLabelScanner: View {
             }
             .padding()
             if denied {
-                ContentUnavailableView("Camera access is off", systemImage: "camera",
-                                       description: Text("Allow the camera for Macro Track in Settings to scan labels."))
-                    .background(.background)
+                ContentUnavailableView(
+                    "Camera access is off", systemImage: "camera",
+                    description: Text("Allow the camera for Macro Track in Settings to scan labels.")
+                )
+                .background(.background)
             }
         }
         .navigationTitle(scan.kind == .food ? "Scan" : "Scan a supplement")
@@ -356,8 +373,10 @@ struct LiveLabelScanner: View {
         let label = scan.label
         let serving = label.serving
         if serving.label != nil || serving.grams != nil || serving.milliliters != nil {
-            Text("Per serving: \([serving.label, serving.grams.map { "\(Format.number($0)) g" } ?? serving.milliliters.map { "\(Format.number($0)) ml" }].compactMap { $0 }.joined(separator: ", "))")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                "Per serving: \([serving.label, serving.grams.map { "\(Format.number($0)) g" } ?? serving.milliliters.map { "\(Format.number($0)) ml" }].compactMap { $0 }.joined(separator: ", "))"
+            )
+            .font(.caption).foregroundStyle(.secondary)
         }
         Grid(horizontalSpacing: 10, verticalSpacing: 10) {
             GridRow {
@@ -414,18 +433,22 @@ struct LiveLabelScanner: View {
         #endif
         let gate = FrameGate()
         let scan = scan
-        let started = await camera.start(frame: { buffer in
-            guard gate.enter() else { return }
-            let box = FrameBox(buffer: buffer)
-            Task.detached(priority: .userInitiated) {
-                defer { gate.leave() }
-                guard let text = try? await LabelOCR.frame(box.buffer) else { return }
-                let aspect = Double(CVPixelBufferGetWidth(box.buffer)) / Double(max(1, CVPixelBufferGetHeight(box.buffer)))
-                await scan.add(text, aspect: aspect)
-            }
-        }, barcode: { code, symbology in
-            Task { @MainActor in scan.barcodeSeen(code, symbology) }
-        })
+        let kind = scan.kind
+        let started = await camera.start(
+            frame: { buffer in
+                guard gate.enter() else { return }
+                let box = FrameBox(buffer: buffer)
+                Task.detached(priority: .userInitiated) {
+                    defer { gate.leave() }
+                    guard let text = try? await LabelOCR.frame(box.buffer) else { return }
+                    let aspect = Double(CVPixelBufferGetWidth(box.buffer)) / Double(max(1, CVPixelBufferGetHeight(box.buffer)))
+                    let parsed = LiveScan.Parsed.read(text, as: kind)
+                    await scan.add(text, parsed: parsed, aspect: aspect)
+                }
+            },
+            barcode: { code, symbology in
+                Task { @MainActor in scan.barcodeSeen(code, symbology) }
+            })
         denied = !started
     }
 

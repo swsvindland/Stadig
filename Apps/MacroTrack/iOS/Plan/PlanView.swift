@@ -1,5 +1,5 @@
-import SwiftUI
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// The assessment while it runs, then one recommendation with its reasons, then the plan in force
@@ -44,6 +44,7 @@ struct PlanView: View {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("plan.settings")
                 }
             }
         }
@@ -59,6 +60,7 @@ struct AssessmentCard: View {
                 Text("Assessment").font(.headline)
                 Spacer()
                 Text("Day \(assessment.day) of \(assessment.totalDays)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("plan.assessmentDay")
             }
             ProgressView(value: assessment.progress).tint(.accentColor)
             Text("Eat as you normally do, log it, and weigh in each morning. Nothing changes until the data says what your maintenance is.")
@@ -99,8 +101,10 @@ struct MaintenanceCard: View {
     var basisText: String {
         switch estimate.basis {
         case .formula: "From height, weight, age and activity so far. Your own logs and weigh-ins take over from week two."
-        case .blended: "Your logs and weigh-ins, blended with the formula while data builds. Likely between \(Format.whole(estimate.low)) and \(Format.whole(estimate.high)). Week one is left out: it's mostly water."
-        case .data: "From \(estimate.days) complete days against your weight trend. Likely between \(Format.whole(estimate.low)) and \(Format.whole(estimate.high))."
+        case .blended:
+            "Your logs and weigh-ins, blended with the formula while data builds. Likely between \(Format.whole(estimate.low)) and \(Format.whole(estimate.high)). Week one is left out: it's mostly water."
+        case .data:
+            "From \(estimate.days) complete days against your weight trend. Likely between \(Format.whole(estimate.low)) and \(Format.whole(estimate.high))."
         }
     }
 }
@@ -113,7 +117,8 @@ struct RangeBar: View {
     let formula: Double
 
     var body: some View {
-        let lo = min(low, formula) - 150, hi = max(high, formula) + 150
+        let lo = min(low, formula) - 150
+        let hi = max(high, formula) + 150
         GeometryReader { proxy in
             let w = proxy.size.width
             let x = { (v: Double) -> CGFloat in CGFloat((v - lo) / max(1, hi - lo)) * w }
@@ -149,10 +154,13 @@ struct RecommendationCard: View {
                 Button {
                     if purchases.unlocked { model.start(plan) } else { model.showPaywall = true }
                 } label: {
-                    Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+                    Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity).padding(
+                        .vertical, 4)
                 }
                 .primaryAction()
+                .accessibilityIdentifier("plan.start")
                 Button("Choose a different phase") { choosing = true }
+                    .accessibilityIdentifier("plan.choosePhase")
                     .frame(maxWidth: .infinity)
                     .font(.subheadline)
             } else {
@@ -233,11 +241,15 @@ struct PhaseChooser: View {
                         return
                     }
                     let weeks = kind == .miniCut ? 5 : kind == .reverseDiet ? 6 : 8
-                    model.start(PhasePlan(phases: [PlannedPhase(kind: kind, weeks: weeks, start: model.today)],
-                                          headline: "\(kind.label), your choice.",
-                                          reasons: ["You picked this over the recommendation (\(recommended.headline.lowercased()))",
-                                                    "Targets still adapt each week from your logs and weigh-ins."],
-                                          confidence: nil, arc: "Revisited when the phase ends or the data says to."))
+                    model.start(
+                        PhasePlan(
+                            phases: [PlannedPhase(kind: kind, weeks: weeks, start: model.today)],
+                            headline: "\(kind.label), your choice.",
+                            reasons: [
+                                "You picked this over the recommendation (\(recommended.headline.lowercased()))",
+                                "Targets still adapt each week from your logs and weigh-ins.",
+                            ],
+                            confidence: nil, arc: "Revisited when the phase ends or the data says to."))
                     dismiss()
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
@@ -249,10 +261,13 @@ struct PhaseChooser: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("phaseChooser.\(kind.rawValue)")
             }
             .navigationTitle("Choose a phase")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("phaseChooser.cancel") }
+            }
         }
     }
 }
@@ -269,8 +284,10 @@ struct CurrentPhaseCard: View {
                 let week = min(phase.weeks, phase.start.days(until: model.today) / 7 + 1)
                 HStack(alignment: .firstTextBaseline) {
                     Text(phase.kind.label).font(.title2.weight(.bold))
+                        .accessibilityIdentifier("plan.currentPhase")
                     Spacer()
                     Text("Week \(max(1, week)) of \(phase.weeks)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("plan.week")
                 }
                 ProgressView(value: Double(max(0, phase.start.days(until: model.today))), total: Double(phase.weeks * 7)).tint(phase.kind.color)
                 Text(phase.summary).font(.subheadline).foregroundStyle(.secondary)
@@ -316,7 +333,7 @@ struct ReviewCard: View {
             Text(plan.headline).font(.subheadline).fixedSize(horizontal: false, vertical: true)
             PhaseChips(phases: plan.phases.filter { $0.end >= model.today })
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
-            Button("Use the updated plan") { model.start(plan) }.primaryAction()
+            Button("Use the updated plan") { model.start(plan) }.primaryAction().accessibilityIdentifier("plan.useUpdated")
         }
         .card()
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.accentColor.opacity(0.4), lineWidth: 1))
@@ -333,11 +350,14 @@ struct TimelineCard: View {
             Text("The plan").font(.headline)
             ForEach(plan.phases) { phase in
                 HStack(alignment: .top, spacing: 10) {
-                    Circle().fill(phase.range.contains(today) ? phase.kind.color : phase.kind.color.opacity(0.3)).frame(width: 10, height: 10).padding(.top, 5)
+                    Circle().fill(phase.range.contains(today) ? phase.kind.color : phase.kind.color.opacity(0.3)).frame(width: 10, height: 10)
+                        .padding(.top, 5)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(phase.summary).font(.subheadline.weight(phase.range.contains(today) ? .semibold : .regular))
-                        Text("\(Format.day(phase.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(phase.end, style: .dateTime.month(.abbreviated).day()))")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(
+                            "\(Format.day(phase.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(phase.end, style: .dateTime.month(.abbreviated).day()))"
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 .opacity(phase.end < today ? 0.5 : 1)

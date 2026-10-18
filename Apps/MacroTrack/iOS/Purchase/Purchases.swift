@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import StoreKit
 import SwiftUI
+import SystemCore
 
 /// The one-time unlock. No subscription. Logging (search, scan, photo, description), the
 /// assessment, export and backup always work without it: your data is yours. Starting the plan
@@ -24,12 +25,13 @@ final class Purchases {
     init() {
         if !Self.enabled { unlocked = true }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { unlocked = true }
+        if LaunchOptions.current.has("-unlocked") { unlocked = true }
         #endif
     }
 
     func start() async {
-        guard Self.enabled else { return }
+        // Tests and UI tests never reach StoreKit.
+        guard Self.enabled, !LaunchOptions.current.isQuiet else { return }
         if updates == nil {
             updates = Task { [weak self] in
                 for await update in Transaction.updates {
@@ -60,7 +62,7 @@ final class Purchases {
             }
         }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { owned = true }
+        if LaunchOptions.current.has("-unlocked") { owned = true }
         #endif
         unlocked = owned
     }
@@ -117,12 +119,17 @@ struct PaywallView: View {
                 .primaryAction()
                 .controlSize(.large)
                 .disabled(purchases.product == nil || purchases.purchasing)
+                .accessibilityIdentifier("paywall.unlock")
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("paywall.restore")
                 if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of The System bundle on the App Store, with Lift Track and the Knowledge app.").font(.footnote).foregroundStyle(.secondary)
+                Text("Part of The System bundle on the App Store, with \(AppID.liftTrack.displayName) and \(AppID.knowledge.displayName).")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") }
+            }
         }
     }
 }

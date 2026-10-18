@@ -1,3 +1,4 @@
+import FoodDatabase
 import Foundation
 import NutritionEngine
 import SystemCore
@@ -50,4 +51,15 @@ enum Format {
     static func macros(_ n: Nutrients) -> String {
         "P \(Int(n.protein.rounded())) · C \(Int(n.carbs.rounded())) · F \(Int(n.fat.rounded()))"
     }
+
+    /// A number for a text field that's parsed back: never grouped, since "1,200" would read back as
+    /// 1.2 (`FoodUnits.parseCount` takes a comma for the decimal point), in the locale's decimals.
+    static func editable(_ value: Double, digits: Int = 2, locale: Locale = .current) -> String {
+        guard value.isFinite else { return "" }
+        return value.formatted(.number.grouping(.never).precision(.fractionLength(0...digits)).locale(locale))
+    }
+
+    /// A number typed into a field: "1.5", "1,5", "1½", "1 1/2"; nil for anything else. The one
+    /// parse for every field, so a Save button's check and what it saves can't disagree.
+    static func parse(_ text: String) -> Double? { FoodUnits.parseCount(text) }
 }

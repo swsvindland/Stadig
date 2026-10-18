@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// What's left today, the one or two things worth doing, and the day's log. Built so a visit can
@@ -26,9 +26,11 @@ struct TodayView: View {
                     if !model.logAgain.isEmpty || model.usualNow != nil { LogAgainSection() }
                 } else {
                     Section {
-                        Label("Catching up \(Format.relative(model.selectedDay, today: model.today)). New entries land on that day.",
-                              systemImage: "clock.arrow.circlepath")
-                            .font(.subheadline)
+                        Label(
+                            "Catching up \(Format.relative(model.selectedDay, today: model.today)). New entries land on that day.",
+                            systemImage: "clock.arrow.circlepath"
+                        )
+                        .font(.subheadline)
                     }
                     PlannedMealsSection(day: model.selectedDay)
                     SupplementsSection(day: model.selectedDay)
@@ -39,7 +41,9 @@ struct TodayView: View {
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(14)
-            .navigationTitle(model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day()))
+            .navigationTitle(
+                model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
+            )
             .toolbar { toolbar }
             .sheet(item: $editing) { entry in
                 EntryEditor(entry: entry)
@@ -57,6 +61,7 @@ struct TodayView: View {
                 Image(systemName: "chevron.left")
             }
             .accessibilityLabel("Previous day")
+            .accessibilityIdentifier("today.previousDay")
             if model.selectedDay < model.today {
                 Button {
                     model.selectedDay = model.selectedDay.adding(days: 1)
@@ -64,11 +69,13 @@ struct TodayView: View {
                     Image(systemName: "chevron.right")
                 }
                 .accessibilityLabel("Next day")
+                .accessibilityIdentifier("today.nextDay")
             }
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             if model.selectedDay != model.today {
                 Button("Today") { model.selectedDay = model.today }
+                    .accessibilityIdentifier("today.backToToday")
             }
             Button {
                 model.showSettings = true
@@ -76,6 +83,7 @@ struct TodayView: View {
                 Image(systemName: "gearshape")
             }
             .accessibilityLabel("Settings")
+            .accessibilityIdentifier("today.settings")
         }
     }
 }
@@ -107,6 +115,7 @@ struct SummaryCard: View {
                     }
                     .frame(width: 124, height: 124)
                     .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("today.calories")
 
                     VStack(alignment: .leading, spacing: 11) {
                         MacroBar(macro: .protein, eaten: eaten.protein, target: targets.protein)
@@ -116,6 +125,7 @@ struct SummaryCard: View {
                         }
                         if let kcal = targets.kcal {
                             Text("\(Format.whole(eaten.kcal)) of \(Format.kcal(kcal))").font(.caption).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("today.eatenOfTarget")
                         }
                     }
                 }
@@ -141,7 +151,9 @@ struct ModeLine: View {
     var pill: (String, String, Color)? {
         switch targets.mode {
         case .assessment:
-            assessment.map { ("Day \($0.day) of \($0.totalDays)", "magnifyingglass", .accentColor) } ?? ("Assessment", "magnifyingglass", .accentColor)
+            assessment.map { ("Day \($0.day) of \($0.totalDays)", "magnifyingglass", .accentColor) } ?? (
+                "Assessment", "magnifyingglass", .accentColor
+            )
         case .dietBreak: ("Diet break", "pause.circle", .teal)
         case .crunch: ("Crunch", "briefcase.fill", .orange)
         case .illness: ("Ill", "thermometer.medium", .purple)
@@ -200,11 +212,13 @@ struct ActionsSection: View {
         }
         if let nutrient = analysis.micros.flagged.first(where: { !model.isNutrientHidden($0.nutrient.key) }) {
             // Done for today once its food is logged; the week's numbers catch up tomorrow.
-            let fixed = model.microFix.map { fix in fix.nutrient.key == nutrient.nutrient.key && todays.contains { $0.foodID == fix.food.id } } ?? false
+            let fixed =
+                model.microFix.map { fix in fix.nutrient.key == nutrient.nutrient.key && todays.contains { $0.foodID == fix.food.id } } ?? false
             if !fixed { list.append(.nutrient(nutrient)) }
         }
         if analysis.quality.fermentedStatus == .off, !model.isNutrientHidden(QualityActionRow.hideKey(.fermented)),
-           !todays.contains(where: Fermented.isFermented) {
+            !todays.contains(where: Fermented.isFermented)
+        {
             list.append(.quality(.fermented))
         }
         return Array(list.prefix(room))
@@ -251,6 +265,7 @@ struct WeightSection: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Weight \(Format.weight(reading.kg, unit: unit)). Edit weigh-ins")
+                    .accessibilityIdentifier("today.weight")
                 } else {
                     field(unit)
                 }
@@ -278,8 +293,10 @@ struct WeightSection: View {
                 .font(.body.monospacedDigit())
                 .frame(width: 70)
                 .focused($focused)
+                .accessibilityIdentifier("today.weightField")
             Text(unit.symbol).foregroundStyle(.secondary)
             Button("Save") { save(unit) }
+                .accessibilityIdentifier("today.weightSave")
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .disabled(parsed(unit) == nil)
@@ -287,15 +304,16 @@ struct WeightSection: View {
     }
 
     func parsed(_ unit: WeightUnit) -> Double? {
-        guard let value = Double(weight.replacingOccurrences(of: ",", with: ".")), value > 20 else { return nil }
-        return unit.toKilograms(value)
+        guard let value = Double(weight.replacingOccurrences(of: ",", with: ".")) else { return nil }
+        let kg = unit.toKilograms(value)
+        return Weight.isPlausible(kg: kg) ? kg : nil
     }
 
     func save(_ unit: WeightUnit) {
         guard let kg = parsed(unit) else { return }
         focused = false
         weight = ""
-        model.weighIn(kg: kg, date: day == model.today ? Date() : day.date().addingTimeInterval(7 * 3600))
+        model.weighIn(kg: kg, date: day == model.today ? Date() : day.at(hour: 7, minute: 0))
     }
 }
 
@@ -337,6 +355,7 @@ struct ActionRow: View {
             Spacer(minLength: 0)
             if let button {
                 Button(button.0, action: button.1).buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)
+                    .accessibilityIdentifier("today.action")
             }
         }
     }
@@ -356,7 +375,7 @@ struct ActionRow: View {
         switch action.kind {
         case .planReady, .reviewPlan: ("See plan", { model.tab = .plan })
         case .logYesterday: ("Catch up", { model.selectedDay = model.today.adding(days: -1) })
-        case .protein: ("Log", { model.logger = .search })
+        case .protein: ("Log", { model.openLogger(.search) })
         default: nil
         }
     }
@@ -372,17 +391,24 @@ struct LogAgainSection: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     if let usual = model.usualNow {
-                        chip(title: "Same as \(Format.relative(Day(usual.start), today: model.today))",
-                             detail: "\(Format.time(usual.start)) · \(usual.entries.map(\.name).prefix(2).joined(separator: ", "))\(usual.entries.count > 2 ? " +\(usual.entries.count - 2)" : "")",
-                             kcal: usual.nutrients.kcal, highlight: true) {
+                        chip(
+                            title: "Same as \(Format.relative(Day(usual.start), today: model.today))",
+                            detail:
+                                "\(Format.time(usual.start)) · \(usual.entries.map(\.name).prefix(2).joined(separator: ", "))\(usual.entries.count > 2 ? " +\(usual.entries.count - 2)" : "")",
+                            kcal: usual.nutrients.kcal, highlight: true
+                        ) {
                             model.logAgain(usual)
                         }
-                        .accessibilityLabel("Log the same as \(Format.relative(Day(usual.start), today: model.today)): \(usual.entries.map(\.name).joined(separator: ", ")), \(Format.kcal(usual.nutrients.kcal))")
+                        .accessibilityIdentifier("today.sameAsUsual")
+                        .accessibilityLabel(
+                            "Log the same as \(Format.relative(Day(usual.start), today: model.today)): \(usual.entries.map(\.name).joined(separator: ", ")), \(Format.kcal(usual.nutrients.kcal))"
+                        )
                     }
                     ForEach(model.logAgain.prefix(10)) { item in
                         chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
                             model.logAgain(item)
                         }
+                        .accessibilityIdentifier("today.logAgain")
                         .accessibilityLabel("Log \(item.template.name), \(item.template.amountLabel), \(Format.kcal(item.template.nutrients.kcal))")
                     }
                 }
@@ -422,6 +448,7 @@ struct TimelineSections: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(day == model.today ? "Nothing logged yet today" : "Nothing logged on this day").font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("today.nothingLogged")
                     Text("Search, scan, snap or describe below. Foods eaten together are kept together, however many times you eat.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -449,6 +476,7 @@ struct MomentSection: View {
                     EntryRow(entry: entry)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("today.entry")
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
                 }
@@ -471,14 +499,15 @@ struct MomentSection: View {
                     Image(systemName: "ellipsis.circle").font(.title3)
                 }
                 .accessibilityLabel("More for \(Format.time(moment.start))")
+                .accessibilityIdentifier("today.momentMenu")
                 Button {
                     // Added foods join this moment.
-                    model.loggerTime = moment.end.addingTimeInterval(60)
-                    model.logger = .search
+                    model.openLogger(.search, at: moment.end.addingTimeInterval(60))
                 } label: {
                     Image(systemName: "plus.circle.fill").font(.title3)
                 }
                 .accessibilityLabel("Add to \(Format.time(moment.start))")
+                .accessibilityIdentifier("today.addToMoment")
             }
         }
     }
@@ -525,6 +554,7 @@ struct DayStateSection: View {
                         .buttonStyle(.bordered)
                         .tint(state == choice ? .accentColor : .secondary)
                         .buttonBorderShape(.capsule)
+                        .accessibilityIdentifier("today.dayState.\(choice.rawValue)")
                     }
                 }
             } header: {

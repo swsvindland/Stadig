@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// A food and portion to confirm, and whether the logger closes after adding it.
@@ -29,7 +29,7 @@ struct LoggerSheet: View {
                 .toolbar {
                     if mode != .search { ToolbarItem(placement: .principal) { TimeMenu() } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
+                        Button("Done") { dismiss() }.accessibilityIdentifier("logger.done")
                     }
                 }
                 .navigationDestination(item: $portion) { request in
@@ -73,7 +73,23 @@ enum LogTime {
         guard let picked = model.loggerTime else { return "Now" }
         let minutes = Int((Date().timeIntervalSince(picked) / 60).rounded())
         if let match = recent.first(where: { abs($0 - minutes) <= 2 }) { return ago(match) }
-        return Format.time(picked)
+        return time(model)
+    }
+
+    /// The time foods will be logged at, with its day when that isn't the day being looked at
+    /// ("Sat 11:30 PM"), so a time that lands on another day says so.
+    @MainActor
+    static func time(_ model: AppModel) -> String {
+        let date = model.logDate()
+        guard Day(date) != model.selectedDay else { return Format.time(date) }
+        return "\(Format.day(Day(date), style: .dateTime.weekday(.abbreviated))) \(Format.time(date))"
+    }
+
+    /// A time picked on the wheel for today, on the day nearest now: 11:30 PM picked just after
+    /// midnight is last night, 7 PM picked at noon is this evening.
+    static func nearest(_ picked: Date, now: Date = Date(), calendar: Calendar = .current) -> Date {
+        guard picked > now, let yesterday = calendar.date(byAdding: .day, value: -1, to: picked) else { return picked }
+        return now.timeIntervalSince(yesterday) < picked.timeIntervalSince(now) ? yesterday : picked
     }
 
     static func ago(_ minutes: Int) -> String { minutes < 60 ? "\(minutes) min ago" : "\(minutes / 60) h ago" }
@@ -105,6 +121,7 @@ struct TimeMenu: View {
             .foregroundStyle(.primary)
         }
         .accessibilityLabel("Eaten: \(LogTime.label(model))")
+        .accessibilityIdentifier("logger.time")
         .sheet(isPresented: $picking) { TimePickerSheet() }
     }
 }
@@ -146,6 +163,7 @@ struct LogTimeBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Pick a time")
+            .accessibilityIdentifier("logger.pickTime")
         }
         .padding(6)
         .floatingGlass(in: Capsule(), interactive: false)
@@ -156,7 +174,7 @@ struct LogTimeBar: View {
     var custom: String? {
         guard model.loggerTime != nil || model.selectedDay != model.today else { return nil }
         let label = LogTime.label(model)
-        return LogTime.recent.map(LogTime.ago).contains(label) ? nil : Format.time(model.logDate())
+        return LogTime.recent.map(LogTime.ago).contains(label) ? nil : LogTime.time(model)
     }
 
     func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -188,14 +206,16 @@ struct TimePickerSheet: View {
                 .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }.accessibilityIdentifier("timePicker.cancel")
+                    }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
                             let picked = model.onSelectedDay(time)
-                            // Later than now today is a slip of the wheel: it means earlier.
-                            model.loggerTime = model.selectedDay == model.today && picked > Date() ? picked.addingTimeInterval(-86400) : picked
+                            model.loggerTime = model.selectedDay == model.today ? LogTime.nearest(picked) : picked
                             dismiss()
                         }
+                        .accessibilityIdentifier("timePicker.done")
                     }
                 }
         }
@@ -251,18 +271,22 @@ struct SearchLogView: View {
                     Text("Try fewer words, scan the barcode, or describe it.")
                 } actions: {
                     Button("Describe “\(query)”") { mode = .describe }
-                    Button("Quick add calories") { mode = .quickAdd }
+                    Button("Quick add calories") { mode = .quickAdd }.accessibilityIdentifier("logger.noMatchesQuickAdd")
                 }
                 .listRowBackground(Color.clear)
             } else {
                 ForEach(results) { match in
-                    FoodRow(food: match.food, personal: model.personalFood(match.food.id), add: { quickAdd(match.food) },
-                            open: { open(match.food) })
+                    FoodRow(
+                        food: match.food, personal: model.personalFood(match.food.id), add: { quickAdd(match.food) },
+                        open: { open(match.food) })
                 }
             }
         }
         .listStyle(.insetGrouped)
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search foods")
+        // The search is active whenever the logger is (the keyboard stays up for the next food), and
+        // by default an active search hides the bar with Done in it.
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .searchFocused($focused)
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)
@@ -284,7 +308,8 @@ struct SearchLogView: View {
         // A short pause so fast typing doesn't queue a search per keystroke.
         try? await Task.sleep(for: .milliseconds(90))
         guard !Task.isCancelled else { return }
-        let catalog = model.catalog, personal = model.personal
+        let catalog = model.catalog
+        let personal = model.personal
         let found = await Task.detached(priority: .userInitiated) { catalog.search(text, personal: personal, limit: 60) }.value
         guard !Task.isCancelled else { return }
         results = found
@@ -295,7 +320,7 @@ struct SearchLogView: View {
     /// for the next food.
     func quickAdd(_ food: Food) {
         let p = model.personalFood(food.id)
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount)
+        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
         model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
         query = ""
         focused = true
@@ -341,6 +366,7 @@ struct ModeShortcuts: View {
             .background(.insetBackground, in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("logger.mode.\(target.rawValue)")
     }
 }
 
@@ -352,7 +378,8 @@ struct FoodRow: View {
     let open: () -> Void
 
     var body: some View {
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount)
+        let suggestion = FoodUnits.suggested(
+            for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
         let n = FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
         HStack(spacing: 12) {
             Button(action: open) {
@@ -361,20 +388,26 @@ struct FoodRow: View {
                         Text(food.name).lineLimit(2)
                         if personal?.favorite == true { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow) }
                     }
-                    Text([food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 },
-                          FoodUnits.label(count: suggestion.count, unit: suggestion.unit),
-                          "\(Format.whole(n.kcal)) kcal", "\(Format.grams(n.protein)) P"].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(
+                        [
+                            food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 },
+                            FoodUnits.label(count: suggestion.count, unit: suggestion.unit),
+                            "\(Format.whole(n.kcal)) kcal", "\(Format.grams(n.protein)) P",
+                        ].compactMap { $0 }.joined(separator: " · ")
+                    )
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("logger.food")
             Button(action: add) {
                 Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add \(FoodUnits.label(count: suggestion.count, unit: suggestion.unit)) of \(food.name)")
+            .accessibilityIdentifier("logger.addFood")
         }
     }
 }
@@ -390,9 +423,11 @@ struct RecentRow: View {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.template.name).lineLimit(1)
-                    Text([item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
-                        .compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(
+                        [item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
+                            .compactMap { $0 }.joined(separator: " · ")
+                    )
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
@@ -405,6 +440,7 @@ struct RecentRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Log \(item.template.name) again")
+            .accessibilityIdentifier("logger.logAgain")
         }
     }
 }
@@ -443,32 +479,43 @@ struct PortionView: View {
                         .keyboardType(.decimalPad)
                         .font(.title2.weight(.semibold).monospacedDigit())
                         .focused($countFocused)
-                        .onChange(of: countText) { _, text in if let v = FoodUnits.parseCount(text), v > 0 { count = v } }
-                    Picker("Unit", selection: Binding(get: { current?.id ?? "" }, set: { id in
-                        guard let next = units.first(where: { $0.id == id }), let old = current, next.id != old.id else { return }
-                        // Keep the amount: 1 cup becomes 240 g, not 1 g.
-                        let amount = FoodUnits.amount(count, old)
-                        unit = next
-                        count = next.amount > 0 ? quick(amount / next.amount, next) : count
-                        base = count
-                        countText = Format.number(count, digits: 2)
-                    })) {
+                        .accessibilityIdentifier("portion.amount")
+                        .onChange(of: countText) { _, text in
+                            // Text this view wrote already says the count; reading it back would round it.
+                            guard current.map({ text != FoodUnits.format(count, $0) }) ?? true, let v = Format.parse(text), v > 0 else { return }
+                            count = v
+                        }
+                    Picker(
+                        "Unit",
+                        selection: Binding(
+                            get: { current?.id ?? "" },
+                            set: { id in
+                                guard let next = units.first(where: { $0.id == id }), let old = current, next.id != old.id else { return }
+                                // Keep the amount: 1 cup becomes 240 g, not 1 g, rounded for the new unit.
+                                let converted = FoodUnits.convert(count, from: old, to: next)
+                                unit = next
+                                if converted.isFinite { count = converted }
+                                base = count
+                                countText = FoodUnits.format(count, next)
+                            })
+                    ) {
                         ForEach(units) { Text($0.label).tag($0.id) }
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .accessibilityIdentifier("portion.unit")
                 }
                 if let current {
                     HStack(spacing: 8) {
-                        ForEach([0.5, 1, 1.5, 2], id: \.self) { multiple in
-                            let value = quick(base * multiple, current)
-                            Button(current.kind == .mass || current.kind == .volume ? FoodUnits.label(count: value, unit: current) : Format.number(value, digits: 2)) {
+                        ForEach(quickChoices(current), id: \.self) { value in
+                            Button(Self.quickChoiceLabel(value, unit: current)) {
                                 count = value
-                                countText = Format.number(value, digits: 2)
+                                countText = FoodUnits.format(value, current)
                             }
                             .buttonStyle(.bordered)
                             .buttonBorderShape(.capsule)
                             .tint(abs(count - value) < 0.001 ? .accentColor : .secondary)
+                            .accessibilityIdentifier("portion.quick")
                         }
                     }
                 }
@@ -484,10 +531,11 @@ struct PortionView: View {
                 model.log([model.entry(for: food, count: count, unit: current, source: request.source)])
                 done(false)
             } label: {
-                Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(Format.time(model.logDate()))") · \(Format.kcal(n.kcal))")
+                Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))") · \(Format.kcal(n.kcal))")
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
             }
             .primaryAction()
+            .accessibilityIdentifier("portion.add")
             .padding()
             .disabled(current == nil || count <= 0)
         }
@@ -500,24 +548,32 @@ struct PortionView: View {
                     Image(systemName: model.isFavorite(food.id) ? "star.fill" : "star")
                 }
                 .accessibilityLabel(model.isFavorite(food.id) ? "Remove from favorites" : "Add to favorites")
+                .accessibilityIdentifier("portion.favorite")
             }
         }
         .onAppear {
             let p = model.personalFood(food.id)
-            let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount)
+            let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
             unit = suggestion.unit
             count = suggestion.count
             base = suggestion.count
-            countText = Format.number(suggestion.count, digits: 2)
+            countText = FoodUnits.format(suggestion.count, suggestion.unit)
         }
     }
 
-    /// Rounded to what people measure: whole grams and millilitres, quarters of a portion.
-    func quick(_ value: Double, _ unit: PortionUnit) -> Double {
-        switch unit.kind {
-        case .mass, .volume: max(1, (value * unit.amount).rounded() / max(unit.amount, 0.0001))
-        default: max(0.25, (value * 4).rounded() / 4)
-        }
+    func quickChoices(_ unit: PortionUnit) -> [Double] { Self.quickChoices(base: base, unit: unit) }
+
+    /// Half, one, one and a half and two of the usual amount, each rounded the way that unit is
+    /// measured (quarters of a cup or a portion, tenths of an ounce or a pound, whole grams),
+    /// without repeats.
+    static func quickChoices(base: Double, unit: PortionUnit) -> [Double] {
+        var seen = Set<Double>()
+        return [0.5, 1, 1.5, 2].map { FoodUnits.convert(base * $0, from: unit, to: unit) }.filter { $0.isFinite && seen.insert($0).inserted }
+    }
+
+    /// A weight or volume with its unit ("0.5 lb", "150 g"), a count of portions on its own.
+    static func quickChoiceLabel(_ value: Double, unit: PortionUnit) -> String {
+        unit.kind == .mass || unit.kind == .volume ? FoodUnits.label(count: value, unit: unit) : Format.number(value, digits: 2)
     }
 
     func sourceLabel(_ food: Food) -> String {

@@ -1,14 +1,15 @@
 import AVFoundation
+import FoodDatabase
 import SwiftUI
 import Synchronization
 import UIKit
-import FoodDatabase
 
 /// The back camera for live scanning: portrait frames for reading text, barcodes from the camera's
 /// own detector, and the torch. Frames arrive on the camera's queue; a slow reader simply misses
 /// the ones that come while it's busy.
 nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVideoDataOutputSampleBufferDelegate,
-    AVCaptureMetadataOutputObjectsDelegate {
+    AVCaptureMetadataOutputObjectsDelegate
+{
     struct Handlers {
         var frame: (@Sendable (CVPixelBuffer) -> Void)?
         var barcode: (@Sendable (String, Barcode.Symbology?) -> Void)?
@@ -61,8 +62,9 @@ nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVide
     private func configure() {
         guard !configured else { return }
         configured = true
-        let discovery = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera],
-                                                         mediaType: .video, position: .back)
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera],
+            mediaType: .video, position: .back)
         guard let device = discovery.devices.first, let input = try? AVCaptureDeviceInput(device: device) else { return }
         self.device = device
         session.beginConfiguration()
@@ -105,13 +107,14 @@ nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVide
         guard let handler = handlers.withLock({ $0.barcode }) else { return }
         for case let code as AVMetadataMachineReadableCodeObject in metadataObjects {
             guard let value = code.stringValue, !value.isEmpty else { continue }
-            let symbology: Barcode.Symbology? = switch code.type {
-            case .ean13: .ean13
-            case .ean8: .ean8
-            case .upce: .upcE
-            case .itf14: .itf14
-            default: .other
-            }
+            let symbology: Barcode.Symbology? =
+                switch code.type {
+                case .ean13: .ean13
+                case .ean8: .ean8
+                case .upce: .upcE
+                case .itf14: .itf14
+                default: .other
+                }
             handler(value, symbology)
         }
     }

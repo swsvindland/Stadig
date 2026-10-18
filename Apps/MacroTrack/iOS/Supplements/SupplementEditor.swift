@@ -1,6 +1,6 @@
-import SwiftUI
 import FoodDatabase
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// A supplement's label and when it's taken: the name, the serving, each Supplement Facts line
@@ -8,13 +8,30 @@ import SystemCore
 struct SupplementEditor: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State var supplement: Supplement
+    @State private var supplement: Supplement
     let isNew: Bool
+    /// The Supplement Facts lines being edited, each with an identity of its own: rows keyed by
+    /// position would leave a focused field writing into the next line, or past the end, after
+    /// a swipe-delete.
+    @State private var lines: [Line]
     @State private var confirmingDelete = false
     @State private var showAllLines = false
 
-    static let units = ["capsule", "softgel", "tablet", "caplet", "gummy", "chewable", "lozenge", "scoop", "packet", "tsp", "tbsp", "g",
-                        "ml", "drop", "spray", "serving"]
+    private struct Line: Identifiable {
+        let id = UUID()
+        var ingredient: SupplementIngredient
+    }
+
+    init(supplement: Supplement, isNew: Bool) {
+        _supplement = State(initialValue: supplement)
+        _lines = State(initialValue: supplement.facts.ingredients.map { Line(ingredient: $0) })
+        self.isNew = isNew
+    }
+
+    static let units = [
+        "capsule", "softgel", "tablet", "caplet", "gummy", "chewable", "lozenge", "scoop", "packet", "tsp", "tbsp", "g",
+        "ml", "drop", "spray", "serving",
+    ]
     static let lineUnits = ["mg", "mcg", "g", "IU", "mcg DFE", "mcg RAE", "kcal", "CFU", "billion CFU", "ml"]
 
     var body: some View {
@@ -39,22 +56,25 @@ struct SupplementEditor: View {
                     TextField("1", value: $supplement.facts.servingCount, format: .number)
                         .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 60)
                     Picker("Unit", selection: $supplement.facts.unit) {
-                        ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) { Text($0).tag($0) }
+                        ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) {
+                            Text($0).tag($0)
+                        }
                     }
                     .labelsHidden()
                     .fixedSize()
                 }
-                let lines = supplement.facts.ingredients.indices
-                let shown = showAllLines || lines.count <= 12 ? Array(lines) : Array(lines.prefix(10))
-                ForEach(shown, id: \.self) { index in
-                    LineEditor(ingredient: $supplement.facts.ingredients[index], units: Self.lineUnits)
+                // The first ten, or all of them: shown always starts at the first line, so a delete's
+                // offsets are the lines' own.
+                let shown = showAllLines || lines.count <= 12 ? lines : Array(lines.prefix(10))
+                ForEach(shown) { line in
+                    LineEditor(ingredient: binding(line.id), units: Self.lineUnits)
                 }
-                .onDelete { supplement.facts.ingredients.remove(atOffsets: $0) }
+                .onDelete { lines.remove(atOffsets: $0) }
                 if shown.count < lines.count {
                     Button("Show all \(lines.count) lines") { showAllLines = true }
                 }
                 Button("Add a line", systemImage: "plus") {
-                    supplement.facts.ingredients.append(SupplementIngredient(name: "", amount: nil, unit: "mg"))
+                    lines.append(Line(ingredient: SupplementIngredient(name: "", amount: nil, unit: "mg")))
                     showAllLines = true
                 }
             } header: {
@@ -98,16 +118,25 @@ struct SupplementEditor: View {
     var tidied: Supplement {
         var s = supplement
         s.facts.name = s.facts.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        s.facts.ingredients = s.facts.ingredients.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty && $0.amount != nil }
+        s.facts.ingredients = lines.map(\.ingredient).filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty && $0.amount != nil }
             .map { SupplementIngredient(name: $0.name, amount: $0.amount, unit: $0.unit) }
             .filter(\.isTracked)
         if s.facts.servingCount <= 0 { s.facts.servingCount = 1 }
         return s
     }
 
+    /// A line by its identity: an edit committed after the line was deleted goes nowhere, rather
+    /// than into whichever line took its place.
+    private func binding(_ id: UUID) -> Binding<SupplementIngredient> {
+        Binding(
+            get: { lines.first { $0.id == id }?.ingredient ?? SupplementIngredient(name: "", amount: nil, unit: "mg") },
+            set: { value in if let index = lines.firstIndex(where: { $0.id == id }) { lines[index].ingredient = value } })
+    }
+
     var countedSummary: String {
         let amounts = tidied.facts.amounts
-        let counted = Micronutrients.all.compactMap { info in amounts[info.key].map { "\(Format.nutrient($0, info.unit)) \(Format.inSentence(info))" } }
+        let counted = Micronutrients.all.compactMap { info in amounts[info.key].map { "\(Format.nutrient($0, info.unit)) \(Format.inSentence(info))" }
+        }
         let kcal = tidied.facts.nutrients.map { $0.kcal >= 1 ? ["\(Format.whole($0.kcal)) kcal"] : [] } ?? []
         guard !counted.isEmpty || !kcal.isEmpty else {
             return "Nothing on this label is a nutrient Macro Track tracks, so doses are ticked off but add no numbers."
@@ -126,8 +155,10 @@ struct SupplementEditor: View {
             Button("Add a time", systemImage: "plus") {
                 let used = Set(supplement.doses.map(\.time))
                 let next = DoseTime.allCases.first { !used.contains($0) } ?? .evening
-                supplement.doses.append(Dose(time: next, count: supplement.doses.last?.count ?? supplement.facts.servingCount,
-                                             days: supplement.doses.last?.days ?? .everyDay))
+                supplement.doses.append(
+                    Dose(
+                        time: next, count: supplement.doses.last?.count ?? supplement.facts.servingCount,
+                        days: supplement.doses.last?.days ?? .everyDay))
             }
         } header: {
             Text("When you take it")

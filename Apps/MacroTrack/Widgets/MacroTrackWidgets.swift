@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import SystemCore
 import WidgetKit
 
 @main
@@ -70,10 +71,15 @@ struct MacroProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<MacroEntry>) -> Void) {
         let now = Date()
         let snapshot = MacroSnapshot.load()
-        let midnight = Calendar.current.startOfDay(for: now.addingTimeInterval(86400))
-        completion(Timeline(entries: [MacroEntry(date: now, snapshot: snapshot.current(now: now)),
-                                      MacroEntry(date: midnight, snapshot: snapshot.current(now: midnight))],
-                            policy: .after(midnight.addingTimeInterval(60))))
+        // The next calendar day, not 24 hours on, which misses midnight or lands before it when the clocks change.
+        let midnight = Day(now).adding(days: 1).date()
+        completion(
+            Timeline(
+                entries: [
+                    MacroEntry(date: now, snapshot: snapshot.current(now: now)),
+                    MacroEntry(date: midnight, snapshot: snapshot.current(now: midnight)),
+                ],
+                policy: .after(midnight.addingTimeInterval(60))))
     }
 }
 
@@ -152,7 +158,8 @@ struct RemainingView: View {
         let fraction = target.map { $0 > 0 ? min(1, snapshot.kcal / $0) : 0 } ?? 0
         return ZStack {
             Circle().stroke(Color.accentColor.opacity(0.18), lineWidth: 10)
-            Circle().trim(from: 0, to: fraction).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round)).rotationEffect(.degrees(-90))
+            Circle().trim(from: 0, to: fraction).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round)).rotationEffect(
+                .degrees(-90))
             VStack(spacing: 0) {
                 Text("\(Int(abs(snapshot.kcalLeft ?? snapshot.kcal)))").font(.title3.weight(.bold).monospacedDigit()).minimumScaleFactor(0.6)
                 Text(snapshot.kcalLeft.map { $0 >= 0 ? "left" : "over" } ?? "eaten").font(.caption2).foregroundStyle(.secondary)
@@ -175,7 +182,8 @@ struct RemainingView: View {
             HStack {
                 Text(label).font(.caption2.weight(.semibold))
                 Spacer()
-                Text(target.map { "\(Int(max(0, $0 - value))) g left" } ?? "\(Int(value)) g").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                Text(target.map { "\(Int(max(0, $0 - value))) g left" } ?? "\(Int(value)) g").font(.caption2.monospacedDigit()).foregroundStyle(
+                    .secondary)
             }
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {

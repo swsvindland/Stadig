@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import HealthBridge
 import NutritionEngine
 import SystemCore
@@ -59,7 +59,7 @@ extension AppModel {
     /// When a dose marked now was taken: now today; on a day being caught up, its time of day there.
     func doseDate(_ time: DoseTime, on day: Day) -> Date {
         guard day != today else { return Date() }
-        return day.date().addingTimeInterval(Double(settings.minutes(time)) * 60)
+        return day.at(minutes: settings.minutes(time))
     }
 
     /// Marks doses taken, replacing a skip. Shows Undo when there's more than one.
@@ -69,8 +69,11 @@ extension AppModel {
         for dose in open {
             if let log = dose.log { store.delete(SupplementLog.self, id: log.id) }
         }
-        let logs = open.map { SupplementLog(supplement: $0.supplement, doseID: $0.dose.id, date: doseDate($0.dose.time, on: day), day: day,
-                                            count: $0.dose.count) }
+        let logs = open.map {
+            SupplementLog(
+                supplement: $0.supplement, doseID: $0.dose.id, date: doseDate($0.dose.time, on: day), day: day,
+                count: $0.dose.count)
+        }
         store.save(logs)
         reload()
         if open.count > 1 || message != nil {
@@ -88,8 +91,10 @@ extension AppModel {
     /// Marks a dose deliberately skipped, so it stops asking.
     func skip(_ dose: DueDose, on day: Day) {
         if let log = dose.log { store.delete(SupplementLog.self, id: log.id) }
-        store.save(SupplementLog(supplement: dose.supplement, doseID: dose.dose.id, date: doseDate(dose.dose.time, on: day), day: day,
-                                 count: dose.dose.count, taken: false))
+        store.save(
+            SupplementLog(
+                supplement: dose.supplement, doseID: dose.dose.id, date: doseDate(dose.dose.time, on: day), day: day,
+                count: dose.dose.count, taken: false))
         reload()
         Task { await HealthBridge.shared.deleteFoods(ids: dose.log.map { [$0.id] } ?? []) }
     }
@@ -97,8 +102,9 @@ extension AppModel {
     /// A dose outside the plan: one more, now.
     func takeExtra(_ supplement: Supplement, count: Double? = nil) {
         let date = selectedDay == today ? Date() : doseDate(.morning, on: selectedDay)
-        let log = SupplementLog(supplement: supplement, doseID: nil, date: date, day: selectedDay,
-                                count: count ?? supplement.doses.first?.count ?? supplement.facts.servingCount)
+        let log = SupplementLog(
+            supplement: supplement, doseID: nil, date: date, day: selectedDay,
+            count: count ?? supplement.doses.first?.count ?? supplement.facts.servingCount)
         store.save(log)
         reload()
         toast = Toast(message: "Took \(supplement.name) · \(log.amountLabel)", undoDoses: [log.id])
@@ -121,8 +127,9 @@ extension AppModel {
     private func saveToHealth(_ logs: [SupplementLog]) {
         guard settings.saveToHealth else { return }
         let foods = logs.filter(\.taken).map { log in
-            HealthFood(id: log.id, date: log.date, name: log.name, nutrients: log.nutrients ?? .zero, micros: log.amounts,
-                       version: Int(log.updatedAt.timeIntervalSince1970 * 1000))
+            HealthFood(
+                id: log.id, date: log.date, name: log.name, nutrients: log.nutrients ?? .zero, micros: log.amounts,
+                version: Int(log.updatedAt.timeIntervalSince1970 * 1000))
         }
         Task { await HealthBridge.shared.saveFoods(foods) }
     }

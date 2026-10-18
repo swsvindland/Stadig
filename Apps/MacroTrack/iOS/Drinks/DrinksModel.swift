@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import HealthBridge
 import NutritionEngine
 import SystemCore
@@ -41,8 +41,11 @@ extension AppModel {
         toast = Toast(message: "Water · \(Format.volume(ml, ounces: fluidOunces))", undoWater: [log.id])
         if settings.saveToHealth {
             Task {
-                await HealthBridge.shared.saveFoods([HealthFood(id: log.id, date: log.date, name: "Water", nutrients: .zero, micros: ["water": ml],
-                                                                version: Int(log.updatedAt.timeIntervalSince1970 * 1000))])
+                await HealthBridge.shared.saveFoods([
+                    HealthFood(
+                        id: log.id, date: log.date, name: "Water", nutrients: .zero, micros: ["water": ml],
+                        version: Int(log.updatedAt.timeIntervalSince1970 * 1000))
+                ])
             }
         }
     }
@@ -58,7 +61,7 @@ extension AppModel {
     private func drinkDate() -> Date {
         let now = Date()
         guard selectedDay != today else { return now }
-        return selectedDay.date().addingTimeInterval(now.timeIntervalSince(Calendar.current.startOfDay(for: now)))
+        return selectedDay.at(sameTimeAs: now)
     }
 
     /// One tap on a standard drink: logged as food, so its calories and caffeine count.
@@ -66,7 +69,8 @@ extension AppModel {
         guard let food = food(id: drink.foodID) else { return }
         let units = FoodUnits.units(for: food)
         // The unit nearest the usual size, in a whole or half count of it.
-        let unit = units.filter { $0.kind != .energy && $0.amount > 0 }
+        let unit =
+            units.filter { $0.kind != .energy && $0.amount > 0 }
             .min { abs(log2($0.amount / drink.ml)) < abs(log2($1.amount / drink.ml)) } ?? PortionUnit(id: "g", label: "g", kind: .mass, amount: 1)
         let count = max(0.5, (drink.ml / unit.amount * 2).rounded() / 2)
         var entry = entry(for: food, count: count, unit: unit, source: .drink)
@@ -98,24 +102,25 @@ extension AppModel {
 
     // MARK: Caffeine
 
-    /// Starts a cut-back from the week's average to a goal, a step a week.
+    /// Starts a cut-back from the week's average to a goal, a step a week. The daily limit is left
+    /// as it is: the report takes the lower of it and this week's step, so the steps apply.
     func startCutBack(from: Double, goal: Double) {
-        var s = settings
-        s.caffeineCutBack = CaffeineCutBack(start: today, from: from, goal: goal)
-        s.caffeineLimit = goal
-        save(settings: s)
+        let start = today
+        updateSettings { $0.caffeineCutBack = CaffeineCutBack(start: start, from: from, goal: goal) }
     }
 
+    /// Stops a cut-back. Once the goal's been reached it stays as the daily limit; stopped before
+    /// then, the limit is what it was.
     func endCutBack() {
-        var s = settings
-        s.caffeineCutBack = nil
-        save(settings: s)
+        let today = today
+        updateSettings { s in
+            if let cut = s.caffeineCutBack, today >= cut.reachesGoal { s.caffeineLimit = cut.goal }
+            s.caffeineCutBack = nil
+        }
     }
 
     func setTracksDrinks(_ on: Bool) {
-        var s = settings
-        s.tracksDrinks = on
-        save(settings: s)
+        updateSettings { $0.tracksDrinks = on }
         // Water is a new kind of sample for Health to allow.
         if on { Task { _ = await HealthBridge.shared.requestAuthorization(.nutrition) } }
     }

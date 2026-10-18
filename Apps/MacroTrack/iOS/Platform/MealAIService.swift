@@ -1,8 +1,8 @@
 import CoreGraphics
-import Foundation
-import Observation
 import FoodDatabase
 import FoodIntelligence
+import Foundation
+import Observation
 import SystemCore
 
 /// Photo, description and label logging through Apple's models: on device first, Private Cloud
@@ -24,8 +24,9 @@ final class MealAIService {
     func configure(catalog: FoodCatalog, allowCloud: Bool) {
         self.allowCloud = allowCloud
         guard #available(iOS 27.0, *) else {
-            availability = MealAIAvailability(onDevice: false, onDeviceVision: false, privateCloud: false,
-                                              reason: "Photo and description logging needs iOS 27.")
+            availability = MealAIAvailability(
+                onDevice: false, onDeviceVision: false, privateCloud: false,
+                reason: "Photo and description logging needs iOS 27.")
             return
         }
         availability = MealAI.availability(allowCloud: allowCloud)
@@ -84,10 +85,7 @@ final class MealAIService {
         if #available(iOS 27.0, *), let ai = engine as? MealAI {
             return try await ai.readLabel(photo: photo)
         }
-        // Positions let the parser read two-column panels; lines are the fallback.
-        let boxes = try await LabelOCR.boxes(in: photo)
-        let lines = try await LabelOCR.lines(in: photo)
-        return LabelResult(reading: NutritionLabel.parse(boxes: boxes) ?? NutritionLabel.parse(lines: lines), lines: lines,
-                           suggestedName: nil, brand: nil)
+        // One Vision pass gives both the positions (for two-column panels) and the lines.
+        return try await LabelOCR.label(in: photo)
     }
 }

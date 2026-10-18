@@ -1,8 +1,8 @@
-import SwiftUI
-import PhotosUI
 import FoodDatabase
 import FoodIntelligence
 import NutritionEngine
+import PhotosUI
+import SwiftUI
 import SystemCore
 
 /// The supplements screen as a sheet of its own.
@@ -26,8 +26,10 @@ struct SupplementsList: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your supplements").font(.headline)
-                        Text("Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Keep the camera on the Supplement Facts and it's read as you move. Then say when you take it.")
-                            .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(
+                            "Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Keep the camera on the Supplement Facts and it's read as you move. Then say when you take it."
+                        )
+                        .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 4)
                     addButtons
@@ -36,7 +38,9 @@ struct SupplementsList: View {
                 Section {
                     ForEach(model.activeSupplements) { row($0) }
                 } footer: {
-                    Text("Doses you tick off on Today add their vitamins, minerals and caffeine to your day. Skipped or unmarked doses count for nothing.")
+                    Text(
+                        "Doses you tick off on Today add their vitamins, minerals and caffeine to your day. Skipped or unmarked doses count for nothing."
+                    )
                 }
                 let paused = model.supplements.filter(\.paused)
                 if !paused.isEmpty {
@@ -48,7 +52,7 @@ struct SupplementsList: View {
         .navigationTitle("Supplements")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if inSheet { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            if inSheet { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("supplements.done") } }
             if !model.supplements.isEmpty {
                 ToolbarItem(placement: inSheet ? .topBarLeading : .topBarTrailing) {
                     Menu {
@@ -57,6 +61,7 @@ struct SupplementsList: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Add a supplement")
+                    .accessibilityIdentifier("supplements.add")
                 }
             }
         }
@@ -70,17 +75,41 @@ struct SupplementsList: View {
     @ViewBuilder
     var menuItems: some View {
         Button("Scan the bottle", systemImage: "barcode.viewfinder") { adding = .scan }
+            .accessibilityIdentifier("supplements.menu.scan")
         Button("Search", systemImage: "magnifyingglass") { adding = .search }
+            .accessibilityIdentifier("supplements.menu.search")
         Button("Choose a photo of the label", systemImage: "photo") { adding = .label }
+            .accessibilityIdentifier("supplements.menu.photo")
         Button("Type it in", systemImage: "square.and.pencil") { adding = .manual }
+            .accessibilityIdentifier("supplements.menu.manual")
     }
 
     @ViewBuilder
     var addButtons: some View {
-        Button { adding = .scan } label: { Label("Scan the bottle: barcode or label", systemImage: "barcode.viewfinder") }
-        Button { adding = .search } label: { Label("Search by name", systemImage: "magnifyingglass") }
-        Button { adding = .label } label: { Label("Choose a photo of the label", systemImage: "photo") }
-        Button { adding = .manual } label: { Label("Type it in", systemImage: "square.and.pencil") }
+        Button {
+            adding = .scan
+        } label: {
+            Label("Scan the bottle: barcode or label", systemImage: "barcode.viewfinder")
+        }
+        .accessibilityIdentifier("supplements.addScan")
+        Button {
+            adding = .search
+        } label: {
+            Label("Search by name", systemImage: "magnifyingglass")
+        }
+        .accessibilityIdentifier("supplements.addSearch")
+        Button {
+            adding = .label
+        } label: {
+            Label("Choose a photo of the label", systemImage: "photo")
+        }
+        .accessibilityIdentifier("supplements.addPhoto")
+        Button {
+            adding = .manual
+        } label: {
+            Label("Type it in", systemImage: "square.and.pencil")
+        }
+        .accessibilityIdentifier("supplements.addManual")
     }
 
     func row(_ supplement: Supplement) -> some View {
@@ -107,39 +136,45 @@ private struct RemindersSection: View {
     var body: some View {
         let used = DoseTime.allCases.filter { time in model.activeSupplements.contains { $0.doses.contains { $0.time == time } } }
         Section {
-            Toggle("Remind me", isOn: Binding(get: { model.settings.supplementReminders == true }, set: { on in
-                Task {
-                    if on, !(await SupplementReminders.requestPermission()) {
-                        denied = true
-                        return
-                    }
-                    var s = model.settings
-                    s.supplementReminders = on
-                    model.save(settings: s)
-                }
-            }))
+            Toggle(
+                "Remind me",
+                isOn: Binding(
+                    get: { model.settings.supplementReminders == true },
+                    set: { on in
+                        Task {
+                            if on, !(await SupplementReminders.requestPermission()) {
+                                denied = true
+                                return
+                            }
+                            model.updateSettings { $0.supplementReminders = on }
+                        }
+                    })
+            )
+            .accessibilityIdentifier("supplements.reminders")
             ForEach(used) { time in
-                DatePicker(selection: Binding(get: { date(model.settings.minutes(time)) }, set: { picked in
-                    var s = model.settings
-                    var times = s.doseTimes ?? [:]
-                    let parts = Calendar.current.dateComponents([.hour, .minute], from: picked)
-                    times[time] = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
-                    s.doseTimes = times
-                    model.save(settings: s)
-                }), displayedComponents: .hourAndMinute) {
+                DatePicker(
+                    selection: Binding(
+                        get: { Day.today.at(minutes: model.settings.minutes(time)) },
+                        set: { picked in
+                            let parts = Calendar.current.dateComponents([.hour, .minute], from: picked)
+                            model.updateSettings { s in
+                                var times = s.doseTimes ?? [:]
+                                times[time] = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+                                s.doseTimes = times
+                            }
+                        }), displayedComponents: .hourAndMinute
+                ) {
                     Label(time.label, systemImage: time.symbol)
                 }
             }
         } header: {
             Text("Times")
         } footer: {
-            Text(denied ? "Notifications are off for Macro Track in Settings."
-                 : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app.")
+            Text(
+                denied
+                    ? "Notifications are off for Macro Track in Settings."
+                    : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app.")
         }
-    }
-
-    func date(_ minutes: Int) -> Date {
-        Calendar.current.startOfDay(for: Date()).addingTimeInterval(Double(minutes) * 60)
     }
 }
 
@@ -183,22 +218,25 @@ struct AddSupplementView: View {
         .fullScreenCover(isPresented: $capturing) {
             CameraPicker { image in
                 capturing = false
-                if let image { read(image) }
+                if let image { read { await PhotoInput.prepare(image, maxDimension: 2000) } }
             }
             .ignoresSafeArea()
         }
         .onChange(of: picked) { _, item in
             guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) { read(image) }
-                picked = nil
+            // Cleared, so choosing the same photo again after a failure is a change.
+            picked = nil
+            read {
+                guard let data = try await item.loadTransferable(type: Data.self) else { return nil }
+                return await PhotoInput.prepare(data, maxDimension: 2000)
             }
         }
     }
 
     func blank(barcode: String? = nil) -> SupplementFacts {
-        SupplementFacts(id: "custom:\(UUID().uuidString)", name: "", barcode: barcode.flatMap { Barcode.keys(for: $0).first },
-                        servingCount: 1, unit: "capsule", ingredients: [], source: .custom)
+        SupplementFacts(
+            id: "custom:\(UUID().uuidString)", name: "", barcode: barcode.flatMap { Barcode.keys(for: $0).first },
+            servingCount: 1, unit: "capsule", ingredients: [], source: .custom)
     }
 
     // MARK: Scan
@@ -293,15 +331,25 @@ struct AddSupplementView: View {
                 Section {
                     Text("No labels match. Photograph the Supplement Facts, or type it in.").font(.subheadline).foregroundStyle(.secondary)
                     Button("Photograph the label") { mode = .label }
-                    Button("Type it in") { found = Supplement(facts: { var f = blank(); f.name = query; return f }()) }
+                    Button("Type it in") {
+                        found = Supplement(
+                            facts: {
+                                var f = blank()
+                                f.name = query
+                                return f
+                            }())
+                    }
                 }
             }
         }
-        .searchable(text: $query, isPresented: $searching, placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Fish oil, Nature Made, magnesium…")
+        .searchable(
+            text: $query, isPresented: $searching, placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Fish oil, Nature Made, magnesium…"
+        )
         .onAppear { searching = true }
         .task(id: query) {
-            let query = query, catalog = model.supplementCatalog
+            let query = query
+            let catalog = model.supplementCatalog
             try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
             let own = model.supplements.map(\.facts).filter { $0.title.localizedCaseInsensitiveContains(query) }
@@ -311,8 +359,9 @@ struct AddSupplementView: View {
         .navigationTitle("Search supplements")
         .overlay {
             if model.supplementCatalog == nil {
-                ContentUnavailableView("The label database isn't in this build", systemImage: "externaldrive.badge.xmark",
-                                       description: Text("Photograph the label or type it in instead."))
+                ContentUnavailableView(
+                    "The label database isn't in this build", systemImage: "externaldrive.badge.xmark",
+                    description: Text("Photograph the label or type it in instead."))
             }
         }
     }
@@ -352,12 +401,23 @@ struct AddSupplementView: View {
         PhotosPicker(selection: $picked, matching: .images) { Text("Choose a photo") }
     }
 
-    func read(_ image: UIImage) {
-        guard let cg = image.prepared(maxDimension: 2000) else { return }
+    /// Reads a photo of the panel: loaded and downsampled off the main thread, then parsed.
+    func read(_ photo: @escaping () async throws -> CGImage?) {
         reading = true
         error = nil
         Task {
             defer { reading = false }
+            let prepared: CGImage?
+            do {
+                prepared = try await photo()
+            } catch {
+                self.error = "Couldn't load that photo. If it's in iCloud, check your connection and try again."
+                return
+            }
+            guard let cg = prepared else {
+                error = "Couldn't open that photo. Try another."
+                return
+            }
             do {
                 let result = try await model.ai.readSupplementLabel(photo: cg)
                 guard var facts = result.facts else {

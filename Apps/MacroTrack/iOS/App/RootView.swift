@@ -1,5 +1,5 @@
-import SwiftUI
 import NutritionEngine
+import SwiftUI
 
 /// Today to log, Plan for the phase and targets, Progress for the trend. Logging is one tap away
 /// from every tab, in the bar above the tabs.
@@ -23,6 +23,7 @@ struct RootView: View {
                 OnboardingView()
             }
         }
+        // Closing it drops a picked time (the model does that), so later one-tap logs are now.
         .sheet(item: $model.logger) { mode in
             LoggerSheet(start: mode)
         }
@@ -62,6 +63,7 @@ struct QuickLogBar: View {
                 .contentShape(.rect)
             }
             .accessibilityLabel("Search foods")
+            .accessibilityIdentifier("quickLog.search")
             icon("camera", "Log a photo", .camera)
             icon("barcode.viewfinder", "Scan a barcode", .scan)
             icon("text.bubble", "Describe a meal", .describe)
@@ -71,6 +73,7 @@ struct QuickLogBar: View {
                 Image(systemName: "scalemass").frame(width: 44, height: 40).contentShape(.rect)
             }
             .accessibilityLabel("Weigh in")
+            .accessibilityIdentifier("quickLog.weighIn")
             .padding(.trailing, 6)
         }
         .buttonStyle(.plain)
@@ -84,11 +87,11 @@ struct QuickLogBar: View {
             Image(systemName: symbol).frame(width: 44, height: 40).contentShape(.rect)
         }
         .accessibilityLabel(label)
+        .accessibilityIdentifier("quickLog.\(mode.rawValue)")
     }
 
     func open(_ mode: LogMode) {
-        model.loggerTime = nil
-        model.logger = mode
+        model.openLogger(mode)
     }
 }
 

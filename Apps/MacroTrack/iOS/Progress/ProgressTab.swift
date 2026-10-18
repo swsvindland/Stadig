@@ -1,6 +1,6 @@
-import SwiftUI
 import Charts
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 /// The weight trend, intake against target, and the habit.
@@ -22,10 +22,12 @@ struct ProgressTab: View {
                             DisciplineGauge(score: analysis.discipline)
                             Text(analysis.discipline.note).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                             if let rate = analysis.loggingRate {
-                                Label("Logged \(Format.percent(rate)) of days in the last four weeks. Unlogged days are unknown, not misses.",
-                                      systemImage: "calendar")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                Label(
+                                    "Logged \(Format.percent(rate)) of days in the last four weeks. Unlogged days are unknown, not misses.",
+                                    systemImage: "calendar"
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             }
                         }
                         .card()
@@ -44,6 +46,7 @@ struct ProgressTab: View {
                         Image(systemName: "scalemass")
                     }
                     .accessibilityLabel("Weigh in")
+                    .accessibilityIdentifier("progress.weighIn")
                 }
             }
         }
@@ -67,10 +70,13 @@ struct WeightCard: View {
                     Text("Weight trend").font(.headline)
                     if let latest = trend.latest {
                         Text(Format.weight(latest.trend, unit: unit)).font(.title.weight(.bold).monospacedDigit())
+                            .accessibilityIdentifier("progress.trendWeight")
                     }
                 }
                 Spacer()
-                if let weeklyChange { Text(Format.weeklyChange(weeklyChange, unit: unit)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary) }
+                if let weeklyChange {
+                    Text(Format.weeklyChange(weeklyChange, unit: unit)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                }
             }
             if points.count >= 2 {
                 Chart {
@@ -95,13 +101,16 @@ struct WeightCard: View {
                     Text("1Y").tag(365)
                 }
                 .pickerStyle(.segmented)
+                .accessibilityIdentifier("progress.range")
             } else {
                 Text("Weigh in each morning and the trend appears after a few days.").font(.subheadline).foregroundStyle(.secondary)
             }
             if !trend.outliers.isEmpty {
-                Label("\(trend.outliers.count) reading\(trend.outliers.count == 1 ? "" : "s") far from the days around \(trend.outliers.count == 1 ? "it" : "them") left out as likely misreads.",
-                      systemImage: "exclamationmark.circle")
-                    .font(.caption).foregroundStyle(.secondary)
+                Label(
+                    "\(trend.outliers.count) reading\(trend.outliers.count == 1 ? "" : "s") far from the days around \(trend.outliers.count == 1 ? "it" : "them") left out as likely misreads.",
+                    systemImage: "exclamationmark.circle"
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
         }
         .card()

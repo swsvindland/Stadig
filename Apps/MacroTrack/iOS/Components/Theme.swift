@@ -1,5 +1,5 @@
-import SwiftUI
 import NutritionEngine
+import SwiftUI
 import SystemCore
 
 // Liquid Glass belongs to the controls that float over content (the quick-log bar, the toast).
@@ -182,7 +182,9 @@ struct WhyDisclosure: View {
 struct BulletLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
+            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) {
+                $0[VerticalAlignment.center] + 4
+            }
             configuration.title
         }
     }
@@ -243,9 +245,11 @@ struct ToastView: View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             Text(toast.message).font(.subheadline.weight(.medium)).lineLimit(2)
+                .accessibilityIdentifier("toast.message")
             Spacer(minLength: 4)
             if toast.canUndo {
                 Button("Undo", action: undo).font(.subheadline.weight(.semibold))
+                    .accessibilityIdentifier("toast.undo")
             }
         }
         .padding(.horizontal, 16)
