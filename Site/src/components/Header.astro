@@ -10,7 +10,7 @@ const path = Astro.url.pathname.replace(/\/$/, "") || "/";
   </nav>
 </header>
 <style>
-  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.1rem; flex-wrap: wrap; }
+  header { view-transition-name: header; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.1rem; flex-wrap: wrap; }
   .home { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; letter-spacing: -0.02em; }
   nav { display: flex; gap: 0.2rem 1.2rem; flex-wrap: wrap; font-size: 0.95rem; }
   nav a { text-decoration: none; color: var(--ink-2); padding: 0.25rem 0; }

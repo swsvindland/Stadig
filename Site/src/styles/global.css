@@ -94,3 +94,16 @@ details p { margin: 0.75rem 0 0; color: var(--ink-2); max-width: 60ch; }
 .prose h2 { margin-top: 2.2rem; font-size: 1.5rem; }
 .prose p, .prose li { color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Cross-document view transitions: a native, JS-free crossfade between pages.
+   Browsers without support simply navigate as usual. */
+@view-transition { navigation: auto; }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-rise { from { transform: translateY(8px); } }
+::view-transition-old(root) { animation: 90ms ease-out both vt-fade-out; }
+::view-transition-new(root) { animation: 180ms ease-out both vt-fade-in, 220ms ease-out both vt-rise; }
+::view-transition-old(header), ::view-transition-new(header) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
