@@ -6,6 +6,8 @@ import LiftEngine
 /// context; finished sessions go back both live (when the phone is reachable) and queued, and the
 /// phone saves by id, so sending one twice is harmless. Each record waits in an outbox on disk
 /// until its queued transfer has finished, so none is lost to an early quit or a failed transfer.
+/// A request for a context goes the same two ways, and again on each delivery until one newer
+/// than the request arrives.
 @MainActor
 final class PhoneLink: NSObject {
     static let shared = PhoneLink()
@@ -14,7 +16,10 @@ final class PhoneLink: NSObject {
     var onContext: ((PhoneContext) -> Void)?
 
     private var session: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
-    private var wantsContext = false
+    /// When a context was asked for, until one sent after it arrives.
+    private var contextRequested: Date?
+    private static let kind = "kind"
+    private static let contextRequest = "requestContext"
 
     func activate() {
         guard let session, session.delegate == nil else { return }
@@ -24,13 +29,15 @@ final class PhoneLink: NSObject {
 
     /// Asks the phone to send a fresh context, now if it's reachable or when it next wakes.
     func requestContext() {
-        wantsContext = true
+        contextRequested = Date()
         deliver()
     }
 
     /// Sends a finished session to the phone.
     func send(_ record: SessionRecord) {
-        var outbox = self.outbox
+        // Written back below: an outbox that's there but can't be read is moved aside first, rather
+        // than written over with the sessions still waiting in it.
+        var outbox = WatchStorage.load([SessionRecord].self, from: WatchStorage.outbox, settingAsideUnreadable: true) ?? []
         outbox.removeAll { $0.id == record.id }
         outbox.append(record)
         self.outbox = outbox
@@ -57,12 +64,11 @@ final class PhoneLink: NSObject {
 
     private func deliver() {
         guard let session, session.activationState == .activated else { return }
-        if wantsContext, let data = try? WatchJSON.encoder().encode(LinkMessage.requestContext) {
-            wantsContext = false
-            if session.isReachable {
-                session.sendMessage(["m": data], replyHandler: nil, errorHandler: Self.ignore)
-            } else {
-                session.transferUserInfo(["m": data])
+        if contextRequested != nil, let data = try? WatchJSON.encoder().encode(LinkMessage.requestContext) {
+            if session.isReachable { session.sendMessage(["m": data], replyHandler: nil, errorHandler: Self.ignore) }
+            // One queued copy covers a live message the phone never answered.
+            if !session.outstandingUserInfoTransfers.contains(where: { $0.userInfo[Self.kind] as? String == Self.contextRequest }) {
+                session.transferUserInfo(["m": data, Self.kind: Self.contextRequest])
             }
         }
         let queued = Set(session.outstandingUserInfoTransfers.compactMap { $0.userInfo["id"] as? String })
@@ -75,16 +81,30 @@ final class PhoneLink: NSObject {
     }
 
     private func delivered(_ id: String) {
-        outbox = outbox.filter { $0.id.uuidString != id }
+        var outbox = self.outbox
+        // Only a list that holds it is written back: one that couldn't be read mustn't be emptied.
+        guard outbox.contains(where: { $0.id.uuidString == id }) else { return }
+        outbox.removeAll { $0.id.uuidString == id }
+        self.outbox = outbox
     }
 
     /// WatchConnectivity calls error handlers on its own queue, so this one must not be main-actor
-    /// isolated (a closure written here would be, and would trap). The queued copy covers failures.
+    /// isolated (a closure written here would be, and would trap). The queued copies of records and
+    /// context requests cover failures.
     nonisolated private static func ignore(_ error: any Error) {}
 
     private func received(_ data: Data) {
         guard let context = try? WatchJSON.decoder().decode(PhoneContext.self, from: data) else { return }
+        if let asked = contextRequested, context.sentAt >= asked { answered() }
         onContext?(context)
+    }
+
+    /// The phone has sent a context since it was asked: no need to keep asking.
+    private func answered() {
+        contextRequested = nil
+        for transfer in session?.outstandingUserInfoTransfers ?? [] where transfer.userInfo[Self.kind] as? String == Self.contextRequest {
+            transfer.cancel()
+        }
     }
 
     private func activated(context data: Data?) {

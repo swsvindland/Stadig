@@ -10,8 +10,9 @@ import SystemCore
 /// `-sampleScreen home` drops any session to show the home screen.
 extension WatchModel {
     func applyLaunchArguments() {
-        let screen = UserDefaults.standard.string(forKey: "sampleScreen")
-        guard ProcessInfo.processInfo.arguments.contains("-sampleContext") || screen != nil else { return }
+        let launch = LaunchOptions.current
+        let screen = launch.value(after: "-sampleScreen")
+        guard launch.has("-sampleContext") || screen != nil else { return }
         receive(SampleContext.make())
         guard let screen, let plan = context?.plan else { return }
         healthEnabled = false

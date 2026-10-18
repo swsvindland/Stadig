@@ -10,10 +10,20 @@ import SystemCore
 enum WidgetBridge {
     @MainActor
     static func update(_ model: AppModel) {
-        guard let analysis = model.analysis else { return }
+        guard let snapshot = snapshot(for: model), let url = model.widgetURL else { return }
+        if snapshot.save(to: url), url == WidgetSnapshot.appGroupURL { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    /// What the widgets show for the model as it stands: nil before setup, when there's nothing to say.
+    @MainActor
+    static func snapshot(for model: AppModel) -> WidgetSnapshot? {
+        guard let analysis = model.analysis else { return nil }
         var snapshot = WidgetSnapshot.empty
         if let next = analysis.next {
-            snapshot.title = next.day.name
+            // The session as Today has it: the planner's swaps for an injury or missing gear, crunch
+            // mode's minutes.
+            let plan = model.plan()
+            snapshot.title = plan?.title ?? next.day.name
             let week = next.mesocycle.block.week(of: model.today)
             switch week {
             case .deload: snapshot.badge = "Deload"
@@ -23,13 +33,16 @@ enum WidgetBridge {
             if !analysis.life.trainingExpected {
                 snapshot.badge = analysis.life.active.first?.kind.label
             }
+            snapshot.day = next.scheduledToday ? model.today : next.nextDay
+            snapshot.weekStart = model.today.startOfWeek
             snapshot.detail = next.scheduledToday ? "Today" : (next.nextDay.map { "Next: \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? "Up next")
-            snapshot.exercises = next.day.strengthSlots.prefix(5).map { model.catalog.resolve($0.exerciseID).name }
+            let exercises = plan.map { $0.items.filter(\.isStrength).map(\.exerciseID) } ?? next.day.strengthSlots.map(\.exerciseID)
+            snapshot.exercises = exercises.prefix(5).map { model.catalog.resolve($0).name }
             snapshot.doneThisWeek = next.doneThisWeek
             snapshot.plannedThisWeek = next.plannedThisWeek
-            snapshot.minutes = next.day.minutes
+            snapshot.minutes = plan?.estimatedMinutes ?? next.day.minutes
         }
-        if snapshot.save() { WidgetCenter.shared.reloadAllTimelines() }
+        return snapshot
     }
 }
 
@@ -41,12 +54,15 @@ final class RestAlerts {
     private var asked = false
 
     func requestPermission() {
-        guard !asked else { return }
+        // Tests and UI tests: no permission prompts.
+        guard !asked, !LaunchOptions.current.isQuiet else { return }
         asked = true
         Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
     }
 
     func schedule(for rest: RestState?, catalog: ExerciseCatalog, session: LiveSession) {
+        // Never asked under tests, so nothing to show.
+        guard !LaunchOptions.current.isQuiet else { return }
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
         guard let rest, rest.endsAt > Date() else { return }
@@ -63,11 +79,13 @@ final class RestAlerts {
     }
 
     func cancel() {
+        guard !LaunchOptions.current.isQuiet else { return }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
     }
 
     /// Heart rate came back down before the timer: rest's over now, with a tap to say so.
     func heartRateRecovered() {
+        guard !LaunchOptions.current.isQuiet else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         let content = UNMutableNotificationContent()
         content.title = "Heart rate's back down"

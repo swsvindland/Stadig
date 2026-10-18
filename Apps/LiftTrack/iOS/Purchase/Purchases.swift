@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import StoreKit
+import SystemCore
 
 /// The one-time unlock. No subscription. The assessment, logging, export and backup always work
 /// without it: your data is yours. Generating real training blocks after the assessment needs it.
@@ -22,12 +23,13 @@ final class Purchases {
     init() {
         if !Self.enabled { unlocked = true }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { unlocked = true }
+        if LaunchOptions.current.has("-unlocked") { unlocked = true }
         #endif
     }
 
     func start() async {
-        guard Self.enabled else { return }
+        // Tests and UI tests never ask StoreKit.
+        guard Self.enabled, !LaunchOptions.current.isQuiet else { return }
         if updates == nil {
             updates = Task { [weak self] in
                 for await update in Transaction.updates {
@@ -58,7 +60,7 @@ final class Purchases {
             }
         }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-unlocked") { owned = true }
+        if LaunchOptions.current.has("-unlocked") { owned = true }
         #endif
         unlocked = owned
     }

@@ -12,6 +12,8 @@ struct NextBlockView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var answer: SelfReportedPhase?
     @State private var preview: Mesocycle?
+    /// Presented from here: this is a sheet already, and a second sheet from the root can't show over it.
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -36,13 +38,16 @@ struct NextBlockView: View {
             .navigationTitle("Next block")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("nextBlock.cancel")
+                }
                 if let preview {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Start") { accept(preview) }
+                        Button("Start") { accept(preview) }.accessibilityIdentifier("nextBlock.start")
                     }
                 }
             }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
         }
     }
 
@@ -80,7 +85,7 @@ struct NextBlockView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Training blocks are part of the one-time unlock.").font(.headline)
                     Text("Logging, your history, export and backup stay free either way.").font(.subheadline).foregroundStyle(.secondary)
-                    Button { model.showPaywall = true } label: { Text("Unlock Lift Track").frame(maxWidth: .infinity) }.primaryAction()
+                    Button { showPaywall = true } label: { Text("Unlock Lift Track").frame(maxWidth: .infinity) }.primaryAction()
                 }
                 .card()
             }
@@ -88,27 +93,15 @@ struct NextBlockView: View {
     }
 
     private func build(_ decision: NextBlockDecision) {
-        let start = startDay
-        preview = model.generate(kind: decision.kind, start: start, phase: decision.phase)
-    }
-
-    /// Today, or the day after the current block if it's still running.
-    private var startDay: Day {
-        guard let block = model.analysis?.block else { return model.today }
-        return block.end >= model.today && block.kind != .assessment ? max(model.today, block.end.adding(days: 1)) : model.today
+        preview = model.generate(kind: decision.kind, start: model.nextBlockStart, phase: decision.phase)
     }
 
     private func accept(_ m: Mesocycle) {
         guard purchases.unlocked else {
-            model.showPaywall = true
+            showPaywall = true
             return
         }
-        // An assessment finished early ends today.
-        if var current = model.currentMesocycle, current.block.kind == .assessment, current.block.end >= m.block.start {
-            current.block.endOverride = m.block.start.adding(days: -1)
-            model.save(current)
-        }
-        model.save(m)
+        model.accept(nextBlock: m)
         dismiss()
     }
 }
@@ -143,10 +136,11 @@ struct PaywallView: View {
                 .disabled(purchases.product == nil || purchases.purchasing)
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
                 if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of The System bundle on the App Store, with Macro Track and the Knowledge app.").font(.footnote).foregroundStyle(.secondary)
+                Text("Part of The System bundle on the App Store, with \(AppID.macroTrack.displayName) and \(AppID.knowledge.displayName).")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
         }
     }
 }

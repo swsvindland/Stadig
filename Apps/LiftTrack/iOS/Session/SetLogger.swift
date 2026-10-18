@@ -62,11 +62,13 @@ struct SetLogger: View {
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 if hasLoad {
-                    LoadControl(title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis)
+                    LoadControl(title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
+                                identifier: "logger.load")
                 }
                 Stepperish(title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
                            minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
-                           entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Int(text), n >= 0 { reps = min(n, 100) } })
+                           entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
+                           identifier: "logger.reps")
                     .frame(maxWidth: hasLoad ? 140 : .infinity)
             }
             if let plates = increments.platesPerSide(load), !plates.isEmpty, exercise.equipment.platePaired {
@@ -77,9 +79,11 @@ struct SetLogger: View {
             case .warmup:
                 Button { log(rating: nil) } label: { Text("Done").font(.headline).frame(maxWidth: .infinity) }
                     .primaryAction().controlSize(.large)
+                    .accessibilityIdentifier("logger.done")
             case .repOut:
                 Button { log(rating: nil) } label: { Text("Log \(reps) reps").font(.headline).frame(maxWidth: .infinity) }
                     .primaryAction().controlSize(.large)
+                    .accessibilityIdentifier("logger.logRepOut")
             default:
                 RatingButtons { rating in
                     if rating == .red, reps >= set.prescription.targetReps { askMissed = true } else { log(rating: rating) }
@@ -124,6 +128,7 @@ struct SetLogger: View {
                         Label("Start \(Format.duration(seconds))", systemImage: "timer").frame(maxWidth: .infinity)
                     }
                     .secondaryAction()
+                    .accessibilityIdentifier("logger.startTimer")
                 }
             } else {
                 Text("\(set.prescription.targetReps) reps\(exercise.unilateral ? " each side" : "")").font(.title3.monospacedDigit())
@@ -140,6 +145,7 @@ struct SetLogger: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("logger.done")
         }
     }
 
@@ -154,6 +160,7 @@ struct SetLogger: View {
                 if timerStart == nil {
                     Button { timerStart = Date() } label: { Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity) }
                         .secondaryAction()
+                        .accessibilityIdentifier("logger.startTimer")
                 }
                 Button {
                     let now = Date()
@@ -169,6 +176,7 @@ struct SetLogger: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("logger.done")
             }
             if model.currentHeartRate == nil {
                 Text("Wear your Apple Watch with Lift Track on it and heart rate and zones are logged automatically.")
@@ -191,29 +199,7 @@ struct SetLogger: View {
         guard !prepared else { return }
         prepared = true
         reps = set.prescription.targetReps
-        if let prescribed = set.prescription.loadKg {
-            load = prescribed
-            return
-        }
-        let increments = model.gymForToday.increments(for: exercise.equipment)
-        if let earlier = item.sets[..<setIndex].last(where: { $0.logged != nil })?.logged?.loadKg {
-            load = earlier
-        } else if let last = model.analysis?.history[exercise.id]?.last?.loadKg {
-            load = last
-        } else if let profile = model.profile,
-                  let guess = StartingLoad.estimate(exercise, reps: set.prescription.targetReps, bodyweightKg: model.state?.effectiveBodyweight,
-                                                    sex: profile.sex, experience: profile.experience) {
-            // Near what someone like this lifts, so a 400 lb leg press isn't fifty taps away.
-            load = increments.round(guess, down: true)
-        } else {
-            load = switch exercise.loadBasis {
-            case .bodyweightPlus, .assisted, .none: 0
-            case .perHand: increments.round(model.gym.unit == .kg ? 8 : 8.5, down: false)
-            case .external:
-                exercise.equipment.platePaired ? increments.round(increments.gym.unit.toKilograms(increments.gym.barWeight) * 1.5, down: false)
-                    : increments.round(20, down: false)
-            }
-        }
+        load = model.startingLoad(for: set, at: setIndex, of: item, exercise: exercise)
     }
 
     private func log(rating: SetRating?) {
@@ -234,6 +220,7 @@ struct LoadControl: View {
     @Binding var load: Double
     let increments: GymIncrements
     let basis: LoadBasis
+    var identifier: String?
 
     var body: some View {
         let unit = increments.gym.unit
@@ -241,9 +228,19 @@ struct LoadControl: View {
                    minus: { load = increments.step(load, direction: -1) },
                    plus: { load = increments.step(load, direction: 1) },
                    entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
-                       guard let value = Double(text.replacingOccurrences(of: ",", with: ".")), value >= 0 else { return }
-                       load = increments.round(unit.toKilograms(value), down: false)
-                   })
+                       if let typed = Self.typedLoad(text, increments: increments) { load = typed }
+                   },
+                   identifier: identifier)
+    }
+
+    /// A typed load in kilograms, rounded to what the gym can make; nil for anything that isn't a
+    /// number, is negative, or is past `GymIncrements.maximumLoadKg` (a slip, a few extra digits). A
+    /// decimal comma reads as a point.
+    static func typedLoad(_ text: String, increments: GymIncrements) -> Double? {
+        let unit = increments.gym.unit
+        guard let value = Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")), value >= 0,
+              unit.toKilograms(value) <= GymIncrements.maximumLoadKg else { return nil }
+        return increments.round(unit.toKilograms(value), down: false)
     }
 }
 
@@ -262,8 +259,17 @@ struct Stepperish: View {
     let minus: () -> Void
     let plus: () -> Void
     var entry: Entry?
+    /// For UI tests: the value is "<identifier>", its buttons "<identifier>Less" and "<identifier>More",
+    /// and the typing alert's field and button "<identifier>Field" and "<identifier>Set".
+    var identifier: String?
     @State private var typing = false
     @State private var typed = ""
+
+    /// Typed reps: a whole number from 0, at most 100.
+    static func typedReps(_ text: String) -> Int? {
+        guard let n = Int(text.trimmingCharacters(in: .whitespaces)), n >= 0 else { return nil }
+        return min(n, 100)
+    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -273,6 +279,7 @@ struct Stepperish: View {
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
                     .buttonRepeatBehavior(.enabled)
                     .accessibilityLabel("Less \(title.lowercased())")
+                    .accessibilityIdentifier(identifier.map { "\($0)Less" } ?? "")
                 Button {
                     guard let entry else { return }
                     typed = entry.text
@@ -290,16 +297,20 @@ struct Stepperish: View {
                 // The number wins the space over the round buttons.
                 .layoutPriority(1)
                 .accessibilityHint(entry == nil ? "" : "Type a value")
+                .accessibilityIdentifier(identifier ?? "")
                 Button(action: plus) { Image(systemName: "plus").frame(width: 36, height: 36) }
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
                     .buttonRepeatBehavior(.enabled)
                     .accessibilityLabel("More \(title.lowercased())")
+                    .accessibilityIdentifier(identifier.map { "\($0)More" } ?? "")
             }
         }
         .alert(title, isPresented: $typing) {
             TextField(entry?.unit ?? "", text: $typed)
                 .keyboardType(entry?.decimal == true ? .decimalPad : .numberPad)
+                .accessibilityIdentifier(identifier.map { "\($0)Field" } ?? "")
             Button("Set") { entry?.apply(typed) }
+                .accessibilityIdentifier(identifier.map { "\($0)Set" } ?? "")
             Button("Cancel", role: .cancel) {}
         } message: {
             if let unit = entry?.unit { Text("In \(unit)") }
@@ -364,12 +375,13 @@ struct FeedbackSheet: View {
             .navigationTitle("How was it?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() }.accessibilityIdentifier("feedback.back") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save session") {
                         dismiss()
                         model.finish(feedback: SessionFeedback(soreness: soreness, jointPain: Joint.allCases.filter(pain.contains), energy: energy))
                     }
+                    .accessibilityIdentifier("feedback.save")
                 }
             }
         }
@@ -408,13 +420,14 @@ struct SwapSheet: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
+                        .accessibilityIdentifier("swap.option")
                     }
                 }
             }
             .searchable(text: $query, prompt: "Search exercises")
             .navigationTitle("Swap exercise")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("swap.cancel") } }
         }
     }
 }
@@ -435,16 +448,19 @@ struct EditSetSheet: View {
         NavigationStack {
             if let live = model.live, live.items.indices.contains(itemIndex), live.items[itemIndex].sets.indices.contains(setIndex),
                let logged = live.items[itemIndex].sets[setIndex].logged {
-                let exercise = model.catalog.resolve(live.items[itemIndex].exerciseID)
+                // The exercise the set was done on, which a swap since may have replaced: its loads and steps.
+                let exercise = model.catalog.resolve(logged.exerciseID)
                 let increments = model.gymForToday.increments(for: exercise.equipment)
                 Form {
                     Section {
                         HStack(spacing: 12) {
                             if exercise.loadBasis != .none {
-                                LoadControl(title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis)
+                                LoadControl(title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis,
+                                            identifier: "editSet.load")
                             }
                             Stepperish(title: "Reps", value: "\(reps)", minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
-                                       entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Int(text), n >= 0 { reps = min(n, 100) } })
+                                       entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
+                                       identifier: "editSet.reps")
                                 .frame(maxWidth: exercise.loadBasis != .none ? 140 : .infinity)
                         }
                         .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
@@ -463,7 +479,7 @@ struct EditSetSheet: View {
                 .navigationTitle(exercise.name)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("editSet.cancel") }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             if let environment = model.environment {
@@ -474,6 +490,7 @@ struct EditSetSheet: View {
                             }
                             dismiss()
                         }
+                        .accessibilityIdentifier("editSet.save")
                     }
                 }
                 .onAppear {
@@ -556,9 +573,11 @@ struct HeatControls: View {
                         .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
                     Button { finished = Date() } label: { Text("Done").font(.headline).frame(maxWidth: .infinity) }
                         .primaryAction().controlSize(.large)
+                        .accessibilityIdentifier("heat.done")
                 } else {
                     Button { started = Date() } label: { Label("Start \(minutes) min", systemImage: "timer").font(.headline).frame(maxWidth: .infinity) }
                         .primaryAction().controlSize(.large)
+                        .accessibilityIdentifier("heat.start")
                 }
                 Text("Leave whenever you feel dizzy or unwell, and drink water afterwards.").font(.caption2).foregroundStyle(.tertiary)
             } else {
@@ -590,6 +609,7 @@ struct HeatControls: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(label): \(detail)")
+        .accessibilityIdentifier("heat.rating\(value.rawValue.identifierSuffix)")
     }
 
     /// Where today's minutes come from, in a line.
@@ -664,5 +684,32 @@ struct Thermometer: View {
             return (((f.rounded() + direction) * 5) - 32) * 5 / 9
         }
         return (celsius / 2).rounded() * 2 + 2 * direction
+    }
+}
+
+extension AppModel {
+    /// Where the logger's load starts for a set: the prescription; else this exercise's last set in
+    /// this session (not one logged before a swap: that was another exercise's load); else its last
+    /// set ever; else a guess from the strength standards for someone like this, so a 400 lb leg
+    /// press isn't fifty taps away; else a light default for the equipment.
+    func startingLoad(for set: LiveSet, at setIndex: Int, of item: LiveItem, exercise: Exercise) -> Double {
+        if let prescribed = set.prescription.loadKg { return prescribed }
+        let increments = gymForToday.increments(for: exercise.equipment)
+        if let earlier = item.sets[..<min(setIndex, item.sets.count)].last(where: { $0.logged?.exerciseID == exercise.id })?.logged?.loadKg {
+            return earlier
+        }
+        if let last = analysis?.history[exercise.id]?.last?.loadKg { return last }
+        if let profile,
+           let guess = StartingLoad.estimate(exercise, reps: set.prescription.targetReps, bodyweightKg: state?.effectiveBodyweight,
+                                             sex: profile.sex, experience: profile.experience) {
+            return increments.round(guess, down: true)
+        }
+        return switch exercise.loadBasis {
+        case .bodyweightPlus, .assisted, .none: 0
+        case .perHand: increments.round(gym.unit == .kg ? 8 : 8.5, down: false)
+        case .external:
+            exercise.equipment.platePaired ? increments.round(increments.gym.unit.toKilograms(increments.gym.barWeight) * 1.5, down: false)
+                : increments.round(20, down: false)
+        }
     }
 }

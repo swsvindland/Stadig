@@ -39,6 +39,7 @@ struct SessionScreen: View {
                         .padding()
                         .readableWidth()
                     }
+                    .accessibilityIdentifier("session.screen")
                     .background(.pageBackground)
                     .onChange(of: live.current?.item) { _, item in
                         guard let item else { return }
@@ -54,6 +55,7 @@ struct SessionScreen: View {
                     ToolbarItem(placement: .topBarLeading) {
                         Button { model.showSession = false } label: { Image(systemName: "chevron.down") }
                             .accessibilityLabel("Minimize")
+                            .accessibilityIdentifier("session.minimize")
                     }
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
@@ -72,11 +74,14 @@ struct SessionScreen: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
                             Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
+                                .accessibilityIdentifier("session.finishNow")
                             Button("Discard session", systemImage: "trash", role: .destructive) { confirmDiscard = true }
+                                .accessibilityIdentifier("session.discard")
                         } label: {
                             Image(systemName: "ellipsis")
                         }
                         .accessibilityLabel("Session options")
+                        .accessibilityIdentifier("session.options")
                     }
                 }
                 .sheet(isPresented: $showFeedback) { FeedbackSheet() }
@@ -84,12 +89,13 @@ struct SessionScreen: View {
                 .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
                 .confirmationDialog("Discard this session?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                     Button("Discard", role: .destructive) { model.discardLive() }
+                        .accessibilityIdentifier("session.confirmDiscard")
                 } message: {
                     Text("Nothing from it will be saved.")
                 }
             } else {
                 ContentUnavailableView("No session", systemImage: "figure.strengthtraining.traditional")
-                    .toolbar { Button("Close") { model.showSession = false } }
+                    .toolbar { Button("Close") { model.showSession = false }.accessibilityIdentifier("session.close") }
             }
         }
     }
@@ -138,13 +144,19 @@ struct ItemCard: View {
                     if !item.isDone && !current {
                         Button("Do this now", systemImage: "arrow.up.to.line") { model.update { $0.doNext(item: index) } }
                     }
-                    if item.plan.isStrength { Button("Swap exercise", systemImage: "arrow.triangle.2.circlepath", action: swap) }
-                    Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+                    if item.plan.isStrength {
+                        Button("Swap exercise", systemImage: "arrow.triangle.2.circlepath", action: swap)
+                            .accessibilityIdentifier("session.swap")
+                    }
+                    if item.takesMoreSets {
+                        Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+                    }
                     if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3)
                 }
                 .accessibilityLabel("\(exercise.name) options")
+                .accessibilityIdentifier("session.itemOptions")
             }
             if let replaced = item.plan.substitutedFor {
                 Text("Instead of \(model.catalog.resolve(replaced).name)").font(.caption).foregroundStyle(.secondary)
@@ -162,13 +174,16 @@ struct ItemCard: View {
             } else {
                 VStack(spacing: 6) {
                     ForEach(Array(item.sets.enumerated()), id: \.element.id) { setIndex, set in
-                        if set.logged != nil, item.plan.isStrength {
-                            // A logged set opens for a correction: the wrong weight, a rating tapped too fast.
+                        if let logged = set.logged, item.plan.isStrength {
+                            // A logged set opens for a correction: the wrong weight, a rating tapped too fast. One
+                            // logged before a swap reads as the exercise it was done on.
+                            let doneOn = model.catalog.resolve(logged.exerciseID)
                             Button { edit(setIndex) } label: {
-                                SetRow(set: set, number: number(of: setIndex), exercise: exercise, isCurrent: false, editable: true)
+                                SetRow(set: set, number: number(of: setIndex), exercise: doneOn, isCurrent: false, editable: true)
                             }
                             .buttonStyle(.plain)
                             .accessibilityHint("Edit this set")
+                            .accessibilityIdentifier("session.loggedSet")
                         } else {
                             SetRow(set: set, number: number(of: setIndex), exercise: exercise,
                                    isCurrent: current && model.live?.current?.set == setIndex)
@@ -248,14 +263,10 @@ struct BottomPanel: View {
     var body: some View {
         Group {
             if let live = model.live {
-                if let rest = live.rest {
-                    TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                        if context.date < rest.endsAt {
-                            RestPanel(rest: rest, message: live.message)
-                        } else {
-                            current(live)
-                        }
-                    }
+                // The rest gives way to the set when its time is up, though the session keeps it until
+                // the set is logged: the logger then stays put, so a load already changed isn't reset.
+                if let rest = model.activeRest {
+                    RestPanel(rest: rest, message: live.message)
                 } else {
                     current(live)
                 }
@@ -276,6 +287,7 @@ struct BottomPanel: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("session.finish")
             .padding(.vertical, 8)
         }
     }
@@ -294,6 +306,7 @@ struct RestPanel: View {
                 Button { model.update { $0.extendRest(by: -15) } } label: { Text("−15") .frame(width: 44) }
                     .secondaryAction()
                     .accessibilityLabel("Fifteen seconds less")
+                    .accessibilityIdentifier("rest.less")
                 VStack(spacing: 0) {
                     Text("Rest").font(.caption).foregroundStyle(.secondary)
                     Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
@@ -303,11 +316,13 @@ struct RestPanel: View {
                 Button { model.update { $0.extendRest(by: 15) } } label: { Text("+15").frame(width: 44) }
                     .secondaryAction()
                     .accessibilityLabel("Fifteen seconds more")
+                    .accessibilityIdentifier("rest.more")
             }
             if let filler = rest.filler {
                 Label("Use the rest: \(model.catalog.resolve(filler).name)", systemImage: "figure.flexibility").font(.footnote)
             }
             Button("Skip rest") { model.update { $0.endRest() } }.font(.subheadline)
+                .accessibilityIdentifier("rest.skip")
         }
         .padding()
         .floatingGlass(in: RoundedRectangle(cornerRadius: 28), interactive: false)

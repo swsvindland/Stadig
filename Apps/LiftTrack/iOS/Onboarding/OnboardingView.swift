@@ -36,7 +36,8 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             if step != .welcome {
-                ProgressView(value: Double((steps.firstIndex(of: step) ?? 0)), total: Double(steps.count - 1))
+                // By order, so a step that dropped out of the list (Macro Track took the phase) still has a place.
+                ProgressView(value: Double(steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0), total: Double(steps.count - 1))
                     .padding(.horizontal)
                     .padding(.top, 8)
             }
@@ -82,6 +83,7 @@ struct OnboardingView: View {
         HStack {
             if step != .welcome {
                 Button("Back") { move(-1) }.secondaryAction()
+                    .accessibilityIdentifier("onboarding.back")
             }
             Spacer()
             Button(step == .ready ? "Start the assessment" : (step == .welcome ? "Get started" : "Next")) {
@@ -89,6 +91,8 @@ struct OnboardingView: View {
             }
             .primaryAction()
             .disabled(!canContinue)
+            // One identifier for every step, so a test can walk through them.
+            .accessibilityIdentifier("onboarding.next")
         }
         .padding()
         .background(.bar)
@@ -101,10 +105,11 @@ struct OnboardingView: View {
         }
     }
 
+    /// By step order, not position in the list: the list can change under the current step (Macro
+    /// Track set up meanwhile drops the phase question), and that step still needs a way on.
     private func move(_ direction: Int) {
-        guard let index = steps.firstIndex(of: step) else { return }
-        let next = index + direction
-        if steps.indices.contains(next) { step = steps[next] }
+        let next = direction > 0 ? steps.first { $0.rawValue > step.rawValue } : steps.last { $0.rawValue < step.rawValue }
+        if let next { step = next }
     }
 
     // MARK: Steps
@@ -138,22 +143,10 @@ struct OnboardingView: View {
             header("What are you after?", "Outcomes only. Lift Track picks the program, and Macro Track (if you use it) picks the diet phase.")
             ForEach(OutcomeGoal.allCases) { goal in
                 let selected = profile.goals.contains(goal)
-                Button {
+                ChoiceCard(title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected,
+                           identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)") {
                     if selected { profile.goals.removeAll { $0 == goal } } else { profile.goals.append(goal) }
-                } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: goal.symbol).font(.title2).frame(width: 36)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(goal.label).font(.headline)
-                            Text(goal.detail).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
-                    }
-                    .card()
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
     }
@@ -164,24 +157,15 @@ struct OnboardingView: View {
             ForEach(PhysiqueRegion.allCases) { region in
                 let selected = settings.focus.contains(region)
                 let full = !selected && settings.focus.count >= LiftSettings.focusLimit
-                Button {
+                ChoiceCard(
+                    title: region.label, detail: region.focusDetail, selected: selected,
+                    identifier: "onboarding.focus\(region.rawValue.identifierSuffix)"
+                ) {
                     // Checked here too: quick taps can land before the row shows as full.
                     if selected { settings.focus.remove(region) } else if settings.focus.count < LiftSettings.focusLimit { settings.focus.insert(region) }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(region.label).font(.headline)
-                            Text(region.focusDetail).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
-                    }
-                    .card()
                 }
-                .buttonStyle(.plain)
                 .disabled(full)
                 .opacity(full ? 0.5 : 1)
-                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
     }
@@ -227,20 +211,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             header("Where do you train?", "Exercises are chosen from what's there.")
             ForEach(EquipmentAccess.allCases) { access in
-                let selected = profile.equipment == access
-                Button { profile.equipment = access } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(access.label).font(.headline)
-                            Text(access.detail).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
-                    }
-                    .card()
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
+                ChoiceCard(
+                    title: access.label, detail: access.detail, selected: profile.equipment == access,
+                    identifier: "onboarding.equipment\(access.rawValue.identifierSuffix)"
+                ) { profile.equipment = access }
             }
             VStack(alignment: .leading, spacing: 10) {
                 Text("Units").font(.headline)
@@ -274,17 +248,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             header("How long have you been lifting?", "Newer lifters tend to underestimate how many reps they have left, so Lift Track checks more often at first. Accurate ratings earn trust, whatever your experience.")
             ForEach(TrainingExperience.allCases) { level in
-                let selected = profile.experience == level
-                Button { profile.experience = level } label: {
-                    HStack {
-                        Text(level.label).font(.headline)
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
-                    }
-                    .card()
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
+                ChoiceCard(
+                    title: level.label, selected: profile.experience == level,
+                    identifier: "onboarding.experience\(level.rawValue.identifierSuffix)"
+                ) { profile.experience = level }
             }
         }
     }
@@ -297,12 +264,7 @@ struct OnboardingView: View {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                 }
                 Divider()
-                HStack {
-                    Text("Birth year")
-                    Spacer()
-                    TextField("1990", value: $profile.birthYear, format: .number.grouping(.never))
-                        .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
-                }
+                BirthYearField(year: $profile.birthYear, placeholder: "1990")
                 Divider()
                 MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)
                 Divider()
@@ -323,16 +285,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             header("Right now, are you…", "One tap. With Macro Track this is decided from your data instead.")
             ForEach(SelfReportedPhase.allCases) { answer in
-                let selected = settings.selfReportedPhase == answer
-                Button { settings.selfReportedPhase = answer } label: {
-                    HStack {
-                        Text(answer.label).font(.headline)
-                        Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
-                    }
-                    .card()
-                }
-                .buttonStyle(.plain)
+                ChoiceCard(
+                    title: answer.label, selected: settings.selfReportedPhase == answer,
+                    identifier: "onboarding.phase\(answer.rawValue.identifierSuffix)"
+                ) { settings.selfReportedPhase = answer }
             }
             Text("A stall during a cut is expected, not a plateau. Knowing the phase keeps the advice honest.").font(.footnote).foregroundStyle(.secondary)
         }
@@ -358,6 +314,7 @@ struct OnboardingView: View {
                 Text("Health isn't available on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Toggle("Save sessions to Health", isOn: $settings.saveToHealth).card()
+                .accessibilityIdentifier("onboarding.saveToHealth")
         }
     }
 
@@ -385,7 +342,6 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        profile.createdBy = reusedProfile ? profile.createdBy : .liftTrack
         var gym = Gym.preset(profile.equipment, unit: profile.units.weight)
         gym.name = profile.equipment.label
         gym.apparatus.formUnion(rooms)
@@ -398,6 +354,69 @@ struct OnboardingView: View {
 }
 
 // MARK: - Shared editors
+
+/// One answer to a one-tap question, with its check.
+struct ChoiceCard: View {
+    let title: String
+    var detail: String?
+    var symbol: String?
+    let selected: Bool
+    /// Required, so no card is left out of the UI tests.
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: symbol == nil ? nil : 14) {
+                if let symbol { Image(systemName: symbol).font(.title2).frame(width: 36) }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+                }
+                Spacer()
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
+            }
+            .card()
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+/// A birth year that only reaches the profile when it's a plausible one. A two-digit or future year
+/// would otherwise become an age of 1936 or -4, which the heart-rate zones, the step floor and Macro
+/// Track's energy estimate all take at face value; out of range, the age stays unknown.
+struct BirthYearField: View {
+    @Binding var year: Int?
+    let placeholder: String
+    @State private var typed: Int?
+
+    init(year: Binding<Int?>, placeholder: String = "—") {
+        _year = year
+        self.placeholder = placeholder
+        _typed = State(initialValue: year.wrappedValue)
+    }
+
+    var body: some View {
+        let range = SharedProfile.plausibleBirthYears(on: .today)
+        let invalid = typed.map { !range.contains($0) } ?? false
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Birth year")
+                Spacer()
+                TextField(placeholder, value: $typed, format: .number.grouping(.never))
+                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    .foregroundStyle(invalid ? Color.red : Color.primary)
+                    .accessibilityLabel("Birth year")
+            }
+            if invalid {
+                Text("Enter the full year, \(String(range.lowerBound)) to \(String(range.upperBound)).").font(.caption).foregroundStyle(.red)
+            }
+        }
+        .onChange(of: typed) { _, value in year = value.flatMap { range.contains($0) ? $0 : nil } }
+    }
+}
 
 /// Monday-first weekday chips.
 struct WeekdayPicker: View {
@@ -429,6 +448,7 @@ struct MeasureField: View {
     let label: String
     @Binding var value: Double?
     let unit: LengthUnit
+    var identifier: String?
 
     var body: some View {
         HStack {
@@ -440,6 +460,7 @@ struct MeasureField: View {
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 80)
+                .accessibilityIdentifier(identifier ?? "")
             Text(unit.symbol).foregroundStyle(.secondary)
         }
     }

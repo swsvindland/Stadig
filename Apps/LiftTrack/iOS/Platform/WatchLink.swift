@@ -79,7 +79,9 @@ final class WatchLink: NSObject {
             AppModel.shared.keep(record)
         case .requestContext:
             lastContext = nil
-            publish(AppModel.shared)
+            // Woken in the background on a later day: today's plan, not the one from when it last ran.
+            let model = AppModel.shared
+            if model.today != .today { model.recompute() } else { publish(model) }
         }
     }
 }

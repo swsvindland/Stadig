@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 import WatchKit
 import WidgetKit
 import ExerciseLibrary
@@ -89,27 +90,35 @@ final class WatchModel {
 
     init() {
         context = WatchStorage.load(PhoneContext.self, from: WatchStorage.context)
-        if let stored = WatchStorage.load(StoredSession.self, from: WatchStorage.session),
-           Date().timeIntervalSince(stored.live.updatedAt) < Self.restoreWindow {
-            session = stored
-        } else {
-            WatchStorage.remove(WatchStorage.session)
+        if let stored = WatchStorage.load(StoredSession.self, from: WatchStorage.session) {
+            if Date().timeIntervalSince(stored.live.updatedAt) < Self.restoreWindow {
+                session = stored
+            } else {
+                Self.finishLeftOver(stored)
+            }
         }
         workout.onHeartRate = { [weak self] bpm in self?.heartRate(bpm) }
         workout.onRemoteData = { [weak self] data in self?.fromPhone(data) }
-        workout.onEndedRemotely = { [weak self] in self?.endCompanion(syncID: nil) }
+        workout.onEndedRemotely = { [weak self] in self?.stopCompanion() }
         // Wired here rather than from a view: a background wake to deliver a context may never render one.
         PhoneLink.shared.onContext = { [weak self] context in self?.receive(context) }
         PhoneLink.shared.activate()
     }
 
-    /// Asks for a context if there's none for today, and picks a restored session back up.
+    /// Picks a restored session back up, and brings today up to date.
     func launch() {
-        if context == nil || isStale { PhoneLink.shared.requestContext() }
+        refresh()
         if let session {
             startWorkout(syncID: session.live.id)
             scheduleAlarm()
         }
+    }
+
+    /// On launch and whenever the app comes back on screen, perhaps on a later day: asks for a
+    /// context if there's none for today, and redraws Home and the complication for the day.
+    func refresh() {
+        moveDayOn()
+        if context == nil || isStale { PhoneLink.shared.requestContext() }
         writeSnapshot()
     }
 
@@ -124,15 +133,23 @@ final class WatchModel {
 
     // MARK: Today
 
+    /// The day Home and the complication were last brought up to date for. Kept here, not read from
+    /// the clock in the views, so moving it on redraws them after midnight.
+    private(set) var today = Day.today
+
+    private func moveDayOn() {
+        if today != Day.today { today = Day.today }
+    }
+
     /// The context's plan is for an earlier day: the phone hasn't been opened since.
     var isStale: Bool {
         guard let plan = context?.plan else { return false }
-        return plan.day < Day.today
+        return plan.day < today
     }
 
-    /// Today's planned session was already finished on this Watch.
+    /// Today's planned session was already finished on this Watch (an old plan's isn't today's).
     var finishedToday: Bool {
-        guard let plan = context?.plan, let done = UserDefaults.standard.string(forKey: "finished") else { return false }
+        guard let plan = context?.plan, !isStale, let done = UserDefaults.standard.string(forKey: "finished") else { return false }
         return done == Self.finishedKey(plan)
     }
 
@@ -147,15 +164,9 @@ final class WatchModel {
     var unit: WeightUnit { sessionContext?.gym.unit ?? .kg }
     var zones: HeartRateZones { sessionContext?.zones ?? .estimated(age: nil, resting: nil) }
 
-    /// The item and set to do next: one picked from the list, otherwise the plan's order.
-    var position: (item: Int, set: Int)? {
-        guard let stored = session else { return nil }
-        if let focus = stored.focus, let index = stored.live.items.firstIndex(where: { $0.id == focus }),
-           let set = stored.live.items[index].nextSet {
-            return (index, set)
-        }
-        return stored.live.current
-    }
+    /// The item and set to do next, in the session's order (which "Do This Now" changes), alternating
+    /// within a superset.
+    var position: (item: Int, set: Int)? { session?.live.current }
 
     var step: SessionStep? {
         guard let stored = session else { return nil }
@@ -197,9 +208,12 @@ final class WatchModel {
         }
     }
 
-    func timer(for item: Int) -> ItemTimer? {
-        guard let stored = session, stored.live.items.indices.contains(item), stored.timer?.item == stored.live.items[item].id else { return nil }
-        return stored.timer
+    /// The countdown or stopwatch running for this set (conditioning runs as set 0).
+    func timer(for item: Int, set: Int) -> ItemTimer? {
+        guard let stored = session, stored.live.items.indices.contains(item), let timer = stored.timer,
+            timer.item == stored.live.items[item].id, timer.set == set
+        else { return nil }
+        return timer
     }
 
     // MARK: Session
@@ -231,7 +245,7 @@ final class WatchModel {
         let prescription = live.items[item].sets[set].prescription
         let planned = prescription.seconds ?? live.items[item].plan.seconds
         var seconds = planned
-        if let timer = timer(for: item) {
+        if let timer = timer(for: item, set: set) {
             let elapsed = Int(Date().timeIntervalSince(timer.started).rounded())
             seconds = planned.map { min($0, elapsed) } ?? elapsed
         }
@@ -249,29 +263,24 @@ final class WatchModel {
     func finishConditioning(item: Int) {
         guard let stored = session else { return }
         let now = Date()
-        let started = timer(for: item)?.started ?? now
+        let started = timer(for: item, set: 0)?.started ?? now
         let minutes = max(1, Int((now.timeIntervalSince(started) / 60).rounded()))
-        let samples = stored.live.heartRateSamples.filter { $0.date >= started && $0.date <= now }
-        let average = samples.isEmpty ? nil : samples.map(\.bpm).reduce(0, +) / Double(samples.count)
-        let zoneMinutes = Self.zoneMinutes(samples, zones: stored.context.zones, until: now)
+        let average = stored.live.averageHeartRate(from: started, to: now)
+        let zoneMinutes = stored.live.zoneMinutes(from: started, to: now, zones: stored.context.zones)
         update { stored in
             stored.live.logConditioning(item: item, minutes: minutes, averageHeartRate: average, zoneMinutes: zoneMinutes)
             stored.timer = nil
         }
     }
 
-    /// Each sample counts until the next one; gaps over 15 s (the sensor dropping out) count 15 s.
-    static func zoneMinutes(_ samples: [LiveSession.HeartRatePoint], zones: HeartRateZones, until end: Date) -> [Int: Double] {
-        var minutes: [Int: Double] = [:]
-        for (index, sample) in samples.enumerated() {
-            let next = index + 1 < samples.count ? samples[index + 1].date : end
-            let seconds = min(max(0, next.timeIntervalSince(sample.date)), 15)
-            minutes[zones.zone(for: sample.bpm), default: 0] += seconds / 60
+    func skipSet(item: Int, set: Int) {
+        update { stored in
+            guard stored.live.items.indices.contains(item) else { return }
+            stored.live.skipSet(item: item, set: set)
+            // Its countdown would otherwise carry over to the next set.
+            if let timer = stored.timer, timer.item == stored.live.items[item].id, timer.set == set { stored.timer = nil }
         }
-        return minutes
     }
-
-    func skipSet(item: Int, set: Int) { update { $0.live.skipSet(item: item, set: set) } }
 
     func skip(item: Int) {
         update { stored in
@@ -283,12 +292,16 @@ final class WatchModel {
 
     func addSet(item: Int) { update { $0.live.addSet(item: item) } }
 
-    /// Does an item next, ahead of the plan's order.
+    /// Does an item next, ahead of the plan's order: it moves up with its superset partner, as on
+    /// the phone, so the pair still alternates with their own rests.
     func focus(item: Int) {
         update { stored in
             guard stored.live.items.indices.contains(item) else { return }
-            stored.focus = stored.live.items[item].id
+            let id = stored.live.items[item].id
+            stored.live.doNext(item: item)
             stored.live.endRest()
+            // A countdown left running on the item put aside would still go off, and show again on return.
+            if let timer = stored.timer, timer.item != id { stored.timer = nil }
         }
     }
 
@@ -305,7 +318,7 @@ final class WatchModel {
     func finish(feedback: SessionFeedback?) {
         guard let stored = session else { return }
         let record = stored.live.record(feedback: feedback)
-        guard !record.exercises.isEmpty || !record.conditioning.isEmpty || !record.mobility.isEmpty else {
+        guard record.hasContent else {
             discard()
             return
         }
@@ -321,6 +334,19 @@ final class WatchModel {
         Task { await workout.discard() }
     }
 
+    /// A session too old to pick back up (the Watch died or restarted mid-session and nobody came
+    /// back to save it): what was logged goes to the phone as it stood at the last change, rather
+    /// than being lost with the file.
+    private static func finishLeftOver(_ stored: StoredSession) {
+        let record = stored.live.record(feedback: nil, now: stored.live.updatedAt)
+        if record.hasContent {
+            WatchStorage.log.notice("Saving a session left unfinished since \(stored.live.updatedAt, privacy: .public)")
+            PhoneLink.shared.send(record)
+            UserDefaults.standard.set(finishedKey(stored.live.plan), forKey: "finished")
+        }
+        WatchStorage.remove(WatchStorage.session)
+    }
+
     private func close() {
         alarm?.cancel()
         session = nil
@@ -333,8 +359,6 @@ final class WatchModel {
     private func update(_ change: (inout StoredSession) -> Void) {
         guard var stored = session else { return }
         change(&stored)
-        // A picked item that's done hands back to the plan's order.
-        if let focus = stored.focus, stored.live.items.first(where: { $0.id == focus })?.isDone ?? true { stored.focus = nil }
         session = stored
         changed()
     }
@@ -366,30 +390,45 @@ final class WatchModel {
     /// session already running on this Watch carries on instead.
     func startCompanion() {
         guard session == nil, companionSince == nil, healthEnabled else { return }
-        companionSince = Date()
+        // A summary still on screen from earlier would cover the heart rate and its Stop button.
+        summary = nil
+        let since = Date()
+        companionSince = since
         Task {
             _ = await HealthBridge.shared.requestAuthorization()
+            // Stopped while Health was asking: nothing to start.
+            guard companionSince == since else { return }
             do {
                 try await workout.startMirrored()
             } catch {
-                companionSince = nil
+                if companionSince == since { companionSince = nil }
+                return
             }
+            // Stopped while it was starting: nothing would ever end it.
+            if companionSince != since { await workout.discard() }
         }
     }
 
-    /// Ends the heart-rate workout and saves it under the phone's session id.
-    func endCompanion(syncID: UUID?) {
-        guard companionSince != nil else { return }
+    /// Stops measuring for the iPhone: Stop here, or the system ending the workout (another workout
+    /// app started, say). The session carries on on the phone, which saves the workout to Health
+    /// itself once it no longer sees this one, so this one is discarded rather than saved: it has no
+    /// session id yet, and the two would overlap in Health.
+    func stopCompanion() {
+        // Never a workout this Watch's own session is running.
+        guard companionSince != nil || workout.isMirrored else { return }
         companionSince = nil
-        Task { _ = await workout.end(syncID: syncID) }
+        Task { await workout.discard() }
     }
 
+    /// Messages only arrive over the mirrored workout, so they act on it whatever `companionSince` says.
     private func fromPhone(_ data: [Data]) {
         for item in data {
             guard let message = try? JSONDecoder().decode(MirrorMessage.self, from: item) else { continue }
             switch message {
             case .finish(let id, _):
-                endCompanion(syncID: id)
+                // The phone's session is over: this workout, with its heart rate and energy, is the one Health keeps.
+                companionSince = nil
+                Task { _ = await workout.end(syncID: id) }
             case .discard:
                 companionSince = nil
                 Task { await workout.discard() }
@@ -405,8 +444,7 @@ final class WatchModel {
             return
         }
         guard var stored = session else { return }
-        let recovered = stored.live.record(heartRate: bpm, zones: stored.context.zones)
-        if recovered, stored.live.rest != nil {
+        if stored.live.record(heartRate: bpm, zones: stored.context.zones) {
             stored.live.endRest()
             session = stored
             changed()
@@ -493,6 +531,7 @@ final class WatchModel {
     // MARK: Complication
 
     private func writeSnapshot() {
+        moveDayOn()
         var snapshot = WidgetSnapshot.empty
         if let context {
             if let stored = session {
@@ -502,12 +541,14 @@ final class WatchModel {
             } else if isStale {
                 snapshot.detail = "Open Lift Track on iPhone"
             } else if let plan = context.plan, context.upNext == nil {
+                snapshot.day = plan.day
                 snapshot.title = plan.title
                 snapshot.detail = finishedToday ? "Done today" : "Today"
                 snapshot.exercises = plan.items.filter(\.isStrength).prefix(5).map { catalog.resolve($0.exerciseID).name }
                 snapshot.minutes = finishedToday ? nil : plan.estimatedMinutes
                 snapshot.badge = plan.deload ? "Deload" : plan.assessment ? "Assessment" : plan.checkIn ? "Check-in" : nil
             } else {
+                snapshot.day = Day(context.sentAt)
                 snapshot.title = "Rest day"
                 snapshot.detail = context.upNext.map { "Next: \($0)" } ?? "Nothing planned"
             }

@@ -13,14 +13,20 @@ struct SettingsView: View {
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
     @State private var importing = false
+    /// A backup or restore is running: it covers every record, photos included.
+    @State private var working = false
     @State private var message: String?
+    /// Presented from here: Settings is a sheet already, and a second sheet from the root can't show over it.
+    @State private var showPaywall = false
 
     var body: some View {
         Form {
             if let profile = model.profile {
                 Section {
                     NavigationLink("Goals, schedule and experience") { ProfileEditor(profile: profile) }
+                        .accessibilityIdentifier("settings.profile")
                     NavigationLink("Training outside the gym") { RecurringScreen(profile: profile) }
+                        .accessibilityIdentifier("settings.outside")
                 } header: {
                     Text("About you")
                 } footer: {
@@ -31,17 +37,18 @@ struct SettingsView: View {
                 NavigationLink { GymEditor(gym: model.gym) } label: {
                     LabeledContent("Equipment and plates", value: model.gym.name)
                 }
+                .accessibilityIdentifier("settings.gym")
             }
             Section {
                 toggle("Heart-rate guided rest", \.heartRateGuidedRest)
                 toggle("Conditioning after lifting", \.includeConditioning)
                 toggle("Stretching cool-down", \.includeCooldown)
                 toggle("Prioritise automatically", \.autoPrioritise)
-                Picker("Conditioning benchmark", selection: setting(\.benchmark)) {
+                Picker("Conditioning benchmark", selection: model.setting(\.benchmark)) {
                     ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
                 }
                 if model.nutrition?.phase == nil {
-                    Picker("Right now I'm", selection: setting(\.selfReportedPhase)) {
+                    Picker("Right now I'm", selection: model.setting(\.selfReportedPhase)) {
                         Text("Not set").tag(SelfReportedPhase?.none)
                         ForEach(SelfReportedPhase.allCases) { Text($0.label).tag(SelfReportedPhase?.some($0)) }
                     }
@@ -57,6 +64,7 @@ struct SettingsView: View {
                 NavigationLink { FocusScreen() } label: {
                     LabeledContent("Focus", value: model.settings.focusSummary)
                 }
+                .accessibilityIdentifier("settings.focus")
                 Picker("Proportion targets", selection: Binding(get: { proportionTargets }, set: { targets in
                     var s = model.settings
                     s.proportionTargets = targets
@@ -78,16 +86,28 @@ struct SettingsView: View {
                 Button("Export CSV", systemImage: "tablecells") {
                     do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
                 }
+                .disabled(working)
+                .accessibilityIdentifier("settings.exportCSV")
                 if !exportURLs.isEmpty {
                     ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
+                        .accessibilityIdentifier("settings.shareCSV")
                 }
-                Button("Make a backup file", systemImage: "externaldrive") {
-                    do { backupURL = try model.backupFile() } catch { message = error.localizedDescription }
-                }
+                Button("Make a backup file", systemImage: "externaldrive") { Task { await makeBackup() } }
+                    .disabled(working)
+                    .accessibilityIdentifier("settings.backup")
                 if let backupURL {
                     ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
+                        .accessibilityIdentifier("settings.shareBackup")
                 }
                 Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+                    .disabled(working)
+                    .accessibilityIdentifier("settings.restore")
+                if working {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Working through your records…").foregroundStyle(.secondary)
+                    }
+                }
                 LabeledContent("Sync", value: model.store.syncStatus)
             } header: {
                 Text("Your data")
@@ -99,13 +119,13 @@ struct SettingsView: View {
                     if purchases.unlocked {
                         Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                     } else {
-                        Button("Unlock Lift Track") { model.showPaywall = true }
+                        Button("Unlock Lift Track") { showPaywall = true }
                         Button("Restore purchase") { Task { await purchases.restore() } }
                     }
                 }
             }
             Section {
-                Text("Lift Track is one of The System's apps: Macro Track for nutrition, Knowledge for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads.")
+                Text("Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #if DEBUG
@@ -114,26 +134,44 @@ struct SettingsView: View {
             }
             #endif
         }
+        .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "liftbackup") ?? .json, .json]) { result in
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
+        .fileImporter(isPresented: $importing, allowedContentTypes: Self.backupTypes) { result in
             switch result {
             case .success(let url):
-                do {
-                    let summary = try model.restore(from: url)
-                    message = "Restored \(summary.records) records."
-                } catch {
-                    message = error.localizedDescription
-                }
+                Task { await restore(from: url) }
             case .failure(let error):
                 message = error.localizedDescription
             }
         }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
         .alert("Data", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK") { message = nil }
+            Button("OK") { message = nil }.accessibilityIdentifier("settings.messageOK")
         } message: {
             Text(message ?? "")
+        }
+    }
+
+    /// Lift Track's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
+    /// Another app's backup is refused when it's read.
+    private static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
+
+    private func makeBackup() async {
+        working = true
+        defer { working = false }
+        do { backupURL = try await model.exportBackup() } catch { message = error.localizedDescription }
+    }
+
+    private func restore(from url: URL) async {
+        working = true
+        defer { working = false }
+        do {
+            let summary = try await model.importBackup(from: url)
+            message = "Restored \(summary.records) records."
+        } catch {
+            message = error.localizedDescription
         }
     }
 
@@ -142,22 +180,33 @@ struct SettingsView: View {
         model.settings.proportionTargets ?? .standard(for: model.profile?.sex ?? .unspecified)
     }
 
-    private func setting<T>(_ keyPath: WritableKeyPath<LiftSettings, T>) -> Binding<T> {
-        Binding(get: { model.settings[keyPath: keyPath] }, set: { value in
-            var s = model.settings
-            s[keyPath: keyPath] = value
-            model.save(settings: s)
-        })
-    }
-
     private func toggle(_ title: String, _ keyPath: WritableKeyPath<LiftSettings, Bool>) -> some View {
-        Toggle(title, isOn: setting(keyPath))
+        Toggle(title, isOn: model.setting(keyPath))
     }
 }
 
+extension AppModel {
+    /// One setting, saved on every change.
+    func setting<T>(_ keyPath: WritableKeyPath<LiftSettings, T>) -> Binding<T> {
+        Binding(get: { self.settings[keyPath: keyPath] }, set: { value in
+            var s = self.settings
+            s[keyPath: keyPath] = value
+            self.save(settings: s)
+        })
+    }
+}
+
+/// Saves on the way out, but only what was changed here and onto the latest copy: a visit that
+/// changes nothing, or a field left alone, never overwrites a newer edit synced from another device.
 struct ProfileEditor: View {
     @Environment(AppModel.self) private var model
-    @State var profile: SharedProfile
+    @State private var profile: SharedProfile
+    @State private var original: SharedProfile
+
+    init(profile: SharedProfile) {
+        _profile = State(initialValue: profile)
+        _original = State(initialValue: profile)
+    }
 
     var body: some View {
         Form {
@@ -184,11 +233,7 @@ struct ProfileEditor: View {
                 Picker("Standards for", selection: $profile.sex) {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                 }
-                HStack {
-                    Text("Birth year")
-                    Spacer()
-                    TextField("—", value: $profile.birthYear, format: .number.grouping(.never)).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                }
+                BirthYearField(year: $profile.birthYear)
                 MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)
                 Picker("Weight unit", selection: $profile.units.weight) {
                     Text("kg").tag(WeightUnit.kg)
@@ -205,7 +250,23 @@ struct ProfileEditor: View {
             }
         }
         .navigationTitle("About you")
-        .onDisappear { model.save(profile: profile) }
+        .onDisappear { saveChanges() }
+    }
+
+    private func saveChanges() {
+        guard profile != original else { return }
+        var latest = model.profile ?? original
+        func take<T: Equatable>(_ field: WritableKeyPath<SharedProfile, T>) {
+            if profile[keyPath: field] != original[keyPath: field] { latest[keyPath: field] = profile[keyPath: field] }
+        }
+        take(\.goals)
+        take(\.schedule)
+        take(\.experience)
+        take(\.sex)
+        take(\.birthYear)
+        take(\.heightCm)
+        take(\.units)
+        model.save(profile: latest)
     }
 }
 
@@ -264,35 +325,48 @@ extension PhysiqueRegion {
     }
 }
 
+/// Saves on the way out only when something changed, onto the latest profile (see ProfileEditor).
 struct RecurringScreen: View {
     @Environment(AppModel.self) private var model
-    @State var profile: SharedProfile
+    @State private var recurring: [RecurringActivity]
+    @State private var original: [RecurringActivity]
+
+    init(profile: SharedProfile) {
+        _recurring = State(initialValue: profile.recurring)
+        _original = State(initialValue: profile.recurring)
+    }
 
     var body: some View {
         ScrollView {
-            OutsideActivitiesEditor(recurring: $profile.recurring, title: "Outside the gym",
+            OutsideActivitiesEditor(recurring: $recurring, title: "Outside the gym",
                                     detail: "Lift Track plans around these; they spend the same recovery.")
                 .padding()
         }
         .background(.pageBackground)
-        .onDisappear { model.save(profile: profile) }
+        .onDisappear {
+            guard recurring != original, var latest = model.profile else { return }
+            latest.recurring = recurring
+            model.save(profile: latest)
+        }
     }
 }
 
+/// Saves on the way out only when something changed, so a visit never re-stamps an older copy as newest.
 struct GymEditor: View {
     @Environment(AppModel.self) private var model
-    @State var gym: Gym
+    @State private var gym: Gym
+    @State private var original: Gym
+
+    init(gym: Gym) {
+        _gym = State(initialValue: gym)
+        _original = State(initialValue: gym)
+    }
 
     var body: some View {
         Form {
             Section {
                 TextField("Name", text: $gym.name)
-                Picker("Kind", selection: Binding(get: { gym.access }, set: { access in
-                    var preset = Gym.preset(access, unit: gym.unit)
-                    preset.id = gym.id
-                    preset.name = gym.name
-                    gym = preset
-                })) {
+                Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
                     ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
                 }
                 Picker("Plates in", selection: Binding(get: { gym.unit }, set: { gym = gym.converted(to: $0) })) {
@@ -339,6 +413,6 @@ struct GymEditor: View {
             }
         }
         .navigationTitle("Gym")
-        .onDisappear { model.save(gym: gym) }
+        .onDisappear { if gym != original { model.save(gym: gym) } }
     }
 }

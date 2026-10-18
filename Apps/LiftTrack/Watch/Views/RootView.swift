@@ -41,7 +41,7 @@ struct CompanionView: View {
                 Text(since, style: .timer).font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
             }
             Text("For your iPhone session").font(.caption2).foregroundStyle(.tertiary)
-            Button("Stop", systemImage: "stop.fill", role: .destructive) { model.endCompanion(syncID: nil) }
+            Button("Stop", systemImage: "stop.fill", role: .destructive) { model.stopCompanion() }
                 .padding(.top, 4)
         }
         .padding()

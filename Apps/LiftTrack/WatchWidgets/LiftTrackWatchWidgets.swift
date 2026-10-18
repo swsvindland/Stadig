@@ -1,4 +1,5 @@
 import SwiftUI
+import SystemCore
 import WidgetKit
 
 @main
@@ -12,7 +13,7 @@ struct LiftTrackWatchWidgets: WidgetBundle {
 struct NextSessionWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "NextSession", provider: SnapshotProvider()) { entry in
-            NextSessionView(snapshot: entry.snapshot)
+            NextSessionView(snapshot: entry.snapshot.shown(on: Day(entry.date)))
                 .containerBackground(for: .widget) { Color.clear }
         }
         .configurationDisplayName("Next Session")
@@ -26,7 +27,8 @@ struct SnapshotEntry: TimelineEntry {
     var snapshot: WidgetSnapshot
 }
 
-/// One entry; the app reloads timelines whenever the snapshot changes.
+/// The app reloads timelines whenever the snapshot changes. A second entry at midnight shows a day's
+/// plan as stale once that day is over, with the Watch app closed.
 struct SnapshotProvider: TimelineProvider {
     func placeholder(in context: Context) -> SnapshotEntry {
         SnapshotEntry(date: Date(), snapshot: .sample)
@@ -37,7 +39,14 @@ struct SnapshotProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        completion(Timeline(entries: [SnapshotEntry(date: Date(), snapshot: WidgetSnapshot.load())], policy: .never))
+        let calendar = Calendar.current
+        let now = Date()
+        let snapshot = WidgetSnapshot.load()
+        var entries = [SnapshotEntry(date: now, snapshot: snapshot)]
+        if snapshot.day != nil, let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) {
+            entries.append(SnapshotEntry(date: midnight, snapshot: snapshot))
+        }
+        completion(Timeline(entries: entries, policy: .never))
     }
 }
 

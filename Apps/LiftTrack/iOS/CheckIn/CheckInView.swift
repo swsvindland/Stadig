@@ -40,7 +40,7 @@ struct CheckInView: View {
                         Text(test.instructions).font(.caption).foregroundStyle(.secondary)
                         switch test.measure {
                         case .quality:
-                            Picker("Result", selection: Binding(get: { Int(values[test] ?? -1) }, set: { values[test] = Double($0) })) {
+                            Picker("Result", selection: Binding(get: { Int(values[test] ?? -1) }, set: { values[test] = $0 < 0 ? nil : Double($0) })) {
                                 Text("—").tag(-1)
                                 ForEach(0..<4) { Text(MobilityTest.qualityLabels[$0]).tag($0) }
                             }
@@ -57,6 +57,12 @@ struct CheckInView: View {
                         Toggle("It hurt", isOn: Binding(get: { painful.contains(test) }, set: { on in
                             if on { painful.insert(test) } else { painful.remove(test) }
                         }))
+                        // Pain is kept with a result, so it needs one: what was managed, even none.
+                        if painful.contains(test) && values[test] == nil {
+                            Text(test.measure == .quality ? "Pick what you managed (Can't counts) so the pain is recorded."
+                                                          : "Enter what you managed, even 0, so the pain is recorded.")
+                                .font(.caption).foregroundStyle(.orange)
+                        }
                     }
                 }
                 Section {
@@ -79,8 +85,8 @@ struct CheckInView: View {
                             TextField("—", value: $benchmarkValue, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
                         }
                     }
-                    Toggle("Record it", isOn: Binding(get: { benchmarkValue != nil || benchmark.measure == .timeSeconds && recordTime },
-                                                       set: { recordTime = $0; if !$0 { benchmarkValue = nil } }))
+                    // Shows exactly what Save will do.
+                    Toggle("Record it", isOn: Binding(get: { hasBenchmark }, set: { recordTime = $0; if !$0 { benchmarkValue = nil } }))
                 } header: {
                     Text("Conditioning benchmark")
                 } footer: {
@@ -90,10 +96,17 @@ struct CheckInView: View {
             .navigationTitle("Check-in")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(values.isEmpty && !hasBenchmark) }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("checkIn.cancel") }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }.disabled(!canSave).accessibilityIdentifier("checkIn.save")
+                }
             }
             .onAppear { benchmark = model.settings.benchmark }
+            // A value for one test means nothing for another: 80 floors aren't 80 metres.
+            .onChange(of: benchmark) {
+                benchmarkValue = nil
+                recordTime = false
+            }
             .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
         }
     }
@@ -101,6 +114,9 @@ struct CheckInView: View {
     @State private var recordTime = false
 
     private var hasBenchmark: Bool { benchmark.measure == .timeSeconds ? recordTime : benchmarkValue != nil }
+
+    /// Something to save, and no pain flag that would be lost for want of a result.
+    private var canSave: Bool { (!values.isEmpty || hasBenchmark) && !painful.contains { values[$0] == nil } }
 
     private func save() {
         let results = values.compactMap { test, value -> MobilityResult? in

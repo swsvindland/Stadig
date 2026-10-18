@@ -45,7 +45,7 @@ struct TimedView: View {
     }
 
     @ViewBuilder private func countdown(seconds: Int) -> some View {
-        if let timer = model.timer(for: item) {
+        if let timer = model.timer(for: item, set: set) {
             let ends = timer.started.addingTimeInterval(TimeInterval(seconds))
             TimelineView(.periodic(from: timer.started, by: 1)) { context in
                 let remaining = max(0, ends.timeIntervalSince(context.date))

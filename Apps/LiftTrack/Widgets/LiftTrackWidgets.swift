@@ -1,4 +1,5 @@
 import SwiftUI
+import SystemCore
 import WidgetKit
 
 @main
@@ -22,9 +23,16 @@ struct SnapshotProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        // The app reloads timelines when the plan changes; refresh after midnight for a new day.
-        let tomorrow = Calendar.current.startOfDay(for: Date().addingTimeInterval(86_400))
-        completion(Timeline(entries: [SnapshotEntry(date: Date(), snapshot: WidgetSnapshot.load())], policy: .after(tomorrow)))
+        // The app reloads timelines when the plan changes. Each entry reads the snapshot for its own
+        // day, so the one at midnight turns "Next: Tuesday" into "Today" with the app closed.
+        let calendar = Calendar.current
+        let now = Date()
+        let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
+        let snapshot = WidgetSnapshot.load()
+        completion(
+            Timeline(
+                entries: [SnapshotEntry(date: now, snapshot: snapshot), SnapshotEntry(date: midnight, snapshot: snapshot)],
+                policy: .after(midnight)))
     }
 }
 
@@ -32,7 +40,7 @@ struct SnapshotProvider: TimelineProvider {
 struct NextSessionWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "next-session", provider: SnapshotProvider()) { entry in
-            NextSessionView(snapshot: entry.snapshot)
+            NextSessionView(snapshot: entry.snapshot.reading(on: Day(entry.date)))
                 .widgetURL(URL(string: "lifttrack://start"))
                 .containerBackground(.fill.tertiary, for: .widget)
         }

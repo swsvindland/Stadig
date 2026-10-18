@@ -110,6 +110,8 @@ struct SectionHeader: View {
 /// The three-tap rating. Colour, symbol and words together: never colour alone.
 struct RatingButtons: View {
     var compact = false
+    /// Where it is, for UI tests: each button is "<screen>.ratingGreen" and so on.
+    var screen = "logger"
     let action: (SetRating) -> Void
 
     var body: some View {
@@ -130,6 +132,7 @@ struct RatingButtons: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(rating.label): \(rating.detail)")
+                .accessibilityIdentifier("\(screen).rating\(rating.rawValue.identifierSuffix)")
             }
         }
     }
@@ -266,4 +269,10 @@ struct EmptyCard: View {
         .frame(maxWidth: .infinity)
         .card(padding: 24)
     }
+}
+
+extension String {
+    /// "biggerAndStronger" as "BiggerAndStronger", to end an accessibility identifier built from a raw
+    /// value ("onboarding.goalBiggerAndStronger").
+    var identifierSuffix: String { prefix(1).uppercased() + dropFirst() }
 }

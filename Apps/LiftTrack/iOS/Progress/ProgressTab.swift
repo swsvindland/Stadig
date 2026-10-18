@@ -32,16 +32,19 @@ struct ProgressTab: View {
                             .card()
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("progress.history")
                     }
                 }
                 .padding()
                 .readableWidth()
             }
+            .accessibilityIdentifier("progress.screen")
             .background(.pageBackground)
             .navigationTitle("Progress")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings")
+                        .accessibilityIdentifier("progress.settings")
                 }
             }
         }
@@ -301,6 +304,7 @@ struct HistoryView: View {
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
+                    .accessibilityIdentifier("history.session")
                 case .activity(let log):
                     HStack {
                         Image(systemName: log.type.symbol).frame(width: 28)
@@ -311,6 +315,7 @@ struct HistoryView: View {
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
+                    .accessibilityIdentifier("history.activity")
                 }
             }
         }

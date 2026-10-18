@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import Charts
+import ImageIO
+import OSLog
 import LiftEngine
 import SystemCore
 
@@ -13,6 +15,7 @@ struct BodyView: View {
     @State private var editing: BodyMeasurements?
     @State private var pickerItem: PhotosPickerItem?
     @State private var pose: ProgressPhoto.Pose = .front
+    @State private var importFailed = false
 
     var body: some View {
         NavigationStack {
@@ -30,11 +33,13 @@ struct BodyView: View {
                 .padding()
                 .readableWidth()
             }
+            .accessibilityIdentifier("body.screen")
             .background(.pageBackground)
             .navigationTitle("Body")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { measuring = true } label: { Image(systemName: "ruler") }.accessibilityLabel("Add measurements")
+                        .accessibilityIdentifier("body.addMeasurements")
                 }
             }
             .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
@@ -42,6 +47,11 @@ struct BodyView: View {
             .onChange(of: pickerItem) { _, item in
                 guard let item else { return }
                 Task { await importPhoto(item) }
+            }
+            .alert("Couldn't add that photo", isPresented: $importFailed) {
+                Button("OK") {}
+            } message: {
+                Text("It couldn't be read. Try it again, or another photo.")
             }
         }
     }
@@ -216,14 +226,14 @@ struct BodyView: View {
             } else {
                 if let first = shown.first, let last = shown.last, first.id != last.id {
                     HStack(spacing: 8) {
-                        photo(first)
-                        photo(last)
+                        photo(first, maxPixel: 720)
+                        photo(last, maxPixel: 720)
                     }
                 }
                 ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
+                    LazyHStack(spacing: 8) {
                         ForEach(shown) { p in
-                            photo(p).frame(width: 90, height: 120)
+                            photo(p, maxPixel: 360).frame(width: 90, height: 120)
                                 .contextMenu { Button("Delete", role: .destructive) { model.delete(photo: p.id) } }
                         }
                     }
@@ -233,13 +243,12 @@ struct BodyView: View {
         .card()
     }
 
-    private func photo(_ p: ProgressPhoto) -> some View {
+    private func photo(_ p: ProgressPhoto, maxPixel: Int) -> some View {
         VStack(spacing: 4) {
-            if let image = UIImage(data: p.jpeg) {
-                Image(uiImage: image).resizable().scaledToFill().frame(maxWidth: .infinity, minHeight: 120, maxHeight: 240).clipped()
-                    .clipShape(.rect(cornerRadius: 12))
-                    .accessibilityLabel("Progress photo, \(Format.day(p.day))")
-            }
+            ProgressPhotoImage(photo: p, maxPixel: maxPixel)
+                .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 240).clipped()
+                .clipShape(.rect(cornerRadius: 12))
+                .accessibilityLabel("Progress photo, \(Format.day(p.day))")
             Text(Format.day(p.day, style: .dateTime.month(.abbreviated).day().year())).font(.caption2).foregroundStyle(.secondary)
         }
     }
@@ -260,20 +269,84 @@ struct BodyView: View {
                     .card(padding: 12)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("body.measurement")
             }
         }
     }
 
     private func importPhoto(_ item: PhotosPickerItem) async {
-        guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
-        // Downscale: comparison doesn't need full resolution, and it keeps sync light.
-        let maxSide: CGFloat = 1400
-        let scale = min(1, maxSide / max(image.size.width, image.size.height))
-        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        let resized = UIGraphicsImageRenderer(size: size).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-        guard let jpeg = resized.jpegData(compressionQuality: 0.7) else { return }
-        model.save(photo: ProgressPhoto(day: .today, pose: pose, jpeg: jpeg))
-        pickerItem = nil
+        // The pose it was picked for, even if the person changes it while iCloud downloads it.
+        let pose = pose
+        // Cleared whatever happens, so picking the same photo again tries again.
+        defer { pickerItem = nil }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self), let jpeg = await ProgressPhotos.jpeg(from: data) else {
+                importFailed = true
+                return
+            }
+            model.save(photo: ProgressPhoto(day: .today, pose: pose, jpeg: jpeg))
+        } catch {
+            appLog.error("Couldn't load a progress photo: \(error.localizedDescription)")
+            importFailed = true
+        }
+    }
+}
+
+/// Progress photo pixels, off the main actor. ImageIO decodes straight to the size asked for, so
+/// a 24 MP original is never held in full.
+enum ProgressPhotos {
+    /// What's stored: at most 1400 pixels on the long side, enough to compare and light to sync.
+    @concurrent nonisolated static func jpeg(from data: Data) async -> Data? {
+        downsampled(data, maxPixel: 1400)?.jpegData(compressionQuality: 0.7)
+    }
+
+    /// For the screen, at about the pixels it's shown at.
+    @concurrent nonisolated static func image(from data: Data, maxPixel: Int) async -> UIImage? {
+        downsampled(data, maxPixel: maxPixel)
+    }
+
+    /// Decoded once per photo and size: the Body tab re-renders on every reload.
+    static let cache = NSCache<NSString, UIImage>()
+
+    static func key(_ photo: ProgressPhoto, maxPixel: Int) -> NSString { "\(photo.id.uuidString)-\(maxPixel)" as NSString }
+
+    nonisolated private static func downsampled(_ data: Data, maxPixel: Int) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let options = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ] as CFDictionary
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options).map { UIImage(cgImage: $0) }
+    }
+}
+
+/// One progress photo, decoded off the main actor at the size it's shown and kept in the cache.
+private struct ProgressPhotoImage: View {
+    let photo: ProgressPhoto
+    let maxPixel: Int
+    @State private var image: UIImage?
+
+    init(photo: ProgressPhoto, maxPixel: Int) {
+        self.photo = photo
+        self.maxPixel = maxPixel
+        _image = State(initialValue: ProgressPhotos.cache.object(forKey: ProgressPhotos.key(photo, maxPixel: maxPixel)))
+    }
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Rectangle().fill(.secondary.opacity(0.12))
+            }
+        }
+        .task(id: photo.id) {
+            guard image == nil, let decoded = await ProgressPhotos.image(from: photo.jpeg, maxPixel: maxPixel) else { return }
+            ProgressPhotos.cache.setObject(decoded, forKey: ProgressPhotos.key(photo, maxPixel: maxPixel))
+            image = decoded
+        }
     }
 }
 
@@ -297,7 +370,7 @@ struct MeasurementEditor: View {
                     MeasureField(label: "Neck", value: $measurements.neckCm, unit: unit)
                     MeasureField(label: "Shoulders", value: $measurements.shouldersCm, unit: unit)
                     MeasureField(label: "Chest", value: $measurements.chestCm, unit: unit)
-                    MeasureField(label: "Waist at the navel", value: $measurements.waistCm, unit: unit)
+                    MeasureField(label: "Waist at the navel", value: $measurements.waistCm, unit: unit, identifier: "measurements.waist")
                     MeasureField(label: "Waist at its narrowest", value: $measurements.naturalWaistCm, unit: unit)
                     MeasureField(label: "Hips, at the hip bones", value: $measurements.hipsCm, unit: unit)
                     MeasureField(label: "Glutes, at the widest", value: $measurements.glutesCm, unit: unit)
@@ -342,18 +415,20 @@ struct MeasurementEditor: View {
                         model.delete(measurement: measurements.id)
                         dismiss()
                     }
+                    .accessibilityIdentifier("measurements.delete")
                 }
             }
             .navigationTitle("Measurements")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("measurements.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         model.save(measurements: measurements)
                         dismiss()
                     }
                     .disabled(measurements.isEmpty)
+                    .accessibilityIdentifier("measurements.save")
                 }
             }
         }

@@ -10,8 +10,11 @@ enum LiveActivityBridge {
     private static var started = false
     private static var lastState: SessionActivityAttributes.ContentState?
 
+    /// Tests and UI tests start no Live Activity: it would outlive the test on the Lock Screen.
+    private static var enabled: Bool { !LaunchOptions.current.isQuiet }
+
     static func update(_ session: LiveSession?, catalog: ExerciseCatalog, unit: WeightUnit) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard enabled, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         guard let session, !session.isComplete else {
             end()
             return
@@ -32,6 +35,7 @@ enum LiveActivityBridge {
 
     /// After a relaunch: adopt an activity left running, or end it when the session is gone.
     static func resume(_ session: LiveSession?, catalog: ExerciseCatalog, unit: WeightUnit) {
+        guard enabled else { return }
         started = !Activity<SessionActivityAttributes>.activities.isEmpty
         if session == nil { end() } else { update(session, catalog: catalog, unit: unit) }
     }
@@ -45,7 +49,9 @@ enum LiveActivityBridge {
         }
     }
 
-    private static func content(_ session: LiveSession, catalog: ExerciseCatalog, unit: WeightUnit) -> SessionActivityAttributes.ContentState {
+    /// What the Lock Screen shows for the session: the exercise, the set ("Warm-up", "Set 2 of 3")
+    /// with its target, and the rest while it runs.
+    static func content(_ session: LiveSession, catalog: ExerciseCatalog, unit: WeightUnit, now: Date = Date()) -> SessionActivityAttributes.ContentState {
         var exercise = "Finish session"
         var detail = ""
         if let current = session.current {
@@ -58,7 +64,7 @@ enum LiveActivityBridge {
             let label = set.prescription.kind == .warmup ? "Warm-up" : "Set \(index) of \(work.count)"
             detail = "\(label) · \(Format.set(set.prescription, exercise: e, unit: unit))"
         }
-        let rest = session.rest.flatMap { $0.endsAt > Date() ? $0.endsAt : nil }
+        let rest = session.rest.flatMap { $0.endsAt > now ? $0.endsAt : nil }
         return SessionActivityAttributes.ContentState(exercise: exercise, detail: detail, restEndsAt: rest,
                                                       message: rest == nil ? nil : session.message, progress: session.progress)
     }

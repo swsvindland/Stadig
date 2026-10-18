@@ -88,7 +88,7 @@ struct ItemDetailView: View {
                             close()
                         }
                     }
-                    if liveItem.plan.conditioning == nil {
+                    if liveItem.takesMoreSets {
                         Button("Add a Set", systemImage: "plus") { model.addSet(item: item) }
                     }
                     if let next = liveItem.nextSet, liveItem.sets.filter(\.isOpen).count > 1 {
@@ -107,7 +107,9 @@ struct ItemDetailView: View {
     }
 
     private func setRow(_ set: LiveSet, index: Int, in item: LiveItem, exercise: Exercise) -> some View {
-        HStack(spacing: 6) {
+        // A set logged before a swap reads as the exercise it was done on.
+        let exercise = set.logged.map { model.catalog.resolve($0.exerciseID) } ?? exercise
+        return HStack(spacing: 6) {
             if let logged = set.logged {
                 if let rating = logged.rating {
                     Image(systemName: rating.symbol).foregroundStyle(rating.tint)
@@ -130,6 +132,7 @@ struct ItemDetailView: View {
     }
 
     private func accessibilityText(_ set: LiveSet, index: Int, in item: LiveItem, exercise: Exercise) -> String {
+        let exercise = set.logged.map { model.catalog.resolve($0.exerciseID) } ?? exercise
         let position = WatchFormat.setPosition(index, in: item.sets)
         if let logged = set.logged {
             return "\(position), done, \(WatchFormat.logged(logged, exercise: exercise, unit: model.unit))\(logged.rating.map { ", \($0.label)" } ?? "")"

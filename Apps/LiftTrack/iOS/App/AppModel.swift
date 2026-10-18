@@ -17,7 +17,7 @@ enum AppTab: Hashable {
 /// shared container, what Health knows, and the analysis computed from all of it.
 @MainActor @Observable
 final class AppModel {
-    static let shared = AppModel()
+    static let shared = AppModel(launch: .current)
     /// What Health records this app wrote carry as their source: the current id and the one it had
     /// before the 2026-10 rename, so samples saved before it still count as the app's own.
     static let ownBundlePrefixes = ["dev.svindland.stadig.lift", "dev.svindland.lifttrack"]
@@ -26,10 +26,14 @@ final class AppModel {
     let shared: SharedContainer
     let catalog = ExerciseCatalog()
     let purchases = Purchases()
+    /// Where a session in progress is kept, so it survives the app being closed.
+    let liveURL: URL
+    /// Where the widgets' snapshot is written: the App Group, or a scratch folder when nothing is kept.
+    let widgetURL: URL?
 
     // Records.
     private(set) var profile: SharedProfile?
-    private(set) var settings = LiftSettings()
+    private(set) var settings = LiftSettings(id: LiftSettings.singletonID)
     private(set) var gym = Gym.preset(.fullGym, unit: UnitPreference.regional.weight)
     private(set) var sessions: [SessionRecord] = []
     private(set) var activities: [ActivityLog] = []
@@ -43,8 +47,13 @@ final class AppModel {
     // From Health.
     var recovery: [RecoveryDay] = []
     var steps: [StepDay] = []
-    @ObservationIgnored private var stepsReadAt = Date.distantPast
+    @ObservationIgnored private var lastHealthRefresh: Date?
+    /// When the Health observer started, until the call HealthKit makes as it starts (which brings
+    /// nothing new) has come.
+    @ObservationIgnored private var healthObserverStarted: Date?
     var bodyweightKg: Double?
+    /// When Health's weight was measured, so a later one typed on the tape counts instead.
+    var bodyweightDate: Date?
     /// From Health, only when it's from the last two weeks.
     var bodyFatPercent: Double?
     var vo2Max: Double?
@@ -60,35 +69,93 @@ final class AppModel {
     private(set) var analysis: LiftAnalysis?
 
     // Live session and presentation.
-    var live: LiveSession? { didSet { persistLive() } }
+    var live: LiveSession? {
+        didSet {
+            persistLive()
+            watchRestTime()
+        }
+    }
     /// The latest reading from the Watch during a session led from here, and when it came.
     private(set) var heartRate: Double?
     private(set) var heartRateAt: Date?
     @ObservationIgnored private var lastLivePersist = Date.distantPast
     @ObservationIgnored private var heartRateOnly = false
+    /// Moves when a rest's time runs out, so what shows the rest redraws without the session changing.
+    private var restsRunOut = 0
+    @ObservationIgnored private var restTimer: Task<Void, Never>?
+    @ObservationIgnored private var restTimerEnds: Date?
     var showSession = false
     var finished: SessionRecord?
     var tab: AppTab = .today
     var showSettings = false
-    var showPaywall = false
     var today: Day = .today
 
     @ObservationIgnored private var sharedObserver: AnyObject?
+    @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
     @ObservationIgnored private var lastRevision = -1
+    /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
+    @ObservationIgnored private var readRevisions: [String: Int] = [:]
 
-    init() {
-        let arguments = ProcessInfo.processInfo.arguments
-        let memory = arguments.contains("-inMemoryStore")
-        store = RecordStore(name: "LiftTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.lift", inMemory: memory)
-        shared = SharedContainer()
+    /// Lift Track's own synced store and the App Group, or, when nothing is to be kept (tests, UI
+    /// tests, `-inMemoryStore`), an in-memory store and a fresh folder for the shared files and the
+    /// session in progress, so a test or a sample run never writes where the other apps read and
+    /// never picks up a real session left open.
+    convenience init(launch: LaunchOptions) {
+        // Tests and UI tests: no Health prompts, reads or writes.
+        if launch.isQuiet { HealthBridge.shared.disable() }
+        let memory = launch.usesInMemoryStore
+        let store = RecordStore(name: "LiftTrack", cloudKitContainer: memory ? nil : "iCloud.dev.svindland.stadig.lift", inMemory: memory)
+        let files = memory ? Files.scratch() : Files.app
         #if DEBUG
-        if arguments.contains("-resetData") { store.eraseAll() }
+        if launch.has("-resetData") {
+            store.eraseAll()
+            try? FileManager.default.removeItem(at: files.liveURL)
+        }
         #endif
+        self.init(store: store, shared: files.shared, liveURL: files.liveURL, widgetURL: files.widgetURL)
+    }
+
+    /// Everything outside the store the model reads or writes: tests pass a store in memory and a
+    /// temporary folder for the rest.
+    init(store: RecordStore, shared: SharedContainer, liveURL: URL, widgetURL: URL?) {
+        self.store = store
+        self.shared = shared
+        self.liveURL = liveURL
+        self.widgetURL = widgetURL
         reload()
         restoreLive()
         LiveActivityBridge.resume(live, catalog: catalog, unit: gym.unit)
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
+        // Another device's changes, as CloudKit imports them while the app is open: a second device
+        // or a reinstall leaves onboarding as soon as the person's data arrives.
+        storeObserver = store.observeChanges { [weak self] in self?.reloadIfChanged() }
+    }
+
+    /// Where the model's files live outside its store.
+    struct Files {
+        var shared: SharedContainer
+        var liveURL: URL
+        var widgetURL: URL?
+
+        /// The App Group the other apps and the widgets read, and Application Support for the session.
+        static var app: Files {
+            Files(shared: SharedContainer(), liveURL: URL.applicationSupportDirectory.appending(path: "live-session.json"),
+                  widgetURL: WidgetSnapshot.appGroupURL)
+        }
+
+        /// A fresh folder of its own, for a launch that keeps nothing: a sample run or a test never
+        /// writes where the other apps read, and never picks up a real session left open.
+        static func scratch(in folder: URL = URL.temporaryDirectory.appending(path: "LiftTrack \(UUID().uuidString)", directoryHint: .isDirectory))
+            -> Files
+        {
+            // The folder and never an App Group: a made-up group id isn't enough, since a simulator
+            // may hand out a folder for any group.
+            Files(
+                shared: SharedContainer(directory: folder.appending(path: "SystemShared", directoryHint: .isDirectory)),
+                liveURL: folder.appending(path: "live-session.json"),
+                widgetURL: folder.appending(path: "widget.json"))
+        }
     }
 
     var onboarded: Bool { profile != nil && settings.onboardedAt != nil }
@@ -97,22 +164,43 @@ final class AppModel {
 
     // MARK: Loading
 
-    /// Reads everything from the store and recomputes. Cheap enough to call after every change.
+    /// Re-reads the kinds of record that changed since the last read, then recomputes. Unchanged
+    /// kinds (the photos in particular) aren't read or sorted again, but the analysis still runs over
+    /// everything.
     func reload() {
-        lastRevision = store.revision
-        profile = store.all(ProfileRecord.self).first?.profile
-        settings = store.all(LiftSettings.self).first ?? LiftSettings()
-        let gyms = store.all(Gym.self)
-        gym = gyms.first { $0.id == settings.gymID } ?? gyms.first ?? Gym.preset(profile?.equipment ?? .fullGym, unit: units.weight)
-        sessions = store.all(SessionRecord.self).sorted { $0.start < $1.start }
-        activities = store.all(ActivityRecord.self).map(\.log).sorted { $0.start < $1.start }
-        measurements = store.all(MeasurementRecord.self).map(\.measurements).sorted { $0.day < $1.day }
-        photos = store.all(ProgressPhoto.self).sorted { $0.day < $1.day }
-        mobility = store.all(MobilityRecord.self).map(\.result).sorted { $0.day < $1.day }
-        benchmarks = store.all(BenchmarkRecord.self).map(\.result).sorted { $0.day < $1.day }
-        mesocycles = store.all(Mesocycle.self).sorted { $0.block.start < $1.block.start }
+        let profileChanged = needsReading(ProfileRecord.self)
+        if profileChanged { profile = store.all(ProfileRecord.self).first?.profile }
+        let settingsChanged = needsReading(LiftSettings.self)
+        if settingsChanged {
+            // The record under the fixed id, which every device saves new settings under; settings
+            // saved before it keep their own id, and the newest of those counts until there's one.
+            let all = store.all(LiftSettings.self)
+            settings = all.first { $0.id == LiftSettings.singletonID } ?? all.first ?? LiftSettings(id: LiftSettings.singletonID)
+        }
+        if needsReading(Gym.self) || settingsChanged || profileChanged {
+            let gyms = store.all(Gym.self)
+            gym = gyms.first { $0.id == settings.gymID } ?? gyms.first ?? Gym.preset(profile?.equipment ?? .fullGym, unit: units.weight)
+        }
+        if needsReading(SessionRecord.self) { sessions = store.all(SessionRecord.self).sorted { $0.start < $1.start } }
+        if needsReading(ActivityRecord.self) { activities = store.all(ActivityRecord.self).map(\.log).sorted { $0.start < $1.start } }
+        if needsReading(MeasurementRecord.self) {
+            measurements = store.all(MeasurementRecord.self).map(\.measurements).sorted { $0.day < $1.day }
+        }
+        if needsReading(ProgressPhoto.self) { photos = store.all(ProgressPhoto.self).sorted { $0.day < $1.day } }
+        if needsReading(MobilityRecord.self) { mobility = store.all(MobilityRecord.self).map(\.result).sorted { $0.day < $1.day } }
+        if needsReading(BenchmarkRecord.self) { benchmarks = store.all(BenchmarkRecord.self).map(\.result).sorted { $0.day < $1.day } }
+        if needsReading(Mesocycle.self) { mesocycles = store.all(Mesocycle.self).sorted { $0.block.start < $1.block.start } }
         readShared(recompute: false)
         recompute()
+        lastRevision = store.revision
+    }
+
+    /// Whether records of a kind changed since this model last read them, noting that it's reading them now.
+    private func needsReading<T: StoredRecord>(_ type: T.Type) -> Bool {
+        let revision = store.revision(of: type)
+        guard readRevisions[T.kind] != revision else { return false }
+        readRevisions[T.kind] = revision
+        return true
     }
 
     /// Picks up changes that arrived from iCloud.
@@ -126,13 +214,7 @@ final class AppModel {
         let nutrition = shared.read(.nutrition)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .liftTrack && $0.isActive() }
         let sharedProfile = shared.read(.profile)
-        // Life modes are system-wide: ours, merged with any another app set, newest wins.
-        var merged: [UUID: LifeModePeriod] = [:]
-        for period in store.all(LifeModeRecord.self).map(\.period) + (shared.read(.lifeModes) ?? []) {
-            if let existing = merged[period.id], existing.updatedAt >= period.updatedAt { continue }
-            merged[period.id] = period
-        }
-        let lifeModes = merged.values.sorted { $0.start < $1.start }
+        let lifeModes = syncLifeModes()
         let changed = nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
             || lifeModes != self.lifeModes
         guard changed else { return }
@@ -143,12 +225,36 @@ final class AppModel {
         if again { recompute() }
     }
 
+    /// Life modes from every app: the shared file and this app's synced copies merged, the newest
+    /// edit or delete of each winning (deletes are kept as tombstones so they keep spreading). What
+    /// came from elsewhere is kept here too, so it reaches this app on the person's other devices,
+    /// and the merged list goes back to the file, so the other apps hear about this app's changes and
+    /// what iCloud brought. The file goes first so that on a tie its copy wins and no app rewrites it.
+    /// Returns the periods in force, end after start.
+    private func syncLifeModes() -> [LifeModePeriod] {
+        let own = store.all(LifeModeRecord.self).map(\.period)
+        let file = shared.read(.lifeModes) ?? []
+        let merged = LifeModePeriod.merge([file, own])
+        let mine = Dictionary(own.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let arrived = merged.filter { mine[$0.id] != $0 }
+        if !arrived.isEmpty { store.save(arrived.map(LifeModeRecord.init)) }
+        if merged != file {
+            do {
+                try shared.write(merged, to: .lifeModes, by: .liftTrack)
+            } catch {
+                appLog.error("Couldn't share the life modes: \(error.localizedDescription)")
+            }
+        }
+        return merged.live.map { $0.normalized() }
+    }
+
     var state: LiftState? {
         guard let profile else { return nil }
         return LiftState(profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
                          measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
-                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyFatPercent: bodyFatPercent, vo2Max: vo2Max,
-                         restingHeartRate: restingHeartRate, nutrition: nutrition, recommendations: recommendations, today: today)
+                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyweightDate: bodyweightDate,
+                         bodyFatPercent: bodyFatPercent, vo2Max: vo2Max, restingHeartRate: restingHeartRate, nutrition: nutrition,
+                         recommendations: recommendations, today: today)
     }
 
     func recompute() {
@@ -167,18 +273,16 @@ final class AppModel {
     /// Small summaries for the other apps, the hub, the widgets and the Watch, written only when
     /// they change.
     private func publish(_ state: LiftState, _ analysis: LiftAnalysis) {
+        // Without their stamps: compared with what was last published here, then with the files on
+        // disk (after a relaunch), so readers are woken and "updated" moves only when something did.
         var summary = Analyst.summary(state, analysis)
         var calendar = analysis.calendar
-        if let last = lastPublished {
-            summary.updated = last.summary.updated
-            calendar.updated = last.calendar.updated
-        }
+        summary.updated = .distantPast
+        calendar.updated = .distantPast
         if lastPublished.map({ $0.summary != summary || $0.calendar != calendar }) ?? true {
-            summary.updated = Date()
-            calendar.updated = Date()
             do {
-                try shared.write(summary, to: .summary(.liftTrack), by: .liftTrack)
-                try shared.write(calendar, to: .calendar, by: .liftTrack)
+                try shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, stamp: \.updated)
+                try shared.writeIfChanged(calendar, to: .calendar, by: .liftTrack, stamp: \.updated)
                 lastPublished = (summary, calendar)
             } catch {
                 appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
@@ -186,6 +290,26 @@ final class AppModel {
         }
         WidgetBridge.update(self)
         WatchLink.shared.publish(self)
+    }
+
+    // MARK: Links
+
+    /// The widget's link (lifttrack://start) starts today's session, or brings back the one running;
+    /// the Live Activity's (lifttrack://session) brings the running one back.
+    func open(_ url: URL) {
+        guard url.scheme == "lifttrack" else { return }
+        switch url.host() {
+        case "start":
+            if live != nil {
+                showSession = true
+            } else if let plan = plan() {
+                start(plan)
+            }
+        case "session":
+            if live != nil { showSession = true }
+        default:
+            break
+        }
     }
 
     // MARK: Saving
@@ -245,6 +369,11 @@ final class AppModel {
     func delete(measurement id: UUID) {
         store.delete(MeasurementRecord.self, id: id)
         reload()
+        // Its waist and body fat leave Health too, or the body fat would come back as Health's latest.
+        Task {
+            await HealthBridge.shared.deleteMeasurements(id: id)
+            await refreshHealth()
+        }
     }
 
     func save(photo: ProgressPhoto) {
@@ -267,27 +396,53 @@ final class AppModel {
         reload()
     }
 
-    func save(lifeMode period: LifeModePeriod) {
-        var period = period
+    /// Saves a period with its dates in order, refusing one that can't apply (see `isValid`).
+    @discardableResult
+    func save(lifeMode period: LifeModePeriod) -> Bool {
+        var period = period.normalized()
+        guard period.isValid else {
+            appLog.error("Not saving an invalid \(period.kind.label, privacy: .public) period")
+            return false
+        }
         period.updatedAt = Date()
         store.save(LifeModeRecord(period))
-        publishLifeModes(replacing: period)
+        // Shared by the reload, merged with the file.
         reload()
+        return true
     }
 
+    /// A delete is kept as a tombstone and shared like an edit, so it reaches the app that made the
+    /// period and the person's other devices instead of being brought back by their copies.
     func delete(lifeMode id: UUID) {
-        store.delete(LifeModeRecord.self, id: id)
-        var all = shared.read(.lifeModes) ?? []
-        all.removeAll { $0.id == id }
-        try? shared.write(all, to: .lifeModes, by: .liftTrack)
+        guard let period = lifeModes.first(where: { $0.id == id }) else { return }
+        store.save(LifeModeRecord(period.deleted(at: Date())))
         reload()
     }
 
-    private func publishLifeModes(replacing period: LifeModePeriod) {
-        var all = shared.read(.lifeModes) ?? []
-        all.removeAll { $0.id == period.id }
-        all.append(period)
-        try? shared.write(all, to: .lifeModes, by: .liftTrack)
+    /// Whether "End it now" applies: the period has started and hasn't ended. One still to come has
+    /// nothing to end; deleting it calls it off.
+    func canEnd(_ period: LifeModePeriod) -> Bool {
+        period.start <= today && (period.end.map { $0 >= today } ?? true)
+    }
+
+    /// Ends a period yesterday, so today is back to normal. No range ends before it starts, so one
+    /// that started today is called off, except an injury or illness: that keeps today, and the ramp
+    /// or the lighter week back follows from tomorrow.
+    func end(lifeMode period: LifeModePeriod) {
+        var period = period
+        let yesterday = today.adding(days: -1)
+        if period.start <= yesterday {
+            period.end = yesterday
+            save(lifeMode: period)
+        } else {
+            switch period.kind {
+            case .injury, .illness:
+                period.end = period.start
+                save(lifeMode: period)
+            case .vacation, .crunch:
+                delete(lifeMode: period.id)
+            }
+        }
     }
 
     func delete(session id: UUID) {
@@ -298,24 +453,32 @@ final class AppModel {
 
     // MARK: Onboarding
 
-    /// Saves the shared setup answers and Lift Track's own, then starts the assessment.
+    /// Saves the shared setup answers and Lift Track's own, then starts the assessment. On a second
+    /// device or after a reinstall, the person's settings, gym and block can sync in while they
+    /// answer: those are kept, rather than replaced on every device by a new assessment, and only the
+    /// answers just given are saved.
     func completeOnboarding(profile: SharedProfile, settings: LiftSettings, gym: Gym, measurements: BodyMeasurements?) {
-        var settings = settings
-        settings.gymID = gym.id
-        settings.onboardedAt = Date()
-        settings.assessmentStart = .today
-        if settings.selfReportedPhase != nil { settings.selfReportedPhaseSince = .today }
-        settings.updatedAt = Date()
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
         try? shared.write(profile, to: .profile, by: .liftTrack)
-        store.save(gym)
-        store.save(settings)
         if let measurements, !measurements.isEmpty { store.save(MeasurementRecord(measurements)) }
         reload()
-        let assessment = generate(kind: .assessment, start: .today)
-        store.save(assessment)
+        guard !store.all(LiftSettings.self).contains(where: { $0.onboardedAt != nil }) else { return }
+        var settings = settings
+        // Under the one id every device uses, so two devices set up apart converge on the newest.
+        settings.id = LiftSettings.singletonID
+        settings.gymID = gym.id
+        settings.onboardedAt = Date()
+        // A block that synced in ahead of its settings carries on, counted from its start.
+        settings.assessmentStart = mesocycles.map(\.block.start).min() ?? .today
+        if settings.selfReportedPhase != nil { settings.selfReportedPhaseSince = .today }
+        settings.updatedAt = Date()
+        store.save(gym)
+        store.save(settings)
+        reload()
+        guard mesocycles.isEmpty else { return }
+        store.save(generate(kind: .assessment, start: .today))
         reload()
     }
 
@@ -329,26 +492,53 @@ final class AppModel {
     /// Builds a mesocycle from everything known right now. Not saved until accepted.
     func generate(kind: BlockKind, start: Day, phase: NutritionPhase? = nil) -> Mesocycle {
         guard let profile else { fatalError("generate before onboarding") }
-        let analysis = self.analysis
         let phase = phase ?? analysis?.phase ?? .assumedMaintenance
         let weeks = kind == .assessment
             ? (profile.experience.assessmentWeeks)
             : BlockScheduler.loadingWeeks(phase: phase.effects, experience: profile.experience)
-        let input = GeneratorInput(
-            profile: profile, settings: settings, gym: gym, catalog: catalog, kind: kind, start: start, loadingWeeks: weeks, phase: phase,
-            strength: analysis?.strength, physique: analysis?.physique, agility: analysis?.agility, endurance: analysis?.endurance,
-            fatigue: analysis?.fatigue, recommendations: recommendations, injuries: analysis?.life.injuries ?? [],
-            previous: mesocycles.last, stalled: Set(analysis?.stalls.filter { $0.reading == .programming }.map(\.exerciseID) ?? []),
-            trust: analysis?.trust ?? TrustState(experience: profile.experience))
-        return ProgramGenerator.generate(input)
+        return ProgramGenerator.generate(generatorInput(profile: profile, gym: gym, kind: kind, start: start, loadingWeeks: weeks, phase: phase))
     }
 
-    /// Ends the current block's loading now and makes this week the deload.
+    /// Everything the generator weighs, from what's known now: a new block and a day refitted to
+    /// other minutes see the same fatigue, priorities and recommendations. Internal for the tests.
+    func generatorInput(
+        profile: SharedProfile, gym: Gym, kind: BlockKind, start: Day, loadingWeeks: Int,
+        phase: NutritionPhase
+    ) -> GeneratorInput {
+        GeneratorInput(
+            profile: profile, settings: settings, gym: gym, catalog: catalog, kind: kind, start: start, loadingWeeks: loadingWeeks, phase: phase,
+            strength: analysis?.strength, physique: analysis?.physique, agility: analysis?.agility, endurance: analysis?.endurance,
+            fatigue: analysis?.fatigue, recommendations: recommendations, injuries: analysis?.life.injuries ?? [],
+            // The block running now, not one already accepted to follow it.
+            previous: analysis?.mesocycle ?? mesocycles.last,
+            stalled: Set(analysis?.stalls.filter { $0.reading == .programming }.map(\.exerciseID) ?? []),
+            trust: analysis?.trust ?? TrustState(experience: profile.experience))
+    }
+
+    /// Takes the early deload the Fatigue Budget offers: its dates, worked out in the stored block's
+    /// own dates (a vacation may have pushed the block back), so this week becomes the deload.
     func deloadNow(reason: String) {
-        guard var m = currentMesocycle else { return }
-        m.block.deloadStart = .today
-        m.block.endOverride = Day.today.adding(days: 6)
+        guard var m = currentMesocycle, let suggested = analysis?.suggestedDeload else { return }
+        m.block.deloadStart = suggested.deloadStart
+        m.block.endOverride = suggested.endOverride
         m.block.deloadReason = reason
+        save(m)
+    }
+
+    /// Where a block planned now starts: today, or the day after the current block while it's still
+    /// running, so its deload and check-in stay. An assessment gives way today.
+    var nextBlockStart: Day {
+        guard let block = analysis?.block else { return today }
+        return block.end >= today && block.kind != .assessment ? max(today, block.end.adding(days: 1)) : today
+    }
+
+    /// Saves the next block. An assessment finished early ends the day before it starts.
+    func accept(nextBlock m: Mesocycle) {
+        if var current = currentMesocycle, current.block.kind == .assessment, current.block.end >= m.block.start {
+            current.block.endOverride = m.block.start.adding(days: -1)
+            current.updatedAt = Date()
+            store.save(current)
+        }
         save(m)
     }
 
@@ -381,10 +571,9 @@ final class AppModel {
         var minutesAvailable = minutes
         if let cap = analysis.life.maxMinutes { minutesAvailable = min(minutesAvailable ?? cap, cap) }
         if let minutesAvailable, minutesAvailable != next.mesocycle.minutesPerSession {
-            var input = GeneratorInput(profile: profile, settings: settings, gym: gymForToday, catalog: catalog, kind: next.mesocycle.block.kind,
-                                       start: next.mesocycle.block.start, loadingWeeks: next.mesocycle.block.loadingWeeks,
-                                       phase: analysis.phase, agility: analysis.agility, endurance: analysis.endurance,
-                                       injuries: analysis.life.injuries, trust: analysis.trust)
+            var input = generatorInput(
+                profile: profile, gym: gymForToday, kind: next.mesocycle.block.kind, start: next.mesocycle.block.start,
+                loadingWeeks: next.mesocycle.block.loadingWeeks, phase: analysis.phase)
             input.profile.schedule.minutesPerSession = minutesAvailable
             day = ProgramGenerator.refit(next.day, minutes: minutesAvailable, input: input)
         }
@@ -418,10 +607,35 @@ final class AppModel {
             heartRateOnly = true
             live = session
             heartRateOnly = false
-            if recovered, settings.heartRateGuidedRest, session.rest != nil {
+            if recovered, settings.heartRateGuidedRest {
                 update { $0.endRest() }
                 RestAlerts.shared.heartRateRecovered()
             }
+        }
+    }
+
+    /// The rest being taken: nil once its time is up, though the session keeps it until the next set
+    /// is logged (that set's rest is timed from it).
+    var activeRest: RestState? {
+        _ = restsRunOut
+        guard let rest = live?.rest, rest.endsAt > Date() else { return nil }
+        return rest
+    }
+
+    /// Wakes when the rest's time is up, so the session screen, the minimized session and the Live
+    /// Activity move on to the next set whether or not anything else happens.
+    private func watchRestTime() {
+        let ends = live?.rest?.endsAt
+        guard ends != restTimerEnds else { return }
+        restTimerEnds = ends
+        restTimer?.cancel()
+        guard let ends, ends > Date() else { return }
+        restTimer = Task { [weak self] in
+            // A moment past the end, so the rest reads as over when it wakes.
+            try? await Task.sleep(for: .seconds(ends.timeIntervalSinceNow + 0.05))
+            guard !Task.isCancelled, let self else { return }
+            self.restsRunOut += 1
+            LiveActivityBridge.update(self.live, catalog: self.catalog, unit: self.gym.unit)
         }
     }
 
@@ -433,9 +647,36 @@ final class AppModel {
 
     var heartRateZones: HeartRateZones { HeartRateZones.estimated(age: profile?.age(), resting: restingHeartRate) }
 
+    /// Where a session's workout goes: the Watch's mirrored workout, while there is one, and Health.
+    /// Tests put their own in, since under XCTest there's no Watch and Health is off.
+    struct WorkoutHandOff {
+        var watchConnected: @MainActor () -> Bool
+        /// Whether the message reached the Watch.
+        var sendToWatch: @MainActor (Data) async -> Bool
+        var saveToHealth: @MainActor (SessionRecord) async -> Void
+
+        static let live = WorkoutHandOff(
+            watchConnected: { WorkoutMirror.shared.isConnected },
+            sendToWatch: { await WorkoutMirror.shared.send($0) },
+            saveToHealth: { record in
+                do {
+                    try await HealthBridge.shared.saveStrengthWorkout(
+                        id: record.id, version: 2, start: record.start, end: record.end, title: record.title, energyKcal: nil)
+                } catch {
+                    appLog.error("Couldn't save the workout to Health: \(error.localizedDescription)")
+                }
+            })
+    }
+
+    @ObservationIgnored var workoutHandOff = WorkoutHandOff.live
+    /// The last thing handed to the Watch or Health about a session's workout, kept so a test can
+    /// wait for it.
+    @ObservationIgnored private(set) var workoutTask: Task<Void, Never>?
+
     private func tellWatch(_ message: MirrorMessage) {
-        guard WorkoutMirror.shared.isConnected, let data = try? JSONEncoder().encode(message) else { return }
-        Task { await WorkoutMirror.shared.send(data) }
+        guard workoutHandOff.watchConnected(), let data = try? JSONEncoder().encode(message) else { return }
+        let handOff = workoutHandOff
+        workoutTask = Task { _ = await handOff.sendToWatch(data) }
     }
 
     /// Mutates the live session and keeps rest alerts and the Live Activity in step.
@@ -450,28 +691,41 @@ final class AppModel {
     func finish(feedback: SessionFeedback?) {
         guard let live else { return }
         let record = live.record(feedback: feedback)
-        // The Watch measured it: its workout, with heart rate and energy, is the one Health keeps.
-        let watchSaves = WorkoutMirror.shared.isConnected
-        tellWatch(.finish(id: record.id, title: record.title))
+        // The Watch measured it: its workout, with heart rate and energy, is the one Health keeps, when
+        // there's a session to keep and Health is to have it. Otherwise the Watch throws its workout away.
+        let watchSaves = workoutHandOff.watchConnected() && record.hasContent && settings.saveToHealth
+        if !watchSaves { tellWatch(.discard) }
         self.live = nil
         showSession = false
         RestAlerts.shared.cancel()
         LiveActivityBridge.end()
         keep(record, savedByWatch: watchSaves)
-        finished = record
+        if watchSaves { handWorkoutToWatch(record) }
+        if record.hasContent { finished = record }
+    }
+
+    /// Asks the Watch to save its workout under the session's id. When that doesn't reach it (out of
+    /// range, or its workout already over), the workout is saved from here, as with no Watch, rather
+    /// than not at all.
+    private func handWorkoutToWatch(_ record: SessionRecord) {
+        let handOff = workoutHandOff
+        let message = try? JSONEncoder().encode(MirrorMessage.finish(id: record.id, title: record.title))
+        workoutTask = Task {
+            if let message, await handOff.sendToWatch(message) { return }
+            appLog.notice("The Watch didn't get the session's end, so the workout is saved from the phone")
+            await handOff.saveToHealth(record)
+        }
     }
 
     /// Saves a finished session from this phone or the Watch, and to Health when it ran here
     /// (unless the Watch recorded the workout alongside).
     func keep(_ record: SessionRecord, savedByWatch: Bool = false) {
-        guard !record.exercises.isEmpty || !record.conditioning.isEmpty || !record.mobility.isEmpty else { return }
+        guard record.hasContent else { return }
         store.save(record)
         reload()
         if settings.saveToHealth, record.device != "Watch", !savedByWatch {
-            Task {
-                try? await HealthBridge.shared.saveStrengthWorkout(id: record.id, version: 2, start: record.start, end: record.end,
-                                                                   title: record.title, energyKcal: nil)
-            }
+            let handOff = workoutHandOff
+            workoutTask = Task { await handOff.saveToHealth(record) }
         }
     }
 
@@ -483,41 +737,92 @@ final class AppModel {
         LiveActivityBridge.end()
     }
 
-    private var liveURL: URL {
-        URL.applicationSupportDirectory.appending(path: "live-session.json")
-    }
-
     private func persistLive() {
         if heartRateOnly, Date().timeIntervalSince(lastLivePersist) < 30 { return }
         lastLivePersist = Date()
         if let live, let data = try? SystemJSON.encoder().encode(live) {
-            try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(at: liveURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? data.write(to: liveURL, options: .atomic)
         } else {
             try? FileManager.default.removeItem(at: liveURL)
         }
     }
 
+    /// How long a session left open stays open across a relaunch, counted from the last thing done in it.
+    private static let liveRestoreWindow: TimeInterval = 6 * 3600
+
+    /// Picks up the session left open when the app was closed. One left longer than the window was
+    /// over: what was logged is kept, ending at the last thing done, and shown as finished.
     private func restoreLive() {
-        guard let data = try? Data(contentsOf: liveURL), let session = try? SystemJSON.decoder().decode(LiveSession.self, from: data),
-              Date().timeIntervalSince(session.updatedAt) < 6 * 3600 else { return }
-        live = session
+        guard FileManager.default.fileExists(atPath: liveURL.path(percentEncoded: false)) else { return }
+        let session: LiveSession
+        do {
+            session = try SystemJSON.decoder().decode(LiveSession.self, from: Data(contentsOf: liveURL))
+        } catch {
+            // Moved aside rather than dropped: the next session would write over it here.
+            appLog.error("Couldn't read the session left open: \(error.localizedDescription)")
+            let aside = liveURL.deletingLastPathComponent().appending(path: "live-session.unreadable.json")
+            try? FileManager.default.removeItem(at: aside)
+            do {
+                try FileManager.default.moveItem(at: liveURL, to: aside)
+            } catch {
+                appLog.error("Couldn't move the unreadable session aside: \(error.localizedDescription)")
+            }
+            return
+        }
+        guard Date().timeIntervalSince(session.updatedAt) >= Self.liveRestoreWindow else {
+            live = session
+            return
+        }
+        let record = session.record(feedback: nil, now: session.updatedAt)
+        try? FileManager.default.removeItem(at: liveURL)
+        keep(record)
+        if record.hasContent { finished = record }
     }
 
     // MARK: Health
 
     func connectHealth() async {
         _ = await HealthBridge.shared.requestAuthorization()
+        startHealthObserving()
         await refreshHealth()
-        if healthObserver == nil {
-            healthObserver = HealthBridge.shared.observeChanges { Task { @MainActor in await AppModel.shared.refreshHealth() } }
+    }
+
+    /// Outside workouts and weigh-ins arrive while the app runs. Asks nothing: without permission the
+    /// query just doesn't report, so it's started at every launch, not only by "Connect Apple Health".
+    /// Health is read straight after starting it, at launch and on connecting, and that read stands
+    /// for the call HealthKit makes as the query starts.
+    func startHealthObserving() {
+        guard healthObserver == nil, HealthBridge.shared.isAvailable else { return }
+        healthObserverStarted = Date()
+        healthObserver = HealthBridge.shared.observeChanges { [weak self] in
+            Task { @MainActor in await self?.healthChanged() }
         }
+    }
+
+    /// The observer's call: the first, straight after it starts, only says the query is running, and
+    /// the rest are changes.
+    private func healthChanged() async {
+        if let started = healthObserverStarted {
+            healthObserverStarted = nil
+            if Date().timeIntervalSince(started) < 10 { return }
+        }
+        await refreshHealth()
+    }
+
+    /// `refreshHealth`, unless it ran in the last ten minutes: for each return to the app, since last
+    /// night's sleep, this morning's weigh-in and today's steps and outside workouts came in while it
+    /// was suspended, and the observer hears nothing then.
+    func refreshHealthIfStale(now: Date = Date()) async {
+        if let lastHealthRefresh, now.timeIntervalSince(lastHealthRefresh) < 10 * 60 { return }
+        await refreshHealth()
     }
 
     /// Body weight, recovery signals, steps and workouts other apps wrote.
     func refreshHealth() async {
         let health = HealthBridge.shared
         guard health.isAvailable else { return }
+        lastHealthRefresh = Date()
         let since = Calendar.current.date(byAdding: .day, value: -60, to: Date()) ?? Date()
         async let weight = health.latestBodyweight()
         async let fat = health.latestBodyFat()
@@ -528,12 +833,21 @@ final class AppModel {
         async let workouts = health.externalWorkouts(since: since, excludingBundlePrefixes: AppModel.ownBundlePrefixes)
         let (w, f, r, v, h, s, outside) = await (weight, fat, recovery, vo2, rhr, steps, workouts)
         bodyweightKg = w?.kg
+        bodyweightDate = w?.date
         bodyFatPercent = f.flatMap { $0.date > Date().addingTimeInterval(-14 * 86_400) ? $0.percent : nil }
         self.recovery = r
         vo2Max = v
         restingHeartRate = h
         self.steps = stepsOrSample(s)
-        stepsReadAt = Date()
+        importOutside(outside)
+        reload()
+    }
+
+    /// Saves the workouts other apps wrote to Health that aren't here yet, as outside activities.
+    /// Each is stamped with when it happened, so a delete made here afterwards is newer than every
+    /// later import of it and the workout stays deleted. Doesn't reload; returns how many were new.
+    @discardableResult
+    func importOutside(_ outside: [ActivityLog]) -> Int {
         let known = Set(activities.compactMap { log -> UUID? in
             if case .health(let id, _) = log.source { return id }
             return nil
@@ -542,18 +856,8 @@ final class AppModel {
             if case .health(let id, _) = log.source { return !known.contains(id) }
             return false
         }
-        if !new.isEmpty { store.save(new.map { ActivityRecord(log: $0) }) }
-        reload()
-    }
-
-    /// Steps change all day: read again on coming back to the app, at most every ten minutes.
-    func refreshSteps() async {
-        guard HealthBridge.shared.isAvailable, Date().timeIntervalSince(stepsReadAt) > 600 else { return }
-        stepsReadAt = Date()
-        let steps = stepsOrSample(await HealthBridge.shared.dailySteps(since: stepsSince))
-        guard steps != self.steps else { return }
-        self.steps = steps
-        recompute()
+        if !new.isEmpty { store.save(new.map { ActivityRecord(log: $0, updatedAt: $0.start) }) }
+        return new.count
     }
 
     /// Far enough back for the usual count before the current phase began.
@@ -561,7 +865,7 @@ final class AppModel {
 
     private func stepsOrSample(_ steps: [StepDay]) -> [StepDay] {
         #if DEBUG
-        if steps.isEmpty, ProcessInfo.processInfo.arguments.contains("-seedSampleData") { return SampleData.steps() }
+        if steps.isEmpty, LaunchOptions.current.has("-seedSampleData") { return SampleData.steps() }
         #endif
         return steps
     }
@@ -583,21 +887,27 @@ final class AppModel {
         }
     }
 
-    func backupFile() throws -> URL {
-        let data = try store.exportBackup(app: .liftTrack, shared: shared)
-        let url = URL.temporaryDirectory.appending(path: "Lift Track \(Day.today.iso).liftbackup")
-        try data.write(to: url, options: .atomic)
+    private var backupURL: URL { URL.temporaryDirectory.appending(path: "Lift Track \(today.iso).liftbackup") }
+
+    /// Every record and shared file in one `.liftbackup` file, encoded and written off the main
+    /// actor: with years of records and photos the JSON takes seconds.
+    func exportBackup() async throws -> URL {
+        let data = try await store.exportBackup(app: .liftTrack, shared: shared)
+        let url = backupURL
+        try await Task.detached { try data.write(to: url, options: .atomic) }.value
         return url
     }
 
+    /// Merges a Lift Track backup in, read and decoded off the main actor; another app's backup is
+    /// refused before anything is written.
     @discardableResult
-    func restore(from url: URL) throws -> BackupSummary {
+    func importBackup(from url: URL) async throws -> BackupSummary {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let data = try Data(contentsOf: url)
-        let summary = try store.importBackup(data, shared: shared)
-        reload()
-        return summary
+        let data = try await Task.detached { try Data(contentsOf: url) }.value
+        // Also when it throws: the records may be in before the shared files fail.
+        defer { reload() }
+        return try await store.importBackup(data, app: .liftTrack, shared: shared)
     }
 
     #if DEBUG

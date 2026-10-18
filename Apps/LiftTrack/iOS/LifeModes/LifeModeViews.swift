@@ -10,9 +10,11 @@ enum LifeModeKindChoice: String, Identifiable {
 
     var newPeriod: LifeModePeriod {
         let today = Day.today
+        // The length an editor gives a period that has no end yet.
+        let lastDay = LifeModePeriod.defaultDays - 1
         return switch self {
-        case .vacation: LifeModePeriod(kind: .vacation, start: today.adding(days: 7), end: today.adding(days: 13), createdBy: .liftTrack)
-        case .crunch: LifeModePeriod(kind: .crunch(CrunchDials()), start: today, end: today.adding(days: 6), createdBy: .liftTrack)
+        case .vacation: LifeModePeriod(kind: .vacation, start: today.adding(days: 7), end: today.adding(days: 7 + lastDay), createdBy: .liftTrack)
+        case .crunch: LifeModePeriod(kind: .crunch(CrunchDials()), start: today, end: today.adding(days: lastDay), createdBy: .liftTrack)
         case .injury: LifeModePeriod(kind: .injury(Injury(parts: [], severity: .mild)), start: today, createdBy: .liftTrack)
         case .illness: LifeModePeriod(kind: .illness(.aboveNeck), start: today, createdBy: .liftTrack)
         }
@@ -37,6 +39,7 @@ struct LifeModeBanner: View {
             .card()
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("today.lifeMode")
         .sheet(isPresented: $editing) { LifeModeEditor(period: period) }
     }
 
@@ -92,31 +95,36 @@ struct LifeModeEditor: View {
                 }
                 if !isNew {
                     Section {
-                        if period.end == nil || (period.end ?? .today) >= .today {
+                        // One that hasn't started has nothing to end: Delete calls it off.
+                        if model.canEnd(period) {
                             Button(endTitle) {
-                                period.end = .today.adding(days: -1) < period.start ? period.start : .today.adding(days: -1)
-                                model.save(lifeMode: period)
+                                model.end(lifeMode: period)
                                 dismiss()
                             }
+                            .accessibilityIdentifier("lifeMode.endNow")
                         }
                         Button("Delete", role: .destructive) {
                             model.delete(lifeMode: period.id)
                             dismiss()
                         }
+                        .accessibilityIdentifier("lifeMode.delete")
                     }
                 }
             }
             .navigationTitle(period.kind.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if openEnded { period.end = nil } else if period.end == nil { period.end = period.start.adding(days: 6) }
-                        model.save(lifeMode: period)
+                        model.save(lifeMode: draft)
                         dismiss()
                     }
-                    .disabled(!valid)
+                    // What the model saves: the dates in order, and only a period that can apply.
+                    .disabled(!draft.normalized().isValid)
+                    .accessibilityIdentifier("lifeMode.save")
                 }
             }
         }
@@ -130,23 +138,21 @@ struct LifeModeEditor: View {
         }
     }
 
-    private var valid: Bool {
-        if case .injury(let injury) = period.kind { return !injury.parts.isEmpty }
-        return true
-    }
+    /// What Save stores: what every app's editor saves.
+    private var draft: LifeModePeriod { period.edited(openEnded: openEnded) }
+
+    /// As Save would store it: open-ended only where the kind allows it, so "Until" shows otherwise.
+    private var isOpenEnded: Bool { draft.end == nil }
 
     private var dates: some View {
         Section {
-            DatePicker("From", selection: Binding(get: { period.start.date() }, set: { period.start = Day($0) }), displayedComponents: .date)
-            switch period.kind {
-            case .injury, .illness:
+            DatePicker("From", selection: Binding(get: { period.start.date() }, set: { period.moveStart(to: Day($0)) }), displayedComponents: .date)
+            if period.kind.allowsOpenEnd {
                 Toggle("Until it's better", isOn: $openEnded)
-            default:
-                EmptyView()
             }
-            if !openEnded {
-                DatePicker("Until", selection: Binding(get: { (period.end ?? period.start.adding(days: 6)).date() },
-                                                       set: { period.end = max(period.start, Day($0)) }), displayedComponents: .date)
+            if !isOpenEnded {
+                DatePicker("Until", selection: Binding(get: { period.editorEnd.date() }, set: { period.moveEnd(to: Day($0)) }),
+                           in: period.start.date()..., displayedComponents: .date)
             }
         } footer: {
             if case .vacation = period.kind {
@@ -191,7 +197,10 @@ struct LifeModeEditor: View {
     }
 
     private func injuryForm(_ injury: Injury) -> some View {
-        let binding = Binding<Injury>(get: { injury }, set: { period.kind = .injury($0) })
+        // Reads the edited period, not this snapshot, so several writes in one action each see the last.
+        let binding = Binding<Injury>(get: {
+            if case .injury(let current) = period.kind { current } else { injury }
+        }, set: { period.kind = .injury($0) })
         let excluded = model.catalog.of(kind: .strength).filter { injury.excludes($0) }
         return Group {
             Section("Where") {
@@ -261,9 +270,10 @@ struct InjuryOverrides: View {
                 ForEach(all.filter { injury.affects($0) || injury.removed.contains($0.id) }) { exercise in
                     let out = injury.excludes(exercise)
                     Button {
-                        injury.allowed.removeAll { $0 == exercise.id }
-                        injury.removed.removeAll { $0 == exercise.id }
-                        if out { injury.allowed.append(exercise.id) } else { injury.removed.append(exercise.id) }
+                        // One write: separate writes through the binding would each start from the same value.
+                        var updated = injury
+                        updated.toggleOverride(for: exercise)
+                        injury = updated
                     } label: {
                         HStack {
                             VStack(alignment: .leading) {

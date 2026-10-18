@@ -25,7 +25,7 @@ struct ConditioningView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                    if let timer = model.timer(for: item) {
+                    if let timer = model.timer(for: item, set: 0) {
                         clock(plan, started: timer.started)
                         heartRate(plan)
                         Button {

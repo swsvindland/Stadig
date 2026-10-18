@@ -25,6 +25,7 @@ struct PlanView: View {
                                 DayCard(day: day, isNext: analysis.next?.dayIndex == index)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("plan.day")
                         }
                     } else {
                         EmptyCard(symbol: "calendar", title: "No block yet", detail: "Finish setup to start your assessment.")
@@ -34,6 +35,7 @@ struct PlanView: View {
                 .padding()
                 .readableWidth()
             }
+            .accessibilityIdentifier("plan.screen")
             .background(.pageBackground)
             .navigationTitle("Plan")
             .navigationDestination(for: DayRoute.self) { route in DayDetail(route: route) }
@@ -43,6 +45,7 @@ struct PlanView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings")
+                        .accessibilityIdentifier("plan.settings")
                 }
             }
         }
@@ -78,13 +81,22 @@ struct PlanView: View {
     private func nextBlockPrompt(_ analysis: LiftAnalysis, block: TrainingBlock) -> some View {
         let assessmentDone = analysis.assessment.map { $0.complete || $0.canFinishEarly } ?? false
         let ended = model.today > block.end || block.week(of: model.today) == .deload && model.today.days(until: block.end) <= 2
-        if assessmentDone || ended {
+        if let upcoming = analysis.upcoming {
+            // Already planned: it waits for its start, so this block keeps its deload and check-in.
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Next block starts \(Format.day(upcoming.block.start))", systemImage: "calendar.badge.clock").font(.headline)
+                    .accessibilityIdentifier("plan.upcoming")
+                Text(upcoming.rationale.headline).font(.subheadline).foregroundStyle(.secondary)
+            }
+            .card()
+        } else if assessmentDone || ended {
             VStack(alignment: .leading, spacing: 10) {
                 Text(analysis.assessment.map { $0.complete ? "Assessment done" : "Ready to finish the assessment early" } ?? "This block is wrapping up")
                     .font(.headline)
                 Text("Your next block is built from everything learned: scores, imbalances, recovery and your schedule.").font(.subheadline).foregroundStyle(.secondary)
                 Button { planning = true } label: { Label("Plan the next block", systemImage: "sparkles").frame(maxWidth: .infinity) }
                     .primaryAction()
+                    .accessibilityIdentifier("plan.nextBlock")
             }
             .card()
         }
@@ -117,12 +129,8 @@ struct PlanView: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            Toggle("Prioritise automatically", isOn: Binding(get: { model.settings.autoPrioritise }, set: { on in
-                var s = model.settings
-                s.autoPrioritise = on
-                model.save(settings: s)
-            }))
-            .font(.subheadline)
+            Toggle("Prioritise automatically", isOn: model.setting(\.autoPrioritise))
+                .font(.subheadline)
             Text("Takes effect at the next block.").font(.caption).foregroundStyle(.secondary)
         }
         .card()
@@ -147,12 +155,13 @@ struct PlanView: View {
                     .card(padding: 12)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("plan.lifeMode")
             }
             HStack {
-                Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }
-                Button("Crunch", systemImage: "briefcase") { lifeMode = .crunch }
-                Button("Injury", systemImage: "bandage") { lifeMode = .injury }
-                Button("Ill", systemImage: "thermometer.medium") { lifeMode = .illness }
+                Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }.accessibilityIdentifier("plan.addVacation")
+                Button("Crunch", systemImage: "briefcase") { lifeMode = .crunch }.accessibilityIdentifier("plan.addCrunch")
+                Button("Injury", systemImage: "bandage") { lifeMode = .injury }.accessibilityIdentifier("plan.addInjury")
+                Button("Ill", systemImage: "thermometer.medium") { lifeMode = .illness }.accessibilityIdentifier("plan.addIllness")
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)

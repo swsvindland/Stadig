@@ -5,6 +5,11 @@ import SystemStore
 
 // Lift Track's records in its own CloudKit-synced database. Kinds never change once shipped;
 // bump a schemaVersion (and teach `migrate`) when a record's shape changes.
+//
+// SessionRecord also lives unversioned in the Watch's outbox.json, and LiveSession in its
+// session.json (and in the phone's live-session.json): a shape change there must stay decodable from
+// the old JSON (new fields Optional, or read with decodeIfPresent). The Watch sets an undecodable file
+// aside rather than overwriting it, but it can't migrate one.
 
 nonisolated extension LiftSettings: @retroactive StoredRecord {
     public static var kind: String { "settings" }
@@ -67,7 +72,9 @@ nonisolated extension BenchmarkRecord: @retroactive StoredRecord {
 
 nonisolated extension LifeModeRecord: @retroactive StoredRecord {
     public static var kind: String { "life-mode" }
-    public static var schemaVersion: Int { 1 }
+    /// 2 added the period's `deletedAt` (a delete is a tombstone that syncs): a version that only
+    /// knows 1 would read a deleted period as live, so it leaves these out. 1 needs no change.
+    public static var schemaVersion: Int { 2 }
 }
 
 nonisolated extension ProfileRecord: @retroactive StoredRecord {

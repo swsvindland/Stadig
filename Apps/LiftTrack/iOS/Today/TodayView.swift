@@ -42,6 +42,7 @@ struct TodayView: View {
                 .padding()
                 .readableWidth()
             }
+            .accessibilityIdentifier("today.screen")
             .background(.pageBackground)
             .navigationTitle("Today")
             .navigationSubtitle(Format.day(model.today, style: .dateTime.weekday(.wide).month(.wide).day()))
@@ -49,20 +50,28 @@ struct TodayView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Log a class or activity", systemImage: "plus") { logActivity = ActivityLogSheetItem(declared: nil) }
+                            .accessibilityIdentifier("today.logActivity")
                         Button("Check-in tests", systemImage: "checklist") { showCheckIn = true }
+                            .accessibilityIdentifier("today.checkIn")
                         Divider()
                         Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }
+                            .accessibilityIdentifier("today.addVacation")
                         Button("Crunch mode", systemImage: "briefcase") { lifeMode = .crunch }
+                            .accessibilityIdentifier("today.addCrunch")
                         Button("Injury", systemImage: "bandage") { lifeMode = .injury }
+                            .accessibilityIdentifier("today.addInjury")
                         Button("Illness", systemImage: "thermometer.medium") { lifeMode = .illness }
+                            .accessibilityIdentifier("today.addIllness")
                     } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Add")
+                    .accessibilityIdentifier("today.add")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape") }
                         .accessibilityLabel("Settings")
+                        .accessibilityIdentifier("today.settings")
                 }
             }
             .refreshable { await model.refreshHealth() }
@@ -91,6 +100,7 @@ struct TodayView: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .accessibilityIdentifier("today.resumeSession")
             }
             .card()
         } else if let next = analysis.next, let plan = model.plan(minutes: minutes) {
@@ -119,6 +129,7 @@ struct TodayView: View {
                     Spacer()
                     if !logged {
                         Button("Log") { logActivity = ActivityLogSheetItem(declared: item) }.secondaryAction()
+                            .accessibilityIdentifier("today.logDeclared")
                     } else {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     }
@@ -214,6 +225,7 @@ struct SessionCard: View {
                         .tint(minutes == m ? .accentColor : .secondary)
                         .controlSize(.small)
                         .accessibilityLabel("\(m) minutes")
+                        .accessibilityIdentifier("today.minutes\(m)")
                 }
             }
             Button(action: start) {
@@ -221,6 +233,7 @@ struct SessionCard: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .accessibilityIdentifier("today.startSession")
         }
         .card()
     }
@@ -300,6 +313,7 @@ struct ActionCard: View {
             }
             if [.deloadEarly, .checkIn, .measure].contains(action.kind) {
                 Button(buttonTitle, action: perform).secondaryAction().controlSize(.small)
+                    .accessibilityIdentifier("today.action\(action.kind.rawValue.identifierSuffix)")
             }
         }
         .card()

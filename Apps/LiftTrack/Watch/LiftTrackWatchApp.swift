@@ -1,6 +1,7 @@
 import SwiftUI
 import HealthKit
 import WatchKit
+import SystemCore
 
 /// The phone starting a session asks this Watch for a workout, to measure heart rate.
 final class WatchDelegate: NSObject, WKApplicationDelegate {
@@ -12,6 +13,7 @@ final class WatchDelegate: NSObject, WKApplicationDelegate {
 @main
 struct LiftTrackWatchApp: App {
     @WKApplicationDelegateAdaptor private var delegate: WatchDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = WatchModel.shared
 
     var body: some Scene {
@@ -21,7 +23,7 @@ struct LiftTrackWatchApp: App {
                 #if DEBUG
                 // `-largeText` previews an accessibility text size (simctl can't set one on watchOS).
                 .transformEnvironment(\.dynamicTypeSize) { size in
-                    if ProcessInfo.processInfo.arguments.contains("-largeText") { size = .accessibility3 }
+                    if LaunchOptions.current.has("-largeText") { size = .accessibility3 }
                 }
                 #endif
                 .task {
@@ -29,6 +31,10 @@ struct LiftTrackWatchApp: App {
                     model.applyLaunchArguments()
                     #endif
                     model.launch()
+                }
+                // Brought back from suspension, perhaps the next day: `.task` doesn't run again.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { model.refresh() }
                 }
         }
         // The phone's context can arrive with the app in the background; let it land before suspending.

@@ -148,7 +148,7 @@ struct ActivityLogSheet: View {
             .navigationTitle("Log activity")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("logActivity.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         let martial = type.isMartialArt ? MartialArtsDetails(classType: classType, sparringRounds: rounds, roundsBeforeGassed: gassed) : nil
@@ -157,6 +157,7 @@ struct ActivityLogSheet: View {
                                                          martialArts: martial, note: note))
                         dismiss()
                     }
+                    .accessibilityIdentifier("logActivity.save")
                 }
             }
         }

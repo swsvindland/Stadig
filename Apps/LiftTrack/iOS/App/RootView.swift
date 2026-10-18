@@ -34,9 +34,6 @@ struct RootView: View {
         .sheet(isPresented: $model.showSettings) {
             NavigationStack { SettingsView() }
         }
-        .sheet(isPresented: $model.showPaywall) {
-            PaywallView()
-        }
     }
 }
 
@@ -51,7 +48,7 @@ struct SessionAccessory: View {
             HStack(spacing: 10) {
                 Image(systemName: "figure.strengthtraining.traditional")
                 if let live = model.live {
-                    if let rest = live.rest {
+                    if let rest = model.activeRest {
                         Text("Rest").font(.subheadline.weight(.semibold))
                         Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true).monospacedDigit()
                     } else if let current = live.current {
@@ -66,5 +63,6 @@ struct SessionAccessory: View {
             .padding(.horizontal)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("session.accessory")
     }
 }
