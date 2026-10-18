@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The three-tap rating. Each button carries its symbol and words as well as its colour.
@@ -53,7 +53,8 @@ struct RatingView: View {
 
     private var target: Int? {
         guard let live = model.live, live.items.indices.contains(draft.item),
-              live.items[draft.item].sets.indices.contains(draft.set) else { return nil }
+            live.items[draft.item].sets.indices.contains(draft.set)
+        else { return nil }
         return live.items[draft.item].sets[draft.set].prescription.targetReps
     }
 
@@ -95,8 +96,10 @@ struct RepsView: View {
                         .frame(minWidth: 50)
                         .focusable()
                         .focused($crownFocused)
-                        .digitalCrownRotation($reps, from: 0, through: 99, by: 1, sensitivity: .low,
-                                              isContinuous: false, isHapticFeedbackEnabled: true)
+                        .digitalCrownRotation(
+                            $reps, from: 0, through: 99, by: 1, sensitivity: .low,
+                            isContinuous: false, isHapticFeedbackEnabled: true
+                        )
                         .accessibilityLabel("Reps done")
                         .accessibilityValue("\(Int(reps))")
                         .accessibilityAdjustableAction { direction in

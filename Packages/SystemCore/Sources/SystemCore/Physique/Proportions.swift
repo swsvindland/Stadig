@@ -202,9 +202,11 @@ public struct PhysiqueDirection: Hashable, Codable, Sendable {
     /// Each ratio training would close.
     public var buildReasons: [String]
 
-    public init(targets: ProportionTargets, fatLoss: Double, build: Double, buildRegions: [PhysiqueRegion], atLeanFloor: Bool,
-                waistToHeight: Double?, bodyFatPercent: Double?, normalizedFFMI: Double?, ffmiBand: FFMIBand?,
-                fatLossReasons: [String] = [], buildReasons: [String] = []) {
+    public init(
+        targets: ProportionTargets, fatLoss: Double, build: Double, buildRegions: [PhysiqueRegion], atLeanFloor: Bool,
+        waistToHeight: Double?, bodyFatPercent: Double?, normalizedFFMI: Double?, ffmiBand: FFMIBand?,
+        fatLossReasons: [String] = [], buildReasons: [String] = []
+    ) {
         self.targets = targets
         self.fatLoss = fatLoss
         self.build = build
@@ -253,11 +255,12 @@ public enum Proportions {
     /// No cut below these, whatever a ratio says: body fat when it's known, waist-to-height when not.
     public static func atLeanFloor(bodyFatPercent: Double?, waistToHeight: Double?, sex: BiologicalSex) -> Bool {
         if let bodyFatPercent {
-            let floor: Double = switch sex {
-            case .male: 10
-            case .female: 20
-            case .unspecified: 15
-            }
+            let floor: Double =
+                switch sex {
+                case .male: 10
+                case .female: 20
+                case .unspecified: 15
+                }
             return bodyFatPercent <= floor
         }
         return (waistToHeight ?? 1) <= 0.42
@@ -270,22 +273,27 @@ public enum Proportions {
         let r = (waist - leanWaistToHeight * h) / waist
         var lean = m
         lean.waistCm = leanWaistToHeight * h
-        let others: [WritableKeyPath<BodyMeasurements, Double?>] = [\.naturalWaistCm, \.glutesCm, \.hipsCm, \.shouldersCm, \.chestCm, \.neckCm,
-                                                                    \.armLeftCm, \.armRightCm, \.armCm, \.thighLeftCm, \.thighRightCm, \.thighCm,
-                                                                    \.calfLeftCm, \.calfRightCm, \.calfCm]
+        let others: [WritableKeyPath<BodyMeasurements, Double?>] = [
+            \.naturalWaistCm, \.glutesCm, \.hipsCm, \.shouldersCm, \.chestCm, \.neckCm,
+            \.armLeftCm, \.armRightCm, \.armCm, \.thighLeftCm, \.thighRightCm, \.thighCm,
+            \.calfLeftCm, \.calfRightCm, \.calfCm,
+        ]
         for key in others { lean[keyPath: key] = lean[keyPath: key].map { $0 * (1 - shrink(key, sex: sex) * r) } }
         return lean
     }
 
     /// Every rule in the set, read now and, for the waist rules, at a lean waist.
-    public static func read(_ m: BodyMeasurements, targets: ProportionTargets, sex: BiologicalSex, heightCm: Double?,
-                            atLeanFloor: Bool) -> [ProportionReading] {
+    public static func read(
+        _ m: BodyMeasurements, targets: ProportionTargets, sex: BiologicalSex, heightCm: Double?,
+        atLeanFloor: Bool
+    ) -> [ProportionReading] {
         let lean = atLeanFloor ? nil : atLeanWaist(m, sex: sex, heightCm: heightCm)
         return targets.rules(sex: sex).compactMap { rule in
             guard let v = rule.value(m) else { return nil }
             let now = rule.assess(v, sex: sex)
-            var reading = ProportionReading(rule: rule, value: v, flagged: now.flagged, magnitude: now.magnitude, fatShare: 0,
-                                            finding: rule.finding(v, sex: sex, region: now.region))
+            var reading = ProportionReading(
+                rule: rule, value: v, flagged: now.flagged, magnitude: now.magnitude, fatShare: 0,
+                finding: rule.finding(v, sex: sex, region: now.region))
             guard now.flagged else { return reading }
             if rule.fatOnly {
                 // Only fat loss changes it; at the floor there's nothing to ask for.

@@ -46,9 +46,10 @@ public struct Problem: Hashable, Sendable {
     }
 
     public func question(kind: AttemptKind, id: String) -> Question {
-        Question(id: id, key: .topic(topic), kind: kind, instruction: choices.isEmpty ? "Type the answer" : "Choose the answer",
-                 prompt: .math(prompt), choices: choices, choiceStyle: .math, answer: answer, expectedSeconds: expectedSeconds,
-                 reveal: .steps(steps), figure: figure)
+        Question(
+            id: id, key: .topic(topic), kind: kind, instruction: choices.isEmpty ? "Type the answer" : "Choose the answer",
+            prompt: .math(prompt), choices: choices, choiceStyle: .math, answer: answer, expectedSeconds: expectedSeconds,
+            reveal: .steps(steps), figure: figure)
     }
 
     /// The same problem with its chart.
@@ -76,8 +77,10 @@ public struct MathTopic: Sendable, Identifiable {
     /// A problem about the person's own numbers, when the System apps have published enough.
     private(set) var personal: (@Sendable (inout SeededRandom, SystemData) -> Problem?)?
 
-    init(id: String, title: String, level: Int, prerequisites: [String], lesson: String, seconds: Double,
-         strand: MathsStrand = .classic, make: @escaping @Sendable (inout SeededRandom) -> Problem) {
+    init(
+        id: String, title: String, level: Int, prerequisites: [String], lesson: String, seconds: Double,
+        strand: MathsStrand = .classic, make: @escaping @Sendable (inout SeededRandom) -> Problem
+    ) {
         self.id = id
         self.title = title
         self.level = level

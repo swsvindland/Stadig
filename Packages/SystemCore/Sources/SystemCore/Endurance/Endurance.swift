@@ -205,8 +205,10 @@ public enum Endurance {
         }
     }
 
-    public static func analyse(vo2Max: Double?, restingHeartRate: Double?, benchmarks: [BenchmarkResult],
-                               hrrTrend: Double?, weeklyConditioningMinutes: Double, sex: BiologicalSex, age: Int?) -> EnduranceAnalysis {
+    public static func analyse(
+        vo2Max: Double?, restingHeartRate: Double?, benchmarks: [BenchmarkResult],
+        hrrTrend: Double?, weeklyConditioningMinutes: Double, sex: BiologicalSex, age: Int?
+    ) -> EnduranceAnalysis {
         let sorted = benchmarks.sorted { $0.day < $1.day }
         let latest = sorted.last
         var change: Double?
@@ -224,8 +226,9 @@ public enum Endurance {
         let score = parts.reduce(0, +) / Double(parts.count)
         let engineLagging = weeklyConditioningMinutes < 60 || (vo2Max.map { $0 < vo2Range(sex, age: age).lowerBound } ?? false)
         let benchmarkLagging = (change.map { $0 < 0.005 } ?? false)
-        return EnduranceAnalysis(vo2Max: vo2Max, restingHeartRate: restingHeartRate, latestBenchmark: latest, benchmarkChange: change,
-                                 heartRateRecoveryTrend: hrrTrend, weeklyConditioningMinutes: weeklyConditioningMinutes,
-                                 score: score, engineLagging: engineLagging, benchmarkLagging: benchmarkLagging)
+        return EnduranceAnalysis(
+            vo2Max: vo2Max, restingHeartRate: restingHeartRate, latestBenchmark: latest, benchmarkChange: change,
+            heartRateRecoveryTrend: hrrTrend, weeklyConditioningMinutes: weeklyConditioningMinutes,
+            score: score, engineLagging: engineLagging, benchmarkLagging: benchmarkLagging)
     }
 }

@@ -1,12 +1,15 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 enum WritingFixtures {
     static func words(_ count: Int, from seed: String = "") -> String {
-        let pool = ["river", "lamp", "window", "garden", "winter", "letter", "kitchen", "station", "morning", "silence", "road", "cloud",
-                    "table", "voice", "bridge", "stone", "harbour", "market", "candle", "orchard", "ladder", "engine", "pocket", "mirror"]
+        let pool = [
+            "river", "lamp", "window", "garden", "winter", "letter", "kitchen", "station", "morning", "silence", "road", "cloud",
+            "table", "voice", "bridge", "stone", "harbour", "market", "candle", "orchard", "ladder", "engine", "pocket", "mirror",
+        ]
         var rng = SeededRandom("words", seed)
         var body: [String] = []
         while body.count < count {
@@ -16,24 +19,31 @@ enum WritingFixtures {
         return body.chunked(8).map { $0.joined(separator: " ").capitalisedFirst + "." }.joined(separator: " ")
     }
 
-    static let library = WritingLibrary(passages: [
-        WritingPassage(id: "creative-one", title: "Book One", author: "A. Writer", book: "pride-and-prejudice", kinds: [.creative], tier: 5,
-                       text: words(150, from: "c1"), twists: ["Rewrite it from the sister’s point of view.", "Tell it in the present tense."]),
-        WritingPassage(id: "creative-two", title: "Book Two", author: "B. Writer", kinds: [.creative], tier: 4, text: words(140, from: "c2"),
-                       twists: ["Make the weather turn."]),
-        WritingPassage(id: "practical-one", title: "Book Three", author: "C. Writer", kinds: [.practical], tier: 4, text: words(130, from: "p1")),
-        WritingPassage(id: "argument-one", title: "Book Four", author: "D. Writer", kinds: [.argument], tier: 5, text: words(160, from: "a1")),
-    ], prompts: [
-        WritingPrompt(id: "creative-a", exercise: .prompt, writingKind: .creative, text: "A café closes for good."),
-        WritingPrompt(id: "creative-b", exercise: .prompt, writingKind: .creative, text: "A book forty years overdue."),
-        WritingPrompt(id: "creative-c", exercise: .prompt, writingKind: .creative, text: "Three in the morning at a service station."),
-        WritingPrompt(id: "argument-a", exercise: .argument, writingKind: .argument, text: "Should cities ban cars?"),
-        WritingPrompt(id: "practical-a", exercise: .practical, writingKind: .practical, text: "Make the ask clear.", source: words(60, from: "s1")),
-        WritingPrompt(id: "practical-b", exercise: .practical, writingKind: .practical, text: "Drop the sarcasm.", source: words(70, from: "s2")),
-        WritingPrompt(id: "benchmark-creative", exercise: .benchmark, writingKind: .creative, text: "A place as it changes.", minutes: 12),
-        WritingPrompt(id: "benchmark-practical", exercise: .benchmark, writingKind: .practical, text: "Ask the book club to choose.", minutes: 12),
-        WritingPrompt(id: "benchmark-argument", exercise: .benchmark, writingKind: .argument, text: "A second language for everyone?", minutes: 12),
-    ])
+    static let library = WritingLibrary(
+        passages: [
+            WritingPassage(
+                id: "creative-one", title: "Book One", author: "A. Writer", book: "pride-and-prejudice", kinds: [.creative], tier: 5,
+                text: words(150, from: "c1"), twists: ["Rewrite it from the sister’s point of view.", "Tell it in the present tense."]),
+            WritingPassage(
+                id: "creative-two", title: "Book Two", author: "B. Writer", kinds: [.creative], tier: 4, text: words(140, from: "c2"),
+                twists: ["Make the weather turn."]),
+            WritingPassage(id: "practical-one", title: "Book Three", author: "C. Writer", kinds: [.practical], tier: 4, text: words(130, from: "p1")),
+            WritingPassage(id: "argument-one", title: "Book Four", author: "D. Writer", kinds: [.argument], tier: 5, text: words(160, from: "a1")),
+        ],
+        prompts: [
+            WritingPrompt(id: "creative-a", exercise: .prompt, writingKind: .creative, text: "A café closes for good."),
+            WritingPrompt(id: "creative-b", exercise: .prompt, writingKind: .creative, text: "A book forty years overdue."),
+            WritingPrompt(id: "creative-c", exercise: .prompt, writingKind: .creative, text: "Three in the morning at a service station."),
+            WritingPrompt(id: "argument-a", exercise: .argument, writingKind: .argument, text: "Should cities ban cars?"),
+            WritingPrompt(
+                id: "practical-a", exercise: .practical, writingKind: .practical, text: "Make the ask clear.", source: words(60, from: "s1")),
+            WritingPrompt(id: "practical-b", exercise: .practical, writingKind: .practical, text: "Drop the sarcasm.", source: words(70, from: "s2")),
+            WritingPrompt(id: "benchmark-creative", exercise: .benchmark, writingKind: .creative, text: "A place as it changes.", minutes: 12),
+            WritingPrompt(
+                id: "benchmark-practical", exercise: .benchmark, writingKind: .practical, text: "Ask the book club to choose.", minutes: 12),
+            WritingPrompt(
+                id: "benchmark-argument", exercise: .benchmark, writingKind: .argument, text: "A second language for everyone?", minutes: 12),
+        ])
 
     static var catalogs: Catalogs {
         let bank = WritingBank.standard
@@ -46,17 +56,23 @@ enum WritingFixtures {
         return settings
     }
 
-    static func piece(_ exercise: WritingExercise, on day: Day, kind: WritingKind = .creative, taskID: String? = nil, words count: Int = 120,
-                      notes: String? = nil, text: String? = nil, id: UUID = UUID()) -> WritingPiece {
+    static func piece(
+        _ exercise: WritingExercise, on day: Day, kind: WritingKind = .creative, taskID: String? = nil, words count: Int = 120,
+        notes: String? = nil, text: String? = nil, id: UUID = UUID()
+    ) -> WritingPiece {
         let body = exercise == .franklinNotes ? "" : text ?? words(count, from: "\(exercise)\(day.iso)")
-        return WritingPiece(id: id, date: day.date().addingTimeInterval(18 * 3600), exercise: exercise, writingKind: kind, prompt: "Task \(taskID ?? "")",
-                            text: body, notes: notes, metrics: body.isEmpty ? [:] : WritingCheck.measure(body).dictionary, taskID: taskID)
+        return WritingPiece(
+            id: id, date: day.date().addingTimeInterval(18 * 3600), exercise: exercise, writingKind: kind, prompt: "Task \(taskID ?? "")",
+            text: body, notes: notes, metrics: body.isEmpty ? [:] : WritingCheck.measure(body).dictionary, taskID: taskID)
     }
 
-    static func state(_ settings: MindSettings, pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [], tests: [TestResult] = [],
-                      books: [Book] = [], sessions: [StudySession] = [], on day: Day) -> StudyState {
-        StudyState(settings: settings, sessions: sessions, tests: tests, books: books, pieces: pieces, comparisons: comparisons, today: day,
-                   now: day.date().addingTimeInterval(18 * 3600))
+    static func state(
+        _ settings: MindSettings, pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [], tests: [TestResult] = [],
+        books: [Book] = [], sessions: [StudySession] = [], on day: Day
+    ) -> StudyState {
+        StudyState(
+            settings: settings, sessions: sessions, tests: tests, books: books, pieces: pieces, comparisons: comparisons, today: day,
+            now: day.date().addingTimeInterval(18 * 3600))
     }
 }
 
@@ -76,13 +92,13 @@ struct WritingCheckTests {
     @Test("clean prose has no slips")
     func clean() {
         let text = """
-        The café had been on the corner for thirty years. On its last night, Mr. Okafor stacked the chairs while one regular, \
-        a retired teacher, finished her tea. “Will you miss it?” she asked. He said he would, and then he said he wouldn’t, \
-        and they both laughed. An hour later the lights went out; a one-off, a European tour bus and an X-ray clinic were all \
-        that the street had left. I’d rather stay than go, he thought. Prices were higher then, but the tea was better. \
-        It got better then worse. He had had enough. iPhones lit the bus windows. See example.com for details... then nothing.
-        - first item on the list
-        """
+            The café had been on the corner for thirty years. On its last night, Mr. Okafor stacked the chairs while one regular, \
+            a retired teacher, finished her tea. “Will you miss it?” she asked. He said he would, and then he said he wouldn’t, \
+            and they both laughed. An hour later the lights went out; a one-off, a European tour bus and an X-ray clinic were all \
+            that the street had left. I’d rather stay than go, he thought. Prices were higher then, but the tea was better. \
+            It got better then worse. He had had enough. iPhones lit the bus windows. See example.com for details... then nothing.
+            - first item on the list
+            """
         #expect(WritingCheck.slips(text).isEmpty, "\(WritingCheck.slips(text))")
     }
 
@@ -105,7 +121,8 @@ struct WritingCheckTests {
 
     @Test("spelling comes from the platform, and capitalised words are never counted")
     func spelling() {
-        let slips = WritingCheck.slips("I recieve letters from Svindland. Recieve them? I recieve them.", misspelled: ["recieve", "Svindland", "Recieve"])
+        let slips = WritingCheck.slips(
+            "I recieve letters from Svindland. Recieve them? I recieve them.", misspelled: ["recieve", "Svindland", "Recieve"])
         #expect(slips.map(\.text) == ["recieve", "recieve"])
         #expect(slips.allSatisfy { $0.kind == .spelling })
         // A rule's note beats "check the spelling" for the same words.
@@ -132,8 +149,9 @@ struct WritingCheckTests {
 
         let even = WritingCheck.measure("One two three four five. One two three four five. One two three four five.")
         #expect(even.sentences == 3 && even.sentenceSpread == 0 && even.sentenceMean == 5)
-        let varied = WritingCheck.measure("Go now. " + "One two three four five six seven eight nine ten. "
-                                          + (1...18).map { "w\($0)" }.joined(separator: " ") + ".")
+        let varied = WritingCheck.measure(
+            "Go now. " + "One two three four five six seven eight nine ten. "
+                + (1...18).map { "w\($0)" }.joined(separator: " ") + ".")
         #expect(varied.sentences == 3)
         #expect(abs((varied.sentenceSpread ?? 0) - 6.532) < 0.01)
         let dialogue = WritingCheck.measure("Dr. Jones met J. K. Rowling. They talked... about books. Then left!\nThe end")
@@ -146,14 +164,14 @@ struct WritingCoachTests {
     @Test("notes keep two or three specific fixes and drop anything that grades")
     func notes() {
         let reply = """
-        Here are my notes:
-        - **“the the shop”**: one “the” is enough.
-        1. “It was nice” tells rather than shows: name one thing she noticed, such as the steam on the window.
-        * Overall I’d give this 7/10.
-        - Grade: B+, a solid effort with room to grow.
-        - Your second paragraph jumps from the café to the bus; add a sentence that takes us there.
-        - A fourth note that should be cut because three is the most.
-        """
+            Here are my notes:
+            - **“the the shop”**: one “the” is enough.
+            1. “It was nice” tells rather than shows: name one thing she noticed, such as the steam on the window.
+            * Overall I’d give this 7/10.
+            - Grade: B+, a solid effort with room to grow.
+            - Your second paragraph jumps from the café to the bus; add a sentence that takes us there.
+            - A fourth note that should be cut because three is the most.
+            """
         let notes = WritingCoach.notes(from: reply)
         #expect(notes.count == 3)
         #expect(notes[0] == "“the the shop”: one “the” is enough.")
@@ -199,8 +217,9 @@ struct WritingScheduleTests {
     let day = Fixtures.monday.adding(days: 30)
 
     func next(_ kinds: [WritingKind], pieces: [WritingPiece], on day: Day? = nil, books: [Book] = []) -> WritingTask? {
-        WritingSchedule.task(WritingFixtures.state(WritingFixtures.settings(kinds), pieces: pieces, books: books, on: day ?? self.day), minutes: 8,
-                             library: library)
+        WritingSchedule.task(
+            WritingFixtures.state(WritingFixtures.settings(kinds), pieces: pieces, books: books, on: day ?? self.day), minutes: 8,
+            library: library)
     }
 
     @Test("each kind rotates its exercises, and kinds take turns")
@@ -256,8 +275,9 @@ struct WritingScheduleTests {
 
     @Test("Franklin passages come from the book being read when there's one, else near its tier")
     func passages() throws {
-        let reading = Book(ladderID: "pride-and-prejudice", title: "Pride and Prejudice", author: "Jane Austen", tier: 5, pages: 400,
-                           genres: [.classics], status: .reading)
+        let reading = Book(
+            ladderID: "pride-and-prejudice", title: "Pride and Prejudice", author: "Jane Austen", tier: 5, pages: 400,
+            genres: [.classics], status: .reading)
         let prompt = WritingFixtures.piece(.prompt, on: day.adding(days: -3), taskID: "creative-a")
         let task = try #require(next([.creative], pieces: [prompt], books: [reading]))
         #expect(task.exercise == .franklinNotes && task.taskID == "creative-one")
@@ -288,15 +308,19 @@ struct WritingScheduleTests {
 
         let benchmark = WritingFixtures.piece(.benchmark, on: day, taskID: "benchmark-creative")
         let later = WritingFixtures.state(WritingFixtures.settings(), pieces: [benchmark], tests: tests, on: day.adding(days: 3))
-        #expect(!SessionPlanner.plan(.regular, domains: [.writing], state: later, catalogs: catalogs).parts.contains { $0.kind == .test(.writingBenchmark) })
+        #expect(
+            !SessionPlanner.plan(.regular, domains: [.writing], state: later, catalogs: catalogs).parts.contains {
+                $0.kind == .test(.writingBenchmark)
+            })
 
         tests.append(TestResult(test: .writing, date: day.adding(days: 40).date(), score: 0.8))
         let sixWeeks = WritingFixtures.state(WritingFixtures.settings(), pieces: [benchmark], tests: tests, on: day.adding(days: 42))
         #expect(!WritingModule.checkInParts(.writing, state: sixWeeks, catalogs: catalogs).contains { $0.kind == .test(.writingBenchmark) })
         let term = WritingFixtures.state(WritingFixtures.settings(), pieces: [benchmark], tests: tests, on: day.adding(days: 84))
         let parts = WritingModule.checkInParts(.writing, state: term, catalogs: catalogs)
-        #expect(parts.map(\.kind) == [.test(.writing), .test(.writingBenchmark), .test(.blindComparison)],
-                "the new benchmark is set beside last term's: \(parts)")
+        #expect(
+            parts.map(\.kind) == [.test(.writing), .test(.writingBenchmark), .test(.blindComparison)],
+            "the new benchmark is set beside last term's: \(parts)")
     }
 
     @Test("blind pairs: older and newer of the same exercise, five weeks apart, in a fixed random order, never twice")
@@ -331,8 +355,10 @@ struct WritingScheduleTests {
         }
         #expect((80...120).contains(firsts.filter { $0 }.count), "\(firsts.filter { $0 }.count) of 200")
 
-        let benchmarks = [WritingFixtures.piece(.benchmark, on: start, taskID: "benchmark-creative"),
-                          WritingFixtures.piece(.benchmark, on: start.adding(days: 84), taskID: "benchmark-creative")]
+        let benchmarks = [
+            WritingFixtures.piece(.benchmark, on: start, taskID: "benchmark-creative"),
+            WritingFixtures.piece(.benchmark, on: start.adding(days: 84), taskID: "benchmark-creative"),
+        ]
         let benchmarkPair = try #require(WritingSchedule.pairs(benchmarks, comparisons: [], today: start.adding(days: 84)).first)
         #expect(benchmarkPair.older.id == benchmarks[0].id && benchmarkPair.prompt.contains("same prompt"))
     }
@@ -357,12 +383,18 @@ struct WritingSessionTests {
         #expect(plan.parts.last?.kind == .custom("writing"))
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
         toWriting(&run, at: state.now)
-        guard case .compose(let task) = run.step else { Issue.record("\(String(describing: run.step))"); return }
+        guard case .compose(let task) = run.step else {
+            Issue.record("\(String(describing: run.step))")
+            return
+        }
         #expect(task.exercise == .prompt && task.reviewing == nil)
 
         let text = WritingFixtures.words(80) + " I recieve it and we could of gone."
         run.submitWriting(text, source: .handwritten, misspelled: ["recieve"], now: state.now + 600)
-        guard case .compose(let review) = run.step, let id = review.reviewing else { Issue.record("no review step"); return }
+        guard case .compose(let review) = run.step, let id = review.reviewing else {
+            Issue.record("no review step")
+            return
+        }
         let piece = try #require(run.piece(id))
         #expect(piece.source == .handwritten && piece.text == text && piece.taskID == task.taskID)
         #expect(piece.metrics[WritingMetrics.Key.slips] == 2)
@@ -376,14 +408,21 @@ struct WritingSessionTests {
 
     @Test("Franklin notes are kept for later with nothing to review")
     func franklinNotes() throws {
-        let earlier = [WritingFixtures.piece(.benchmark, on: Fixtures.monday, taskID: "benchmark-creative"),
-                       WritingFixtures.piece(.prompt, on: Fixtures.monday.adding(days: 3), taskID: "creative-a")]
+        let earlier = [
+            WritingFixtures.piece(.benchmark, on: Fixtures.monday, taskID: "benchmark-creative"),
+            WritingFixtures.piece(.prompt, on: Fixtures.monday.adding(days: 3), taskID: "creative-a"),
+        ]
         let state = WritingFixtures.state(WritingFixtures.settings(), pieces: earlier, tests: placed, on: day)
-        var run = StudyRun(plan: SessionPlanner.plan(.regular, domains: [.writing], state: state, catalogs: catalogs), state: state,
-                           catalogs: catalogs, now: state.now)
+        var run = StudyRun(
+            plan: SessionPlanner.plan(.regular, domains: [.writing], state: state, catalogs: catalogs), state: state,
+            catalogs: catalogs, now: state.now)
         toWriting(&run, at: state.now)
-        guard case .compose(let task) = run.step, task.exercise == .franklinNotes else { Issue.record("\(String(describing: run.step))"); return }
-        run.submitWriting("the garden; a letter; winter coming", source: .typed, misspelled: [], original: "A page of my own book.", now: state.now + 300)
+        guard case .compose(let task) = run.step, task.exercise == .franklinNotes else {
+            Issue.record("\(String(describing: run.step))")
+            return
+        }
+        run.submitWriting(
+            "the garden; a letter; winter coming", source: .typed, misspelled: [], original: "A page of my own book.", now: state.now + 300)
         let notes = try #require(run.newPieces.first)
         #expect(notes.notes == "the garden; a letter; winter coming" && notes.text.isEmpty && notes.metrics.isEmpty)
         #expect(notes.original == "A page of my own book." && notes.taskID == "own.\(notes.id)")
@@ -474,8 +513,9 @@ struct WritingProgressTests {
         #expect(record.judged == 3 && record.newerPicked == 3 && record.aiJudged == 3 && record.aiNewerPicked == 0 && record.agreed == 0)
 
         // Writing more doesn't move it.
-        let state = WritingFixtures.state(WritingFixtures.settings(), pieces: (0..<30).map { WritingFixtures.piece(.prompt, on: start.adding(days: $0)) },
-                                          tests: [grammar], on: start.adding(days: 30))
+        let state = WritingFixtures.state(
+            WritingFixtures.settings(), pieces: (0..<30).map { WritingFixtures.piece(.prompt, on: start.adding(days: $0)) },
+            tests: [grammar], on: start.adding(days: 30))
         #expect(WritingModule.series(.writing, state: state).map(\.score) == [65])
         #expect(WritingModule.label(.writing, state: state) == "Writing 65")
     }
@@ -503,10 +543,16 @@ extension WritingScheduleTests {
         #expect(WritingSchedule.franklinDue([notes, held], today: day, library: library)?.id == held.id)
 
         // With only the orphan, the plan teaches grammar again and the rotation can take new notes.
-        let state = WritingFixtures.state(WritingFixtures.settings(), pieces: [WritingFixtures.piece(.benchmark, on: day.adding(days: -20),
-                                                                                                     taskID: "benchmark-creative"), notes], on: day)
+        let state = WritingFixtures.state(
+            WritingFixtures.settings(),
+            pieces: [
+                WritingFixtures.piece(
+                    .benchmark, on: day.adding(days: -20),
+                    taskID: "benchmark-creative"), notes,
+            ], on: day)
         var noteTexts: [String] = []
-        let parts = WritingModule.mainParts(.writing, minutes: 20, kind: .regular, state: state, catalogs: WritingFixtures.catalogs, notes: &noteTexts)
+        let parts = WritingModule.mainParts(
+            .writing, minutes: 20, kind: .regular, state: state, catalogs: WritingFixtures.catalogs, notes: &noteTexts)
         #expect(parts.contains { $0.kind == .learn }, "\(parts.map(\.title))")
         #expect(WritingSchedule.task(state, minutes: 8, library: library)?.exercise != .franklinRewrite)
     }
@@ -522,11 +568,15 @@ extension WritingScheduleTests {
         #expect(WritingPlan.candidates(cards, bank: bank).first?.id == first.id)
 
         let state = StudyState(settings: WritingFixtures.settings(), cards: [retired], today: day, now: now)
-        let plan = SessionPlan(day: day, kind: .regular, minutes: 5, domains: [.writing],
-                               parts: [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "")], headline: "", notes: [],
-                               planned: true)
+        let plan = SessionPlan(
+            day: day, kind: .regular, minutes: 5, domains: [.writing],
+            parts: [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "")], headline: "", notes: [],
+            planned: true)
         let run = StudyRun(plan: plan, state: state, catalogs: WritingFixtures.catalogs, now: now)
-        guard case .lesson(.skill(let skill)) = run.step else { Issue.record("no lesson: \(String(describing: run.step))"); return }
+        guard case .lesson(.skill(let skill)) = run.step else {
+            Issue.record("no lesson: \(String(describing: run.step))")
+            return
+        }
         #expect(skill.id == first.id)
 
         // A skill with a lesson and nothing to ask isn't taught, planned or left in learning, even
@@ -534,10 +584,15 @@ extension WritingScheduleTests {
         let empty = WritingSkill(id: "empty", title: "Empty", level: 0, lesson: "", example: "")
         let thin = Catalogs(writing: WritingBank(skills: [empty] + bank.skills, items: bank.items, library: library))
         let started = MemoryCard(key: empty.key, recent: [], introduced: now - 86_400, updatedAt: now - 86_400)
-        #expect(WritingPlan.next([:], bank: thin.writing)?.id == first.id && WritingPlan.next([started.key: started], bank: thin.writing)?.id == first.id)
-        let other = StudyRun(plan: plan, state: StudyState(settings: WritingFixtures.settings(), cards: [started], today: day, now: now), catalogs: thin,
-                             now: now)
-        guard case .lesson(.skill(let opening)) = other.step else { Issue.record("the part ended: \(String(describing: other.step))"); return }
+        #expect(
+            WritingPlan.next([:], bank: thin.writing)?.id == first.id && WritingPlan.next([started.key: started], bank: thin.writing)?.id == first.id)
+        let other = StudyRun(
+            plan: plan, state: StudyState(settings: WritingFixtures.settings(), cards: [started], today: day, now: now), catalogs: thin,
+            now: now)
+        guard case .lesson(.skill(let opening)) = other.step else {
+            Issue.record("the part ended: \(String(describing: other.step))")
+            return
+        }
         #expect(opening.id == first.id)
     }
 }

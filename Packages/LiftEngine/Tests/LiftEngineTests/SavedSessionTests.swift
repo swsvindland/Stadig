@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 /// JSON the way the apps save it (SystemJSON on the phone, WatchJSON on the Watch): dates as whole
@@ -37,15 +38,15 @@ enum SavedJSON {
     /// since may appear in `reread` alone.
     static func missing(from reread: Any, saved: Any, at path: String = "") -> [String] {
         switch (saved, reread) {
-        case let (saved as [String: Any], reread as [String: Any]):
+        case (let saved as [String: Any], let reread as [String: Any]):
             return saved.keys.sorted().flatMap { key in
                 guard let value = reread[key] else { return ["\(path).\(key) is gone"] }
                 return missing(from: value, saved: saved[key] as Any, at: "\(path).\(key)")
             }
-        case let (saved as [Any], reread as [Any]):
+        case (let saved as [Any], let reread as [Any]):
             guard saved.count == reread.count else { return ["\(path) has \(reread.count) entries, not \(saved.count)"] }
             return zip(saved, reread).enumerated().flatMap { index, pair in missing(from: pair.1, saved: pair.0, at: "\(path)[\(index)]") }
-        case let (saved as NSObject, reread as NSObject):
+        case (let saved as NSObject, let reread as NSObject):
             return saved == reread ? [] : ["\(path) is \(reread), not \(saved)"]
         default:
             return ["\(path) changed shape"]
@@ -76,32 +77,44 @@ enum SavedFixture {
     static var plan: SessionPlan {
         let none = RestPlan(target: 0, minimum: 0, heartRateGuided: false)
         let items = [
-            PlannedItem(id: id(101), slotID: id(201), block: .main, exerciseID: "barbell-bench-press", role: .main,
-                        sets: [SetPrescription(kind: .warmup, loadKg: 40, targetReps: 8, targetRIR: 5), work(80, 8), work(80, 8),
-                               SetPrescription(kind: .repOut, loadKg: 80, targetReps: 8, targetRIR: 0, stopAtFormBreakdown: true)],
-                        repRange: RepRange(6, 10), rest: RestPlan(target: 180, minimum: 120, heartRateGuided: false),
-                        reason: "Pressing comes first this block.", note: "Up from last week's 77.5 kg.", mode: .load),
-            PlannedItem(id: id(102), slotID: id(202), block: .accessory, exerciseID: "chest-supported-db-row", role: .accessory,
-                        sets: [work(26, 10), work(26, 10), work(26, 10)], repRange: RepRange(8, 12),
-                        rest: RestPlan(target: 90, minimum: 0, heartRateGuided: true), supersetGroup: 1, restFiller: "couch-stretch",
-                        mode: .reps, substitutedFor: "barbell-row"),
-            PlannedItem(id: id(103), slotID: id(203), block: .accessory, exerciseID: "cable-fly", role: .accessory,
-                        sets: [work(15, 12), work(15, 12), work(15, 12)], repRange: RepRange(10, 15),
-                        rest: RestPlan(target: 90, minimum: 0, heartRateGuided: true), supersetGroup: 1, mode: .reps),
-            PlannedItem(id: id(104), slotID: id(204), block: .limiter, exerciseID: "couch-stretch", role: .mobility,
-                        sets: [work(nil, 1, rir: 5, seconds: 60), work(nil, 1, rir: 5, seconds: 60)], repRange: RepRange(1, 1), rest: none,
-                        seconds: 60, reason: "Hips are today's limiter."),
-            PlannedItem(id: id(105), slotID: id(205), block: .conditioning, exerciseID: "bike-30-30-intervals", role: .conditioning,
-                        sets: [work(nil, 1, rir: 3, seconds: 900)], repRange: RepRange(1, 1), rest: none, seconds: 900,
-                        conditioning: ConditioningPlan(minutes: 15, zones: 2...4, style: .intervals, workSeconds: 30, restSeconds: 30)),
-            PlannedItem(id: id(106), slotID: nil, block: .recovery, exerciseID: "sauna", role: .recovery, sets: [work(nil, 1, rir: 5, seconds: 720)],
-                        repRange: RepRange(1, 1), rest: none, seconds: 720, reason: "Optional."),
+            PlannedItem(
+                id: id(101), slotID: id(201), block: .main, exerciseID: "barbell-bench-press", role: .main,
+                sets: [
+                    SetPrescription(kind: .warmup, loadKg: 40, targetReps: 8, targetRIR: 5), work(80, 8), work(80, 8),
+                    SetPrescription(kind: .repOut, loadKg: 80, targetReps: 8, targetRIR: 0, stopAtFormBreakdown: true),
+                ],
+                repRange: RepRange(6, 10), rest: RestPlan(target: 180, minimum: 120, heartRateGuided: false),
+                reason: "Pressing comes first this block.", note: "Up from last week's 77.5 kg.", mode: .load),
+            PlannedItem(
+                id: id(102), slotID: id(202), block: .accessory, exerciseID: "chest-supported-db-row", role: .accessory,
+                sets: [work(26, 10), work(26, 10), work(26, 10)], repRange: RepRange(8, 12),
+                rest: RestPlan(target: 90, minimum: 0, heartRateGuided: true), supersetGroup: 1, restFiller: "couch-stretch",
+                mode: .reps, substitutedFor: "barbell-row"),
+            PlannedItem(
+                id: id(103), slotID: id(203), block: .accessory, exerciseID: "cable-fly", role: .accessory,
+                sets: [work(15, 12), work(15, 12), work(15, 12)], repRange: RepRange(10, 15),
+                rest: RestPlan(target: 90, minimum: 0, heartRateGuided: true), supersetGroup: 1, mode: .reps),
+            PlannedItem(
+                id: id(104), slotID: id(204), block: .limiter, exerciseID: "couch-stretch", role: .mobility,
+                sets: [work(nil, 1, rir: 5, seconds: 60), work(nil, 1, rir: 5, seconds: 60)], repRange: RepRange(1, 1), rest: none,
+                seconds: 60, reason: "Hips are today's limiter."),
+            PlannedItem(
+                id: id(105), slotID: id(205), block: .conditioning, exerciseID: "bike-30-30-intervals", role: .conditioning,
+                sets: [work(nil, 1, rir: 3, seconds: 900)], repRange: RepRange(1, 1), rest: none, seconds: 900,
+                conditioning: ConditioningPlan(minutes: 15, zones: 2...4, style: .intervals, workSeconds: 30, restSeconds: 30)),
+            PlannedItem(
+                id: id(106), slotID: nil, block: .recovery, exerciseID: "sauna", role: .recovery, sets: [work(nil, 1, rir: 5, seconds: 720)],
+                repRange: RepRange(1, 1), rest: none, seconds: 720, reason: "Optional."),
         ]
-        return SessionPlan(id: id(1), day: day, title: "Upper A", mesocycleID: id(2), dayID: id(3), week: 1, deload: false, checkIn: false,
-                           assessment: false, minimumEffectiveDose: false, items: items, notes: ["About 50 minutes today, under your 60."],
-                           quests: [Quest(id: "lift-2026-10-19-conditioning", title: "Zone 2 this evening",
-                                          detail: "It didn't fit in today's session.", stat: .endurance, source: .liftTrack, minutes: 20,
-                                          day: day, timeOfDay: .evening, priority: 1)])
+        return SessionPlan(
+            id: id(1), day: day, title: "Upper A", mesocycleID: id(2), dayID: id(3), week: 1, deload: false, checkIn: false,
+            assessment: false, minimumEffectiveDose: false, items: items, notes: ["About 50 minutes today, under your 60."],
+            quests: [
+                Quest(
+                    id: "lift-2026-10-19-conditioning", title: "Zone 2 this evening",
+                    detail: "It didn't fit in today's session.", stat: .endurance, source: .liftTrack, minutes: 20,
+                    day: day, timeOfDay: .evening, priority: 1)
+            ])
     }
 
     /// Partway through: the bench's first work set rated easy and the rest bumped, the superset
@@ -112,32 +125,41 @@ enum SavedFixture {
         for i in live.items.indices {
             for s in live.items[i].sets.indices { live.items[i].sets[s].id = id(1_000 + i * 10 + s) }
         }
-        live.items[0].sets[0].logged = LoggedSet(id: id(301), exerciseID: "barbell-bench-press", date: at(minutes: 4), kind: .warmup, loadKg: 40,
-                                                 reps: 8, targetReps: 8, bodyweightKg: 82)
-        live.items[0].sets[1].logged = LoggedSet(id: id(302), exerciseID: "barbell-bench-press", date: at(minutes: 8), loadKg: 80, reps: 8,
-                                                 targetReps: 8, rating: .green, bodyweightKg: 82, restBeforeSeconds: 240, heartRatePeak: 151)
+        live.items[0].sets[0].logged = LoggedSet(
+            id: id(301), exerciseID: "barbell-bench-press", date: at(minutes: 4), kind: .warmup, loadKg: 40,
+            reps: 8, targetReps: 8, bodyweightKg: 82)
+        live.items[0].sets[1].logged = LoggedSet(
+            id: id(302), exerciseID: "barbell-bench-press", date: at(minutes: 8), loadKg: 80, reps: 8,
+            targetReps: 8, rating: .green, bodyweightKg: 82, restBeforeSeconds: 240, heartRatePeak: 151)
         live.items[0].sets[2].prescription.loadKg = 82.5
         live.items[0].sets[2].note = "Easy: up to 82.5 kg."
         live.items[0].sets[3].prescription.loadKg = 82.5
         live.items[0].verified = true
-        live.items[1].sets[0].logged = LoggedSet(id: id(303), exerciseID: "chest-supported-db-row", date: at(minutes: 15), loadKg: 26, reps: 10,
-                                                 targetReps: 10, rating: .orange, restBeforeSeconds: 200)
-        live.items[2].sets[0].logged = LoggedSet(id: id(304), exerciseID: "cable-fly", date: at(minutes: 16), loadKg: 15, reps: 12,
-                                                 targetReps: 12, rating: .orange, restBeforeSeconds: 20)
+        live.items[1].sets[0].logged = LoggedSet(
+            id: id(303), exerciseID: "chest-supported-db-row", date: at(minutes: 15), loadKg: 26, reps: 10,
+            targetReps: 10, rating: .orange, restBeforeSeconds: 200)
+        live.items[2].sets[0].logged = LoggedSet(
+            id: id(304), exerciseID: "cable-fly", date: at(minutes: 16), loadKg: 15, reps: 12,
+            targetReps: 12, rating: .orange, restBeforeSeconds: 20)
         live.items[2].sets[2].skipped = true
         for s in 0..<2 {
-            live.items[3].sets[s].logged = LoggedSet(id: id(305 + s), exerciseID: "couch-stretch", date: at(minutes: 1 + Double(s)), loadKg: 0,
-                                                     reps: 1, seconds: 60)
+            live.items[3].sets[s].logged = LoggedSet(
+                id: id(305 + s), exerciseID: "couch-stretch", date: at(minutes: 1 + Double(s)), loadKg: 0,
+                reps: 1, seconds: 60)
         }
         live.mobilityDone = ["couch-stretch"]
-        live.items[4].conditioning = ConditioningLog(exerciseID: "bike-30-30-intervals", minutes: 15, averageHeartRate: 142,
-                                                     zoneMinutes: [2: 6.5, 3: 5, 4: 3.5], zone: 2)
-        live.items[4].sets[0].logged = LoggedSet(id: id(307), exerciseID: "bike-30-30-intervals", date: at(minutes: 40), loadKg: 0, reps: 1,
-                                                 seconds: 900)
-        live.items[5].heat = HeatLog(exerciseID: "sauna", date: at(minutes: 70), minutes: 12, temperatureC: 85, rating: .orange,
-                                     averageHeartRate: 104, peakHeartRate: 118)
-        live.rest = RestState(started: at(minutes: 16), plan: RestPlan(target: 20, minimum: 0, heartRateGuided: false), itemID: id(103),
-                              endsAt: at(minutes: 16).addingTimeInterval(20), preSetHeartRate: 96, filler: "couch-stretch")
+        live.items[4].conditioning = ConditioningLog(
+            exerciseID: "bike-30-30-intervals", minutes: 15, averageHeartRate: 142,
+            zoneMinutes: [2: 6.5, 3: 5, 4: 3.5], zone: 2)
+        live.items[4].sets[0].logged = LoggedSet(
+            id: id(307), exerciseID: "bike-30-30-intervals", date: at(minutes: 40), loadKg: 0, reps: 1,
+            seconds: 900)
+        live.items[5].heat = HeatLog(
+            exerciseID: "sauna", date: at(minutes: 70), minutes: 12, temperatureC: 85, rating: .orange,
+            averageHeartRate: 104, peakHeartRate: 118)
+        live.rest = RestState(
+            started: at(minutes: 16), plan: RestPlan(target: 20, minimum: 0, heartRateGuided: false), itemID: id(103),
+            endsAt: at(minutes: 16).addingTimeInterval(20), preSetHeartRate: 96, filler: "couch-stretch")
         live.message = "Easy: up to 82.5 kg."
         live.lastAdjustment = .bump
         live.heartRateSamples = [.init(date: at(minutes: 8), bpm: 151), .init(date: at(minutes: 9), bpm: 118)]
@@ -149,22 +171,32 @@ enum SavedFixture {
     /// zone were kept.
     static var records: [SessionRecord] {
         let bench = (0..<3).map { n in
-            LoggedSet(id: id(311 + n), exerciseID: "barbell-bench-press", date: at(minutes: 8 + 4 * Double(n)), kind: n == 2 ? .repOut : .working,
-                      loadKg: 82.5, reps: n == 2 ? 11 : 8, targetReps: 8, rating: n == 2 ? nil : .orange, bodyweightKg: 82,
-                      stoppedAtFormBreakdown: n == 2, restBeforeSeconds: 180, heartRatePeak: 150, heartRateDrop60: 28)
+            LoggedSet(
+                id: id(311 + n), exerciseID: "barbell-bench-press", date: at(minutes: 8 + 4 * Double(n)), kind: n == 2 ? .repOut : .working,
+                loadKg: 82.5, reps: n == 2 ? 11 : 8, targetReps: 8, rating: n == 2 ? nil : .orange, bodyweightKg: 82,
+                stoppedAtFormBreakdown: n == 2, restBeforeSeconds: 180, heartRatePeak: 150, heartRateDrop60: 28)
         }
-        let row = LoggedSet(id: id(314), exerciseID: "chest-supported-db-row", date: at(minutes: 22), loadKg: 26, reps: 10, targetReps: 10,
-                            rating: .green)
+        let row = LoggedSet(
+            id: id(314), exerciseID: "chest-supported-db-row", date: at(minutes: 22), loadKg: 26, reps: 10, targetReps: 10,
+            rating: .green)
         let full = SessionRecord(
             id: id(5), start: start, end: at(minutes: 62), title: "Upper A", mesocycleID: id(2), dayID: id(3), planned: true, deload: false,
-            exercises: [ExerciseLog(id: id(401), slotID: id(201), exerciseID: "barbell-bench-press", sets: bench),
-                        ExerciseLog(id: id(402), slotID: id(202), exerciseID: "chest-supported-db-row", sets: [row], substitutedFor: "barbell-row")],
-            conditioning: [ConditioningLog(exerciseID: "bike-30-30-intervals", minutes: 15, averageHeartRate: 142,
-                                           zoneMinutes: [2: 6.5, 3: 5, 4: 3.5], zone: 2)],
+            exercises: [
+                ExerciseLog(id: id(401), slotID: id(201), exerciseID: "barbell-bench-press", sets: bench),
+                ExerciseLog(id: id(402), slotID: id(202), exerciseID: "chest-supported-db-row", sets: [row], substitutedFor: "barbell-row"),
+            ],
+            conditioning: [
+                ConditioningLog(
+                    exerciseID: "bike-30-30-intervals", minutes: 15, averageHeartRate: 142,
+                    zoneMinutes: [2: 6.5, 3: 5, 4: 3.5], zone: 2)
+            ],
             mobility: ["couch-stretch"], feedback: SessionFeedback(soreness: 2, jointPain: [.shoulder], energy: 4), device: "Watch",
             averageHeartRate: 121.5,
-            heat: [HeatLog(exerciseID: "sauna", date: at(minutes: 75), minutes: 12, temperatureC: 85, rating: .orange, averageHeartRate: 104,
-                           peakHeartRate: 118)],
+            heat: [
+                HeatLog(
+                    exerciseID: "sauna", date: at(minutes: 75), minutes: 12, temperatureC: 85, rating: .orange, averageHeartRate: 104,
+                    peakHeartRate: 118)
+            ],
             timeZoneID: "Europe/Oslo", updatedAt: at(minutes: 62))
         let earlier = start.addingTimeInterval(-3 * 86_400)
         let curl = LoggedSet(id: id(315), exerciseID: "db-curl", date: earlier.addingTimeInterval(600), loadKg: 14, reps: 12)
@@ -181,9 +213,10 @@ struct SavedSessionTests {
     let decoder = SavedJSON.decoder()
 
     func environment() -> SessionEnvironment {
-        SessionEnvironment(catalog: Fixture.catalog, gym: Gym.preset(.fullGym, unit: .kg), trust: TrustState(experience: .intermediate),
-                           phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 82, history: [:], enduranceScore: nil,
-                           heartRateGuidedRest: true)
+        SessionEnvironment(
+            catalog: Fixture.catalog, gym: Gym.preset(.fullGym, unit: .kg), trust: TrustState(experience: .intermediate),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 82, history: [:], enduranceScore: nil,
+            heartRateGuidedRest: true)
     }
 
     @Test("a session in progress, as this version saved it, opens and carries on")
@@ -191,8 +224,11 @@ struct SavedSessionTests {
         let data = try SavedJSON.fixture("live-session.2026-10.json")
         var live = try decoder.decode(LiveSession.self, from: data)
         #expect(live.id == SavedFixture.id(4) && live.device == "Watch")
-        #expect(live.items.map(\.exerciseID) == ["barbell-bench-press", "chest-supported-db-row", "cable-fly", "couch-stretch",
-                                                 "bike-30-30-intervals", "sauna"])
+        #expect(
+            live.items.map(\.exerciseID) == [
+                "barbell-bench-press", "chest-supported-db-row", "cable-fly", "couch-stretch",
+                "bike-30-30-intervals", "sauna",
+            ])
         #expect(live.items[0].sets[1].logged?.rating == .green && live.items[0].verified)
         #expect(live.items[0].sets[2].prescription.loadKg == 82.5 && live.items[0].sets[2].planned?.loadKg == 80)
         #expect(live.items[1].plan.supersetGroup == 1 && live.items[1].plan.substitutedFor == "barbell-row")
@@ -209,8 +245,9 @@ struct SavedSessionTests {
         // And the session goes on from where it was.
         let next = try #require(live.current)
         #expect(next.item == 0 && next.set == 2)
-        live.log(item: next.item, set: next.set, reps: 8, loadKg: 82.5, rating: .orange, environment: environment(),
-                 now: SavedFixture.at(minutes: 20))
+        live.log(
+            item: next.item, set: next.set, reps: 8, loadKg: 82.5, rating: .orange, environment: environment(),
+            now: SavedFixture.at(minutes: 20))
         let record = live.record(feedback: nil, now: SavedFixture.at(minutes: 60), timeZone: .gmt)
         #expect(record.exercises.first { $0.exerciseID == "barbell-bench-press" }?.sets.count == 3)
         #expect(record.conditioning.count == 1 && record.heat?.count == 1 && record.hasContent)
@@ -250,10 +287,15 @@ struct SavedSessionTests {
     @Test("a session saved before fields were added still opens, with each one's default")
     func olderShape() throws {
         var session = without([], in: try SavedJSON.object(SavedJSON.encoder().encode(SavedFixture.liveSession)))
-        let plannedKeys: Set = ["slotID", "sets", "seconds", "conditioning", "supersetGroup", "restFiller", "reason", "note", "mode",
-                                "substitutedFor"]
-        var plan = without(["title", "mesocycleID", "dayID", "week", "deload", "checkIn", "assessment", "minimumEffectiveDose", "notes",
-                            "quests"], in: session["plan"])
+        let plannedKeys: Set = [
+            "slotID", "sets", "seconds", "conditioning", "supersetGroup", "restFiller", "reason", "note", "mode",
+            "substitutedFor",
+        ]
+        var plan = without(
+            [
+                "title", "mesocycleID", "dayID", "week", "deload", "checkIn", "assessment", "minimumEffectiveDose", "notes",
+                "quests",
+            ], in: session["plan"])
         plan["items"] = (plan["items"] as? [Any] ?? []).map { without(plannedKeys, in: $0) }
         session["plan"] = plan
         session["items"] = (session["items"] as? [Any] ?? []).map { entry -> [String: Any] in

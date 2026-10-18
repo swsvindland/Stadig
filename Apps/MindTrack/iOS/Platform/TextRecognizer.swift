@@ -23,21 +23,27 @@ enum TextRecognizer {
 
     static func read(_ image: UIImage, languages: [Locale.Language] = english, handwriting: Bool = true) async throws -> String {
         guard let cgImage = image.cgImage else { return "" }
-        return try await read(cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), languages: languages,
-                              handwriting: handwriting)
+        return try await read(
+            cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), languages: languages,
+            handwriting: handwriting)
     }
 
-    static func read(_ image: CGImage, orientation: CGImagePropertyOrientation, languages: [Locale.Language],
-                     handwriting: Bool) async throws -> String {
+    static func read(
+        _ image: CGImage, orientation: CGImagePropertyOrientation, languages: [Locale.Language],
+        handwriting: Bool
+    ) async throws -> String {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.recognitionLanguages = languages
         // Language correction helps handwriting into words; a printed page reads better without it.
         request.usesLanguageCorrection = handwriting
         let observations = try await request.perform(on: image, orientation: orientation)
-        return paragraphs(observations.compactMap { observation in
-            observation.topCandidates(1).first.map { Line(text: $0.string, top: Double(observation.topLeft.y), bottom: Double(observation.bottomLeft.y)) }
-        })
+        return paragraphs(
+            observations.compactMap { observation in
+                observation.topCandidates(1).first.map {
+                    Line(text: $0.string, top: Double(observation.topLeft.y), bottom: Double(observation.bottomLeft.y))
+                }
+            })
     }
 
     /// A recognised line; y runs up from the bottom of the page, as Vision gives it.

@@ -1,7 +1,7 @@
-import SwiftUI
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Day 0: about five minutes, once. Goals as outcomes, schedule, equipment, experience, outside
@@ -70,8 +70,10 @@ struct OnboardingView: View {
         case .schedule: schedule
         case .equipment: equipment
         case .experience: experience
-        case .outside: OutsideActivitiesEditor(recurring: $profile.recurring, title: "Training outside the gym",
-                                               detail: "Classes and sport you do regularly. Lift Track plans around them, because they spend the same recovery.")
+        case .outside:
+            OutsideActivitiesEditor(
+                recurring: $profile.recurring, title: "Training outside the gym",
+                detail: "Classes and sport you do regularly. Lift Track plans around them, because they spend the same recovery.")
         case .body: bodyBasics
         case .phase: phase
         case .health: health
@@ -143,8 +145,10 @@ struct OnboardingView: View {
             header("What are you after?", "Outcomes only. Lift Track picks the program, and Macro Track (if you use it) picks the diet phase.")
             ForEach(OutcomeGoal.allCases) { goal in
                 let selected = profile.goals.contains(goal)
-                ChoiceCard(title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected,
-                           identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)") {
+                ChoiceCard(
+                    title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected,
+                    identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)"
+                ) {
                     if selected { profile.goals.removeAll { $0 == goal } } else { profile.goals.append(goal) }
                 }
             }
@@ -162,7 +166,11 @@ struct OnboardingView: View {
                     identifier: "onboarding.focus\(region.rawValue.identifierSuffix)"
                 ) {
                     // Checked here too: quick taps can land before the row shows as full.
-                    if selected { settings.focus.remove(region) } else if settings.focus.count < LiftSettings.focusLimit { settings.focus.insert(region) }
+                    if selected {
+                        settings.focus.remove(region)
+                    } else if settings.focus.count < LiftSettings.focusLimit {
+                        settings.focus.insert(region)
+                    }
                 }
                 .disabled(full)
                 .opacity(full ? 0.5 : 1)
@@ -233,9 +241,13 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("After training").font(.headline)
                 ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { room in
-                    Toggle(room.label, isOn: Binding(get: { rooms.contains(room) }, set: { on in
-                        if on { rooms.insert(room) } else { rooms.remove(room) }
-                    }))
+                    Toggle(
+                        room.label,
+                        isOn: Binding(
+                            get: { rooms.contains(room) },
+                            set: { on in
+                                if on { rooms.insert(room) } else { rooms.remove(room) }
+                            }))
                 }
                 Text("Sessions end with an optional sauna or steam room, timed from its thermometer.")
                     .font(.footnote).foregroundStyle(.secondary)
@@ -246,7 +258,10 @@ struct OnboardingView: View {
 
     private var experience: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("How long have you been lifting?", "Newer lifters tend to underestimate how many reps they have left, so Lift Track checks more often at first. Accurate ratings earn trust, whatever your experience.")
+            header(
+                "How long have you been lifting?",
+                "Newer lifters tend to underestimate how many reps they have left, so Lift Track checks more often at first. Accurate ratings earn trust, whatever your experience."
+            )
             ForEach(TrainingExperience.allCases) { level in
                 ChoiceCard(
                     title: level.label, selected: profile.experience == level,
@@ -258,7 +273,9 @@ struct OnboardingView: View {
 
     private var bodyBasics: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("A few basics", "Strength is scored against bodyweight-relative standards. Measurements are optional and only for your own comparison.")
+            header(
+                "A few basics",
+                "Strength is scored against bodyweight-relative standards. Measurements are optional and only for your own comparison.")
             VStack(spacing: 14) {
                 Picker("Standards for", selection: $profile.sex) {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
@@ -290,7 +307,8 @@ struct OnboardingView: View {
                     identifier: "onboarding.phase\(answer.rawValue.identifierSuffix)"
                 ) { settings.selfReportedPhase = answer }
             }
-            Text("A stall during a cut is expected, not a plateau. Knowing the phase keeps the advice honest.").font(.footnote).foregroundStyle(.secondary)
+            Text("A stall during a cut is expected, not a plateau. Knowing the phase keeps the advice honest.").font(.footnote).foregroundStyle(
+                .secondary)
         }
     }
 
@@ -298,7 +316,10 @@ struct OnboardingView: View {
 
     private var health: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("Apple Health", "Sleep, HRV and resting heart rate shape your recovery budget. Runs and classes other apps record are counted automatically. Sessions are saved as workouts.")
+            header(
+                "Apple Health",
+                "Sleep, HRV and resting heart rate shape your recovery budget. Runs and classes other apps record are counted automatically. Sessions are saved as workouts."
+            )
             Button {
                 Task {
                     await model.connectHealth()
@@ -323,8 +344,12 @@ struct OnboardingView: View {
         return VStack(alignment: .leading, spacing: 16) {
             header("Your first \(weeks) weeks", "Useful from day one: good workouts and fast logging while Lift Track learns.")
             VStack(alignment: .leading, spacing: 14) {
-                Label("Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for 10 and rate it.", systemImage: "1.circle.fill")
-                Label("Machines get the occasional all-out set. They're safe to fail, and they show how well your ratings match reality.", systemImage: "2.circle.fill")
+                Label(
+                    "Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for 10 and rate it.",
+                    systemImage: "1.circle.fill")
+                Label(
+                    "Machines get the occasional all-out set. They're safe to fail, and they show how well your ratings match reality.",
+                    systemImage: "2.circle.fill")
                 Label("Weeks 3–4: progressive sets that spot strength imbalances.", systemImage: "3.circle.fill")
                 Label("Then your first real block, with a plain \"Why?\" behind it.", systemImage: "4.circle.fill")
             }
@@ -374,7 +399,8 @@ struct ChoiceCard: View {
                     if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
                 }
                 Spacer()
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(
+                    selected ? Color.accentColor : .secondary)
             }
             .card()
         }
@@ -427,7 +453,12 @@ struct WeekdayPicker: View {
             ForEach(Weekday.allCases) { day in
                 let on = selection.contains(day)
                 Button {
-                    if on { selection.removeAll { $0 == day } } else { selection.append(day); selection.sort() }
+                    if on {
+                        selection.removeAll { $0 == day }
+                    } else {
+                        selection.append(day)
+                        selection.sort()
+                    }
                 } label: {
                     Text(day.short.prefix(2))
                         .font(.subheadline.weight(.semibold))
@@ -454,13 +485,17 @@ struct MeasureField: View {
         HStack {
             Text(label)
             Spacer()
-            TextField("—", value: Binding(get: { value.map { (unit.fromCentimetres($0) * 10).rounded() / 10 } },
-                                          set: { value = $0.map(unit.toCentimetres) }),
-                      format: .number.precision(.fractionLength(0...1)))
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 80)
-                .accessibilityIdentifier(identifier ?? "")
+            TextField(
+                "—",
+                value: Binding(
+                    get: { value.map { (unit.fromCentimetres($0) * 10).rounded() / 10 } },
+                    set: { value = $0.map(unit.toCentimetres) }),
+                format: .number.precision(.fractionLength(0...1))
+            )
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 80)
+            .accessibilityIdentifier(identifier ?? "")
             Text(unit.symbol).foregroundStyle(.secondary)
         }
     }
@@ -476,12 +511,16 @@ struct WeightField: View {
         HStack {
             Text(label)
             Spacer()
-            TextField("—", value: Binding(get: { kg.map { (unit.fromKilograms($0) * 10).rounded() / 10 } },
-                                          set: { kg = $0.map(unit.toKilograms) }),
-                      format: .number.precision(.fractionLength(0...1)))
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 80)
+            TextField(
+                "—",
+                value: Binding(
+                    get: { kg.map { (unit.fromKilograms($0) * 10).rounded() / 10 } },
+                    set: { kg = $0.map(unit.toKilograms) }),
+                format: .number.precision(.fractionLength(0...1))
+            )
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 80)
             Text(unit.symbol).foregroundStyle(.secondary)
         }
     }

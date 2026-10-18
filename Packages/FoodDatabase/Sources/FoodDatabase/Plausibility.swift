@@ -28,27 +28,34 @@ enum Plausibility {
     static let drinkLimit = 160.0
 
     /// Words of drinks as poured. Their syrups, creamers, bases and concentrates are another thing.
-    private static let drinkWords: Set<String> = Set(("coffee cafe latte cappuccino espresso americano macchiato cortado "
-        + "tea juice jus smoothie soda cola coke pepsi lemonade limonade kombucha water eau").split(separator: " ")
-        .map(String.init))
-    private static let notDrinkAsPoured: Set<String> = Set(("syrup sirop concentrate concentre concentree creamer mate "
-        + "base liqueur cream creme condensed powder poudre instant soluble capsule capsules pods dosette dosettes oil huile "
-        + "chocolate chocolat ice glace candy bonbon").split(separator: " ").map(String.init))
+    private static let drinkWords: Set<String> = Set(
+        ("coffee cafe latte cappuccino espresso americano macchiato cortado "
+            + "tea juice jus smoothie soda cola coke pepsi lemonade limonade kombucha water eau").split(separator: " ")
+            .map(String.init))
+    private static let notDrinkAsPoured: Set<String> = Set(
+        ("syrup sirop concentrate concentre concentree creamer mate "
+            + "base liqueur cream creme condensed powder poudre instant soluble capsule capsules pods dosette dosettes oil huile "
+            + "chocolate chocolat ice glace candy bonbon").split(separator: " ").map(String.init))
 
     /// Alcohol has energy that isn't protein, carbs or fat.
-    private static let alcoholWords: Set<String> = Set(("beer biere bier wine vin wein vodka whisky whiskey gin rum rhum tequila "
-        + "liqueur likor cider cidre sake brandy cognac champagne prosecco cava lager ale stout porter mead sherry vermouth "
-        + "schnapps bourbon scotch aperitif spritz cocktail mojito sangria alcohol alcool armagnac calvados grappa ouzo pastis "
-        + "absinthe martini baileys amaretto limoncello extract").split(separator: " ").map(String.init))
+    private static let alcoholWords: Set<String> = Set(
+        ("beer biere bier wine vin wein vodka whisky whiskey gin rum rhum tequila "
+            + "liqueur likor cider cidre sake brandy cognac champagne prosecco cava lager ale stout porter mead sherry vermouth "
+            + "schnapps bourbon scotch aperitif spritz cocktail mojito sangria alcohol alcool armagnac calvados grappa ouzo pastis "
+            + "absinthe martini baileys amaretto limoncello extract").split(separator: " ").map(String.init))
     /// Sugar alcohols and sweeteners count as carbs but bring few calories.
-    private static let sweetenerWords: Set<String> = Set(("stevia erythritol xylitol sweetener sweeteners edulcorant "
-        + "sucralose aspartame polyol polyols maltitol sorbitol isomalt sukrin monkfruit truvia splenda canderel")
-        .split(separator: " ").map(String.init))
+    private static let sweetenerWords: Set<String> = Set(
+        ("stevia erythritol xylitol sweetener sweeteners edulcorant "
+            + "sucralose aspartame polyol polyols maltitol sorbitol isomalt sukrin monkfruit truvia splenda canderel")
+            .split(separator: " ").map(String.init))
 
     static func problem(_ food: Food) -> FoodProblem? {
         guard food.basis != .serving else { return nil }
         let n = food.nutrients
-        let p = max(0, n.protein), c = max(0, n.carbs), f = max(0, n.fat), fiber = max(0, n.fiber ?? 0)
+        let p = max(0, n.protein)
+        let c = max(0, n.carbs)
+        let f = max(0, n.fat)
+        let fiber = max(0, n.fiber ?? 0)
         if p + c + f > 105 { return .macrosOverWeight }
         if n.kcal > 905 { return .tooDense }
         let name = Set(tokens(food.name))

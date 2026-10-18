@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 @Suite("Maths strands")
@@ -19,19 +20,25 @@ struct MathsTests {
                     let problem = skill.problem(level: level, seed: "\(seed)")
                     let label = "\(skill) \(level) #\(seed): \(problem.prompt)"
                     #expect(problem.prompt.filter { $0 == "$" }.count % 2 == 0 && balanced(problem.prompt), "\(label)")
-                    #expect(!problem.steps.isEmpty && problem.steps.allSatisfy { balanced($0) && $0.filter { $0 == "$" }.count % 2 == 0 }, "\(label) \(problem.steps)")
+                    #expect(
+                        !problem.steps.isEmpty && problem.steps.allSatisfy { balanced($0) && $0.filter { $0 == "$" }.count % 2 == 0 },
+                        "\(label) \(problem.steps)")
                     let question = skill.question(level: level, seed: "\(seed)", kind: .learn)
                     #expect(question.timed && question.key.numeracy?.skill == skill && question.key.numeracy?.level == level)
                     switch problem.answer {
                     case .choice(let index):
-                        #expect(problem.choices.indices.contains(index) && problem.choices.count >= 3 && Set(problem.choices).count == problem.choices.count,
-                                "\(label): \(problem.choices)")
+                        #expect(
+                            problem.choices.indices.contains(index) && problem.choices.count >= 3
+                                && Set(problem.choices).count == problem.choices.count,
+                            "\(label): \(problem.choices)")
                         if skill == .estimation, let truth = evaluate(problem.prompt) {
                             let distance = problem.choices.map { abs(log(amount($0) / truth.double)) }
-                            #expect(distance.indices.allSatisfy { $0 == index || distance[$0] > distance[index] + 0.3 }, "\(label): \(problem.choices)")
+                            #expect(
+                                distance.indices.allSatisfy { $0 == index || distance[$0] > distance[index] + 0.3 }, "\(label): \(problem.choices)")
                         }
                     case .number(let value, let tolerance):
-                        #expect(question.check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description), "\(label) = \(value)")
+                        #expect(
+                            question.check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description), "\(label) = \(value)")
                         if skill == .arithmetic, let truth = evaluate(problem.prompt) { #expect(truth == value, "\(label) = \(value), not \(truth)") }
                         if skill != .fractions && !problem.prompt.contains("fraction") {
                             #expect(value.decimal != nil, "\(label) = \(value): outside fractions, answers are plain decimals")
@@ -45,10 +52,11 @@ struct MathsTests {
             for skill in NumeracySkill.allCases {
                 for level in 1...10 {
                     let problem = skill.problem(level: level, seed: "print")
-                    let answer = switch problem.answer {
-                    case .choice(let i): problem.choices[i]
-                    case .number(let v, _): v.description
-                    }
+                    let answer =
+                        switch problem.answer {
+                        case .choice(let i): problem.choices[i]
+                        case .number(let v, _): v.description
+                        }
                     print("[\(skill.rawValue) \(level), \(Int(skill.target(level))) s] \(problem.prompt)  →  \(answer)")
                 }
             }
@@ -63,7 +71,9 @@ struct MathsTests {
         for topic in topics {
             #expect(topic.prerequisites.allSatisfy { MathCurriculum.topic($0)?.strand == .discrete }, "\(topic.id) stands within its strand")
         }
-        for id in ["reading-charts", "sets", "if-then", "probability", "two-way-tables", "sampling", "base-rates", "normal-distribution", "regression"] {
+        for id in [
+            "reading-charts", "sets", "if-then", "probability", "two-way-tables", "sampling", "base-rates", "normal-distribution", "regression",
+        ] {
             #expect(MathCurriculum.topic(id)?.strand == .discrete, "\(id)")
         }
         #expect(MathCurriculum.topics(.classic).allSatisfy { $0.prerequisites.allSatisfy { MathCurriculum.topic($0)?.strand == .classic } })
@@ -82,14 +92,18 @@ struct MathsTests {
                 #expect(text.contains("you") || text.contains("lift track") || text.contains("macro track"), "\(topic.id): \(problem.prompt)")
                 #expect(balanced(problem.prompt) && !problem.steps.isEmpty, "\(topic.id): \(problem.prompt)")
                 if case .number(let value, let tolerance) = problem.answer {
-                    #expect(problem.question(kind: .learn, id: "t").check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description))
+                    #expect(
+                        problem.question(kind: .learn, id: "t").check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description)
+                    )
                 }
                 if let figure = problem.figure { #expect(figure.points.count >= 5 && figure.source == "From Lift Track") }
             }
             #expect(topic.personalProblem(seed: "x", data: .none) == nil)
             let mixed = (0..<40).map { topic.problem(seed: "\($0)", data: data) }
             #expect(mixed.contains { $0.figure?.source != nil || $0.prompt.lowercased().contains("you") }, "\(topic.id) sometimes uses the data")
-            #expect((0..<40).map { topic.problem(seed: "\($0)") }.allSatisfy { $0.figure?.source == nil && !$0.prompt.contains("Lift Track") }, "never without it")
+            #expect(
+                (0..<40).map { topic.problem(seed: "\($0)") }.allSatisfy { $0.figure?.source == nil && !$0.prompt.contains("Lift Track") },
+                "never without it")
         }
         // The mean of five step days is worked out from the chart's own rounded values.
         let week = try #require(data.stepWeek?.rounded(to: 100))
@@ -99,14 +113,24 @@ struct MathsTests {
     @Test("System data comes from what Lift Track and Macro Track publish, phone-on-a-desk days left out")
     func systemDataFromSummaries() {
         let days = (0..<14).map { monday.adding(days: $0) }
-        let lift = AppSummary(app: .liftTrack, sessions: days.enumerated().compactMap { index, day in
-            index % 3 == 0 ? SessionSummary(id: UUID(), app: .liftTrack, kind: .strength, start: day.date().addingTimeInterval(64_800), minutes: 55, planned: true) : nil
-        } + [SessionSummary(id: UUID(), app: .liftTrack, kind: .activity, start: monday.date(), minutes: 30, planned: false)],
-                              steps: StepSummary(days: days.map { StepDay(day: $0, steps: $0 == monday ? 400 : 8000 + $0.ordinal % 7 * 300) }, aim: nil, baseline: nil))
-        let macro = AppSummary(app: .macroTrack, sessions: days.map {
-            SessionSummary(id: UUID(), app: .macroTrack, kind: .nutrition, start: $0.date(), minutes: 0, metrics: ["kcal": 2400, "protein": 150], planned: true)
-        })
-        let nutrition = NutritionSummary(phase: nil, maintenanceKcal: nil, days: days.map { NutritionDay(day: $0, logged: true, proteinHit: $0.ordinal % 2 == 0, caloriesHit: nil) })
+        let lift = AppSummary(
+            app: .liftTrack,
+            sessions: days.enumerated().compactMap { index, day in
+                index % 3 == 0
+                    ? SessionSummary(
+                        id: UUID(), app: .liftTrack, kind: .strength, start: day.date().addingTimeInterval(64_800), minutes: 55, planned: true) : nil
+            } + [SessionSummary(id: UUID(), app: .liftTrack, kind: .activity, start: monday.date(), minutes: 30, planned: false)],
+            steps: StepSummary(days: days.map { StepDay(day: $0, steps: $0 == monday ? 400 : 8000 + $0.ordinal % 7 * 300) }, aim: nil, baseline: nil))
+        let macro = AppSummary(
+            app: .macroTrack,
+            sessions: days.map {
+                SessionSummary(
+                    id: UUID(), app: .macroTrack, kind: .nutrition, start: $0.date(), minutes: 0, metrics: ["kcal": 2400, "protein": 150],
+                    planned: true)
+            })
+        let nutrition = NutritionSummary(
+            phase: nil, maintenanceKcal: nil,
+            days: days.map { NutritionDay(day: $0, logged: true, proteinHit: $0.ordinal % 2 == 0, caloriesHit: nil) })
         let data = SystemData(lift: lift, macro: macro, nutrition: nutrition)
         #expect(data.steps.count == 13, "the 400-step day is unknown, not sedentary")
         #expect(data.training.count == 5 && data.training.allSatisfy { $0.value == 55 }, "strength sessions only")
@@ -154,7 +178,8 @@ struct MathsTests {
         #expect(slip.estimate >= 5, "an early slip, then everything right up to level \(slip.items.last!.level): \(slip.estimate)")
         var slow = NumeracyTest(start: 4, maximum: 6)
         for _ in 0..<6 { slow.record(right: true, seconds: 120) }
-        #expect(slow.estimate == 1 && slow.result(at: Date(), placement: true).score == 1, "all right, all far too slow: accuracy kept, level not given")
+        #expect(
+            slow.estimate == 1 && slow.result(at: Date(), placement: true).score == 1, "all right, all far too slow: accuracy kept, level not given")
     }
 
     @Test("placement lands each strand near the student's true level, from about seventeen problems")
@@ -164,10 +189,12 @@ struct MathsTests {
         for index in 0..<60 {
             let truth = (numeracy: rng.int(2...9), classic: rng.int(2...8), discrete: rng.int(2...8))
             var store = Store(settings: Fixtures.settings([.maths]))
-            var student = Student(vocabulary: 0, mathsLevel: truth.classic, writingLevel: 0, numeracyLevel: truth.numeracy, discreteLevel: truth.discrete,
-                                  rng: SeededRandom(seed: UInt64(100 + index)), deck: deck)
+            var student = Student(
+                vocabulary: 0, mathsLevel: truth.classic, writingLevel: 0, numeracyLevel: truth.numeracy, discreteLevel: truth.discrete,
+                rng: SeededRandom(seed: UInt64(100 + index)), deck: deck)
             let run = try #require(store.study(on: monday, student: &student, deck: deck))
-            #expect(run.plan.parts.first?.kind == .placement && run.plan.parts.first?.detail.contains("about 17 problems") == true, "\(run.plan.parts)")
+            #expect(
+                run.plan.parts.first?.kind == .placement && run.plan.parts.first?.detail.contains("about 17 problems") == true, "\(run.plan.parts)")
             let numeracy = try #require(store.tests.first { $0.test == .numeracy })
             let classic = try #require(store.tests.first { $0.test == .mathsPlacement })
             let discrete = try #require(store.tests.first { $0.test == .discrete })
@@ -203,7 +230,9 @@ struct MathsTests {
             return weak
         }
         let weak = SessionPlanner.plan(.regular, domains: [.maths, .writing], state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
-        #expect(weak.parts.first?.minutes == 5 && weak.notes.contains { $0.contains("Numeracy is at level 3") }, "\(weak.parts.map(\.minutes)) \(weak.notes)")
+        #expect(
+            weak.parts.first?.minutes == 5 && weak.notes.contains { $0.contains("Numeracy is at level 3") },
+            "\(weak.parts.map(\.minutes)) \(weak.notes)")
 
         let review = SessionPlanner.plan(.review, domains: [.maths], state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
         #expect(review.parts.first?.kind == .custom("numeracy") && !review.parts.contains { $0.kind == .learn })
@@ -217,8 +246,10 @@ struct MathsTests {
         for offset in 0..<6 {
             let day = monday.adding(days: 15 + offset)
             strands.append(MathsPlan.mainStrand(store.state(on: day)))
-            store.sessions.append(StudySession(purpose: .regular, start: day.date(), end: day.date().addingTimeInterval(1500), plannedMinutes: 25,
-                                               domains: [.maths], planned: true, ranToEnd: true))
+            store.sessions.append(
+                StudySession(
+                    purpose: .regular, start: day.date(), end: day.date().addingTimeInterval(1500), plannedMinutes: 25,
+                    domains: [.maths], planned: true, ranToEnd: true))
         }
         #expect(strands == [.discrete, .discrete, .classic, .discrete, .discrete, .classic])
 
@@ -239,9 +270,12 @@ struct MathsTests {
         var store = Store(settings: Fixtures.settings([.maths]))
         let now = monday.date()
         store.tests = [TestResult(test: .mathsPlacement, date: now, score: 6, detail: ["level": 5], placement: true)]
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true),
-                          StudySession(purpose: .regular, start: now + 86_400, end: now + 87_000, plannedMinutes: 25, domains: [.maths], planned: true)]
-        store.cards[.topic("linear-equations")] = MemoryCard(key: .topic("linear-equations"), memory: Scheduler.known(stability: 10, at: now), introduced: now, knownBefore: true)
+        store.sessions = [
+            StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true),
+            StudySession(purpose: .regular, start: now + 86_400, end: now + 87_000, plannedMinutes: 25, domains: [.maths], planned: true),
+        ]
+        store.cards[.topic("linear-equations")] = MemoryCard(
+            key: .topic("linear-equations"), memory: Scheduler.known(stability: 10, at: now), introduced: now, knownBefore: true)
         let state = store.state(on: monday.adding(days: 2))
         #expect(state.needsPlacement(.maths, catalogs: Catalogs()))
         let plan = try #require(SessionPlanner.today(state, catalogs: Catalogs()))
@@ -249,7 +283,9 @@ struct MathsTests {
         #expect(part.detail.contains("Numeracy") && part.detail.contains("statistics") && !part.detail.contains("algebra"), "\(part.detail)")
         var student = Student(vocabulary: 0, mathsLevel: 5, writingLevel: 0, deck: deck)
         store.study(on: monday.adding(days: 2), student: &student, deck: deck)
-        #expect(store.tests.filter { $0.test == .mathsPlacement }.count == 1 && store.tests.contains { $0.test == .numeracy } && store.tests.contains { $0.test == .discrete })
+        #expect(
+            store.tests.filter { $0.test == .mathsPlacement }.count == 1 && store.tests.contains { $0.test == .numeracy }
+                && store.tests.contains { $0.test == .discrete })
     }
 
     // MARK: Over weeks
@@ -278,9 +314,11 @@ struct MathsTests {
             }
         }
         let placed = try #require(store.tests.first { $0.test == .numeracy && $0.placement })
-        #expect((7...9).contains(levelsSeen.last!) && abs(Int(placed.detail["level"]!) - 8) <= 1, "the drills settle at the student's 8: \(levelsSeen)")
+        #expect(
+            (7...9).contains(levelsSeen.last!) && abs(Int(placed.detail["level"]!) - 8) <= 1, "the drills settle at the student's 8: \(levelsSeen)")
         #expect(intelligenceBetweenTests.count == 1, "drills and learning never move Intelligence between tests: \(intelligenceBetweenTests)")
-        let discrete = MathsPlan.known(store.cards, strand: .discrete).count, classic = MathsPlan.known(store.cards, strand: .classic).count
+        let discrete = MathsPlan.known(store.cards, strand: .discrete).count
+        let classic = MathsPlan.known(store.cards, strand: .classic).count
         let placedDiscrete = store.cards.values.filter { $0.knownBefore && MathCurriculum.topic($0.key.item)?.strand == .discrete }.count
         #expect(discrete > placedDiscrete + 3, "statistics first: \(discrete) known, \(placedDiscrete) from placement")
         #expect(classic > 0)
@@ -288,7 +326,9 @@ struct MathsTests {
         #expect(Set(run.newTests.map(\.test)).isSuperset(of: [.numeracy, .maths, .discrete]), "\(run.newTests.map(\.test))")
         let analysis = Analyst.analyse(store.state(on: monday.adding(days: 57)), catalogs: Fixtures.catalogs(deck))
         let intelligence = try #require(analysis.stats.first { $0.stat == .intelligence })
-        #expect(intelligence.label.contains("numeracy") && intelligence.label.contains("statistics") && intelligence.label.contains("algebra"), "\(intelligence.label)")
+        #expect(
+            intelligence.label.contains("numeracy") && intelligence.label.contains("statistics") && intelligence.label.contains("algebra"),
+            "\(intelligence.label)")
         #expect(Analyst.series(.maths, state: store.state(on: monday.adding(days: 57))).count == 2, "a point at placement and one at the check-in")
     }
 
@@ -309,7 +349,9 @@ struct MathsTests {
         #expect(zip(levels, levels.dropFirst()).allSatisfy { $0 <= $1 + 1 }, "\(levels)")
         let before = NumeracyPlan.levels(store.state(on: monday.adding(days: 30)))
         let state = store.state(on: monday.adding(days: 30))
-        var run = StudyRun(plan: SessionPlanner.plan(.review, domains: [.maths], state: state, catalogs: Catalogs()), state: state, catalogs: Catalogs(), now: state.now)
+        var run = StudyRun(
+            plan: SessionPlanner.plan(.review, domains: [.maths], state: state, catalogs: Catalogs()), state: state, catalogs: Catalogs(),
+            now: state.now)
         _ = student.run(&run, from: state.now)
         store.save(run)
         #expect(run.session.purpose == .review && run.session.attempts.contains { $0.key.numeracy != nil })
@@ -319,7 +361,8 @@ struct MathsTests {
     @Test("maths' share of Intelligence is the mean of the strands measured, and switching off the weakest can't raise it")
     func honestScore() {
         var store = Store(settings: Fixtures.settings([.maths]))
-        let day0 = monday.date(), day56 = monday.adding(days: 56).date()
+        let day0 = monday.date()
+        let day56 = monday.adding(days: 56).date()
         store.tests = [
             TestResult(test: .numeracy, date: day0, score: 0.6, detail: ["level": 6], placement: true),
             TestResult(test: .mathsPlacement, date: day0, score: 8, detail: ["level": 4], placement: true),
@@ -349,7 +392,9 @@ struct MathsTests {
     func placedStore(numeracy: Int) -> Store {
         var store = Store(settings: Fixtures.settings([.maths, .writing]))
         let now = monday.date()
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths, .writing], planned: true, ranToEnd: true)]
+        store.sessions = [
+            StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths, .writing], planned: true, ranToEnd: true)
+        ]
         store.tests = [
             TestResult(test: .numeracy, date: now, score: 0.7, detail: ["level": Double(numeracy)], placement: true),
             TestResult(test: .mathsPlacement, date: now, score: 6, detail: ["level": 3], placement: true),
@@ -416,10 +461,12 @@ extension MathsTests {
     /// Every "$x \times y = z$" and "$x \div y = z$" (or + and -) in a worked solution.
     func sums(in steps: [String]) -> [(x: Rational, op: String, y: Rational, z: Rational)] {
         steps.flatMap { step in
-            step.components(separatedBy: "$").enumerated().filter { $0.offset % 2 == 1 }.compactMap { _, maths -> (Rational, String, Rational, Rational)? in
+            step.components(separatedBy: "$").enumerated().filter { $0.offset % 2 == 1 }.compactMap {
+                _, maths -> (Rational, String, Rational, Rational)? in
                 let tokens = maths.replacingOccurrences(of: ",", with: "").split(separator: " ").map(String.init)
                 guard tokens.count == 5, tokens[3] == "=", let x = Rational(parsing: tokens[0]), let y = Rational(parsing: tokens[2]),
-                      let z = Rational(parsing: tokens[4]) else { return nil }
+                    let z = Rational(parsing: tokens[4])
+                else { return nil }
                 return (x, tokens[1], y, z)
             }
         }
@@ -433,20 +480,22 @@ extension MathsTests {
                 for seed in 0..<200 {
                     let problem = skill.problem(level: level, seed: "\(seed)")
                     for sum in sums(in: problem.steps) {
-                        let value: Rational? = switch sum.op {
-                        case #"\times"#: sum.x * sum.y
-                        case #"\div"#: sum.y == 0 ? nil : sum.x / sum.y
-                        case "+": sum.x + sum.y
-                        case "-": sum.x - sum.y
-                        default: nil
-                        }
+                        let value: Rational? =
+                            switch sum.op {
+                            case #"\times"#: sum.x * sum.y
+                            case #"\div"#: sum.y == 0 ? nil : sum.x / sum.y
+                            case "+": sum.x + sum.y
+                            case "-": sum.x - sum.y
+                            default: nil
+                            }
                         guard let value else { continue }
                         checked += 1
                         #expect(value == sum.z, "\(skill) \(level) #\(seed): \(problem.prompt) → \(problem.steps)")
                     }
                     // A step never adds or takes away a negative or nothing.
-                    #expect(!problem.steps.contains { $0.contains("$+ -") || $0.contains("$- -") || $0.contains("$+ 0$") || $0.contains("$- 0$") },
-                            "\(skill) \(level) #\(seed): \(problem.steps)")
+                    #expect(
+                        !problem.steps.contains { $0.contains("$+ -") || $0.contains("$- -") || $0.contains("$+ 0$") || $0.contains("$- 0$") },
+                        "\(skill) \(level) #\(seed): \(problem.steps)")
                 }
             }
         }
@@ -465,9 +514,12 @@ extension MathsTests {
                         let places = step.contains("one decimal place back") ? 1 : step.contains("two decimal places back") ? 2 : 0
                         guard places > 0 else { continue }
                         let product = try #require(sums(in: [step]).first, "\(step)").z
-                        let back = try #require(step.components(separatedBy: "back: $").last?.split(separator: "$").first.flatMap { Rational(parsing: String($0)) })
+                        let back = try #require(
+                            step.components(separatedBy: "back: $").last?.split(separator: "$").first.flatMap { Rational(parsing: String($0)) })
                         checked += 1
-                        #expect(product / Rational(places == 1 ? 10 : 100) == back && back == answer, "\(skill) \(level) #\(seed): \(problem.prompt) → \(step)")
+                        #expect(
+                            product / Rational(places == 1 ? 10 : 100) == back && back == answer,
+                            "\(skill) \(level) #\(seed): \(problem.prompt) → \(step)")
                     }
                 }
             }
@@ -491,15 +543,18 @@ extension MathsTests {
 
     @Test("typed answers too big to work with are refused, never trap")
     func hugeTypedAnswers() {
-        for text in ["-9223372036854775808", "-9223372036854775808/1", "1/-9223372036854775808", "-922337203685477580.8",
-                     "-9,223,372,036,854,775,808", "1 1/9223372036854775807", "1000000000 1/10000000000", "999999999999999 1/999999999999999",
-                     "99999999999999999999"] {
+        for text in [
+            "-9223372036854775808", "-9223372036854775808/1", "1/-9223372036854775808", "-922337203685477580.8",
+            "-9,223,372,036,854,775,808", "1 1/9223372036854775807", "1000000000 1/10000000000", "999999999999999 1/999999999999999",
+            "99999999999999999999",
+        ] {
             #expect(Rational(parsing: text) == nil, "\(text)")
         }
         #expect(Rational(parsing: "9223372036854775807") == Rational(Int.max))
         #expect(Rational(parsing: "2 1/2") == Rational(5, 2) && Rational(parsing: "-2 1/2") == Rational(-5, 2))
-        let question = Question(id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""), answer: .number(Rational(3, 4), tolerance: 0),
-                                expectedSeconds: 10)
+        let question = Question(
+            id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""), answer: .number(Rational(3, 4), tolerance: 0),
+            expectedSeconds: 10)
         #expect(!question.check(typed: "-9223372036854775808") && !question.check(typed: "1000000000 1/10000000000"))
         #expect(question.check(typed: "6/8"))
     }

@@ -13,8 +13,10 @@ public struct Availability: Hashable, Sendable {
     /// Exercises it can do even though the equipment list says otherwise.
     public var included: Set<String>
 
-    public init(equipment: Set<Equipment>, apparatus: Set<Apparatus>, dumbbellMaxKg: Double? = nil,
-                excluded: Set<String> = [], included: Set<String> = []) {
+    public init(
+        equipment: Set<Equipment>, apparatus: Set<Apparatus>, dumbbellMaxKg: Double? = nil,
+        excluded: Set<String> = [], included: Set<String> = []
+    ) {
         self.equipment = equipment
         self.apparatus = apparatus
         self.dumbbellMaxKg = dumbbellMaxKg
@@ -24,13 +26,14 @@ public struct Availability: Hashable, Sendable {
 
     /// The typical setup for an equipment dial position.
     public init(access: EquipmentAccess) {
-        let apparatus: Set<Apparatus> = switch access {
-        // A sauna or steam room is the person's to say: plenty of full gyms have neither.
-        case .fullGym: Set(Apparatus.allCases.filter { !$0.isRecovery })
-        case .homeGym: [.rack, .bench, .pullUpBar, .box, .landmine]
-        case .hotelGym: [.bench, .box]
-        case .bodyweightOnly: [.box]
-        }
+        let apparatus: Set<Apparatus> =
+            switch access {
+            // A sauna or steam room is the person's to say: plenty of full gyms have neither.
+            case .fullGym: Set(Apparatus.allCases.filter { !$0.isRecovery })
+            case .homeGym: [.rack, .bench, .pullUpBar, .box, .landmine]
+            case .hotelGym: [.bench, .box]
+            case .bodyweightOnly: [.box]
+            }
         self.init(equipment: access.equipment, apparatus: apparatus, dumbbellMaxKg: access.dumbbellCapKg)
     }
 

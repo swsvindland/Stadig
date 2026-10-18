@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// What the iPhone keeps the Watch up to date with, so the Watch can run today's session on its
@@ -22,9 +22,11 @@ public struct PhoneContext: Codable, Hashable, Sendable {
     public var startingLoads: [String: Double]?
     public var sentAt: Date
 
-    public init(plan: SessionPlan?, upNext: String?, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
-                history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool, zones: HeartRateZones,
-                units: UnitPreference, startingLoads: [String: Double]? = nil, sentAt: Date = Date()) {
+    public init(
+        plan: SessionPlan?, upNext: String?, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
+        history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool, zones: HeartRateZones,
+        units: UnitPreference, startingLoads: [String: Double]? = nil, sentAt: Date = Date()
+    ) {
         self.plan = plan
         self.upNext = upNext
         self.gym = gym
@@ -41,8 +43,9 @@ public struct PhoneContext: Codable, Hashable, Sendable {
     }
 
     public func environment(catalog: ExerciseCatalog) -> SessionEnvironment {
-        SessionEnvironment(catalog: catalog, gym: gym, trust: trust, phase: phase, bodyweightKg: bodyweightKg, history: history,
-                           enduranceScore: enduranceScore, heartRateGuidedRest: heartRateGuidedRest)
+        SessionEnvironment(
+            catalog: catalog, gym: gym, trust: trust, phase: phase, bodyweightKg: bodyweightKg, history: history,
+            enduranceScore: enduranceScore, heartRateGuidedRest: heartRateGuidedRest)
     }
 }
 

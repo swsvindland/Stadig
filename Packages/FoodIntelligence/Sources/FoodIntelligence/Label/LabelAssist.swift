@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import SystemCore
 
 /// What the model read from a label's text: a name, and printed values when asked.
@@ -45,12 +45,14 @@ enum LabelAssist {
             let macros = [values[.fat], values[.carbs], values[.protein]]
             // Calories, or all three macros to count them from; anything less is not a label read.
             guard kcal != nil || !macros.contains(where: { $0 == nil }) else { return nil }
-            var nutrients = Nutrients(kcal: 0, protein: values[.protein] ?? 0, carbs: values[.carbs] ?? 0, fat: values[.fat] ?? 0,
-                                      fiber: values[.fiber], sugar: values[.sugar], saturatedFat: values[.saturatedFat], sodium: values[.sodium])
+            var nutrients = Nutrients(
+                kcal: 0, protein: values[.protein] ?? 0, carbs: values[.carbs] ?? 0, fat: values[.fat] ?? 0,
+                fiber: values[.fiber], sugar: values[.sugar], saturatedFat: values[.saturatedFat], sodium: values[.sodium])
             nutrients.kcal = kcal ?? nutrients.macroKcal
-            return LabelReading(servingLabel: serving, servingGrams: grams, servingMilliliters: nil, nutrients: nutrients,
-                                fieldsRead: values.count + (grams == nil ? 0 : 1), estimatedCalories: kcal == nil,
-                                missing: LabelGuess.Field.allCases.filter { values[$0] == nil }.map(\.key))
+            return LabelReading(
+                servingLabel: serving, servingGrams: grams, servingMilliliters: nil, nutrients: nutrients,
+                fieldsRead: values.count + (grams == nil ? 0 : 1), estimatedCalories: kcal == nil,
+                missing: LabelGuess.Field.allCases.filter { values[$0] == nil }.map(\.key))
         }
         var filled = 0
         func take(_ field: LabelGuess.Field) -> Double? {

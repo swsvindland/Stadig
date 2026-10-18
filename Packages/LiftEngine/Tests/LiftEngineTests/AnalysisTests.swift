@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 /// The analysis behind the calendar and today's session: which block is current, when a deload
@@ -10,18 +11,22 @@ import SystemCore
 struct AnalysisTests {
     let gym = Gym.preset(.fullGym, unit: .kg)
 
-    func state(_ mesocycles: [Mesocycle], today: Day, sessions: [SessionRecord] = [], lifeModes: [LifeModePeriod] = [],
-               recovery: [RecoveryDay] = [], profile: SharedProfile = Fixture.profile(), settings: LiftSettings = LiftSettings()) -> LiftState {
-        LiftState(profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions, mesocycles: mesocycles,
-                  lifeModes: lifeModes, recovery: recovery, bodyweightKg: 80, today: today)
+    func state(
+        _ mesocycles: [Mesocycle], today: Day, sessions: [SessionRecord] = [], lifeModes: [LifeModePeriod] = [],
+        recovery: [RecoveryDay] = [], profile: SharedProfile = Fixture.profile(), settings: LiftSettings = LiftSettings()
+    ) -> LiftState {
+        LiftState(
+            profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions, mesocycles: mesocycles,
+            lifeModes: lifeModes, recovery: recovery, bodyweightKg: 80, today: today)
     }
 
     /// Today's session as the app plans it: from the analysis's next session.
     func plan(_ a: LiftAnalysis, on day: Day) throws -> SessionPlan {
         let next = try #require(a.next)
-        let context = PlanningContext(catalog: Fixture.catalog, gym: gym, profile: Fixture.profile(), settings: LiftSettings(), trust: a.trust,
-                                      phase: a.phase, life: a.life, history: a.history, bodyweightKg: 80, enduranceScore: nil,
-                                      sessionIndexInWeek: next.doneThisWeek)
+        let context = PlanningContext(
+            catalog: Fixture.catalog, gym: gym, profile: Fixture.profile(), settings: LiftSettings(), trust: a.trust,
+            phase: a.phase, life: a.life, history: a.history, bodyweightKg: 80, enduranceScore: nil,
+            sessionIndexInWeek: next.doneThisWeek)
         return SessionPlanner.plan(next.day, of: next.mesocycle, on: day, context: context)
     }
 
@@ -53,8 +58,9 @@ struct AnalysisTests {
     func beatUp(_ m: Mesocycle, on today: Day) -> LiftState {
         let sessions = [3, 1].map { daysAgo in
             let start = today.adding(days: -daysAgo).date().addingTimeInterval(18 * 3600)
-            return SessionRecord(start: start, end: start.addingTimeInterval(3600), title: m.days[0].name, mesocycleID: m.id, dayID: m.days[0].id,
-                                 feedback: SessionFeedback(soreness: 3, energy: 1))
+            return SessionRecord(
+                start: start, end: start.addingTimeInterval(3600), title: m.days[0].name, mesocycleID: m.id, dayID: m.days[0].id,
+                feedback: SessionFeedback(soreness: 3, energy: 1))
         }
         return state([m], today: today, sessions: sessions, recovery: (0..<7).map { RecoveryDay(day: today.adding(days: -$0), sleepHours: 5) })
     }
@@ -203,11 +209,13 @@ struct AnalysisTests {
             let start = Fixture.start.adding(weeks: week).date().addingTimeInterval(18 * 3600)
             let assistance = 40 - Double(week) * 1.25
             let sets = (0..<3).map {
-                LoggedSet(exerciseID: id, date: start.addingTimeInterval(Double($0) * 180), loadKg: assistance, reps: 8, rating: .orange,
-                          bodyweightKg: 80)
+                LoggedSet(
+                    exerciseID: id, date: start.addingTimeInterval(Double($0) * 180), loadKg: assistance, reps: 8, rating: .orange,
+                    bodyweightKg: 80)
             }
-            return SessionRecord(start: start, end: start.addingTimeInterval(3600), title: "Pull",
-                                 exercises: [ExerciseLog(exerciseID: id, sets: sets)])
+            return SessionRecord(
+                start: start, end: start.addingTimeInterval(3600), title: "Pull",
+                exercises: [ExerciseLog(exerciseID: id, sets: sets)])
         }
         let a = Analyst.analyse(state([], today: Fixture.start.adding(weeks: 8), sessions: sessions))
         #expect(Analyst.strengthTrend(a, catalog: Fixture.catalog) == .onPace)
@@ -218,8 +226,9 @@ struct AnalysisTests {
         let today = Fixture.start
         let tape = BodyMeasurements(day: today, weightKg: 88, bodyFatPercent: 20, waistCm: 90)
         func state(health: Double?, measured date: Date?, tape entries: [BodyMeasurements] = [tape]) -> LiftState {
-            LiftState(profile: Fixture.profile(), settings: LiftSettings(), gym: gym, catalog: Fixture.catalog, measurements: entries,
-                      bodyweightKg: health, bodyweightDate: date, today: today)
+            LiftState(
+                profile: Fixture.profile(), settings: LiftSettings(), gym: gym, catalog: Fixture.catalog, measurements: entries,
+                bodyweightKg: health, bodyweightDate: date, today: today)
         }
         let monthsAgo = state(health: 80, measured: today.adding(days: -120).date().addingTimeInterval(7 * 3600))
         #expect(monthsAgo.measuredBodyweight == 88 && monthsAgo.effectiveBodyweight == 88)

@@ -97,8 +97,10 @@ public struct WritingTask: Hashable, Sendable, Identifiable {
     /// The piece just written, shown back with notes on it. Nil while writing.
     public var reviewing: UUID?
 
-    public init(id: String, exercise: WritingExercise, writingKind: WritingKind = .creative, instruction: String, source: String? = nil,
-                sourceCredit: String? = nil, notes: String? = nil, minutes: Int, taskID: String? = nil, reviewing: UUID? = nil) {
+    public init(
+        id: String, exercise: WritingExercise, writingKind: WritingKind = .creative, instruction: String, source: String? = nil,
+        sourceCredit: String? = nil, notes: String? = nil, minutes: Int, taskID: String? = nil, reviewing: UUID? = nil
+    ) {
         self.id = id
         self.exercise = exercise
         self.writingKind = writingKind
@@ -155,9 +157,11 @@ public struct WritingPiece: Hashable, Codable, Sendable, Identifiable {
     public var original: String?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), date: Date, exercise: WritingExercise, writingKind: WritingKind, prompt: String, text: String,
-                source: WritingSource = .typed, notes: String? = nil, feedback: String? = nil, metrics: [String: Double] = [:],
-                taskID: String? = nil, original: String? = nil, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), date: Date, exercise: WritingExercise, writingKind: WritingKind, prompt: String, text: String,
+        source: WritingSource = .typed, notes: String? = nil, feedback: String? = nil, metrics: [String: Double] = [:],
+        taskID: String? = nil, original: String? = nil, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.date = date
         self.exercise = exercise
@@ -191,8 +195,10 @@ public struct BlindComparison: Hashable, Codable, Sendable, Identifiable {
     public var aiPickedNewer: Bool?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), date: Date, older: UUID, newer: UUID, pickedNewer: Bool? = nil, aiPickedNewer: Bool? = nil,
-                updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), date: Date, older: UUID, newer: UUID, pickedNewer: Bool? = nil, aiPickedNewer: Bool? = nil,
+        updatedAt: Date = Date()
+    ) {
         self.id = id
         self.date = date
         self.older = older

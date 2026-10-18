@@ -36,8 +36,10 @@ public struct StepAim: Hashable, Codable, Sendable {
     /// Why the aim is what it is, in plain words.
     public var reason: String
 
-    public init(baseline: Int, target: Int, aim: Int, week: [StepDay], recent: Int?, today: Int?, energy: PhaseKind.Energy,
-                actionable: Bool, reason: String) {
+    public init(
+        baseline: Int, target: Int, aim: Int, week: [StepDay], recent: Int?, today: Int?, energy: PhaseKind.Energy,
+        actionable: Bool, reason: String
+    ) {
         self.baseline = baseline
         self.target = target
         self.aim = aim
@@ -117,10 +119,11 @@ public enum Steps {
     /// under it, and nothing over 10,000 is prescribed.
     public static func target(baseline: Int, energy: PhaseKind.Energy, age: Int?) -> Int {
         let floor = floor(age: age)
-        let raw = switch energy {
-        case .deficit: max(floor, min(baseline + cutExtra, max(baseline, cutCap)))
-        case .maintenance, .surplus: max(floor, min(baseline, holdCap))
-        }
+        let raw =
+            switch energy {
+            case .deficit: max(floor, min(baseline + cutExtra, max(baseline, cutCap)))
+            case .maintenance, .surplus: max(floor, min(baseline, holdCap))
+            }
         return round(raw, to: 500)
     }
 
@@ -133,8 +136,10 @@ public enum Steps {
     }
 
     /// The aim for today, or nil without enough step data to know the usual count.
-    public static func aim(days: [StepDay], anchor: Day, energy: PhaseKind.Energy, age: Int?, today: Day,
-                           exempt: Set<Day> = []) -> StepAim? {
+    public static func aim(
+        days: [StepDay], anchor: Day, energy: PhaseKind.Energy, age: Int?, today: Day,
+        exempt: Set<Day> = []
+    ) -> StepAim? {
         guard let baseline = baseline(days, anchor: anchor, today: today, exempt: exempt) else { return nil }
         let target = target(baseline: baseline, energy: energy, age: age)
         let weekStart = today.startOfWeek
@@ -161,18 +166,21 @@ public enum Steps {
             }
         case .maintenance, .surplus:
             if building {
-                reason = "About \(target.formatted()) a day is where the health benefit of walking levels off. Your usual is \(usual), so the aim rises about 1,000 a week."
+                reason =
+                    "About \(target.formatted()) a day is where the health benefit of walking levels off. Your usual is \(usual), so the aim rises about 1,000 a week."
             } else if slipped {
                 let back = target < baseline - 250 ? "Getting back to \(target.formatted()) is plenty." : "Getting back there is the aim."
                 reason = "Steps have slipped from your usual \(usual) a day. \(back)"
             } else if target < baseline - 250 {
-                reason = "Your usual is \(usual) a day, past where the health benefit of walking levels off. Anything over \(target.formatted()) is a bonus."
+                reason =
+                    "Your usual is \(usual) a day, past where the health benefit of walking levels off. Anything over \(target.formatted()) is a bonus."
             } else {
                 reason = "Your usual \(usual) a day is where the health benefit of walking levels off. Holding it is the aim."
             }
         }
-        return StepAim(baseline: baseline, target: target, aim: aim, week: week, recent: recent, today: byDay[today], energy: energy,
-                       actionable: energy == .deficit || building || slipped, reason: reason)
+        return StepAim(
+            baseline: baseline, target: target, aim: aim, week: week, recent: recent, today: byDay[today], energy: energy,
+            actionable: energy == .deficit || building || slipped, reason: reason)
     }
 
     /// Long days on foot nobody logged (a hike, a day of sightseeing), as minutes of walking beyond
@@ -188,8 +196,9 @@ public enum Steps {
     /// least 1,500 a day and an eighth.
     public static func fall(_ days: [StepDay], window: DayRange) -> (before: Int, during: Int)? {
         guard let during = average(days, in: window, minimumDays: 10),
-              let before = average(days, in: DayRange(window.start.adding(days: -28), window.start.adding(days: -1)), minimumDays: 10),
-              before - during >= max(1_500, before / 8) else { return nil }
+            let before = average(days, in: DayRange(window.start.adding(days: -28), window.start.adding(days: -1)), minimumDays: 10),
+            before - during >= max(1_500, before / 8)
+        else { return nil }
         return (before, during)
     }
 

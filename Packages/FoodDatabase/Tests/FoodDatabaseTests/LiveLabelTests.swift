@@ -1,6 +1,7 @@
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Live label scanning")
@@ -11,11 +12,15 @@ struct LiveLabelTests {
     }
 
     // A panel too tall for one frame: the camera sees the top, the middle, then the bottom.
-    let top = ["Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Amount per serving", "Calories 230",
-               "% Daily Value*", "Total Fat 8g 10%", "Saturated Fat 1g 5%"]
+    let top = [
+        "Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Amount per serving", "Calories 230",
+        "% Daily Value*", "Total Fat 8g 10%", "Saturated Fat 1g 5%",
+    ]
     let middle = ["Saturated Fat 1g 5%", "Trans Fat 0g", "Cholesterol 0mg 0%", "Sodium 160mg 7%", "Total Carbohydrate 37g 13%"]
-    let bottom = ["Total Carbohydrate 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g", "Includes 10g Added Sugars 20%",
-                  "Protein 3g", "Vitamin D 2mcg 10%", "Calcium 260mg 20%", "Iron 8mg 45%"]
+    let bottom = [
+        "Total Carbohydrate 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g", "Includes 10g Added Sugars 20%",
+        "Protein 3g", "Vitamin D 2mcg 10%", "Calcium 260mg 20%", "Iron 8mg 45%",
+    ]
 
     @Test func aTallLabelIsPutTogetherFromFramesThatEachSeePartOfIt() throws {
         var live = LiveLabel()
@@ -74,18 +79,24 @@ struct LiveLabelTests {
 
     @Test func caloriesAreWorkedOutWhenOnlyTheMacrosWereSeen() throws {
         var live = LiveLabel()
-        for part in [middle, middle, bottom, bottom, ["Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g"],
-                     ["Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g"]] { live.add(frame(part)) }
+        for part in [
+            middle, middle, bottom, bottom, ["Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g"],
+            ["Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g"],
+        ] { live.add(frame(part)) }
         #expect(live.ready && live.value("kcal") == .missing)
         let reading = try #require(live.reading)
         #expect(reading.estimatedCalories && reading.nutrients.kcal == 9 * 8 + 4 * 37 + 4 * 3)
     }
 
     @Test func aSupplementPanelIsReadLineByLineAcrossFrames() throws {
-        let head = ["Supplement Facts", "Serving Size 2 Softgels", "Amount Per Serving % DV", "Calories 20", "Total Fat 2 g 3%",
-                    "Vitamin D3 (as cholecalciferol) 25 mcg 125%"]
-        let tail = ["Vitamin D3 (as cholecalciferol) 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA (Eicosapentaenoic Acid) 650 mg †",
-                    "DHA (Docosahexaenoic Acid) 450 mg †", "Vitamin E 13.5 mg 90%", "Other ingredients: Gelatin, Glycerin"]
+        let head = [
+            "Supplement Facts", "Serving Size 2 Softgels", "Amount Per Serving % DV", "Calories 20", "Total Fat 2 g 3%",
+            "Vitamin D3 (as cholecalciferol) 25 mcg 125%",
+        ]
+        let tail = [
+            "Vitamin D3 (as cholecalciferol) 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA (Eicosapentaenoic Acid) 650 mg †",
+            "DHA (Docosahexaenoic Acid) 450 mg †", "Vitamin E 13.5 mg 90%", "Other ingredients: Gelatin, Glycerin",
+        ]
         var live = LiveSupplementLabel()
         live.add(SupplementLabel.parse(lines: head))
         live.add(SupplementLabel.parse(lines: ["EPA (Eicosapentaenoic Acid) 560 mg †", "DHA (Docosahexaenoic Acid) 450 mg †"]))
@@ -96,8 +107,11 @@ struct LiveLabelTests {
         #expect(live.frames == 6 && live.panelFrames == 5)
         let lines = live.readLines
         // "Fish Oil 2,400 mg" isn't a nutrient Macro Track tracks, so it never shows up.
-        #expect(lines.map(\.ingredient.name) == ["Calories", "Total Fat", "Vitamin D3 (as cholecalciferol)",
-                                                 "EPA (Eicosapentaenoic Acid)", "DHA (Docosahexaenoic Acid)", "Vitamin E"])
+        #expect(
+            lines.map(\.ingredient.name) == [
+                "Calories", "Total Fat", "Vitamin D3 (as cholecalciferol)",
+                "EPA (Eicosapentaenoic Acid)", "DHA (Docosahexaenoic Acid)", "Vitamin E",
+            ])
         #expect(lines.last?.ingredient.amount == 13.5)
         // EPA was misread as 560 once, then read as 650 twice.
         #expect(lines.first { $0.ingredient.name.hasPrefix("EPA") }?.ingredient.amount == 650)
@@ -136,17 +150,21 @@ struct LiveLabelTests {
 
     @Test func aModelCheckOfASupplementMatchesLinesByNutrientAndAddsWhatFramesMissed() throws {
         var live = LiveSupplementLabel()
-        let panel = ["Supplement Facts", "Serving Size 2 Softgels", "Vitamin D3 (as cholecalciferol) 25 mcg 125%", "EPA 650 mg †",
-                     "Net Wt. 12 oz (340 g)", "Take 2 softgels daily with food"]
+        let panel = [
+            "Supplement Facts", "Serving Size 2 Softgels", "Vitamin D3 (as cholecalciferol) 25 mcg 125%", "EPA 650 mg †",
+            "Net Wt. 12 oz (340 g)", "Take 2 softgels daily with food",
+        ]
         live.add(SupplementLabel.parse(lines: panel))
         // Directions and net weight never become lines.
         #expect(live.readLines.map(\.ingredient.name) == ["Vitamin D3 (as cholecalciferol)", "EPA"])
         #expect(live.lockedCount == 0)
-        let model = SupplementFacts(id: "m", name: "Fish Oil", servingCount: 2, unit: "softgel", ingredients: [
-            SupplementIngredient(name: "Vitamin D", amount: 25, unit: "mcg"),
-            SupplementIngredient(name: "EPA", amount: 650, unit: "mg"),
-            SupplementIngredient(name: "DHA", amount: 450, unit: "mg"),
-        ], source: .label)
+        let model = SupplementFacts(
+            id: "m", name: "Fish Oil", servingCount: 2, unit: "softgel",
+            ingredients: [
+                SupplementIngredient(name: "Vitamin D", amount: 25, unit: "mcg"),
+                SupplementIngredient(name: "EPA", amount: 650, unit: "mg"),
+                SupplementIngredient(name: "DHA", amount: 450, unit: "mg"),
+            ], source: .label)
         live.check(model)
         let lines = live.readLines
         #expect(lines.map(\.ingredient.name) == ["Vitamin D3 (as cholecalciferol)", "EPA", "DHA"])

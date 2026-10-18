@@ -1,7 +1,7 @@
-import SwiftUI
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Conditioning: time against the planned minutes, and live heart rate against the target zones.
@@ -13,7 +13,8 @@ struct ConditioningView: View {
     var body: some View {
         if let live = model.live, live.items.indices.contains(item) {
             let liveItem = live.items[item]
-            let plan = liveItem.plan.conditioning
+            let plan =
+                liveItem.plan.conditioning
                 ?? ConditioningPlan(minutes: max(1, (liveItem.plan.seconds ?? 600) / 60), zones: 2...3, style: .steady)
             ScrollView {
                 VStack(spacing: 6) {
@@ -69,10 +70,12 @@ struct ConditioningView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 if let phase = phase(plan, elapsed: elapsed) {
-                    Label(phase.work ? "Work · \(phase.left) s" : "Easy · \(phase.left) s",
-                          systemImage: phase.work ? "flame.fill" : "wind")
-                        .font(.headline.monospacedDigit())
-                        .foregroundStyle(phase.work ? .orange : .blue)
+                    Label(
+                        phase.work ? "Work · \(phase.left) s" : "Easy · \(phase.left) s",
+                        systemImage: phase.work ? "flame.fill" : "wind"
+                    )
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(phase.work ? .orange : .blue)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -83,9 +86,11 @@ struct ConditioningView: View {
         if let bpm = model.workout.heartRate {
             let zone = model.zones.zone(for: bpm)
             let status: (text: String, symbol: String) =
-                zone < plan.zones.lowerBound ? ("Pick it up", "arrow.up")
-                : zone > plan.zones.upperBound ? ("Ease off", "arrow.down")
-                : ("In the zone", "checkmark")
+                zone < plan.zones.lowerBound
+                ? ("Pick it up", "arrow.up")
+                : zone > plan.zones.upperBound
+                    ? ("Ease off", "arrow.down")
+                    : ("In the zone", "checkmark")
             VStack(spacing: 2) {
                 Label {
                     Text("\(Int(bpm.rounded())) bpm · Zone \(zone)").monospacedDigit()

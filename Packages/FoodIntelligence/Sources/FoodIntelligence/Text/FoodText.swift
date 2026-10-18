@@ -21,13 +21,16 @@ struct Pattern: Sendable {
     /// and `^` is only ever the text's start.
     func firstRange(in text: String, from start: String.Index? = nil) -> Range<String.Index>? {
         let range = NSRange((start ?? text.startIndex)..., in: text)
-        return regex.firstMatch(in: text, options: [.withTransparentBounds, .withoutAnchoringBounds], range: range).flatMap { Range($0.range, in: text) }
+        return regex.firstMatch(in: text, options: [.withTransparentBounds, .withoutAnchoringBounds], range: range).flatMap {
+            Range($0.range, in: text)
+        }
     }
 
     /// The first match's text, or one of its groups.
     func firstMatch(in text: String, group: Int = 0) -> String? {
         guard let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(match.range(at: group), in: text) else { return nil }
+            let range = Range(match.range(at: group), in: text)
+        else { return nil }
         return String(text[range])
     }
 

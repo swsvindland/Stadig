@@ -46,11 +46,11 @@ public struct UnitPreference: Codable, Hashable, Sendable {
 
 public func clamp<T: Comparable>(_ value: T, _ lower: T, _ upper: T) -> T { min(upper, max(lower, value)) }
 
-public extension Array where Element == Double {
-    var mean: Double? { isEmpty ? nil : reduce(0, +) / Double(count) }
+extension Array where Element == Double {
+    public var mean: Double? { isEmpty ? nil : reduce(0, +) / Double(count) }
 
     /// Least-squares slope against the element index.
-    var slope: Double? {
+    public var slope: Double? {
         guard count >= 2 else { return nil }
         return leastSquaresSlope(x: (0..<count).map(Double.init), y: self) ?? 0
     }
@@ -61,8 +61,10 @@ public extension Array where Element == Double {
 public func leastSquaresSlope(x: [Double], y: [Double]) -> Double? {
     guard x.count == y.count, x.count >= 2 else { return nil }
     let n = Double(x.count)
-    let mx = x.reduce(0, +) / n, my = y.reduce(0, +) / n
-    var num = 0.0, den = 0.0
+    let mx = x.reduce(0, +) / n
+    let my = y.reduce(0, +) / n
+    var num = 0.0
+    var den = 0.0
     for (xi, yi) in zip(x, y) {
         num += (xi - mx) * (yi - my)
         den += (xi - mx) * (xi - mx)

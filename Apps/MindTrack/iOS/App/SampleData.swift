@@ -13,8 +13,9 @@ enum SampleData {
         let today = model.today
         let start = today.adding(days: -60)
         let ladder = ReadingLadder.standard
-        var settings = MindSettings(schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
-                                    mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
+        var settings = MindSettings(
+            schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
+            mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
         // -sampleSpanish adds Spanish as a second Focus language, on a six-day week.
         if LaunchOptions.current.has("-sampleSpanish") {
             settings.courses[.spanish] = .focus
@@ -41,9 +42,10 @@ enum SampleData {
             let day = start.adding(days: offset)
             // A missed day now and then.
             if offset > 20 && rng.chance(0.08) { continue }
-            let state = StudyState(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
-                                   reflections: reflections, pieces: pieces, comparisons: comparisons, today: day,
-                                   now: day.date().addingTimeInterval(18.5 * 3600))
+            let state = StudyState(
+                settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
+                reflections: reflections, pieces: pieces, comparisons: comparisons, today: day,
+                now: day.date().addingTimeInterval(18.5 * 3600))
             guard let plan = SessionPlanner.today(state, catalogs: model.catalogs) else { continue }
             var run = StudyRun(plan: plan, state: state, catalogs: model.catalogs, now: state.now)
             var now = state.now
@@ -81,8 +83,9 @@ enum SampleData {
                     let page = book.page + minutes * 2 + rng.int(0...10)
                     let finished = page >= book.pages
                     // Focus holds to about twenty minutes, then drifts.
-                    run.finishReading(page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes),
-                                      focus: minutes <= 20 ? .held : .drifted, now: now)
+                    run.finishReading(
+                        page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes),
+                        focus: minutes <= 20 ? .held : .drifted, now: now)
                 case .reflect(_, let finished):
                     now += 60
                     run.reflect(rng.pick(finished ? bookNotes : sectionNotes), now: now)
@@ -92,16 +95,18 @@ enum SampleData {
                 case .speak(let task):
                     now += task.expectedSeconds
                     let said = rng.chance(task.band.map { bandChance($0) } ?? 0.85) ? task.answer : ""
-                    run.respond(task.mode == .say ? .spoken(transcript: said, seconds: task.expectedSeconds) : .written(text: said, source: .typed),
-                                now: now)
+                    run.respond(
+                        task.mode == .say ? .spoken(transcript: said, seconds: task.expectedSeconds) : .written(text: said, source: .typed),
+                        now: now)
                     if run.feedback != nil { run.next(now: now + 3) }
                 case .compose(let task):
                     now += Double(task.minutes) * 60
                     if task.reviewing != nil {
                         run.respond(.skip, now: now)
                     } else {
-                        run.submitWriting(SampleWriting.text(for: task, week: offset / 7), source: rng.chance(0.3) ? .handwritten : .typed,
-                                          misspelled: SampleWriting.misspelled, now: now)
+                        run.submitWriting(
+                            SampleWriting.text(for: task, week: offset / 7), source: rng.chance(0.3) ? .handwritten : .typed,
+                            misspelled: SampleWriting.misspelled, now: now)
                     }
                 case .compare(let pair):
                     now += 90
@@ -124,18 +129,23 @@ enum SampleData {
             pieces += run.newPieces
             comparisons += run.newComparisons
         }
-        tests.append(TestResult(test: .episode, date: start.adding(days: 52).date().addingTimeInterval(21 * 3600), score: 1.0 / 3,
-                                detail: ["rating": 1], language: .japanese))
-        tests.append(TestResult(test: .conversation, date: start.adding(days: 40).date().addingTimeInterval(13 * 3600), score: 2.0 / 3,
-                                detail: ["rating": 2], language: .japanese))
+        tests.append(
+            TestResult(
+                test: .episode, date: start.adding(days: 52).date().addingTimeInterval(21 * 3600), score: 1.0 / 3,
+                detail: ["rating": 1], language: .japanese))
+        tests.append(
+            TestResult(
+                test: .conversation, date: start.adding(days: 40).date().addingTimeInterval(13 * 3600), score: 2.0 / 3,
+                detail: ["rating": 2], language: .japanese))
         if let reader = GradedReaders.reader("ja.graded-readers-2") {
             var book = reader.book(status: .reading, started: start.adding(days: 30))
             book.page = 18
             book.updatedAt = start.adding(days: 50).date()
             books.append(book)
         }
-        model.seed(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
-                   pieces: pieces)
+        model.seed(
+            settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
+            pieces: pieces)
         model.seedWriting(comparisons: comparisons)
     }
 
@@ -152,7 +162,8 @@ enum SampleData {
         case .maths:
             if let numeracy = key.numeracy { return numeracy.level <= 6 ? 0.92 : numeracy.level == 7 ? 0.5 : 0.15 }
             let topic = MathCurriculum.topic(key.item)
-            let level = topic?.level ?? 10, solid = topic?.strand == .discrete ? 3 : 5
+            let level = topic?.level ?? 10
+            let solid = topic?.strand == .discrete ? 3 : 5
             if level <= solid { return 0.92 }
             if question.kind == .test && cards[key]?.memory == nil { return 0.2 }
             return level <= solid + 2 ? 0.8 : 0.55
@@ -169,7 +180,9 @@ enum SampleData {
     /// three days a week, and food logged on most days with protein hit on about two in three.
     static func systemData(ending today: Day) -> SystemData {
         var rng = SeededRandom(seed: 314)
-        var steps: [SystemData.Point] = [], training: [SystemData.Point] = [], protein: [SystemData.Point] = []
+        var steps: [SystemData.Point] = []
+        var training: [SystemData.Point] = []
+        var protein: [SystemData.Point] = []
         var hits: [Day: Bool] = [:]
         for offset in 1...56 {
             let day = today.adding(days: -offset)

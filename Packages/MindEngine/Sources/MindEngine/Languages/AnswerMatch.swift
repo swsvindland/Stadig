@@ -16,9 +16,11 @@ public enum AnswerMatch {
         var s = text.precomposedStringWithCompatibilityMapping.lowercased()
         switch language.pack.script {
         case .kanaKanji:
-            s = String(String.UnicodeScalarView(s.unicodeScalars.map { scalar in
-                (0x30A1...0x30F6).contains(scalar.value) ? Unicode.Scalar(scalar.value - 0x60)! : scalar
-            }))
+            s = String(
+                String.UnicodeScalarView(
+                    s.unicodeScalars.map { scalar in
+                        (0x30A1...0x30F6).contains(scalar.value) ? Unicode.Scalar(scalar.value - 0x60)! : scalar
+                    }))
             s = japaneseDigits(s)
             return String(s.filter { !$0.isWhitespace && !$0.isPunctuation && !$0.isSymbol || $0 == "ー" })
         case .none, .hangul:
@@ -136,7 +138,8 @@ public enum AnswerMatch {
         for (i, character) in characters.enumerated() {
             // A thousands comma inside digits ("30,000") is part of the number.
             if character == ",", run.last.map({ $0.isASCII && $0.isNumber }) == true, i + 1 < characters.count,
-               characters[i + 1].isASCII && characters[i + 1].isNumber {
+                characters[i + 1].isASCII && characters[i + 1].isNumber
+            {
                 continue
             }
             if digit(character) != nil || kanjiUnits[character] != nil || kanjiPowers[character] != nil {
@@ -226,12 +229,16 @@ public enum AnswerMatch {
         return (oku > 0 ? group(oku) + "億" : "") + (man > 0 ? group(man) + "万" : "") + group(rest)
     }
 
-    static let spanishSmall = ["cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce",
-                               "trece", "catorce", "quince", "dieciseis", "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno",
-                               "veintidos", "veintitres", "veinticuatro", "veinticinco", "veintiseis", "veintisiete", "veintiocho", "veintinueve"]
+    static let spanishSmall = [
+        "cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce",
+        "trece", "catorce", "quince", "dieciseis", "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno",
+        "veintidos", "veintitres", "veinticuatro", "veinticinco", "veintiseis", "veintisiete", "veintiocho", "veintinueve",
+    ]
     static let spanishTens = ["", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"]
-    static let spanishHundreds = ["", "ciento", "doscientos", "trescientos", "cuatrocientos", "quinientos", "seiscientos", "setecientos",
-                                  "ochocientos", "novecientos"]
+    static let spanishHundreds = [
+        "", "ciento", "doscientos", "trescientos", "cuatrocientos", "quinientos", "seiscientos", "setecientos",
+        "ochocientos", "novecientos",
+    ]
 
     /// A number in Spanish words, accents left off as `normalised` folds them: 31 is "treinta y
     /// uno", 2024 "dos mil veinticuatro". Nil from a million up.
@@ -241,7 +248,8 @@ public enum AnswerMatch {
         if n < 100 { return spanishTens[n / 10] + (n % 10 == 0 ? "" : " y " + spanishSmall[n % 10]) }
         if n == 100 { return "cien" }
         if n < 1000 { return spanishHundreds[n / 100] + (n % 100 == 0 ? "" : " " + (spanishWords(n % 100) ?? "")) }
-        let thousands = n / 1000, rest = n % 1000
+        let thousands = n / 1000
+        let rest = n % 1000
         // "veintiún mil", not "veintiuno mil"; a thousand on its own is just "mil".
         var head = thousands == 1 ? "" : spanishWords(thousands) ?? ""
         if head.hasSuffix("uno") { head.removeLast() }

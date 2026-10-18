@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Today's session and a Start button; on a rest day, what's next and "Train anyway".

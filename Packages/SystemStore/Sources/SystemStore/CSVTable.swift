@@ -34,7 +34,8 @@ public struct CSVTable: Sendable {
     /// they stay numbers. Numbers (the app) shows the apostrophe.
     static func field(_ value: String) -> String {
         let value = isFormula(value) ? "'" + value : value
-        let needsQuotes = value.unicodeScalars.contains { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }
+        let needsQuotes =
+            value.unicodeScalars.contains { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }
             || value.first?.isWhitespace == true || value.last?.isWhitespace == true
         guard needsQuotes else { return value }
         return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
@@ -42,7 +43,8 @@ public struct CSVTable: Sendable {
 
     static func isFormula(_ value: String) -> Bool {
         guard let first = value.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return false }
-        let plainNumber = (first == "-" || first == "+") && Double(value) != nil
+        let plainNumber =
+            (first == "-" || first == "+") && Double(value) != nil
             && value.unicodeScalars.allSatisfy { ("0"..."9").contains($0) || ".eE+-".unicodeScalars.contains($0) }
         return !plainNumber
     }

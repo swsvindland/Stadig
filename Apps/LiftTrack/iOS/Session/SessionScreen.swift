@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The live session. Every block in order, the current set in thumb reach at the bottom, and the
@@ -29,10 +29,12 @@ struct SessionScreen: View {
                                         .foregroundStyle(item.plan.block.color)
                                         .padding(.top, 6)
                                 }
-                                ItemCard(index: index, item: item, current: live.current?.item == index,
-                                         swap: { swapping = SwapTarget(index: index) },
-                                         edit: { set in editing = SetTarget(item: index, set: set) })
-                                    .id(item.id)
+                                ItemCard(
+                                    index: index, item: item, current: live.current?.item == index,
+                                    swap: { swapping = SwapTarget(index: index) },
+                                    edit: { set in editing = SetTarget(item: index, set: set) }
+                                )
+                                .id(item.id)
                             }
                             Color.clear.frame(height: 24)
                         }
@@ -53,9 +55,13 @@ struct SessionScreen: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button { model.showSession = false } label: { Image(systemName: "chevron.down") }
-                            .accessibilityLabel("Minimize")
-                            .accessibilityIdentifier("session.minimize")
+                        Button {
+                            model.showSession = false
+                        } label: {
+                            Image(systemName: "chevron.down")
+                        }
+                        .accessibilityLabel("Minimize")
+                        .accessibilityIdentifier("session.minimize")
                     }
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
@@ -169,7 +175,8 @@ struct ItemCard: View {
             if let conditioning = item.plan.conditioning {
                 Text(conditioning.summary).font(.subheadline.monospacedDigit())
                 if let log = item.conditioning {
-                    Text("Done: \(log.minutes) min\(log.averageHeartRate.map { " · avg \(Int($0)) bpm" } ?? "")").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Done: \(log.minutes) min\(log.averageHeartRate.map { " · avg \(Int($0)) bpm" } ?? "")").font(.subheadline).foregroundStyle(
+                        .secondary)
                 }
             } else {
                 VStack(spacing: 6) {
@@ -178,15 +185,18 @@ struct ItemCard: View {
                             // A logged set opens for a correction: the wrong weight, a rating tapped too fast. One
                             // logged before a swap reads as the exercise it was done on.
                             let doneOn = model.catalog.resolve(logged.exerciseID)
-                            Button { edit(setIndex) } label: {
+                            Button {
+                                edit(setIndex)
+                            } label: {
                                 SetRow(set: set, number: number(of: setIndex), exercise: doneOn, isCurrent: false, editable: true)
                             }
                             .buttonStyle(.plain)
                             .accessibilityHint("Edit this set")
                             .accessibilityIdentifier("session.loggedSet")
                         } else {
-                            SetRow(set: set, number: number(of: setIndex), exercise: exercise,
-                                   isCurrent: current && model.live?.current?.set == setIndex)
+                            SetRow(
+                                set: set, number: number(of: setIndex), exercise: exercise,
+                                isCurrent: current && model.live?.current?.set == setIndex)
                         }
                     }
                 }
@@ -303,20 +313,28 @@ struct RestPanel: View {
         VStack(spacing: 10) {
             if let message { Text(message).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center) }
             HStack(alignment: .center, spacing: 16) {
-                Button { model.update { $0.extendRest(by: -15) } } label: { Text("−15") .frame(width: 44) }
-                    .secondaryAction()
-                    .accessibilityLabel("Fifteen seconds less")
-                    .accessibilityIdentifier("rest.less")
+                Button {
+                    model.update { $0.extendRest(by: -15) }
+                } label: {
+                    Text("−15").frame(width: 44)
+                }
+                .secondaryAction()
+                .accessibilityLabel("Fifteen seconds less")
+                .accessibilityIdentifier("rest.less")
                 VStack(spacing: 0) {
                     Text("Rest").font(.caption).foregroundStyle(.secondary)
                     Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
                         .font(.system(size: 44, weight: .semibold, design: .rounded).monospacedDigit())
                 }
                 .frame(maxWidth: .infinity)
-                Button { model.update { $0.extendRest(by: 15) } } label: { Text("+15").frame(width: 44) }
-                    .secondaryAction()
-                    .accessibilityLabel("Fifteen seconds more")
-                    .accessibilityIdentifier("rest.more")
+                Button {
+                    model.update { $0.extendRest(by: 15) }
+                } label: {
+                    Text("+15").frame(width: 44)
+                }
+                .secondaryAction()
+                .accessibilityLabel("Fifteen seconds more")
+                .accessibilityIdentifier("rest.more")
             }
             if let filler = rest.filler {
                 Label("Use the rest: \(model.catalog.resolve(filler).name)", systemImage: "figure.flexibility").font(.footnote)

@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// Today for the session, Plan for the week and what's next, Progress for the honest measures.
 struct RootView: View {

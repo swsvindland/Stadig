@@ -44,8 +44,10 @@ public struct TrainingBlock: Hashable, Codable, Sendable, Identifiable {
     public var endOverride: Day?
     public var deloadReason: String?
 
-    public init(id: UUID = UUID(), kind: BlockKind, start: Day, loadingWeeks: Int, deloadWeeks: Int = 1, deloadStart: Day? = nil,
-                endOverride: Day? = nil, deloadReason: String? = nil) {
+    public init(
+        id: UUID = UUID(), kind: BlockKind, start: Day, loadingWeeks: Int, deloadWeeks: Int = 1, deloadStart: Day? = nil,
+        endOverride: Day? = nil, deloadReason: String? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.start = start
@@ -123,7 +125,8 @@ public enum BlockScheduler {
             block.deloadStart = vacation.start
             block.endOverride = vacation.end
             let nearDeload = vacation.start >= block.plannedDeloadStart.adding(days: -14)
-            block.deloadReason = nearDeload
+            block.deloadReason =
+                nearDeload
                 ? "Your vacation lands near the planned deload, so it becomes the deload."
                 : "Your vacation comes early in the block, so the block ends there and the trip counts as the deload. A fresh block starts after."
         }
@@ -136,14 +139,16 @@ public enum BlockScheduler {
         var block = block
         block.deloadStart = today
         block.endOverride = today.adding(days: 6)
-        block.deloadReason = "Signs of accumulated fatigue (\(fatigue.signals.prefix(2).joined(separator: " ").lowercased())), so the deload comes early."
+        block.deloadReason =
+            "Signs of accumulated fatigue (\(fatigue.signals.prefix(2).joined(separator: " ").lowercased())), so the deload comes early."
         return block
     }
 
     /// The system-wide calendar every app aligns to.
     public static func calendar(blocks: [TrainingBlock], today: Day, publishedBy: AppID = .liftTrack) -> SystemCalendar {
         let current = blocks.first { $0.range.contains(today) }
-        return SystemCalendar(currentBlock: current?.range, deloads: blocks.compactMap(\.deloadRange).filter { $0.end >= today },
-                              checkIns: blocks.compactMap(\.checkInDay).filter { $0 >= today }, publishedBy: publishedBy)
+        return SystemCalendar(
+            currentBlock: current?.range, deloads: blocks.compactMap(\.deloadRange).filter { $0.end >= today },
+            checkIns: blocks.compactMap(\.checkInDay).filter { $0 >= today }, publishedBy: publishedBy)
     }
 }

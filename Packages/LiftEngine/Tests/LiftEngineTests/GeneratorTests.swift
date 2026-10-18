@@ -1,27 +1,34 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 enum Fixture {
     static let catalog = ExerciseCatalog()
     static let start = Day(year: 2026, month: 10, day: 19)
 
-    static func profile(days: Int = 4, minutes: Int = 60, goals: [OutcomeGoal] = [.biggerAndStronger], experience: TrainingExperience = .intermediate,
-                        access: EquipmentAccess = .fullGym, recurring: [RecurringActivity] = []) -> SharedProfile {
-        SharedProfile(goals: goals, schedule: TrainingSchedule(daysPerWeek: days, minutesPerSession: minutes), equipment: access,
-                      experience: experience, recurring: recurring, sex: .male, birthYear: 1992, heightCm: 180,
-                      units: UnitPreference(weight: .kg, length: .cm), createdBy: .liftTrack)
+    static func profile(
+        days: Int = 4, minutes: Int = 60, goals: [OutcomeGoal] = [.biggerAndStronger], experience: TrainingExperience = .intermediate,
+        access: EquipmentAccess = .fullGym, recurring: [RecurringActivity] = []
+    ) -> SharedProfile {
+        SharedProfile(
+            goals: goals, schedule: TrainingSchedule(daysPerWeek: days, minutesPerSession: minutes), equipment: access,
+            experience: experience, recurring: recurring, sex: .male, birthYear: 1992, heightCm: 180,
+            units: UnitPreference(weight: .kg, length: .cm), createdBy: .liftTrack)
     }
 
-    static func input(_ profile: SharedProfile, kind: BlockKind = .standard, settings: LiftSettings = LiftSettings(),
-                      strength: StrengthProfile? = nil, fatigue: FatigueAssessment? = nil, injuries: [Injury] = [],
-                      physique: PhysiqueAnalysis? = nil, endurance: EnduranceAnalysis? = nil) -> GeneratorInput {
-        GeneratorInput(profile: profile, settings: settings, gym: Gym.preset(profile.equipment, unit: .kg), catalog: catalog, kind: kind,
-                       start: start, loadingWeeks: kind == .assessment ? profile.experience.assessmentWeeks : 5,
-                       phase: .assumedMaintenance, strength: strength, physique: physique, endurance: endurance, fatigue: fatigue,
-                       injuries: injuries, trust: TrustState(experience: profile.experience))
+    static func input(
+        _ profile: SharedProfile, kind: BlockKind = .standard, settings: LiftSettings = LiftSettings(),
+        strength: StrengthProfile? = nil, fatigue: FatigueAssessment? = nil, injuries: [Injury] = [],
+        physique: PhysiqueAnalysis? = nil, endurance: EnduranceAnalysis? = nil
+    ) -> GeneratorInput {
+        GeneratorInput(
+            profile: profile, settings: settings, gym: Gym.preset(profile.equipment, unit: .kg), catalog: catalog, kind: kind,
+            start: start, loadingWeeks: kind == .assessment ? profile.experience.assessmentWeeks : 5,
+            phase: .assumedMaintenance, strength: strength, physique: physique, endurance: endurance, fatigue: fatigue,
+            injuries: injuries, trust: TrustState(experience: profile.experience))
     }
 
     /// A week's sets of direct glute work: compounds that also load the glutes don't count.
@@ -39,7 +46,9 @@ enum Fixture {
                 lines.append("  [\(block.kind.label) \(block.minutes)m]")
                 for slot in block.slots {
                     let e = catalog.resolve(slot.exerciseID)
-                    lines.append("    \(e.name) \(slot.sets.map(String.init).joined(separator: "/"))×\(slot.repRange.label) rest \(slot.restSeconds)s\(slot.supersetGroup.map { " SS\($0)" } ?? "")\(slot.restFiller.map { " filler:\($0)" } ?? "")\(slot.conditioning.map { " " + $0.summary } ?? "")\(slot.reason.map { "  — \($0)" } ?? "")")
+                    lines.append(
+                        "    \(e.name) \(slot.sets.map(String.init).joined(separator: "/"))×\(slot.repRange.label) rest \(slot.restSeconds)s\(slot.supersetGroup.map { " SS\($0)" } ?? "")\(slot.restFiller.map { " filler:\($0)" } ?? "")\(slot.conditioning.map { " " + $0.summary } ?? "")\(slot.reason.map { "  — \($0)" } ?? "")"
+                    )
                 }
             }
             for o in day.overflow { lines.append("  overflow: \(o.title)") }
@@ -123,13 +132,14 @@ struct GeneratorTests {
 
     @Test func legsAheadMeansUpperBodyFirst() {
         let day = Fixture.start
-        let strength = StrengthProfile(categories: [
-            CategoryScore(category: .squat, oneRepMaxKg: 170, score: 82, exerciseID: "barbell-back-squat", day: day),
-            CategoryScore(category: .floorPull, oneRepMaxKg: 200, score: 80, exerciseID: "conventional-deadlift", day: day),
-            CategoryScore(category: .horizontalPress, oneRepMaxKg: 85, score: 52, exerciseID: "barbell-bench-press", day: day),
-            CategoryScore(category: .verticalPull, oneRepMaxKg: 95, score: 50, exerciseID: "pull-up", day: day),
-            CategoryScore(category: .verticalPress, oneRepMaxKg: 52, score: 51, exerciseID: "barbell-overhead-press", day: day),
-        ], bodyweightKg: 80, sex: .male)
+        let strength = StrengthProfile(
+            categories: [
+                CategoryScore(category: .squat, oneRepMaxKg: 170, score: 82, exerciseID: "barbell-back-squat", day: day),
+                CategoryScore(category: .floorPull, oneRepMaxKg: 200, score: 80, exerciseID: "conventional-deadlift", day: day),
+                CategoryScore(category: .horizontalPress, oneRepMaxKg: 85, score: 52, exerciseID: "barbell-bench-press", day: day),
+                CategoryScore(category: .verticalPull, oneRepMaxKg: 95, score: 50, exerciseID: "pull-up", day: day),
+                CategoryScore(category: .verticalPress, oneRepMaxKg: 52, score: 51, exerciseID: "barbell-overhead-press", day: day),
+            ], bodyweightKg: 80, sex: .male)
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), strength: strength))
         let upper = m.days.filter { $0.focus == .upper }.flatMap(\.strengthSlots).map { Double($0.sets(week: 0)) }
         let lower = m.days.filter { $0.focus == .lower }.flatMap(\.strengthSlots).map { Double($0.sets(week: 0)) }
@@ -143,8 +153,9 @@ struct GeneratorTests {
     }
 
     @Test func beatUpAndStalledSwapsTheCostliestLifts() {
-        let fatigue = FatigueAssessment(status: .strained, loadRatio: 1.2, acute: 6, chronic: 5, signals: ["Beat up."], action: .reduceSystemic,
-                                        budgetFactor: 0.85)
+        let fatigue = FatigueAssessment(
+            status: .strained, loadRatio: 1.2, acute: 6, chronic: 5, signals: ["Beat up."], action: .reduceSystemic,
+            budgetFactor: 0.85)
         let before = ProgramGenerator.generate(Fixture.input(Fixture.profile()))
         let after = ProgramGenerator.generate(Fixture.input(Fixture.profile(), fatigue: fatigue))
         let cost: (Mesocycle) -> Double = { m in
@@ -155,8 +166,9 @@ struct GeneratorTests {
     }
 
     @Test func shoulderGapAddsSideDeltWork() {
-        let physique = Physique.analyse([BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 110, waistCm: 88, armCm: 36)],
-                                        sex: .male, heightCm: 180)
+        let physique = Physique.analyse(
+            [BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 110, waistCm: 88, armCm: 36)],
+            sex: .male, heightCm: 180)
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), physique: physique))
         let lateral = m.days.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .lateralRaise }
         #expect(lateral.contains { ($0.reason ?? "").contains("side-delt") })
@@ -169,8 +181,9 @@ struct GeneratorTests {
         #expect(m.rationale.reasons.contains { $0.contains("fat loss closes it") })
         #expect(!m.days.flatMap(\.strengthSlots).contains { ($0.reason ?? "").contains("side-delt") })
         // Macro Track reads the same answer from Lift Track's summary.
-        let state = LiftState(profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg),
-                              catalog: Fixture.catalog, measurements: measurements, today: Fixture.start)
+        let state = LiftState(
+            profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg),
+            catalog: Fixture.catalog, measurements: measurements, today: Fixture.start)
         let summary = Analyst.summary(state, Analyst.analyse(state))
         #expect((summary.physique?.fatLoss ?? 0) > 0)
         #expect(summary.physique?.targets == .vTaper)
@@ -178,8 +191,10 @@ struct GeneratorTests {
 
     @Test func aLaggingSideTrainsOneSideAtATime() {
         let start = Fixture.start.adding(days: -30)
-        let history = [BodyMeasurements(day: start, neckCm: 39, shouldersCm: 124, waistCm: 82, armLeftCm: 35, armRightCm: 37.2),
-                       BodyMeasurements(day: start.adding(days: 21), armLeftCm: 35.3, armRightCm: 37.4)]
+        let history = [
+            BodyMeasurements(day: start, neckCm: 39, shouldersCm: 124, waistCm: 82, armLeftCm: 35, armRightCm: 37.2),
+            BodyMeasurements(day: start.adding(days: 21), armLeftCm: 35.3, armRightCm: 37.4),
+        ]
         let physique = Physique.analyse(history, sex: .male, heightCm: 180)
         let action = physique.asymmetries.first?.action
         #expect(physique.asymmetries.first?.smaller == .left)
@@ -200,8 +215,9 @@ struct GeneratorTests {
             for days in 4...6 {
                 let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: days, access: access)))
                 for day in m.days where day.focus == .lower || day.focus == .legs {
-                    #expect(day.strengthSlots.contains { direct.contains(Fixture.catalog.resolve($0.exerciseID).pattern) },
-                            "\(access) \(days) days: \(day.name) has no direct glute work")
+                    #expect(
+                        day.strengthSlots.contains { direct.contains(Fixture.catalog.resolve($0.exerciseID).pattern) },
+                        "\(access) \(days) days: \(day.name) has no direct glute work")
                 }
                 if ProcessInfo.processInfo.environment["PRINT_PROGRAMS"] != nil, access == .fullGym { print(Fixture.describe(m)) }
             }
@@ -236,12 +252,15 @@ struct GeneratorTests {
     @Test func aFocusAndAMeasuredGapAddVolumeOnce() {
         var settings = LiftSettings()
         settings.focus = [.shoulders]
-        let physique = Physique.analyse([BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 110, waistCm: 88, armCm: 36)],
-                                        sex: .male, heightCm: 180)
+        let physique = Physique.analyse(
+            [BodyMeasurements(day: Fixture.start, neckCm: 39, shouldersCm: 110, waistCm: 88, armCm: 36)],
+            sex: .male, heightCm: 180)
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 6), settings: settings, physique: physique))
         #expect(m.priorities.filter { $0.target == .physique(.shoulders) }.count == 2)
         // Push days have lateral raises already; one pull day gains them, not both.
-        let added = m.days.filter { $0.focus == .pull }.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .lateralRaise }
+        let added = m.days.filter { $0.focus == .pull }.flatMap(\.strengthSlots).filter {
+            Fixture.catalog.resolve($0.exerciseID).pattern == .lateralRaise
+        }
         #expect(added.count == 1)
     }
 

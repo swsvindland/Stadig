@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// After a session: what happened, what it taught the app, and what it changes next time.
@@ -47,8 +47,10 @@ struct SessionSummaryView: View {
                         HStack {
                             Label(model.catalog.resolve(heat.exerciseID).name, systemImage: "heat.waves").font(.headline)
                             Spacer()
-                            Text("\(Format.number(heat.minutes)) min\(heat.temperatureC.map { " at \(Format.temperature($0, fahrenheit: model.fahrenheit))" } ?? "")")
-                                .font(.subheadline.monospacedDigit())
+                            Text(
+                                "\(Format.number(heat.minutes)) min\(heat.temperatureC.map { " at \(Format.temperature($0, fahrenheit: model.fahrenheit))" } ?? "")"
+                            )
+                            .font(.subheadline.monospacedDigit())
                             RatingMark(rating: heat.rating)
                         }
                         .card()
@@ -103,7 +105,8 @@ struct SessionSummaryView: View {
                 lines.append("\(exercise.name): a missed set. That's data; next time adjusts.")
             }
             if log.sets.contains(where: { $0.kind == .findingWeight }), let working = log.sets.last(where: { $0.rating == .orange }) {
-                lines.append("\(exercise.name): working weight found at \(Format.load(working.loadKg, unit: model.gym.unit, basis: exercise.loadBasis)).")
+                lines.append(
+                    "\(exercise.name): working weight found at \(Format.load(working.loadKg, unit: model.gym.unit, basis: exercise.loadBasis)).")
             }
         }
         return Array(lines.prefix(6))

@@ -237,16 +237,20 @@ public enum MovementPattern: String, CaseIterable, Codable, Sendable, Identifiab
 
     /// Big multi-joint movements that anchor a day and take the longest rest.
     public var isCompound: Bool {
-        [.horizontalPress, .inclinePress, .verticalPress, .dip, .horizontalRow, .verticalPull, .squat, .lunge,
-         .legPress, .hinge, .hipThrust, .carry].contains(self)
+        [
+            .horizontalPress, .inclinePress, .verticalPress, .dip, .horizontalRow, .verticalPull, .squat, .lunge,
+            .legPress, .hinge, .hipThrust, .carry,
+        ].contains(self)
     }
 
     /// Loaded strength work, as opposed to conditioning, mobility, warm-ups and stretches.
     public var isStrength: Bool { ![.conditioning, .mobility, .warmup, .stretch].contains(self) }
 
     public var isLowerBody: Bool {
-        [.squat, .lunge, .legPress, .hinge, .hipThrust, .legExtension, .legCurl, .backExtension, .hipAdduction,
-         .hipAbduction, .calfRaise].contains(self)
+        [
+            .squat, .lunge, .legPress, .hinge, .hipThrust, .legExtension, .legCurl, .backExtension, .hipAdduction,
+            .hipAbduction, .calfRaise,
+        ].contains(self)
     }
 }
 
@@ -456,9 +460,9 @@ public protocol ExerciseTraits: Sendable {
     var loadBasis: LoadBasis { get }
 }
 
-public extension ExerciseTraits {
-    func weight(of muscle: Muscle) -> Double { muscles.first { $0.muscle == muscle }?.weight ?? 0 }
-    var primaryMuscles: [Muscle] { muscles.filter { $0.weight >= 1 }.map(\.muscle) }
-    var isCompound: Bool { pattern.isCompound && muscles.count > 1 }
-    func stress(on joint: Joint) -> JointStress? { joints.first { $0.joint == joint }?.stress }
+extension ExerciseTraits {
+    public func weight(of muscle: Muscle) -> Double { muscles.first { $0.muscle == muscle }?.weight ?? 0 }
+    public var primaryMuscles: [Muscle] { muscles.filter { $0.weight >= 1 }.map(\.muscle) }
+    public var isCompound: Bool { pattern.isCompound && muscles.count > 1 }
+    public func stress(on joint: Joint) -> JointStress? { joints.first { $0.joint == joint }?.stress }
 }

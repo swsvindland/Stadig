@@ -64,12 +64,13 @@ public enum HeatDose {
         let temperature = last.temperatureC ?? reference(room)
         let base = dose(minutes: last.minutes, temperatureC: temperature, room: room)
         let previous = logs.dropLast().last
-        let (factor, change): (Double, Plan.Change) = switch last.rating {
-        case .green: (1.15, .more)
-        case .red: (0.8, .less)
-        case .orange where previous?.rating == .orange: (1.05, .more)
-        default: (1, .same)
-        }
+        let (factor, change): (Double, Plan.Change) =
+            switch last.rating {
+            case .green: (1.15, .more)
+            case .red: (0.8, .less)
+            case .orange where previous?.rating == .orange: (1.05, .more)
+            default: (1, .same)
+            }
         let target = min(base * factor, max(base, ceiling(room)))
         return Plan(dose: max(target, minimumMinutes * 0.5), change: change, last: last, temperatureC: temperature)
     }

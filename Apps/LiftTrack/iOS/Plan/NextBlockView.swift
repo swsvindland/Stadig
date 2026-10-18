@@ -1,7 +1,7 @@
-import SwiftUI
-import StoreKit
 import ExerciseLibrary
 import LiftEngine
+import StoreKit
+import SwiftUI
 import SystemCore
 
 /// One recommendation by default, with "Why?". The person can override the phase answer, but the
@@ -85,7 +85,11 @@ struct NextBlockView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Training blocks are part of the one-time unlock.").font(.headline)
                     Text("Logging, your history, export and backup stay free either way.").font(.subheadline).foregroundStyle(.secondary)
-                    Button { showPaywall = true } label: { Text("Unlock Lift Track").frame(maxWidth: .infinity) }.primaryAction()
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        Text("Unlock Lift Track").frame(maxWidth: .infinity)
+                    }.primaryAction()
                 }
                 .card()
             }

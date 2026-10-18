@@ -17,26 +17,34 @@ enum MathsModule: SubjectModule {
     static func placementPart(_ strands: [MathsStrand]) -> PlanPart {
         let problems = MathsPlacementRunner.sizes(strands).reduce(0, +)
         let names = strands.map { $0 == .numeracy ? $0.label : $0.short }
-        return PlanPart(kind: .placement, domain: .maths, minutes: strands.map { $0 == .numeracy ? 2 : 4 }.reduce(0, +), title: "Maths level",
-                        detail: "\(ListFormatter.localizedString(byJoining: names)): about \(problems) problems, stepping up and down")
+        return PlanPart(
+            kind: .placement, domain: .maths, minutes: strands.map { $0 == .numeracy ? 2 : 4 }.reduce(0, +), title: "Maths level",
+            detail: "\(ListFormatter.localizedString(byJoining: names)): about \(problems) problems, stepping up and down")
     }
 
-    static func mainParts(_ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
-                          notes: inout [String]) -> [PlanPart] {
+    static func mainParts(
+        _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
+        notes: inout [String]
+    ) -> [PlanPart] {
         let levels = NumeracyPlan.levels(state)
         let weak = levels.overall < NumeracyPlan.weakBelow
         let others = state.settings.strands.filter { $0 != .numeracy }
         let block = others.isEmpty ? minutes : min(minutes, weak ? 5 : 3)
-        var parts = [PlanPart(kind: .custom(numeracyKind), domain: .maths, minutes: block, title: "Numeracy",
-                              detail: kind == .review ? "Timed, at today's levels: practice only this week"
-                                                      : "Timed: \(levels.weakest.label.lowercased()) first, level \(levels[levels.weakest])")]
+        var parts = [
+            PlanPart(
+                kind: .custom(numeracyKind), domain: .maths, minutes: block, title: "Numeracy",
+                detail: kind == .review
+                    ? "Timed, at today's levels: practice only this week"
+                    : "Timed: \(levels.weakest.label.lowercased()) first, level \(levels[levels.weakest])")
+        ]
         if weak && kind != .review {
             notes.append("Numeracy is at level \(levels.overall) of 10, so its block runs five minutes until the everyday basics are quick.")
         }
         var left = minutes - block
         guard left > 0 else { return parts }
         if kind == .review {
-            parts.append(PlanPart(kind: .practice, domain: .maths, minutes: left, title: "Maths practice", detail: "Mixed problems from what you've learned"))
+            parts.append(
+                PlanPart(kind: .practice, domain: .maths, minutes: left, title: "Maths practice", detail: "Mixed problems from what you've learned"))
             return parts
         }
         let unplaced = others.filter { !MathsPlan.placed($0, state) }
@@ -48,11 +56,15 @@ enum MathsModule: SubjectModule {
         guard left > 0 else { return parts }
         if let strand = MathsPlan.mainStrand(state), let next = MathsPlan.next(state.cards, strand: strand) {
             let carrying = state.cards[next.key]?.learning == true
-            parts.append(PlanPart(kind: .learn, domain: .maths, minutes: left, title: strand.label,
-                                  detail: carrying ? "Carrying on: \(next.title)" : "Next: \(next.title)"))
+            parts.append(
+                PlanPart(
+                    kind: .learn, domain: .maths, minutes: left, title: strand.label,
+                    detail: carrying ? "Carrying on: \(next.title)" : "Next: \(next.title)"))
         } else if unplaced.isEmpty {
-            parts.append(PlanPart(kind: .practice, domain: .maths, minutes: left, title: "Maths practice",
-                                  detail: others.isEmpty ? "Mixed problems from what you've learned" : "Everything in the graph is learned: mixed practice"))
+            parts.append(
+                PlanPart(
+                    kind: .practice, domain: .maths, minutes: left, title: "Maths practice",
+                    detail: others.isEmpty ? "Mixed problems from what you've learned" : "Everything in the graph is learned: mixed practice"))
         }
         return parts
     }
@@ -62,12 +74,15 @@ enum MathsModule: SubjectModule {
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         var parts: [PlanPart] = []
         if MathsPlan.placed(.numeracy, state) {
-            parts.append(PlanPart(kind: .test(.numeracy), domain: .maths, minutes: 3, title: "Numeracy", detail: "Eight timed problems, stepping up and down"))
+            parts.append(
+                PlanPart(kind: .test(.numeracy), domain: .maths, minutes: 3, title: "Numeracy", detail: "Eight timed problems, stepping up and down"))
         }
         for strand in state.settings.strands where strand != .numeracy && MathsPlan.known(state.cards, strand: strand).count >= 3 {
             let count = checkSize(strand)
-            parts.append(PlanPart(kind: .test(strand.test), domain: .maths, minutes: strand == .classic ? 7 : 6, title: strand.label,
-                                  detail: "\(count) problems across what you've learned"))
+            parts.append(
+                PlanPart(
+                    kind: .test(strand.test), domain: .maths, minutes: strand == .classic ? 7 : 6, title: strand.label,
+                    detail: "\(count) problems across what you've learned"))
         }
         return parts
     }
@@ -88,8 +103,10 @@ enum MathsModule: SubjectModule {
                 guard tested.count >= 4 else { return }
                 let levels = tested.filter(\.correct).compactMap { MathCurriculum.topic($0.key.item)?.level }
                 let mean = Double(tested.compactMap { MathCurriculum.topic($0.key.item)?.level }.reduce(0, +)) / Double(tested.count)
-                run.newTests.append(accuracyResult(kind, tested, placement: false, at: run.now,
-                                                   extra: ["reach": Double(levels.max() ?? 0), "level": mean]))
+                run.newTests.append(
+                    accuracyResult(
+                        kind, tested, placement: false, at: run.now,
+                        extra: ["reach": Double(levels.max() ?? 0), "level": mean]))
             }
         default: return nil
         }
@@ -104,7 +121,8 @@ enum MathsModule: SubjectModule {
         let top = count * 5 / 8
         let picked = Array(known.prefix(top)) + Array(known.dropFirst(top).shuffled(using: &rng).prefix(count - top))
         return picked.enumerated().map { index, topic in
-            topic.problem(seed: "check.\(state.today.iso).\(index)").question(kind: .test, id: "check.\(topic.id).\(state.today.iso)").asTest(strand.test)
+            topic.problem(seed: "check.\(state.today.iso).\(index)").question(kind: .test, id: "check.\(topic.id).\(state.today.iso)").asTest(
+                strand.test)
         }
     }
 
@@ -215,8 +233,9 @@ struct MathsPlacementRunner: PartRunner {
         }
         guard let index = graphs.firstIndex(where: { !$0.done }) else { return nil }
         if graphs[index].asked == 0, let estimate = numeracy?.estimate, estimate < NumeracyPlan.weakBelow - 1 {
-            graphs[index] = MathsPlacement(strand: graphs[index].strand, start: Self.start(graphs[index].strand, weakNumeracy: true),
-                                           maximum: graphs[index].maximum)
+            graphs[index] = MathsPlacement(
+                strand: graphs[index].strand, start: Self.start(graphs[index].strand, weakNumeracy: true),
+                maximum: graphs[index].maximum)
         }
         guard let topic = graphs[index].nextTopic() else { return nil }
         current = Current(index: index, topic: topic.id)

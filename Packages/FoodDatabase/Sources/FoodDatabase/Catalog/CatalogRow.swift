@@ -47,21 +47,33 @@ private struct JSONReader {
             index += 1
             var items: [JSONValue] = []
             skipSpace()
-            if index < bytes.count, bytes[index] == UInt8(ascii: "]") { index += 1; return .array(items) }
+            if index < bytes.count, bytes[index] == UInt8(ascii: "]") {
+                index += 1
+                return .array(items)
+            }
             while true {
                 guard let item = value() else { return nil }
                 items.append(item)
                 skipSpace()
                 guard index < bytes.count else { return nil }
-                if bytes[index] == UInt8(ascii: ",") { index += 1; continue }
-                if bytes[index] == UInt8(ascii: "]") { index += 1; return .array(items) }
+                if bytes[index] == UInt8(ascii: ",") {
+                    index += 1
+                    continue
+                }
+                if bytes[index] == UInt8(ascii: "]") {
+                    index += 1
+                    return .array(items)
+                }
                 return nil
             }
         case UInt8(ascii: "{"):
             index += 1
             var members: [String: JSONValue] = [:]
             skipSpace()
-            if index < bytes.count, bytes[index] == UInt8(ascii: "}") { index += 1; return .object(members) }
+            if index < bytes.count, bytes[index] == UInt8(ascii: "}") {
+                index += 1
+                return .object(members)
+            }
             while true {
                 skipSpace()
                 guard index < bytes.count, bytes[index] == UInt8(ascii: "\""), let key = string() else { return nil }
@@ -72,8 +84,14 @@ private struct JSONReader {
                 members[key] = item
                 skipSpace()
                 guard index < bytes.count else { return nil }
-                if bytes[index] == UInt8(ascii: ",") { index += 1; continue }
-                if bytes[index] == UInt8(ascii: "}") { index += 1; return .object(members) }
+                if bytes[index] == UInt8(ascii: ",") {
+                    index += 1
+                    continue
+                }
+                if bytes[index] == UInt8(ascii: "}") {
+                    index += 1
+                    return .object(members)
+                }
                 return nil
             }
         case UInt8(ascii: "\""):
@@ -100,19 +118,33 @@ private struct JSONReader {
     private mutating func number() -> Double? {
         let start = index
         var negative = false
-        if index < bytes.count, bytes[index] == UInt8(ascii: "-") { negative = true; index += 1 }
+        if index < bytes.count, bytes[index] == UInt8(ascii: "-") {
+            negative = true
+            index += 1
+        }
         var mantissa: UInt64 = 0
         var digits = 0
         var scale = 0
         var exact = true
         while index < bytes.count, bytes[index] >= 0x30, bytes[index] <= 0x39 {
-            if digits < 18 { mantissa = mantissa * 10 + UInt64(bytes[index] - 0x30); digits += 1 } else { exact = false }
+            if digits < 18 {
+                mantissa = mantissa * 10 + UInt64(bytes[index] - 0x30)
+                digits += 1
+            } else {
+                exact = false
+            }
             index += 1
         }
         if index < bytes.count, bytes[index] == UInt8(ascii: ".") {
             index += 1
             while index < bytes.count, bytes[index] >= 0x30, bytes[index] <= 0x39 {
-                if digits < 18 { mantissa = mantissa * 10 + UInt64(bytes[index] - 0x30); digits += 1; scale += 1 } else { exact = false }
+                if digits < 18 {
+                    mantissa = mantissa * 10 + UInt64(bytes[index] - 0x30)
+                    digits += 1
+                    scale += 1
+                } else {
+                    exact = false
+                }
                 index += 1
             }
         }
@@ -144,7 +176,12 @@ private struct JSONReader {
                 }
                 break
             }
-            if byte == UInt8(ascii: "\\") { plain = false; index += 2 } else { index += 1 }
+            if byte == UInt8(ascii: "\\") {
+                plain = false
+                index += 2
+            } else {
+                index += 1
+            }
         }
         // Escapes: decode again, one unit at a time.
         index = start
@@ -168,7 +205,8 @@ private struct JSONReader {
                 case UInt8(ascii: "u"):
                     guard var code = hex() else { return nil }
                     if (0xD800..<0xDC00).contains(code), index + 1 < bytes.count, bytes[index] == UInt8(ascii: "\\"),
-                       bytes[index + 1] == UInt8(ascii: "u") {
+                        bytes[index + 1] == UInt8(ascii: "u")
+                    {
                         let next = index
                         index += 2
                         guard let low = hex() else { return nil }
@@ -247,10 +285,11 @@ struct RowData {
         guard let basis = basisName.flatMap(FoodBasis.init(rawValue:)) else { return nil }
         self.basis = basis
         self.portions = portions
-        nutrients = Nutrients(kcal: values.removeValue(forKey: "calories") ?? 0, protein: values.removeValue(forKey: "protein") ?? 0,
-                              carbs: values.removeValue(forKey: "carbs") ?? 0, fat: values.removeValue(forKey: "fat") ?? 0,
-                              fiber: values.removeValue(forKey: "fiber"), sugar: values.removeValue(forKey: "sugar"),
-                              saturatedFat: values.removeValue(forKey: "saturatedFat"), sodium: values.removeValue(forKey: "sodium"))
+        nutrients = Nutrients(
+            kcal: values.removeValue(forKey: "calories") ?? 0, protein: values.removeValue(forKey: "protein") ?? 0,
+            carbs: values.removeValue(forKey: "carbs") ?? 0, fat: values.removeValue(forKey: "fat") ?? 0,
+            fiber: values.removeValue(forKey: "fiber"), sugar: values.removeValue(forKey: "sugar"),
+            saturatedFat: values.removeValue(forKey: "saturatedFat"), sodium: values.removeValue(forKey: "sodium"))
         extras = values
     }
 

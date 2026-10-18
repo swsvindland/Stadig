@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 
 /// Weights, volumes and the words people and catalogs write them with.
 enum Measures {
@@ -66,7 +66,8 @@ enum Measures {
     static func parseAmount(_ input: String) -> Double? {
         let text = FoodText.clean(input.replacingOccurrences(of: ",", with: "."), limit: 40)
         if let parts = glyphAmount.allMatches(in: text).first, let glyph = parts[2].first,
-           let part = glyphs.first(where: { $0.1 == glyph })?.0 {
+            let part = glyphs.first(where: { $0.1 == glyph })?.0
+        {
             return (Double(parts[1]) ?? 0) + part
         }
         if let parts = fractionAmount.allMatches(in: text).first, let top = Double(parts[2]), let bottom = Double(parts[3]) {
@@ -106,8 +107,9 @@ enum Measures {
         let words = FoodText.words(name).map(FoodText.stem)
         let noun = words.first { !FoodText.sizes.contains($0) } ?? words.first ?? ""
         let unqualified = brackets.replacing(in: portion.label, with: "")
-        return ParsedPortion(index: index, count: count, name: name, perUnit: portion.amount / count, noun: noun,
-                             qualified: unqualified.contains(","), fullName: String(rest.lowercased().prefix(32)))
+        return ParsedPortion(
+            index: index, count: count, name: name, perUnit: portion.amount / count, noun: noun,
+            qualified: unqualified.contains(","), fullName: String(rest.lowercased().prefix(32)))
     }
 
     static func portions(of food: Food) -> [ParsedPortion] {
@@ -129,7 +131,8 @@ enum Measures {
     /// A per-serving food's serving weight (g) and volume (ml), when its label gives them:
     /// "1 serving (30 g)", "1 serving (2 tbsp (32g))".
     static func servingSize(_ food: Food) -> (weight: Double?, volume: Double?) {
-        var weight: Double?, volume: Double?
+        var weight: Double?
+        var volume: Double?
         for portion in food.portions {
             for match in sizeAmounts.allMatches(in: portion.label) {
                 let unit = measureKey(match[2]) ?? ""
@@ -147,8 +150,8 @@ enum Measures {
     /// "bar". Weights and volumes are left to `servingSize`.
     static func servingCount(_ food: Food) -> (count: Double, noun: String)? {
         guard let portion = food.portions.first, let serving = parsePortion(portion, index: 0), measureKey(serving.name) == "serving",
-              let inside = brackets.firstMatch(in: portion.label).map({ String($0.dropFirst().dropLast()) }),
-              let held = parsePortion(Portion(label: inside, amount: portion.amount), index: 0), measureKey(held.name) == nil
+            let inside = brackets.firstMatch(in: portion.label).map({ String($0.dropFirst().dropLast()) }),
+            let held = parsePortion(Portion(label: inside, amount: portion.amount), index: 0), measureKey(held.name) == nil
         else { return nil }
         let count = held.count / portion.amount
         return count.isFinite && count > 0 && abs(count - 1) > 1e-9 ? (count, held.noun) : nil

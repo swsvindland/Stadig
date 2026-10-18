@@ -3,6 +3,7 @@ import FoodDatabase
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 @Suite("Labels")
@@ -28,23 +29,28 @@ struct LabelTests {
             let (dx, dy) = (cos(tilt) * width, sin(tilt) * width)
             let (hx, hy) = (-sin(tilt) * 0.03, cos(tilt) * 0.03)
             let top = (x: x, y: y + x * tan(tilt))
-            return Box(text: text, topLeft: top, topRight: (top.x + dx, top.y + dy), bottomLeft: (top.x + hx, top.y + hy),
-                       bottomRight: (top.x + dx + hx, top.y + dy + hy))
+            return Box(
+                text: text, topLeft: top, topRight: (top.x + dx, top.y + dy), bottomLeft: (top.x + hx, top.y + hy),
+                bottomRight: (top.x + dx + hx, top.y + dy + hy))
         }
-        let boxes = [box("Calories", 0.05, 0.30, 0.3), box("230", 0.8, 0.30, 0.1),
-                     box("Total Fat 8g", 0.05, 0.345, 0.4), box("10%", 0.8, 0.345, 0.1)]
+        let boxes = [
+            box("Calories", 0.05, 0.30, 0.3), box("230", 0.8, 0.30, 0.1),
+            box("Total Fat 8g", 0.05, 0.345, 0.4), box("10%", 0.8, 0.345, 0.1),
+        ]
         #expect(LabelOCR.rows(boxes) == ["Calories 230", "Total Fat 8g 10%"])
     }
 
     @Test func aTiltedFramesRegionsStayOnTheText() throws {
         // A portrait camera frame held 10° off level, with boxes in height units (x scaled by the aspect).
-        let aspect = 0.5625, tilt = 10 * Double.pi / 180
+        let aspect = 0.5625
+        let tilt = 10 * Double.pi / 180
         func box(_ text: String, centre: (x: Double, y: Double), width: Double, height: Double = 0.03) -> Box {
             let (ux, uy) = (cos(tilt) * width / 2, sin(tilt) * width / 2)
             let (vx, vy) = (-sin(tilt) * height / 2, cos(tilt) * height / 2)
             let c = (x: centre.x * aspect, y: centre.y)
-            return Box(text: text, topLeft: (c.x - ux - vx, c.y - uy - vy), topRight: (c.x + ux - vx, c.y + uy - vy),
-                       bottomLeft: (c.x - ux + vx, c.y - uy + vy), bottomRight: (c.x + ux + vx, c.y + uy + vy), aspect: aspect)
+            return Box(
+                text: text, topLeft: (c.x - ux - vx, c.y - uy - vy), topRight: (c.x + ux - vx, c.y + uy - vy),
+                bottomLeft: (c.x - ux + vx, c.y - uy + vy), bottomRight: (c.x + ux + vx, c.y + uy + vy), aspect: aspect)
         }
         let text = FrameText([box("Total Fat 8g", centre: (0.5, 0.5), width: 0.3), box("Protein 3g", centre: (0.8, 0.9), width: 0.15)])
         let middle = try #require(text.regions.first)
@@ -77,10 +83,13 @@ struct LabelTests {
     }
 
     @Test func aThinParseIsFilledOnlyWithPrintedNumbers() throws {
-        let lines = ["Nutrition Facts", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%", "Sodium 1,160mg 50%",
-                     "Total Carbohydrate 37g", "Protein 3g"]
-        let guess = LabelGuess(name: "Granola", brand: "none", servingSize: "2/3 cup (55g)", servingGrams: 55,
-                               values: [.kcal: 230, .fat: 8, .carbs: 37, .protein: 3, .sodium: 1160, .fiber: 4, .sugar: 12])
+        let lines = [
+            "Nutrition Facts", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%", "Sodium 1,160mg 50%",
+            "Total Carbohydrate 37g", "Protein 3g",
+        ]
+        let guess = LabelGuess(
+            name: "Granola", brand: "none", servingSize: "2/3 cup (55g)", servingGrams: 55,
+            values: [.kcal: 230, .fat: 8, .carbs: 37, .protein: 3, .sodium: 1160, .fiber: 4, .sugar: 12])
         #expect(guess.brand == nil)
         let read = try #require(LabelAssist.fill(nil, with: guess, lines: lines))
         #expect(read.nutrients.kcal == 230)
@@ -90,9 +99,10 @@ struct LabelTests {
         #expect(read.servingGrams == 55)
         #expect(read.servingLabel == "2/3 cup (55g)")
         // An existing parse keeps its values and gains only what it lacked.
-        let parsed = LabelReading(servingLabel: "2/3 cup", servingGrams: nil, servingMilliliters: nil,
-                                  nutrients: Nutrients(kcal: 230, protein: 0, carbs: 37, fat: 9), fieldsRead: 3,
-                                  missing: ["protein", "fiber", "sugar", "saturatedFat", "sodium"])
+        let parsed = LabelReading(
+            servingLabel: "2/3 cup", servingGrams: nil, servingMilliliters: nil,
+            nutrients: Nutrients(kcal: 230, protein: 0, carbs: 37, fat: 9), fieldsRead: 3,
+            missing: ["protein", "fiber", "sugar", "saturatedFat", "sodium"])
         let filled = try #require(LabelAssist.fill(parsed, with: guess, lines: lines))
         #expect(filled.nutrients.fat == 9)
         #expect(filled.nutrients.protein == 3)
@@ -112,11 +122,14 @@ struct LabelTests {
     }
 
     @Test func aThinParseTakesAValueOnlyFromItsOwnRow() throws {
-        let lines = ["Nutrition Facts", "Serving size 1 bar (40g)", "Calories 190", "Total Fat 7g 9%", "Sodium 150mg 7%",
-                     "Total Carbohydrate 22g 8%", "Dietary Fiber 3g 11%", "Protein 10g 20%"]
+        let lines = [
+            "Nutrition Facts", "Serving size 1 bar (40g)", "Calories 190", "Total Fat 7g 9%", "Sodium 150mg 7%",
+            "Total Carbohydrate 22g 8%", "Dietary Fiber 3g 11%", "Protein 10g 20%",
+        ]
         // 9 is fat's % Daily Value and 7 is fat's own grams: neither is fiber, sodium or sugar.
-        let guess = LabelGuess(name: "Bar", brand: "Unknown",
-                               values: [.kcal: 190, .fat: 7, .carbs: 22, .protein: 10, .fiber: 9, .sodium: 7, .sugar: 7])
+        let guess = LabelGuess(
+            name: "Bar", brand: "Unknown",
+            values: [.kcal: 190, .fat: 7, .carbs: 22, .protein: 10, .fiber: 9, .sodium: 7, .sugar: 7])
         let read = try #require(LabelAssist.fill(nil, with: guess, lines: lines))
         #expect(read.nutrients.fiber == nil)
         #expect(read.nutrients.sodium == nil)

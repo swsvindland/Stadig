@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import FoodDatabase
 
 /// Reports search latency; never fails on timing.
@@ -35,7 +36,8 @@ struct BenchmarkTests {
         }
         let typical = medians.map(\.1)
         let slowest = medians.sorted { $0.1 > $1.1 }.prefix(8).map { "\($0.0) \(String(format: "%.1f", $0.1))" }
-        print("""
+        print(
+            """
             Search latency (\(queries.count) queries × 5 runs, warm):
               median \(String(format: "%.2f", Self.percentile(typical, 0.5))) ms, \
             p95 \(String(format: "%.2f", Self.percentile(typical, 0.95))) ms, \
@@ -48,7 +50,8 @@ struct BenchmarkTests {
             candidates.append(Self.milliseconds(clock.measure { _ = catalog.candidates(name: name, brand: nil) }))
         }
         candidates.append(Self.milliseconds(clock.measure { _ = catalog.candidates(name: "Mini Wheats", brand: "Trader Joe's") }))
-        print("Candidates latency: median \(String(format: "%.2f", Self.percentile(candidates, 0.5))) ms, "
-            + "max \(String(format: "%.2f", candidates.max() ?? 0)) ms")
+        print(
+            "Candidates latency: median \(String(format: "%.2f", Self.percentile(candidates, 0.5))) ms, "
+                + "max \(String(format: "%.2f", candidates.max() ?? 0)) ms")
     }
 }

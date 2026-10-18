@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Numbers as people read them on the wrist. Loads are shown in the gym's unit.

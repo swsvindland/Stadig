@@ -42,8 +42,10 @@ public struct WritingMetrics: Hashable, Sendable {
     public var sentenceSpread: Double?
 
     public var dictionary: [String: Double] {
-        var out: [String: Double] = [Key.words: Double(words), Key.sentences: Double(sentences), Key.slips: Double(slips),
-                                     Key.errors: errorsPer100]
+        var out: [String: Double] = [
+            Key.words: Double(words), Key.sentences: Double(sentences), Key.slips: Double(slips),
+            Key.errors: errorsPer100,
+        ]
         out[Key.vocabulary] = vocabulary
         out[Key.sentenceMean] = sentenceMean
         out[Key.sentenceSpread] = sentenceSpread
@@ -72,9 +74,10 @@ public enum WritingCheck {
                 spread = (lengths.map { (Double($0) - m) * (Double($0) - m) }.reduce(0, +) / Double(lengths.count)).squareRoot()
             }
         }
-        return WritingMetrics(words: words, sentences: lengths.count, slips: slips,
-                              errorsPer100: words == 0 ? 0 : Double(slips) / Double(words) * 100,
-                              vocabulary: vocabulary(tokens), sentenceMean: mean, sentenceSpread: spread)
+        return WritingMetrics(
+            words: words, sentences: lengths.count, slips: slips,
+            errorsPer100: words == 0 ? 0 : Double(slips) / Double(words) * 100,
+            vocabulary: vocabulary(tokens), sentenceMean: mean, sentenceSpread: spread)
     }
 
     public static func slips(_ text: String, misspelled: [String] = []) -> [WritingSlip] {
@@ -134,9 +137,11 @@ public enum WritingCheck {
     }
 
     /// Words that end in a full stop without ending the sentence.
-    static let abbreviations: Set<String> = ["mr", "mrs", "ms", "dr", "st", "prof", "sr", "jr", "vs", "cf", "e.g", "i.e", "eg", "ie",
-                                             "approx", "fig", "vol", "pp", "mt", "rev", "lt", "col", "capt", "sgt", "inc", "ltd",
-                                             "dept", "a.m", "p.m"]
+    static let abbreviations: Set<String> = [
+        "mr", "mrs", "ms", "dr", "st", "prof", "sr", "jr", "vs", "cf", "e.g", "i.e", "eg", "ie",
+        "approx", "fig", "vol", "pp", "mt", "rev", "lt", "col", "capt", "sgt", "inc", "ltd",
+        "dept", "a.m", "p.m",
+    ]
     /// Words that can end a sentence or run on: "etc. and" runs on, "etc. Then" doesn't.
     static let runOnAbbreviations: Set<String> = ["etc", "al", "viz"]
     static let closers: Set<Character> = ["\"", "”", "’", "'", ")", "]"]
@@ -228,14 +233,18 @@ public enum WritingCheck {
     /// Words that are fine twice running: "had had", "that that".
     static let doubles: Set<String> = ["had", "that", "is", "do", "very", "so", "no", "bye", "ha", "ho", "now", "really", "far", "again"]
     /// Joined words that should be two.
-    static let joined: [String: String] = ["alot": "a lot", "noone": "no one", "eachother": "each other", "infact": "in fact",
-                                           "aswell": "as well", "alittle": "a little", "atleast": "at least", "inspite": "in spite",
-                                           "thankyou": "thank you", "everytime": "every time"]
+    static let joined: [String: String] = [
+        "alot": "a lot", "noone": "no one", "eachother": "each other", "infact": "in fact",
+        "aswell": "as well", "alittle": "a little", "atleast": "at least", "inspite": "in spite",
+        "thankyou": "thank you", "everytime": "every time",
+    ]
     /// Words that start with a vowel letter and a consonant sound: "a one-off", "a European".
     static let consonantSounds = ["one", "once", "eu", "ewe"]
     static let modals: Set<String> = ["could", "would", "should", "must", "might"]
-    static let comparatives: Set<String> = ["more", "less", "fewer", "greater", "better", "worse", "larger", "smaller", "higher",
-                                            "lower", "bigger", "older", "younger", "longer", "shorter"]
+    static let comparatives: Set<String> = [
+        "more", "less", "fewer", "greater", "better", "worse", "larger", "smaller", "higher",
+        "lower", "bigger", "older", "younger", "longer", "shorter",
+    ]
 
     static func slips(_ chars: [Character], tokens: [Token], misspelled: [String]) -> [WritingSlip] {
         var out: [WritingSlip] = []
@@ -266,7 +275,8 @@ public enum WritingCheck {
                 }
             }
             if let next, adjacent, modals.contains(token.lower), next.lower == "of" {
-                let noun = token.lower == "might" && ["the", "his", "her", "its", "their", "all", "with", "our", "your"].contains(previous?.lower ?? "")
+                let noun =
+                    token.lower == "might" && ["the", "his", "her", "its", "their", "all", "with", "our", "your"].contains(previous?.lower ?? "")
                 if !noun { slip(.mechanics, token.offset, next.end, "“\(token.lower) have”, not “\(token.lower) of”") }
             }
             if let next, adjacent, next.lower == "then" {
@@ -285,10 +295,11 @@ public enum WritingCheck {
         for i in chars.indices {
             let c = chars[i]
             if ",;:.?!".contains(c), i >= 2, chars[i - 1] == " ", chars[i - 2].isLetter || chars[i - 2].isNumber,
-               i + 1 == chars.count || chars[i + 1].isWhitespace || (c != "." && chars[i + 1].isLetter) {
+                i + 1 == chars.count || chars[i + 1].isWhitespace || (c != "." && chars[i + 1].isLetter)
+            {
                 slip(.mechanics, i - 1, i + 1, "No space before “\(c)”")
             }
-            if (c == "," || c == ";"), i > 0, i + 1 < chars.count, chars[i - 1].isLetter, chars[i + 1].isLetter {
+            if c == "," || c == ";", i > 0, i + 1 < chars.count, chars[i - 1].isLetter, chars[i + 1].isLetter {
                 slip(.mechanics, i, i + 1, "A space after “\(c)”")
             }
             if ".?!".contains(c), i > 0, i + 2 < chars.count, chars[i - 1].isLowercase, chars[i + 1].isUppercase, chars[i + 2].isLowercase {
@@ -309,7 +320,8 @@ public enum WritingCheck {
         // Sentences that start in lower case (not "iPhone", not a bulleted line).
         for sentence in sentences(chars, tokens: tokens) {
             guard let first = tokens.first(where: { $0.offset >= sentence.offset && $0.offset < sentence.end }),
-                  first.text.first?.isLowercase == true, !first.mixedCase, first.text != "i" else { continue }
+                first.text.first?.isLowercase == true, !first.mixedCase, first.text != "i"
+            else { continue }
             var lineStart = sentence.offset
             while lineStart > 0, chars[lineStart - 1] != "\n" { lineStart -= 1 }
             let line = String(chars[lineStart..<first.offset]).trimmingCharacters(in: .whitespaces)

@@ -1,7 +1,7 @@
 import Foundation
-import notify
 import OSLog
 import SystemCore
+import notify
 
 /// The shared App Group container: small JSON files, each in a versioned envelope
 /// `{schemaVersion, writtenBy, writtenAt, payload}`, that the apps and the hub publish for each other.
@@ -26,11 +26,13 @@ public struct SharedContainer: Sendable {
             directory = group
             isAppGroup = true
         } else {
-            let fallback = fallbackDirectory
+            let fallback =
+                fallbackDirectory
                 ?? URL.applicationSupportDirectory.appending(path: "SystemShared", directoryHint: .isDirectory)
             directory = fallback
             isAppGroup = false
-            storeLog.info("App Group \(groupID, privacy: .public) unavailable; sharing through \(fallback.path(percentEncoded: false), privacy: .public)")
+            storeLog.info(
+                "App Group \(groupID, privacy: .public) unavailable; sharing through \(fallback.path(percentEncoded: false), privacy: .public)")
         }
     }
 
@@ -90,7 +92,8 @@ public struct SharedContainer: Sendable {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try coordinatedWrite(url, options: .forReplacing) { url in
             if let existing = try? Data(contentsOf: url), let header = EnvelopeHeader.read(existing),
-               header.schemaVersion > key.schemaVersion {
+                header.schemaVersion > key.schemaVersion
+            {
                 throw SystemStoreError.newerSharedSchema(path: key.path, onDisk: header.schemaVersion, known: key.schemaVersion)
             }
             try data.write(to: url, options: .atomic)
@@ -104,14 +107,17 @@ public struct SharedContainer: Sendable {
     /// the two are compared (as encoded bytes, so dates match to the millisecond they're stored at);
     /// `stamp` dates the value when it is written. Returns whether it wrote.
     @discardableResult
-    public func writeIfChanged<T>(_ value: T, to key: SharedKey<T>, by app: AppID, now: Date = Date(),
-                                  carryOver: (inout T, T) -> Void, stamp: (inout T, Date) -> Void) throws -> Bool {
+    public func writeIfChanged<T>(
+        _ value: T, to key: SharedKey<T>, by app: AppID, now: Date = Date(),
+        carryOver: (inout T, T) -> Void, stamp: (inout T, Date) -> Void
+    ) throws -> Bool {
         var value = value
         // Only against a file at the key's own schema version: an older one is rewritten, so it's
         // upgraded on disk too.
         if let url = try? fileURL(key.path), let data = coordinatedRead(url),
-           EnvelopeHeader.read(data)?.schemaVersion == key.schemaVersion,
-           let previous = try? key.decodeEnvelope(data)?.payload {
+            EnvelopeHeader.read(data)?.schemaVersion == key.schemaVersion,
+            let previous = try? key.decodeEnvelope(data)?.payload
+        {
             var unchanged = value
             carryOver(&unchanged, previous)
             let encoder = SystemJSON.encoder()
@@ -125,11 +131,14 @@ public struct SharedContainer: Sendable {
     /// `writeIfChanged` for a payload with one "updated" date: it's ignored in the comparison and set
     /// to `now` when the value is written.
     @discardableResult
-    public func writeIfChanged<T>(_ value: T, to key: SharedKey<T>, by app: AppID, stamp: WritableKeyPath<T, Date>,
-                                  now: Date = Date()) throws -> Bool {
-        try writeIfChanged(value, to: key, by: app, now: now,
-                           carryOver: { $0[keyPath: stamp] = $1[keyPath: stamp] },
-                           stamp: { $0[keyPath: stamp] = $1 })
+    public func writeIfChanged<T>(
+        _ value: T, to key: SharedKey<T>, by app: AppID, stamp: WritableKeyPath<T, Date>,
+        now: Date = Date()
+    ) throws -> Bool {
+        try writeIfChanged(
+            value, to: key, by: app, now: now,
+            carryOver: { $0[keyPath: stamp] = $1[keyPath: stamp] },
+            stamp: { $0[keyPath: stamp] = $1 })
     }
 
     /// Deletes the file at `key`, if there is one, and posts `changeNotification`.
@@ -154,7 +163,8 @@ public struct SharedContainer: Sendable {
             let url = directory.appending(path: path, directoryHint: .notDirectory)
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory),
-                  !isDirectory.boolValue, let data = coordinatedRead(url) else { continue }
+                !isDirectory.boolValue, let data = coordinatedRead(url)
+            else { continue }
             files[path] = data
         }
         return files
@@ -180,7 +190,8 @@ public struct SharedContainer: Sendable {
                 if let existing = try? Data(contentsOf: url) {
                     if existing == target.data { return }
                     if let onDisk = EnvelopeHeader.read(existing), let incoming = EnvelopeHeader.read(target.data),
-                       onDisk.schemaVersion > incoming.schemaVersion || onDisk.writtenAt > incoming.writtenAt {
+                        onDisk.schemaVersion > incoming.schemaVersion || onDisk.writtenAt > incoming.writtenAt
+                    {
                         return
                     }
                 }
@@ -213,7 +224,8 @@ public struct SharedContainer: Sendable {
     func fileURL(_ path: String) throws -> URL {
         let components = path.split(separator: "/", omittingEmptySubsequences: false)
         guard !path.isEmpty, !path.hasPrefix("/"), !path.contains("\\"),
-              !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else {
+            !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." })
+        else {
             throw SystemStoreError.invalidPath(path)
         }
         return directory.appending(path: path, directoryHint: .notDirectory)
@@ -306,39 +318,39 @@ public struct SharedKey<T: Codable & Sendable>: Sendable {
     }
 }
 
-public extension SharedKey where T == SharedProfile {
+extension SharedKey where T == SharedProfile {
     /// Setup answers, asked once and shared by every app.
-    static var profile: SharedKey<SharedProfile> { SharedKey(path: "core/profile.json", schemaVersion: SharedProfile.schemaVersion) }
+    public static var profile: SharedKey<SharedProfile> { SharedKey(path: "core/profile.json", schemaVersion: SharedProfile.schemaVersion) }
 }
 
-public extension SharedKey where T == [LifeModePeriod] {
+extension SharedKey where T == [LifeModePeriod] {
     /// Tombstones included (schema 2), so a delete in one app reaches the others; version 1 files decode as is.
-    static var lifeModes: SharedKey<[LifeModePeriod]> { SharedKey(path: "core/life-modes.json", schemaVersion: LifeModePeriod.schemaVersion) }
+    public static var lifeModes: SharedKey<[LifeModePeriod]> { SharedKey(path: "core/life-modes.json", schemaVersion: LifeModePeriod.schemaVersion) }
 }
 
-public extension SharedKey where T == SystemCalendar {
-    static var calendar: SharedKey<SystemCalendar> { SharedKey(path: "core/calendar.json", schemaVersion: 1) }
+extension SharedKey where T == SystemCalendar {
+    public static var calendar: SharedKey<SystemCalendar> { SharedKey(path: "core/calendar.json", schemaVersion: 1) }
 }
 
-public extension SharedKey where T == [Recommendation] {
+extension SharedKey where T == [Recommendation] {
     /// Written by the hub, read by the apps when they plan.
-    static var recommendations: SharedKey<[Recommendation]> { SharedKey(path: "hub/recommendations.json", schemaVersion: 1) }
+    public static var recommendations: SharedKey<[Recommendation]> { SharedKey(path: "hub/recommendations.json", schemaVersion: 1) }
 }
 
-public extension SharedKey where T == [Quest] {
-    static var hubQuests: SharedKey<[Quest]> { SharedKey(path: "hub/quests.json", schemaVersion: 1) }
+extension SharedKey where T == [Quest] {
+    public static var hubQuests: SharedKey<[Quest]> { SharedKey(path: "hub/quests.json", schemaVersion: 1) }
 }
 
-public extension SharedKey where T == NutritionSummary {
+extension SharedKey where T == NutritionSummary {
     /// Published by Macro Track.
-    static var nutrition: SharedKey<NutritionSummary> {
+    public static var nutrition: SharedKey<NutritionSummary> {
         SharedKey(path: "apps/\(AppID.macroTrack.rawValue)/nutrition.json", schemaVersion: NutritionSummary.schemaVersion)
     }
 }
 
-public extension SharedKey where T == AppSummary {
+extension SharedKey where T == AppSummary {
     /// Each app's published summary, for the others and the hub.
-    static func summary(_ app: AppID) -> SharedKey<AppSummary> {
+    public static func summary(_ app: AppID) -> SharedKey<AppSummary> {
         SharedKey(path: "apps/\(app.rawValue)/summary.json", schemaVersion: AppSummary.schemaVersion)
     }
 }

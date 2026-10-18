@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// The day's session and the one or two other things worth doing. Most visits are a glance and a
@@ -145,7 +145,8 @@ private struct PausedCard: View {
 
     var detail: String {
         switch kind {
-        case .vacation: "On vacation: nothing is expected, and these days never count against you. Watch something in a language you're learning if you feel like it."
+        case .vacation:
+            "On vacation: nothing is expected, and these days never count against you. Watch something in a language you're learning if you feel like it."
         case .illness: "Get better. Nothing is expected, and the days don't count."
         case .crunch: "Crunch mode pauses study. A five-minute review is here if you want it; nothing is expected."
         case .injury: ""
@@ -161,8 +162,10 @@ private struct StudyMoreMenu: View {
         if let settings = model.settings {
             Menu {
                 ForEach(settings.domains) { domain in
-                    Button(domain.label, systemImage: domain.symbol) { model.startSession(domain == .maths && settings.has(.writing) ? [.maths, .writing] : [domain]) }
-                        .accessibilityIdentifier("today.studyAnyway.\(domain.rawValue)")
+                    Button(domain.label, systemImage: domain.symbol) {
+                        model.startSession(domain == .maths && settings.has(.writing) ? [.maths, .writing] : [domain])
+                    }
+                    .accessibilityIdentifier("today.studyAnyway.\(domain.rawValue)")
                 }
                 if (model.analysis?.dueToday ?? 0) > 0 {
                     Button("Five minutes of reviews", systemImage: "arrow.triangle.2.circlepath") { model.startExtraReview() }
@@ -286,7 +289,9 @@ struct EpisodeSheet: View {
                 } header: {
                     Text("How much did you follow?")
                 } footer: {
-                    Text("A plain check-in, not a score: it's how you'll see real \(language.domain.label) start to open up. The listening and speaking tests are what measure.")
+                    Text(
+                        "A plain check-in, not a score: it's how you'll see real \(language.domain.label) start to open up. The listening and speaking tests are what measure."
+                    )
                 }
             }
             .navigationTitle(language.domain.label)

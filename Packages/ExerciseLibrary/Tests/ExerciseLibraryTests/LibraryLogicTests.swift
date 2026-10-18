@@ -1,5 +1,6 @@
-import Testing
 import SystemCore
+import Testing
+
 @testable import ExerciseLibrary
 
 private func exercise(_ id: String) throws -> Exercise { try #require(ExerciseLibrary.byID[id]) }
@@ -122,9 +123,11 @@ struct SubstitutionTests {
 struct SearchTests {
     let library = ExerciseLibrary.bundled
 
-    @Test(arguments: [("rdl", "barbell-rdl"), ("ohp", "barbell-overhead-press"), ("bss", "db-bulgarian-split-squat"),
-                      ("incline db press", "db-incline-bench-press"), ("tricpes pushdown", "cable-pushdown-bar"),
-                      ("lat pulldowns", "lat-pulldown"), ("couch stretch", "couch-stretch")])
+    @Test(arguments: [
+        ("rdl", "barbell-rdl"), ("ohp", "barbell-overhead-press"), ("bss", "db-bulgarian-split-squat"),
+        ("incline db press", "db-incline-bench-press"), ("tricpes pushdown", "cable-pushdown-bar"),
+        ("lat pulldowns", "lat-pulldown"), ("couch stretch", "couch-stretch"),
+    ])
     func findsShorthandAndTypos(query: String, id: String) {
         let results = ExerciseSearch.search(library, query)
         #expect(results.prefix(3).contains { $0.id == id }, "\(query) → \(results.prefix(3).map(\.id))")

@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 @Suite("Food quality")
@@ -8,19 +9,22 @@ struct QualityTests {
     let today = Day(year: 2026, month: 3, day: 10)
 
     func entry(_ day: Day, _ name: String, kcal: Double, _ processing: Processing?, fermented: Bool? = false, foodID: String? = nil) -> FoodEntry {
-        FoodEntry(date: day.date().addingTimeInterval(12 * 3600), name: name, foodID: foodID ?? name, amountLabel: "1",
-                  nutrients: Nutrients(kcal: kcal, protein: 20, carbs: 30, fat: 10), processing: processing, fermented: fermented,
-                  source: .search)
+        FoodEntry(
+            date: day.date().addingTimeInterval(12 * 3600), name: name, foodID: foodID ?? name, amountLabel: "1",
+            nutrients: Nutrients(kcal: kcal, protein: 20, carbs: 30, fat: 10), processing: processing, fermented: fermented,
+            source: .search)
     }
 
     @Test("the share of calories in each group, and where the ultra-processed ones came from")
     func shares() throws {
         let days = (1...5).map { today.adding(days: -$0) }
         let entries = days.flatMap { day in
-            [entry(day, "Pop-Tarts", kcal: 600, .ultraProcessed),
-             entry(day, "Cola", kcal: 300, .ultraProcessed),
-             entry(day, "Chicken and rice", kcal: 1000, .whole),
-             entry(day, "Cheddar", kcal: 100, .processed)]
+            [
+                entry(day, "Pop-Tarts", kcal: 600, .ultraProcessed),
+                entry(day, "Cola", kcal: 300, .ultraProcessed),
+                entry(day, "Chicken and rice", kcal: 1000, .whole),
+                entry(day, "Cheddar", kcal: 100, .processed),
+            ]
         }
         let report = QualityAnalyst.report(entries: entries, complete: Set(days), today: today)
         #expect(report.days.count == 5 && report.known && report.coverage == 1)

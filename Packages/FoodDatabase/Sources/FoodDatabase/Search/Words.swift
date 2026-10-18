@@ -80,7 +80,7 @@ let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "t
     if v < 0x80 { return (v >= 0x30 && v <= 0x39) || (v >= 0x61 && v <= 0x7A) || (v >= 0x41 && v <= 0x5A) }
     switch scalar.properties.generalCategory {
     case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter, .decimalNumber, .letterNumber,
-         .otherNumber:
+        .otherNumber:
         return true
     default:
         return false
@@ -285,7 +285,8 @@ private func writtenIntoName(_ word: String, before: ArraySlice<Unicode.Scalar>,
     // A percentage, also with decimals: "2%", "3.25 %".
     if percent(after) { return true }
     if let first = after.first, first == "." || first == ",", after.dropFirst().first.map(isDigit) == true,
-       percent(after.dropFirst().drop(while: isDigit)) {
+        percent(after.dropFirst().drop(while: isDigit))
+    {
         return true
     }
     if before.count >= 2, let last = before.last, last == "." || last == ",", isDigit(before[before.endIndex - 2]), percent(after) {
@@ -323,7 +324,8 @@ func readQuery(_ query: String) -> QueryReading {
     for (i, token) in found.enumerated() {
         let word = token.word
         // Counted ("2 cups rice"), measured ("cup of coffee") or sized ("large egg"), it's an amount.
-        let much = (i > 0 && roles[i - 1] == .amount) || (i + 1 < found.count && found[i + 1].word == "of")
+        let much =
+            (i > 0 && roles[i - 1] == .amount) || (i + 1 < found.count && found[i + 1].word == "of")
             || (sizeWords.contains(word) && found[(i + 1)...].contains { !stopWords.contains($0.word) })
         if isNumber(word) {
             roles.append(writtenIntoName(word, before: text[..<token.start], after: text[token.end...]) ? .name : .amount)
@@ -345,8 +347,10 @@ func readQuery(_ query: String) -> QueryReading {
         return QueryReading(words: Array((measures.isEmpty ? pick(.stop) : measures).prefix(8)), counts: [])
     }
     var counts: [(String, String)] = []
-    for i in found.indices where roles[i] == .amount && isNumber(found[i].word) && i + 1 < found.count
-        && roles[i + 1] == .name && !isNumber(found[i + 1].word) {
+    for i in found.indices
+    where roles[i] == .amount && isNumber(found[i].word) && i + 1 < found.count
+        && roles[i + 1] == .name && !isNumber(found[i + 1].word)
+    {
         counts.append((found[i].word, found[i + 1].word))
     }
     return QueryReading(words: Array(names.prefix(8)), counts: counts)
@@ -375,7 +379,8 @@ struct TypoMeter {
 
     /// Edits between `a` and `b`, or `limit + 1` once they are further apart than `limit`.
     mutating func distance(_ a: ArraySlice<UInt16>, _ b: ArraySlice<UInt16>, limit: Int) -> Int {
-        let n = a.count, m = b.count
+        let n = a.count
+        let m = b.count
         if abs(n - m) > limit { return limit + 1 }
         if previous.count < m + 1 {
             before = Array(repeating: 0, count: m + 1)
@@ -383,7 +388,8 @@ struct TypoMeter {
             current = before
         }
         for j in 0...m { previous[j] = j }
-        let a0 = a.startIndex, b0 = b.startIndex
+        let a0 = a.startIndex
+        let b0 = b.startIndex
         var i = 1
         while i <= n {
             current[0] = i

@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 @Suite("Simulated students")
@@ -16,7 +17,10 @@ struct SimulatedStudentTests {
         let state = store.state(on: Fixtures.monday)
         let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
         #expect(plan.kind == .placement)
-        #expect(plan.parts.map { "\($0.kind) \($0.domain?.rawValue ?? "")" } == ["placement japanese", "placement maths", "placement writing", "learn japanese"])
+        #expect(
+            plan.parts.map { "\($0.kind) \($0.domain?.rawValue ?? "")" } == [
+                "placement japanese", "placement maths", "placement writing", "learn japanese",
+            ])
         let run = try #require(store.study(on: Fixtures.monday, student: &student, deck: deck))
 
         let vocabulary = try #require(store.tests.first { $0.test == .vocabulary })
@@ -28,7 +32,8 @@ struct SimulatedStudentTests {
         let levels = known.compactMap { MathCurriculum.topic($0)?.level }
         #expect(levels.max() ?? 0 >= 4 && levels.max() ?? 0 <= 6, "placed at \(placement.detail), topics \(known.sorted())")
         #expect(known.contains("order-of-operations") && known.contains("factorising"), "\(known.sorted())")
-        #expect((4...6).contains(MathsPlan.placedLevel(store.cards, strand: .classic)) && store.tests.contains { $0.test == .numeracy && $0.placement })
+        #expect(
+            (4...6).contains(MathsPlan.placedLevel(store.cards, strand: .classic)) && store.tests.contains { $0.test == .numeracy && $0.placement })
         #expect(!known.contains("derivatives") && !known.contains("integration"))
 
         let writing = try #require(store.tests.first { $0.test == .writing })
@@ -131,12 +136,18 @@ struct SimulatedStudentTests {
         let state = store.state(on: Fixtures.monday.adding(days: 1))
         let plan = SessionPlanner.plan(.extra, domains: [], state: state, catalogs: Fixtures.catalogs(deck))
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
-        guard case .question(let first) = run.step else { Issue.record("no question"); return }
+        guard case .question(let first) = run.step else {
+            Issue.record("no question")
+            return
+        }
         run.choose((first.correctChoice! + 1) % first.choices.count, now: state.now + 5)
         let after = try #require(run.cards[word.key]?.memory)
         #expect(after.lapses == 1 && Day(after.due) == state.today.adding(days: 1))
         run.next(now: state.now + 7)
-        guard case .question(let again) = run.step else { Issue.record("not asked again"); return }
+        guard case .question(let again) = run.step else {
+            Issue.record("not asked again")
+            return
+        }
         #expect(again.key == word.key && again.kind == .learn)
         run.choose(again.correctChoice!, now: state.now + 12)
         #expect(run.cards[word.key]?.memory == after, "the re-ask doesn't touch the schedule")
@@ -150,27 +161,36 @@ extension SimulatedStudentTests {
         let now = today.date().addingTimeInterval(18 * 3600)
         var cards: [MemoryCard] = []
         let dueWord = try #require(deck.word(100_050))
-        cards.append(MemoryCard(key: dueWord.key, memory: Memory(stability: 30, difficulty: 5, lastReview: now - 30 * 86_400, due: now - 3600),
-                                introduced: now - 60 * 86_400))
+        cards.append(
+            MemoryCard(
+                key: dueWord.key, memory: Memory(stability: 30, difficulty: 5, lastReview: now - 30 * 86_400, due: now - 3600),
+                introduced: now - 60 * 86_400))
         var ahead: [CardKey] = []
         for rank in 100...111 {
             let word = try #require(deck.word(100_000 + rank))
             ahead.append(word.key)
-            cards.append(MemoryCard(key: word.key, memory: Memory(stability: 10, difficulty: 5, lastReview: now - 3 * 86_400, due: now + Double(rank - 95) * 86_400),
-                                    introduced: now - 20 * 86_400))
+            cards.append(
+                MemoryCard(
+                    key: word.key, memory: Memory(stability: 10, difficulty: 5, lastReview: now - 3 * 86_400, due: now + Double(rank - 95) * 86_400),
+                    introduced: now - 20 * 86_400))
         }
-        let state = StudyState(settings: Fixtures.settings([.japanese]), cards: cards,
-                               sessions: [StudySession(purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
-                                                       domains: [.japanese], planned: true)],
-                               tests: [TestResult(test: .vocabulary, date: Fixtures.monday.date(), score: 500, language: .japanese)], today: today, now: now)
+        let state = StudyState(
+            settings: Fixtures.settings([.japanese]), cards: cards,
+            sessions: [
+                StudySession(
+                    purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
+                    domains: [.japanese], planned: true)
+            ],
+            tests: [TestResult(test: .vocabulary, date: Fixtures.monday.date(), score: 500, language: .japanese)], today: today, now: now)
         return (state, dueWord.key, ahead)
     }
 
     @Test("extra practice at the end leaves today's cards alone, so a miss still comes back tomorrow, and comes only once")
     func extraPractice() throws {
         let (state, missed, ahead) = try reviewState()
-        let plan = SessionPlan(day: state.today, kind: .regular, minutes: 10, domains: [.japanese],
-                               parts: [PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: "")], headline: "", notes: [], planned: true)
+        let plan = SessionPlan(
+            day: state.today, kind: .regular, minutes: 10, domains: [.japanese],
+            parts: [PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: "")], headline: "", notes: [], planned: true)
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         var now = state.now
         var reviewed: [CardKey] = []
@@ -200,10 +220,14 @@ extension SimulatedStudentTests {
     @Test("ending during extra practice: the plan ran its course, so the session counts")
     func endDuringExtraPractice() throws {
         let (state, _, _) = try reviewState()
-        let plan = SessionPlan(day: state.today, kind: .regular, minutes: 25, domains: [.japanese],
-                               parts: [PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: "")], headline: "", notes: [], planned: true)
+        let plan = SessionPlan(
+            day: state.today, kind: .regular, minutes: 25, domains: [.japanese],
+            parts: [PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: "")], headline: "", notes: [], planned: true)
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
-        guard case .question(let first) = run.step else { Issue.record("no warm-up question"); return }
+        guard case .question(let first) = run.step else {
+            Issue.record("no warm-up question")
+            return
+        }
         run.choose(first.correctChoice!, now: state.now + 4)
         run.next(now: state.now + 5)
         #expect(run.partIndex == plan.parts.count && run.currentPart?.title == "Extra practice")
@@ -217,9 +241,10 @@ extension SimulatedStudentTests {
         // Missed in a quick review this morning: back tomorrow, so it would sort first.
         let missed = ahead[5]
         state.cards[missed]?.memory = Memory(stability: 1, difficulty: 6, lastReview: state.now - 8 * 3600, due: state.now + 86_400)
-        let plan = SessionPlan(day: state.today, kind: .review, minutes: 5, domains: [.japanese],
-                               parts: [PlanPart(kind: .practice, domain: .japanese, minutes: 5, title: "Japanese reviews", detail: "")], headline: "",
-                               notes: [], planned: true)
+        let plan = SessionPlan(
+            day: state.today, kind: .review, minutes: 5, domains: [.japanese],
+            parts: [PlanPart(kind: .practice, domain: .japanese, minutes: 5, title: "Japanese reviews", detail: "")], headline: "",
+            notes: [], planned: true)
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         var now = state.now
         var asked: [CardKey] = []
@@ -236,12 +261,18 @@ extension SimulatedStudentTests {
     @Test("skipping a part before its time is up means the plan didn't run its course")
     func skippedPart() throws {
         let (state, _, _) = try reviewState()
-        let plan = SessionPlan(day: state.today, kind: .regular, minutes: 25, domains: [.japanese],
-                               parts: [PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: ""),
-                                       PlanPart(kind: .practice, domain: .japanese, minutes: 20, title: "Japanese reviews", detail: "")],
-                               headline: "", notes: [], planned: true)
+        let plan = SessionPlan(
+            day: state.today, kind: .regular, minutes: 25, domains: [.japanese],
+            parts: [
+                PlanPart(kind: .reviews, minutes: 5, title: "Warm-up reviews", detail: ""),
+                PlanPart(kind: .practice, domain: .japanese, minutes: 20, title: "Japanese reviews", detail: ""),
+            ],
+            headline: "", notes: [], planned: true)
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
-        guard case .question(let first) = run.step else { Issue.record("no warm-up question"); return }
+        guard case .question(let first) = run.step else {
+            Issue.record("no warm-up question")
+            return
+        }
         run.choose(first.correctChoice!, now: state.now + 4)
         run.next(now: state.now + 5)
         // The warm-up's one card is done; the practice part is skipped straight away.
@@ -261,7 +292,10 @@ extension SimulatedStudentTests {
         let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         #expect(run.stepNumber == 0)
-        guard case .question(let first) = run.step else { Issue.record("no question: \(String(describing: run.step))"); return }
+        guard case .question(let first) = run.step else {
+            Issue.record("no question: \(String(describing: run.step))")
+            return
+        }
 
         run.next(after: first.id, now: state.now + 1)
         #expect(run.stepNumber == 0 && run.step == .question(first), "not answered yet: nothing to move on from")
@@ -271,7 +305,10 @@ extension SimulatedStudentTests {
         // Continue, then the auto-advance for the same answer.
         run.next(now: state.now + 4)
         #expect(run.stepNumber == 1)
-        guard case .question(let second) = run.step else { Issue.record("no second question"); return }
+        guard case .question(let second) = run.step else {
+            Issue.record("no second question")
+            return
+        }
         #expect(second.id != first.id)
         run.next(after: first.id, now: state.now + 5)
         #expect(run.stepNumber == 1 && run.step == .question(second), "the first answer's auto-advance doesn't skip the second question")

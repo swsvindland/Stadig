@@ -63,8 +63,10 @@ public enum Micronutrients {
 
     public static func info(_ key: String) -> NutrientInfo? { all.first { $0.key == key } }
 
-    private static func info(_ key: String, _ label: String, _ unit: NutrientUnit, _ goal: NutrientInfo.Goal = .atLeast,
-                             watched: Bool, _ why: String) -> NutrientInfo {
+    private static func info(
+        _ key: String, _ label: String, _ unit: NutrientUnit, _ goal: NutrientInfo.Goal = .atLeast,
+        watched: Bool, _ why: String
+    ) -> NutrientInfo {
         NutrientInfo(key: key, label: label, unit: unit, goal: goal, watched: watched, why: why)
     }
 
@@ -217,8 +219,10 @@ public enum MicroAnalyst {
     /// The last seven complete days (from the last fortnight) of a person's log, read against their
     /// targets. Supplements taken those days add what their labels say, as measured: a capsule
     /// has no calories, so it says nothing about how much of the food was listed.
-    public static func report(entries: [FoodEntry], supplements: [SupplementLog] = [], complete: Set<Day>, profile: SharedProfile,
-                              kcal: Double, today: Day) -> MicroReport {
+    public static func report(
+        entries: [FoodEntry], supplements: [SupplementLog] = [], complete: Set<Day>, profile: SharedProfile,
+        kcal: Double, today: Day
+    ) -> MicroReport {
         let days = complete.filter { $0 < today && $0 >= today.adding(days: -14) }.sorted(by: >).prefix(7)
         let window = Set(days)
         let eaten = entries.filter { window.contains($0.day) }
@@ -227,7 +231,8 @@ public enum MicroAnalyst {
         let age = profile.age(on: today)
         var readings: [NutrientReading] = []
         for nutrient in Micronutrients.all {
-            var sum = 0.0, knownKcal = 0.0
+            var sum = 0.0
+            var knownKcal = 0.0
             var bySource: [String: Double] = [:]
             for entry in eaten {
                 guard let value = Micronutrients.amount(nutrient.key, in: entry) else { continue }
@@ -269,8 +274,10 @@ public enum MicroAnalyst {
                 if counted > limit.amount { status = .high }
             }
             let sources = bySource.sorted { $0.value > $1.value }.prefix(3).map(\.key)
-            readings.append(NutrientReading(nutrient: nutrient, daily: daily, measured: measured, coverage: coverage, target: target,
-                                            status: status, sources: sources, supplemented: supplemented, upper: limit?.amount))
+            readings.append(
+                NutrientReading(
+                    nutrient: nutrient, daily: daily, measured: measured, coverage: coverage, target: target,
+                    status: status, sources: sources, supplemented: supplemented, upper: limit?.amount))
         }
         return MicroReport(days: Array(days), readings: readings)
     }

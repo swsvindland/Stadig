@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SystemCore
 
 /// The label reading SystemCore ships to the apps. FoodDatabase's tests cover it against real
@@ -32,11 +33,13 @@ struct SupplementParsingTests {
         // A misread is still a misread.
         #expect(SupplementIngredients.read(name: "Total Fat", amount: 1250, unit: "") == nil)
 
-        let facts = SupplementFacts(id: "dsld:1", name: "Whey", unit: "scoop", ingredients: [
-            SupplementIngredient(name: "Calories", amount: 120, unit: ""),
-            SupplementIngredient(name: "Protein", amount: 25, unit: ""),
-            SupplementIngredient(name: "Total Carbohydrates", amount: 2, unit: ""),
-        ], source: .dsld)
+        let facts = SupplementFacts(
+            id: "dsld:1", name: "Whey", unit: "scoop",
+            ingredients: [
+                SupplementIngredient(name: "Calories", amount: 120, unit: ""),
+                SupplementIngredient(name: "Protein", amount: 25, unit: ""),
+                SupplementIngredient(name: "Total Carbohydrates", amount: 2, unit: ""),
+            ], source: .dsld)
         let nutrients = try #require(facts.nutrients)
         #expect(nutrients.kcal == 120 && nutrients.protein == 25 && nutrients.carbs == 2)
         #expect(facts.tracked.ingredients.count == 3)

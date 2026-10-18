@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
-import Observation
 import MindEngine
+import Observation
 
 /// The language being learned, read aloud on the device with the best voice installed for it.
 /// Enhanced and premium voices (Settings → Accessibility → Spoken Content → Voices) sound far more
@@ -36,7 +36,8 @@ final class Speech: NSObject, AVSpeechSynthesizerDelegate {
         let installed = AVSpeechSynthesisVoice.speechVoices()
         let candidates = installed.filter { $0.language == locale }
         let fallback = installed.filter { $0.language.hasPrefix(code) }
-        let voice = (candidates.isEmpty ? fallback : candidates).max { $0.quality.rawValue < $1.quality.rawValue }
+        let voice =
+            (candidates.isEmpty ? fallback : candidates).max { $0.quality.rawValue < $1.quality.rawValue }
             ?? AVSpeechSynthesisVoice(language: locale)
         voices[language] = .some(voice)
         return voice

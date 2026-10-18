@@ -76,9 +76,10 @@ public enum Discipline {
         let counted = items.filter { window.contains($0.day) && !exempt.contains($0.day) }
         let known = counted.filter { $0.done != nil }
         let done = known.filter { $0.done == true }.count
-        return DisciplineScore(window: window, planned: known.count, completed: done, unknown: counted.count - known.count,
-                               exemptDays: exempt.filter { window.contains($0) }.count,
-                               rate: known.isEmpty ? nil : Double(done) / Double(known.count))
+        return DisciplineScore(
+            window: window, planned: known.count, completed: done, unknown: counted.count - known.count,
+            exemptDays: exempt.filter { window.contains($0) }.count,
+            rate: known.isEmpty ? nil : Double(done) / Double(known.count))
     }
 
     /// Below the band for a sustained stretch: quests get smaller and easier to win, not louder.

@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// A language on the Progress tab: its four skills like separate lifts, vocabulary, the graded
@@ -38,8 +38,10 @@ struct LanguageProgress: View {
             if let vocabulary = summary.vocabulary {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("About \(Int(vocabulary.score).formatted()) words").font(.title3.bold())
-                    Text("\(Int(vocabulary.detail["low"] ?? 0).formatted())–\(Int(vocabulary.detail["high"] ?? 0).formatted()) · \(LanguageTests.level(words: vocabulary.score, language: language))")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text(
+                        "\(Int(vocabulary.detail["low"] ?? 0).formatted())–\(Int(vocabulary.detail["high"] ?? 0).formatted()) · \(LanguageTests.level(words: vocabulary.score, language: language))"
+                    )
+                    .font(.subheadline).foregroundStyle(.secondary)
                 }
             } else if summary.domain == .japanese, state.settings.readsKana == false {
                 Text("\(summary.kanaLearned) of \(KanaTable.all.count) kana in. The word test comes once hiragana is.").foregroundStyle(.secondary)
@@ -159,8 +161,10 @@ struct RealWorldSection: View {
                     .accessibilityIdentifier("progress.logEpisode.\(language.domain.rawValue)")
             }
             if logs.isEmpty {
-                Text("The benchmark that matters: an episode without subtitles, or a real conversation. Now and then, try one and note how much you followed. It's never scored.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(
+                    "The benchmark that matters: an episode without subtitles, or a real conversation. Now and then, try one and note how much you followed. It's never scored."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(logs.prefix(4)) { log in
                     HStack(spacing: 8) {

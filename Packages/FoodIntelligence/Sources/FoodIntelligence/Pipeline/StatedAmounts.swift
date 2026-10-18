@@ -8,20 +8,23 @@ enum StatedAmounts {
         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "dozen": 12, "half": 0.5, "half dozen": 6,
     ]
     private static let separators = Pattern(#",|;|\band\b|\bwith\b|\bplus\b|\bthen\b"#)
-    private static let units = #"g|grams?|gr|kg|kilos?|oz|ounces?|lbs?|pounds?|ml|l|lit(?:er|re)s?|fl\.? ?oz|cups?|tbsp|tablespoons?|"#
+    private static let units =
+        #"g|grams?|gr|kg|kilos?|oz|ounces?|lbs?|pounds?|ml|l|lit(?:er|re)s?|fl\.? ?oz|cups?|tbsp|tablespoons?|"#
         + #"tsp|teaspoons?|slices?|pieces?|cans?|bottles?|glass(?:es)?|mugs?|scoops?|strips?|bowls?|plates?|servings?"#
     // Longest first: alternation takes the first branch that works, so "1/2" would otherwise be 1.
     private static let number = #"\d+\s+\d+/\d+|\d+/\d+|\d+\s?[½¼¾⅓⅔]|\d+(?:\.\d+)?|[½¼¾⅓⅔]"#
     // "a" or "an" is one only when nothing more exact follows: "an 8 oz steak" is 8 oz, "a couple
     // of" is two, and "a few" or "a handful" is no amount at all. "A 6 inch sub" is still one sub.
-    private static let article = #"an?(?!\s+(?:(?:"# + number + #")\s*(?:"# + units + #")\b"#
+    private static let article =
+        #"an?(?!\s+(?:(?:"# + number + #")\s*(?:"# + units + #")\b"#
         + #"|(?:few|couple|pair|dozen|half|handful|bunch|lot|little|bit|several)\b))"#
     // "2% milk" and "a 6 inch sub" give a fat level and a size, not a count, and a number is never
     // the start of a longer one: "1.5% milk" is not 1 of "5% milk".
-    private static let amount = Pattern(#"(?:^|\s)((?:"# + number + #")(?!\s*%|\s*-?\s*inch|"|[.,/]?\d)|"# + article
-        + #"|one|single|two|couple(?: of)?|pair(?: of)?|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|half(?: a)? dozen"#
-        + #"|half(?: an?)?)\s*"#
-        + #"("# + units + #")?\b\.?\s*(?:of\s+)?(.*)$"#)
+    private static let amount = Pattern(
+        #"(?:^|\s)((?:"# + number + #")(?!\s*%|\s*-?\s*inch|"|[.,/]?\d)|"# + article
+            + #"|one|single|two|couple(?: of)?|pair(?: of)?|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|half(?: a)? dozen"#
+            + #"|half(?: an?)?)\s*"#
+            + #"("# + units + #")?\b\.?\s*(?:of\s+)?(.*)$"#)
 
     /// The description's items, each with its own amount: "toast", "2 slices of bacon".
     static func segments(_ said: String) -> [String] {
@@ -33,9 +36,11 @@ enum StatedAmounts {
         var foods = foods
         for segment in segments(said) {
             guard let parts = amount.allMatches(in: segment).first else { continue }
-            let word = parts[1].replacingOccurrences(of: " of", with: "").replacingOccurrences(of: " an", with: "").replacingOccurrences(of: " a", with: "")
+            let word = parts[1].replacingOccurrences(of: " of", with: "").replacingOccurrences(of: " an", with: "").replacingOccurrences(
+                of: " a", with: "")
             guard let count = numbers[word] ?? Measures.parseAmount(word), count > 0 else { continue }
-            let unit = parts[2], rest = parts[3]
+            let unit = parts[2]
+            let rest = parts[3]
             let target: Int?
             if FoodText.words(rest).isEmpty {
                 // "ate 3 slices" counts the one food measured that way, or the only food.
@@ -62,7 +67,8 @@ enum StatedAmounts {
 
     private static func restate(_ food: SeenFood, count: Double, unit: String) -> SeenFood {
         var food = food
-        let key = Measures.unitKey(unit), had = Measures.unitKey(food.unit)
+        let key = Measures.unitKey(unit)
+        let had = Measures.unitKey(food.unit)
         if unit.isEmpty {
             // "Two eggs": a count of whatever the model counted, unless it measured them.
             guard !Measures.measures.contains(had) || had == "serving", food.quantity != count else { return food }

@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 /// The phase planner reading Lift Track's proportions: fat loss first where the waist holds a ratio
@@ -11,20 +12,24 @@ struct PhysiqueDirectionTests {
 
     // At 180 cm: lean under an 82.8 cm waist, moderate to 93.6, higher to 102.6, then high.
     func input(waist: Double, goals: [OutcomeGoal], physique: PhysiqueDirection? = nil) -> PlannerInput {
-        PlannerInput(profile: profile(goals: goals), history: .none, today: today, weightKg: 82, weeklyChange: nil,
-                     maintenance: MaintenanceEstimate(kcal: 2600, low: 2450, high: 2750, basis: .data, days: 21, formula: 2600),
-                     waistCm: waist, physique: physique)
+        PlannerInput(
+            profile: profile(goals: goals), history: .none, today: today, weightKg: 82, weeklyChange: nil,
+            maintenance: MaintenanceEstimate(kcal: 2600, low: 2450, high: 2750, basis: .data, days: 21, formula: 2600),
+            waistCm: waist, physique: physique)
     }
 
     func direction(fatLoss: Double = 0, build: Double = 0, floor: Bool = false, room: FFMIBand? = nil) -> PhysiqueDirection {
-        PhysiqueDirection(targets: .vTaper, fatLoss: fatLoss, build: build, buildRegions: build > 0 ? [.shoulders] : [], atLeanFloor: floor,
-                          waistToHeight: nil, bodyFatPercent: floor ? 9 : nil, normalizedFFMI: room == nil ? nil : 21.4, ffmiBand: room,
-                          fatLossReasons: fatLoss > 0 ? ["Shoulders to waist is 1.41; the target is 1.50 or more."] : [],
-                          buildReasons: build > 0 ? ["Shoulders to waist is 1.40; the target is 1.50 or more."] : [])
+        PhysiqueDirection(
+            targets: .vTaper, fatLoss: fatLoss, build: build, buildRegions: build > 0 ? [.shoulders] : [], atLeanFloor: floor,
+            waistToHeight: nil, bodyFatPercent: floor ? 9 : nil, normalizedFFMI: room == nil ? nil : 21.4, ffmiBand: room,
+            fatLossReasons: fatLoss > 0 ? ["Shoulders to waist is 1.41; the target is 1.50 or more."] : [],
+            buildReasons: build > 0 ? ["Shoulders to waist is 1.40; the target is 1.50 or more."] : [])
     }
 
     @Test func anEmptyDirectionChangesNothing() {
-        for (waist, goals) in [(80.0, [OutcomeGoal.biggerAndStronger]), (88, [.leaner]), (88, [.biggerAndStronger]), (98, [.healthier]), (106, [.leaner])] {
+        for (waist, goals) in [
+            (80.0, [OutcomeGoal.biggerAndStronger]), (88, [.leaner]), (88, [.biggerAndStronger]), (98, [.healthier]), (106, [.leaner]),
+        ] {
             let plain = PhasePlanner.recommend(input(waist: waist, goals: goals))
             let read = PhasePlanner.recommend(input(waist: waist, goals: goals, physique: direction()))
             #expect(plain.phases.map(\.kind) == read.phases.map(\.kind), "\(waist) \(goals)")
@@ -41,7 +46,8 @@ struct PhysiqueDirectionTests {
         #expect(plan.reasons.contains { $0.contains("Shoulders to waist is 1.41") })
         #expect(plan.reasons.contains { $0 == "At a leaner waist it reaches its target, so fat loss comes before any gain." })
         // A weak signal doesn't move it.
-        #expect(PhasePlanner.recommend(input(waist: 88, goals: [.biggerAndStronger], physique: direction(fatLoss: 0.2))).phases.first?.kind == .leanBulk)
+        #expect(
+            PhasePlanner.recommend(input(waist: 88, goals: [.biggerAndStronger], physique: direction(fatLoss: 0.2))).phases.first?.kind == .leanBulk)
     }
 
     @Test func proportionsOnlyCountForTheGoalsTheyServe() {

@@ -50,29 +50,35 @@ public enum BookLevel {
         .fantasy: 2.5, .sciFi: 3, .crime: 2, .literary: 4, .classics: 5, .nonfiction: 3, .philosophy: 6,
     ]
 
-    public static func estimate(title: String, author: String, pages: Int? = nil, year: Int? = nil, subjects: [String] = [],
-                                ladder: ReadingLadder = .standard, shelf: [Book] = [], readerLevel: Double? = nil) -> Estimate {
+    public static func estimate(
+        title: String, author: String, pages: Int? = nil, year: Int? = nil, subjects: [String] = [],
+        ladder: ReadingLadder = .standard, shelf: [Book] = [], readerLevel: Double? = nil
+    ) -> Estimate {
         let key = matchKey(title: title, author: author)
         let genres = self.genres(subjects: subjects)
         if let book = ladder.books.first(where: { matchKey(title: $0.title, author: $0.author) == key }) {
-            return Estimate(tier: Double(book.tier), confidence: book.levelledFromText ? textConfidence : 1, basis: .ladder(book),
-                            genres: book.genres)
+            return Estimate(
+                tier: Double(book.tier), confidence: book.levelledFromText ? textConfidence : 1, basis: .ladder(book),
+                genres: book.genres)
         }
         // Known-similar titles: the same author on the ladder, and their books finished here with
         // the reader's feedback folded in.
         let surname = self.surname(author)
         var similar: [(tier: Double, weight: Double)] = ladder.books(in: nil).filter { self.surname($0.author) == surname && !surname.isEmpty }
             .map { (Double($0.tier), 1) }
-        for book in shelf where book.language == nil && self.surname(book.author) == surname && !surname.isEmpty && book.done
-            && matchKey(title: book.title, author: book.author) != key {
+        for book in shelf
+        where book.language == nil && self.surname(book.author) == surname && !surname.isEmpty && book.done
+            && matchKey(title: book.title, author: book.author) != key
+        {
             similar.append((refined(book, readerLevel: readerLevel), ReadingPlan.confidence(book)))
         }
         if !similar.isEmpty {
             let weight = similar.map(\.weight).reduce(0, +)
             let tier = similar.map { $0.tier * $0.weight }.reduce(0, +) / weight
             let ladderGenres = ladder.books.first { self.surname($0.author) == surname }?.genres
-            return Estimate(tier: clamp(tier, 1, 10), confidence: authorConfidence, basis: .author(count: similar.count),
-                            genres: genres.isEmpty ? ladderGenres ?? [] : genres)
+            return Estimate(
+                tier: clamp(tier, 1, 10), confidence: authorConfidence, basis: .author(count: similar.count),
+                genres: genres.isEmpty ? ladderGenres ?? [] : genres)
         }
         var tier = genres.compactMap { genreTiers[$0] }.max() ?? 3.5
         let words = subjects.joined(separator: " ").lowercased()
@@ -96,8 +102,10 @@ public enum BookLevel {
         if has(["detective", "mystery", "crime", "thriller", "suspense", "murder"]) { out.append(.crime) }
         if has(["philosophy", "ethics", "metaphysics", "epistemology", "stoic"]) { out.append(.philosophy) }
         if has(["classic"]) { out.append(.classics) }
-        if has(["biography", "autobiography", "memoir", "history", "science", "self-help", "business", "economics", "psychology",
-                "politics", "essays", "nonfiction", "non-fiction", "true crime"]) && !out.contains(.sciFi) {
+        if has([
+            "biography", "autobiography", "memoir", "history", "science", "self-help", "business", "economics", "psychology",
+            "politics", "essays", "nonfiction", "non-fiction", "true crime",
+        ]) && !out.contains(.sciFi) {
             out.append(.nonfiction)
         }
         if out.isEmpty && has(["fiction", "novel", "literary", "literature"]) { out.append(.literary) }
@@ -110,12 +118,13 @@ public enum BookLevel {
     public static func refined(_ book: Book, readerLevel: Double?) -> Double {
         let prior = Double(book.tier)
         guard let level = readerLevel, let feel = book.feel, book.status == .finished || book.status == .abandoned else { return prior }
-        let implied: Double = switch (book.status, feel) {
-        case (.abandoned, .hard): level + 1.5
-        case (_, .easy): level - 1
-        case (_, .right): level
-        case (_, .hard): level + 1
-        }
+        let implied: Double =
+            switch (book.status, feel) {
+            case (.abandoned, .hard): level + 1.5
+            case (_, .easy): level - 1
+            case (_, .right): level
+            case (_, .hard): level + 1
+            }
         let confidence = ReadingPlan.confidence(book)
         return clamp((confidence * prior + 0.5 * implied) / (confidence + 0.5), 1, 10)
     }

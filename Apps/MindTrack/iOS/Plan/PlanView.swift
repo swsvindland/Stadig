@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// The week, the block, and what comes next in each subject.
@@ -56,7 +56,8 @@ private struct BlockCard: View {
         case .assessment:
             return "The first two weeks find a level in each subject. Every session is a normal one; placement happens inside them."
         case .review(let end):
-            return "Nothing new until \(Format.day(end.adding(days: 1))): reviews, practice and reading for pleasure. The check-in lands at the end, when you're fresh."
+            return
+                "Nothing new until \(Format.day(end.adding(days: 1))): reviews, practice and reading for pleasure. The check-in lands at the end, when you're fresh."
         case .loading:
             if let next = StudyCalendar.nextReview(from: state.today, start: state.start, calendar: state.calendar) {
                 return "New material every session, as fast as it sticks. Review week starts \(Format.day(next.start))."
@@ -87,7 +88,9 @@ struct WeekStrip: View {
                 .padding(.vertical, 6)
                 .background(day.day == today ? Color.accentColor.opacity(0.1) : .clear, in: .rect(cornerRadius: 12))
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(day.day.weekday.name): \(day.domains.isEmpty ? "rest" : day.domains.map(\.label).joined(separator: " and ")), \(label(day.status))")
+                .accessibilityLabel(
+                    "\(day.day.weekday.name): \(day.domains.isEmpty ? "rest" : day.domains.map(\.label).joined(separator: " and ")), \(label(day.status))"
+                )
             }
         }
         .card(padding: 10)

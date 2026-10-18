@@ -4,11 +4,13 @@ import FoundationModels
 @available(iOS 27.0, macOS 27.0, *)
 @Generable(description: "What a person wants changed in next week's meal plan")
 struct PlanRequestOutput {
-    @Guide(description: "Foods, ingredients or flavours to leave out, one or two words each, e.g. fish, chicken, spicy, dairy. Empty if none.",
-           .maximumCount(8))
+    @Guide(
+        description: "Foods, ingredients or flavours to leave out, one or two words each, e.g. fish, chicken, spicy, dairy. Empty if none.",
+        .maximumCount(8))
     var avoid: [String]
-    @Guide(description: "Foods, ingredients or flavours wanted, one or two words each, e.g. salmon, Mexican, curry, egg muffins. Empty if none.",
-           .maximumCount(8))
+    @Guide(
+        description: "Foods, ingredients or flavours wanted, one or two words each, e.g. salmon, Mexican, curry, egg muffins. Empty if none.",
+        .maximumCount(8))
     var want: [String]
     @Guide(description: "vegetarian, vegan, pescatarian or everything if the request changes the diet, otherwise empty")
     var diet: String
@@ -47,11 +49,13 @@ public struct PlanAssistant: Sendable {
         guard let model else { return words }
         do {
             let session = LanguageModelSession(model: model, instructions: Self.instructions)
-            let reply = try await session.respond(to: request, generating: PlanRequestOutput.self,
-                                                  options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 200))
+            let reply = try await session.respond(
+                to: request, generating: PlanRequestOutput.self,
+                options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 200))
             let output = reply.content
-            let change = PlanRequests.read(avoid: output.avoid, want: output.want, diet: output.diet, cheaper: output.cheaper,
-                                           quicker: output.quicker)
+            let change = PlanRequests.read(
+                avoid: output.avoid, want: output.want, diet: output.diet, cheaper: output.cheaper,
+                quicker: output.quicker)
             return Self.merge(change, words: words)
         } catch {
             return words

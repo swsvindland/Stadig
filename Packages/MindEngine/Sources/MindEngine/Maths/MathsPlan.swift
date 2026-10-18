@@ -11,8 +11,10 @@ public enum MathsPlan {
     /// Started and not yet mastered, oldest first (by key when started together, so the order
     /// never depends on the dictionary's).
     public static func inProgress(_ cards: [CardKey: MemoryCard], strand: MathsStrand? = nil) -> [MathTopic] {
-        cards.values.filter { $0.domain == .maths && $0.learning && matches($0.key, strand) }.sorted { ($0.introduced, $0.key) < ($1.introduced, $1.key) }
-            .compactMap { MathCurriculum.topic($0.key.item) }
+        cards.values.filter { $0.domain == .maths && $0.learning && matches($0.key, strand) }.sorted {
+            ($0.introduced, $0.key) < ($1.introduced, $1.key)
+        }
+        .compactMap { MathCurriculum.topic($0.key.item) }
     }
 
     /// What can be learned next: not known, not started, everything beneath it known. Lowest level
@@ -90,13 +92,19 @@ public struct MathsPlacement: Hashable, Sendable {
 
     public var known: Set<String> {
         var out: Set<String> = []
-        for (id, correct) in results where correct { out.insert(id); out.formUnion(MathCurriculum.ancestors(of: id)) }
+        for (id, correct) in results where correct {
+            out.insert(id)
+            out.formUnion(MathCurriculum.ancestors(of: id))
+        }
         return out
     }
 
     public var unknown: Set<String> {
         var out: Set<String> = []
-        for (id, correct) in results where !correct { out.insert(id); out.formUnion(MathCurriculum.descendants(of: id)) }
+        for (id, correct) in results where !correct {
+            out.insert(id)
+            out.formUnion(MathCurriculum.descendants(of: id))
+        }
         return out.subtracting(known)
     }
 
@@ -130,8 +138,9 @@ public struct MathsPlacement: Hashable, Sendable {
     public func cards(at date: Date) -> [MemoryCard] {
         known.sorted().map { id in
             let tested = results[id] == true
-            return MemoryCard(key: .topic(id), memory: Scheduler.known(stability: tested ? 10 : 30, at: date), introduced: date,
-                              knownBefore: true)
+            return MemoryCard(
+                key: .topic(id), memory: Scheduler.known(stability: tested ? 10 : 30, at: date), introduced: date,
+                knownBefore: true)
         }
     }
 
@@ -141,8 +150,9 @@ public struct MathsPlacement: Hashable, Sendable {
     public func result(at date: Date) -> TestResult {
         let levels = known.compactMap { MathCurriculum.topic($0)?.level }
         let right = results.values.filter { $0 }.count
-        return TestResult(test: test, date: date, score: Double(known.count),
-                          detail: ["level": Double(levels.max() ?? 0), "asked": Double(asked), "right": Double(right)], placement: true)
+        return TestResult(
+            test: test, date: date, score: Double(known.count),
+            detail: ["level": Double(levels.max() ?? 0), "asked": Double(asked), "right": Double(right)], placement: true)
     }
 }
 
@@ -243,10 +253,11 @@ public struct NumeracyTest: Hashable, Sendable {
     /// under it.
     public var starts: [NumeracySkill: Int] {
         let level = estimate
-        return Dictionary(uniqueKeysWithValues: NumeracySkill.allCases.map { skill in
-            let slipped = items.contains { $0.skill == skill && !$0.pass && $0.level <= level }
-            return (skill, max(1, slipped ? level - 1 : level))
-        })
+        return Dictionary(
+            uniqueKeysWithValues: NumeracySkill.allCases.map { skill in
+                let slipped = items.contains { $0.skill == skill && !$0.pass && $0.level <= level }
+                return (skill, max(1, slipped ? level - 1 : level))
+            })
     }
 
     public func result(at date: Date, placement: Bool) -> TestResult {
@@ -256,8 +267,9 @@ public struct NumeracyTest: Hashable, Sendable {
             "fluent": Double(items.filter(\.pass).count) / Double(max(1, items.count)),
         ]
         if placement { for (skill, start) in starts { detail["start.\(skill.rawValue)"] = Double(start) } }
-        return TestResult(test: .numeracy, date: date, score: Double(items.filter(\.right).count) / Double(max(1, items.count)),
-                          detail: detail, placement: placement)
+        return TestResult(
+            test: .numeracy, date: date, score: Double(items.filter(\.right).count) / Double(max(1, items.count)),
+            detail: detail, placement: placement)
     }
 }
 
@@ -271,9 +283,11 @@ public enum NumeracyPlan {
     public static func levels(_ state: StudyState) -> NumeracyLevels {
         guard let placement = state.tests.last(where: { $0.test == .numeracy && $0.placement }) else { return NumeracyLevels(level: 1) }
         let level = Int(placement.detail["level"] ?? 1)
-        var levels = NumeracyLevels(start: Dictionary(uniqueKeysWithValues: NumeracySkill.allCases.map {
-            ($0, Int(placement.detail["start.\($0.rawValue)"] ?? Double(level)))
-        }))
+        var levels = NumeracyLevels(
+            start: Dictionary(
+                uniqueKeysWithValues: NumeracySkill.allCases.map {
+                    ($0, Int(placement.detail["start.\($0.rawValue)"] ?? Double(level)))
+                }))
         for session in state.sessions where session.purpose != .review {
             for attempt in session.attempts where attempt.kind == .learn && attempt.at > placement.date {
                 if let numeracy = attempt.key.numeracy {
@@ -313,12 +327,14 @@ extension MathsPlan {
             switch strand {
             case .numeracy:
                 let levels = NumeracyPlan.levels(state)
-                return StrandLevel(strand: strand, measured: measured, measuredOn: test?.day, working: placed(.numeracy, state) ? levels.overall : 0,
-                                   next: placed(.numeracy, state) ? levels.weakest.label : nil, known: 0, total: 0)
+                return StrandLevel(
+                    strand: strand, measured: measured, measuredOn: test?.day, working: placed(.numeracy, state) ? levels.overall : 0,
+                    next: placed(.numeracy, state) ? levels.weakest.label : nil, known: 0, total: 0)
             case .classic, .discrete:
-                return StrandLevel(strand: strand, measured: measured, measuredOn: test?.day, working: highestLevel(state.cards, strand: strand),
-                                   next: next(state.cards, strand: strand)?.title, known: known(state.cards, strand: strand).count,
-                                   total: MathCurriculum.topics(strand).count)
+                return StrandLevel(
+                    strand: strand, measured: measured, measuredOn: test?.day, working: highestLevel(state.cards, strand: strand),
+                    next: next(state.cards, strand: strand)?.title, known: known(state.cards, strand: strand).count,
+                    total: MathCurriculum.topics(strand).count)
             }
         }
     }

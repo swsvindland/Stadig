@@ -79,7 +79,8 @@ public enum LanguagePlan {
     /// session teaches and what the Plan tab says it will. `minutes` is the session's length, the
     /// schedule's unless said.
     public static func pace(_ domain: Domain, state: StudyState, reviewWeek: Bool, minutes: Int? = nil)
-        -> (count: Int, reason: String?, dueThisWeek: Int) {
+        -> (count: Int, reason: String?, dueThisWeek: Int)
+    {
         let retention = domain.language.flatMap { Self.retention(state.sessions, today: state.today, $0) }
         let due = dueThisWeek(domain, state: state)
         let words = newWords(retention: retention, dueThisWeek: due, minutes: minutes ?? state.settings.schedule.minutes, reviewWeek: reviewWeek)

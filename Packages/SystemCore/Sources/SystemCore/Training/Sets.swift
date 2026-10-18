@@ -102,10 +102,12 @@ public struct LoggedSet: Codable, Hashable, Sendable, Identifiable {
     /// Duration for timed work (holds, carries, conditioning intervals).
     public var seconds: Int?
 
-    public init(id: UUID = UUID(), exerciseID: String, date: Date = Date(), kind: SetKind = .working, loadKg: Double,
-                reps: Int, targetReps: Int? = nil, rating: SetRating? = nil, bodyweightKg: Double? = nil,
-                stoppedAtFormBreakdown: Bool = false, restBeforeSeconds: Int? = nil, heartRatePeak: Double? = nil,
-                heartRateDrop60: Double? = nil, seconds: Int? = nil) {
+    public init(
+        id: UUID = UUID(), exerciseID: String, date: Date = Date(), kind: SetKind = .working, loadKg: Double,
+        reps: Int, targetReps: Int? = nil, rating: SetRating? = nil, bodyweightKg: Double? = nil,
+        stoppedAtFormBreakdown: Bool = false, restBeforeSeconds: Int? = nil, heartRatePeak: Double? = nil,
+        heartRateDrop60: Double? = nil, seconds: Int? = nil
+    ) {
         self.id = id
         self.exerciseID = exerciseID
         self.date = date

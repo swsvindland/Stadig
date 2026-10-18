@@ -36,8 +36,9 @@ struct FoundationMealModel: MealModel {
             let (session, warm) = await session(instructions)
             let start = ContinuousClock.now
             guard let image else {
-                let reply = try await session.respond(to: prompt, generating: MealOutput.self, options: options(Self.mealTokens),
-                                                      contextOptions: context())
+                let reply = try await session.respond(
+                    to: prompt, generating: MealOutput.self, options: options(Self.mealTokens),
+                    contextOptions: context())
                 trace("read", session, warm: warm, since: start)
                 return MealReply(scene: nil, food: nil, items: reply.content.items.map(\.item))
             }
@@ -47,8 +48,10 @@ struct FoundationMealModel: MealModel {
             let picture = ImageScaling.fit(image, maxSide: Self.imageSide)
             // A photo's reply needs the schema in its prompt: without it, the model runs on
             // describing the scene and never closes the reply.
-            let reply = try await session.respond(generating: MealPhotoOutput.self, options: options(Self.mealTokens),
-                                                  contextOptions: context(schema: true)) {
+            let reply = try await session.respond(
+                generating: MealPhotoOutput.self, options: options(Self.mealTokens),
+                contextOptions: context(schema: true)
+            ) {
                 Attachment(picture)
                 prompt
             }
@@ -61,8 +64,9 @@ struct FoundationMealModel: MealModel {
         try await attempt {
             let (session, warm) = await session(instructions)
             let start = ContinuousClock.now
-            let reply = try await session.respond(to: prompt, generating: PicksOutput.self, options: options(16 + foods * 4),
-                                                  contextOptions: context())
+            let reply = try await session.respond(
+                to: prompt, generating: PicksOutput.self, options: options(16 + foods * 4),
+                contextOptions: context())
             trace("pick", session, warm: warm, since: start)
             return reply.content.entries.enumerated().map { Pick(food: $0.offset + 1, entry: $0.element) }
         }
@@ -89,10 +93,12 @@ struct FoundationMealModel: MealModel {
             let session = LanguageModelSession(model: model, instructions: instructions)
             let prompt = Prompts.label(lines: lines)
             if values {
-                let reply = try await session.respond(to: prompt, generating: LabelOutput.self, options: options(300), contextOptions: context(schema: true))
+                let reply = try await session.respond(
+                    to: prompt, generating: LabelOutput.self, options: options(300), contextOptions: context(schema: true))
                 return LabelGuess(reply.content)
             }
-            let reply = try await session.respond(to: prompt, generating: LabelNameOutput.self, options: options(60), contextOptions: context(schema: true))
+            let reply = try await session.respond(
+                to: prompt, generating: LabelNameOutput.self, options: options(60), contextOptions: context(schema: true))
             return LabelGuess(name: reply.content.name, brand: reply.content.brand)
         }
     }
@@ -101,8 +107,9 @@ struct FoundationMealModel: MealModel {
     func readSupplementName(lines: [String]) async throws -> LabelGuess {
         try await attempt {
             let session = LanguageModelSession(model: model, instructions: Prompts.supplementLabelInstructions)
-            let reply = try await session.respond(to: Prompts.label(lines: lines), generating: LabelNameOutput.self, options: options(60),
-                                                  contextOptions: context(schema: true))
+            let reply = try await session.respond(
+                to: Prompts.label(lines: lines), generating: LabelNameOutput.self, options: options(60),
+                contextOptions: context(schema: true))
             return LabelGuess(name: reply.content.name, brand: reply.content.brand)
         }
     }
@@ -112,8 +119,9 @@ struct FoundationMealModel: MealModel {
         try await attempt {
             let (session, warm) = await session(Prompts.liveLabelInstructions)
             let start = ContinuousClock.now
-            let reply = try await session.respond(to: text, generating: LabelOutput.self, options: options(300),
-                                                  contextOptions: context(schema: true))
+            let reply = try await session.respond(
+                to: text, generating: LabelOutput.self, options: options(300),
+                contextOptions: context(schema: true))
             trace("check label", session, warm: warm, since: start)
             // A scan checks every couple of seconds; the next check starts as warm as this one.
             await pool.prewarm(Prompts.liveLabelInstructions, model: model)
@@ -126,13 +134,15 @@ struct FoundationMealModel: MealModel {
         try await attempt {
             let (session, warm) = await session(Prompts.liveSupplementInstructions)
             let start = ContinuousClock.now
-            let reply = try await session.respond(to: text, generating: SupplementPanelOutput.self, options: options(800),
-                                                  contextOptions: context(schema: true))
+            let reply = try await session.respond(
+                to: text, generating: SupplementPanelOutput.self, options: options(800),
+                contextOptions: context(schema: true))
             trace("check supplement", session, warm: warm, since: start)
             await pool.prewarm(Prompts.liveSupplementInstructions, model: model)
             let output = reply.content
-            return SupplementReply(name: output.name, brand: output.brand, servingSize: output.servingSize,
-                                   lines: output.lines.map { SupplementReply.Line(name: $0.name, amount: $0.amount, unit: $0.unit) })
+            return SupplementReply(
+                name: output.name, brand: output.brand, servingSize: output.servingSize,
+                lines: output.lines.map { SupplementReply.Line(name: $0.name, amount: $0.amount, unit: $0.unit) })
         }
     }
 
@@ -169,8 +179,10 @@ enum Retry {
     static let pauses: [Duration] = [.milliseconds(400), .milliseconds(1000)]
 
     /// Failures come out as `classify` names them; cancellation passes through, during a pause too.
-    static func whileBusy<T>(classify: (any Error) -> MealAIError, pause: (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
-                             _ request: () async throws -> T) async throws -> T {
+    static func whileBusy<T>(
+        classify: (any Error) -> MealAIError, pause: (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        _ request: () async throws -> T
+    ) async throws -> T {
         var retries = 0
         while true {
             do {
@@ -190,9 +202,12 @@ enum Retry {
 @available(iOS 27.0, macOS 27.0, *)
 extension LabelGuess {
     init(_ output: LabelOutput) {
-        self.init(name: output.name, brand: output.brand, servingSize: output.servingSize, servingGrams: output.servingGrams,
-                  values: [.kcal: output.calories, .fat: output.fat, .saturatedFat: output.saturatedFat, .carbs: output.carbs,
-                           .fiber: output.fiber, .sugar: output.sugar, .protein: output.protein, .sodium: output.sodium]
-                      .compactMapValues { $0 })
+        self.init(
+            name: output.name, brand: output.brand, servingSize: output.servingSize, servingGrams: output.servingGrams,
+            values: [
+                .kcal: output.calories, .fat: output.fat, .saturatedFat: output.saturatedFat, .carbs: output.carbs,
+                .fiber: output.fiber, .sugar: output.sugar, .protein: output.protein, .sodium: output.sodium,
+            ]
+            .compactMapValues { $0 })
     }
 }

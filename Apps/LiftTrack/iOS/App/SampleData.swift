@@ -11,21 +11,26 @@ enum SampleData {
     static func seedIfEmpty(_ model: AppModel) {
         guard model.profile == nil else { return }
         let start = Day.today.adding(days: -20)
-        let profile = SharedProfile(goals: [.biggerAndStronger, .leaner], schedule: TrainingSchedule(daysPerWeek: 4, minutesPerSession: 60),
-                                    equipment: .fullGym, experience: .intermediate,
-                                    recurring: [RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 75, intensity: 7)],
-                                    sex: .male, birthYear: 1991, heightCm: 180, units: UnitPreference(weight: .kg, length: .cm), createdBy: .liftTrack)
+        let profile = SharedProfile(
+            goals: [.biggerAndStronger, .leaner], schedule: TrainingSchedule(daysPerWeek: 4, minutesPerSession: 60),
+            equipment: .fullGym, experience: .intermediate,
+            recurring: [RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 75, intensity: 7)],
+            sex: .male, birthYear: 1991, heightCm: 180, units: UnitPreference(weight: .kg, length: .cm), createdBy: .liftTrack)
         var settings = LiftSettings(selfReportedPhase: .maintaining, saveToHealth: false)
         let gym = Gym.preset(.fullGym, unit: .kg)
         settings.gymID = gym.id
         // Two full check-ins, the left arm a little behind both times.
-        model.completeOnboarding(profile: profile, settings: settings, gym: gym,
-                                 measurements: BodyMeasurements(day: start, weightKg: 82, neckCm: 39, shouldersCm: 116, chestCm: 104, waistCm: 86,
-                                                                naturalWaistCm: 82, hipsCm: 94, glutesCm: 100, armLeftCm: 35.2, armRightCm: 37,
-                                                                thighLeftCm: 58, thighRightCm: 58.5, calfLeftCm: 38, calfRightCm: 38.2))
-        model.save(measurements: BodyMeasurements(day: .today.adding(days: -2), neckCm: 39, shouldersCm: 116.5, chestCm: 104.5, waistCm: 85,
-                                                  naturalWaistCm: 81, hipsCm: 93.5, glutesCm: 100, armLeftCm: 35.6, armRightCm: 37.4,
-                                                  thighLeftCm: 58.5, thighRightCm: 58.6, calfLeftCm: 38.1, calfRightCm: 38.2))
+        model.completeOnboarding(
+            profile: profile, settings: settings, gym: gym,
+            measurements: BodyMeasurements(
+                day: start, weightKg: 82, neckCm: 39, shouldersCm: 116, chestCm: 104, waistCm: 86,
+                naturalWaistCm: 82, hipsCm: 94, glutesCm: 100, armLeftCm: 35.2, armRightCm: 37,
+                thighLeftCm: 58, thighRightCm: 58.5, calfLeftCm: 38, calfRightCm: 38.2))
+        model.save(
+            measurements: BodyMeasurements(
+                day: .today.adding(days: -2), neckCm: 39, shouldersCm: 116.5, chestCm: 104.5, waistCm: 85,
+                naturalWaistCm: 81, hipsCm: 93.5, glutesCm: 100, armLeftCm: 35.6, armRightCm: 37.4,
+                thighLeftCm: 58.5, thighRightCm: 58.6, calfLeftCm: 38.1, calfRightCm: 38.2))
         // Move the assessment back three weeks.
         if var assessment = model.mesocycles.last {
             assessment.block.start = start
@@ -34,28 +39,38 @@ enum SampleData {
             s.assessmentStart = start
             model.save(settings: s)
         }
-        let truth: [String: Double] = ["barbell-back-squat": 140, "conventional-deadlift": 165, "barbell-bench-press": 92,
-                                       "barbell-incline-bench-press": 78, "barbell-overhead-press": 55, "pull-up": 108, "barbell-row": 80]
+        let truth: [String: Double] = [
+            "barbell-back-squat": 140, "conventional-deadlift": 165, "barbell-bench-press": 92,
+            "barbell-incline-bench-press": 78, "barbell-overhead-press": 55, "pull-up": 108, "barbell-row": 80,
+        ]
         var day = start
         var sessionsDone = 0
         while day < .today {
-            if profile.schedule.trainingDays.contains(day.weekday), let analysis = model.analysis, let next = analysis.next, let mesocycle = analysis.mesocycle {
-                let context = PlanningContext(catalog: model.catalog, gym: gym, profile: profile, settings: model.settings, trust: analysis.trust,
-                                              phase: analysis.phase, life: analysis.life, history: analysis.history, bodyweightKg: 82,
-                                              enduranceScore: analysis.endurance.score, sessionIndexInWeek: next.doneThisWeek)
+            if profile.schedule.trainingDays.contains(day.weekday), let analysis = model.analysis, let next = analysis.next,
+                let mesocycle = analysis.mesocycle
+            {
+                let context = PlanningContext(
+                    catalog: model.catalog, gym: gym, profile: profile, settings: model.settings, trust: analysis.trust,
+                    phase: analysis.phase, life: analysis.life, history: analysis.history, bodyweightKg: 82,
+                    enduranceScore: analysis.endurance.score, sessionIndexInWeek: next.doneThisWeek)
                 let plan = SessionPlanner.plan(next.day, of: mesocycle, on: day, context: context)
                 let begin = day.date().addingTimeInterval(17.5 * 3600)
                 var live = LiveSession(plan: plan, device: "iPhone", now: begin)
-                let environment = SessionEnvironment(catalog: model.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
-                                                     bodyweightKg: 82, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
+                let environment = SessionEnvironment(
+                    catalog: model.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
+                    bodyweightKg: 82, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
                 perform(&live, truth: truth, growth: 1 + 0.004 * Double(sessionsDone), environment: environment, begin: begin)
-                model.keep(live.record(feedback: SessionFeedback(soreness: sessionsDone % 3 == 0 ? 2 : 1, energy: 3 + sessionsDone % 2),
-                                       now: begin.addingTimeInterval(62 * 60)))
+                model.keep(
+                    live.record(
+                        feedback: SessionFeedback(soreness: sessionsDone % 3 == 0 ? 2 : 1, energy: 3 + sessionsDone % 2),
+                        now: begin.addingTimeInterval(62 * 60)))
                 sessionsDone += 1
             }
             if [.tuesday, .thursday].contains(day.weekday), day < .today {
-                model.save(activity: ActivityLog(type: .bjj, start: day.date().addingTimeInterval(19 * 3600), minutes: 75, intensity: 7,
-                                                 martialArts: MartialArtsDetails(classType: .sparring, sparringRounds: 5, roundsBeforeGassed: 4)))
+                model.save(
+                    activity: ActivityLog(
+                        type: .bjj, start: day.date().addingTimeInterval(19 * 3600), minutes: 75, intensity: 7,
+                        martialArts: MartialArtsDetails(classType: .sparring, sparringRounds: 5, roundsBeforeGassed: 4)))
             }
             day = day.adding(days: 1)
         }
@@ -96,8 +111,9 @@ enum SampleData {
                 continue
             }
             guard item.plan.isStrength else {
-                live.log(item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
-                         environment: environment, now: clock)
+                live.log(
+                    item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
+                    environment: environment, now: clock)
                 continue
             }
             let exercise = environment.catalog.resolve(item.exerciseID)

@@ -1,5 +1,6 @@
 import FoodDatabase
 import Testing
+
 @testable import FoodIntelligence
 
 @Suite("Amounts")
@@ -8,8 +9,9 @@ struct AmountTests {
 
     @Test func cataloguePortionsAreCheckedAgainstTheModelsWeight() {
         let egg = food(portions: [("1 cup", 243), ("1 large", 46)])
-        #expect(resolve(seen("egg", quantity: 2, grams: 100), egg)
-            == ResolvedAmount(amount: 92, unit: .portion(index: 1, label: "large", perUnit: 46), count: 2, exact: true))
+        #expect(
+            resolve(seen("egg", quantity: 2, grams: 100), egg)
+                == ResolvedAmount(amount: 92, unit: .portion(index: 1, label: "large", perUnit: 46), count: 2, exact: true))
         // A lettuce "piece" is a leaf's weight, not the catalog's whole head.
         let lettuce = food(portions: [("1 head, large", 755)])
         #expect(resolve(seen("lettuce", grams: 20), lettuce).amount == 20)
@@ -61,8 +63,9 @@ struct AmountTests {
     @Test func aVolumeOfAWeighedFoodUsesItsOwnDensity() {
         let milk = food("Milk, whole", portions: [("1 fl oz", 30.5), ("1 cup", 244), ("1 tbsp", 15), ("1 quart", 976)])
         // 1 fl oz of whole milk is 30.5 g, so 250 ml is 258 g.
-        #expect(resolve(seen("Whole milk", quantity: 250, unit: "ml"), milk)
-            == ResolvedAmount(amount: 257.8, unit: .measure("ml", perUnit: 30.5 / 29.5735), count: 250, exact: true))
+        #expect(
+            resolve(seen("Whole milk", quantity: 250, unit: "ml"), milk)
+                == ResolvedAmount(amount: 257.8, unit: .measure("ml", perUnit: 30.5 / 29.5735), count: 250, exact: true))
         #expect(resolve(seen("Whole milk", quantity: 0.75, unit: "cup"), milk).amount == 183)
         for (quantity, unit, grams) in [(1.0, "l", 1000.0), (1, "liter", 1000), (0.5, "l", 500), (1, "pint", 473)] {
             let amount = resolve(seen("Whole milk", quantity: quantity, unit: unit), milk).amount
@@ -81,8 +84,9 @@ struct AmountTests {
         // Ten nigiri are small pieces, even when the fish's only unit is a 396 g fillet and the
         // model's weight is inflated.
         let salmon = food(portions: [("3 oz", 85), ("0.5 fillet", 198)])
-        #expect(resolve(seen("salmon nigiri", quantity: 10, grams: 1100), salmon)
-            == ResolvedAmount(amount: 750, unit: .basis, count: 750, exact: false))
+        #expect(
+            resolve(seen("salmon nigiri", quantity: 10, grams: 1100), salmon)
+                == ResolvedAmount(amount: 750, unit: .basis, count: 750, exact: false))
         // Without portions or a weight, 100 g per unit is the last resort, and stays within 2 kg.
         let mystery = resolve(seen("mystery", quantity: 80), food())
         #expect(mystery.amount == 2000)
@@ -93,28 +97,35 @@ struct AmountTests {
 
     @Test func anOunceIsAnOunceAndACupOfTheCookedFoodIsItsOwn() {
         let couscous = food(portions: [("1 cup, dry, yields", 528), ("1 cup, cooked", 157), ("1 oz, dry, yields", 86)])
-        #expect(resolve(seen("couscous", quantity: 4, unit: "oz"), couscous)
-            == ResolvedAmount(amount: 113.4, unit: .measure("oz", perUnit: 28.3495), count: 4, exact: true))
-        #expect(resolve(seen("couscous", unit: "cup"), couscous)
-            == ResolvedAmount(amount: 157, unit: .portion(index: 1, label: "cup, cooked", perUnit: 157), count: 1, exact: true))
+        #expect(
+            resolve(seen("couscous", quantity: 4, unit: "oz"), couscous)
+                == ResolvedAmount(amount: 113.4, unit: .measure("oz", perUnit: 28.3495), count: 4, exact: true))
+        #expect(
+            resolve(seen("couscous", unit: "cup"), couscous)
+                == ResolvedAmount(amount: 157, unit: .portion(index: 1, label: "cup, cooked", perUnit: 157), count: 1, exact: true))
     }
 
     @Test func aWeightOfAPerServingFoodBecomesServings() {
         let bar = food(basis: .serving, portions: [("1 bar", 1)])
-        #expect(resolve(seen("bar", quantity: 2), bar) == ResolvedAmount(amount: 2, unit: .portion(index: 0, label: "bar", perUnit: 1), count: 2, exact: true))
+        #expect(
+            resolve(seen("bar", quantity: 2), bar)
+                == ResolvedAmount(amount: 2, unit: .portion(index: 0, label: "bar", perUnit: 1), count: 2, exact: true))
         // No serving weight is known, so a weight is one serving, marked as a guess.
         let powder = food(basis: .serving, portions: [("1 serving (1 scoop)", 1)])
-        #expect(resolve(seen("protein powder", quantity: 30, unit: "g", grams: 30), powder)
-            == ResolvedAmount(amount: 1, unit: .measure("serving", perUnit: 1), count: 1, exact: false))
+        #expect(
+            resolve(seen("protein powder", quantity: 30, unit: "g", grams: 30), powder)
+                == ResolvedAmount(amount: 1, unit: .measure("serving", perUnit: 1), count: 1, exact: false))
         #expect(resolve(seen("protein powder", quantity: 2, unit: "scoops"), powder).amount == 2)
         let weighed = resolve(seen("protein powder", quantity: 45, unit: "grams"), food(basis: .serving, portions: [("1 serving (30 g)", 1)]))
         #expect(weighed == ResolvedAmount(amount: 1.5, unit: .measure("g", perUnit: 1.0 / 30), count: 45, exact: true))
         let oats = food(basis: .serving, portions: [("1 serving (1/2 cup)", 1)])
         #expect(resolve(seen("oats", unit: "cup"), oats).amount == 2)
         #expect(resolve(seen("oats", quantity: 3, unit: "oz"), oats).amount == 1)
-        for (label, quantity, unit, servings) in [("1 serving (1 1/2 cups)", 1.5, "cup", 1.0), ("1 serving (.5 cup)", 1, "cup", 2),
-                                                  ("1 serving (12 fluid ounces)", 24, "fl oz", 2), ("1 serving (2 tbsp (32g))", 64, "g", 2),
-                                                  ("1 serving (2 tbsp (32g))", 4, "tbsp", 2)] {
+        for (label, quantity, unit, servings) in [
+            ("1 serving (1 1/2 cups)", 1.5, "cup", 1.0), ("1 serving (.5 cup)", 1, "cup", 2),
+            ("1 serving (12 fluid ounces)", 24, "fl oz", 2), ("1 serving (2 tbsp (32g))", 64, "g", 2),
+            ("1 serving (2 tbsp (32g))", 4, "tbsp", 2),
+        ] {
             let amount = resolve(seen("x", quantity: quantity, unit: unit), food(basis: .serving, portions: [(label, 1)])).amount
             #expect(amount == servings, "\(quantity) \(unit) of \(label)")
         }
@@ -192,7 +203,8 @@ struct AmountTests {
         #expect(Drafting.stated(bacon, in: said, among: [toast, bacon]))
         #expect(Drafting.stated(toast, in: "a slice of toast and 2 slices of bacon", among: [toast, bacon]))
         // A unit with no food after it, or a food the model calls something else, is still said.
-        let pizza = seen("Pepperoni pizza", quantity: 3, unit: "slice"), knots = seen("Garlic knots", quantity: 2)
+        let pizza = seen("Pepperoni pizza", quantity: 3, unit: "slice")
+        let knots = seen("Garlic knots", quantity: 2)
         #expect(Drafting.stated(pizza, in: "large pepperoni from dominos, ate 3 slices", among: [pizza, knots]))
         let cola = seen("Cola", unit: "can")
         #expect(Drafting.stated(cola, in: "a can of soda and fries", among: [cola, seen("French fries", unit: "serving")]))

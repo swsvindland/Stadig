@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 @Suite("Maths as drawn and spoken")

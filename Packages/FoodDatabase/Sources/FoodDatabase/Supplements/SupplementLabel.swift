@@ -75,14 +75,16 @@ public enum SupplementLabel {
         let read = ingredients.filter { $0.amount != nil }
         guard !read.isEmpty, heading || read.count >= 2 || serving != nil else { return nil }
         // Every line read says it's a panel; only the ones Macro Track tracks are kept.
-        return SupplementFacts(id: "custom:\(UUID().uuidString)", name: "", servingCount: serving?.count ?? 1,
-                               unit: serving?.unit ?? "serving", ingredients: read.filter(\.isTracked), source: .label)
+        return SupplementFacts(
+            id: "custom:\(UUID().uuidString)", name: "", servingCount: serving?.count ?? 1,
+            unit: serving?.unit ?? "serving", ingredients: read.filter(\.isTracked), source: .label)
     }
 
     /// "Calories 20": the one line whose amount has no unit.
     private static func caloriesLine(_ line: String) -> SupplementIngredient? {
         guard let match = calories.first(in: line), let text = match[1], let value = Double(text.replacingOccurrences(of: ",", with: "")),
-              value <= 2000 else { return nil }
+            value <= 2000
+        else { return nil }
         return SupplementIngredient(name: "Calories", amount: value, unit: "kcal")
     }
 
@@ -96,8 +98,9 @@ public enum SupplementLabel {
     private static let edge = CharacterSet.whitespaces.union(CharacterSet(charactersIn: ".…:·-–—*†‡"))
     private static let facts = Pattern(#"supp?lement\s*fact|^dietary\s*supplement\s*facts"#, ignoringCase: true)
     private static let servingSize = Pattern(#"serv(?:ing)?\.?\s*s[i1l]ze"#, ignoringCase: true)
-    private static let skip = Pattern(#"servings?\s*per|amount\s*per|%\s*d(?:aily)?\s*v|^%|^daily\s*value$|^each\s*(?:serving|softgel|capsule|tablet)"#,
-                                      ignoringCase: true)
+    private static let skip = Pattern(
+        #"servings?\s*per|amount\s*per|%\s*d(?:aily)?\s*v|^%|^daily\s*value$|^each\s*(?:serving|softgel|capsule|tablet)"#,
+        ignoringCase: true)
     private static let stop = Pattern(
         #"^other\s*ingredients|^ingredients\s*:|suggested\s*use|^directions|^warnings?\b|^caution|keep\s*out\s*of|daily\s*value\s*(?:not|is\s*not)|percent\s*daily\s*values?\s*(?:are|based)|^distributed|^manufactured|^contains\s*:|^allergen"#,
         ignoringCase: true)

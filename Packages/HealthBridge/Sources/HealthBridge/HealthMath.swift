@@ -50,13 +50,16 @@ enum HealthMath {
         var gregorian = Calendar(identifier: .gregorian)
         gregorian.timeZone = calendar.timeZone
         guard birth.year != nil, let born = gregorian.date(from: birth),
-              let years = gregorian.dateComponents([.year], from: born, to: date).year, years >= 0 else { return nil }
+            let years = gregorian.dateComponents([.year], from: born, to: date).year, years >= 0
+        else { return nil }
         return years
     }
 
     /// One entry per day from `start` through `end`; empty when no day in the range has any data.
-    static func recoveryDays(from start: Day, through end: Day, sleep: [Day: Double], hrv: [Day: Double],
-                             restingHeartRate: [Day: Double]) -> [RecoveryDay] {
+    static func recoveryDays(
+        from start: Day, through end: Day, sleep: [Day: Double], hrv: [Day: Double],
+        restingHeartRate: [Day: Double]
+    ) -> [RecoveryDay] {
         guard start <= end else { return [] }
         let days = DayRange(start, end).days.map {
             RecoveryDay(day: $0, sleepHours: sleep[$0], hrv: hrv[$0], restingHeartRate: restingHeartRate[$0])

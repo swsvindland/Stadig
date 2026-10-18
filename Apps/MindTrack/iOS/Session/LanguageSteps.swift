@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// "Can't speak now" holds for a while, so a later part of the session doesn't ask again straight away.
@@ -52,8 +52,11 @@ struct SpeakView: View {
                             .submitLabel(.done)
                             .onSubmit(check)
                             .environment(\.locale, Locale(identifier: task.language.pack.locale))
-                        Text(task.language.pack.script == .kanaKanji ? "Kana or kanji, whichever you can." : "Accents help, but they won't count against you.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(
+                            task.language.pack.script == .kanaKanji
+                                ? "Kana or kanji, whichever you can." : "Accents help, but they won't count against you."
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 .padding(20)
@@ -218,9 +221,12 @@ private struct SpokenFeedback: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(feedback.correct ? "Understood" : "Not quite", systemImage: feedback.correct ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill")
-                .font(.headline)
-                .foregroundStyle(feedback.correct ? .green : .orange)
+            Label(
+                feedback.correct ? "Understood" : "Not quite",
+                systemImage: feedback.correct ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill"
+            )
+            .font(.headline)
+            .foregroundStyle(feedback.correct ? .green : .orange)
             if let said = feedback.typed {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.mode == .say ? "Heard" : "You wrote").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -314,8 +320,9 @@ struct RubyFlow: Layout {
         let lines = lines(subviews, width: width)
         let heights = lines.map { $0.map(\.size.height).max() ?? 0 }
         let widths = lines.map { $0.map(\.size.width).reduce(0, +) + spacing * CGFloat(max(0, $0.count - 1)) }
-        return CGSize(width: proposal.width ?? (widths.max() ?? 0),
-                      height: heights.reduce(0, +) + lineSpacing * CGFloat(max(0, lines.count - 1)))
+        return CGSize(
+            width: proposal.width ?? (widths.max() ?? 0),
+            height: heights.reduce(0, +) + lineSpacing * CGFloat(max(0, lines.count - 1)))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

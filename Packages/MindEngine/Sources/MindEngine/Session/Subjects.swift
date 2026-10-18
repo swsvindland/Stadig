@@ -10,8 +10,10 @@ protocol SubjectModule {
     /// The placement parts for a course, in a first session or the first one after it's added.
     static func placementParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart]
     /// The main block for a Focus course: new material in a regular week, practice in a review week.
-    static func mainParts(_ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
-                          notes: inout [String]) -> [PlanPart]
+    static func mainParts(
+        _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
+        notes: inout [String]
+    ) -> [PlanPart]
     /// The plain tests at a check-in.
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart]
     /// The runner for one of this subject's parts.

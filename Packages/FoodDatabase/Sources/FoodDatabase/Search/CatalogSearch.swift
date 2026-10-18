@@ -27,7 +27,12 @@ private struct OrderedCounts {
     private(set) var values: [String: Int] = [:]
 
     mutating func add(_ key: String, _ count: Int) {
-        if let value = values[key] { values[key] = value + count } else { keys.append(key); values[key] = count }
+        if let value = values[key] {
+            values[key] = value + count
+        } else {
+            keys.append(key)
+            values[key] = count
+        }
     }
 
     mutating func set(_ key: String, _ count: Int) {
@@ -142,13 +147,17 @@ extension FoodCatalog {
                 if !firsts.contains(letter) { firsts.append(letter) }
             }
             for start in firsts {
-                let found = count("\(range) AND length(term) >= ? AND foods >= ?",
-                                  [.text(start), .text(start + "\u{FFFF}"), .integer(Int64(size - limit)),
-                                   .integer(Int64(max(2, (least / 25).rounded(.down))))])
+                let found = count(
+                    "\(range) AND length(term) >= ? AND foods >= ?",
+                    [
+                        .text(start), .text(start + "\u{FFFF}"), .integer(Int64(size - limit)),
+                        .integer(Int64(max(2, (least / 25).rounded(.down)))),
+                    ])
                 for key in found.keys { terms.set(key, found.values[key]!) }
             }
-            let near = count("SELECT term, foods FROM terms WHERE length(term) BETWEEN ? AND ? AND foods >= ?",
-                             [.integer(Int64(size - limit)), .integer(Int64(size + limit)), .integer(Int64((least / 2).rounded(.up)))])
+            let near = count(
+                "SELECT term, foods FROM terms WHERE length(term) BETWEEN ? AND ? AND foods >= ?",
+                [.integer(Int64(size - limit)), .integer(Int64(size + limit)), .integer(Int64((least / 2).rounded(.up)))])
             for key in near.keys { terms.set(key, near.values[key]!) }
 
             var meter = TypoMeter()
@@ -160,8 +169,11 @@ extension FoodCatalog {
                 guard let found = meter.misread(units, letters), found.edits > 0 else { continue }
                 let key = stem(String(decoding: letters[..<found.length], as: UTF16.self))
                 if let last = meant[key] {
-                    if found.edits < last.edits { meant[key] = (found.edits, foods) }
-                    else if found.edits == last.edits { meant[key] = (last.edits, last.foods + foods) }
+                    if found.edits < last.edits {
+                        meant[key] = (found.edits, foods)
+                    } else if found.edits == last.edits {
+                        meant[key] = (last.edits, last.foods + foods)
+                    }
                 } else {
                     meantKeys.append(key)
                     meant[key] = (found.edits, foods)
@@ -293,9 +305,11 @@ extension FoodCatalog {
         let kind = product.isEmpty ? nil : profile(for: named, anyBrand.map(\.entry), fixes: fixes)
         var seen = Set<String>()
         let unique = pool.lazy.map(\.entry).filter { seen.insert($0.food.id).inserted }
-        let ranked = rankSearch(query, Array(unique), known: known,
-                                hints: RankHints(fixes: fixes, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
-                                                 brand: brand, profile: kind))
+        let ranked = rankSearch(
+            query, Array(unique), known: known,
+            hints: RankHints(
+                fixes: fixes, popularity: true, away: Set(pool.filter(\.away).map(\.food.id)),
+                brand: brand, profile: kind))
         return CatalogSearch(ranked: ranked, fixes: fixes, brand: brand)
     }
 
@@ -331,7 +345,12 @@ extension FoodCatalog {
         for item in personal {
             let entry = Entry(item.food)
             guard check.cover(entry.text).name >= 0.5 else { continue }
-            if let index = ids[item.food.id] { pool[index] = entry } else { ids[item.food.id] = pool.count; pool.append(entry) }
+            if let index = ids[item.food.id] {
+                pool[index] = entry
+            } else {
+                ids[item.food.id] = pool.count
+                pool.append(entry)
+            }
         }
         var away = Set<String>()
         var searched: [String: [Entry]] = [:]
@@ -340,7 +359,10 @@ extension FoodCatalog {
             let hits = match(catalogs, expression, .matching)
             for hit in hits {
                 if hit.away { away.insert(hit.food.id) }
-                if ids[hit.food.id] == nil { ids[hit.food.id] = pool.count; pool.append(hit.entry) }
+                if ids[hit.food.id] == nil {
+                    ids[hit.food.id] = pool.count
+                    pool.append(hit.entry)
+                }
             }
             let found = hits.map(\.entry)
             searched[expression] = found

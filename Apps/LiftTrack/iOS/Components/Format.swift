@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import LiftEngine
 import SystemCore
 
@@ -52,7 +52,8 @@ enum Format {
 
     static func duration(_ seconds: Int) -> String {
         if seconds >= 60 {
-            let m = seconds / 60, s = seconds % 60
+            let m = seconds / 60
+            let s = seconds % 60
             return s == 0 ? "\(m) min" : "\(m):\(String(format: "%02d", s))"
         }
         return "\(seconds) s"

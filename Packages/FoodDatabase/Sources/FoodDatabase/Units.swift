@@ -35,22 +35,28 @@ public enum FoodUnits {
     /// The unit and count to offer first: the last one used, else the food's own portion, else 100 g.
     /// With `lastAmount` (the basis units last logged), the last unit is offered only while it
     /// still holds that amount; see `logged`.
-    public static func suggested(for food: Food, lastUnitID: String? = nil, lastCount: Double? = nil,
-                                 lastAmount: Double? = nil) -> (unit: PortionUnit, count: Double) {
+    public static func suggested(
+        for food: Food, lastUnitID: String? = nil, lastCount: Double? = nil,
+        lastAmount: Double? = nil
+    ) -> (unit: PortionUnit, count: Double) {
         let table = UnitTable(food)
         if let lastUnitID, let lastCount, lastCount > 0, lastCount.isFinite, let unit = table.units.first(where: { $0.id == lastUnitID }),
-           holds(unit, count: lastCount, amount: lastAmount) {
+            holds(unit, count: lastCount, amount: lastAmount)
+        {
             return (unit, lastCount)
         }
         // "1 oz (28 g)" is 1 oz, though an ounce is 28.35 g.
         if let first = food.portions.first, let key = table.placed[0], let unit = table.units.first(where: { $0.id == key }),
-           let parsed = parsePortion(first) {
+            let parsed = parsePortion(first)
+        {
             return (unit, parsed.count)
         }
         let count = food.portions.first?.amount ?? (food.basis == .serving ? 1 : 100)
-        let unit = table.units.first { $0.id == food.basis.rawValue }
-            ?? PortionUnit(id: food.basis.rawValue, label: food.basis.rawValue, kind: food.basis == .serving ? .serving : food.basis == .ml ? .volume : .mass,
-                           amount: 1)
+        let unit =
+            table.units.first { $0.id == food.basis.rawValue }
+            ?? PortionUnit(
+                id: food.basis.rawValue, label: food.basis.rawValue, kind: food.basis == .serving ? .serving : food.basis == .ml ? .volume : .mass,
+                amount: 1)
         return (unit, count)
     }
 
@@ -61,7 +67,8 @@ public enum FoodUnits {
     public static func logged(for food: Food, unitID: String?, count: Double?, amount: Double?) -> (unit: PortionUnit, count: Double) {
         let offered = units(for: food)
         if let unitID, let count, count > 0, count.isFinite, let unit = offered.first(where: { $0.id == unitID }),
-           holds(unit, count: count, amount: amount) {
+            holds(unit, count: count, amount: amount)
+        {
             return (unit, count)
         }
         if let amount, amount > 0, amount.isFinite, let basis = offered.first(where: { $0.id == food.basis.rawValue }) { return (basis, amount) }
@@ -150,7 +157,8 @@ public enum FoodUnits {
         if let match = glyphCount.first(in: value), let glyph = glyphs.first(where: { $0.glyph == match[2] }), let whole = Double(match[1] ?? "0") {
             count = whole + glyph.value
         } else if let match = fractionCount.first(in: value), let whole = Double(match[1] ?? "0"),
-                  let numerator = match[2].flatMap(Double.init), let denominator = match[3].flatMap(Double.init) {
+            let numerator = match[2].flatMap(Double.init), let denominator = match[3].flatMap(Double.init)
+        {
             count = denominator > 0 ? whole + numerator / denominator : nil
         } else {
             count = decimalCount.test(value) ? Double(value.hasPrefix(".") ? "0" + value : value) : nil
@@ -230,7 +238,8 @@ private let nameEnd = Pattern(#"[,(]|\s\d"#)
 /// A per-serving food's serving weight (g) and volume (ml), when its label gives them: "1 serving
 /// (30 g)", "1 serving (2 tbsp (32g))".
 func servingSize(_ food: Food) -> (weight: Double?, volume: Double?) {
-    var weight: Double?, volume: Double?
+    var weight: Double?
+    var volume: Double?
     for portion in food.portions {
         for match in labelMeasures.all(in: portion.label) {
             let unit = measureKey(match[2] ?? "") ?? ""

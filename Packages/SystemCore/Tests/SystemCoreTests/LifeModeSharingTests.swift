@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SystemCore
 
 /// Life modes are set in any app and honoured by all three, each keeping its own synced copy. These
@@ -62,8 +63,9 @@ struct LifeModeSharingTests {
 
     @Test func enginesIgnoreDeletedPeriods() {
         let trip = vacation(updatedAt: t0)
-        let injury = LifeModePeriod(kind: .injury(Injury(parts: [InjuredPart(.knee)], severity: .moderate)), start: start, end: start.adding(days: 3),
-                                    createdBy: .liftTrack, updatedAt: t0)
+        let injury = LifeModePeriod(
+            kind: .injury(Injury(parts: [InjuredPart(.knee)], severity: .moderate)), start: start, end: start.adding(days: 3),
+            createdBy: .liftTrack, updatedAt: t0)
         let deleted = [trip.deleted(at: t0), injury.deleted(at: t0)]
         let during = LifeModes.effects(on: start.adding(days: 2), periods: deleted)
         #expect(during.trainingExpected && !during.disciplineExempt && during.active.isEmpty && during.injuries.isEmpty)
@@ -133,12 +135,12 @@ struct LifeModeSharingTests {
     @Test func periodsWrittenBeforeDeletesWereSharedStillDecode() throws {
         // A period as every app wrote it at schema 1, with no deletedAt.
         let json = #"""
-        [{"createdBy":"macroTrack","end":"2026-03-08","id":"6F1C2A8E-4B0D-4C35-9E57-2F8A1D3B7C90","kind":{"vacation":{}},"start":"2026-03-02",
-          "updatedAt":1780000000000},
-         {"createdBy":"liftTrack","id":"0B7D9E21-5A44-4F0E-8C1B-93E2A6F4D518",
-          "kind":{"injury":{"_0":{"allowed":[],"note":"","parts":[{"joint":"knee","side":"left"}],"removed":[],"severity":"moderate"}}},
-          "start":"2026-03-02","updatedAt":1780000000000}]
-        """#
+            [{"createdBy":"macroTrack","end":"2026-03-08","id":"6F1C2A8E-4B0D-4C35-9E57-2F8A1D3B7C90","kind":{"vacation":{}},"start":"2026-03-02",
+              "updatedAt":1780000000000},
+             {"createdBy":"liftTrack","id":"0B7D9E21-5A44-4F0E-8C1B-93E2A6F4D518",
+              "kind":{"injury":{"_0":{"allowed":[],"note":"","parts":[{"joint":"knee","side":"left"}],"removed":[],"severity":"moderate"}}},
+              "start":"2026-03-02","updatedAt":1780000000000}]
+            """#
         let periods = try ContractJSON.decoder.decode([LifeModePeriod].self, from: Data(json.utf8))
         #expect(periods.count == 2 && periods.allSatisfy { !$0.isDeleted })
         #expect(periods[0].kind == .vacation && periods[0].end == Day(year: 2026, month: 3, day: 8) && periods[0].createdBy == .macroTrack)

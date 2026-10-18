@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// Maths: what it's for. Placement is a short test of each strand, not a question about school, so
 /// this only asks which strands matter and which matters most. Numeracy is always kept up.
@@ -10,8 +10,10 @@ struct MathsOnboarding: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Maths").font(.title.bold())
                 .accessibilityIdentifier("onboarding.mathsTitle")
-            Text("Three strands, each with its own level. The first session places each one with a short test that steps up and down, so there's nothing to remember about school.")
-                .foregroundStyle(.secondary)
+            Text(
+                "Three strands, each with its own level. The first session places each one with a short test that steps up and down, so there's nothing to remember about school."
+            )
+            .foregroundStyle(.secondary)
             ForEach(MathsStrand.allCases) { strand in
                 let on = settings.strands.contains(strand)
                 Button {
@@ -52,7 +54,8 @@ struct MathsOnboarding: View {
 
     static func firstSession(_ settings: MindSettings) -> String? {
         let names = settings.strands.map { $0 == .numeracy ? $0.label : $0.short }
-        return "Maths: about \(MathsPlan.placementProblems(settings)) problems to place \(ListFormatter.localizedString(byJoining: names).lowercased())"
+        return
+            "Maths: about \(MathsPlan.placementProblems(settings)) problems to place \(ListFormatter.localizedString(byJoining: names).lowercased())"
     }
 }
 
@@ -64,11 +67,16 @@ struct MathsSettings: View {
     var body: some View {
         Section {
             ForEach(MathsStrand.allCases) { strand in
-                Toggle(strand.label, isOn: Binding(get: { settings.strands.contains(strand) }, set: { _ in
-                    var s = settings
-                    s.mathsStrands = MathsChoices.toggled(strand, in: settings)
-                    model.save(settings: s)
-                }))
+                Toggle(
+                    strand.label,
+                    isOn: Binding(
+                        get: { settings.strands.contains(strand) },
+                        set: { _ in
+                            var s = settings
+                            s.mathsStrands = MathsChoices.toggled(strand, in: settings)
+                            model.save(settings: s)
+                        })
+                )
                 .disabled(strand == .numeracy)
                 .accessibilityIdentifier("settings.strand.\(strand.rawValue)")
             }
@@ -81,7 +89,9 @@ struct MathsSettings: View {
         } header: {
             Text("Maths")
         } footer: {
-            Text("Numeracy opens every maths session. The strand that matters more gets two sessions in three; one switched on later is placed in its first session.")
+            Text(
+                "Numeracy opens every maths session. The strand that matters more gets two sessions in three; one switched on later is placed in its first session."
+            )
         }
     }
 }
@@ -103,8 +113,12 @@ enum MathsChoices {
         @Binding var settings: MindSettings
 
         var body: some View {
-            Picker("Matters more", selection: Binding(get: { settings.strands.dropFirst().first ?? .classic },
-                                                      set: { settings.mathsStrands = MathsChoices.ordered(first: $0) })) {
+            Picker(
+                "Matters more",
+                selection: Binding(
+                    get: { settings.strands.dropFirst().first ?? .classic },
+                    set: { settings.mathsStrands = MathsChoices.ordered(first: $0) })
+            ) {
                 Text(MathsStrand.classic.label).tag(MathsStrand.classic)
                 Text(MathsStrand.discrete.label).tag(MathsStrand.discrete)
             }

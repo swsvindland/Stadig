@@ -11,8 +11,9 @@ public enum QualitySwap {
     public static func advice(name: String, nutrients n: Nutrients) -> String {
         let name = Words(name)
         let kcal = max(1, n.kcal)
-        let processedMeat = name.has("sausage", "bacon", "hot dog", "hotdog", "frankfurter", "nugget", "salami", "pepperoni", "pastrami",
-                                     "bologna", "deli", "luncheon", "ham")
+        let processedMeat = name.has(
+            "sausage", "bacon", "hot dog", "hotdog", "frankfurter", "nugget", "salami", "pepperoni", "pastrami",
+            "bologna", "deli", "luncheon", "ham")
         // Lean cured meats (pastrami, sliced ham) are mostly protein too, but what to change is the
         // salt and the curing, so their name decides, not their protein.
         if name.has("shake", "powder", "whey", "protein", "isolate") || n.protein * 4 / kcal >= 0.3 && !name.has("bar") && !processedMeat {
@@ -21,8 +22,10 @@ public enum QualitySwap {
         if name.has("bar") {
             return "Fruit and a handful of nuts, or Greek yogurt if it's the protein you're after."
         }
-        if name.has("soda", "cola", "coke", "pepsi", "sprite", "fanta", "lemonade", "energy drink", "soft drink", "iced tea", "sports drink",
-                    "red bull", "monster", "gatorade", "drink") {
+        if name.has(
+            "soda", "cola", "coke", "pepsi", "sprite", "fanta", "lemonade", "energy drink", "soft drink", "iced tea", "sports drink",
+            "red bull", "monster", "gatorade", "drink")
+        {
             return "Water, sparkling water or milk: drinks are the easiest calories to cut, and don't fill you up."
         }
         if name.has("cookie", "brownie", "donut", "doughnut", "candy", "chocolate chip") {
@@ -38,8 +41,10 @@ public enum QualitySwap {
         if processedMeat {
             return "Chicken, eggs or fish cooked plain do the same job with less salt."
         }
-        if name.has("cereal", "pop-tart", "pop tart", "poptart", "toaster", "waffle", "pancake", "pastry", "muffin", "granola", "croissant",
-                    "danish") {
+        if name.has(
+            "cereal", "pop-tart", "pop tart", "poptart", "toaster", "waffle", "pancake", "pastry", "muffin", "granola", "croissant",
+            "danish")
+        {
             return "Oats with fruit fill the same spot, with fiber that keeps you full until lunch."
         }
         if name.has("bread", "bun", "bagel", "wrap", "tortilla") {
@@ -122,8 +127,10 @@ public enum FoodFix {
 
     /// The best nutrient fix: the most of the nutrient per calorie, with the person's own foods a
     /// little ahead.
-    public static func best<Option>(_ options: [Option], amount: (Option) -> Double, kcal: (Option) -> Double,
-                                    yours: (Option) -> Bool) -> Option? {
+    public static func best<Option>(
+        _ options: [Option], amount: (Option) -> Double, kcal: (Option) -> Double,
+        yours: (Option) -> Bool
+    ) -> Option? {
         func score(_ option: Option) -> Double { amount(option) / kcal(option) * (yours(option) ? yoursBonus : 1) }
         return options.max { score($0) < score($1) }
     }

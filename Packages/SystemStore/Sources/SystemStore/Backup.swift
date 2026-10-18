@@ -17,8 +17,10 @@ public struct BackupFile: Codable, Sendable {
     /// Shared-container files by relative path.
     public var shared: [String: Data]
 
-    public init(format: String = BackupFile.formatName, formatVersion: Int = BackupFile.currentFormatVersion, app: AppID,
-                created: Date = Date(), records: [BackupRecord], shared: [String: Data] = [:]) {
+    public init(
+        format: String = BackupFile.formatName, formatVersion: Int = BackupFile.currentFormatVersion, app: AppID,
+        created: Date = Date(), records: [BackupRecord], shared: [String: Data] = [:]
+    ) {
         self.format = format
         self.formatVersion = formatVersion
         self.app = app
@@ -36,7 +38,8 @@ public struct BackupFile: Codable, Sendable {
         }
         let decoder = SystemJSON.decoder()
         guard let header = try? decoder.decode(Header.self, from: data), header.format == Self.formatName,
-              let version = header.formatVersion else { throw SystemStoreError.notABackup }
+            let version = header.formatVersion
+        else { throw SystemStoreError.notABackup }
         guard version <= Self.currentFormatVersion else { throw SystemStoreError.backupFromNewerVersion(formatVersion: version) }
         self = try decoder.decode(BackupFile.self, from: data)
     }
@@ -86,8 +89,9 @@ public struct BackupRecord: Codable, Sendable {
     }
 
     init(_ version: RecordVersion) {
-        self.init(kind: version.kind, uuid: version.uuid, updatedAt: version.updatedAt, schemaVersion: version.schemaVersion,
-                  payload: version.payload, deleted: version.deleted)
+        self.init(
+            kind: version.kind, uuid: version.uuid, updatedAt: version.updatedAt, schemaVersion: version.schemaVersion,
+            payload: version.payload, deleted: version.deleted)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -117,8 +121,9 @@ public struct BackupRecord: Codable, Sendable {
 
 extension RecordVersion {
     init(_ record: BackupRecord) {
-        self.init(kind: record.kind, uuid: record.uuid, updatedAt: record.updatedAt, schemaVersion: record.schemaVersion,
-                  payload: record.payload, deleted: record.deleted)
+        self.init(
+            kind: record.kind, uuid: record.uuid, updatedAt: record.updatedAt, schemaVersion: record.schemaVersion,
+            payload: record.payload, deleted: record.deleted)
     }
 }
 

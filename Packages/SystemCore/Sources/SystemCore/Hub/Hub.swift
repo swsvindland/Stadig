@@ -40,8 +40,10 @@ public struct Recommendation: Hashable, Codable, Sendable, Identifiable {
     public var created: Date
     public var expires: Date?
 
-    public init(id: UUID = UUID(), from: AppID = .hub, to: AppID, kind: RecommendationKind, subject: RecommendationSubject?,
-                reason: String, created: Date = Date(), expires: Date? = nil) {
+    public init(
+        id: UUID = UUID(), from: AppID = .hub, to: AppID, kind: RecommendationKind, subject: RecommendationSubject?,
+        reason: String, created: Date = Date(), expires: Date? = nil
+    ) {
         self.id = id
         self.from = from
         self.to = to
@@ -71,8 +73,10 @@ public struct Quest: Hashable, Codable, Sendable, Identifiable {
     /// Higher comes first when the day's quests are capped.
     public var priority: Double
 
-    public init(id: String, title: String, detail: String = "", stat: StatKind, source: AppID, minutes: Int? = nil, day: Day,
-                timeOfDay: TimeOfDay? = nil, status: QuestStatus = .open, priority: Double = 0) {
+    public init(
+        id: String, title: String, detail: String = "", stat: StatKind, source: AppID, minutes: Int? = nil, day: Day,
+        timeOfDay: TimeOfDay? = nil, status: QuestStatus = .open, priority: Double = 0
+    ) {
         self.id = id
         self.title = title
         self.detail = detail
@@ -180,8 +184,10 @@ public struct SessionSummary: Hashable, Codable, Sendable, Identifiable {
     /// Part of the plan (for Discipline), as opposed to extra.
     public var planned: Bool
 
-    public init(id: UUID, app: AppID, kind: SessionKind, activity: ActivityType? = nil, start: Date, minutes: Int,
-                metrics: [String: Double] = [:], fatigue: FatigueLoad = .zero, statCredit: [StatKind: Double] = [:], planned: Bool) {
+    public init(
+        id: UUID, app: AppID, kind: SessionKind, activity: ActivityType? = nil, start: Date, minutes: Int,
+        metrics: [String: Double] = [:], fatigue: FatigueLoad = .zero, statCredit: [StatKind: Double] = [:], planned: Bool
+    ) {
         self.id = id
         self.app = app
         self.kind = kind
@@ -297,10 +303,12 @@ public struct AppSummary: Hashable, Codable, Sendable {
     /// Daily steps and the step aim (Lift Track).
     public var steps: StepSummary?
 
-    public init(app: AppID, updated: Date = Date(), stats: [StatReading] = [], sessions: [SessionSummary] = [], quests: [Quest] = [],
-                strength: StrengthProfile? = nil, fatigue: FatigueStatus? = nil, discipline: DisciplineScore? = nil,
-                measurements: BodyMeasurements? = nil, physique: PhysiqueDirection? = nil, mobility: [MobilityResult] = [],
-                benchmarks: [BenchmarkResult] = [], stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil, steps: StepSummary? = nil) {
+    public init(
+        app: AppID, updated: Date = Date(), stats: [StatReading] = [], sessions: [SessionSummary] = [], quests: [Quest] = [],
+        strength: StrengthProfile? = nil, fatigue: FatigueStatus? = nil, discipline: DisciplineScore? = nil,
+        measurements: BodyMeasurements? = nil, physique: PhysiqueDirection? = nil, mobility: [MobilityResult] = [],
+        benchmarks: [BenchmarkResult] = [], stalls: [StallReport] = [], phaseUsed: NutritionPhase? = nil, steps: StepSummary? = nil
+    ) {
         self.app = app
         self.updated = updated
         self.stats = stats

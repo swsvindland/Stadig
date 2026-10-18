@@ -211,7 +211,8 @@ public struct StudyRun: Sendable {
 
     private mutating func answer(_ question: Question, correct: Bool, skipped: Bool, chosen: Int?, typed: String?, now: Date) {
         tick(now: now)
-        log(question.key, kind: question.kind, correct: correct, skipped: skipped, expected: question.expectedSeconds,
+        log(
+            question.key, kind: question.kind, correct: correct, skipped: skipped, expected: question.expectedSeconds,
             test: question.test, band: question.band)
         if partIndex < runners.count {
             var runner = runners[partIndex]
@@ -223,11 +224,15 @@ public struct StudyRun: Sendable {
 
     /// Logs an attempt at the current step and, for a review, schedules the card. Speaking and
     /// other non-question steps call this from their runner.
-    mutating func log(_ key: CardKey, kind: AttemptKind, correct: Bool, skipped: Bool = false, expected: Double, test: TestKind? = nil,
-                      band: Int? = nil) {
+    mutating func log(
+        _ key: CardKey, kind: AttemptKind, correct: Bool, skipped: Bool = false, expected: Double, test: TestKind? = nil,
+        band: Int? = nil
+    ) {
         let seconds = max(0.5, session.activeSeconds - stepShownAt)
-        session.attempts.append(Attempt(key: key, kind: kind, correct: correct, skipped: skipped, seconds: seconds, at: lastNow,
-                                        test: test, band: band))
+        session.attempts.append(
+            Attempt(
+                key: key, kind: kind, correct: correct, skipped: skipped, seconds: seconds, at: lastNow,
+                test: test, band: band))
         session.updatedAt = lastNow
         asked += 1
         guard kind == .review, var card = cards[key], let memory = card.memory else { return }
@@ -322,8 +327,10 @@ public struct StudyRun: Sendable {
         }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
         guard !ahead.isEmpty else { return }
         addedExtraPractice = true
-        planParts.append(PlanPart(kind: .reviews, minutes: Int((seconds / 60).rounded()), title: "Extra practice",
-                                  detail: "Reviews ahead of schedule"))
+        planParts.append(
+            PlanPart(
+                kind: .reviews, minutes: Int((seconds / 60).rounded()), title: "Extra practice",
+                detail: "Reviews ahead of schedule"))
         budgets.append(seconds)
         runners.append(ReviewsRunner(queue: Array(ahead.prefix(80)).map(\.key)))
     }

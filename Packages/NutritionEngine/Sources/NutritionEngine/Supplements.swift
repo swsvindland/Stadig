@@ -162,8 +162,10 @@ public struct SupplementLog: Hashable, Codable, Sendable, Identifiable {
     public var nutrients: Nutrients?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), supplement: Supplement, doseID: UUID?, date: Date, day: Day? = nil, count: Double, taken: Bool = true,
-                updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), supplement: Supplement, doseID: UUID?, date: Date, day: Day? = nil, count: Double, taken: Bool = true,
+        updatedAt: Date = Date()
+    ) {
         self.id = id
         supplementID = supplement.id
         self.doseID = doseID
@@ -197,8 +199,9 @@ public struct DueDose: Hashable, Sendable, Identifiable {
 public enum SupplementPlan {
     /// The doses due on a day, by time of day then name, each with its log when marked.
     public static func due(on day: Day, stack: [Supplement], logs: [SupplementLog], training: Bool) -> [DueDose] {
-        let marked = Dictionary(logs.filter { $0.day == day && $0.doseID != nil }.map { ("\($0.supplementID)-\($0.doseID!)", $0) },
-                                uniquingKeysWith: { a, b in a.updatedAt >= b.updatedAt ? a : b })
+        let marked = Dictionary(
+            logs.filter { $0.day == day && $0.doseID != nil }.map { ("\($0.supplementID)-\($0.doseID!)", $0) },
+            uniquingKeysWith: { a, b in a.updatedAt >= b.updatedAt ? a : b })
         var due: [DueDose] = []
         for supplement in stack where !supplement.paused {
             for dose in supplement.doses where dose.days.isDue(on: day, training: training) {

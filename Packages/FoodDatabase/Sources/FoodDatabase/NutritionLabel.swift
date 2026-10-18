@@ -26,9 +26,11 @@ public struct LabelReading: Hashable, Sendable {
     /// The nutrients the label didn't give, by key ("kcal", "protein", "fiber", "vitaminD"…).
     public var missing: [String]
 
-    public init(servingLabel: String?, servingGrams: Double?, servingMilliliters: Double?, nutrients: Nutrients,
-                extras: [String: Double] = [:], fieldsRead: Int, estimatedCalories: Bool = false, warnings: [Warning] = [],
-                missing: [String] = []) {
+    public init(
+        servingLabel: String?, servingGrams: Double?, servingMilliliters: Double?, nutrients: Nutrients,
+        extras: [String: Double] = [:], fieldsRead: Int, estimatedCalories: Bool = false, warnings: [Warning] = [],
+        missing: [String] = []
+    ) {
         self.servingLabel = servingLabel
         self.servingGrams = servingGrams
         self.servingMilliliters = servingMilliliters
@@ -52,9 +54,10 @@ public struct LabelReading: Hashable, Sendable {
         let portions = byWeight ? [Portion(label: servingName, amount: weight!)] : measure.isEmpty ? [] : [Portion(label: servingName, amount: 1)]
         let code = barcode.flatMap { Barcode.keys(for: $0).first ?? $0 }
         let trimmedBrand = brand?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return Food(id: "custom:\(UUID().uuidString)", name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    brand: trimmedBrand?.isEmpty == false ? trimmedBrand : nil, barcode: code, basis: basis,
-                    nutrients: nutrients.scaled(factor), extras: extras.mapValues { $0 * factor }, portions: portions, source: .label)
+        return Food(
+            id: "custom:\(UUID().uuidString)", name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            brand: trimmedBrand?.isEmpty == false ? trimmedBrand : nil, barcode: code, basis: basis,
+            nutrients: nutrients.scaled(factor), extras: extras.mapValues { $0 * factor }, portions: portions, source: .label)
     }
 }
 
@@ -89,7 +92,8 @@ public enum NutritionLabel {
         var merged: [String] = []
         for line in lines {
             if let last = merged.last, isAmountOnly(line), last.unicodeScalars.contains(where: isLetter),
-               !last.unicodeScalars.contains(where: isDigit) {
+                !last.unicodeScalars.contains(where: isDigit)
+            {
                 merged[merged.count - 1] = "\(last) \(line)"
             } else {
                 merged.append(line)
@@ -122,16 +126,18 @@ public enum NutritionLabel {
 
         var reading: LabelReading {
             let core = ["kcal", "protein", "carbs", "fat", "fiber", "sugar", "saturatedFat", "sodium"]
-            let nutrients = Nutrients(kcal: amounts["kcal"] ?? 0, protein: amounts["protein"] ?? 0, carbs: amounts["carbs"] ?? 0,
-                                      fat: amounts["fat"] ?? 0, fiber: amounts["fiber"], sugar: amounts["sugar"],
-                                      saturatedFat: amounts["saturatedFat"], sodium: amounts["sodium"])
-            return LabelReading(servingLabel: servingLabel.isEmpty ? nil : servingLabel,
-                                servingGrams: servingUnit == "g" ? servingAmount : nil,
-                                servingMilliliters: servingUnit == "ml" ? servingAmount : nil,
-                                // Cholesterol, trans fat and added sugars are read for the checks but not kept.
-                                nutrients: nutrients, extras: amounts.filter { !core.contains($0.key) && SupplementIngredients.tracked.contains($0.key) },
-                                fieldsRead: amounts.count - (estimatedCalories ? 1 : 0), estimatedCalories: estimatedCalories,
-                                warnings: warnings, missing: fields.map(\.key).filter { amounts[$0] == nil })
+            let nutrients = Nutrients(
+                kcal: amounts["kcal"] ?? 0, protein: amounts["protein"] ?? 0, carbs: amounts["carbs"] ?? 0,
+                fat: amounts["fat"] ?? 0, fiber: amounts["fiber"], sugar: amounts["sugar"],
+                saturatedFat: amounts["saturatedFat"], sodium: amounts["sodium"])
+            return LabelReading(
+                servingLabel: servingLabel.isEmpty ? nil : servingLabel,
+                servingGrams: servingUnit == "g" ? servingAmount : nil,
+                servingMilliliters: servingUnit == "ml" ? servingAmount : nil,
+                // Cholesterol, trans fat and added sugars are read for the checks but not kept.
+                nutrients: nutrients, extras: amounts.filter { !core.contains($0.key) && SupplementIngredients.tracked.contains($0.key) },
+                fieldsRead: amounts.count - (estimatedCalories ? 1 : 0), estimatedCalories: estimatedCalories,
+                warnings: warnings, missing: fields.map(\.key).filter { amounts[$0] == nil })
         }
     }
 
@@ -143,9 +149,10 @@ public enum NutritionLabel {
         var values = scan(ordered)
         readServing(ordered, &values)
         let panel = values.amounts.count >= 2 || ordered.contains { panelWords.test($0.text) }
-        return LabelFrame(amounts: values.amounts, servingLabel: values.servingLabel.isEmpty ? nil : values.servingLabel,
-                          servingGrams: values.servingUnit == "g" ? values.servingAmount : nil,
-                          servingMilliliters: values.servingUnit == "ml" ? values.servingAmount : nil, isPanel: panel)
+        return LabelFrame(
+            amounts: values.amounts, servingLabel: values.servingLabel.isEmpty ? nil : values.servingLabel,
+            servingGrams: values.servingUnit == "g" ? values.servingAmount : nil,
+            servingMilliliters: values.servingUnit == "ml" ? values.servingAmount : nil, isPanel: panel)
     }
 
     /// A panel's own words, which a package's front doesn't print.
@@ -186,7 +193,8 @@ public enum NutritionLabel {
             return part > whole + 0.5
         }
         if over(amounts["saturatedFat"], amounts["fat"]) || over(amounts["transFat"], amounts["fat"])
-            || over(amounts["sugar"], amounts["carbs"]) || over(amounts["addedSugar"], amounts["sugar"] ?? amounts["carbs"]) {
+            || over(amounts["sugar"], amounts["carbs"]) || over(amounts["addedSugar"], amounts["sugar"] ?? amounts["carbs"])
+        {
             values.warnings.append(.partOverTotal)
         }
         var energy: Double?
@@ -284,7 +292,8 @@ public enum NutritionLabel {
             if !implied {
                 // "Total Fat 09" is "0g" read as "09".
                 guard amount.raw.count >= 2, amount.raw.hasSuffix("9"), amount.raw.allSatisfy(\.isASCII),
-                      amount.raw.allSatisfy(\.isNumber) else { return nil }
+                    amount.raw.allSatisfy(\.isNumber)
+                else { return nil }
                 value = Double(amount.raw.dropLast()) ?? 0
             }
         } else if unit == "mcg" {
@@ -317,15 +326,17 @@ public enum NutritionLabel {
             // The value follows the label within a short gap, which allows bilingual labels such as
             // "Total Fat / Grasa Total 0g" but not "SODIUM CONTENT … FROM 790mg".
             if let gap = leadIn.first(in: rest), let amount = leadingAmount(String(rest[gap.range.upperBound...])),
-               let value = convert(field, amount, implied: implied), value <= field.plausible {
+                let value = convert(field, amount, implied: implied), value <= field.plausible
+            {
                 return value
             }
             guard let next = rightOf(index, boxes) else { continue }
             // A footer split as "Sodium" | "Less than 2,400mg" gives a limit, not this food's amount.
             if noise.test(next.text) { continue }
             if let amount = leadingAmount(next.text),
-               let value = convert(field, amount, implied: implied || field.unit == "kcal" || !amount.unit.isEmpty),
-               value <= field.plausible {
+                let value = convert(field, amount, implied: implied || field.unit == "kcal" || !amount.unit.isEmpty),
+                value <= field.plausible
+            {
                 return value
             }
         }
@@ -377,22 +388,25 @@ public enum NutritionLabel {
             }
         }
         // The household measure, e.g. "2/3 cup" from "2/3 cup (55g)"; it always has a number.
-        values.servingLabel = parts.lazy.map { part in
-            let head = String(part.split(separator: "(", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
-            return edges.replacing(in: measureTail.replacing(in: head, with: ""), with: "")
-        }
-        .first { $0.unicodeScalars.contains(where: isDigit) }
-        .map { String($0.prefix(40)) } ?? ""
+        values.servingLabel =
+            parts.lazy.map { part in
+                let head = String(part.split(separator: "(", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+                return edges.replacing(in: measureTail.replacing(in: head, with: ""), with: "")
+            }
+            .first { $0.unicodeScalars.contains(where: isDigit) }
+            .map { String($0.prefix(40)) } ?? ""
     }
 
-    private static let addedSugar = Pattern(#"incl(?:udes|\.)?\s*(<|less\s*than\s*)?(\d+(?:[.,]\d+)?)\s*g\s*(?:of\s*)?added"#,
-                                            ignoringCase: true)
+    private static let addedSugar = Pattern(
+        #"incl(?:udes|\.)?\s*(<|less\s*than\s*)?(\d+(?:[.,]\d+)?)\s*g\s*(?:of\s*)?added"#,
+        ignoringCase: true)
 
     /// "Includes 10g Added Sugars" gives the amount before the nutrient's name.
     private static func readAddedSugar(_ boxes: [LabelTextBox]) -> Double? {
         for box in boxes {
             guard let match = addedSugar.first(in: digits(box.text)), let raw = match[2],
-                  let number = Double(raw.replacingOccurrences(of: ",", with: ".")) else { continue }
+                let number = Double(raw.replacingOccurrences(of: ",", with: "."))
+            else { continue }
             let value = number / (match[1] != nil ? 2 : 1)
             if value <= 300 { return value }
         }

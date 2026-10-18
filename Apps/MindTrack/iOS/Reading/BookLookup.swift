@@ -1,6 +1,6 @@
 import Foundation
-import OSLog
 import MindEngine
+import OSLog
 
 /// A book found by search, scan or cover, ready to confirm: from the ladder (levelled by hand or
 /// from its text) or from a catalogue lookup with an estimated level.
@@ -25,8 +25,9 @@ struct BookDraft: Identifiable, Hashable {
         year = book.year
         genres = book.genres
         ladderID = book.id
-        estimate = BookLevel.Estimate(tier: Double(book.tier), confidence: book.levelledFromText ? BookLevel.textConfidence : 1,
-                                      basis: .ladder(book), genres: book.genres)
+        estimate = BookLevel.Estimate(
+            tier: Double(book.tier), confidence: book.levelledFromText ? BookLevel.textConfidence : 1,
+            basis: .ladder(book), genres: book.genres)
     }
 
     init(meta: BookMeta, estimate: BookLevel.Estimate) {
@@ -116,15 +117,18 @@ enum BookLookup {
     /// genre, length and age, with this reader's shelf and feedback folded in.
     static func estimate(_ meta: BookMeta, model: AppModel) -> BookLevel.Estimate {
         let level = model.analysis?.reading.level
-        return BookLevel.estimate(title: meta.title, author: meta.author, pages: meta.pages, year: meta.year, subjects: meta.subjects,
-                                  ladder: model.catalogs.ladder, shelf: model.books, readerLevel: level)
+        return BookLevel.estimate(
+            title: meta.title, author: meta.author, pages: meta.pages, year: meta.year, subjects: meta.subjects,
+            ladder: model.catalogs.ladder, shelf: model.books, readerLevel: level)
     }
 
     /// Keeps a lookup that's been used, with its estimate: one record per book.
     static func keep(_ meta: BookMeta, estimate: BookLevel.Estimate, model: AppModel) {
         var meta = meta
-        if let existing = model.bookMeta.first(where: { ($0.isbn != nil && $0.isbn == meta.isbn)
-            || BookLevel.matchKey(title: $0.title, author: $0.author) == BookLevel.matchKey(title: meta.title, author: meta.author) }) {
+        if let existing = model.bookMeta.first(where: {
+            ($0.isbn != nil && $0.isbn == meta.isbn)
+                || BookLevel.matchKey(title: $0.title, author: $0.author) == BookLevel.matchKey(title: meta.title, author: meta.author)
+        }) {
             meta.id = existing.id
         }
         meta.tier = estimate.tier

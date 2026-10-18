@@ -45,9 +45,11 @@ public struct Food: Hashable, Codable, Sendable, Identifiable {
     /// A fermented food with live cultures (yogurt, kefir, kimchi), when the catalog knows; nil when it can't say.
     public var fermented: Bool?
 
-    public init(id: String, name: String, brand: String? = nil, barcode: String? = nil, basis: FoodBasis, nutrients: Nutrients,
-                extras: [String: Double] = [:], portions: [Portion] = [], source: FoodSource, sourceVersion: Int = 1,
-                popularity: Double = 0, processing: Processing? = nil, fermented: Bool? = nil) {
+    public init(
+        id: String, name: String, brand: String? = nil, barcode: String? = nil, basis: FoodBasis, nutrients: Nutrients,
+        extras: [String: Double] = [:], portions: [Portion] = [], source: FoodSource, sourceVersion: Int = 1,
+        popularity: Double = 0, processing: Processing? = nil, fermented: Bool? = nil
+    ) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -93,8 +95,10 @@ public struct PersonalFood: Hashable, Sendable {
     /// isn't offered with the old count (see `FoodUnits.suggested`).
     public var lastAmount: Double?
 
-    public init(food: Food, score: Double, favorite: Bool = false, lastCount: Double? = nil, lastUnitID: String? = nil,
-                lastAmount: Double? = nil) {
+    public init(
+        food: Food, score: Double, favorite: Bool = false, lastCount: Double? = nil, lastUnitID: String? = nil,
+        lastAmount: Double? = nil
+    ) {
         self.food = food
         self.score = score
         self.favorite = favorite

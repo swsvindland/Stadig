@@ -86,8 +86,10 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
     public var ingredients: [SupplementIngredient]
     public var source: Source
 
-    public init(id: String, name: String, brand: String? = nil, barcode: String? = nil, servingCount: Double = 1, unit: String = "capsule",
-                ingredients: [SupplementIngredient], source: Source) {
+    public init(
+        id: String, name: String, brand: String? = nil, barcode: String? = nil, servingCount: Double = 1, unit: String = "capsule",
+        ingredients: [SupplementIngredient], source: Source
+    ) {
         self.id = id
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let brand = brand?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -114,7 +116,10 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
             // The macros go in `nutrients`; a folic acid line under folate is the same folate.
             if SupplementIngredients.macroKeys.contains(key) { continue }
             if key == "folate", ingredient.unit != "mcg DFE", keys.contains("folate"),
-               ingredients.contains(where: { $0.key == "folate" && $0.unit == "mcg DFE" }) { continue }
+                ingredients.contains(where: { $0.key == "folate" && $0.unit == "mcg DFE" })
+            {
+                continue
+            }
             amounts[key, default: 0] += value
         }
         if amounts["omega3"] == nil {
@@ -132,7 +137,9 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
             values[key] = (values[key] ?? 0) + value
         }
         guard !values.isEmpty else { return nil }
-        let protein = values["protein"] ?? 0, carbs = values["carbs"] ?? 0, fat = values["fat"] ?? 0
+        let protein = values["protein"] ?? 0
+        let carbs = values["carbs"] ?? 0
+        let fat = values["fat"] ?? 0
         let kcal = values["kcal"] ?? (protein * 4 + carbs * 4 + fat * 9)
         return Nutrients(kcal: kcal, protein: protein, carbs: carbs, fat: fat, sugar: values["sugar"])
     }
@@ -160,8 +167,9 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
 /// "Serving Size: 1 Tablet", "1 mL [30 drops]".
 public enum SupplementServing {
     private static let leading = try! NSRegularExpression(pattern: #"(\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)\s*([A-Za-z][A-Za-z\- ]*)?"#)
-    private static let bracket = try! NSRegularExpression(pattern: #"\[\s*(\d+(?:\.\d+)?|one|two|three|half a|1/2)\s+([A-Za-z]+)[^\]]*\]"#,
-                                                          options: [.caseInsensitive])
+    private static let bracket = try! NSRegularExpression(
+        pattern: #"\[\s*(\d+(?:\.\d+)?|one|two|three|half a|1/2)\s+([A-Za-z]+)[^\]]*\]"#,
+        options: [.caseInsensitive])
 
     /// The count and singular unit of a serving, or nil when there's no number.
     public static func parse(_ text: String) -> (count: Double, unit: String)? {
@@ -181,10 +189,12 @@ public enum SupplementServing {
         }
         // "10 Gram(s) [1 scoop]": the bracket's measure is what a person counts, when it's one number.
         if let match = bracket.firstMatch(in: text, range: whole), let c = Range(match.range(at: 1), in: text),
-           let w = Range(match.range(at: 2), in: text), let count = number(String(text[c])), count > 0 {
+            let w = Range(match.range(at: 2), in: text), let count = number(String(text[c])), count > 0
+        {
             let unit = unit(words: String(text[w]))
             if ["scoop", "packet", "tsp", "tbsp", "drop", "capsule", "softgel", "tablet", "gummy", "spray"].contains(unit),
-               main == nil || ["g", "ml", "mg"].contains(main!.unit) {
+                main == nil || ["g", "ml", "mg"].contains(main!.unit)
+            {
                 return (count, unit)
             }
         }
@@ -384,11 +394,12 @@ public enum SupplementIngredients {
             }
         case "g", "mg", "mcg", "mcg DFE", "mg DFE", "mcg RAE", "mg NE", "mg α-TE":
             guard target != "kcal" else { return nil }
-            let mg: Double = switch unit {
-            case "g": amount * 1000
-            case "mcg", "mcg DFE", "mcg RAE": amount / 1000
-            default: amount
-            }
+            let mg: Double =
+                switch unit {
+                case "g": amount * 1000
+                case "mcg", "mcg DFE", "mcg RAE": amount / 1000
+                default: amount
+                }
             value = target == "g" ? mg / 1000 : (target == "mg" ? mg : mg * 1000)
             // Folic acid counts 1.7 times as folate (µg DFE); a label in DFE has done that already.
             if key == "folate", unit == "mcg" || unit == "mg" { value = value! * 1.7 }

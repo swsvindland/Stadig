@@ -44,10 +44,12 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     public var confidence: Double?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
-                foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
-                nutrients: Nutrients, micros: [String: Double]? = nil, processing: Processing? = nil, fermented: Bool? = nil,
-                fluid: Double? = nil, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
+        foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
+        nutrients: Nutrients, micros: [String: Double]? = nil, processing: Processing? = nil, fermented: Bool? = nil,
+        fluid: Double? = nil, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.date = date
         self.day = day ?? Day(date)
@@ -172,9 +174,11 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     public var supplementReminders: Bool?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), onboardedAt: Date? = nil, assessmentStart: Day? = nil, dietHistory: DietHistory = .none,
-                phaseOverride: PhaseKind? = nil, showAllMacros: Bool = true, allowCloudAI: Bool = true, saveToHealth: Bool = true,
-                updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), onboardedAt: Date? = nil, assessmentStart: Day? = nil, dietHistory: DietHistory = .none,
+        phaseOverride: PhaseKind? = nil, showAllMacros: Bool = true, allowCloudAI: Bool = true, saveToHealth: Bool = true,
+        updatedAt: Date = Date()
+    ) {
         self.id = id
         self.onboardedAt = onboardedAt
         self.assessmentStart = assessmentStart

@@ -21,9 +21,10 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
 
     static let groupID = "group.dev.svindland.stadig"
     static let empty = WidgetSnapshot(title: "Lift Track", detail: "Open Lift Track to set up")
-    static let sample = WidgetSnapshot(title: "Upper A", detail: "Week 2 · 2 reps in reserve",
-                                       exercises: ["Barbell Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown"],
-                                       doneThisWeek: 1, plannedThisWeek: 4, minutes: 60, badge: nil)
+    static let sample = WidgetSnapshot(
+        title: "Upper A", detail: "Week 2 · 2 reps in reserve",
+        exercises: ["Barbell Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown"],
+        doneThisWeek: 1, plannedThisWeek: 4, minutes: 60, badge: nil)
 
     /// Where the app and the Watch app write the snapshot and the widgets read it.
     static var appGroupURL: URL? {
@@ -33,7 +34,8 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
 
     static func load(from url: URL? = appGroupURL) -> WidgetSnapshot {
         guard let url, let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else { return .empty }
+            let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
+        else { return .empty }
         return snapshot
     }
 

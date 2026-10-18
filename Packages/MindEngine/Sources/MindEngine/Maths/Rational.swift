@@ -33,7 +33,8 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
         }
         if let slash = text.firstIndex(of: "/") {
             guard let n = Self.integer(text[..<slash].trimmingCharacters(in: .whitespaces)),
-                  let d = Self.integer(text[text.index(after: slash)...].trimmingCharacters(in: .whitespaces)), d != 0 else { return nil }
+                let d = Self.integer(text[text.index(after: slash)...].trimmingCharacters(in: .whitespaces)), d != 0
+            else { return nil }
             self.init(n, d)
             return
         }

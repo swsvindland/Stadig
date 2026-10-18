@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// A focused session, full screen: one step at a time, the clock in the corner.
@@ -161,7 +161,9 @@ private struct SessionSummary: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label(Format.minutes(run.session.minutes), systemImage: "clock")
                     if !attempts.isEmpty {
-                        Label("\(attempts.count) answered, \(Format.percent(Double(right) / Double(attempts.count))) right", systemImage: "checkmark.circle")
+                        Label(
+                            "\(attempts.count) answered, \(Format.percent(Double(right) / Double(attempts.count))) right",
+                            systemImage: "checkmark.circle")
                     }
                     ForEach(Domain.languages) { language in
                         let words = learned.filter { $0.domain == language }.count
@@ -182,7 +184,9 @@ private struct SessionSummary: View {
                     if run.newPieces.contains(where: { $0.exercise == .franklinNotes }) {
                         Label("Notes kept for a Franklin rewrite next time", systemImage: "text.book.closed")
                     }
-                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.domain == .maths || $0.test == .readingTest }, id: \.id) { test in
+                    ForEach(
+                        run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.domain == .maths || $0.test == .readingTest }, id: \.id
+                    ) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
                     }
                 }
@@ -214,7 +218,8 @@ enum TestLine {
         let rating = ["lost", "caught bits", "followed most", "followed nearly all"][min(3, max(0, Int((test.score * 3).rounded())))]
         switch test.test {
         case .vocabulary:
-            let low = Int(test.detail["low"] ?? test.score), high = Int(test.detail["high"] ?? test.score)
+            let low = Int(test.detail["low"] ?? test.score)
+            let high = Int(test.detail["high"] ?? test.score)
             return "About \(Int(test.score).formatted()) \(language) words known (\(low.formatted())–\(high.formatted()))"
         case .listening, .speaking, .languageReading, .languageWriting:
             let level = LanguageSkills.level(test)
@@ -232,7 +237,8 @@ enum TestLine {
             return "\(strand): \(reach)\(Format.percent(test.score)) right\(pace(test))"
         case .writing: return "Grammar\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
-        case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
+        case .blindComparison:
+            return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
         case .readingTest:
             // A result saved without its details says less rather than "tier 0".
             let parts = [test.detail["tier"].map { "tier \(ReadingPlan.format($0))" }, test.detail["wpm"].map { "\(Int($0)) words a minute" }]

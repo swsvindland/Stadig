@@ -10,12 +10,17 @@ enum ReadingModule: SubjectModule {
     }
 
     static func placementParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
-        [PlanPart(kind: .placement, domain: .reading, minutes: 6, title: "Reading test",
-                  detail: "Short passages, each a little harder or easier, with a few questions")]
+        [
+            PlanPart(
+                kind: .placement, domain: .reading, minutes: 6, title: "Reading test",
+                detail: "Short passages, each a little harder or easier, with a few questions")
+        ]
     }
 
-    static func mainParts(_ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
-                          notes: inout [String]) -> [PlanPart] {
+    static func mainParts(
+        _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
+        notes: inout [String]
+    ) -> [PlanPart] {
         let reviewWeek = kind == .review
         let book = state.currentBook
         let stamina = ReadingPlan.nextBlock(ReadingPlan.blocks(state.sessions, books: state.books))
@@ -37,8 +42,11 @@ enum ReadingModule: SubjectModule {
 
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         guard state.settings.mode(.reading) == .focus else { return [] }
-        return [PlanPart(kind: .test(.readingTest), domain: .reading, minutes: 5, title: "Reading",
-                         detail: "Three short passages around your level")]
+        return [
+            PlanPart(
+                kind: .test(.readingTest), domain: .reading, minutes: 5, title: "Reading",
+                detail: "Three short passages around your level")
+        ]
     }
 
     static func runner(for part: PlanPart, state: StudyState, catalogs: Catalogs) -> (any PartRunner)? {
@@ -83,8 +91,10 @@ struct ReadingRunner: PartRunner {
     mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
         switch stage {
         case .pick:
-            return .pickBook(ReadingPlan.suggestions(shelf: run.books, tests: run.tests, genres: run.settings.genres, on: run.today,
-                                                     ladder: run.catalogs.ladder))
+            return .pickBook(
+                ReadingPlan.suggestions(
+                    shelf: run.books, tests: run.tests, genres: run.settings.genres, on: run.today,
+                    ladder: run.catalogs.ladder))
         case .read:
             guard let book = run.books.first(where: { $0.id == bookID }) else { return nil }
             return .read(book, minutes: block)
@@ -123,16 +133,19 @@ struct ReadingRunner: PartRunner {
             run.books[index] = book
             run.changedBooks.insert(id)
             let counts = (book.format ?? .print).countsForStamina
-            run.session.reading = ReadingLog(bookID: id, fromPage: from, toPage: book.page, minutes: minutes, planned: block,
-                                             focus: counts ? focus : nil)
+            run.session.reading = ReadingLog(
+                bookID: id, fromPage: from, toPage: book.page, minutes: minutes, planned: block,
+                focus: counts ? focus : nil)
             stage = .reflect
             return true
         case .reflection(let text) where stage == .reflect:
             guard let id = bookID else { return false }
             let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if !trimmed.isEmpty, let book = run.books.first(where: { $0.id == id }) {
-                run.newReflections.append(Reflection(bookID: id, date: run.now, kind: book.status == .finished ? .book : .section,
-                                                     page: book.page, text: trimmed, updatedAt: run.now))
+                run.newReflections.append(
+                    Reflection(
+                        bookID: id, date: run.now, kind: book.status == .finished ? .book : .section,
+                        page: book.page, text: trimmed, updatedAt: run.now))
             }
             stage = .done
             return true

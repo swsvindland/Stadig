@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// One loaded set: what to do, the crown on the load (snapped to loads the gym can make) or the
@@ -39,8 +39,10 @@ struct SetView: View {
                         .lineLimit(3)
                     values(exercise: exercise, liveSet: liveSet, plannedSeconds: liveSet.prescription.seconds ?? liveItem.plan.seconds)
                     Button {
-                        done(SetDraft(item: item, set: set, loadKg: exercise.loadBasis == .none ? nil : loadKg, reps: reps,
-                                      seconds: timedSeconds(exercise, liveSet: liveSet, planned: liveItem.plan.seconds)))
+                        done(
+                            SetDraft(
+                                item: item, set: set, loadKg: exercise.loadBasis == .none ? nil : loadKg, reps: reps,
+                                seconds: timedSeconds(exercise, liveSet: liveSet, planned: liveItem.plan.seconds)))
                     } label: {
                         Label("Done", systemImage: "checkmark")
                             .frame(maxWidth: .infinity)
@@ -121,8 +123,10 @@ struct SetView: View {
         .accessibilityElement(children: .contain)
         .focusable()
         .focused($crownFocused)
-        .digitalCrownRotation($crown, from: 0, through: crownUpperBound, by: 1, sensitivity: .medium,
-                              isContinuous: false, isHapticFeedbackEnabled: true)
+        .digitalCrownRotation(
+            $crown, from: 0, through: crownUpperBound, by: 1, sensitivity: .medium,
+            isContinuous: false, isHapticFeedbackEnabled: true
+        )
         .onChange(of: crown) { apply() }
     }
 

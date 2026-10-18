@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// A language on the Plan tab: its four skills, what comes next (new words, the next dialogue, a
@@ -84,15 +84,20 @@ struct LanguagePlanCard: View {
     var benchmark: String {
         let last = state.tests.filter { $0.test.selfRated && $0.domain == domain }.map(\.day).max()
         let since = last.map { $0.days(until: state.today) }
-        if state.phase.isReview { return "Review week: watch an episode in \(domain.label) without subtitles, just for fun, and note how much you followed." }
-        if let since, since < 28 { return "Real-world check: last logged \(since == 0 ? "today" : "\(since) days ago"). The next review week is a good time for another." }
+        if state.phase.isReview {
+            return "Review week: watch an episode in \(domain.label) without subtitles, just for fun, and note how much you followed."
+        }
+        if let since, since < 28 {
+            return "Real-world check: last logged \(since == 0 ? "today" : "\(since) days ago"). The next review week is a good time for another."
+        }
         return "Real-world check: an episode without subtitles or a real conversation now and then, logged on Progress. Never scored."
     }
 
     var upcomingWords: [Word] {
         guard let deck = model.catalogs.deck(for: domain), let language = domain.language else { return [] }
-        let items = LanguagePlan.next(count: 8, cards: Set(state.cards.keys), deck: deck, readsKana: language == .japanese ? state.settings.readsKana : true,
-                                      frontier: LanguagePlan.frontier(state.tests, language))
+        let items = LanguagePlan.next(
+            count: 8, cards: Set(state.cards.keys), deck: deck, readsKana: language == .japanese ? state.settings.readsKana : true,
+            frontier: LanguagePlan.frontier(state.tests, language))
         return items.compactMap { item in
             switch item {
             case .teach(let word): word

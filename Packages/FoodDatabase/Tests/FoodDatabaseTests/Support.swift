@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import FoodDatabase
 
 /// The catalogs tests read: USDA from this package, and Open Food Facts where the app installs it
@@ -9,7 +10,8 @@ enum Catalogs {
     static let usdaURL = package.appending(path: "Sources/FoodDatabase/Resources/usda.db")
 
     static let offURL: URL? = {
-        let path = ProcessInfo.processInfo.environment["OFF_DB"]
+        let path =
+            ProcessInfo.processInfo.environment["OFF_DB"]
             ?? package.appending(path: "../../Apps/MacroTrack/Catalogs/off.db").standardizedFileURL.path
         return FileManager.default.fileExists(atPath: path) ? URL(fileURLWithPath: path) : nil
     }()

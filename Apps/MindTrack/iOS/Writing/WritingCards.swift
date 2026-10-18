@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 private struct WritingHeader: View {
@@ -34,9 +34,11 @@ struct WritingPlanCard: View {
             if let notes = WritingSchedule.waitingNotes(state.pieces, library: library) {
                 let ready = notes.day.adding(days: WritingSchedule.franklinGap)
                 let credit = WritingSchedule.original(of: notes, library: library)?.credit
-                Label("Your notes on \(credit.map { "the passage (\($0))" } ?? "a page of your book") are waiting. The rewrite comes \(ready <= state.today ? "in the next writing session" : "from \(Format.day(ready))"), from the notes alone.",
-                      systemImage: "text.book.closed")
-                    .foregroundStyle(.secondary)
+                Label(
+                    "Your notes on \(credit.map { "the passage (\($0))" } ?? "a page of your book") are waiting. The rewrite comes \(ready <= state.today ? "in the next writing session" : "from \(Format.day(ready))"), from the notes alone.",
+                    systemImage: "text.book.closed"
+                )
+                .foregroundStyle(.secondary)
             }
             if let next = WritingSchedule.nextBenchmark(state) {
                 LabeledContent("Benchmark", value: "At the first check-in from \(Format.day(next, style: .dateTime.month(.abbreviated).day()))")
@@ -87,12 +89,16 @@ struct WritingProgressCard: View {
                 } else {
                     Text("You picked the newer piece \(record.newerPicked) of \(record.judged) times.")
                     if record.aiJudged > 0 {
-                        Text("Apple Intelligence, judging blind, picked it \(record.aiNewerPicked) of \(record.aiJudged)\(record.bothJudged > 0 ? ", and agreed with you \(record.agreed) of \(record.bothJudged)" : "").")
-                            .foregroundStyle(.secondary)
+                        Text(
+                            "Apple Intelligence, judging blind, picked it \(record.aiNewerPicked) of \(record.aiJudged)\(record.bothJudged > 0 ? ", and agreed with you \(record.agreed) of \(record.bothJudged)" : "")."
+                        )
+                        .foregroundStyle(.secondary)
                     }
                     if record.aiJudged < record.judged {
-                        Text("Its pick counts only when it holds whichever way round the pieces are shown; \(record.judged - record.aiJudged == 1 ? "one comparison has" : "\(record.judged - record.aiJudged) have") no clear second opinion.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(
+                            "Its pick counts only when it holds whichever way round the pieces are shown; \(record.judged - record.aiJudged == 1 ? "one comparison has" : "\(record.judged - record.aiJudged) have") no clear second opinion."
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -218,8 +224,9 @@ struct PieceDetail: View {
                         TextCard(title: "Notes", detail: nil, text: Text(notes))
                     }
                     if !piece.text.isEmpty {
-                        TextCard(title: piece.source == .handwritten ? "Written by hand" : "Typed", detail: "\(piece.words) words",
-                                 text: MarkedText.text(piece.text, slips: slips))
+                        TextCard(
+                            title: piece.source == .handwritten ? "Written by hand" : "Typed", detail: "\(piece.words) words",
+                            text: MarkedText.text(piece.text, slips: slips))
                         NotesCard(state: WritingAssistant.shared.state(for: piece), asked: false) {
                             WritingAssistant.shared.requestNotes(for: piece, source: model.source(of: piece), model: model, again: true)
                         }

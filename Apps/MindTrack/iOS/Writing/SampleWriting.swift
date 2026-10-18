@@ -136,10 +136,12 @@ extension AppModel {
         store.save(comparisons)
         if LaunchOptions.current.has("-samplePair"), let first = sessions.first {
             let text = SampleWriting.slips(SampleWriting.creative[0], count: 3)
-            store.save(WritingPiece(date: first.start.addingTimeInterval(3 * 86_400), exercise: .prompt, writingKind: .creative,
-                                    prompt: "It’s the last shift before the corner café closes for good. Write about three paragraphs.",
-                                    text: text, metrics: WritingCheck.measure(text, misspelled: SampleWriting.misspelled).dictionary,
-                                    taskID: "creative-the-last-shift"))
+            store.save(
+                WritingPiece(
+                    date: first.start.addingTimeInterval(3 * 86_400), exercise: .prompt, writingKind: .creative,
+                    prompt: "It’s the last shift before the corner café closes for good. Write about three paragraphs.",
+                    text: text, metrics: WritingCheck.measure(text, misspelled: SampleWriting.misspelled).dictionary,
+                    taskID: "creative-the-last-shift"))
         }
         reload()
     }
@@ -148,8 +150,9 @@ extension AppModel {
     /// comparisons without waiting for a review week.
     func debugCheckIn(_ domains: [Domain]) {
         guard let state else { return }
-        run = StudyRun(plan: SessionPlanner.plan(.checkIn, domains: domains, state: state, catalogs: catalogs), state: state, catalogs: catalogs,
-                       now: now())
+        run = StudyRun(
+            plan: SessionPlanner.plan(.checkIn, domains: domains, state: state, catalogs: catalogs), state: state, catalogs: catalogs,
+            now: now())
     }
 }
 #endif
@@ -180,8 +183,11 @@ struct WritingDebugScreen: ViewModifier {
                             ScrollView {
                                 if let analysis = model.analysis, let state = model.state {
                                     Group {
-                                        if screen.id == "plan" { WritingPlanCard(analysis: analysis, state: state) }
-                                        else { WritingProgressCard(analysis: analysis, state: state) }
+                                        if screen.id == "plan" {
+                                            WritingPlanCard(analysis: analysis, state: state)
+                                        } else {
+                                            WritingProgressCard(analysis: analysis, state: state)
+                                        }
                                     }
                                     .padding()
                                     .readableWidth()

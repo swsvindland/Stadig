@@ -45,8 +45,10 @@ public struct CardKey: Hashable, Codable, Sendable, CustomStringConvertible, Com
     /// The same key always gets the same record id, so two devices learning the same word converge.
     public var recordID: UUID {
         let digest = Array(SHA256.hash(data: Data("mind.card.\(raw)".utf8)))
-        var bytes = (digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7], digest[8], digest[9],
-                     digest[10], digest[11], digest[12], digest[13], digest[14], digest[15])
+        var bytes = (
+            digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7], digest[8], digest[9],
+            digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]
+        )
         bytes.6 = (bytes.6 & 0x0F) | 0x50
         bytes.8 = (bytes.8 & 0x3F) | 0x80
         return UUID(uuid: bytes)
@@ -72,8 +74,10 @@ public struct MemoryCard: Hashable, Codable, Sendable, Identifiable {
     public var knownBefore: Bool
     public var updatedAt: Date
 
-    public init(key: CardKey, memory: Memory? = nil, recent: [Bool] = [], introduced: Date, knownBefore: Bool = false,
-                updatedAt: Date = Date()) {
+    public init(
+        key: CardKey, memory: Memory? = nil, recent: [Bool] = [], introduced: Date, knownBefore: Bool = false,
+        updatedAt: Date = Date()
+    ) {
         id = key.recordID
         self.key = key
         self.memory = memory
@@ -114,8 +118,10 @@ public struct Attempt: Hashable, Codable, Sendable {
     public var test: TestKind?
     public var band: Int?
 
-    public init(key: CardKey, kind: AttemptKind, correct: Bool, skipped: Bool = false, seconds: Double, at: Date,
-                test: TestKind? = nil, band: Int? = nil) {
+    public init(
+        key: CardKey, kind: AttemptKind, correct: Bool, skipped: Bool = false, seconds: Double, at: Date,
+        test: TestKind? = nil, band: Int? = nil
+    ) {
         self.key = key
         self.kind = kind
         self.correct = correct
@@ -192,9 +198,11 @@ public struct StudySession: Hashable, Codable, Sendable, Identifiable {
     public var ranToEnd: Bool
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), purpose: StudyKind, start: Date, end: Date? = nil, plannedMinutes: Int, domains: [Domain],
-                planned: Bool, attempts: [Attempt] = [], reading: ReadingLog? = nil, activeSeconds: Double = 0,
-                ranToEnd: Bool = false, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), purpose: StudyKind, start: Date, end: Date? = nil, plannedMinutes: Int, domains: [Domain],
+        planned: Bool, attempts: [Attempt] = [], reading: ReadingLog? = nil, activeSeconds: Double = 0,
+        ranToEnd: Bool = false, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.purpose = purpose
         self.start = start
@@ -329,8 +337,10 @@ public struct TestResult: Hashable, Codable, Sendable, Identifiable {
     public var language: Language?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), test: TestKind, date: Date, score: Double, detail: [String: Double] = [:],
-                placement: Bool = false, language: Language? = nil, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), test: TestKind, date: Date, score: Double, detail: [String: Double] = [:],
+        placement: Bool = false, language: Language? = nil, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.test = test
         self.date = date
@@ -430,10 +440,12 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
     public var tierConfidence: Double?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), ladderID: String? = nil, title: String, author: String, tier: Int, pages: Int, genres: [Genre],
-                status: BookStatus, started: Day? = nil, finished: Day? = nil, page: Int = 0, feel: BookFeel? = nil,
-                format: BookFormat? = nil, isbn: String? = nil, language: Language? = nil, tierConfidence: Double? = nil,
-                updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), ladderID: String? = nil, title: String, author: String, tier: Int, pages: Int, genres: [Genre],
+        status: BookStatus, started: Day? = nil, finished: Day? = nil, page: Int = 0, feel: BookFeel? = nil,
+        format: BookFormat? = nil, isbn: String? = nil, language: Language? = nil, tierConfidence: Double? = nil,
+        updatedAt: Date = Date()
+    ) {
         self.id = id
         self.ladderID = ladderID
         self.title = title
@@ -457,16 +469,17 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
     /// new one: a bookmark past the last page (an edition with fewer pages synced in) reads as the end.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(id: try c.decode(UUID.self, forKey: .id), ladderID: try c.decodeIfPresent(String.self, forKey: .ladderID),
-                  title: try c.decode(String.self, forKey: .title), author: try c.decode(String.self, forKey: .author),
-                  tier: try c.decode(Int.self, forKey: .tier), pages: try c.decode(Int.self, forKey: .pages),
-                  genres: try c.decode([Genre].self, forKey: .genres), status: try c.decode(BookStatus.self, forKey: .status),
-                  started: try c.decodeIfPresent(Day.self, forKey: .started), finished: try c.decodeIfPresent(Day.self, forKey: .finished),
-                  page: try c.decode(Int.self, forKey: .page), feel: try c.decodeIfPresent(BookFeel.self, forKey: .feel),
-                  format: try c.decodeIfPresent(BookFormat.self, forKey: .format), isbn: try c.decodeIfPresent(String.self, forKey: .isbn),
-                  language: try c.decodeIfPresent(Language.self, forKey: .language),
-                  tierConfidence: try c.decodeIfPresent(Double.self, forKey: .tierConfidence),
-                  updatedAt: try c.decode(Date.self, forKey: .updatedAt))
+        self.init(
+            id: try c.decode(UUID.self, forKey: .id), ladderID: try c.decodeIfPresent(String.self, forKey: .ladderID),
+            title: try c.decode(String.self, forKey: .title), author: try c.decode(String.self, forKey: .author),
+            tier: try c.decode(Int.self, forKey: .tier), pages: try c.decode(Int.self, forKey: .pages),
+            genres: try c.decode([Genre].self, forKey: .genres), status: try c.decode(BookStatus.self, forKey: .status),
+            started: try c.decodeIfPresent(Day.self, forKey: .started), finished: try c.decodeIfPresent(Day.self, forKey: .finished),
+            page: try c.decode(Int.self, forKey: .page), feel: try c.decodeIfPresent(BookFeel.self, forKey: .feel),
+            format: try c.decodeIfPresent(BookFormat.self, forKey: .format), isbn: try c.decodeIfPresent(String.self, forKey: .isbn),
+            language: try c.decodeIfPresent(Language.self, forKey: .language),
+            tierConfidence: try c.decodeIfPresent(Double.self, forKey: .tierConfidence),
+            updatedAt: try c.decode(Date.self, forKey: .updatedAt))
     }
 
     /// The book with its bounds restored after its fields were set directly: at least one page, a
@@ -501,8 +514,10 @@ public struct Reflection: Hashable, Codable, Sendable, Identifiable {
     public var text: String
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), bookID: UUID?, date: Date, kind: ReflectionKind, page: Int? = nil, text: String,
-                updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), bookID: UUID?, date: Date, kind: ReflectionKind, page: Int? = nil, text: String,
+        updatedAt: Date = Date()
+    ) {
         self.id = id
         self.bookID = bookID
         self.date = date

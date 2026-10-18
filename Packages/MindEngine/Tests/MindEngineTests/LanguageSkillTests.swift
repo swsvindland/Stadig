@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 /// A made-up Spanish deck: a few real words first (so pictures, dialogues and matching have
@@ -22,8 +23,9 @@ enum SpanishFixture {
         }
         let list = (0..<sentences).map { $0 + 1 }.map { i -> Sentence in
             let ranks = [1 + i % 40, 1 + (i * 13) % 400, 1 + (i * 31) % max(1, min(count, i * 3))]
-            return Sentence(id: i, text: "Frase \(Self.letters(i)) aquí.", english: "Sentence number \(i) in English.", level: ranks.max()!,
-                            words: ranks.map { 200_000 + $0 })
+            return Sentence(
+                id: i, text: "Frase \(Self.letters(i)) aquí.", english: "Sentence number \(i) in English.", level: ranks.max()!,
+                words: ranks.map { 200_000 + $0 })
         }
         return LanguageDeck(language: .spanish, words: words, sentences: list)
     }
@@ -58,12 +60,19 @@ struct Driver {
             case .question(let question):
                 now += max(1, question.expectedSeconds * student.pace)
                 let sentence = question.key.domain.isLanguage && question.key.wordID == nil && !question.key.isKana
-                let known = sentence ? (question.band.map { $0 <= sentenceBand } ?? true)
+                let known =
+                    sentence
+                    ? (question.band.map { $0 <= sentenceBand } ?? true)
                     : student.knows(question, cards: run.cards, now: now) ?? false
-                if known, let index = question.correctChoice { run.choose(index, now: now) }
-                else if question.allowsDontKnow { run.dontKnow(now: now) }
-                else if let index = question.correctChoice { run.choose((index + 1) % max(1, question.choices.count), now: now) }
-                else { run.type(student.answerText(question), now: now) }
+                if known, let index = question.correctChoice {
+                    run.choose(index, now: now)
+                } else if question.allowsDontKnow {
+                    run.dontKnow(now: now)
+                } else if let index = question.correctChoice {
+                    run.choose((index + 1) % max(1, question.choices.count), now: now)
+                } else {
+                    run.type(student.answerText(question), now: now)
+                }
                 run.next(now: now + 2)
             case .lesson:
                 now += 20
@@ -142,8 +151,9 @@ struct ScaffoldTests {
         let learning = Scaffolds.sentence(sentence, deck: deck, Scaffolds.Context(cards: [:], frontier: 0, readsKana: true))
         #expect(learning.text == sentence.text)
         #expect(learning.segments.filter { $0.help != nil }.map(\.text) == ["日本", "本", "食"], "日本 claims its 本 first")
-        let someMastered = Scaffolds.Context(cards: [japan.key: card(japan, stability: 40), eat.key: card(eat, stability: 3)],
-                                             frontier: 0, readsKana: true)
+        let someMastered = Scaffolds.Context(
+            cards: [japan.key: card(japan, stability: 40), eat.key: card(eat, stability: 3)],
+            frontier: 0, readsKana: true)
         let fading = Scaffolds.sentence(sentence, deck: deck, someMastered)
         #expect(fading.segments.filter { $0.help != nil }.map(\.text) == ["本", "食"])
         #expect(fading.segments.first { $0.text == "食" }?.help == "た")
@@ -172,9 +182,11 @@ struct ScaffoldTests {
     @Test("a Spanish word shows its stress guide until it's mastered; in a sentence only the words still being learned do")
     func spanish() {
         let deck = SpanishFixture.deck(words: 50, sentences: 0)
-        let perro = deck.word(200_002)!, comer = deck.word(200_001)!
+        let perro = deck.word(200_002)!
+        let comer = deck.word(200_001)!
         #expect(Scaffolds.word(perro, Scaffolds.Context(cards: [:], frontier: 0, readsKana: nil)).segments.first?.help == "el PE·rro")
-        let sentence = Sentence(id: 1, text: "El perro comía en casa.", english: "The dog was eating at home.", level: 3, words: [200_002, 200_001, 200_003])
+        let sentence = Sentence(
+            id: 1, text: "El perro comía en casa.", english: "The dog was eating at home.", level: 3, words: [200_002, 200_001, 200_003])
         let context = Scaffolds.Context(cards: [perro.key: card(perro, stability: 30)], frontier: 0, readsKana: nil)
         let helped = Scaffolds.sentence(sentence, deck: deck, context).segments.filter { $0.help != nil }
         #expect(helped.map(\.text) == ["comía", "casa"], "\(helped)")
@@ -189,8 +201,9 @@ struct AnswerMatchTests {
     func spanish() {
         #expect(AnswerMatch.matches("el perro", expected: ["perro"], language: .spanish))
         #expect(AnswerMatch.matches("Perro.", expected: ["el perro", "perro"], language: .spanish))
-        #expect(AnswerMatch.matches("cafe con leche por favor", expected: ["Un café con leche, por favor."], language: .spanish) == false,
-                "a sentence isn't a phrase inside another")
+        #expect(
+            AnswerMatch.matches("cafe con leche por favor", expected: ["Un café con leche, por favor."], language: .spanish) == false,
+            "a sentence isn't a phrase inside another")
         #expect(AnswerMatch.matches("un cafe con leche, por favor", expected: ["café con leche"], language: .spanish))
         #expect(!AnswerMatch.matches("ano", expected: ["año"], language: .spanish), "ñ is a letter, not an accent")
         #expect(AnswerMatch.matches("Son 2 euros", expected: ["son dos euros"], language: .spanish))
@@ -213,12 +226,16 @@ struct AnswerMatchTests {
     func coverage() {
         #expect(AnswerMatch.coverage("el perro come en casa", of: "El perro come en la casa.", words: [], language: .spanish) >= 0.75)
         #expect(AnswerMatch.coverage("el gato", of: "El perro come en la casa.", words: [], language: .spanish) < 0.5)
-        let words = [Word(id: 1, language: .japanese, rank: 300, text: "食べる", kana: "たべる", meaning: "to eat", pos: "verb"),
-                     Word(id: 2, language: .japanese, rank: 400, text: "パン", meaning: "bread")]
-        #expect(AnswerMatch.coverage("ぱんをたべました", of: "パンを食べました。", words: words, language: .japanese) == 1,
-                "found by kana stem though written in kana")
-        let task = SpeakingTask(id: "t", key: .practice(.spanish, "speaking"), language: .spanish, kind: .learn, instruction: "", prompt: .text(""),
-                                expected: ["El perro come en la casa."], shape: .sentence("El perro come en la casa.", words: []), expectedSeconds: 5)
+        let words = [
+            Word(id: 1, language: .japanese, rank: 300, text: "食べる", kana: "たべる", meaning: "to eat", pos: "verb"),
+            Word(id: 2, language: .japanese, rank: 400, text: "パン", meaning: "bread"),
+        ]
+        #expect(
+            AnswerMatch.coverage("ぱんをたべました", of: "パンを食べました。", words: words, language: .japanese) == 1,
+            "found by kana stem though written in kana")
+        let task = SpeakingTask(
+            id: "t", key: .practice(.spanish, "speaking"), language: .spanish, kind: .learn, instruction: "", prompt: .text(""),
+            expected: ["El perro come en la casa."], shape: .sentence("El perro come en la casa.", words: []), expectedSeconds: 5)
         #expect(task.check("el perro come en casa"))
         #expect(!task.check("el perro"))
     }
@@ -245,8 +262,10 @@ struct FourSkillsTests {
     @Test("the language's score needs every skill measured, and listening and speaking move it most")
     func weighting() {
         let day = Fixtures.monday
-        let base = [result(.listening, bands: [0.5], on: day), result(.speaking, bands: [0.5], on: day),
-                    result(.languageReading, bands: [0.5], on: day), result(.languageWriting, bands: [0.5], on: day)]
+        let base = [
+            result(.listening, bands: [0.5], on: day), result(.speaking, bands: [0.5], on: day),
+            result(.languageReading, bands: [0.5], on: day), result(.languageWriting, bands: [0.5], on: day),
+        ]
         let all = LanguageSkill.allCases
         #expect(LanguageSkills.score(LanguageSkills.levels(.spanish, tests: Array(base.prefix(3))), skills: all) == nil)
         let even = LanguageSkills.score(LanguageSkills.levels(.spanish, tests: base), skills: all)!
@@ -267,13 +286,17 @@ struct FourSkillsTests {
     func series() {
         var store = Store(settings: Fixtures.settings([.spanish]))
         let monday = Fixtures.monday
-        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 800, placement: true, language: .spanish),
-                       result(.listening, bands: [0.8, 0.4], on: monday.adding(days: 1)),
-                       result(.speaking, bands: [0.5], on: monday.adding(days: 1))]
+        store.tests = [
+            TestResult(test: .vocabulary, date: monday.date(), score: 800, placement: true, language: .spanish),
+            result(.listening, bands: [0.8, 0.4], on: monday.adding(days: 1)),
+            result(.speaking, bands: [0.5], on: monday.adding(days: 1)),
+        ]
         let early = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 2)))
         #expect(early.count == 1 && abs(early[0].score - LanguageTests.vocabularyScore(800)) < 0.001)
-        store.tests += [result(.languageReading, bands: [0.9, 0.6], on: monday.adding(days: 3)),
-                        result(.languageWriting, bands: [0.4], on: monday.adding(days: 3))]
+        store.tests += [
+            result(.languageReading, bands: [0.9, 0.6], on: monday.adding(days: 3)),
+            result(.languageWriting, bands: [0.4], on: monday.adding(days: 3)),
+        ]
         let measured = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 4)))
         #expect(measured.count == 1 && measured[0].day == monday.adding(days: 3), "\(measured)")
         store.tests += [result(.listening, bands: [1, 0.8, 0.5], on: monday.adding(days: 50))]
@@ -292,8 +315,11 @@ struct LanguageSessionTests {
         settings.speaking = speaking
         var store = Store(settings: settings)
         let now = Fixtures.monday.date()
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.spanish], planned: true,
-                                       ranToEnd: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.spanish], planned: true,
+                ranToEnd: true)
+        ]
         store.tests = [TestResult(test: .vocabulary, date: now, score: 400, placement: true, language: .spanish)]
         if skills {
             for kind in [TestKind.listening, .speaking, .languageReading, .languageWriting] {
@@ -376,7 +402,8 @@ struct LanguageSessionTests {
         let second = try #require(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 2)), catalogs: Fixtures.catalogs(deck)))
         let secondTests: [TestKind] = second.parts.compactMap { if case .test(let kind) = $0.kind { kind } else { nil } }
         #expect(secondTests == [.languageReading, .languageWriting])
-        let checkIn = LanguageModule.checkInParts(.spanish, state: store.state(on: Fixtures.monday.adding(days: 2)), catalogs: Fixtures.catalogs(deck))
+        let checkIn = LanguageModule.checkInParts(
+            .spanish, state: store.state(on: Fixtures.monday.adding(days: 2)), catalogs: Fixtures.catalogs(deck))
         #expect(checkIn.map(\.kind) == [.test(.vocabulary), .test(.listening), .test(.speaking), .test(.languageReading), .test(.languageWriting)])
         // Not before the vocabulary test finds 150 words.
         var beginner = self.store(known: 10, skills: false)
@@ -418,8 +445,9 @@ struct LanguageSessionTests {
             driver.study(&store, on: Fixtures.monday.adding(days: offset), deck: deck)
         }
         let byWeekOne = store.tests.filter { $0.day < Fixtures.monday.adding(days: 7) }
-        #expect(Set(byWeekOne.map(\.test)).isSuperset(of: [.vocabulary, .listening, .speaking, .languageReading, .languageWriting]),
-                "\(byWeekOne.map(\.test))")
+        #expect(
+            Set(byWeekOne.map(\.test)).isSuperset(of: [.vocabulary, .listening, .speaking, .languageReading, .languageWriting]),
+            "\(byWeekOne.map(\.test))")
         let practised = store.sessions.flatMap(\.attempts).filter { $0.key.raw.hasPrefix("es.dialogue.") }
         #expect(!practised.isEmpty)
         #expect(store.cards.keys.allSatisfy { $0.wordID != nil }, "practice never makes a card")
@@ -566,16 +594,22 @@ func systemSymbolExists(_ symbol: String) -> Bool { NSImage(systemSymbolName: sy
 extension AnswerMatchTests {
     @Test("numbers heard as digits match the words or kanji they were said as, past the first few")
     func numbers() {
-        for (digits, words) in [("13", "trece"), ("16", "dieciséis"), ("21", "veintiuno"), ("22", "veintidós"), ("30", "treinta"),
-                                ("31", "treinta y uno"), ("100", "cien"), ("101", "ciento uno"), ("200", "doscientos"), ("555", "quinientos cincuenta y cinco"),
-                                ("1000", "mil"), ("2024", "dos mil veinticuatro"), ("21000", "veintiún mil")] {
+        for (digits, words) in [
+            ("13", "trece"), ("16", "dieciséis"), ("21", "veintiuno"), ("22", "veintidós"), ("30", "treinta"),
+            ("31", "treinta y uno"), ("100", "cien"), ("101", "ciento uno"), ("200", "doscientos"), ("555", "quinientos cincuenta y cinco"),
+            ("1000", "mil"), ("2024", "dos mil veinticuatro"), ("21000", "veintiún mil"),
+        ] {
             #expect(AnswerMatch.matches(digits, expected: [words], language: .spanish), "\(digits) for \(words)")
         }
-        #expect(!AnswerMatch.matches("30", expected: ["treinta y uno"], language: .spanish) && !AnswerMatch.matches("13", expected: ["tres"], language: .spanish))
+        #expect(
+            !AnswerMatch.matches("30", expected: ["treinta y uno"], language: .spanish)
+                && !AnswerMatch.matches("13", expected: ["tres"], language: .spanish))
         #expect(AnswerMatch.coverage("Tiene 30 años", of: "Tiene treinta años.", words: [], language: .spanish) == 1)
 
-        for (digits, kanji) in [("12人", "十二人"), ("20", "二十"), ("100円", "百円"), ("400", "四百"), ("2024年", "二千二十四年"), ("2024年", "二〇二四年"),
-                                ("15000", "一万五千"), ("３人です", "三人です")] {
+        for (digits, kanji) in [
+            ("12人", "十二人"), ("20", "二十"), ("100円", "百円"), ("400", "四百"), ("2024年", "二千二十四年"), ("2024年", "二〇二四年"),
+            ("15000", "一万五千"), ("３人です", "三人です"),
+        ] {
             #expect(AnswerMatch.matches(digits, expected: [kanji], language: .japanese), "\(digits) for \(kanji)")
         }
         #expect(!AnswerMatch.matches("11人", expected: ["十二人"], language: .japanese))
@@ -608,10 +642,12 @@ extension FourSkillsTests {
         settings.speaking = false
         var store = Store(settings: settings)
         let monday = Fixtures.monday
-        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 1200, placement: true, language: .spanish),
-                       result(.listening, bands: [0.8, 0.4], on: monday.adding(days: 1)),
-                       result(.languageReading, bands: [0.9, 0.6], on: monday.adding(days: 1)),
-                       result(.languageWriting, bands: [0.4], on: monday.adding(days: 2))]
+        store.tests = [
+            TestResult(test: .vocabulary, date: monday.date(), score: 1200, placement: true, language: .spanish),
+            result(.listening, bands: [0.8, 0.4], on: monday.adding(days: 1)),
+            result(.languageReading, bands: [0.9, 0.6], on: monday.adding(days: 1)),
+            result(.languageWriting, bands: [0.4], on: monday.adding(days: 2)),
+        ]
         let before = LanguageModule.series(.spanish, state: store.state(on: monday.adding(days: 3)))
         #expect(before.count == 1 && before[0].day == monday.adding(days: 2))
         store.settings.speaking = true
@@ -629,9 +665,10 @@ extension LanguageSessionTests {
     func learnRetries() throws {
         let store = store(known: 0, skills: false)
         let state = store.state(on: Fixtures.monday.adding(days: 1))
-        let plan = SessionPlan(day: state.today, kind: .regular, minutes: 5, domains: [.spanish],
-                               parts: [PlanPart(kind: .learn, domain: .spanish, minutes: 5, title: "New Spanish", detail: "", items: 1)],
-                               headline: "", notes: [], planned: true)
+        let plan = SessionPlan(
+            day: state.today, kind: .regular, minutes: 5, domains: [.spanish],
+            parts: [PlanPart(kind: .learn, domain: .spanish, minutes: 5, title: "New Spanish", detail: "", items: 1)],
+            headline: "", notes: [], planned: true)
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         var now = state.now
         func miss(_ question: Question) {
@@ -641,15 +678,27 @@ extension LanguageSessionTests {
             run.next(now: now)
         }
         // Below the placement level: checked first.
-        guard case .question(let probe) = run.step, probe.kind == .probe else { Issue.record("no check: \(String(describing: run.step))"); return }
+        guard case .question(let probe) = run.step, probe.kind == .probe else {
+            Issue.record("no check: \(String(describing: run.step))")
+            return
+        }
         miss(probe)
-        guard case .lesson = run.step else { Issue.record("not taught after the miss"); return }
+        guard case .lesson = run.step else {
+            Issue.record("not taught after the miss")
+            return
+        }
         now += 20
         run.next(now: now)
-        guard case .question(let first) = run.step, first.key == probe.key else { Issue.record("not asked after the lesson"); return }
+        guard case .question(let first) = run.step, first.key == probe.key else {
+            Issue.record("not asked after the lesson")
+            return
+        }
         #expect(first.id != probe.id)
         miss(first)
-        guard case .question(let retry) = run.step, retry.key == first.key else { Issue.record("not asked again"); return }
+        guard case .question(let retry) = run.step, retry.key == first.key else {
+            Issue.record("not asked again")
+            return
+        }
         #expect(retry.id != first.id)
     }
 }
@@ -663,16 +712,20 @@ extension LanguageContentTests {
             for dialogue in all {
                 for line in dialogue.lines {
                     let options = PracticeRunner.wrongOptions(for: line, in: lines, language: language)
-                    #expect(!options.contains { Question.normalised($0.english) == Question.normalised(line.english) }, "\(dialogue.id): \(line.english)")
-                    #expect(!options.contains { AnswerMatch.matches($0.text, expected: line.expected, language: language) }, "\(dialogue.id): \(line.text)")
+                    #expect(
+                        !options.contains { Question.normalised($0.english) == Question.normalised(line.english) }, "\(dialogue.id): \(line.english)")
+                    #expect(
+                        !options.contains { AnswerMatch.matches($0.text, expected: line.expected, language: language) },
+                        "\(dialogue.id): \(line.text)")
                     #expect(options.filter { $0.speaker == line.speaker }.count >= 3, "\(dialogue.id): enough left to choose from")
                 }
             }
         }
         let thanks = Dialogues.dialogues(.japanese).flatMap(\.lines).first { $0.text == "ありがとうございます。" }
         if let thanks {
-            #expect(!PracticeRunner.wrongOptions(for: thanks, in: Dialogues.dialogues(.japanese).flatMap(\.lines), language: .japanese)
-                .contains { $0.text == "ありがとうございました。" })
+            #expect(
+                !PracticeRunner.wrongOptions(for: thanks, in: Dialogues.dialogues(.japanese).flatMap(\.lines), language: .japanese)
+                    .contains { $0.text == "ありがとうございました。" })
         }
     }
 }

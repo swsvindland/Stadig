@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import SystemCore
 
 /// Which of Apple's models answered.
@@ -61,8 +61,10 @@ public struct GuessedItem: Sendable, Identifiable {
     /// didn't state.
     public var approximate: Bool
 
-    public init(id: UUID = UUID(), seenName: String, seenBrand: String?, match: FoodMatch?, alternatives: [FoodMatch],
-                unit: PortionUnit?, count: Double, nutrients: Nutrients, sure: Bool, approximate: Bool) {
+    public init(
+        id: UUID = UUID(), seenName: String, seenBrand: String?, match: FoodMatch?, alternatives: [FoodMatch],
+        unit: PortionUnit?, count: Double, nutrients: Nutrients, sure: Bool, approximate: Bool
+    ) {
         self.id = id
         self.seenName = seenName
         self.seenBrand = seenBrand

@@ -92,8 +92,10 @@ public struct ProgressionContext: Sendable {
     /// Every past set of this exercise, oldest first.
     public var history: [LoggedSet]
 
-    public init(exercise: any ExerciseTraits, increments: any LoadIncrements, trust: TrustState, phase: PhaseEffects,
-                loadFactor: Double = 1, bodyweightKg: Double?, history: [LoggedSet]) {
+    public init(
+        exercise: any ExerciseTraits, increments: any LoadIncrements, trust: TrustState, phase: PhaseEffects,
+        loadFactor: Double = 1, bodyweightKg: Double?, history: [LoggedSet]
+    ) {
         self.exercise = exercise
         self.increments = increments
         self.trust = trust
@@ -134,8 +136,10 @@ enum LoadMath {
     /// way of more than 6% means reps climb the range instead (checking both ways keeps an exercise
     /// from flipping between modes at the boundary). From one set to the next, only an upward step
     /// of more than 12.5% is too coarse: a green set has about 10% in hand.
-    static func coarse(_ logged: Double, basis: LoadBasis, bodyweight: Double?, increments: any LoadIncrements,
-                       setToSet: Bool = false) -> Bool {
+    static func coarse(
+        _ logged: Double, basis: LoadBasis, bodyweight: Double?, increments: any LoadIncrements,
+        setToSet: Bool = false
+    ) -> Bool {
         switch basis {
         case .none: return true
         case .bodyweightPlus where logged <= 0: return true
@@ -176,8 +180,10 @@ public enum Autoregulation {
         /// A rack with pins or safety arms, so racked barbell lifts are a safe setup too.
         public var hasSafeties: Bool
 
-        public init(exercise: any ExerciseTraits, increments: any LoadIncrements, trust: TrustState, repRange: RepRange,
-                    verifiedAlready: Bool = false, hasSafeties: Bool = false) {
+        public init(
+            exercise: any ExerciseTraits, increments: any LoadIncrements, trust: TrustState, repRange: RepRange,
+            verifiedAlready: Bool = false, hasSafeties: Bool = false
+        ) {
             self.exercise = exercise
             self.increments = increments
             self.trust = trust
@@ -220,8 +226,12 @@ public enum Autoregulation {
         let finding = planned.kind == .findingWeight || done.kind == .findingWeight
         let fixedLoad = basis == .none || (basis == .bodyweightPlus && current <= 0)
         // Finding a weight always moves the weight; otherwise very coarse steps move reps instead.
-        let coarse = fixedLoad || (!finding && LoadMath.coarse(current, basis: basis, bodyweight: bw, increments: context.increments,
-                                                                setToSet: true))
+        let coarse =
+            fixedLoad
+            || (!finding
+                && LoadMath.coarse(
+                    current, basis: basis, bodyweight: bw, increments: context.increments,
+                    setToSet: true))
         switch rating {
         case .red:
             // What they managed, to failure, sets the load for the target with a rep in hand.
@@ -256,8 +266,9 @@ public enum Autoregulation {
                     next.loadKg = LoadMath.step(current, 1, basis: basis, increments: context.increments)
                     next.targetReps = done.reps
                 }
-                return SetAdjustment(kind: .verify, next: next,
-                                     message: "You rated that just right. Let's check: same reps, one step up. If it's a miss, that's useful too.")
+                return SetAdjustment(
+                    kind: .verify, next: next,
+                    message: "You rated that just right. Let's check: same reps, one step up. If it's a miss, that's useful too.")
             }
             return SetAdjustment(kind: .hold, next: next, message: "Just right. Same again.")
 
@@ -273,8 +284,9 @@ public enum Autoregulation {
             let claimed = OneRepMax.epley(effective, reps: done.reps, rir: reserve)
             let e1rm = floor + max(context.trust.score, 0.5) * (claimed - floor)
             let rir = planned.kind == .findingWeight ? 2 : max(1, planned.targetRIR)
-            var load = LoadMath.logged(forEffective: OneRepMax.load(e1rm: e1rm, reps: max(1, next.targetReps), rir: rir),
-                                       basis: basis, bodyweight: bw, increments: context.increments)
+            var load = LoadMath.logged(
+                forEffective: OneRepMax.load(e1rm: e1rm, reps: max(1, next.targetReps), rir: rir),
+                basis: basis, bodyweight: bw, increments: context.increments)
             let oneUp = LoadMath.step(current, 1, basis: basis, increments: context.increments)
             let maxSteps = planned.kind == .findingWeight ? 4 : 2
             var cap = current
@@ -284,8 +296,9 @@ public enum Autoregulation {
             next.loadKg = load
             if planned.kind == .findingWeight { next.kind = .findingWeight }
             let kind: AdjustmentKind = context.trust.isLow ? .verify : .bump
-            return SetAdjustment(kind: kind, next: next,
-                                 message: kind == .verify ? "Easy? Let's test that: more weight, same reps." : "Easy, so the weight goes up.")
+            return SetAdjustment(
+                kind: kind, next: next,
+                message: kind == .verify ? "Easy? Let's test that: more weight, same reps." : "Easy, so the weight goes up.")
         }
     }
 }
@@ -305,8 +318,9 @@ public enum Progression {
             // Finding working weights.
             let reps = clamp(findingReps, target.repRange.lower, max(target.repRange.upper, target.repRange.lower))
             let sets = (0..<target.sets).map { _ in SetPrescription(kind: .findingWeight, loadKg: nil, targetReps: reps, targetRIR: 2) }
-            return ExercisePrescription(exerciseID: exercise.id, sets: sets, mode: .findingWeight, e1rm: nil,
-                                        reason: "Pick a weight you think you can do for \(reps), then rate it. The next set adjusts.")
+            return ExercisePrescription(
+                exerciseID: exercise.id, sets: sets, mode: .findingWeight, e1rm: nil,
+                reason: "Pick a weight you think you can do for \(reps), then rate it. The next set adjusts.")
         }
 
         let lastLoad = top.loadKg
@@ -362,8 +376,9 @@ public enum Progression {
             let reps = target.repRange.middle
             var load = lastLoad
             if let e1rm {
-                load = LoadMath.logged(forEffective: OneRepMax.load(e1rm: e1rm, reps: reps, rir: rir) * context.loadFactor,
-                                       basis: basis, bodyweight: bw, increments: context.increments)
+                load = LoadMath.logged(
+                    forEffective: OneRepMax.load(e1rm: e1rm, reps: reps, rir: rir) * context.loadFactor,
+                    basis: basis, bodyweight: bw, increments: context.increments)
             }
             var cap = lastLoad
             let steps = missed ? 0 : context.phase.maxLoadStepsPerSession
@@ -377,7 +392,8 @@ public enum Progression {
             if LoadMath.harder(load, lastLoad, basis: basis) {
                 reason = "Your estimate says \(reps) reps with \(rir.formatted()) in reserve is a step up from last time."
             } else if load == lastLoad {
-                reason = missed ? "Last time was a miss, so the same weight again." : "Same weight, aiming for \(reps) reps with \(rir.formatted()) left."
+                reason =
+                    missed ? "Last time was a miss, so the same weight again." : "Same weight, aiming for \(reps) reps with \(rir.formatted()) left."
             } else {
                 reason = context.loadFactor < 1 ? "Easing back in after time off." : "A little lighter to land the target reps."
             }
@@ -403,8 +419,10 @@ public enum Progression {
     }
 
     /// Ramp-up sets to a working load. In short sessions they double as the warm-up.
-    public static func rampUp(to workingKg: Double, reps: Int, exercise: some ExerciseTraits, increments: any LoadIncrements,
-                              bodyweightKg: Double?) -> [SetPrescription] {
+    public static func rampUp(
+        to workingKg: Double, reps: Int, exercise: some ExerciseTraits, increments: any LoadIncrements,
+        bodyweightKg: Double?
+    ) -> [SetPrescription] {
         guard exercise.isCompound, exercise.loadBasis == .external || exercise.loadBasis == .perHand, workingKg > 0 else { return [] }
         let steps: [(Double, Int)] = workingKg >= 60 ? [(0.45, 8), (0.65, 5), (0.82, 3)] : [(0.5, 8), (0.75, 4)]
         var seen: Set<Double> = []
@@ -435,7 +453,8 @@ public enum Progression {
     /// The heaviest set of a session, by effective load.
     static func topSet(_ session: [LoggedSet], basis: LoadBasis) -> LoggedSet? {
         session.max { a, b in
-            LoadMath.effective(a.loadKg, basis: basis, bodyweight: a.bodyweightKg) < LoadMath.effective(b.loadKg, basis: basis, bodyweight: b.bodyweightKg)
+            LoadMath.effective(a.loadKg, basis: basis, bodyweight: a.bodyweightKg)
+                < LoadMath.effective(b.loadKg, basis: basis, bodyweight: b.bodyweightKg)
         }
     }
 }
@@ -471,8 +490,10 @@ public struct StallReport: Hashable, Codable, Sendable, Identifiable {
 public enum Stalls {
     /// A lift that hasn't set a new best (by more than 1%) for three or more weeks, across at
     /// least three sessions.
-    public static func detect(_ context: ProgressionContext, sets: Int, repRange: RepRange, today: Day,
-                              phase: PhaseEffects, beatUp: Bool) -> StallReport? {
+    public static func detect(
+        _ context: ProgressionContext, sets: Int, repRange: RepRange, today: Day,
+        phase: PhaseEffects, beatUp: Bool
+    ) -> StallReport? {
         let basis = context.exercise.loadBasis
         let bests = StrengthEstimator.sessionBests(context.history, basis: basis, trust: context.trust)
             .filter { $0.day >= today.adding(days: -84) }
@@ -493,14 +514,17 @@ public enum Stalls {
         // still builds on the last real session, as `prescribe` does.
         var suggestion: SetPrescription?
         if let session = StrengthEstimator.sessions(Progression.anchoringWork(context.history)).last,
-           let top = Progression.topSet(session, basis: basis) {
+            let top = Progression.topSet(session, basis: basis)
+        {
             let reps = reading == .programming ? max(repRange.lower, min(5, repRange.upper)) : repRange.middle
-            let load = reading == .programming
+            let load =
+                reading == .programming
                 ? LoadMath.step(top.loadKg, 1, basis: basis, increments: context.increments)
                 : top.loadKg
             suggestion = SetPrescription(kind: .working, loadKg: load, targetReps: reps, targetRIR: 1)
         }
-        return StallReport(exerciseID: context.exercise.id, weeks: days / 7, bestE1RM: best, since: bestDay, reading: reading,
-                           suggestion: suggestion, suggestedSets: reading == .programming ? 3 : sets)
+        return StallReport(
+            exerciseID: context.exercise.id, weeks: days / 7, bestE1RM: best, since: bestDay, reading: reading,
+            suggestion: suggestion, suggestedSets: reading == .programming ? 3 : sets)
     }
 }

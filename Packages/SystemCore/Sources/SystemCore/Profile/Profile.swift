@@ -86,10 +86,11 @@ public struct GoalEmphasis: Hashable, Codable, Sendable {
     public static func combined(_ goals: [OutcomeGoal]) -> GoalEmphasis {
         let list = goals.isEmpty ? [.healthier] : goals
         let n = Double(list.count)
-        return GoalEmphasis(strength: list.map(\.emphasis.strength).reduce(0, +) / n,
-                            hypertrophy: list.map(\.emphasis.hypertrophy).reduce(0, +) / n,
-                            conditioning: list.map(\.emphasis.conditioning).reduce(0, +) / n,
-                            mobility: list.map(\.emphasis.mobility).reduce(0, +) / n)
+        return GoalEmphasis(
+            strength: list.map(\.emphasis.strength).reduce(0, +) / n,
+            hypertrophy: list.map(\.emphasis.hypertrophy).reduce(0, +) / n,
+            conditioning: list.map(\.emphasis.conditioning).reduce(0, +) / n,
+            mobility: list.map(\.emphasis.mobility).reduce(0, +) / n)
     }
 }
 
@@ -186,8 +187,10 @@ public struct RecurringActivity: Hashable, Codable, Sendable, Identifiable {
     public var intensity: Int
     public var timeOfDay: TimeOfDay
 
-    public init(id: UUID = UUID(), activity: ActivityType, weekdays: [Weekday], minutes: Int = 60,
-                intensity: Int? = nil, timeOfDay: TimeOfDay = .evening) {
+    public init(
+        id: UUID = UUID(), activity: ActivityType, weekdays: [Weekday], minutes: Int = 60,
+        intensity: Int? = nil, timeOfDay: TimeOfDay = .evening
+    ) {
         self.id = id
         self.activity = activity
         self.weekdays = weekdays.sorted()
@@ -219,10 +222,12 @@ public struct SharedProfile: Hashable, Codable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
 
-    public init(goals: [OutcomeGoal] = [], schedule: TrainingSchedule = TrainingSchedule(), equipment: EquipmentAccess = .fullGym,
-                experience: TrainingExperience = .novice, recurring: [RecurringActivity] = [], sex: BiologicalSex = .unspecified,
-                birthYear: Int? = nil, heightCm: Double? = nil, units: UnitPreference = .regional, createdBy: AppID,
-                createdAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(
+        goals: [OutcomeGoal] = [], schedule: TrainingSchedule = TrainingSchedule(), equipment: EquipmentAccess = .fullGym,
+        experience: TrainingExperience = .novice, recurring: [RecurringActivity] = [], sex: BiologicalSex = .unspecified,
+        birthYear: Int? = nil, heightCm: Double? = nil, units: UnitPreference = .regional, createdBy: AppID,
+        createdAt: Date = Date(), updatedAt: Date = Date()
+    ) {
         self.goals = goals
         self.schedule = schedule
         self.equipment = equipment

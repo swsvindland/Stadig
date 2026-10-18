@@ -79,8 +79,10 @@ public enum StudyCalendar {
 
     /// Check-ins land at the end of a review week, when fresh, or in the first days after it if
     /// those were missed; and not twice.
-    public static func checkInDue(on day: Day, start: Day, calendar: SystemCalendar?, lifeModes: [LifeModePeriod],
-                                  lastCheckIn: Day?) -> Bool {
+    public static func checkInDue(
+        on day: Day, start: Day, calendar: SystemCalendar?, lifeModes: [LifeModePeriod],
+        lastCheckIn: Day?
+    ) -> Bool {
         let phase = phase(on: day, start: start, calendar: calendar, lifeModes: lifeModes)
         let recent = lastCheckIn.map { $0.days(until: day) < 14 } ?? false
         guard !recent else { return false }
@@ -98,8 +100,11 @@ public enum StudyCalendar {
 public enum Split {
     static func groups(_ domains: [Domain]) -> [[Domain]] {
         var out: [[Domain]] = domains.filter(\.isLanguage).map { [$0] }
-        if domains.contains(.maths) { out.append(domains.contains(.writing) ? [.maths, .writing] : [.maths]) }
-        else if domains.contains(.writing) { out.append([.writing]) }
+        if domains.contains(.maths) {
+            out.append(domains.contains(.writing) ? [.maths, .writing] : [.maths])
+        } else if domains.contains(.writing) {
+            out.append([.writing])
+        }
         if domains.contains(.reading) { out.append([.reading]) }
         return out
     }
@@ -133,10 +138,14 @@ public enum Split {
             let total = weights.reduce(0, +)
             let shares = weights.map { $0 / total * Double(days.count) }
             counts = shares.map { max(1, Int($0)) }
-            while counts.reduce(0, +) > days.count, let i = counts.indices.filter({ counts[$0] > 1 }).max(by: { Double(counts[$0]) - shares[$0] < Double(counts[$1]) - shares[$1] }) {
+            while counts.reduce(0, +) > days.count,
+                let i = counts.indices.filter({ counts[$0] > 1 }).max(by: { Double(counts[$0]) - shares[$0] < Double(counts[$1]) - shares[$1] })
+            {
                 counts[i] -= 1
             }
-            while counts.reduce(0, +) < days.count, let i = counts.indices.max(by: { shares[$0] - Double(counts[$0]) < shares[$1] - Double(counts[$1]) }) {
+            while counts.reduce(0, +) < days.count,
+                let i = counts.indices.max(by: { shares[$0] - Double(counts[$0]) < shares[$1] - Double(counts[$1]) })
+            {
                 counts[i] += 1
             }
         }
@@ -146,7 +155,8 @@ public enum Split {
         var previous: Int?
         for day in days {
             let candidates = left.indices.filter { left[$0] > 0 }
-            let pick = candidates.filter { $0 != previous }.max { (left[$0], weights[$0]) < (left[$1], weights[$1]) }
+            let pick =
+                candidates.filter { $0 != previous }.max { (left[$0], weights[$0]) < (left[$1], weights[$1]) }
                 ?? candidates.max { left[$0] < left[$1] }
             guard let pick else { break }
             out[day] = groups[pick]

@@ -47,8 +47,10 @@ public enum LogAgain {
     /// What was eaten around this time of day most recently, for a one-tap "Same as yesterday":
     /// the latest earlier day's moment of two or more foods starting within `window` of the
     /// clock time of `now`, from the last week.
-    public static func usualMoment(near now: Date, entries: [FoodEntry], calendar: Calendar = .current,
-                                   window: TimeInterval = 90 * 60) -> Moment? {
+    public static func usualMoment(
+        near now: Date, entries: [FoodEntry], calendar: Calendar = .current,
+        window: TimeInterval = 90 * 60
+    ) -> Moment? {
         let today = Day(now, calendar: calendar)
         let hourNow = hourOfDay(now, calendar)
         let recent = entries.filter { $0.day < today && $0.day >= today.adding(days: -7) }
@@ -71,11 +73,12 @@ public enum LogAgain {
 
     /// A copy of an entry for now, keeping the amount and numbers.
     public static func copy(_ entry: FoodEntry, to date: Date, source: EntrySource = .recent) -> FoodEntry {
-        FoodEntry(date: date, name: entry.name, brand: entry.brand, foodID: entry.foodID,
-                  amountLabel: entry.amountLabel, grams: entry.grams, unitID: entry.unitID, count: entry.count,
-                  nutrients: entry.nutrients, micros: entry.micros, processing: entry.processing, fermented: entry.fermented,
-                  fluid: entry.fluid, source: source,
-                  confidence: entry.confidence)
+        FoodEntry(
+            date: date, name: entry.name, brand: entry.brand, foodID: entry.foodID,
+            amountLabel: entry.amountLabel, grams: entry.grams, unitID: entry.unitID, count: entry.count,
+            nutrients: entry.nutrients, micros: entry.micros, processing: entry.processing, fermented: entry.fermented,
+            fluid: entry.fluid, source: source,
+            confidence: entry.confidence)
     }
 
     static func hourOfDay(_ date: Date, _ calendar: Calendar) -> Double {
@@ -97,34 +100,43 @@ public enum NutritionExport {
         return value.formatted(.number.precision(.fractionLength(0...2)).grouping(.never).locale(Locale(identifier: "en_US_POSIX")))
     }
 
-    public static func tables(entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus],
-                              supplements: [SupplementLog] = [], water: [WaterLog] = [], calendar: Calendar = .current) -> [NutritionExportTable] {
+    public static func tables(
+        entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus],
+        supplements: [SupplementLog] = [], water: [WaterLog] = [], calendar: Calendar = .current
+    ) -> [NutritionExportTable] {
         // Times on the clock, in the zone the days are in; `.iso8601` alone writes UTC with no zone.
         let clock = Date.ISO8601FormatStyle(timeZone: calendar.timeZone).time(includingFractionalSeconds: false)
         // Vitamins and minerals after the label basics, a column each; blank where a food didn't list it.
         let micros = Micronutrients.all.filter { !["fiber", "sodium", "saturatedFat"].contains($0.key) }
         let diary = NutritionExportTable(
             name: "diary",
-            header: ["day", "time", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
-                     "sat_fat_g", "sodium_mg"] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" }
+            header: [
+                "day", "time", "name", "brand", "amount", "grams", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
+                "sat_fat_g", "sodium_mg",
+            ] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" }
                 + ["nova", "fermented", "fluid_ml", "source", "estimate"],
             rows: entries.sorted { $0.date < $1.date }.map { e in
-                [e.day.iso, e.date.formatted(clock), e.name, e.brand ?? "",
-                 e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
-                 n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium)]
+                [
+                    e.day.iso, e.date.formatted(clock), e.name, e.brand ?? "",
+                    e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
+                    n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium),
+                ]
                     + micros.map { n(e.micros?[$0.key]) }
-                    + [e.processing.map { String($0.rawValue) } ?? "", e.fermented.map { $0 ? "yes" : "no" } ?? "",
-                       n(Hydration.fluid(of: e)), e.source.rawValue,
-                       e.isEstimate ? "yes" : "no"]
+                    + [
+                        e.processing.map { String($0.rawValue) } ?? "", e.fermented.map { $0 ? "yes" : "no" } ?? "",
+                        n(Hydration.fluid(of: e)), e.source.rawValue,
+                        e.isEstimate ? "yes" : "no",
+                    ]
             })
         let weights = NutritionExportTable(
             name: "weight",
             header: ["date", "kg", "source", "ignored"],
             rows: weighIns.sorted { $0.date < $1.date }.map { w in
-                let source = switch w.source {
-                case .health: "Health"
-                case .manual: "Manual"
-                }
+                let source =
+                    switch w.source {
+                    case .health: "Health"
+                    case .manual: "Manual"
+                    }
                 return [w.date.ISO8601Format(), n(w.kg), source, w.excluded ? "yes" : "no"]
             })
         let targets = NutritionExportTable(
@@ -138,21 +150,26 @@ public enum NutritionExport {
         var tables = [diary, weights, targets, dayStates]
         if !supplements.isEmpty {
             let keys = Micronutrients.all.map(\.key).filter { key in supplements.contains { $0.amounts[key] != nil } }
-            tables.append(NutritionExportTable(
-                name: "supplements",
-                header: ["day", "time", "name", "amount", "taken", "kcal"] + keys.map { key in
-                    let unit = Micronutrients.info(key)?.unit ?? .mg
-                    return "\(key)_\(unit == .µg ? "ug" : unit.symbol)"
-                },
-                rows: supplements.sorted { $0.date < $1.date }.map { s in
-                    [s.day.iso, s.date.formatted(clock), s.name, s.amountLabel,
-                     s.taken ? "yes" : "skipped", n(s.nutrients?.kcal)] + keys.map { n(s.amounts[$0]) }
-                }))
+            tables.append(
+                NutritionExportTable(
+                    name: "supplements",
+                    header: ["day", "time", "name", "amount", "taken", "kcal"]
+                        + keys.map { key in
+                            let unit = Micronutrients.info(key)?.unit ?? .mg
+                            return "\(key)_\(unit == .µg ? "ug" : unit.symbol)"
+                        },
+                    rows: supplements.sorted { $0.date < $1.date }.map { s in
+                        [
+                            s.day.iso, s.date.formatted(clock), s.name, s.amountLabel,
+                            s.taken ? "yes" : "skipped", n(s.nutrients?.kcal),
+                        ] + keys.map { n(s.amounts[$0]) }
+                    }))
         }
         if !water.isEmpty {
-            tables.append(NutritionExportTable(
-                name: "water", header: ["day", "time", "ml"],
-                rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(clock), n($0.ml)] }))
+            tables.append(
+                NutritionExportTable(
+                    name: "water", header: ["day", "time", "ml"],
+                    rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(clock), n($0.ml)] }))
         }
         return tables
     }

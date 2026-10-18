@@ -108,11 +108,15 @@ public enum WritingProgress {
                 let cutoff = recent.first!.0.addingTimeInterval(-Double(WritingSchedule.pairGap) * 86_400)
                 let before = values.filter { $0.0 <= cutoff }
                 let earlier = before.count >= 3 ? Array(before.suffix(size)) : Array(values.dropLast(size).suffix(size))
-                let (r, rSpread) = meanAndSpread(recent.map(\.1)), (e, eSpread) = meanAndSpread(earlier.map(\.1))
+                let (r, rSpread) = meanAndSpread(recent.map(\.1))
+                let (e, eSpread) = meanAndSpread(earlier.map(\.1))
                 // A change only counts past two standard errors: more than pieces vary on their own.
                 let noise = 2 * (rSpread * rSpread / Double(recent.count) + eSpread * eSpread / Double(earlier.count)).squareRoot()
-                if !metric.moved(from: e, to: r) || abs(r - e) < noise { direction = .steady }
-                else { direction = (r < e) == metric.lowerIsBetter ? .better : .worse }
+                if !metric.moved(from: e, to: r) || abs(r - e) < noise {
+                    direction = .steady
+                } else {
+                    direction = (r < e) == metric.lowerIsBetter ? .better : .worse
+                }
             }
             return WritingTrend(metric: metric, points: points, direction: direction)
         }
@@ -128,9 +132,10 @@ public enum WritingProgress {
         let judged = comparisons.compactMap(\.pickedNewer)
         let ai = comparisons.compactMap(\.aiPickedNewer)
         let both = comparisons.filter { $0.pickedNewer != nil && $0.aiPickedNewer != nil }
-        return ComparisonRecord(judged: judged.count, newerPicked: judged.filter { $0 }.count, aiJudged: ai.count,
-                                aiNewerPicked: ai.filter { $0 }.count, agreed: both.filter { $0.pickedNewer == $0.aiPickedNewer }.count,
-                                bothJudged: both.count)
+        return ComparisonRecord(
+            judged: judged.count, newerPicked: judged.filter { $0 }.count, aiJudged: ai.count,
+            aiNewerPicked: ai.filter { $0 }.count, agreed: both.filter { $0.pickedNewer == $0.aiPickedNewer }.count,
+            bothJudged: both.count)
     }
 
     // MARK: The score

@@ -1,10 +1,10 @@
-import SwiftUI
-import UniformTypeIdentifiers
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 import SystemStore
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
@@ -34,7 +34,9 @@ struct SettingsView: View {
                 }
             }
             Section("Gym") {
-                NavigationLink { GymEditor(gym: model.gym) } label: {
+                NavigationLink {
+                    GymEditor(gym: model.gym)
+                } label: {
                     LabeledContent("Equipment and plates", value: model.gym.name)
                 }
                 .accessibilityIdentifier("settings.gym")
@@ -58,18 +60,27 @@ struct SettingsView: View {
             } header: {
                 Text("Training")
             } footer: {
-                Text("With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest).")
+                Text(
+                    "With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest)."
+                )
             }
             Section {
-                NavigationLink { FocusScreen() } label: {
+                NavigationLink {
+                    FocusScreen()
+                } label: {
                     LabeledContent("Focus", value: model.settings.focusSummary)
                 }
                 .accessibilityIdentifier("settings.focus")
-                Picker("Proportion targets", selection: Binding(get: { proportionTargets }, set: { targets in
-                    var s = model.settings
-                    s.proportionTargets = targets
-                    model.save(settings: s)
-                })) {
+                Picker(
+                    "Proportion targets",
+                    selection: Binding(
+                        get: { proportionTargets },
+                        set: { targets in
+                            var s = model.settings
+                            s.proportionTargets = targets
+                            model.save(settings: s)
+                        })
+                ) {
                     ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
                 }
             } header: {
@@ -112,7 +123,9 @@ struct SettingsView: View {
             } header: {
                 Text("Your data")
             } footer: {
-                Text("Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins.")
+                Text(
+                    "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
+                )
             }
             if Purchases.enabled {
                 Section("Lift Track") {
@@ -125,8 +138,10 @@ struct SettingsView: View {
                 }
             }
             Section {
-                Text("Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Text(
+                    "Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
+                )
+                .font(.footnote).foregroundStyle(.secondary)
             }
             #if DEBUG
             Section("Debug") {
@@ -188,11 +203,13 @@ struct SettingsView: View {
 extension AppModel {
     /// One setting, saved on every change.
     func setting<T>(_ keyPath: WritableKeyPath<LiftSettings, T>) -> Binding<T> {
-        Binding(get: { self.settings[keyPath: keyPath] }, set: { value in
-            var s = self.settings
-            s[keyPath: keyPath] = value
-            self.save(settings: s)
-        })
+        Binding(
+            get: { self.settings[keyPath: keyPath] },
+            set: { value in
+                var s = self.settings
+                s[keyPath: keyPath] = value
+                self.save(settings: s)
+            })
     }
 }
 
@@ -212,9 +229,13 @@ struct ProfileEditor: View {
         Form {
             Section("Goals") {
                 ForEach(OutcomeGoal.allCases) { goal in
-                    Toggle(goal.label, isOn: Binding(get: { profile.goals.contains(goal) }, set: { on in
-                        if on { profile.goals.append(goal) } else { profile.goals.removeAll { $0 == goal } }
-                    }))
+                    Toggle(
+                        goal.label,
+                        isOn: Binding(
+                            get: { profile.goals.contains(goal) },
+                            set: { on in
+                                if on { profile.goals.append(goal) } else { profile.goals.removeAll { $0 == goal } }
+                            }))
                 }
             }
             Section("Schedule") {
@@ -280,11 +301,15 @@ struct FocusScreen: View {
                 ForEach(PhysiqueRegion.allCases) { region in
                     let on = model.settings.focus.contains(region)
                     let full = !on && model.settings.focus.count >= LiftSettings.focusLimit
-                    Toggle(isOn: Binding(get: { on }, set: { value in
-                        var s = model.settings
-                        if !value { s.focus.remove(region) } else if s.focus.count < LiftSettings.focusLimit { s.focus.insert(region) }
-                        model.save(settings: s)
-                    })) {
+                    Toggle(
+                        isOn: Binding(
+                            get: { on },
+                            set: { value in
+                                var s = model.settings
+                                if !value { s.focus.remove(region) } else if s.focus.count < LiftSettings.focusLimit { s.focus.insert(region) }
+                                model.save(settings: s)
+                            })
+                    ) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(region.label)
                             Text(region.focusDetail).font(.caption).foregroundStyle(.secondary)
@@ -338,9 +363,11 @@ struct RecurringScreen: View {
 
     var body: some View {
         ScrollView {
-            OutsideActivitiesEditor(recurring: $recurring, title: "Outside the gym",
-                                    detail: "Lift Track plans around these; they spend the same recovery.")
-                .padding()
+            OutsideActivitiesEditor(
+                recurring: $recurring, title: "Outside the gym",
+                detail: "Lift Track plans around these; they spend the same recovery."
+            )
+            .padding()
         }
         .background(.pageBackground)
         .onDisappear {
@@ -377,16 +404,24 @@ struct GymEditor: View {
             }
             Section("Equipment") {
                 ForEach(Equipment.allCases) { item in
-                    Toggle(item.label, isOn: Binding(get: { gym.equipment.contains(item) }, set: { on in
-                        if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
-                    }))
+                    Toggle(
+                        item.label,
+                        isOn: Binding(
+                            get: { gym.equipment.contains(item) },
+                            set: { on in
+                                if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
+                            }))
                 }
             }
             Section {
                 ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
-                    Toggle(item.label, isOn: Binding(get: { gym.apparatus.contains(item) }, set: { on in
-                        if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                    }))
+                    Toggle(
+                        item.label,
+                        isOn: Binding(
+                            get: { gym.apparatus.contains(item) },
+                            set: { on in
+                                if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
+                            }))
                 }
             } header: {
                 Text("Fixtures")
@@ -395,19 +430,27 @@ struct GymEditor: View {
             }
             Section {
                 ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { item in
-                    Toggle(item.label, isOn: Binding(get: { gym.apparatus.contains(item) }, set: { on in
-                        if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                    }))
+                    Toggle(
+                        item.label,
+                        isOn: Binding(
+                            get: { gym.apparatus.contains(item) },
+                            set: { on in
+                                if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
+                            }))
                 }
             } header: {
                 Text("Recovery")
             } footer: {
-                Text("Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt.")
+                Text(
+                    "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt."
+                )
             }
             Section("Loads") {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
                 LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
-                Stepper("Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $gym.dumbbellMax, in: gym.dumbbellStep...200, step: gym.dumbbellStep)
+                Stepper(
+                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $gym.dumbbellMax, in: gym.dumbbellStep...200,
+                    step: gym.dumbbellStep)
                 Stepper("Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $gym.dumbbellStep, in: 0.5...10, step: 0.5)
                 Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $gym.machineStep, in: 1...20, step: 0.5)
             }

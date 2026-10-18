@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// A minute of setup, then the first session finds the level: the onboarding is the first session.
@@ -107,8 +107,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("What do you want to train?").font(.title.bold())
                 .accessibilityIdentifier("onboarding.coursesTitle")
-            Text("Focus courses get full sessions. Maintenance keeps what you know with a few minutes of reviews. Two or three Focus courses at once is plenty.")
-                .foregroundStyle(.secondary)
+            Text(
+                "Focus courses get full sessions. Maintenance keeps what you know with a few minutes of reviews. Two or three Focus courses at once is plenty."
+            )
+            .foregroundStyle(.secondary)
             CoursePicker(settings: $settings)
             LoadWarning(settings: settings)
         }
@@ -130,15 +132,18 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Your first session").font(.largeTitle.bold())
                 .accessibilityIdentifier("onboarding.readyTitle")
-            Text("About \(settings.schedule.minutes) minutes to find your level, then the first new material. Answer honestly: “Don't know” is always better than a guess.")
-                .font(.title3)
+            Text(
+                "About \(settings.schedule.minutes) minutes to find your level, then the first new material. Answer honestly: “Don't know” is always better than a guess."
+            )
+            .font(.title3)
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(settings.focus) { domain in
                     if let line = firstSession(domain) { Label(line, systemImage: domain.symbol) }
                 }
                 if !settings.maintenance.isEmpty {
-                    Label("Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews only",
-                          systemImage: "arrow.triangle.2.circlepath")
+                    Label(
+                        "Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews only",
+                        systemImage: "arrow.triangle.2.circlepath")
                 }
             }
             .card()
@@ -213,8 +218,12 @@ struct ScheduleEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Stepper(value: Binding(get: { settings.schedule.daysPerWeek }, set: { settings.schedule = StudySchedule(daysPerWeek: $0, minutes: settings.schedule.minutes) }),
-                    in: 1...7) {
+            Stepper(
+                value: Binding(
+                    get: { settings.schedule.daysPerWeek },
+                    set: { settings.schedule = StudySchedule(daysPerWeek: $0, minutes: settings.schedule.minutes) }),
+                in: 1...7
+            ) {
                 LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
             }
             .accessibilityIdentifier("onboarding.daysPerWeek")
@@ -268,9 +277,10 @@ struct WeekPreview: View {
         }
         .card(padding: 12)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Weekday.allCases.compactMap { weekday in
-            let day = monday.adding(days: weekday.rawValue - 1)
-            return week[day].map { "\(weekday.name): \($0.map(\.label).joined(separator: " and "))" }
-        }.joined(separator: ". "))
+        .accessibilityLabel(
+            Weekday.allCases.compactMap { weekday in
+                let day = monday.adding(days: weekday.rawValue - 1)
+                return week[day].map { "\(weekday.name): \($0.map(\.label).joined(separator: " and "))" }
+            }.joined(separator: ". "))
     }
 }

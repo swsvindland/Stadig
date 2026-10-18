@@ -2,7 +2,9 @@ import Foundation
 import Synchronization
 import SystemCore
 import Testing
+
 @testable import HealthBridge
+
 #if canImport(HealthKit)
 import HealthKit
 #endif
@@ -58,14 +60,16 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         let food = Nutrients(kcal: 210, protein: 12, carbs: 30, fat: 4, fiber: 5, sodium: 380)
         let written = values(food, micros: ["kcal": 1, "fiber": 99, "vitaminD": 2.5, "water": 240, "notANutrient": 7])
         #expect(written == ["kcal": 210, "protein": 12, "carbs": 30, "fat": 4, "fiber": 5, "sodium": 380, "vitaminD": 2.5, "water": 240])
-        #expect(values(Nutrients(kcal: 0, protein: 0, carbs: 0, fat: 0)).keys.sorted() == ["carbs", "fat", "kcal", "protein"],
-                "unknown sugar, saturated fat and sodium aren't written as zero")
+        #expect(
+            values(Nutrients(kcal: 0, protein: 0, carbs: 0, fat: 0)).keys.sorted() == ["carbs", "fat", "kcal", "protein"],
+            "unknown sugar, saturated fat and sodium aren't written as zero")
     }
 
     @Test func unitsMatchTheCatalog() throws {
         let byKey = Dictionary(uniqueKeysWithValues: HealthTypes.dietary.map { ($0.key, $0) })
         #expect(byKey.count == HealthTypes.dietary.count, "one Health type per key")
-        let milligrams = HKUnit.gramUnit(with: .milli), micrograms = HKUnit.gramUnit(with: .micro)
+        let milligrams = HKUnit.gramUnit(with: .milli)
+        let micrograms = HKUnit.gramUnit(with: .micro)
         for key in ["sodium", "potassium", "calcium", "iron", "magnesium", "zinc", "vitaminC", "caffeine", "cholesterol"] {
             #expect(byKey[key]?.unit == milligrams, "\(key)")
         }
@@ -80,7 +84,8 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         for type in HealthTypes.dietary {
             #expect(type.type.is(compatibleWith: type.unit), "\(type.key)")
         }
-        #expect(HealthTypes.syncIdentifier(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, key: "kcal")
+        #expect(
+            HealthTypes.syncIdentifier(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, key: "kcal")
                 == "00000000-0000-0000-0000-000000000001.kcal")
     }
 }
@@ -131,16 +136,20 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
     @Test func recoveryDaysCoverEveryDay() {
         let start = Day(year: 2026, month: 10, day: 10)
         let end = Day(year: 2026, month: 10, day: 13)
-        let days = HealthMath.recoveryDays(from: start, through: end, sleep: [start: 7.5],
-                                           hrv: [end: 62], restingHeartRate: [:])
+        let days = HealthMath.recoveryDays(
+            from: start, through: end, sleep: [start: 7.5],
+            hrv: [end: 62], restingHeartRate: [:])
         #expect(days.map(\.day) == [start, start.adding(days: 1), start.adding(days: 2), end])
         #expect(days.first?.sleepHours == 7.5)
         #expect(days.last?.hrv == 62)
         #expect(days[1] == RecoveryDay(day: start.adding(days: 1)))
         #expect(HealthMath.recoveryDays(from: start, through: end, sleep: [:], hrv: [:], restingHeartRate: [:]).isEmpty)
         // Data only outside the range (a nap that counts towards tomorrow's night) still means nothing to report.
-        #expect(HealthMath.recoveryDays(from: start, through: end, sleep: [end.adding(days: 1): 0.5], hrv: [:],
-                                        restingHeartRate: [:]).isEmpty)
+        #expect(
+            HealthMath.recoveryDays(
+                from: start, through: end, sleep: [end.adding(days: 1): 0.5], hrv: [:],
+                restingHeartRate: [:]
+            ).isEmpty)
         #expect(HealthMath.recoveryDays(from: end, through: start, sleep: [start: 7], hrv: [:], restingHeartRate: [:]).isEmpty)
     }
 }
@@ -221,13 +230,17 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         #expect(await bridge.recoveryDays(since: Day.today.adding(days: -14)).isEmpty)
         #expect(await bridge.externalWorkouts(since: past, excludingBundlePrefixes: ["com.example.lifttrack"]).isEmpty)
         #expect(await bridge.heartRateSamples(from: past, to: Date()).isEmpty)
-        try await bridge.saveStrengthWorkout(id: UUID(), version: 1, start: past, end: past.addingTimeInterval(3600),
-                                             title: "Push", energyKcal: 250)
+        try await bridge.saveStrengthWorkout(
+            id: UUID(), version: 1, start: past, end: past.addingTimeInterval(3600),
+            title: "Push", energyKcal: 250)
         await bridge.deleteWorkout(id: UUID())
         await bridge.saveMeasurements(BodyMeasurements(day: .today, bodyFatPercent: 15, waistCm: 82))
         await bridge.deleteMeasurements(id: UUID())
-        await bridge.saveFoods([HealthFood(id: UUID(), date: past, name: "Oats", nutrients: Nutrients(kcal: 150, protein: 5, carbs: 27, fat: 3),
-                                           version: 1)])
+        await bridge.saveFoods([
+            HealthFood(
+                id: UUID(), date: past, name: "Oats", nutrients: Nutrients(kcal: 150, protein: 5, carbs: 27, fat: 3),
+                version: 1)
+        ])
         await bridge.deleteFoods(ids: [UUID()])
         #expect(await bridge.weighIns(since: past, ownBundlePrefixes: []).isEmpty)
         #expect(await bridge.weighInChanges(after: nil, since: past, ownBundlePrefixes: []) == nil, "no changes, not \"everything deleted\"")
@@ -241,7 +254,13 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
     }
 
     @Test func additionsKeepToOtherSourcesFromTheStartDate() {
-        let scale = UUID(), phone = UUID(), early = UUID(), own = UUID(), watch = UUID(), gone = UUID(), deletedElsewhere = UUID()
+        let scale = UUID()
+        let phone = UUID()
+        let early = UUID()
+        let own = UUID()
+        let watch = UUID()
+        let gone = UUID()
+        let deletedElsewhere = UUID()
         let since = date(2026, 10, 1, 0)
         let changes = HealthWeightChanges(
             readings: [
@@ -277,7 +296,8 @@ private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: 
         let queue = WriteQueue()
         let log = Mutex<[String]>([])
         let (gate, open) = AsyncStream.makeStream(of: Void.self)
-        let food = UUID(), water = UUID()
+        let food = UUID()
+        let water = UUID()
 
         async let save: Void = queue.run([food]) {
             log.withLock { $0.append("save started") }

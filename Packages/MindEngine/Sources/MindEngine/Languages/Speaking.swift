@@ -38,9 +38,11 @@ public struct SpeakingTask: Hashable, Sendable, Identifiable {
     public var test: TestKind?
     public var band: Int?
 
-    public init(id: String, key: CardKey, language: Language, kind: AttemptKind, mode: Mode = .say, instruction: String, prompt: Prompt,
-                hint: Scaffolded? = nil, expected: [String], shape: Shape = .phrase, answer: String? = nil, meaning: String? = nil,
-                expectedSeconds: Double, test: TestKind? = nil, band: Int? = nil) {
+    public init(
+        id: String, key: CardKey, language: Language, kind: AttemptKind, mode: Mode = .say, instruction: String, prompt: Prompt,
+        hint: Scaffolded? = nil, expected: [String], shape: Shape = .phrase, answer: String? = nil, meaning: String? = nil,
+        expectedSeconds: Double, test: TestKind? = nil, band: Int? = nil
+    ) {
         self.id = id
         self.key = key
         self.language = language
@@ -69,8 +71,9 @@ public struct SpeakingTask: Hashable, Sendable, Identifiable {
 
     /// The task as a question, so the session can show how it went the way it does for any answer.
     var asQuestion: Question {
-        Question(id: id, key: key, kind: kind, instruction: instruction, prompt: prompt, answer: .choice(0), expectedSeconds: expectedSeconds,
-                 reveal: .note(meaning.map { "\(answer) · \($0)" } ?? answer), test: test, band: band)
+        Question(
+            id: id, key: key, kind: kind, instruction: instruction, prompt: prompt, answer: .choice(0), expectedSeconds: expectedSeconds,
+            reveal: .note(meaning.map { "\(answer) · \($0)" } ?? answer), test: test, band: band)
     }
 }
 

@@ -90,8 +90,10 @@ public enum Scaffolds {
             guard word.hasKanji, let split = furigana(word) else {
                 return Scaffolded(language: word.language, segments: kana(word.text, context))
             }
-            return Scaffolded(language: word.language, segments: kana(split.prefix, context)
-                + [Scaffolded.Segment(text: split.stem, help: mastered ? nil : split.reading)] + kana(split.suffix, context))
+            return Scaffolded(
+                language: word.language,
+                segments: kana(split.prefix, context)
+                    + [Scaffolded.Segment(text: split.stem, help: mastered ? nil : split.reading)] + kana(split.suffix, context))
         case .none:
             guard !mastered, word.language.pack.pronunciation == .spanish, let guide = SpanishSounds.guide(word.text) else {
                 return .plain(word.text, word.language)
@@ -128,8 +130,10 @@ public enum Scaffolds {
     /// "食" read "た" with "べる" after; お茶 is "お", then "茶" read "ちゃ".
     static func furigana(_ word: Word) -> (prefix: String, stem: String, reading: String, suffix: String)? {
         guard word.hasKanji else { return nil }
-        var text = Array(word.text), kana = Array(word.kana)
-        var prefix = "", suffix = ""
+        var text = Array(word.text)
+        var kana = Array(word.kana)
+        var prefix = ""
+        var suffix = ""
         while let t = text.last, let k = kana.last, !t.isKanji, fold(t) == fold(k), text.count > 1 {
             suffix.insert(t, at: suffix.startIndex)
             text.removeLast()
@@ -145,9 +149,12 @@ public enum Scaffolds {
     }
 
     static func fold(_ c: Character) -> Character {
-        Character(String(String.UnicodeScalarView(c.unicodeScalars.map { s in
-            (0x30A1...0x30F6).contains(s.value) ? Unicode.Scalar(s.value - 0x60)! : s
-        })))
+        Character(
+            String(
+                String.UnicodeScalarView(
+                    c.unicodeScalars.map { s in
+                        (0x30A1...0x30F6).contains(s.value) ? Unicode.Scalar(s.value - 0x60)! : s
+                    })))
     }
 
     static func japanese(_ text: String, words: [Word], _ context: Context) -> Scaffolded {

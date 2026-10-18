@@ -51,8 +51,9 @@ public struct LanguagePack: Hashable, Sendable {
         case .japanese:
             LanguagePack(language: .japanese, name: "Japanese", locale: "ja-JP", catalog: "japanese", keyPrefix: "jp", script: .kanaKanji)
         case .spanish:
-            LanguagePack(language: .spanish, name: "Spanish", locale: "es-ES", catalog: "spanish", keyPrefix: "es", script: .none,
-                         pronunciation: .spanish)
+            LanguagePack(
+                language: .spanish, name: "Spanish", locale: "es-ES", catalog: "spanish", keyPrefix: "es", script: .none,
+                pronunciation: .spanish)
         }
     }
 

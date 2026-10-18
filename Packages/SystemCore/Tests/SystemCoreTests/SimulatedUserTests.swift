@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SystemCore
 
 /// The progression, fatigue and trust logic is the product. These run simulated people through
@@ -75,19 +76,23 @@ struct SimulatedUserTests {
         sim.assessmentWeeks = 2
         sim.run(weeks: 9)
         let today = sim.startDate.adding(weeks: 9)
-        let context = ProgressionContext(exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: sim.trust,
-                                         phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80,
-                                         history: sim.history[TestExercise.bench.id] ?? [])
-        let maintenance = Stalls.detect(context, sets: 3, repRange: RepRange(5, 8), today: today,
-                                        phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
+        let context = ProgressionContext(
+            exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: sim.trust,
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80,
+            history: sim.history[TestExercise.bench.id] ?? [])
+        let maintenance = Stalls.detect(
+            context, sets: 3, repRange: RepRange(5, 8), today: today,
+            phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
         #expect(maintenance?.reading == .programming, "\(String(describing: maintenance))")
         #expect((maintenance?.weeks ?? 0) >= 3)
         #expect(maintenance?.suggestion?.loadKg != nil)
-        let cut = Stalls.detect(context, sets: 3, repRange: RepRange(5, 8), today: today,
-                                phase: NutritionPhase(kind: .cut, source: .macroTrack).effects, beatUp: false)
+        let cut = Stalls.detect(
+            context, sets: 3, repRange: RepRange(5, 8), today: today,
+            phase: NutritionPhase(kind: .cut, source: .macroTrack).effects, beatUp: false)
         #expect(cut?.reading == .expectedInDeficit)
-        let beatUp = Stalls.detect(context, sets: 3, repRange: RepRange(5, 8), today: today,
-                                   phase: NutritionPhase.assumedMaintenance.effects, beatUp: true)
+        let beatUp = Stalls.detect(
+            context, sets: 3, repRange: RepRange(5, 8), today: today,
+            phase: NutritionPhase.assumedMaintenance.effects, beatUp: true)
         #expect(beatUp?.reading == .recovery)
     }
 
@@ -95,11 +100,13 @@ struct SimulatedUserTests {
     func noFalseStall() {
         var sim = TrainingSimulation(lifter: .honestNovice, slots: [Self.slots[1]])
         sim.run(weeks: 9)
-        let context = ProgressionContext(exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: sim.trust,
-                                         phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80,
-                                         history: sim.history[TestExercise.bench.id] ?? [])
-        let stall = Stalls.detect(context, sets: 3, repRange: RepRange(5, 8), today: sim.startDate.adding(weeks: 9),
-                                  phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
+        let context = ProgressionContext(
+            exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: sim.trust,
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80,
+            history: sim.history[TestExercise.bench.id] ?? [])
+        let stall = Stalls.detect(
+            context, sets: 3, repRange: RepRange(5, 8), today: sim.startDate.adding(weeks: 9),
+            phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
         #expect(stall == nil, "\(String(describing: stall))")
     }
 
@@ -108,10 +115,15 @@ struct SimulatedUserTests {
         let novice = TrustState(experience: .novice)
         #expect(FailurePolicy.allowsRepOut(TestExercise.chestPress, trust: novice, experience: .novice, hasSafeties: false))
         #expect(!FailurePolicy.allowsRepOut(TestExercise.bench, trust: novice, experience: .novice, hasSafeties: true))
-        #expect(FailurePolicy.allowsRepOut(TestExercise.bench, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: true))
-        #expect(!FailurePolicy.allowsRepOut(TestExercise.bench, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: false))
+        #expect(
+            FailurePolicy.allowsRepOut(TestExercise.bench, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: true))
+        #expect(
+            !FailurePolicy.allowsRepOut(TestExercise.bench, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: false)
+        )
         // Deadlifts can fail safely without pins, but low-trust lifters stop at form breakdown.
-        #expect(FailurePolicy.allowsRepOut(TestExercise.deadlift, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: false))
+        #expect(
+            FailurePolicy.allowsRepOut(
+                TestExercise.deadlift, trust: TrustState(experience: .experienced), experience: .experienced, hasSafeties: false))
         #expect(FailurePolicy.stopAtFormBreakdown(TestExercise.deadlift, trust: TrustState(experience: .experienced)))
         #expect(!FailurePolicy.stopAtFormBreakdown(TestExercise.chestPress, trust: novice))
     }

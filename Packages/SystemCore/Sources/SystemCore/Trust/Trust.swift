@@ -160,15 +160,21 @@ public enum Calibration {
             let claim = rating.claimedReserve
             var error: Double?
             if let exact {
-                if exact < claim.lowerBound - tolerance { error = exact - claim.lowerBound }
-                else if exact > claim.upperBound + tolerance { error = exact - claim.upperBound }
-                else { error = 0 }
+                if exact < claim.lowerBound - tolerance {
+                    error = exact - claim.lowerBound
+                } else if exact > claim.upperBound + tolerance {
+                    error = exact - claim.upperBound
+                } else {
+                    error = 0
+                }
             } else if let lowerBound, lowerBound > claim.upperBound + tolerance {
                 error = lowerBound - claim.upperBound
             }
             if let error {
-                result.append(CalibrationObservation(day: Day(set.date), exerciseID: set.exerciseID, rating: rating,
-                                                     error: error, source: source, tier: exercise.safetyTier))
+                result.append(
+                    CalibrationObservation(
+                        day: Day(set.date), exerciseID: set.exerciseID, rating: rating,
+                        error: error, source: source, tier: exercise.safetyTier))
             }
         }
         return result
@@ -183,8 +189,10 @@ public enum FailurePolicy {
     }
 
     /// Whether this exercise may be repped out today.
-    public static func allowsRepOut(_ exercise: some ExerciseTraits, trust: TrustState, experience: TrainingExperience,
-                                    hasSafeties: Bool) -> Bool {
+    public static func allowsRepOut(
+        _ exercise: some ExerciseTraits, trust: TrustState, experience: TrainingExperience,
+        hasSafeties: Bool
+    ) -> Bool {
         switch exercise.safetyTier {
         case .safeToFail:
             return true

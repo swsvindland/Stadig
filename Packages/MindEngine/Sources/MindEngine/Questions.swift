@@ -8,19 +8,19 @@ public struct SeededRandom: RandomNumberGenerator, Sendable {
     public init(seed: UInt64) { state = seed }
 
     public init(_ parts: String...) {
-        var hash: UInt64 = 0xcbf29ce484222325
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         for byte in parts.joined(separator: "|").utf8 {
             hash ^= UInt64(byte)
-            hash = hash &* 0x100000001b3
+            hash = hash &* 0x100_0000_01b3
         }
         state = hash
     }
 
     public mutating func next() -> UInt64 {
-        state &+= 0x9E3779B97F4A7C15
+        state &+= 0x9E37_79B9_7F4A_7C15
         var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
-        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
         return z ^ (z >> 31)
     }
 
@@ -108,9 +108,11 @@ public struct Question: Hashable, Sendable, Identifiable {
     /// Scored on speed as well as accuracy (numeracy): a right answer moves straight on.
     public var timed: Bool
 
-    public init(id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, choices: [String] = [],
-                choiceStyle: ChoiceStyle = .text, answer: Answer, allowsDontKnow: Bool = false, expectedSeconds: Double,
-                reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil, figure: DataFigure? = nil, timed: Bool = false) {
+    public init(
+        id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, choices: [String] = [],
+        choiceStyle: ChoiceStyle = .text, answer: Answer, allowsDontKnow: Bool = false, expectedSeconds: Double,
+        reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil, figure: DataFigure? = nil, timed: Bool = false
+    ) {
         self.id = id
         self.key = key
         self.kind = kind
@@ -141,9 +143,11 @@ public struct Question: Hashable, Sendable, Identifiable {
     }
 
     /// Builds a multiple-choice question from a right answer and wrong ones, in a shuffled order.
-    public static func choosing(id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, correct: String,
-                                wrong: [String], style: ChoiceStyle = .text, expectedSeconds: Double, reveal: Reveal? = nil,
-                                rng: inout SeededRandom) -> Question {
+    public static func choosing(
+        id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, correct: String,
+        wrong: [String], style: ChoiceStyle = .text, expectedSeconds: Double, reveal: Reveal? = nil,
+        rng: inout SeededRandom
+    ) -> Question {
         var seen: Set<String> = [normalised(correct)]
         var options = [correct]
         for option in wrong where seen.insert(normalised(option)).inserted {
@@ -151,8 +155,9 @@ public struct Question: Hashable, Sendable, Identifiable {
             if options.count == 4 { break }
         }
         options.shuffle(using: &rng)
-        return Question(id: id, key: key, kind: kind, instruction: instruction, prompt: prompt, choices: options, choiceStyle: style,
-                        answer: .choice(options.firstIndex(of: correct)!), expectedSeconds: expectedSeconds, reveal: reveal)
+        return Question(
+            id: id, key: key, kind: kind, instruction: instruction, prompt: prompt, choices: options, choiceStyle: style,
+            answer: .choice(options.firstIndex(of: correct)!), expectedSeconds: expectedSeconds, reveal: reveal)
     }
 
     static func normalised(_ text: String) -> String {

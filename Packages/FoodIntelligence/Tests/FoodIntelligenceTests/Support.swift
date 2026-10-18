@@ -1,11 +1,12 @@
 import CoreGraphics
 import CoreText
-import Foundation
 import FoodDatabase
+import Foundation
 import FoundationModels
 import Synchronization
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 // MARK: Vision
@@ -20,11 +21,14 @@ extension Trait where Self == ConditionTrait {
 
 // MARK: Foods
 
-func food(_ name: String = "Test", id: String? = nil, brand: String? = nil, basis: FoodBasis = .g, kcal: Double = 100,
-          portions: [(String, Double)] = [], source: FoodSource = .usda) -> Food {
-    Food(id: id ?? "\(source.rawValue):\(name.lowercased())", name: name, brand: brand, basis: basis,
-         nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), portions: portions.map { Portion(label: $0.0, amount: $0.1) },
-         source: source)
+func food(
+    _ name: String = "Test", id: String? = nil, brand: String? = nil, basis: FoodBasis = .g, kcal: Double = 100,
+    portions: [(String, Double)] = [], source: FoodSource = .usda
+) -> Food {
+    Food(
+        id: id ?? "\(source.rawValue):\(name.lowercased())", name: name, brand: brand, basis: basis,
+        nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), portions: portions.map { Portion(label: $0.0, amount: $0.1) },
+        source: source)
 }
 
 func seen(_ name: String, brand: String = "", quantity: Double = 1, unit: String = "piece", grams: Double? = nil) -> SeenFood {
@@ -128,8 +132,10 @@ struct ScriptedLanguageModel: LanguageModel {
 
         func prewarm(model: ScriptedLanguageModel, transcript: Transcript) { script.prewarms.withLock { $0 += 1 } }
 
-        nonisolated(nonsending) func respond(to request: LanguageModelExecutorGenerationRequest, model: ScriptedLanguageModel,
-                                             streamingInto channel: LanguageModelExecutorGenerationChannel) async throws {
+        nonisolated(nonsending) func respond(
+            to request: LanguageModelExecutorGenerationRequest, model: ScriptedLanguageModel,
+            streamingInto channel: LanguageModelExecutorGenerationChannel
+        ) async throws {
             script.requests.withLock { $0 += 1 }
             let reply = script.replies.withLock { $0.isEmpty ? "{}" : $0.removeFirst() }
             await channel.send(.response(action: .appendText(reply, tokenCount: 10)))
@@ -146,24 +152,28 @@ struct ScriptedLanguageModel: LanguageModel {
 
 /// A small solid image, for code paths that only need one.
 func blankImage(width: Int = 64, height: Int = 64) -> CGImage {
-    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
     context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     return context.makeImage()!
 }
 
 /// A granola bar's panel, as plain rows: each row's name, and its value at the far edge.
-let sampleLabel: [(String, String?)] = [("Nutrition Facts", nil), ("Serving size 2/3 cup (55g)", nil), ("Calories", "230"),
-                                        ("Total Fat 8g", "10%"), ("Sodium 160mg", "7%"), ("Total Carbohydrate 37g", "13%"),
-                                        ("Protein 3g", nil), ("INGREDIENTS: OATS, HONEY, ALMONDS", nil)]
+let sampleLabel: [(String, String?)] = [
+    ("Nutrition Facts", nil), ("Serving size 2/3 cup (55g)", nil), ("Calories", "230"),
+    ("Total Fat 8g", "10%"), ("Sodium 160mg", "7%"), ("Total Carbohydrate 37g", "13%"),
+    ("Protein 3g", nil), ("INGREDIENTS: OATS, HONEY, ALMONDS", nil),
+]
 
 /// A plain label: each row's left text, and its right text at the far edge.
 func renderLabel(_ rows: [(String, String?)], sideways: Bool) -> CGImage {
     let (width, height) = (900, 120 + rows.count * 70)
-    let context = CGContext(data: nil, width: sideways ? height : width, height: sideways ? width : height, bitsPerComponent: 8,
-                            bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    let context = CGContext(
+        data: nil, width: sideways ? height : width, height: sideways ? width : height, bitsPerComponent: 8,
+        bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
     context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
     context.fill(CGRect(x: 0, y: 0, width: context.width, height: context.height))
     if sideways {
@@ -173,10 +183,13 @@ func renderLabel(_ rows: [(String, String?)], sideways: Bool) -> CGImage {
     }
     let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 40, nil)
     func draw(_ text: String, x: CGFloat, y: CGFloat) {
-        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(red: 0, green: 0, blue: 0, alpha: 1),
-        ]))
+        let line = CTLineCreateWithAttributedString(
+            NSAttributedString(
+                string: text,
+                attributes: [
+                    NSAttributedString.Key(kCTFontAttributeName as String): font,
+                    NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(red: 0, green: 0, blue: 0, alpha: 1),
+                ]))
         context.textPosition = CGPoint(x: x, y: y)
         CTLineDraw(line, context)
     }

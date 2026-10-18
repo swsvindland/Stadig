@@ -1,9 +1,9 @@
-import Foundation
-import Observation
-import OSLog
 import ExerciseLibrary
+import Foundation
 import HealthBridge
 import LiftEngine
+import OSLog
+import Observation
 import SystemCore
 import SystemStore
 
@@ -140,8 +140,9 @@ final class AppModel {
 
         /// The App Group the other apps and the widgets read, and Application Support for the session.
         static var app: Files {
-            Files(shared: SharedContainer(), liveURL: URL.applicationSupportDirectory.appending(path: "live-session.json"),
-                  widgetURL: WidgetSnapshot.appGroupURL)
+            Files(
+                shared: SharedContainer(), liveURL: URL.applicationSupportDirectory.appending(path: "live-session.json"),
+                widgetURL: WidgetSnapshot.appGroupURL)
         }
 
         /// A fresh folder of its own, for a launch that keeps nothing: a sample run or a test never
@@ -215,7 +216,8 @@ final class AppModel {
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .liftTrack && $0.isActive() }
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
-        let changed = nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
+        let changed =
+            nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
             || lifeModes != self.lifeModes
         guard changed else { return }
         self.nutrition = nutrition
@@ -250,11 +252,12 @@ final class AppModel {
 
     var state: LiftState? {
         guard let profile else { return nil }
-        return LiftState(profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
-                         measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
-                         lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyweightDate: bodyweightDate,
-                         bodyFatPercent: bodyFatPercent, vo2Max: vo2Max, restingHeartRate: restingHeartRate, nutrition: nutrition,
-                         recommendations: recommendations, today: today)
+        return LiftState(
+            profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
+            measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
+            lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyweightDate: bodyweightDate,
+            bodyFatPercent: bodyFatPercent, vo2Max: vo2Max, restingHeartRate: restingHeartRate, nutrition: nutrition,
+            recommendations: recommendations, today: today)
     }
 
     func recompute() {
@@ -493,7 +496,8 @@ final class AppModel {
     func generate(kind: BlockKind, start: Day, phase: NutritionPhase? = nil) -> Mesocycle {
         guard let profile else { fatalError("generate before onboarding") }
         let phase = phase ?? analysis?.phase ?? .assumedMaintenance
-        let weeks = kind == .assessment
+        let weeks =
+            kind == .assessment
             ? (profile.experience.assessmentWeeks)
             : BlockScheduler.loadingWeeks(phase: phase.effects, experience: profile.experience)
         return ProgramGenerator.generate(generatorInput(profile: profile, gym: gym, kind: kind, start: start, loadingWeeks: weeks, phase: phase))
@@ -546,9 +550,10 @@ final class AppModel {
 
     var environment: SessionEnvironment? {
         guard let analysis else { return nil }
-        var environment = SessionEnvironment(catalog: catalog, gym: gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
-                                             bodyweightKg: state?.effectiveBodyweight, history: analysis.history,
-                                             enduranceScore: analysis.endurance.score, heartRateGuidedRest: settings.heartRateGuidedRest)
+        var environment = SessionEnvironment(
+            catalog: catalog, gym: gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
+            bodyweightKg: state?.effectiveBodyweight, history: analysis.history,
+            enduranceScore: analysis.endurance.score, heartRateGuidedRest: settings.heartRateGuidedRest)
         environment.heat = analysis.heat
         return environment
     }
@@ -558,9 +563,10 @@ final class AppModel {
 
     var gymForToday: Gym {
         guard let profile, let analysis else { return gym }
-        let context = PlanningContext(catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
-                                      phase: analysis.phase, life: analysis.life, history: [:], bodyweightKg: nil, enduranceScore: nil,
-                                      sessionIndexInWeek: 0)
+        let context = PlanningContext(
+            catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
+            phase: analysis.phase, life: analysis.life, history: [:], bodyweightKg: nil, enduranceScore: nil,
+            sessionIndexInWeek: 0)
         return context.todaysGym
     }
 
@@ -577,10 +583,11 @@ final class AppModel {
             input.profile.schedule.minutesPerSession = minutesAvailable
             day = ProgramGenerator.refit(next.day, minutes: minutesAvailable, input: input)
         }
-        var context = PlanningContext(catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
-                                      phase: analysis.phase, life: analysis.life, history: analysis.history,
-                                      bodyweightKg: state?.effectiveBodyweight, enduranceScore: analysis.endurance.score,
-                                      sessionIndexInWeek: next.doneThisWeek)
+        var context = PlanningContext(
+            catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
+            phase: analysis.phase, life: analysis.life, history: analysis.history,
+            bodyweightKg: state?.effectiveBodyweight, enduranceScore: analysis.endurance.score,
+            sessionIndexInWeek: next.doneThisWeek)
         context.heat = analysis.heat
         return SessionPlanner.plan(day, of: next.mesocycle, on: today, context: context)
     }
@@ -848,10 +855,11 @@ final class AppModel {
     /// later import of it and the workout stays deleted. Doesn't reload; returns how many were new.
     @discardableResult
     func importOutside(_ outside: [ActivityLog]) -> Int {
-        let known = Set(activities.compactMap { log -> UUID? in
-            if case .health(let id, _) = log.source { return id }
-            return nil
-        })
+        let known = Set(
+            activities.compactMap { log -> UUID? in
+                if case .health(let id, _) = log.source { return id }
+                return nil
+            })
         let new = outside.filter { log in
             if case .health(let id, _) = log.source { return !known.contains(id) }
             return false

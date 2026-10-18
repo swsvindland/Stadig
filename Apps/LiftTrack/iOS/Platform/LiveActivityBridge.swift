@@ -1,6 +1,6 @@
 import ActivityKit
-import Foundation
 import ExerciseLibrary
+import Foundation
 import LiftEngine
 import SystemCore
 
@@ -51,7 +51,9 @@ enum LiveActivityBridge {
 
     /// What the Lock Screen shows for the session: the exercise, the set ("Warm-up", "Set 2 of 3")
     /// with its target, and the rest while it runs.
-    static func content(_ session: LiveSession, catalog: ExerciseCatalog, unit: WeightUnit, now: Date = Date()) -> SessionActivityAttributes.ContentState {
+    static func content(_ session: LiveSession, catalog: ExerciseCatalog, unit: WeightUnit, now: Date = Date())
+        -> SessionActivityAttributes.ContentState
+    {
         var exercise = "Finish session"
         var detail = ""
         if let current = session.current {
@@ -65,7 +67,8 @@ enum LiveActivityBridge {
             detail = "\(label) · \(Format.set(set.prescription, exercise: e, unit: unit))"
         }
         let rest = session.rest.flatMap { $0.endsAt > now ? $0.endsAt : nil }
-        return SessionActivityAttributes.ContentState(exercise: exercise, detail: detail, restEndsAt: rest,
-                                                      message: rest == nil ? nil : session.message, progress: session.progress)
+        return SessionActivityAttributes.ContentState(
+            exercise: exercise, detail: detail, restEndsAt: rest,
+            message: rest == nil ? nil : session.message, progress: session.progress)
     }
 }

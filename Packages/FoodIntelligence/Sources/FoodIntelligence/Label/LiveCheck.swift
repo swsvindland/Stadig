@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import SystemCore
 
 /// What a model read in the text a live scan gathered: the product's name, and panel values it
@@ -48,7 +48,8 @@ enum LiveCheck {
             let head = size.split(separator: "(", maxSplits: 1).first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
             let numbers = LabelAssist.numbers(in: [head])
             guard !head.isEmpty, !numbers.isEmpty, numbers.allSatisfy(printed.contains),
-                  !head.lowercased().hasSuffix("g"), !head.lowercased().hasSuffix("ml") else { return nil }
+                !head.lowercased().hasSuffix("g"), !head.lowercased().hasSuffix("ml")
+            else { return nil }
             return head
         }
         return LabelCheck(name: guess.name, brand: guess.brand, values: values, servingLabel: measure, servingGrams: grams)
@@ -65,8 +66,9 @@ enum LiveCheck {
         let serving = reply.servingSize.flatMap(SupplementServing.parse).flatMap { printed.contains($0.count) ? $0 : nil }
         let name = reply.name.map { FoodText.clean($0, limit: 60) }.flatMap { $0.isEmpty ? nil : $0 }
         let brand = Brands.clean(reply.brand, limit: 60)
-        let facts = SupplementFacts(id: "custom:\(UUID().uuidString)", name: name ?? "", brand: brand, servingCount: serving?.count ?? 1,
-                                    unit: serving?.unit ?? "serving", ingredients: ingredients, source: .label)
+        let facts = SupplementFacts(
+            id: "custom:\(UUID().uuidString)", name: name ?? "", brand: brand, servingCount: serving?.count ?? 1,
+            unit: serving?.unit ?? "serving", ingredients: ingredients, source: .label)
         return SupplementCheck(name: name, brand: brand, facts: facts)
     }
 
@@ -78,9 +80,11 @@ enum LiveCheck {
 
         init(_ lines: [String]) {
             self.lines = lines
-            numbers = LabelAssist.amounts(in: lines) + Self.words.filter { word, _ in
-                lines.contains { $0.lowercased().contains(word) }
-            }.map(\.value)
+            numbers =
+                LabelAssist.amounts(in: lines)
+                + Self.words.filter { word, _ in
+                    lines.contains { $0.lowercased().contains(word) }
+                }.map(\.value)
         }
 
         func contains(_ value: Double) -> Bool {

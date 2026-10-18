@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import SystemCore
 
 /// A minimal exercise for tests.
@@ -64,8 +65,10 @@ struct SimulatedLifter {
     }
 
     /// Does a set as prescribed and rates it the way this person would.
-    func perform(_ prescription: SetPrescription, exercise: some ExerciseTraits, week: Double, setIndex: Int,
-                 date: Date, increments: any LoadIncrements) -> LoggedSet {
+    func perform(
+        _ prescription: SetPrescription, exercise: some ExerciseTraits, week: Double, setIndex: Int,
+        date: Date, increments: any LoadIncrements
+    ) -> LoggedSet {
         let fresh = trueE1RM(exercise.id, week: week)
         let e1rm = fresh * (1 - 0.02 * Double(setIndex))
         let load = prescription.loadKg ?? increments.round(OneRepMax.load(e1rm: fresh, reps: prescription.targetReps, rir: guessReserve), down: true)
@@ -75,27 +78,33 @@ struct SimulatedLifter {
         }
         let target = prescription.targetReps
         if capacity < target {
-            return LoggedSet(exerciseID: exercise.id, date: date, kind: prescription.kind, loadKg: load, reps: max(0, capacity),
-                             targetReps: target, rating: .red)
+            return LoggedSet(
+                exerciseID: exercise.id, date: date, kind: prescription.kind, loadKg: load, reps: max(0, capacity),
+                targetReps: target, rating: .red)
         }
         let perceived = Double(capacity - target) - perceptionBias
         let rating: SetRating = perceived >= 3 ? .green : .orange
-        return LoggedSet(exerciseID: exercise.id, date: date, kind: prescription.kind, loadKg: load, reps: target, targetReps: target,
-                         rating: rating)
+        return LoggedSet(
+            exerciseID: exercise.id, date: date, kind: prescription.kind, loadKg: load, reps: target, targetReps: target,
+            rating: rating)
     }
 
-    static let honestNovice = SimulatedLifter(name: "Honest novice", experience: .novice,
-                                              start: ["machine-chest-press": 70, "barbell-bench-press": 60, "leg-extension": 60],
-                                              growth: 0.02, perceptionBias: 0, guessReserve: 4)
-    static let sandbagger = SimulatedLifter(name: "Sandbagger", experience: .novice,
-                                            start: ["machine-chest-press": 90, "barbell-bench-press": 80, "leg-extension": 80],
-                                            growth: 0.01, perceptionBias: 5, guessReserve: 9)
-    static let overconfident = SimulatedLifter(name: "Overconfident veteran", experience: .experienced,
-                                               start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
-                                               growth: 0.005, perceptionBias: -2.5, guessReserve: 1)
-    static let plateaued = SimulatedLifter(name: "Plateaued veteran", experience: .experienced,
-                                           start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
-                                           growth: 0, perceptionBias: 0, guessReserve: 2)
+    static let honestNovice = SimulatedLifter(
+        name: "Honest novice", experience: .novice,
+        start: ["machine-chest-press": 70, "barbell-bench-press": 60, "leg-extension": 60],
+        growth: 0.02, perceptionBias: 0, guessReserve: 4)
+    static let sandbagger = SimulatedLifter(
+        name: "Sandbagger", experience: .novice,
+        start: ["machine-chest-press": 90, "barbell-bench-press": 80, "leg-extension": 80],
+        growth: 0.01, perceptionBias: 5, guessReserve: 9)
+    static let overconfident = SimulatedLifter(
+        name: "Overconfident veteran", experience: .experienced,
+        start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
+        growth: 0.005, perceptionBias: -2.5, guessReserve: 1)
+    static let plateaued = SimulatedLifter(
+        name: "Plateaued veteran", experience: .experienced,
+        start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
+        growth: 0, perceptionBias: 0, guessReserve: 2)
 }
 
 /// Runs a lifter through weeks of sessions using the core's real progression, set-to-set
@@ -139,28 +148,35 @@ struct TrainingSimulation {
                 var repOutsLeft = FailurePolicy.capPerSession(experience: lifter.experience, assessment: assessment)
                 for slot in slots {
                     let checkIn = deload && session == sessionsPerWeek - 1
-                    let wantsRepOut = FailurePolicy.wantsRepOut(trust: trust, assessment: assessment, checkIn: checkIn, sessionIndexInWeek: session)
+                    let wantsRepOut =
+                        FailurePolicy.wantsRepOut(trust: trust, assessment: assessment, checkIn: checkIn, sessionIndexInWeek: session)
                         && FailurePolicy.allowsRepOut(slot.exercise, trust: trust, experience: lifter.experience, hasSafeties: true)
                         && repOutsLeft > 0 && (!deload || checkIn)
                     if wantsRepOut { repOutsLeft -= 1 }
-                    let target = SlotTarget(sets: slot.sets, repRange: slot.repRange,
-                                            targetRIR: Progression.targetRIR(week: min(blockWeek, loadingWeeks - 1), of: loadingWeeks),
-                                            deload: deload, repOut: wantsRepOut)
-                    let context = ProgressionContext(exercise: slot.exercise, increments: slot.increments, trust: trust, phase: phase,
-                                                     bodyweightKg: 80, history: history[slot.exercise.id] ?? [])
+                    let target = SlotTarget(
+                        sets: slot.sets, repRange: slot.repRange,
+                        targetRIR: Progression.targetRIR(week: min(blockWeek, loadingWeeks - 1), of: loadingWeeks),
+                        deload: deload, repOut: wantsRepOut)
+                    let context = ProgressionContext(
+                        exercise: slot.exercise, increments: slot.increments, trust: trust, phase: phase,
+                        bodyweightKg: 80, history: history[slot.exercise.id] ?? [])
                     let prescription = Progression.prescribe(target, context)
                     prescriptions[slot.exercise.id, default: []].append(prescription)
                     var plan = prescription.sets
                     var done: [LoggedSet] = []
                     var verified = false
                     for index in plan.indices {
-                        let set = lifter.perform(plan[index], exercise: slot.exercise, week: weekFraction, setIndex: index,
-                                                 date: date.addingTimeInterval(Double(index) * 180), increments: slot.increments)
+                        let set = lifter.perform(
+                            plan[index], exercise: slot.exercise, week: weekFraction, setIndex: index,
+                            date: date.addingTimeInterval(Double(index) * 180), increments: slot.increments)
                         done.append(set)
                         guard index + 1 < plan.count else { break }
-                        let adjustment = Autoregulation.next(after: set, planned: plan[index + 1], context: Autoregulation.Context(
-                            exercise: slot.exercise, increments: slot.increments, trust: trust, repRange: slot.repRange, verifiedAlready: verified,
-                            hasSafeties: true))
+                        let adjustment = Autoregulation.next(
+                            after: set, planned: plan[index + 1],
+                            context: Autoregulation.Context(
+                                exercise: slot.exercise, increments: slot.increments, trust: trust, repRange: slot.repRange,
+                                verifiedAlready: verified,
+                                hasSafeties: true))
                         adjustments.append(adjustment.kind)
                         if adjustment.kind == .verify { verified = true }
                         for later in (index + 1)..<plan.count {

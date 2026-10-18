@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The block: its weeks and deload, its days, why it looks the way it does, and life around it.
@@ -44,7 +44,11 @@ struct PlanView: View {
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { model.showSettings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings")
+                    Button {
+                        model.showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }.accessibilityLabel("Settings")
                         .accessibilityIdentifier("plan.settings")
                 }
             }
@@ -91,12 +95,20 @@ struct PlanView: View {
             .card()
         } else if assessmentDone || ended {
             VStack(alignment: .leading, spacing: 10) {
-                Text(analysis.assessment.map { $0.complete ? "Assessment done" : "Ready to finish the assessment early" } ?? "This block is wrapping up")
-                    .font(.headline)
-                Text("Your next block is built from everything learned: scores, imbalances, recovery and your schedule.").font(.subheadline).foregroundStyle(.secondary)
-                Button { planning = true } label: { Label("Plan the next block", systemImage: "sparkles").frame(maxWidth: .infinity) }
-                    .primaryAction()
-                    .accessibilityIdentifier("plan.nextBlock")
+                Text(
+                    analysis.assessment.map { $0.complete ? "Assessment done" : "Ready to finish the assessment early" }
+                        ?? "This block is wrapping up"
+                )
+                .font(.headline)
+                Text("Your next block is built from everything learned: scores, imbalances, recovery and your schedule.").font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button {
+                    planning = true
+                } label: {
+                    Label("Plan the next block", systemImage: "sparkles").frame(maxWidth: .infinity)
+                }
+                .primaryAction()
+                .accessibilityIdentifier("plan.nextBlock")
             }
             .card()
         }
@@ -118,7 +130,9 @@ struct PlanView: View {
                     }
                 }
             }
-            NavigationLink { FocusScreen() } label: {
+            NavigationLink {
+                FocusScreen()
+            } label: {
                 HStack {
                     Text("Focus")
                     Spacer()
@@ -141,7 +155,9 @@ struct PlanView: View {
             SectionHeader(title: "Life", detail: nil)
             let upcoming = model.lifeModes.filter { $0.end.map { $0 >= model.today } ?? true }
             ForEach(upcoming) { period in
-                Button { editing = period } label: {
+                Button {
+                    editing = period
+                } label: {
                     HStack {
                         Image(systemName: period.kind.symbol).frame(width: 28)
                         VStack(alignment: .leading) {
@@ -264,7 +280,8 @@ struct DayDetail: View {
 
     var body: some View {
         if let mesocycle = model.mesocycles.first(where: { $0.id == route.mesocycleID }),
-           let day = mesocycle.days.first(where: { $0.id == route.dayID }) {
+            let day = mesocycle.days.first(where: { $0.id == route.dayID })
+        {
             List {
                 ForEach(day.blocks) { block in
                     Section {
@@ -330,8 +347,11 @@ struct ProgramSwapSheet: View {
         NavigationStack {
             List {
                 let current = model.catalog.resolve(slot.exerciseID)
-                ForEach(Substitutions.candidates(for: current, in: model.catalog.all, availability: model.gym.availability,
-                                                 injuries: model.analysis?.life.injuries ?? [], avoid: model.settings.avoid, limit: 20)) { exercise in
+                ForEach(
+                    Substitutions.candidates(
+                        for: current, in: model.catalog.all, availability: model.gym.availability,
+                        injuries: model.analysis?.life.injuries ?? [], avoid: model.settings.avoid, limit: 20)
+                ) { exercise in
                     Button {
                         var m = mesocycle
                         if let d = m.days.firstIndex(where: { $0.id == dayID }) {

@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Maths on the Plan tab: where practice is in each strand and what comes next, numeracy first.
@@ -20,8 +20,9 @@ struct MathsPlanCard: View {
                 }
             }
             ForEach(levels) { level in
-                StrandRow(level: level, numeracy: level.strand == .numeracy ? numeracy : nil, focus: level.strand == main,
-                          placed: MathsPlan.placed(level.strand, state))
+                StrandRow(
+                    level: level, numeracy: level.strand == .numeracy ? numeracy : nil, focus: level.strand == main,
+                    placed: MathsPlan.placed(level.strand, state))
             }
             Text(footnote(levels: levels, main: main)).font(.footnote).foregroundStyle(.secondary)
             NavigationLink {
@@ -72,8 +73,10 @@ private struct StrandRow: View {
                         .accessibilityLabel("\(skill.label), level \(numeracy[skill])")
                     }
                 }
-                Text("Most of each block goes to \(numeracy.weakest.label.lowercased()), the weakest. A skill moves up at four quick, right answers in five.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(
+                    "Most of each block goes to \(numeracy.weakest.label.lowercased()), the weakest. A skill moves up at four quick, right answers in five."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             } else if level.strand != .numeracy {
                 HStack {
                     Text(level.next.map { "Next: \($0)" } ?? "Everything learned").foregroundStyle(.secondary)

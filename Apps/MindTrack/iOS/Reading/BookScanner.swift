@@ -1,9 +1,9 @@
 import AVFoundation
+import MindEngine
 import SwiftUI
 import Synchronization
-import UIKit
-import MindEngine
 import SystemCore
+import UIKit
 
 /// The back camera watching for a book's barcode: its ISBN, an EAN-13 starting 978 or 979. The
 /// same pattern as Macro Track's scanner (the camera's own barcode detector, on its own queue),
@@ -56,7 +56,8 @@ nonisolated final class ISBNCamera: NSObject, @unchecked Sendable, AVCaptureMeta
         guard !configured else { return }
         configured = true
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let input = try? AVCaptureDeviceInput(device: device) else { return }
+            let input = try? AVCaptureDeviceInput(device: device)
+        else { return }
         self.device = device
         session.beginConfiguration()
         if session.canAddInput(input) { session.addInput(input) }
@@ -183,8 +184,10 @@ struct BookScannerView: View {
                     .disabled(ISBN.normalize(typed) == nil)
                     .accessibilityIdentifier("bookScanner.lookUp")
             } footer: {
-                Text(denied ? "Camera access is off for Mind Track. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
-                     : "Type the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
+                Text(
+                    denied
+                        ? "Camera access is off for Mind Track. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
+                        : "Type the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
             }
         }
     }

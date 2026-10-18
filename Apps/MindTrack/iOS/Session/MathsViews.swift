@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// The chart a statistics problem is about, each bar labelled with its value so it can be read
 /// exactly. The person's own numbers say where they came from.
@@ -40,10 +40,13 @@ struct DataFigureView: View {
         }
         .card()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(figure.title), in \(figure.unit): " + figure.points.map { "\($0.label) \(Self.value($0.value))" }.joined(separator: ", "))
+        .accessibilityLabel(
+            "\(figure.title), in \(figure.unit): " + figure.points.map { "\($0.label) \(Self.value($0.value))" }.joined(separator: ", "))
     }
 
-    static func value(_ value: Double) -> String { value.rounded() == value ? Int(value).formatted() : value.formatted(.number.precision(.fractionLength(1))) }
+    static func value(_ value: Double) -> String {
+        value.rounded() == value ? Int(value).formatted() : value.formatted(.number.precision(.fractionLength(1)))
+    }
 }
 
 extension Question {

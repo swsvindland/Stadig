@@ -30,10 +30,12 @@ struct LearnRunner: PartRunner {
     mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
         tick += 1
         if fresh == nil {
-            fresh = run.catalogs.deck(language).map {
-                LanguagePlan.next(count: count, cards: Set(run.cards.keys), deck: $0, readsKana: run.settings.readsKana,
-                                  frontier: run.frontier(language))
-            } ?? []
+            fresh =
+                run.catalogs.deck(language).map {
+                    LanguagePlan.next(
+                        count: count, cards: Set(run.cards.keys), deck: $0, readsKana: run.settings.readsKana,
+                        frontier: run.frontier(language))
+                } ?? []
         }
         // A new item joins while fewer than four are in flight and there's time for it.
         let ready = tasks.indices.filter { tasks[$0].notBefore <= tick }
@@ -42,7 +44,8 @@ struct LearnRunner: PartRunner {
             let probe = if case .probe = item { true } else { false }
             tasks.append(Task(item: item, stage: probe ? .probe : .teach, notBefore: tick))
         }
-        let index = tasks.indices.filter { tasks[$0].notBefore <= tick }.first
+        let index =
+            tasks.indices.filter { tasks[$0].notBefore <= tick }.first
             ?? (run.partSeconds < run.budget * 1.4 ? tasks.indices.min { tasks[$0].notBefore < tasks[$1].notBefore } : nil)
         guard let index else { return nil }
         let task = tasks[index]
@@ -78,8 +81,9 @@ struct LearnRunner: PartRunner {
         case .teach(let word), .probe(let word):
             guard let deck = run.catalogs.deck(language) else { return nil }
             let ask: LanguageQuiz.WordAsk = task.stage == .second ? (word.hasKanji ? .reading : .listening) : .meaning
-            return LanguageQuiz.question(word, ask: ask, kind: task.stage == .probe ? .probe : .learn, deck: deck, seed: seed,
-                                         help: run.scaffold(word))
+            return LanguageQuiz.question(
+                word, ask: ask, kind: task.stage == .probe ? .probe : .learn, deck: deck, seed: seed,
+                help: run.scaffold(word))
         }
     }
 

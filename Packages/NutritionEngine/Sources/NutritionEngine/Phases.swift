@@ -27,7 +27,9 @@ public struct PlannedPhase: Hashable, Codable, Sendable, Identifiable {
 
     public var summary: String {
         let pct = abs(ratePerWeek * 100)
-        let rate = ratePerWeek == 0 ? "at maintenance" : "\(ratePerWeek < 0 ? "losing" : "gaining") \(pct.formatted(.number.precision(.fractionLength(0...2))))% a week"
+        let rate =
+            ratePerWeek == 0
+            ? "at maintenance" : "\(ratePerWeek < 0 ? "losing" : "gaining") \(pct.formatted(.number.precision(.fractionLength(0...2))))% a week"
         return "\(kind.label), \(weeks) weeks, \(rate)"
     }
 }
@@ -45,8 +47,10 @@ public struct PhasePlan: Hashable, Codable, Sendable, Identifiable {
     public var created: Date
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), phases: [PlannedPhase], headline: String, reasons: [String], confidence: String?, arc: String,
-                created: Date = Date(), updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), phases: [PlannedPhase], headline: String, reasons: [String], confidence: String?, arc: String,
+        created: Date = Date(), updatedAt: Date = Date()
+    ) {
         self.id = id
         self.phases = phases
         self.headline = headline
@@ -82,9 +86,11 @@ public struct PlannerInput: Sendable {
     /// Lift Track's read on whether fat loss or building would do more for proportions.
     public var physique: PhysiqueDirection?
 
-    public init(profile: SharedProfile, history: DietHistory, today: Day, weightKg: Double, weeklyChange: Double?,
-                maintenance: MaintenanceEstimate, waistCm: Double? = nil, bodyFatPercent: Double? = nil,
-                strengthScore: Double? = nil, strengthTrend: Trajectory? = nil, physique: PhysiqueDirection? = nil) {
+    public init(
+        profile: SharedProfile, history: DietHistory, today: Day, weightKg: Double, weeklyChange: Double?,
+        maintenance: MaintenanceEstimate, waistCm: Double? = nil, bodyFatPercent: Double? = nil,
+        strengthScore: Double? = nil, strengthTrend: Trajectory? = nil, physique: PhysiqueDirection? = nil
+    ) {
         self.profile = profile
         self.history = history
         self.today = today
@@ -160,12 +166,13 @@ public enum PhasePlanner {
         let room = proportions?.ffmiBand
         func percent(_ rate: Double) -> String { (rate * 100).formatted(.number.precision(.fractionLength(0...2))) }
 
-        if (input.history == .longCut || (input.history == .recentCut && lowMaintenance)), leanness != .high {
+        if input.history == .longCut || (input.history == .recentCut && lowMaintenance), leanness != .high {
             add(.reverseDiet, rate: 0.001, weeks: 6)
             add(.maintenance, weeks: 2)
             let cutNext = fatFirst || (wantsLean && leanness == .higher)
             add(cutNext ? .miniCut : .leanBulk, weeks: cutNext ? 5 : 12)
-            headline = lowMaintenance
+            headline =
+                lowMaintenance
                 ? "Your maintenance looks lower than expected after your cut, so calories rise gradually for \(phases[0].weeks) weeks, then a slow gain."
                 : "After a long cut, calories rise gradually for \(phases[0].weeks) weeks before anything else."
             reasons.append("Months of dieting can push maintenance down; raising calories slowly brings it back while weight stays roughly stable.")
@@ -218,7 +225,9 @@ public enum PhasePlanner {
             case .lean:
                 if room == .nearCeiling, !wantsSize {
                     add(buildGap ? .recomp : .maintenance, weeks: buildGap ? 12 : 8)
-                    headline = buildGap ? "A recomp: you're lean and near your natural ceiling, so build at maintenance."
+                    headline =
+                        buildGap
+                        ? "A recomp: you're lean and near your natural ceiling, so build at maintenance."
                         : "Maintenance: you're lean and near your natural ceiling."
                     reasons.append("Near the natural ceiling a surplus mostly adds fat, so calories stay at maintenance.")
                 } else if wantsSize || !wantsLean {
@@ -237,29 +246,36 @@ public enum PhasePlanner {
                 }
             case .unknown:
                 add(wantsLean ? .cut : (wantsSize ? .leanBulk : .maintenance), rate: wantsLean ? -0.005 : (wantsSize ? 0.0025 : 0), weeks: 4)
-                headline = wantsLean ? "A gentle cut for 4 weeks while we learn more." : (wantsSize ? "A slow gain for 4 weeks while we learn more." : "Maintenance for 4 weeks while we learn more.")
+                headline =
+                    wantsLean
+                    ? "A gentle cut for 4 weeks while we learn more."
+                    : (wantsSize ? "A slow gain for 4 weeks while we learn more." : "Maintenance for 4 weeks while we learn more.")
                 reasons.append("A waist measurement (in Lift Track or here) would make this recommendation much sharper.")
             }
         }
 
         if fatFirst, let proportions {
             if proportions.fatLossReasons.isEmpty {
-                reasons.append("Lift Track's measurements show the waist holds your proportions back more than muscle does, so fat loss comes before any gain.")
+                reasons.append(
+                    "Lift Track's measurements show the waist holds your proportions back more than muscle does, so fat loss comes before any gain.")
             } else {
                 let named = proportions.fatLossReasons.prefix(2)
                 reasons.append(contentsOf: named)
-                reasons.append("At a leaner waist \(named.count == 1 ? "it reaches its target" : "these reach their targets"), so fat loss comes before any gain.")
+                reasons.append(
+                    "At a leaner waist \(named.count == 1 ? "it reaches its target" : "these reach their targets"), so fat loss comes before any gain."
+                )
             }
         }
         if buildGap, let proportions, phases.first.map({ $0.kind == .leanBulk || $0.kind == .recomp }) == true {
             reasons.append(contentsOf: proportions.buildReasons.prefix(2))
             if let ffmi = proportions.normalizedFFMI, let room {
                 let ffmiText = ffmi.formatted(.number.precision(.fractionLength(1)))
-                let roomText = switch room {
-                case .lotsOfRoom: "An FFMI of \(ffmiText) leaves lots of room to build."
-                case .someRoom: "An FFMI of \(ffmiText) leaves some room to build, so the surplus is kept small."
-                case .nearCeiling: "An FFMI of \(ffmiText) is near the natural ceiling, so gains come slowly."
-                }
+                let roomText =
+                    switch room {
+                    case .lotsOfRoom: "An FFMI of \(ffmiText) leaves lots of room to build."
+                    case .someRoom: "An FFMI of \(ffmiText) leaves some room to build, so the surplus is kept small."
+                    case .nearCeiling: "An FFMI of \(ffmiText) is near the natural ceiling, so gains come slowly."
+                    }
                 reasons.append(roomText)
             }
         }
@@ -268,18 +284,23 @@ public enum PhasePlanner {
         }
         if let change = input.weeklyChange, abs(change) > 0.1 {
             let pct = change / input.weightKg * 100
-            reasons.append("Over the assessment you've been \(change < 0 ? "losing" : "gaining") about \(abs(pct).formatted(.number.precision(.fractionLength(1))))% a week while eating as usual.")
+            reasons.append(
+                "Over the assessment you've been \(change < 0 ? "losing" : "gaining") about \(abs(pct).formatted(.number.precision(.fractionLength(1))))% a week while eating as usual."
+            )
         }
-        reasons.append("Maintenance is about \(Int(input.maintenance.kcal)) kcal (\(Int(input.maintenance.low))–\(Int(input.maintenance.high))). Targets adjust each week as the estimate sharpens.")
+        reasons.append(
+            "Maintenance is about \(Int(input.maintenance.kcal)) kcal (\(Int(input.maintenance.low))–\(Int(input.maintenance.high))). Targets adjust each week as the estimate sharpens."
+        )
         if input.strengthScore != nil, phases.first?.kind.energy == .deficit {
             reasons.append("Lift Track holds volume and protects heavy lifts during the cut; a strength drop ends it early.")
         }
         let confidence: String? = thin ? "Early read: the first phase is kept short and conservative until the data firms up." : nil
-        let arc: String = switch phases.first?.kind.energy {
-        case .deficit: "Get leaner first, then build with slow gains, with a short cut later in the year if needed."
-        case .surplus: "Build through the winter months with slow gains, then a short cut, then maintenance over summer."
-        default: "Hold steady, then alternate slow gains and short cuts while you keep getting stronger."
-        }
+        let arc: String =
+            switch phases.first?.kind.energy {
+            case .deficit: "Get leaner first, then build with slow gains, with a short cut later in the year if needed."
+            case .surplus: "Build through the winter months with slow gains, then a short cut, then maintenance over summer."
+            default: "Hold steady, then alternate slow gains and short cuts while you keep getting stronger."
+            }
         return PhasePlan(phases: phases, headline: headline, reasons: reasons, confidence: confidence, arc: arc)
     }
 
@@ -287,7 +308,8 @@ public enum PhasePlanner {
     public static func review(_ plan: PhasePlan, input: PlannerInput) -> PhasePlan? {
         // Before the plan, or past its end: plan again.
         guard let current = plan.phase(on: input.today), input.today <= current.end,
-              let index = plan.phases.firstIndex(where: { $0.id == current.id }) else { return recommend(input) }
+            let index = plan.phases.firstIndex(where: { $0.id == current.id })
+        else { return recommend(input) }
         var plan = plan
         var reason: String?
         let rateNow = input.weeklyChange.map { $0 / input.weightKg }
@@ -306,8 +328,9 @@ public enum PhasePlanner {
                 reason = "Weight is rising faster than planned, so the surplus comes down a little."
             } else if input.leanness == .higher || input.leanness == .high {
                 reason = "Waist has grown past the target range, so a short mini-cut comes next."
-                endEarly(&plan, at: index, today: input.today,
-                         then: PlannedPhase(kind: .miniCut, ratePerWeek: -0.0075, weeks: 5, start: input.today))
+                endEarly(
+                    &plan, at: index, today: input.today,
+                    then: PlannedPhase(kind: .miniCut, ratePerWeek: -0.0075, weeks: 5, start: input.today))
             }
         case .maintenance:
             break

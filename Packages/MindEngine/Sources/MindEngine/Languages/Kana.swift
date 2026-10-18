@@ -68,9 +68,11 @@ public enum KanaTable {
 
     /// Hiragana to katakana: the blocks are 0x60 apart.
     public static func katakana(_ hiragana: String) -> String {
-        String(String.UnicodeScalarView(hiragana.unicodeScalars.map { scalar in
-            (0x3041...0x3096).contains(scalar.value) ? Unicode.Scalar(scalar.value + 0x60)! : scalar
-        }))
+        String(
+            String.UnicodeScalarView(
+                hiragana.unicodeScalars.map { scalar in
+                    (0x3041...0x3096).contains(scalar.value) ? Unicode.Scalar(scalar.value + 0x60)! : scalar
+                }))
     }
 
     /// Pairs people mix up, offered as the wrong answers first.

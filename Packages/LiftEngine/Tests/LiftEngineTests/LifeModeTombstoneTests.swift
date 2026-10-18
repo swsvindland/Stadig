@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 /// A deleted life mode is kept as a tombstone so the delete reaches the other apps; the engine
@@ -13,8 +14,9 @@ struct LifeModeTombstoneTests {
         let today = mesocycle.block.start.adding(days: 10)
         let trip = LifeModePeriod(kind: .vacation, start: today.adding(days: 1), end: today.adding(days: 8), createdBy: .liftTrack)
         func state(_ lifeModes: [LifeModePeriod]) -> LiftState {
-            LiftState(profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg), catalog: Fixture.catalog,
-                      mesocycles: [mesocycle], lifeModes: lifeModes, bodyweightKg: 80, today: today)
+            LiftState(
+                profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg), catalog: Fixture.catalog,
+                mesocycles: [mesocycle], lifeModes: lifeModes, bodyweightKg: 80, today: today)
         }
         let deleted = state([trip.deleted()])
         #expect(deleted.lifeModes.isEmpty)

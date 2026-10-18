@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import SystemCore
+
 #if canImport(HealthKit)
 import HealthKit
 import Synchronization
@@ -78,7 +79,8 @@ extension HealthBridge {
     /// answered before (sharing workouts was decided): never a first prompt out of nowhere.
     public func requestAddedTypes(_ access: HealthAccess = .training) async {
         guard let store, store.authorizationStatus(for: HKObjectType.workoutType()) != .notDetermined else { return }
-        let share = HealthTypes.shareTypes(access), read = HealthTypes.readTypes(access)
+        let share = HealthTypes.shareTypes(access)
+        let read = HealthTypes.readTypes(access)
         guard (try? await store.statusForAuthorizationRequest(toShare: share, read: read)) == .shouldRequest else { return }
         _ = try? await store.requestAuthorization(toShare: share, read: read)
     }
@@ -125,8 +127,9 @@ extension HealthBridge {
         let start = since.date(calendar: calendar)
         async let sleep = sleepHours(store: store, nightsFrom: since, calendar: calendar)
         async let hrv = dailyAverages(store: store, type: HealthTypes.hrv, unit: HealthTypes.ms, from: start, calendar: calendar)
-        async let resting = dailyAverages(store: store, type: HealthTypes.restingHeartRate, unit: HealthTypes.bpm, from: start,
-                                          calendar: calendar)
+        async let resting = dailyAverages(
+            store: store, type: HealthTypes.restingHeartRate, unit: HealthTypes.bpm, from: start,
+            calendar: calendar)
         return await HealthMath.recoveryDays(from: since, through: today, sleep: sleep, hrv: hrv, restingHeartRate: resting)
     }
 
@@ -139,8 +142,9 @@ extension HealthBridge {
         let calendar = Calendar.current
         let start = since.date(calendar: calendar)
         let descriptor = HKStatisticsCollectionQueryDescriptor(
-            predicate: .quantitySample(type: HealthTypes.steps,
-                                       predicate: HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)),
+            predicate: .quantitySample(
+                type: HealthTypes.steps,
+                predicate: HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)),
             options: .cumulativeSum, anchorDate: start, intervalComponents: DateComponents(day: 1))
         guard let collection = try? await descriptor.result(for: store) else { return [] }
         return collection.statistics().compactMap { statistics in
@@ -176,11 +180,12 @@ extension HealthBridge {
             if let heartRate, let birth, let age = HealthMath.age(birth: birth, on: workout.startDate) {
                 intensity = HealthMath.intensity(averageHeartRate: heartRate, maxHeartRate: HealthMath.maxHeartRate(age: age))
             }
-            logs.append(ActivityLog(
-                id: workout.uuid, type: HealthMapping.activityType(for: workout.workoutActivityType),
-                start: workout.startDate, minutes: Int((workout.duration / 60).rounded()), intensity: intensity,
-                source: .health(workout.uuid, sourceName: source.name), averageHeartRate: heartRate,
-                distanceMeters: distance(of: workout)))
+            logs.append(
+                ActivityLog(
+                    id: workout.uuid, type: HealthMapping.activityType(for: workout.workoutActivityType),
+                    start: workout.startDate, minutes: Int((workout.duration / 60).rounded()), intensity: intensity,
+                    source: .health(workout.uuid, sourceName: source.name), averageHeartRate: heartRate,
+                    distanceMeters: distance(of: workout)))
         }
         return logs
     }
@@ -198,8 +203,10 @@ extension HealthBridge {
     /// (HKMetadataKeySyncIdentifier = id.uuidString, HKMetadataKeySyncVersion = version), so a higher
     /// version replaces the earlier copy. Energy is written when given and sharing it is authorised.
     /// Does nothing when Health is unavailable; throws when HealthKit refuses the save.
-    public func saveStrengthWorkout(id: UUID, version: Int, start: Date, end: Date, title: String,
-                                    energyKcal: Double?) async throws {
+    public func saveStrengthWorkout(
+        id: UUID, version: Int, start: Date, end: Date, title: String,
+        energyKcal: Double?
+    ) async throws {
         guard let store else { return }
         let end = max(start, end)
         let configuration = HKWorkoutConfiguration()
@@ -248,16 +255,19 @@ extension HealthBridge {
         guard let store else { return }
         let calendar = Calendar.current
         let midnight = measurements.day.date(calendar: calendar)
-        let date = measurements.day == Day(Date(), calendar: calendar)
+        let date =
+            measurements.day == Day(Date(), calendar: calendar)
             ? Date()
             : calendar.date(bySettingHour: 12, minute: 0, second: 0, of: midnight) ?? midnight
         let version = Int(Date().timeIntervalSince1970 * 1000)
 
         func sample(_ type: HKQuantityType, _ quantity: HKQuantity, key: String) -> HKQuantitySample {
-            HKQuantitySample(type: type, quantity: quantity, start: date, end: date, metadata: [
-                HKMetadataKeySyncIdentifier: Self.measurementSyncIdentifier(measurements.id, key),
-                HKMetadataKeySyncVersion: version,
-            ])
+            HKQuantitySample(
+                type: type, quantity: quantity, start: date, end: date,
+                metadata: [
+                    HKMetadataKeySyncIdentifier: Self.measurementSyncIdentifier(measurements.id, key),
+                    HKMetadataKeySyncVersion: version,
+                ])
         }
         var samples: [HKQuantitySample] = []
         var cleared: [(type: HKQuantityType, key: String)] = []
@@ -331,12 +341,16 @@ extension HealthBridge {
         HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier, allowedValues: [identifier])
     }
 
-    private func quantitySamples(_ type: HKQuantityType, predicate: NSPredicate?, newestFirst: Bool,
-                                 sortByStart: Bool = false, limit: Int? = nil) async -> [HKQuantitySample] {
+    private func quantitySamples(
+        _ type: HKQuantityType, predicate: NSPredicate?, newestFirst: Bool,
+        sortByStart: Bool = false, limit: Int? = nil
+    ) async -> [HKQuantitySample] {
         guard let store else { return [] }
         let order: SortOrder = newestFirst ? .reverse : .forward
-        let sort = sortByStart ? SortDescriptor(\HKQuantitySample.startDate, order: order)
-                               : SortDescriptor(\HKQuantitySample.endDate, order: order)
+        let sort =
+            sortByStart
+            ? SortDescriptor(\HKQuantitySample.startDate, order: order)
+            : SortDescriptor(\HKQuantitySample.endDate, order: order)
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: type, predicate: predicate)], sortDescriptors: [sort], limit: limit)
         return (try? await descriptor.result(for: store)) ?? []
@@ -367,22 +381,29 @@ extension HealthBridge {
         let previousMidnight = first.adding(days: -1).date(calendar: calendar)
         let windowStart = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: previousMidnight) ?? previousMidnight
         let descriptor = HKSampleQueryDescriptor(
-            predicates: [.categorySample(type: HealthTypes.sleep,
-                                         predicate: HKQuery.predicateForSamples(withStart: windowStart, end: nil))],
+            predicates: [
+                .categorySample(
+                    type: HealthTypes.sleep,
+                    predicate: HKQuery.predicateForSamples(withStart: windowStart, end: nil))
+            ],
             sortDescriptors: [SortDescriptor(\.startDate)])
         guard let samples = try? await descriptor.result(for: store) else { return [:] }
-        let intervals = samples
+        let intervals =
+            samples
             .filter { HealthTypes.asleepValues.contains($0.value) }
             .map { DateInterval(start: $0.startDate, end: max($0.startDate, $0.endDate)) }
         return HealthMath.sleepHours(intervals, calendar: calendar).filter { $0.key >= first }
     }
 
     /// Mean of a discrete quantity per calendar day from `start` on.
-    private func dailyAverages(store: HKHealthStore, type: HKQuantityType, unit: HKUnit, from start: Date,
-                               calendar: Calendar) async -> [Day: Double] {
+    private func dailyAverages(
+        store: HKHealthStore, type: HKQuantityType, unit: HKUnit, from start: Date,
+        calendar: Calendar
+    ) async -> [Day: Double] {
         let descriptor = HKStatisticsCollectionQueryDescriptor(
-            predicate: .quantitySample(type: type,
-                                       predicate: HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)),
+            predicate: .quantitySample(
+                type: type,
+                predicate: HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)),
             options: .discreteAverage, anchorDate: start, intervalComponents: DateComponents(day: 1))
         guard let collection = try? await descriptor.result(for: store) else { return [:] }
         var averages: [Day: Double] = [:]
@@ -428,15 +449,18 @@ enum HealthTypes {
     static let bpm = HKUnit.count().unitDivided(by: .minute())
     static let vo2 = HKUnit.literUnit(with: .milli).unitDivided(by: HKUnit.gramUnit(with: .kilo).unitMultiplied(by: .minute()))
 
-    static let asleepValues: Set<Int> = Set([
-        HKCategoryValueSleepAnalysis.asleepUnspecified, .asleepCore, .asleepDeep, .asleepREM,
-    ].map(\.rawValue))
+    static let asleepValues: Set<Int> = Set(
+        [
+            HKCategoryValueSleepAnalysis.asleepUnspecified, .asleepCore, .asleepDeep, .asleepREM,
+        ].map(\.rawValue))
 
     static func readTypes(_ access: HealthAccess) -> Set<HKObjectType> {
         var types: Set<HKObjectType> = []
         if access.contains(.training) {
-            types.formUnion([bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy, steps,
-                             HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)])
+            types.formUnion([
+                bodyMass, height, bodyFat, waist, restingHeartRate, hrv, vo2Max, sleep, heartRate, activeEnergy, steps,
+                HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth),
+            ])
         }
         if access.contains(.nutrition) {
             types.formUnion([bodyMass, height, bodyFat, waist, HKObjectType.workoutType(), HKCharacteristicType(.dateOfBirth)])
@@ -477,8 +501,10 @@ extension HealthBridge {
     public func recoveryDays(since: Day) async -> [RecoveryDay] { [] }
     public func externalWorkouts(since: Date, excludingBundlePrefixes: [String]) async -> [ActivityLog] { [] }
     public func heartRateSamples(from: Date, to: Date) async -> [(date: Date, bpm: Double)] { [] }
-    public func saveStrengthWorkout(id: UUID, version: Int, start: Date, end: Date, title: String,
-                                    energyKcal: Double?) async throws {}
+    public func saveStrengthWorkout(
+        id: UUID, version: Int, start: Date, end: Date, title: String,
+        energyKcal: Double?
+    ) async throws {}
     public func deleteWorkout(id: UUID) async {}
     public func saveMeasurements(_ measurements: BodyMeasurements) async {}
     public func deleteMeasurements(id: UUID) async {}

@@ -1,8 +1,9 @@
-import Foundation
-import Testing
 import FoodDatabase
+import Foundation
 import NutritionEngine
 import SystemCore
+import Testing
+
 @testable import MealPlanner
 
 /// The bundled USDA catalog, read once.
@@ -99,8 +100,9 @@ struct MealPlannerTests {
         }
         #expect(vegetarian.recipes.filter { $0.kind == .bowl }.count == 2)
 
-        let noFishOrDairy = planner.plan(start: monday, targets: cut,
-                                         preferences: PlanPreferences(slots: Set(MealSlot.allCases), avoid: ["fish", "dairy", "chicken-breast"]))
+        let noFishOrDairy = planner.plan(
+            start: monday, targets: cut,
+            preferences: PlanPreferences(slots: Set(MealSlot.allCases), avoid: ["fish", "dairy", "chicken-breast"]))
         for recipe in noFishOrDairy.recipes {
             for item in recipe.items {
                 let ingredient = Library.ingredient(item.ingredientID)!
@@ -129,8 +131,9 @@ struct MealPlannerTests {
         let bowls1 = Set(week1.recipes.filter { $0.kind == .bowl }.map(\.id))
         let bowls2 = Set(week2.recipes.filter { $0.kind == .bowl }.map(\.id))
         #expect(bowls1.isDisjoint(with: bowls2))
-        #expect(planner.plan(start: monday, targets: cut, preferences: preferences).recipes.map(\.id) == week1.recipes.map(\.id),
-                "the same inputs give the same plan")
+        #expect(
+            planner.plan(start: monday, targets: cut, preferences: preferences).recipes.map(\.id) == week1.recipes.map(\.id),
+            "the same inputs give the same plan")
 
         let first = try #require(week1.recipes.first { $0.kind == .bowl })
         let swapped = planner.swap(first.id, in: week1, now: prepMorning)
@@ -202,8 +205,9 @@ struct MealPlannerTests {
     func sharedIngredients() throws {
         let teriyaki = try #require(MealPlanner.Bowl(id: "bowl:teriyaki:chicken-breast:rice-white:broccoli"))
         let peanut = try #require(MealPlanner.Bowl(id: "bowl:peanut:pork:rice-white:broccoli"))
-        let plan = planner.build(MealPlanner.Choices(bowls: [teriyaki, peanut]), id: UUID(), start: monday, targets: cut,
-                                 preferences: PlanPreferences(), now: monday.date())
+        let plan = planner.build(
+            MealPlanner.Choices(bowls: [teriyaki, peanut]), id: UUID(), start: monday, targets: cut,
+            preferences: PlanPreferences(), now: monday.date())
         let guide = PrepGuide.make(for: plan)
         let bowls = plan.recipes.filter { $0.kind == .bowl }
         let broccoli = try #require(Library.ingredient("broccoli"))
@@ -225,38 +229,40 @@ struct MealPlannerTests {
         #expect(guide.steps.first?.detail.contains("a large pot") == true, "\(guide.steps.first?.detail ?? "")")
     }
 
-    @Test("requests read as changes", arguments: [
-        ("no fish this week", ["fish"], [String]()),
-        ("I'm sick of chicken, more salmon please", ["chicken-breast", "chicken-thigh"], ["salmon"]),
-        ("something spicy", [], ["tex-mex", "curry"]),
-        ("no fish or pork", ["fish", "pork"], []),
-        ("replace the chicken with beef", ["chicken-breast", "chicken-thigh"], ["beef"]),
-        ("dairy-free please", ["dairy"], []),
-        ("can we do Asian flavours", [], ["teriyaki", "peanut"]),
-        ("skip the egg muffins, I'd like overnight oats", ["egg-muffins"], ["overnight-oats"]),
-        // A verb after a negation is still the negation, not a wish.
-        ("I don't want fish this week", ["fish"], []),
-        ("I don't like spicy", ["tex-mex", "curry"], []),
-        ("no more chicken", ["chicken-breast", "chicken-thigh"], []),
-        ("I don't really want to eat any more rice", ["rice-white", "rice-brown"], []),
-        ("I don't want chicken, I want beef", ["chicken-breast", "chicken-thigh"], ["beef"]),
-        // "and" carries a negation along a list, allergies included.
-        ("no fish and pork", ["fish", "pork"], []),
-        ("I'm allergic to shellfish and peanuts", ["shellfish", "peanuts"], []),
-        ("no chicken and more curry", ["chicken-breast", "chicken-thigh"], ["curry"]),
-        ("no rice and use quinoa", ["rice-white", "rice-brown"], ["quinoa"]),
-        ("no fish and make it spicy", ["fish"], ["tex-mex", "curry"]),
-        ("I can't eat fish and pork", ["fish", "pork"], []),
-        // Other ways of saying no.
-        ("my partner doesn't like fish", ["fish"], []),
-        ("I cannot eat shrimp", ["shrimp"], []),
-        ("we didn't like the cod", ["cod"], []),
-        // A tag word that also names a flavour or a food is avoided as the tag too.
-        ("allergic to fish and peanut", ["fish", "peanut"], []),
-        ("allergic to soy", ["soy", "teriyaki"], []),
-        ("no eggs", ["eggs"], []),
-        ("more eggs", [], ["egg-muffins"]),
-    ])
+    @Test(
+        "requests read as changes",
+        arguments: [
+            ("no fish this week", ["fish"], [String]()),
+            ("I'm sick of chicken, more salmon please", ["chicken-breast", "chicken-thigh"], ["salmon"]),
+            ("something spicy", [], ["tex-mex", "curry"]),
+            ("no fish or pork", ["fish", "pork"], []),
+            ("replace the chicken with beef", ["chicken-breast", "chicken-thigh"], ["beef"]),
+            ("dairy-free please", ["dairy"], []),
+            ("can we do Asian flavours", [], ["teriyaki", "peanut"]),
+            ("skip the egg muffins, I'd like overnight oats", ["egg-muffins"], ["overnight-oats"]),
+            // A verb after a negation is still the negation, not a wish.
+            ("I don't want fish this week", ["fish"], []),
+            ("I don't like spicy", ["tex-mex", "curry"], []),
+            ("no more chicken", ["chicken-breast", "chicken-thigh"], []),
+            ("I don't really want to eat any more rice", ["rice-white", "rice-brown"], []),
+            ("I don't want chicken, I want beef", ["chicken-breast", "chicken-thigh"], ["beef"]),
+            // "and" carries a negation along a list, allergies included.
+            ("no fish and pork", ["fish", "pork"], []),
+            ("I'm allergic to shellfish and peanuts", ["shellfish", "peanuts"], []),
+            ("no chicken and more curry", ["chicken-breast", "chicken-thigh"], ["curry"]),
+            ("no rice and use quinoa", ["rice-white", "rice-brown"], ["quinoa"]),
+            ("no fish and make it spicy", ["fish"], ["tex-mex", "curry"]),
+            ("I can't eat fish and pork", ["fish", "pork"], []),
+            // Other ways of saying no.
+            ("my partner doesn't like fish", ["fish"], []),
+            ("I cannot eat shrimp", ["shrimp"], []),
+            ("we didn't like the cod", ["cod"], []),
+            // A tag word that also names a flavour or a food is avoided as the tag too.
+            ("allergic to fish and peanut", ["fish", "peanut"], []),
+            ("allergic to soy", ["soy", "teriyaki"], []),
+            ("no eggs", ["eggs"], []),
+            ("more eggs", [], ["egg-muffins"]),
+        ])
     func requests(text: String, avoid: [String], want: [String]) {
         let change = PlanRequests.read(text)
         #expect(change.avoid == Set(avoid), "\(text): \(change.avoid)")

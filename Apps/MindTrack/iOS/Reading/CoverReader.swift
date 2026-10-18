@@ -1,8 +1,8 @@
+import MindEngine
 import SwiftUI
+import SystemAI
 import UIKit
 import Vision
-import MindEngine
-import SystemAI
 
 /// A book from a photo of its cover: Vision reads the text on the device, Apple's model picks the
 /// title and author out of it (a light job), and without the model the largest words and a

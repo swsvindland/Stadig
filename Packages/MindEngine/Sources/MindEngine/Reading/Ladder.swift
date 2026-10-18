@@ -26,8 +26,10 @@ public struct LadderBook: Hashable, Codable, Sendable, Identifiable {
     /// Nil means by hand.
     public var levelled: Levelling?
 
-    public init(id: String, title: String, author: String, year: Int, pages: Int, tier: Int, genres: [Genre], note: String,
-                language: Language? = nil, levelled: Levelling? = nil) {
+    public init(
+        id: String, title: String, author: String, year: Int, pages: Int, tier: Int, genres: [Genre], note: String,
+        language: Language? = nil, levelled: Levelling? = nil
+    ) {
         self.id = id
         self.title = title
         self.author = author
@@ -43,8 +45,9 @@ public struct LadderBook: Hashable, Codable, Sendable, Identifiable {
     public var levelledFromText: Bool { levelled == .text }
 
     public func book(status: BookStatus, started: Day? = nil) -> Book {
-        Book(ladderID: id, title: title, author: author, tier: tier, pages: pages, genres: genres, status: status, started: started,
-             language: language, tierConfidence: levelledFromText ? BookLevel.textConfidence : 1)
+        Book(
+            ladderID: id, title: title, author: author, tier: tier, pages: pages, genres: genres, status: status, started: started,
+            language: language, tierConfidence: levelledFromText ? BookLevel.textConfidence : 1)
     }
 }
 
@@ -102,7 +105,8 @@ public struct ReadingLadder: Sendable {
 
     public static let standard: ReadingLadder = {
         guard let url = Bundle.module.url(forResource: "ladder", withExtension: "json"),
-              let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(File.self, from: data) else {
+            let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(File.self, from: data)
+        else {
             mindLog.error("The reading ladder is missing or unreadable")
             return ReadingLadder(tiers: [], books: [])
         }
@@ -124,21 +128,24 @@ public struct ReadingLadder: Sendable {
 
     /// A classic as a ladder book, with a note that says what its text is like.
     static func ladderBook(_ classic: LevelledClassic) -> LadderBook {
-        let sentences = switch classic.sentenceWords {
-        case ..<16: "short sentences"
-        case ..<23: "sentences of middling length"
-        case ..<31: "long sentences"
-        default: "very long sentences"
-        }
-        let vocabulary = switch classic.rareWords {
-        case ..<0.02: "an everyday vocabulary"
-        case ..<0.035: "a fairly plain vocabulary"
-        case ..<0.05: "a rich vocabulary"
-        default: "a rare and demanding vocabulary"
-        }
-        return LadderBook(id: classic.id, title: classic.title, author: classic.author, year: classic.year, pages: classic.pages,
-                          tier: clamp(Int(classic.tier.rounded()), 1, 10), genres: classic.genres,
-                          note: "Levelled from its text: \(sentences) and \(vocabulary). In the public domain, so the ebook is free.",
-                          levelled: .text)
+        let sentences =
+            switch classic.sentenceWords {
+            case ..<16: "short sentences"
+            case ..<23: "sentences of middling length"
+            case ..<31: "long sentences"
+            default: "very long sentences"
+            }
+        let vocabulary =
+            switch classic.rareWords {
+            case ..<0.02: "an everyday vocabulary"
+            case ..<0.035: "a fairly plain vocabulary"
+            case ..<0.05: "a rich vocabulary"
+            default: "a rare and demanding vocabulary"
+            }
+        return LadderBook(
+            id: classic.id, title: classic.title, author: classic.author, year: classic.year, pages: classic.pages,
+            tier: clamp(Int(classic.tier.rounded()), 1, 10), genres: classic.genres,
+            note: "Levelled from its text: \(sentences) and \(vocabulary). In the public domain, so the ebook is free.",
+            levelled: .text)
     }
 }

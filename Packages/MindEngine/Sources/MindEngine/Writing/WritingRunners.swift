@@ -32,10 +32,11 @@ struct ComposeRunner: PartRunner {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return false }
             let notesOnly = task.exercise == .franklinNotes
-            let piece = WritingPiece(date: run.now, exercise: task.exercise, writingKind: task.writingKind, prompt: task.instruction,
-                                     text: notesOnly ? "" : trimmed, source: source, notes: notesOnly ? trimmed : task.notes,
-                                     metrics: notesOnly ? [:] : WritingCheck.measure(trimmed).dictionary, taskID: task.taskID,
-                                     updatedAt: run.now)
+            let piece = WritingPiece(
+                date: run.now, exercise: task.exercise, writingKind: task.writingKind, prompt: task.instruction,
+                text: notesOnly ? "" : trimmed, source: source, notes: notesOnly ? trimmed : task.notes,
+                metrics: notesOnly ? [:] : WritingCheck.measure(trimmed).dictionary, taskID: task.taskID,
+                updatedAt: run.now)
             run.newPieces.append(piece)
             if task.exercise == .benchmark {
                 run.newTests.append(TestResult(test: .writingBenchmark, date: run.now, score: Double(piece.words), detail: piece.metrics))
@@ -66,8 +67,12 @@ struct BlindComparisonRunner: PartRunner {
         // Pieces from this session count too: the benchmark just written meets last term's.
         var pieces: [UUID: WritingPiece] = Dictionary(run.pieces.map { ($0.id, $0) }, uniquingKeysWith: { $0.updatedAt >= $1.updatedAt ? $0 : $1 })
         for piece in run.newPieces { pieces[piece.id] = piece }
-        guard let pair = WritingSchedule.pairs(Array(pieces.values), comparisons: earlier + run.newComparisons, today: run.today,
-                                               limit: 1).first else { return nil }
+        guard
+            let pair = WritingSchedule.pairs(
+                Array(pieces.values), comparisons: earlier + run.newComparisons, today: run.today,
+                limit: 1
+            ).first
+        else { return nil }
         current = pair
         return .compare(pair)
     }
@@ -78,10 +83,14 @@ struct BlindComparisonRunner: PartRunner {
         case .picked(let index):
             let picked = index == 0 ? pair.first : pair.second
             let newer = picked.id == pair.newer.id
-            run.newComparisons.append(BlindComparison(date: run.now, older: pair.older.id, newer: pair.newer.id, pickedNewer: newer,
-                                                      updatedAt: run.now))
-            run.newTests.append(TestResult(test: .blindComparison, date: run.now, score: newer ? 1 : 0,
-                                           detail: ["days": Double(pair.older.day.days(until: pair.newer.day))]))
+            run.newComparisons.append(
+                BlindComparison(
+                    date: run.now, older: pair.older.id, newer: pair.newer.id, pickedNewer: newer,
+                    updatedAt: run.now))
+            run.newTests.append(
+                TestResult(
+                    test: .blindComparison, date: run.now, score: newer ? 1 : 0,
+                    detail: ["days": Double(pair.older.day.days(until: pair.newer.day))]))
             shown += 1
             current = nil
             return true

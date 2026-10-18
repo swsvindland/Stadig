@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// A reading-test passage: read it once at your usual pace, then its questions follow without it.
 /// The time it took is kept quietly; there's no clock on screen to hurry anyone.

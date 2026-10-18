@@ -61,7 +61,8 @@ final class Catalog: Sendable {
         order = meta["nutrients"].flatMap { JSONValue.parse($0)?.array?.compactMap(\.string) }
         barcodeIsInteger = integerBarcodes
         // Catalogs from before processing and traits were kept read as unknown for both.
-        columns = "foods.rowid, foods.id, foods.name, foods.brand, foods.barcode, foods.data, foods.popularity, "
+        columns =
+            "foods.rowid, foods.id, foods.name, foods.brand, foods.barcode, foods.data, foods.popularity, "
             + (quality ? "foods.nova, foods.traits" : "NULL, NULL")
         // A brand's recipe differs between countries (US and French Oreos), so a packaged food sold
         // only elsewhere ranks below the foods sold here; one whose countries aren't known isn't one.
@@ -102,11 +103,12 @@ final class Catalog: Sendable {
         let brand = row.string(3)
         // Traits are a bit set: 1 is fermented with live cultures. Unset says no only where the
         // catalog looked (USDA names, Open Food Facts labels and ingredients).
-        return Food(id: id, name: name, brand: brand?.isEmpty == false ? brand : nil, barcode: barcode, basis: data.basis,
-                    nutrients: data.nutrients, extras: data.extras, portions: data.portions, source: foodSource,
-                    popularity: row.isNull(6) ? 0 : row.double(6),
-                    processing: row.isNull(7) ? nil : Processing(rawValue: Int(row.int(7))),
-                    fermented: row.isNull(8) ? nil : row.int(8) & 1 == 1)
+        return Food(
+            id: id, name: name, brand: brand?.isEmpty == false ? brand : nil, barcode: barcode, basis: data.basis,
+            nutrients: data.nutrients, extras: data.extras, portions: data.portions, source: foodSource,
+            popularity: row.isNull(6) ? 0 : row.double(6),
+            processing: row.isNull(7) ? nil : Processing(rawValue: Int(row.int(7))),
+            fermented: row.isNull(8) ? nil : row.int(8) & 1 == 1)
     }
 
     /// How many matches a catalog ranks. Millions of packaged foods match "ch" or "chicken", so only
@@ -119,8 +121,13 @@ final class Catalog: Sendable {
         var hits: [Hit] = []
         var fresh: [(Int64, Entry)] = []
         pool.read { connection in
-            try connection.query(matchSQL, [.text(expression), .integer(Int64(candidates)), .text(lead.isEmpty ? "" : "\(lead)%"),
-                                            .integer(Int64(limit))]) { row in
+            try connection.query(
+                matchSQL,
+                [
+                    .text(expression), .integer(Int64(candidates)), .text(lead.isEmpty ? "" : "\(lead)%"),
+                    .integer(Int64(limit)),
+                ]
+            ) { row in
                 let rowid = row.int(0)
                 if let entry = read.withLock({ $0[rowid] }) {
                     hits.append(Hit(entry: entry, away: row.int(9) == 1))
@@ -144,8 +151,10 @@ final class Catalog: Sendable {
     func count(_ expression: String, cap: Int = 2000) -> Int {
         var found = 0
         pool.read { connection in
-            try connection.query("SELECT count(*) FROM (SELECT rowid FROM food_search WHERE food_search MATCH ? LIMIT ?)",
-                                 [.text(expression), .integer(Int64(cap))]) { row in found = Int(row.int(0)) }
+            try connection.query(
+                "SELECT count(*) FROM (SELECT rowid FROM food_search WHERE food_search MATCH ? LIMIT ?)",
+                [.text(expression), .integer(Int64(cap))]
+            ) { row in found = Int(row.int(0)) }
         }
         return found
     }

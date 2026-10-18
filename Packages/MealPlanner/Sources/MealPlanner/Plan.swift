@@ -20,8 +20,9 @@ public struct PlanTargets: Hashable, Codable, Sendable {
     }
 
     public static func - (a: PlanTargets, b: Nutrients) -> PlanTargets {
-        PlanTargets(kcal: max(0, a.kcal - b.kcal), protein: max(0, a.protein - b.protein), carbs: max(0, a.carbs - b.carbs),
-                    fat: max(0, a.fat - b.fat))
+        PlanTargets(
+            kcal: max(0, a.kcal - b.kcal), protein: max(0, a.protein - b.protein), carbs: max(0, a.carbs - b.carbs),
+            fat: max(0, a.fat - b.fat))
     }
 }
 
@@ -61,8 +62,10 @@ public struct PlanPreferences: Hashable, Codable, Sendable {
     /// Lean toward the quicker ones: pan and short roasts over long simmers.
     public var quicker: Bool
 
-    public init(slots: Set<MealSlot> = [.lunch, .dinner], diet: Diet = .everything, avoid: Set<String> = [], want: Set<String> = [],
-                cheaper: Bool = false, quicker: Bool = false) {
+    public init(
+        slots: Set<MealSlot> = [.lunch, .dinner], diet: Diet = .everything, avoid: Set<String> = [], want: Set<String> = [],
+        cheaper: Bool = false, quicker: Bool = false
+    ) {
         self.slots = slots
         self.diet = diet
         self.avoid = avoid
@@ -98,8 +101,10 @@ public struct PlannedItem: Hashable, Codable, Sendable {
     /// Added when eating (kimchi, a spoon of yogurt, a banana), not packed with the rest.
     public var onTheDay: Bool
 
-    public init(ingredientID: String, foodID: String, name: String, grams: Double, nutrients: Nutrients, micros: [String: Double],
-                processing: Processing?, fermented: Bool?, onTheDay: Bool) {
+    public init(
+        ingredientID: String, foodID: String, name: String, grams: Double, nutrients: Nutrients, micros: [String: Double],
+        processing: Processing?, fermented: Bool?, onTheDay: Bool
+    ) {
         self.ingredientID = ingredientID
         self.foodID = foodID
         self.name = name

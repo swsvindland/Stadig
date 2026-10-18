@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 /// What a first session at the gym turned up: the warm-up's timing, a short hour, a busy gym,
@@ -9,14 +10,16 @@ import SystemCore
 @Suite("On the gym floor")
 struct GymFloorTests {
     func context(_ profile: SharedProfile, gym: Gym? = nil) -> PlanningContext {
-        PlanningContext(catalog: Fixture.catalog, gym: gym ?? Gym.preset(profile.equipment, unit: .kg), profile: profile,
-                        settings: LiftSettings(), trust: TrustState(experience: profile.experience), phase: .assumedMaintenance,
-                        life: LifeModeEffects(), history: [:], bodyweightKg: 84, enduranceScore: 50, sessionIndexInWeek: 0)
+        PlanningContext(
+            catalog: Fixture.catalog, gym: gym ?? Gym.preset(profile.equipment, unit: .kg), profile: profile,
+            settings: LiftSettings(), trust: TrustState(experience: profile.experience), phase: .assumedMaintenance,
+            life: LifeModeEffects(), history: [:], bodyweightKg: 84, enduranceScore: 50, sessionIndexInWeek: 0)
     }
 
     func environment(_ ctx: PlanningContext) -> SessionEnvironment {
-        SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 84,
-                           history: [:], enduranceScore: 50, heartRateGuidedRest: false)
+        SessionEnvironment(
+            catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 84,
+            history: [:], enduranceScore: 50, heartRateGuidedRest: false)
     }
 
     @Test("the easy bike gets its five minutes, and the drills fit the rest")
@@ -167,14 +170,19 @@ struct GymFloorTests {
     func heatProgression() {
         let base = HeatLog(exerciseID: "sauna", date: Date(), minutes: 10, temperatureC: 80, rating: .orange)
         let dose = HeatDose.dose(minutes: 10, temperatureC: 80, room: "sauna")
-        var easy = base; easy.rating = .green
-        var hard = base; hard.rating = .red
+        var easy = base
+        easy.rating = .green
+        var hard = base
+        hard.rating = .red
         #expect(abs(HeatDose.plan([easy], room: "sauna").dose - dose * 1.15) < 0.01)
         #expect(abs(HeatDose.plan([hard], room: "sauna").dose - dose * 0.8) < 0.01)
-        var earlier = base; earlier.date = base.date.addingTimeInterval(-86_400 * 3)
+        var earlier = base
+        earlier.date = base.date.addingTimeInterval(-86_400 * 3)
         #expect(HeatDose.plan([earlier, base], room: "sauna").change == .more, "two just-rights in a row creep up")
         #expect(HeatDose.plan([base], room: "steam-room").change == .first, "rooms are counted apart")
-        var long = base; long.minutes = 25; long.rating = .green
+        var long = base
+        long.minutes = 25
+        long.rating = .green
         #expect(HeatDose.plan([long], room: "sauna").dose == 25, "past twenty minutes' worth, easy holds rather than grows")
     }
 

@@ -1,16 +1,19 @@
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Portion units")
 struct UnitsTests {
-    static let food = Food(id: "custom:test", name: "Test food", barcode: "00036000291452", basis: .g,
-                           nutrients: Nutrients(kcal: 180, protein: 10, carbs: 20, fat: 6, sodium: 125),
-                           portions: [Portion(label: "1 serving", amount: 30)], source: .custom)
-    static let bread = Food(id: "custom:bread", name: "Sandwich bread", basis: .g,
-                            nutrients: Nutrients(kcal: 250, protein: 9, carbs: 47, fat: 3, fiber: 2.5),
-                            portions: [Portion(label: "2 SLICES (56 g)", amount: 56)], source: .custom)
+    static let food = Food(
+        id: "custom:test", name: "Test food", barcode: "00036000291452", basis: .g,
+        nutrients: Nutrients(kcal: 180, protein: 10, carbs: 20, fat: 6, sodium: 125),
+        portions: [Portion(label: "1 serving", amount: 30)], source: .custom)
+    static let bread = Food(
+        id: "custom:bread", name: "Sandwich bread", basis: .g,
+        nutrients: Nutrients(kcal: 250, protein: 9, carbs: 47, fat: 3, fiber: 2.5),
+        portions: [Portion(label: "2 SLICES (56 g)", amount: 56)], source: .custom)
 
     static func with(_ portions: [(String, Double)], basis: FoodBasis = .g, kcal: Double = 250) -> Food {
         var food = bread
@@ -62,10 +65,11 @@ struct UnitsTests {
         func units(_ food: Food) -> [[String]] { FoodUnits.units(for: food).map { [$0.id, $0.label, "\($0.amount)"] } }
         // "1 oz, dry, yields" is what an ounce of dry couscous makes, so an ounce stays 28.35 g.
         let couscous = Self.with([("1 cup, dry, yields", 528), ("1 cup, cooked", 157), ("1 oz, dry, yields", 86)])
-        #expect(Array(units(couscous).prefix(6)) == [
-            ["g", "g", "1.0"], ["oz", "oz", "28.3495"], ["lb", "lb", "453.592"],
-            ["portion:0", "cup, dry, yields", "528.0"], ["portion:1", "cup, cooked", "157.0"], ["portion:2", "oz, dry, yields", "86.0"],
-        ])
+        #expect(
+            Array(units(couscous).prefix(6)) == [
+                ["g", "g", "1.0"], ["oz", "oz", "28.3495"], ["lb", "lb", "453.592"],
+                ["portion:0", "cup, dry, yields", "528.0"], ["portion:1", "cup, cooked", "157.0"], ["portion:2", "oz, dry, yields", "86.0"],
+            ])
         #expect(FoodUnits.entryLabel(for: couscous, count: 4, unit: try unit(couscous, "oz")) == "4 oz · 113 g")
         #expect(suggested(couscous) == ["portion:0", "1"])
         #expect(FoodUnits.entryLabel(for: couscous, count: 1, unit: try unit(couscous, "portion:0")) == "1 cup, dry, yields · 528 g")
@@ -107,9 +111,11 @@ struct UnitsTests {
         #expect(FoodUnits.label(count: 2, unit: PortionUnit(id: "floz", label: "fl oz", kind: .volume, amount: 29.5735)) == "2 fl oz")
     }
 
-    @Test("amounts take fractions and mixed numbers", arguments: [
-        ("2", 2.0), (".5", 0.5), ("2,5", 2.5), ("1/2", 0.5), ("1 1/2", 1.5), ("½", 0.5), ("1½", 1.5), ("1 ¾", 1.75), (" 2. ", 2),
-    ])
+    @Test(
+        "amounts take fractions and mixed numbers",
+        arguments: [
+            ("2", 2.0), (".5", 0.5), ("2,5", 2.5), ("1/2", 0.5), ("1 1/2", 1.5), ("½", 0.5), ("1½", 1.5), ("1 ¾", 1.75), (" 2. ", 2),
+        ])
     func parse(text: String, value: Double) {
         #expect(FoodUnits.parseCount(text) == value)
     }
@@ -120,12 +126,14 @@ struct UnitsTests {
     }
 
     // A Japanese or Arabic keyboard, or a paste, types digits `Double` can't read.
-    @Test("amounts in other scripts' digits read as the same numbers", arguments: [
-        ("１/２", 0.5), ("١/٢", 0.5), ("٣½", 3.5), ("٢", 2.0), ("١٢٠", 120), ("１ １/２", 1.5), ("١٫٥", 1.5), ("1⁄2", 0.5),
-        // Full-width separators, as a Japanese keyboard types them.
-        ("\u{FF11}\u{FF0F}\u{FF12}", 0.5), ("\u{FF11}\u{FF0E}\u{FF15}", 1.5), ("\u{FF12}\u{FF0C}\u{FF15}", 2.5),
-        ("\u{FF11}\u{3000}\u{FF11}\u{FF0F}\u{FF12}", 1.5),
-    ])
+    @Test(
+        "amounts in other scripts' digits read as the same numbers",
+        arguments: [
+            ("１/２", 0.5), ("١/٢", 0.5), ("٣½", 3.5), ("٢", 2.0), ("١٢٠", 120), ("１ １/２", 1.5), ("١٫٥", 1.5), ("1⁄2", 0.5),
+            // Full-width separators, as a Japanese keyboard types them.
+            ("\u{FF11}\u{FF0F}\u{FF12}", 0.5), ("\u{FF11}\u{FF0E}\u{FF15}", 1.5), ("\u{FF12}\u{FF0C}\u{FF15}", 2.5),
+            ("\u{FF11}\u{3000}\u{FF11}\u{FF0F}\u{FF12}", 1.5),
+        ])
     func otherDigits(text: String, value: Double) {
         #expect(FoodUnits.parseCount(text) == value)
     }
@@ -244,14 +252,16 @@ struct UnitsTests {
 struct PortionMicroTests {
     @Test("vitamins and minerals scale with the portion, and unlisted ones stay unknown")
     func scaling() {
-        let spinach = Food(id: "usda:1", name: "Spinach, raw", basis: .g, nutrients: Nutrients(kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4),
-                           extras: ["potassium": 558, "vitaminK": 483], source: .usda)
+        let spinach = Food(
+            id: "usda:1", name: "Spinach, raw", basis: .g, nutrients: Nutrients(kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4),
+            extras: ["potassium": 558, "vitaminK": 483], source: .usda)
         let grams = PortionUnit(id: "g", label: "g", kind: .mass, amount: 1)
         let micros = FoodUnits.micros(spinach, count: 150, unit: grams)
         #expect(micros["potassium"] == 837 && micros["vitaminK"] == 724.5)
         #expect(micros["calcium"] == nil, "not listed is unknown, not zero")
-        let bar = Food(id: "off:1", name: "Bar", basis: .serving, nutrients: Nutrients(kcal: 200, protein: 10, carbs: 20, fat: 8),
-                       extras: ["iron": 3], source: .off)
+        let bar = Food(
+            id: "off:1", name: "Bar", basis: .serving, nutrients: Nutrients(kcal: 200, protein: 10, carbs: 20, fat: 8),
+            extras: ["iron": 3], source: .off)
         #expect(FoodUnits.micros(bar, count: 2, unit: PortionUnit(id: "serving", label: "bar", kind: .serving, amount: 1))["iron"] == 6)
     }
 }

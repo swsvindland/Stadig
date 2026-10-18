@@ -1,7 +1,7 @@
-import SwiftUI
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The rest between sets: a countdown ring, live heart rate, what the last rating changed, and
@@ -101,10 +101,13 @@ struct RestView: View {
             VStack(spacing: 2) {
                 Text("Up next").font(.caption2).foregroundStyle(.secondary)
                 Text(exercise.name).font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
-                Text(WatchFormat.prescription(liveItem.sets[set].prescription, exercise: exercise, unit: model.unit,
-                                              plannedSeconds: liveItem.plan.seconds))
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                Text(
+                    WatchFormat.prescription(
+                        liveItem.sets[set].prescription, exercise: exercise, unit: model.unit,
+                        plannedSeconds: liveItem.plan.seconds)
+                )
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
         }

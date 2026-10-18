@@ -1,5 +1,5 @@
-import SwiftUI
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The quick feedback that feeds the Fatigue Budget, then save.
@@ -39,19 +39,23 @@ struct FinishView: View {
                     .pickerStyle(.navigationLink)
                     Section("Any joint pain?") {
                         ForEach(Self.jointChoices) { joint in
-                            Toggle(joint.label, isOn: Binding {
-                                joints.contains(joint)
-                            } set: { on in
-                                if on { joints.insert(joint) } else { joints.remove(joint) }
-                            })
+                            Toggle(
+                                joint.label,
+                                isOn: Binding {
+                                    joints.contains(joint)
+                                } set: { on in
+                                    if on { joints.insert(joint) } else { joints.remove(joint) }
+                                })
                         }
                     }
                 }
                 Section {
                     if logged {
                         Button {
-                            model.finish(feedback: SessionFeedback(soreness: soreness, jointPain: Self.jointChoices.filter(joints.contains),
-                                                                   energy: energy))
+                            model.finish(
+                                feedback: SessionFeedback(
+                                    soreness: soreness, jointPain: Self.jointChoices.filter(joints.contains),
+                                    energy: energy))
                         } label: {
                             Label("Save Session", systemImage: "checkmark")
                                 .frame(maxWidth: .infinity)

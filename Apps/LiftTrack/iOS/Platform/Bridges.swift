@@ -1,10 +1,10 @@
+import ExerciseLibrary
 import Foundation
+import LiftEngine
+import SystemCore
 import UIKit
 import UserNotifications
 import WidgetKit
-import ExerciseLibrary
-import LiftEngine
-import SystemCore
 
 /// Keeps the widgets' snapshot current.
 enum WidgetBridge {
@@ -35,7 +35,8 @@ enum WidgetBridge {
             }
             snapshot.day = next.scheduledToday ? model.today : next.nextDay
             snapshot.weekStart = model.today.startOfWeek
-            snapshot.detail = next.scheduledToday ? "Today" : (next.nextDay.map { "Next: \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? "Up next")
+            snapshot.detail =
+                next.scheduledToday ? "Today" : (next.nextDay.map { "Next: \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? "Up next")
             let exercises = plan.map { $0.items.filter(\.isStrength).map(\.exerciseID) } ?? next.day.strengthSlots.map(\.exerciseID)
             snapshot.exercises = exercises.prefix(5).map { model.catalog.resolve($0).name }
             snapshot.doneThisWeek = next.doneThisWeek

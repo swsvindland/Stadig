@@ -1,8 +1,8 @@
 import CoreGraphics
 import CoreVideo
+import FoodDatabase
 import Foundation
 import ImageIO
-import FoodDatabase
 import Vision
 
 /// Text recognition for nutrition labels with Vision. Runs on every supported device, with or
@@ -29,8 +29,9 @@ public enum LabelOCR {
     /// Positions read two-column panels; the lines are the fallback for anything else.
     static func parse(_ boxes: [TextBox]) -> LabelResult {
         let lines = rows(boxes)
-        return LabelResult(reading: NutritionLabel.parse(boxes: level(boxes)) ?? NutritionLabel.parse(lines: lines), lines: lines,
-                           suggestedName: nil, brand: nil)
+        return LabelResult(
+            reading: NutritionLabel.parse(boxes: level(boxes)) ?? NutritionLabel.parse(lines: lines), lines: lines,
+            suggestedName: nil, brand: nil)
     }
 
     /// One frame of a live scan, read once as it comes (upright: the camera turns it). Several a
@@ -59,8 +60,9 @@ public enum LabelOCR {
         observations.compactMap { observation -> TextBox? in
             guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { return nil }
             func point(_ p: NormalizedPoint) -> (x: Double, y: Double) { (Double(p.x) * aspect, 1 - Double(p.y)) }
-            return TextBox(text: text, topLeft: point(observation.topLeft), topRight: point(observation.topRight),
-                           bottomLeft: point(observation.bottomLeft), bottomRight: point(observation.bottomRight), aspect: aspect)
+            return TextBox(
+                text: text, topLeft: point(observation.topLeft), topRight: point(observation.topRight),
+                bottomLeft: point(observation.bottomLeft), bottomRight: point(observation.bottomRight), aspect: aspect)
         }
     }
 
@@ -103,8 +105,10 @@ public enum LabelOCR {
         var width: Double { hypot(topRight.x - topLeft.x, topRight.y - topLeft.y) }
         var angle: Double { atan2(topRight.y - topLeft.y, topRight.x - topLeft.x) }
 
-        init(text: String, topLeft: (x: Double, y: Double), topRight: (x: Double, y: Double), bottomLeft: (x: Double, y: Double),
-             bottomRight: (x: Double, y: Double), aspect: Double = 1) {
+        init(
+            text: String, topLeft: (x: Double, y: Double), topRight: (x: Double, y: Double), bottomLeft: (x: Double, y: Double),
+            bottomRight: (x: Double, y: Double), aspect: Double = 1
+        ) {
             self.text = text
             self.topLeft = topLeft
             self.topRight = topRight
@@ -142,8 +146,9 @@ public enum LabelOCR {
     /// Levelled boxes as FoodDatabase's parser takes them: 0–1 of the image, top-left origin.
     static func level(_ boxes: [TextBox]) -> [LabelTextBox] {
         zip(boxes, levelled(boxes)).map { box, placed in
-            LabelTextBox(text: placed.text, x: placed.left / box.aspect, y: placed.y - placed.height / 2, width: placed.width / box.aspect,
-                         height: placed.height)
+            LabelTextBox(
+                text: placed.text, x: placed.left / box.aspect, y: placed.y - placed.height / 2, width: placed.width / box.aspect,
+                height: placed.height)
         }
     }
 
@@ -157,7 +162,9 @@ public enum LabelOCR {
                 let y = row.map(\.y).reduce(0, +) / Double(row.count)
                 let height = row.map(\.height).min() ?? box.height
                 // Boxes that overlap side by side are stacked lines, not one row.
-                let overlaps = row.contains { min($0.right, box.right) - max($0.left, box.left) > 0.5 * min($0.right - $0.left, box.right - box.left) }
+                let overlaps = row.contains {
+                    min($0.right, box.right) - max($0.left, box.left) > 0.5 * min($0.right - $0.left, box.right - box.left)
+                }
                 if abs(box.y - y) < 0.5 * min(height, box.height) && !overlaps {
                     rows[rows.count - 1].append(box)
                     continue
@@ -175,10 +182,13 @@ enum ImageScaling {
         let longest = max(image.width, image.height)
         guard longest > maxSide else { return image }
         let scale = Double(maxSide) / Double(longest)
-        let width = max(1, Int((Double(image.width) * scale).rounded())), height = max(1, Int((Double(image.height) * scale).rounded()))
+        let width = max(1, Int((Double(image.width) * scale).rounded()))
+        let height = max(1, Int((Double(image.height) * scale).rounded()))
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return image }
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage() ?? image
@@ -204,7 +214,8 @@ public struct FrameText: Sendable {
         regions = boxes.map { box in
             let xs = [box.topLeft.x, box.topRight.x, box.bottomLeft.x, box.bottomRight.x].map { $0 / box.aspect }
             let ys = [box.topLeft.y, box.topRight.y, box.bottomLeft.y, box.bottomRight.y]
-            let (left, right) = (xs.min() ?? 0, xs.max() ?? 0), (top, bottom) = (ys.min() ?? 0, ys.max() ?? 0)
+            let (left, right) = (xs.min() ?? 0, xs.max() ?? 0)
+            let (top, bottom) = (ys.min() ?? 0, ys.max() ?? 0)
             return CGRect(x: left, y: top, width: right - left, height: bottom - top)
         }
         headline = Self.headline(self.boxes)

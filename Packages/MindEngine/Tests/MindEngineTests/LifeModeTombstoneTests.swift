@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 /// A deleted life mode is kept as a tombstone so the delete reaches the other apps; study must

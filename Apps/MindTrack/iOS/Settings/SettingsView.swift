@@ -1,9 +1,9 @@
-import SwiftUI
-import UniformTypeIdentifiers
 import MindEngine
+import SwiftUI
 import SystemAI
 import SystemCore
 import SystemStore
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
@@ -22,11 +22,15 @@ struct SettingsView: View {
             if let settings = model.settings {
                 Section {
                     ForEach(Domain.allCases) { domain in
-                        Picker(selection: Binding(get: { settings.mode(domain) }, set: { mode in
-                            var s = settings
-                            s.courses[domain] = mode
-                            if !s.focus.isEmpty { model.save(settings: s) }
-                        })) {
+                        Picker(
+                            selection: Binding(
+                                get: { settings.mode(domain) },
+                                set: { mode in
+                                    var s = settings
+                                    s.courses[domain] = mode
+                                    if !s.focus.isEmpty { model.save(settings: s) }
+                                })
+                        ) {
                             Text("Focus").tag(CourseMode?.some(.focus))
                             Text("Maintenance").tag(CourseMode?.some(.maintenance))
                             Text("Off").tag(CourseMode?.none)
@@ -41,30 +45,46 @@ struct SettingsView: View {
                 } header: {
                     Text("Courses")
                 } footer: {
-                    Text("Focus courses get full sessions; Maintenance is a few minutes of reviews in each warm-up. Turning one off keeps everything learned; its reviews simply wait until it's back.")
+                    Text(
+                        "Focus courses get full sessions; Maintenance is a few minutes of reviews in each warm-up. Turning one off keeps everything learned; its reviews simply wait until it's back."
+                    )
                 }
                 Section {
-                    Stepper(value: Binding(get: { settings.schedule.daysPerWeek }, set: { days in
-                        var s = settings
-                        s.schedule = StudySchedule(daysPerWeek: days, minutes: s.schedule.minutes)
-                        model.save(settings: s)
-                    }), in: 1...7) {
+                    Stepper(
+                        value: Binding(
+                            get: { settings.schedule.daysPerWeek },
+                            set: { days in
+                                var s = settings
+                                s.schedule = StudySchedule(daysPerWeek: days, minutes: s.schedule.minutes)
+                                model.save(settings: s)
+                            }), in: 1...7
+                    ) {
                         LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
                     }
                     .accessibilityIdentifier("settings.daysPerWeek")
-                    Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { minutes in
-                        var s = settings
-                        s.schedule.minutes = minutes
-                        model.save(settings: s)
-                    })) {
+                    Picker(
+                        "Session length",
+                        selection: Binding(
+                            get: { settings.schedule.minutes },
+                            set: { minutes in
+                                var s = settings
+                                s.schedule.minutes = minutes
+                                model.save(settings: s)
+                            })
+                    ) {
                         ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
                     }
                     .accessibilityIdentifier("settings.sessionLength")
-                    Toggle("Give lagging subjects more days", isOn: Binding(get: { settings.autoPrioritise }, set: { on in
-                        var s = settings
-                        s.autoPrioritise = on
-                        model.save(settings: s)
-                    }))
+                    Toggle(
+                        "Give lagging subjects more days",
+                        isOn: Binding(
+                            get: { settings.autoPrioritise },
+                            set: { on in
+                                var s = settings
+                                s.autoPrioritise = on
+                                model.save(settings: s)
+                            })
+                    )
                     .accessibilityIdentifier("settings.autoPrioritise")
                 } header: {
                     Text("Schedule")
@@ -118,7 +138,9 @@ struct SettingsView: View {
             } header: {
                 Text("Life")
             } footer: {
-                Text("Shared with Lift Track and Macro Track. Vacation, illness and crunch pause Mind Track: nothing is expected and the days never count against you.")
+                Text(
+                    "Shared with Lift Track and Macro Track. Vacation, illness and crunch pause Mind Track: nothing is expected and the days never count against you."
+                )
             }
             Section("Your data") {
                 Button("Export CSV files", systemImage: "tablecells") {
@@ -167,8 +189,10 @@ struct SettingsView: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Maths, writing and the reading ladder").font(.subheadline.weight(.medium))
-                    Text("\(MathCurriculum.topics.count) maths topics, \(WritingBank.standard.items.count) writing items and \(ReadingLadder.standard.books.count) books, written for Mind Track.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        "\(MathCurriculum.topics.count) maths topics, \(WritingBank.standard.items.count) writing items and \(ReadingLadder.standard.books.count) books, written for Mind Track."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
             } header: {
                 Text("Sources")
@@ -226,11 +250,16 @@ struct AISettings: View {
 
     var body: some View {
         Section {
-            Toggle("Use Private Cloud Compute", isOn: Binding(get: { settings.allowCloudAI }, set: { on in
-                var s = settings
-                s.allowCloudAI = on
-                model.save(settings: s)
-            }))
+            Toggle(
+                "Use Private Cloud Compute",
+                isOn: Binding(
+                    get: { settings.allowCloudAI },
+                    set: { on in
+                        var s = settings
+                        s.allowCloudAI = on
+                        model.save(settings: s)
+                    })
+            )
             .accessibilityIdentifier("settings.privateCloud")
             let state = SystemAI.availability(allowCloud: settings.allowCloudAI)
             LabeledContent("Status", value: state.privateCloud ? "On device and Private Cloud Compute" : state.onDevice ? "On device" : "Unavailable")
@@ -238,7 +267,9 @@ struct AISettings: View {
         } header: {
             Text("Apple Intelligence")
         } footer: {
-            Text("Notes on your writing and reading books from a cover photo use Apple's on-device model. Longer jobs can go to Private Cloud Compute, which Apple can't read or keep. With neither, everything else works the same.")
+            Text(
+                "Notes on your writing and reading books from a cover photo use Apple's on-device model. Longer jobs can go to Private Cloud Compute, which Apple can't read or keep. With neither, everything else works the same."
+            )
         }
     }
 }

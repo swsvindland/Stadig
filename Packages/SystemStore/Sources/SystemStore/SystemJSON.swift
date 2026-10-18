@@ -12,7 +12,8 @@ let storeLog = Logger(subsystem: "dev.svindland.stadig", category: "store")
 public enum SystemJSON {
     public static func encoder(pretty: Bool = false) -> JSONEncoder {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = pretty
+        encoder.outputFormatting =
+            pretty
             ? [.sortedKeys, .prettyPrinted, .withoutEscapingSlashes]
             : [.sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .custom { date, encoder in

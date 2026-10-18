@@ -71,16 +71,30 @@ public enum ExerciseSearch {
     /// their UTF-8 counts are their lengths, checked before anything is allocated.
     static func nearly(_ a: String, _ b: String) -> Bool {
         if abs(a.utf8.count - b.utf8.count) > 1 || a.utf8.count < 5 { return false }
-        let a = Array(a), b = Array(b)
-        var i = 0, j = 0, edits = 0
+        let a = Array(a)
+        let b = Array(b)
+        var i = 0
+        var j = 0
+        var edits = 0
         while i < a.count && j < b.count {
-            if a[i] == b[j] { i += 1; j += 1; continue }
+            if a[i] == b[j] {
+                i += 1
+                j += 1
+                continue
+            }
             edits += 1
             if edits > 1 { return false }
-            if a.count > b.count { i += 1 }
-            else if b.count > a.count { j += 1 }
-            else if i + 1 < a.count, j + 1 < b.count, a[i + 1] == b[j], a[i] == b[j + 1] { i += 2; j += 2 }
-            else { i += 1; j += 1 }
+            if a.count > b.count {
+                i += 1
+            } else if b.count > a.count {
+                j += 1
+            } else if i + 1 < a.count, j + 1 < b.count, a[i + 1] == b[j], a[i] == b[j + 1] {
+                i += 2
+                j += 2
+            } else {
+                i += 1
+                j += 1
+            }
         }
         return edits + (a.count - i) + (b.count - j) <= 1
     }
@@ -115,7 +129,10 @@ public enum ExerciseSearch {
                     return 0
                 }
                 let best = max(hit(name) * 3, hit(aliases) * 2, hit(tags))
-                if best == 0 { matched = false; break }
+                if best == 0 {
+                    matched = false
+                    break
+                }
                 score += best
             }
             guard matched else { continue }
@@ -164,7 +181,8 @@ struct SearchTokens: Sendable {
         name = ExerciseSearch.words(exercise.name)
         aliases = exercise.aliases.map(ExerciseSearch.words)
         aliasWords = aliases.flatMap { $0 }
-        tags = exercise.muscles.flatMap { ExerciseSearch.words($0.muscle.label) } + ExerciseSearch.words(exercise.equipment.label)
+        tags =
+            exercise.muscles.flatMap { ExerciseSearch.words($0.muscle.label) } + ExerciseSearch.words(exercise.equipment.label)
             + exercise.mobilityTargets.flatMap { ExerciseSearch.words($0.label) }
     }
 

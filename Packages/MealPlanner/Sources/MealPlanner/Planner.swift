@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 import SystemCore
 
 /// Builds a week of meals from the library, sized to the targets, and swaps what the person
@@ -36,8 +36,9 @@ public struct MealPlanner: Sendable {
         init?(id: String) {
             let parts = id.split(separator: ":").map(String.init)
             guard parts.count == 5, parts[0] == "bowl", let profile = Library.profile(parts[1]),
-                  let protein = Library.ingredient(parts[2]), let carb = Library.ingredient(parts[3]),
-                  let vegetable = Library.ingredient(parts[4]) else { return nil }
+                let protein = Library.ingredient(parts[2]), let carb = Library.ingredient(parts[3]),
+                let vegetable = Library.ingredient(parts[4])
+            else { return nil }
             self.init(profile, protein, carb, vegetable)
         }
 
@@ -60,8 +61,10 @@ public struct MealPlanner: Sendable {
 
     /// A week from `start`, prepped the day before. `recent` are recipe ids from last week, so
     /// the next week differs.
-    public func plan(start: Day, targets: PlanTargets, preferences: PlanPreferences, recent: Set<String> = [], variation: Int = 0,
-                     now: Date = Date()) -> MealPlan {
+    public func plan(
+        start: Day, targets: PlanTargets, preferences: PlanPreferences, recent: Set<String> = [], variation: Int = 0,
+        now: Date = Date()
+    ) -> MealPlan {
         let choices = choose(preferences: preferences, recent: recent, variation: variation)
         return build(choices, id: UUID(), start: start, targets: targets, preferences: preferences, now: now)
     }
@@ -76,7 +79,8 @@ public struct MealPlanner: Sendable {
             let others = choices.bowls.enumerated().filter { $0.offset != index }.map(\.element)
             let ranked = rankedBowls(plan.preferences, recent: used, variation: variation)
             if let next = ranked.first(where: { candidate in candidate.id != recipeID && others.allSatisfy { differs(candidate, $0) } })
-                ?? ranked.first(where: { $0.id != recipeID && !used.contains($0.id) }) {
+                ?? ranked.first(where: { $0.id != recipeID && !used.contains($0.id) })
+            {
                 choices.bowls[index] = next
             }
         } else if choices.breakfast.map({ "template:\($0.id)" }) == recipeID {
@@ -110,7 +114,8 @@ public struct MealPlanner: Sendable {
         var picked: [Bowl] = []
         for index in choices.bowls.indices {
             if let next = ranked.first(where: { candidate in !used.contains(candidate.id) && picked.allSatisfy { differs(candidate, $0) } })
-                ?? ranked.first(where: { !used.contains($0.id) }) {
+                ?? ranked.first(where: { !used.contains($0.id) })
+            {
                 choices.bowls[index] = next
                 used.insert(next.id)
             }
@@ -137,8 +142,10 @@ public struct MealPlanner: Sendable {
 
     /// The week again with new preferences: what still fits stays, the rest is chosen afresh.
     /// Once the week has started, only the days from `now` on change.
-    public func replan(_ plan: MealPlan, preferences: PlanPreferences, targets: PlanTargets? = nil, variation: Int = 0,
-                       now: Date = Date(), calendar: Calendar = .current) -> MealPlan {
+    public func replan(
+        _ plan: MealPlan, preferences: PlanPreferences, targets: PlanTargets? = nil, variation: Int = 0,
+        now: Date = Date(), calendar: Calendar = .current
+    ) -> MealPlan {
         let today = Day(now, calendar: calendar)
         let kept = choices(of: plan, from: today)
         var choices = choose(preferences: preferences, recent: [], variation: variation)
@@ -184,12 +191,14 @@ public struct MealPlanner: Sendable {
                 bowls.append(first)
                 // A second for variety: another protein and another flavour, else at least another protein.
                 if let second = ranked.first(where: { differs($0, first) })
-                    ?? ranked.first(where: { $0.protein.id != first.protein.id }) {
+                    ?? ranked.first(where: { $0.protein.id != first.protein.id })
+                {
                     bowls.append(second)
                 }
             }
         }
-        let breakfast = preferences.slots.contains(.breakfast)
+        let breakfast =
+            preferences.slots.contains(.breakfast)
             ? rankedTemplates(.breakfast, preferences, variation: variation).first : nil
         let snack = preferences.slots.contains(.snack) ? rankedTemplates(.snack, preferences, variation: variation).first : nil
         return Choices(bowls: bowls, breakfast: breakfast, snack: snack)
@@ -252,7 +261,8 @@ public struct MealPlanner: Sendable {
     /// The breakfasts or snacks the preferences allow, best first. Ones made ahead come first for
     /// breakfast; for snacks, the protein-rich ones.
     func rankedTemplates(_ slot: MealSlot, _ preferences: PlanPreferences, variation: Int) -> [Template] {
-        let order: [String] = slot == .breakfast
+        let order: [String] =
+            slot == .breakfast
             ? ["overnight-oats", "egg-muffins", "yogurt-bowl"]
             : ["kefir-banana", "yogurt-berries", "eggs-orange", "cottage-pineapple", "apple-almonds"]
         let allowed = Library.templates.filter { $0.slot == slot && usable($0, preferences) }
@@ -291,8 +301,8 @@ public struct MealPlanner: Sendable {
 
     /// A stable 0–1 number for a key and a variation, so "another plan" is repeatable.
     func jitter(_ key: String, _ variation: Int) -> Double {
-        var hash: UInt64 = 0xcbf29ce484222325
-        for byte in "\(key)#\(variation)".utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in "\(key)#\(variation)".utf8 { hash = (hash ^ UInt64(byte)) &* 0x100_0000_01b3 }
         return Double(hash % 10_000) / 10_000
     }
 
@@ -301,9 +311,10 @@ public struct MealPlanner: Sendable {
     func choices(of plan: MealPlan, from today: Day) -> Choices {
         let upcoming = Set(plan.meals.filter { $0.day >= today && plan.logged[$0.id] == nil }.map(\.recipeID))
         let recipes = plan.recipes.filter { upcoming.isEmpty || upcoming.contains($0.id) }
-        return Choices(bowls: recipes.filter { $0.kind == .bowl }.compactMap { Bowl(id: $0.id) },
-                       breakfast: recipes.first { $0.slots.contains(.breakfast) }?.templateID.flatMap(Library.template),
-                       snack: recipes.first { $0.slots.contains(.snack) }?.templateID.flatMap(Library.template), snackPinned: true)
+        return Choices(
+            bowls: recipes.filter { $0.kind == .bowl }.compactMap { Bowl(id: $0.id) },
+            breakfast: recipes.first { $0.slots.contains(.breakfast) }?.templateID.flatMap(Library.template),
+            snack: recipes.first { $0.slots.contains(.snack) }?.templateID.flatMap(Library.template), snackPinned: true)
     }
 
     // MARK: Sizing
@@ -322,8 +333,10 @@ public struct MealPlanner: Sendable {
                 for (s, slot) in bowlSlots.enumerated() {
                     let r = (d + s) % bowlRecipes.count
                     // How long it keeps counts from prep day, whichever serving it is.
-                    meals.append(PlannedMeal(day: day, slot: slot, recipeID: bowlRecipes[r].id,
-                                             storage: storage(day: d, keeps: bowlRecipes[r].keeps, freezes: true)))
+                    meals.append(
+                        PlannedMeal(
+                            day: day, slot: slot, recipeID: bowlRecipes[r].id,
+                            storage: storage(day: d, keeps: bowlRecipes[r].keeps, freezes: true)))
                     servings[r] += 1
                 }
             }
@@ -338,8 +351,10 @@ public struct MealPlanner: Sendable {
             let recipe = make(template, target: targets.scaled(MealSlot.breakfast.share), preferences: preferences, servings: days.count)
             recipes.append(recipe)
             for (d, day) in days.enumerated() {
-                meals.append(PlannedMeal(day: day, slot: .breakfast, recipeID: recipe.id,
-                                         storage: storage(day: d, keeps: recipe.keeps, freezes: recipe.freezes)))
+                meals.append(
+                    PlannedMeal(
+                        day: day, slot: .breakfast, recipeID: recipe.id,
+                        storage: storage(day: d, keeps: recipe.keeps, freezes: recipe.freezes)))
             }
         }
 
@@ -349,8 +364,9 @@ public struct MealPlanner: Sendable {
                 .reduce(.zero, +)
             let open = MealSlot.allCases.filter { !preferences.slots.contains($0) }.map(\.share).reduce(0, +)
             let room = targets - planned - targets.scaled(open).nutrients
-            let target = PlanTargets(kcal: max(room.kcal, targets.kcal * 0.07), protein: max(room.protein, 5), carbs: room.carbs,
-                                     fat: room.fat)
+            let target = PlanTargets(
+                kcal: max(room.kcal, targets.kcal * 0.07), protein: max(room.protein, 5), carbs: room.carbs,
+                fat: room.fat)
             // Whichever snack fills the gap best, protein first, unless one was picked; something
             // fermented when the day has nothing else that is.
             let fermented = recipes.contains { $0.items.contains { $0.fermented == true } }
@@ -362,7 +378,8 @@ public struct MealPlanner: Sendable {
                 let r = make(t, target: target, preferences: preferences, servings: days.count)
                 let n = r.nutrients
                 func miss(_ got: Double, _ want: Double, _ floor: Double) -> Double { pow((got - want) / max(want, floor), 2) }
-                var score = 4 * miss(n.kcal, target.kcal, 50) + 4 * miss(n.protein, target.protein, 5) + miss(n.carbs, target.carbs, 5)
+                var score =
+                    4 * miss(n.kcal, target.kcal, 50) + 4 * miss(n.protein, target.protein, 5) + miss(n.carbs, target.carbs, 5)
                     + miss(n.fat, target.fat, 5) + 0.03 * Double(i)
                 if !fermented, r.items.contains(where: { $0.fermented == true }) { score -= 0.05 }
                 return (r, score)
@@ -370,14 +387,17 @@ public struct MealPlanner: Sendable {
             let recipe = sized.min { $0.1 < $1.1 }!.0
             recipes.append(recipe)
             for (d, day) in days.enumerated() {
-                meals.append(PlannedMeal(day: day, slot: .snack, recipeID: recipe.id,
-                                         storage: storage(day: d, keeps: recipe.keeps, freezes: recipe.freezes)))
+                meals.append(
+                    PlannedMeal(
+                        day: day, slot: .snack, recipeID: recipe.id,
+                        storage: storage(day: d, keeps: recipe.keeps, freezes: recipe.freezes)))
             }
         }
 
-        return MealPlan(id: id, start: start, preferences: preferences, targets: targets, recipes: recipes,
-                        meals: meals.sorted { $0.day != $1.day ? $0.day < $1.day : $0.slot < $1.slot }, checked: [], logged: [:],
-                        createdAt: now, updatedAt: now)
+        return MealPlan(
+            id: id, start: start, preferences: preferences, targets: targets, recipes: recipes,
+            meals: meals.sorted { $0.day != $1.day ? $0.day < $1.day : $0.slot < $1.slot }, checked: [], logged: [:],
+            createdAt: now, updatedAt: now)
     }
 
     /// Where a serving waits: the fridge for the first days, then the freezer, or made on the day.
@@ -397,8 +417,9 @@ public struct MealPlanner: Sendable {
         let grams = solve(scaled.map { ($0, $0.range, $0.typical) }, target: target, fixed: fixed)
         var items = zip(scaled, grams).compactMap { item($0, grams: $1, onTheDay: false) }
         items += fixedParts.compactMap { id, grams, onTheDay in Library.ingredient(id).flatMap { item($0, grams: grams, onTheDay: onTheDay) } }
-        return PlannedRecipe(id: bowl.id, kind: .bowl, title: bowl.title, slots: [.lunch, .dinner], items: items, servings: 0,
-                             keeps: 3, freezes: true, profileID: bowl.profile.id, templateID: nil)
+        return PlannedRecipe(
+            id: bowl.id, kind: .bowl, title: bowl.title, slots: [.lunch, .dinner], items: items, servings: 0,
+            keeps: 3, freezes: true, profileID: bowl.profile.id, templateID: nil)
     }
 
     /// A breakfast or snack sized to its target, leaving out optional parts the diet rules out.
@@ -412,9 +433,10 @@ public struct MealPlanner: Sendable {
         let items = zip(parts, grams).compactMap { part, g in
             item(part.0, grams: g, onTheDay: template.keeps > 0 && part.0.role == .fruit && template.id == "egg-muffins")
         }
-        return PlannedRecipe(id: "template:\(template.id)", kind: .template, title: template.name, slots: [template.slot],
-                             items: items, servings: servings, keeps: template.keeps, freezes: template.freezes, profileID: nil,
-                             templateID: template.id)
+        return PlannedRecipe(
+            id: "template:\(template.id)", kind: .template, title: template.name, slots: [template.slot],
+            items: items, servings: servings, keeps: template.keeps, freezes: template.freezes, profileID: nil,
+            templateID: template.id)
     }
 
     func solve(_ parts: [(Ingredient, ClosedRange<Double>, Double)], target: PlanTargets, fixed: Nutrients) -> [Double] {
@@ -428,9 +450,10 @@ public struct MealPlanner: Sendable {
 
     func item(_ ingredient: Ingredient, grams: Double, onTheDay: Bool) -> PlannedItem? {
         guard grams > 0, let food = foods[ingredient.id] else { return nil }
-        return PlannedItem(ingredientID: ingredient.id, foodID: food.id, name: ingredient.name, grams: grams,
-                           nutrients: food.nutrients(for: grams), micros: food.extras(for: grams), processing: food.processing,
-                           fermented: food.fermented, onTheDay: onTheDay)
+        return PlannedItem(
+            ingredientID: ingredient.id, foodID: food.id, name: ingredient.name, grams: grams,
+            nutrients: food.nutrients(for: grams), micros: food.extras(for: grams), processing: food.processing,
+            fermented: food.fermented, onTheDay: onTheDay)
     }
 }
 

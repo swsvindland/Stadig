@@ -1,5 +1,6 @@
 import Foundation
 import SystemCore
+
 #if canImport(HealthKit)
 import HealthKit
 #endif
@@ -62,7 +63,8 @@ public struct HealthWeightChanges: Hashable, Sendable {
     init(readings: [Reading], deleted: [UUID], since: Date, ownBundlePrefixes: [String], anchor: Data) {
         let deletedIDs = Set(deleted)
         self.init(
-            added: readings
+            added:
+                readings
                 .filter { $0.start >= since && !$0.bundleIdentifier.hasAnyPrefix(ownBundlePrefixes) && !deletedIDs.contains($0.weight.id) }
                 .map(\.weight)
                 .sorted { $0.date < $1.date },
@@ -101,15 +103,19 @@ extension HealthBridge {
     public func weighIns(since: Date, ownBundlePrefixes: [String]) async -> [HealthWeight] {
         guard let store else { return [] }
         let descriptor = HKSampleQueryDescriptor(
-            predicates: [.quantitySample(type: HealthTypes.bodyMass,
-                                         predicate: HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate))],
+            predicates: [
+                .quantitySample(
+                    type: HealthTypes.bodyMass,
+                    predicate: HKQuery.predicateForSamples(withStart: since, end: nil, options: .strictStartDate))
+            ],
             sortDescriptors: [SortDescriptor(\.endDate)])
         guard let samples = try? await descriptor.result(for: store) else { return [] }
         return samples.compactMap { sample in
             let source = sample.sourceRevision.source
             if source.bundleIdentifier.hasAnyPrefix(ownBundlePrefixes) { return nil }
-            return HealthWeight(id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
-                                sourceName: source.name)
+            return HealthWeight(
+                id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
+                sourceName: source.name)
         }
     }
 
@@ -125,8 +131,9 @@ extension HealthBridge {
         guard let store else { return nil }
         // No date predicate: Health applies the predicate to deletions too, and a deleted sample has
         // no date left to match, so its deletion would never be reported.
-        let descriptor = HKAnchoredObjectQueryDescriptor(predicates: [.quantitySample(type: HealthTypes.bodyMass)],
-                                                         anchor: anchor.flatMap(Self.queryAnchor))
+        let descriptor = HKAnchoredObjectQueryDescriptor(
+            predicates: [.quantitySample(type: HealthTypes.bodyMass)],
+            anchor: anchor.flatMap(Self.queryAnchor))
         let result: HKAnchoredObjectQueryDescriptor<HKQuantitySample>.Result
         do {
             result = try await descriptor.result(for: store)
@@ -138,12 +145,14 @@ extension HealthBridge {
         let readings = result.addedSamples.map { sample in
             let source = sample.sourceRevision.source
             return HealthWeightChanges.Reading(
-                weight: HealthWeight(id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
-                                     sourceName: source.name),
+                weight: HealthWeight(
+                    id: sample.uuid, date: sample.endDate, kg: sample.quantity.doubleValue(for: HealthTypes.kg),
+                    sourceName: source.name),
                 start: sample.startDate, bundleIdentifier: source.bundleIdentifier)
         }
-        return HealthWeightChanges(readings: readings, deleted: result.deletedObjects.map(\.uuid), since: since,
-                                   ownBundlePrefixes: ownBundlePrefixes, anchor: next)
+        return HealthWeightChanges(
+            readings: readings, deleted: result.deletedObjects.map(\.uuid), since: since,
+            ownBundlePrefixes: ownBundlePrefixes, anchor: next)
     }
 
     /// An anchor as `weighInChanges` hands it out.
@@ -169,9 +178,10 @@ extension HealthBridge {
     /// Saves (or replaces) a manual weigh-in, keyed by its id.
     public func saveWeight(id: UUID, date: Date, kg: Double, version: Int) async {
         guard let store, store.authorizationStatus(for: HealthTypes.bodyMass) == .sharingAuthorized else { return }
-        let sample = HKQuantitySample(type: HealthTypes.bodyMass, quantity: HKQuantity(unit: HealthTypes.kg, doubleValue: kg),
-                                      start: date, end: date,
-                                      metadata: [HKMetadataKeySyncIdentifier: id.uuidString, HKMetadataKeySyncVersion: version])
+        let sample = HKQuantitySample(
+            type: HealthTypes.bodyMass, quantity: HKQuantity(unit: HealthTypes.kg, doubleValue: kg),
+            start: date, end: date,
+            metadata: [HKMetadataKeySyncIdentifier: id.uuidString, HKMetadataKeySyncVersion: version])
         try? await store.save(sample)
     }
 
@@ -187,7 +197,8 @@ extension HealthBridge {
     /// save or delete of the same foods has finished, so an undo right after logging still wins.
     public func saveFoods(_ foods: [HealthFood]) async {
         guard let store, !foods.isEmpty,
-              store.authorizationStatus(for: HKQuantityType(.dietaryEnergyConsumed)) == .sharingAuthorized else { return }
+            store.authorizationStatus(for: HKQuantityType(.dietaryEnergyConsumed)) == .sharingAuthorized
+        else { return }
         await foodWrites.run(foods.map(\.id)) {
             await Self.removeFoods(ids: foods.map(\.id), from: store)
             await Self.writeFoods(foods, to: store)
@@ -205,19 +216,24 @@ extension HealthBridge {
             var samples = Set<HKSample>()
             for (type, key, value) in HealthTypes.dietaryValues(food.nutrients, micros: food.micros) where value > 0 {
                 guard store.authorizationStatus(for: type.type) == .sharingAuthorized else { continue }
-                samples.insert(HKQuantitySample(type: type.type, quantity: HKQuantity(unit: type.unit, doubleValue: value),
-                                                start: food.date, end: food.date, metadata: [
-                                                    HKMetadataKeySyncIdentifier: HealthTypes.syncIdentifier(food.id, key: key),
-                                                    HKMetadataKeySyncVersion: food.version,
-                                                    HKMetadataKeyFoodType: food.name,
-                                                ]))
+                samples.insert(
+                    HKQuantitySample(
+                        type: type.type, quantity: HKQuantity(unit: type.unit, doubleValue: value),
+                        start: food.date, end: food.date,
+                        metadata: [
+                            HKMetadataKeySyncIdentifier: HealthTypes.syncIdentifier(food.id, key: key),
+                            HKMetadataKeySyncVersion: food.version,
+                            HKMetadataKeyFoodType: food.name,
+                        ]))
             }
             guard !samples.isEmpty else { return nil }
-            return HKCorrelation(type: HKCorrelationType(.food), start: food.date, end: food.date, objects: samples, metadata: [
-                HKMetadataKeySyncIdentifier: food.id.uuidString,
-                HKMetadataKeySyncVersion: food.version,
-                HKMetadataKeyFoodType: food.name,
-            ])
+            return HKCorrelation(
+                type: HKCorrelationType(.food), start: food.date, end: food.date, objects: samples,
+                metadata: [
+                    HKMetadataKeySyncIdentifier: food.id.uuidString,
+                    HKMetadataKeySyncVersion: food.version,
+                    HKMetadataKeyFoodType: food.name,
+                ])
         }
         guard !correlations.isEmpty else { return }
         try? await store.save(correlations)
@@ -229,8 +245,9 @@ extension HealthBridge {
         await withTaskGroup(of: Void.self) { group in
             for type in HealthTypes.dietary {
                 group.addTask {
-                    let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier,
-                                                                allowedValues: ids.map { HealthTypes.syncIdentifier($0, key: type.key) })
+                    let predicate = HKQuery.predicateForObjects(
+                        withMetadataKey: HKMetadataKeySyncIdentifier,
+                        allowedValues: ids.map { HealthTypes.syncIdentifier($0, key: type.key) })
                     _ = try? await store.deleteObjects(of: type.type, predicate: predicate)
                 }
             }
@@ -288,8 +305,10 @@ extension HealthTypes {
     static func syncIdentifier(_ id: UUID, key: String) -> String { "\(id.uuidString).\(key)" }
 
     static func dietaryValues(_ n: Nutrients, micros: [String: Double] = [:]) -> [(Dietary, String, Double)] {
-        var values: [String: Double?] = ["kcal": n.kcal, "protein": n.protein, "carbs": n.carbs, "fat": n.fat, "fiber": n.fiber,
-                                         "sugar": n.sugar, "satFat": n.saturatedFat, "sodium": n.sodium]
+        var values: [String: Double?] = [
+            "kcal": n.kcal, "protein": n.protein, "carbs": n.carbs, "fat": n.fat, "fiber": n.fiber,
+            "sugar": n.sugar, "satFat": n.saturatedFat, "sodium": n.sodium,
+        ]
         for (key, value) in micros where values[key] == nil { values[key] = value }
         return dietary.compactMap { d in (values[d.key] ?? nil).map { (d, d.key, $0) } }
     }

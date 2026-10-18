@@ -22,8 +22,10 @@ public struct Word: Hashable, Sendable, Identifiable {
     public var pos: String
     public var kanjiChars: String
 
-    public init(id: Int, language: Language = .japanese, rank: Int, text: String, kana: String? = nil, kanji: String? = nil,
-                meaning: String, meanings: String? = nil, pos: String = "noun", kanjiChars: String? = nil) {
+    public init(
+        id: Int, language: Language = .japanese, rank: Int, text: String, kana: String? = nil, kanji: String? = nil,
+        meaning: String, meanings: String? = nil, pos: String = "noun", kanjiChars: String? = nil
+    ) {
         self.id = id
         self.language = language
         self.rank = rank
@@ -117,16 +119,20 @@ public final class LanguageDeck: @unchecked Sendable {
         self.language = language
         var words: [Word] = []
         Self.query(handle, "SELECT id, rank, word, kana, kanji, meaning, meanings, pos, kanji_chars FROM words ORDER BY rank") { row in
-            words.append(Word(id: Int(sqlite3_column_int64(row, 0)), language: language, rank: Int(sqlite3_column_int64(row, 1)),
-                              text: Self.text(row, 2), kana: Self.text(row, 3), kanji: Self.optionalText(row, 4),
-                              meaning: Self.text(row, 5), meanings: Self.text(row, 6), pos: Self.text(row, 7),
-                              kanjiChars: Self.text(row, 8)))
+            words.append(
+                Word(
+                    id: Int(sqlite3_column_int64(row, 0)), language: language, rank: Int(sqlite3_column_int64(row, 1)),
+                    text: Self.text(row, 2), kana: Self.text(row, 3), kanji: Self.optionalText(row, 4),
+                    meaning: Self.text(row, 5), meanings: Self.text(row, 6), pos: Self.text(row, 7),
+                    kanjiChars: Self.text(row, 8)))
         }
         var kanji: [Kanji] = []
         if language.pack.script == .kanaKanji {
             Self.query(handle, "SELECT literal, meanings, onyomi, kunyomi, strokes FROM kanji") { row in
-                kanji.append(Kanji(literal: Self.text(row, 0), meanings: Self.text(row, 1), onyomi: Self.text(row, 2),
-                                   kunyomi: Self.text(row, 3), strokes: Int(sqlite3_column_int64(row, 4))))
+                kanji.append(
+                    Kanji(
+                        literal: Self.text(row, 0), meanings: Self.text(row, 1), onyomi: Self.text(row, 2),
+                        kunyomi: Self.text(row, 3), strokes: Int(sqlite3_column_int64(row, 4))))
             }
         }
         var attribution = ""
@@ -171,10 +177,13 @@ public final class LanguageDeck: @unchecked Sendable {
             return Array(all.filter { $0.words.contains(wordID) && $0.level <= maxLevel }.prefix(limit))
         case .sqlite(let handle):
             var out: [Sentence] = []
-            Self.query(handle, """
+            Self.query(
+                handle,
+                """
                 SELECT s.id, s.jp, s.en, s.level, s.words FROM sentence_words w JOIN sentences s ON s.id = w.sentence
                 WHERE w.word = ? AND w.level <= ? ORDER BY w.level, s.length LIMIT ?
-                """, bind: [wordID, maxLevel, limit]) { out.append(Self.sentence($0)) }
+                """, bind: [wordID, maxLevel, limit]
+            ) { out.append(Self.sentence($0)) }
             return out
         }
     }
@@ -186,14 +195,18 @@ public final class LanguageDeck: @unchecked Sendable {
         switch source {
         case .memory(let all):
             let inRange = all.filter { levels.contains($0.level) }
-            return Array(inRange.sorted { (Self.sampleOrder($0.id, offset: offset), $0.id) < (Self.sampleOrder($1.id, offset: offset), $1.id) }
-                .prefix(limit))
+            return Array(
+                inRange.sorted { (Self.sampleOrder($0.id, offset: offset), $0.id) < (Self.sampleOrder($1.id, offset: offset), $1.id) }
+                    .prefix(limit))
         case .sqlite(let handle):
             var out: [Sentence] = []
-            Self.query(handle, """
+            Self.query(
+                handle,
+                """
                 SELECT id, jp, en, level, words FROM sentences WHERE level BETWEEN ? AND ?
                 ORDER BY (id * 2654435761 + ?) % 1000003, id LIMIT ?
-                """, bind: [levels.lowerBound, levels.upperBound, offset, limit]) { out.append(Self.sentence($0)) }
+                """, bind: [levels.lowerBound, levels.upperBound, offset, limit]
+            ) { out.append(Self.sentence($0)) }
             return out
         }
     }
@@ -213,8 +226,9 @@ public final class LanguageDeck: @unchecked Sendable {
     // Every catalog shares one schema. The sentences table's `jp` column holds the sentence in the
     // catalog's language and `en` its English translation (the names come from the first, Japanese, catalog).
     private static func sentence(_ row: OpaquePointer) -> Sentence {
-        Sentence(id: Int(sqlite3_column_int64(row, 0)), text: text(row, 1), english: text(row, 2), level: Int(sqlite3_column_int64(row, 3)),
-                 words: text(row, 4).split(separator: ",").compactMap { Int($0) })
+        Sentence(
+            id: Int(sqlite3_column_int64(row, 0)), text: text(row, 1), english: text(row, 2), level: Int(sqlite3_column_int64(row, 3)),
+            words: text(row, 4).split(separator: ",").compactMap { Int($0) })
     }
 
     private static func query(_ db: OpaquePointer, _ sql: String, bind: [Int] = [], row: (OpaquePointer) -> Void) {

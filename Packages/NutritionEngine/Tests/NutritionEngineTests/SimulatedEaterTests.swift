@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 /// A person with a true maintenance who eats, logs and weighs in like people do: noisy days,
@@ -39,16 +40,22 @@ struct SimulatedEater {
             let logged = rng.uniform() < logging
             if logged {
                 for (n, share) in [0.25, 0.35, 0.3, 0.1].enumerated() {
-                    run.entries.append(FoodEntry(date: date.addingTimeInterval(Double(n) * 3600), name: "Food \(n)",
-                                                 amountLabel: "1", nutrients: Nutrients(kcal: eaten * share, protein: eaten * share * 0.05,
-                                                                                         carbs: eaten * share * 0.11, fat: eaten * share * 0.035),
-                                                 source: .search, updatedAt: date))
+                    run.entries.append(
+                        FoodEntry(
+                            date: date.addingTimeInterval(Double(n) * 3600), name: "Food \(n)",
+                            amountLabel: "1",
+                            nutrients: Nutrients(
+                                kcal: eaten * share, protein: eaten * share * 0.05,
+                                carbs: eaten * share * 0.11, fat: eaten * share * 0.035),
+                            source: .search, updatedAt: date))
                 }
                 run.statuses.append(DayStatus(day: day, state: .complete))
             } else if rng.uniform() < 0.5 {
                 // A partial day: some entries, marked partial, so it doesn't teach the estimate.
-                run.entries.append(FoodEntry(date: date, name: "Partial", amountLabel: "1",
-                                             nutrients: Nutrients(kcal: eaten * 0.4, protein: 20, carbs: 40, fat: 15), source: .search, updatedAt: date))
+                run.entries.append(
+                    FoodEntry(
+                        date: date, name: "Partial", amountLabel: "1",
+                        nutrients: Nutrients(kcal: eaten * 0.4, protein: 20, carbs: 40, fat: 15), source: .search, updatedAt: date))
                 run.statuses.append(DayStatus(day: day, state: .partial))
             }
             kg += (eaten - maintenance) / Energy.kcalPerKg
@@ -61,22 +68,24 @@ struct SplitMix {
     var state: UInt64
     init(seed: UInt64) { state = seed }
     mutating func next() -> UInt64 {
-        state &+= 0x9E3779B97F4A7C15
+        state &+= 0x9E37_79B9_7F4A_7C15
         var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
-        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
         return z ^ (z >> 31)
     }
     mutating func uniform() -> Double { Double(next() >> 11) / Double(1 << 53) }
     mutating func normal() -> Double {
-        let u1 = max(1e-12, uniform()), u2 = uniform()
+        let u1 = max(1e-12, uniform())
+        let u2 = uniform()
         return sqrt(-2 * log(u1)) * cos(2 * .pi * u2)
     }
 }
 
 func profile(goals: [OutcomeGoal] = [.biggerAndStronger], experience: TrainingExperience = .intermediate) -> SharedProfile {
-    SharedProfile(goals: goals, schedule: TrainingSchedule(daysPerWeek: 4, minutesPerSession: 60), experience: experience, sex: .male,
-                  birthYear: 1991, heightCm: 180, units: UnitPreference(weight: .kg, length: .cm), createdBy: .macroTrack)
+    SharedProfile(
+        goals: goals, schedule: TrainingSchedule(daysPerWeek: 4, minutesPerSession: 60), experience: experience, sex: .male,
+        birthYear: 1991, heightCm: 180, units: UnitPreference(weight: .kg, length: .cm), createdBy: .macroTrack)
 }
 
 func usable(_ run: SimulatedEater.Run) -> [Day: Double] {
@@ -89,8 +98,9 @@ func usable(_ run: SimulatedEater.Run) -> [Day: Double] {
 
 @Suite("Simulated eaters")
 struct SimulatedEaterTests {
-    @Test("Maintenance converges from eating and weighing in, through water and noise",
-          arguments: [(2600.0, 2250.0), (2200.0, 2600.0), (3000.0, 2500.0)])
+    @Test(
+        "Maintenance converges from eating and weighing in, through water and noise",
+        arguments: [(2600.0, 2250.0), (2200.0, 2600.0), (3000.0, 2500.0)])
     func maintenanceConverges(truth: Double, eats: Double) {
         let formula = Energy.formula(sex: .male, kg: 84, heightCm: 180, age: 35, trainingDays: 4, otherActiveMinutes: 0)
         var contained = 0
@@ -102,7 +112,8 @@ struct SimulatedEaterTests {
                 let trend = Weight.trend(run.weighIns.filter { $0.day <= end }, through: end)
                 return Energy.estimate(trend: trend, usable: usable(run).filter { $0.key <= end }, formula: formula, through: end)
             }
-            let early = estimate(through: 13), late = estimate(through: 27)
+            let early = estimate(through: 13)
+            let late = estimate(through: 27)
             #expect(early.spread > late.spread, "seed \(seed): \(early.spread) vs \(late.spread)")
             #expect(abs(late.kcal - truth) <= 275, "seed \(seed): \(late.kcal) for \(truth), formula \(formula)")
             #expect(late.basis != .formula)
@@ -114,8 +125,11 @@ struct SimulatedEaterTests {
     @Test("Weekly check-ins move targets gradually toward the truth")
     func checkInsConverge() {
         let eater = SimulatedEater(maintenance: 2400, startKg: 90, logging: 0.9)
-        var checkIns: [CheckIn] = [CheckIn(day: eater.start.adding(days: 20), expenditure: 2800, kcal: 2300, protein: 180, carbs: 200,
-                                           fat: 70, status: .updated, reason: "Start")]
+        var checkIns: [CheckIn] = [
+            CheckIn(
+                day: eater.start.adding(days: 20), expenditure: 2800, kcal: 2300, protein: 180, carbs: 200,
+                fat: 70, status: .updated, reason: "Start")
+        ]
         let phase = PlannedPhase(kind: .cut, ratePerWeek: -0.005, weeks: 12, start: eater.start.adding(days: 20))
         let run = eater.run(days: 21 + 56) { i, day in
             checkIns.last { $0.day <= day }.map(\.kcal) ?? 2400
@@ -124,8 +138,9 @@ struct SimulatedEaterTests {
         for week in 1...8 {
             let day = eater.start.adding(days: 20 + week * 7)
             let trend = Weight.trend(run.weighIns.filter { $0.day < day }, through: day.adding(days: -1))
-            let next = CheckIns.review(previous: checkIns.last, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
-                                       phase: phase, weightKg: trend.latest?.trend ?? 90, referenceKg: 90, fallbackExpenditure: 2800)
+            let next = CheckIns.review(
+                previous: checkIns.last, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
+                phase: phase, weightKg: trend.latest?.trend ?? 90, referenceKg: 90, fallbackExpenditure: 2800)
             #expect(abs(next.kcal - checkIns.last!.kcal) <= 150.01, "week \(week): \(checkIns.last!.kcal) → \(next.kcal)")
             checkIns.append(next)
             expenditures.append(next.expenditure)
@@ -168,14 +183,16 @@ struct SimulatedEaterTests {
         let eater = SimulatedEater(maintenance: 2500, startKg: 80, logging: 1, noiseKg: 0.3)
         let run = eater.run(days: 50, intake: { _, _ in 2500 }, misreads: [30: 86])
         let phase = PlannedPhase(kind: .maintenance, weeks: 12, start: eater.start.adding(days: 28))
-        var previous = CheckIn(day: eater.start.adding(days: 28), expenditure: 2500, kcal: 2500, protein: 150, carbs: 300, fat: 75,
-                               status: .updated, reason: "Start")
+        var previous = CheckIn(
+            day: eater.start.adding(days: 28), expenditure: 2500, kcal: 2500, protein: 150, carbs: 300, fat: 75,
+            status: .updated, reason: "Start")
         var statuses: [CheckIn.Status] = []
         for day in [35, 42, 49].map({ eater.start.adding(days: $0) }) {
             let trend = Weight.trend(run.weighIns.filter { $0.day <= day }, through: day)
             #expect(trend.outliers.contains { $0.kg == 86 })
-            previous = CheckIns.review(previous: previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day, phase: phase,
-                                       weightKg: 80, referenceKg: 80, fallbackExpenditure: 2500)
+            previous = CheckIns.review(
+                previous: previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day, phase: phase,
+                weightKg: 80, referenceKg: 80, fallbackExpenditure: 2500)
             statuses.append(previous.status)
         }
         #expect(statuses == [.holding, .updated, .updated], "\(statuses)")
@@ -186,12 +203,17 @@ struct SimulatedEaterTests {
         let eater = SimulatedEater(maintenance: 2500, startKg: 80, logging: 1, noiseKg: 0.3)
         let run = eater.run(days: 50, intake: { _, _ in 2500 }, misreads: [34: 86])
         let phase = PlannedPhase(kind: .maintenance, weeks: 12, start: eater.start.adding(days: 28))
-        var previous = CheckIn(day: eater.start.adding(days: 28), expenditure: 2500, kcal: 2500, protein: 150, carbs: 300, fat: 75,
-                               status: .updated, reason: "Start")
+        var previous = CheckIn(
+            day: eater.start.adding(days: 28), expenditure: 2500, kcal: 2500, protein: 150, carbs: 300, fat: 75,
+            status: .updated, reason: "Start")
         func review(on day: Day, weighedFirst: Bool) -> (WeightTrend, CheckIn) {
             let trend = Weight.trend(run.weighIns.filter { weighedFirst ? $0.day <= day : $0.day < day }, through: day)
-            return (trend, CheckIns.review(previous: previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
-                                           phase: phase, weightKg: 80, referenceKg: 80, fallbackExpenditure: 2500))
+            return (
+                trend,
+                CheckIns.review(
+                    previous: previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
+                    phase: phase, weightKg: 80, referenceKg: 80, fallbackExpenditure: 2500)
+            )
         }
         // Day 35's check-in ran before that morning's weigh-in: nothing after day 34's 86 kg yet.
         let (early, first) = review(on: eater.start.adding(days: 35), weighedFirst: false)
@@ -237,12 +259,16 @@ struct SimulatedEaterTests {
 struct PhaseTests {
     let today = Day(year: 2026, month: 3, day: 2)
 
-    func input(waist: Double?, goals: [OutcomeGoal], history: DietHistory = .none, maintenance: Double = 2600, formula: Double = 2600,
-               experience: TrainingExperience = .intermediate, strength: Double? = nil, trend: Trajectory? = nil, change: Double? = nil) -> PlannerInput {
-        PlannerInput(profile: profile(goals: goals, experience: experience), history: history, today: today, weightKg: 82, weeklyChange: change,
-                     maintenance: MaintenanceEstimate(kcal: maintenance, low: maintenance - 150, high: maintenance + 150, basis: .data, days: 21,
-                                                      formula: formula),
-                     waistCm: waist, strengthScore: strength, strengthTrend: trend)
+    func input(
+        waist: Double?, goals: [OutcomeGoal], history: DietHistory = .none, maintenance: Double = 2600, formula: Double = 2600,
+        experience: TrainingExperience = .intermediate, strength: Double? = nil, trend: Trajectory? = nil, change: Double? = nil
+    ) -> PlannerInput {
+        PlannerInput(
+            profile: profile(goals: goals, experience: experience), history: history, today: today, weightKg: 82, weeklyChange: change,
+            maintenance: MaintenanceEstimate(
+                kcal: maintenance, low: maintenance - 150, high: maintenance + 150, basis: .data, days: 21,
+                formula: formula),
+            waistCm: waist, strengthScore: strength, strengthTrend: trend)
     }
 
     @Test func higherWaistMeansACut() {
@@ -254,7 +280,8 @@ struct PhaseTests {
 
     @Test func samsWorkedExample() {
         // Off a long cut, stalled, healthy but some belly fat, wants bigger and leaner.
-        let plan = PhasePlanner.recommend(input(waist: 88, goals: [.biggerAndStronger, .leaner], history: .longCut, maintenance: 2250, formula: 2650))
+        let plan = PhasePlanner.recommend(
+            input(waist: 88, goals: [.biggerAndStronger, .leaner], history: .longCut, maintenance: 2250, formula: 2650))
         #expect(plan.phases.first?.kind == .reverseDiet)
         #expect(plan.phases.contains { $0.kind == .leanBulk })
         #expect(plan.headline.contains("lower than expected"))
@@ -354,18 +381,23 @@ struct PhaseChangeTests {
     let today = Day(year: 2026, month: 3, day: 2)
 
     func plan(waist: Double, goals: [OutcomeGoal], kg: Double, maintenance: Double) -> PhasePlan {
-        PhasePlanner.recommend(PlannerInput(profile: profile(goals: goals), history: .none, today: today, weightKg: kg, weeklyChange: nil,
-                                            maintenance: MaintenanceEstimate(kcal: maintenance, low: maintenance - 150, high: maintenance + 150,
-                                                                             basis: .data, days: 21, formula: maintenance),
-                                            waistCm: waist))
+        PhasePlanner.recommend(
+            PlannerInput(
+                profile: profile(goals: goals), history: .none, today: today, weightKg: kg, weeklyChange: nil,
+                maintenance: MaintenanceEstimate(
+                    kcal: maintenance, low: maintenance - 150, high: maintenance + 150,
+                    basis: .data, days: 21, formula: maintenance),
+                waistCm: waist))
     }
 
     func walk(_ plan: PhasePlan, weeks: Int, kg: Double, maintenance: Double) -> [CheckIn] {
         var checkIns = [CheckIns.start(plan, today: today, maintenance: maintenance, weightKg: kg, referenceKg: kg)]
         for week in 1...weeks {
             let day = today.adding(weeks: week)
-            checkIns.append(CheckIns.review(previous: checkIns.last, trend: .empty, usable: [:], today: day, phase: plan.phase(on: day),
-                                            weightKg: kg, referenceKg: kg, fallbackExpenditure: maintenance))
+            checkIns.append(
+                CheckIns.review(
+                    previous: checkIns.last, trend: .empty, usable: [:], today: day, phase: plan.phase(on: day),
+                    weightKg: kg, referenceKg: kg, fallbackExpenditure: maintenance))
         }
         return checkIns
     }
@@ -393,12 +425,14 @@ struct PhaseChangeTests {
     func lateCheckIn() {
         let plan = plan(waist: 110, goals: [.leaner], kg: 100, maintenance: 2800)
         let breakStart = plan.phases[1].start
-        let lastOfTheCut = CheckIn(day: breakStart.adding(days: -3), expenditure: 2750, kcal: 2100, protein: 200, carbs: 150, fat: 70,
-                                   status: .updated, reason: "")
+        let lastOfTheCut = CheckIn(
+            day: breakStart.adding(days: -3), expenditure: 2750, kcal: 2100, protein: 200, carbs: 150, fat: 70,
+            status: .updated, reason: "")
         func targets(on day: Day) -> DailyTargets {
-            Targets.today(day: day, assessing: false, plan: plan, override: nil,
-                          maintenance: MaintenanceEstimate(kcal: 2800, low: 2650, high: 2950, basis: .data, days: 21, formula: 2800),
-                          checkIn: lastOfTheCut, weightKg: 100, heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: false)
+            Targets.today(
+                day: day, assessing: false, plan: plan, override: nil,
+                maintenance: MaintenanceEstimate(kcal: 2800, low: 2650, high: 2950, basis: .data, days: 21, formula: 2800),
+                checkIn: lastOfTheCut, weightKg: 100, heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: false)
         }
         #expect(targets(on: breakStart.adding(days: -1)).kcal == 2100)
         let onBreak = targets(on: breakStart)
@@ -412,13 +446,15 @@ struct TargetTests {
     let maintenance = MaintenanceEstimate(kcal: 2600, low: 2450, high: 2750, basis: .data, days: 21, formula: 2600)
 
     func plan(_ kind: PhaseKind, rate: Double) -> PhasePlan {
-        PhasePlan(phases: [PlannedPhase(kind: kind, ratePerWeek: rate, weeks: 10, start: day.adding(days: -14))], headline: "",
-                  reasons: [], confidence: nil, arc: "")
+        PhasePlan(
+            phases: [PlannedPhase(kind: kind, ratePerWeek: rate, weeks: 10, start: day.adding(days: -14))], headline: "",
+            reasons: [], confidence: nil, arc: "")
     }
 
     @Test func cutDeficitAndMacros() {
-        let t = Targets.today(day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
-                              checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: 0.52, life: LifeModeEffects(), deload: false)
+        let t = Targets.today(
+            day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
+            checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: 0.52, life: LifeModeEffects(), deload: false)
         let kcal = t.kcal ?? 0
         #expect(kcal < 2600 && kcal > 2600 * 0.75)
         #expect(abs(kcal - (2600 - 0.005 * 85 * 7700 / 7)) < 15)
@@ -428,30 +464,37 @@ struct TargetTests {
     }
 
     @Test func deloadInACutIsADietBreak() {
-        let t = Targets.today(day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
-                              checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: true)
+        let t = Targets.today(
+            day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
+            checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: true)
         #expect(t.mode == .dietBreak && t.kcal == 2600)
         #expect(t.note.contains("water"))
     }
 
     @Test func lifeModesChangeTheAsk() {
-        let vacation = LifeModes.effects(on: day, periods: [LifeModePeriod(kind: .vacation, start: day, end: day.adding(days: 6), createdBy: .liftTrack)])
-        let v = Targets.today(day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
-                              checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: vacation, deload: false)
+        let vacation = LifeModes.effects(
+            on: day, periods: [LifeModePeriod(kind: .vacation, start: day, end: day.adding(days: 6), createdBy: .liftTrack)])
+        let v = Targets.today(
+            day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
+            checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: vacation, deload: false)
         #expect(v.mode == .vacation && v.kcal == nil)
         let ill = LifeModes.effects(on: day, periods: [LifeModePeriod(kind: .illness(.systemic), start: day, createdBy: .macroTrack)])
-        let i = Targets.today(day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
-                              checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: ill, deload: false)
+        let i = Targets.today(
+            day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
+            checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: ill, deload: false)
         #expect(i.mode == .illness && i.kcal == nil && i.note.contains("soup"))
-        let crunch = LifeModes.effects(on: day, periods: [LifeModePeriod(kind: .crunch(CrunchDials()), start: day, end: day.adding(days: 5), createdBy: .liftTrack)])
-        let c = Targets.today(day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
-                              checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: crunch, deload: false)
+        let crunch = LifeModes.effects(
+            on: day, periods: [LifeModePeriod(kind: .crunch(CrunchDials()), start: day, end: day.adding(days: 5), createdBy: .liftTrack)])
+        let c = Targets.today(
+            day: day, assessing: false, plan: plan(.cut, rate: -0.005), override: nil, maintenance: maintenance,
+            checkIn: nil, weightKg: 85, heightCm: 180, waistToHeight: nil, life: crunch, deload: false)
         #expect(c.mode == .crunch && c.kcal == 2600 && c.protein != nil)
     }
 
     @Test func assessmentAsksForNoDeficit() {
-        let t = Targets.today(day: day, assessing: true, plan: nil, override: nil, maintenance: maintenance, checkIn: nil, weightKg: 85,
-                              heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: false)
+        let t = Targets.today(
+            day: day, assessing: true, plan: nil, override: nil, maintenance: maintenance, checkIn: nil, weightKg: 85,
+            heightCm: 180, waistToHeight: nil, life: LifeModeEffects(), deload: false)
         #expect(t.mode == .assessment && t.kcal == nil && t.protein != nil)
     }
 
@@ -467,8 +510,9 @@ struct AnalysisTests {
         let eater = SimulatedEater(maintenance: 2600, startKg: 84, logging: 0.7)
         let run = eater.run(days: 17) { _, _ in 2300 }
         let today = eater.start.adding(days: 17)
-        let state = MacroState(profile: profile(), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
-                               weighIns: run.weighIns, dayStatus: run.statuses, today: today)
+        let state = MacroState(
+            profile: profile(), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
+            weighIns: run.weighIns, dayStatus: run.statuses, today: today)
         let a = MacroAnalyst.analyse(state)
         #expect(a.assessment != nil)
         #expect(a.assessment?.learned.contains { $0.contains("maintenance") } == true)
@@ -485,8 +529,9 @@ struct AnalysisTests {
         let eater = SimulatedEater(maintenance: 2600, startKg: 84)
         let run = eater.run(days: 35) { _, _ in 2200 }
         let today = eater.start.adding(days: 35)
-        var state = MacroState(profile: profile(goals: [.leaner]), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
-                               weighIns: run.weighIns, dayStatus: run.statuses, today: today)
+        var state = MacroState(
+            profile: profile(goals: [.leaner]), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
+            weighIns: run.weighIns, dayStatus: run.statuses, today: today)
         var a = MacroAnalyst.analyse(state)
         let plan = PhasePlanner.recommend(a.plannerInput)
         state.plan = plan
@@ -509,19 +554,24 @@ struct AnalysisTests {
         for day in DayRange(start, today.adding(days: -1)).days {
             for hour in [8.0, 12, 15, 19] {
                 let date = day.date().addingTimeInterval(hour * 3600)
-                entries.append(FoodEntry(date: date, name: "Meal", amountLabel: "1", nutrients: Nutrients(kcal: 650, protein: 35, carbs: 70, fat: 22),
-                                         source: .search, updatedAt: date))
+                entries.append(
+                    FoodEntry(
+                        date: date, name: "Meal", amountLabel: "1", nutrients: Nutrients(kcal: 650, protein: 35, carbs: 70, fat: 22),
+                        source: .search, updatedAt: date))
             }
             weighIns.append(WeighIn(date: day.date().addingTimeInterval(7 * 3600), kg: 84))
             statuses.append(DayStatus(day: day, state: .complete))
         }
-        entries.append(FoodEntry(date: today.date().addingTimeInterval(8 * 3600), name: "Breakfast", amountLabel: "1",
-                                 nutrients: Nutrients(kcal: 400, protein: 20, carbs: 50, fat: 10), source: .search))
+        entries.append(
+            FoodEntry(
+                date: today.date().addingTimeInterval(8 * 3600), name: "Breakfast", amountLabel: "1",
+                nutrients: Nutrients(kcal: 400, protein: 20, carbs: 50, fat: 10), source: .search))
         let phases = [PlannedPhase(kind: .leanBulk, weeks: 3, start: start), PlannedPhase(kind: .cut, weeks: 8, start: start.adding(days: 21))]
         let plan = PhasePlan(phases: phases, headline: "", reasons: [], confidence: nil, arc: "", created: start.date())
-        return MacroState(profile: profile(), settings: MacroSettings(assessmentStart: start.adding(days: -21)), entries: entries,
-                          weighIns: weighIns, dayStatus: statuses, plan: plan, lifeModes: lifeModes, today: today,
-                          now: today.date().addingTimeInterval(9 * 3600))
+        return MacroState(
+            profile: profile(), settings: MacroSettings(assessmentStart: start.adding(days: -21)), entries: entries,
+            weighIns: weighIns, dayStatus: statuses, plan: plan, lifeModes: lifeModes, today: today,
+            now: today.date().addingTimeInterval(9 * 3600))
     }
 
     @Test func publishedDaysAreJudgedByTheirOwnTargets() throws {
@@ -564,17 +614,20 @@ struct AnalysisTests {
 
     @Test func aDaysNewerCheckInIsInForceAndHasTheDaysID() {
         let day = Day(year: 2026, month: 3, day: 2)
-        let morning = CheckIn(day: day, expenditure: 2600, kcal: 2100, protein: 170, carbs: 200, fat: 70, status: .updated, reason: "Weekly",
-                              updatedAt: day.date().addingTimeInterval(8 * 3600))
-        let started = CheckIn(day: day, expenditure: 2600, kcal: 2400, protein: 170, carbs: 270, fat: 70, status: .updated, reason: "New plan",
-                              updatedAt: day.date().addingTimeInterval(15 * 3600))
+        let morning = CheckIn(
+            day: day, expenditure: 2600, kcal: 2100, protein: 170, carbs: 200, fat: 70, status: .updated, reason: "Weekly",
+            updatedAt: day.date().addingTimeInterval(8 * 3600))
+        let started = CheckIn(
+            day: day, expenditure: 2600, kcal: 2400, protein: 170, carbs: 270, fat: 70, status: .updated, reason: "New plan",
+            updatedAt: day.date().addingTimeInterval(15 * 3600))
         // The store hands back the newest first.
         let state = MacroState(profile: profile(), settings: MacroSettings(), checkIns: [started, morning], today: day)
         #expect(state.checkIns.last?.kcal == 2400)
         // Check-ins made on two devices the same day are one record.
         let week = day.adding(days: 7)
-        let next = CheckIns.review(previous: started, trend: .empty, usable: [:], today: week, phase: nil, weightKg: 84, referenceKg: 84,
-                                   fallbackExpenditure: 2600)
+        let next = CheckIns.review(
+            previous: started, trend: .empty, usable: [:], today: week, phase: nil, weightKg: 84, referenceKg: 84,
+            fallbackExpenditure: 2600)
         #expect(next.id == CheckIn.id(for: week) && CheckIn.id(for: week) != CheckIn.id(for: day))
         let plan = PhasePlan(phases: [PlannedPhase(kind: .cut, weeks: 8, start: day)], headline: "", reasons: [], confidence: nil, arc: "")
         let first = CheckIns.start(plan, today: day, maintenance: 2600, weightKg: 84, referenceKg: 84)
@@ -587,18 +640,23 @@ struct AnalysisTests {
         var entries: [FoodEntry] = []
         for d in 1...10 {
             let morning = now.addingTimeInterval(-Double(d) * 86400)
-            entries.append(FoodEntry(date: morning, name: "Oats", foodID: "usda:1", amountLabel: "80 g",
-                                     nutrients: Nutrients(kcal: 300, protein: 10, carbs: 50, fat: 6), source: .search))
-            entries.append(FoodEntry(date: morning.addingTimeInterval(11 * 3600), name: "Pasta", foodID: "usda:2", amountLabel: "1 plate",
-                                     nutrients: Nutrients(kcal: 700, protein: 25, carbs: 100, fat: 20), source: .search))
+            entries.append(
+                FoodEntry(
+                    date: morning, name: "Oats", foodID: "usda:1", amountLabel: "80 g",
+                    nutrients: Nutrients(kcal: 300, protein: 10, carbs: 50, fat: 6), source: .search))
+            entries.append(
+                FoodEntry(
+                    date: morning.addingTimeInterval(11 * 3600), name: "Pasta", foodID: "usda:2", amountLabel: "1 plate",
+                    nutrients: Nutrients(kcal: 700, protein: 25, carbs: 100, fat: 20), source: .search))
         }
         let ranked = LogAgain.rank(entries, now: now, calendar: calendar)
         #expect(ranked.first?.template.name == "Oats")
         // A single food isn't a moment worth copying whole; oats with coffee is.
         #expect(LogAgain.usualMoment(near: now, entries: entries, calendar: calendar) == nil)
         let coffee = (1...3).map { d in
-            FoodEntry(date: now.addingTimeInterval(-Double(d) * 86400 + 300), name: "Coffee", amountLabel: "1 cup",
-                      nutrients: Nutrients(kcal: 5, protein: 0, carbs: 0, fat: 0), source: .search)
+            FoodEntry(
+                date: now.addingTimeInterval(-Double(d) * 86400 + 300), name: "Coffee", amountLabel: "1 cup",
+                nutrients: Nutrients(kcal: 5, protein: 0, carbs: 0, fat: 0), source: .search)
         }
         let usual = LogAgain.usualMoment(near: now, entries: entries + coffee, calendar: calendar)
         #expect(usual?.entries.map(\.name) == ["Oats", "Coffee"])
@@ -610,8 +668,9 @@ struct AnalysisTests {
     @Test func aDayIsMomentsHoweverManyThereAre() {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         func at(_ minutes: Double) -> FoodEntry {
-            FoodEntry(date: start.addingTimeInterval(minutes * 60), name: "F\(Int(minutes))", amountLabel: "1",
-                      nutrients: Nutrients(kcal: 100, protein: 5, carbs: 10, fat: 3), source: .search)
+            FoodEntry(
+                date: start.addingTimeInterval(minutes * 60), name: "F\(Int(minutes))", amountLabel: "1",
+                nutrients: Nutrients(kcal: 100, protein: 5, carbs: 10, fat: 3), source: .search)
         }
         // Three foods at breakfast, a snack, lunch, two more snacks and a late dinner: five moments.
         let day = [at(0), at(5), at(20), at(150), at(300), at(310), at(420), at(600), at(605)].shuffled()

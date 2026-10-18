@@ -81,14 +81,17 @@ public struct NutritionPhase: Hashable, Codable, Sendable {
     public var effects: PhaseEffects {
         switch kind.energy {
         case .deficit:
-            PhaseEffects(volumeTolerance: kind == .miniCut ? 0.75 : 0.85, maxLoadStepsPerSession: 1, stallsExpected: true,
-                         protectCompounds: true, blockLengthAdjustment: kind == .miniCut ? -2 : -1)
+            PhaseEffects(
+                volumeTolerance: kind == .miniCut ? 0.75 : 0.85, maxLoadStepsPerSession: 1, stallsExpected: true,
+                protectCompounds: true, blockLengthAdjustment: kind == .miniCut ? -2 : -1)
         case .maintenance:
-            PhaseEffects(volumeTolerance: 1, maxLoadStepsPerSession: 1, stallsExpected: false, protectCompounds: false,
-                         blockLengthAdjustment: 0)
+            PhaseEffects(
+                volumeTolerance: 1, maxLoadStepsPerSession: 1, stallsExpected: false, protectCompounds: false,
+                blockLengthAdjustment: 0)
         case .surplus:
-            PhaseEffects(volumeTolerance: kind == .reverseDiet ? 1 : 1.1, maxLoadStepsPerSession: 2, stallsExpected: false,
-                         protectCompounds: false, blockLengthAdjustment: 1)
+            PhaseEffects(
+                volumeTolerance: kind == .reverseDiet ? 1 : 1.1, maxLoadStepsPerSession: 2, stallsExpected: false,
+                protectCompounds: false, blockLengthAdjustment: 1)
         }
     }
 }

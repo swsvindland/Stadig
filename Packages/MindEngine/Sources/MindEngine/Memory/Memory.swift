@@ -44,8 +44,10 @@ public struct Memory: Hashable, Codable, Sendable {
 /// review moves stability and difficulty by how it went and how forgettable it had become.
 /// Reviews are scheduled for 90% recall, so about one in ten is expected to be missed.
 public enum Scheduler {
-    public static let weights: [Double] = [0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474, 0.1367,
-                                           1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755]
+    public static let weights: [Double] = [
+        0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474, 0.1367,
+        1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755,
+    ]
     public static let desiredRetention = 0.9
     static let decay = -0.5
     static let factor = 19.0 / 81.0
@@ -72,16 +74,18 @@ public enum Scheduler {
     public static func first(_ grade: Grade, at date: Date) -> Memory {
         let stability = w[grade.rawValue - 1]
         let difficulty = initialDifficulty(grade)
-        return Memory(stability: stability, difficulty: difficulty, lastReview: date,
-                      due: date.addingTimeInterval(roundedDays(interval(stability: stability)) * 86_400), reps: 1,
-                      lapses: grade == .again ? 1 : 0)
+        return Memory(
+            stability: stability, difficulty: difficulty, lastReview: date,
+            due: date.addingTimeInterval(roundedDays(interval(stability: stability)) * 86_400), reps: 1,
+            lapses: grade == .again ? 1 : 0)
     }
 
     /// Something shown to be known already (a placement test, or a quick check passed): treated as
     /// a memory that has lasted `days`, so it comes back for a check well before it would fade.
     public static func known(stability days: Double, at date: Date, difficulty: Double = 5) -> Memory {
-        Memory(stability: days, difficulty: difficulty, lastReview: date,
-               due: date.addingTimeInterval(roundedDays(interval(stability: days)) * 86_400), reps: 1)
+        Memory(
+            stability: days, difficulty: difficulty, lastReview: date,
+            due: date.addingTimeInterval(roundedDays(interval(stability: days)) * 86_400), reps: 1)
     }
 
     public static func review(_ memory: Memory, grade: Grade, at date: Date) -> Memory {

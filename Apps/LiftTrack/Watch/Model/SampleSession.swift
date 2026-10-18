@@ -57,40 +57,50 @@ enum SampleContext {
         let work = { (load: Double?, reps: Int) in SetPrescription(kind: .working, loadKg: load, targetReps: reps, targetRIR: 2) }
         let intervals = ConditioningPlan(minutes: 10, zones: 4...5, style: .intervals, workSeconds: 30, restSeconds: 30)
         let items = [
-            PlannedItem(slotID: nil, block: .limiter, exerciseID: "couch-stretch", role: .mobility,
-                        sets: Array(repeating: SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: 45), count: 2),
-                        repRange: RepRange(1, 1), rest: RestPlan(target: 15, minimum: 0, heartRateGuided: false), seconds: 45),
-            PlannedItem(slotID: nil, block: .main, exerciseID: "barbell-bench-press", role: .main,
-                        sets: [SetPrescription(kind: .warmup, loadKg: 20, targetReps: 10, targetRIR: 5),
-                               SetPrescription(kind: .warmup, loadKg: 50, targetReps: 5, targetRIR: 5),
-                               work(80, 8), work(80, 8), work(80, 8)],
-                        repRange: RepRange(6, 10), rest: heavy, restFiller: "hip-90-90-switches",
-                        note: "Up 2.5 kg: every set last time was just right."),
-            PlannedItem(slotID: nil, block: .accessory, exerciseID: "db-lateral-raise", role: .accessory,
-                        sets: Array(repeating: SetPrescription(kind: .findingWeight, loadKg: nil, targetReps: 12, targetRIR: 2), count: 3),
-                        repRange: RepRange(10, 15), rest: accessory,
-                        note: "Pick a weight you think you can do for 12, then rate it. The next set adjusts."),
-            PlannedItem(slotID: nil, block: .accessory, exerciseID: "pull-up", role: .accessory,
-                        sets: [work(0, 8), work(0, 8), SetPrescription(kind: .repOut, loadKg: 0, targetReps: 8, targetRIR: 0)],
-                        repRange: RepRange(6, 10), rest: compound),
-            PlannedItem(slotID: nil, block: .conditioning, exerciseID: "bike-30-30-intervals", role: .conditioning,
-                        sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 3, seconds: 600)],
-                        repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false), seconds: 600,
-                        conditioning: intervals),
-            PlannedItem(slotID: nil, block: .cooldown, exerciseID: "doorway-chest-stretch", role: .stretch,
-                        sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: 30)],
-                        repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false), seconds: 30),
+            PlannedItem(
+                slotID: nil, block: .limiter, exerciseID: "couch-stretch", role: .mobility,
+                sets: Array(repeating: SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: 45), count: 2),
+                repRange: RepRange(1, 1), rest: RestPlan(target: 15, minimum: 0, heartRateGuided: false), seconds: 45),
+            PlannedItem(
+                slotID: nil, block: .main, exerciseID: "barbell-bench-press", role: .main,
+                sets: [
+                    SetPrescription(kind: .warmup, loadKg: 20, targetReps: 10, targetRIR: 5),
+                    SetPrescription(kind: .warmup, loadKg: 50, targetReps: 5, targetRIR: 5),
+                    work(80, 8), work(80, 8), work(80, 8),
+                ],
+                repRange: RepRange(6, 10), rest: heavy, restFiller: "hip-90-90-switches",
+                note: "Up 2.5 kg: every set last time was just right."),
+            PlannedItem(
+                slotID: nil, block: .accessory, exerciseID: "db-lateral-raise", role: .accessory,
+                sets: Array(repeating: SetPrescription(kind: .findingWeight, loadKg: nil, targetReps: 12, targetRIR: 2), count: 3),
+                repRange: RepRange(10, 15), rest: accessory,
+                note: "Pick a weight you think you can do for 12, then rate it. The next set adjusts."),
+            PlannedItem(
+                slotID: nil, block: .accessory, exerciseID: "pull-up", role: .accessory,
+                sets: [work(0, 8), work(0, 8), SetPrescription(kind: .repOut, loadKg: 0, targetReps: 8, targetRIR: 0)],
+                repRange: RepRange(6, 10), rest: compound),
+            PlannedItem(
+                slotID: nil, block: .conditioning, exerciseID: "bike-30-30-intervals", role: .conditioning,
+                sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 3, seconds: 600)],
+                repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false), seconds: 600,
+                conditioning: intervals),
+            PlannedItem(
+                slotID: nil, block: .cooldown, exerciseID: "doorway-chest-stretch", role: .stretch,
+                sets: [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: 30)],
+                repRange: RepRange(1, 1), rest: RestPlan(target: 0, minimum: 0, heartRateGuided: false), seconds: 30),
         ]
-        let plan = SessionPlan(day: .today, title: "Upper A", mesocycleID: nil, dayID: nil, week: 1, deload: false, checkIn: false,
-                               assessment: false, minimumEffectiveDose: false, items: items,
-                               notes: ["Week 2: leave about two reps in the tank on every set."], quests: [])
+        let plan = SessionPlan(
+            day: .today, title: "Upper A", mesocycleID: nil, dayID: nil, week: 1, deload: false, checkIn: false,
+            assessment: false, minimumEffectiveDose: false, items: items,
+            notes: ["Week 2: leave about two reps in the tank on every set."], quests: [])
         let lastWeek = Date().addingTimeInterval(-7 * 86400)
         let bench = (0..<3).map { _ in
             LoggedSet(exerciseID: "barbell-bench-press", date: lastWeek, kind: .working, loadKg: 77.5, reps: 8, targetReps: 8, rating: .orange)
         }
-        return PhoneContext(plan: plan, upNext: nil, gym: gym, trust: TrustState(prior: 0.6), phase: NutritionPhase.assumedMaintenance.effects,
-                            bodyweightKg: 80, history: ["barbell-bench-press": bench], enduranceScore: 55, heartRateGuidedRest: true,
-                            zones: .estimated(age: 35, resting: 58), units: UnitPreference(weight: .kg, length: .cm))
+        return PhoneContext(
+            plan: plan, upNext: nil, gym: gym, trust: TrustState(prior: 0.6), phase: NutritionPhase.assumedMaintenance.effects,
+            bodyweightKg: 80, history: ["barbell-bench-press": bench], enduranceScore: 55, heartRateGuidedRest: true,
+            zones: .estimated(age: 35, resting: 58), units: UnitPreference(weight: .kg, length: .cm))
     }
 }
 #endif

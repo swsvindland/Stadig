@@ -1,6 +1,6 @@
 import CoreGraphics
-import Foundation
 import FoodDatabase
+import Foundation
 import SystemCore
 
 /// One of Apple's models behind the two requests a meal needs. The FoundationModels engines
@@ -23,16 +23,21 @@ struct MealDraft: Sendable {
 /// The two-pass analysis: the model names foods and amounts, the catalog supplies everything
 /// else, and the model is asked again only to settle near-ties.
 enum MealAnalysis {
-    static func run(description: String, image: CGImage?, personal: [PersonalFood], reader: any MealModel,
-                    picker: (any MealModel)?, catalog: any MealCatalog) async throws -> MealDraft {
+    static func run(
+        description: String, image: CGImage?, personal: [PersonalFood], reader: any MealModel,
+        picker: (any MealModel)?, catalog: any MealCatalog
+    ) async throws -> MealDraft {
         let photo = image != nil
-        let clock = ContinuousClock(), start = clock.now
-        let reply = try await reader.readMeal(instructions: Prompts.mealInstructions,
-                                              prompt: Prompts.meal(description: description, photo: photo), image: image)
+        let clock = ContinuousClock()
+        let start = clock.now
+        let reply = try await reader.readMeal(
+            instructions: Prompts.mealInstructions,
+            prompt: Prompts.meal(description: description, photo: photo), image: image)
         let seen = SeenFoods.read(reply, description: description, photo: photo)
         let scene = reply.scene.map { FoodText.clean($0) }?.nilIfEmpty
-        Trace.note("read \(reader.engine) in \(clock.now - start): scene \(scene ?? "-") food \(reply.food.map(String.init) ?? "-"), "
-            + "items \(reply.items.map { "\($0.brand) \($0.name) \($0.quantity) \($0.unit) \($0.grams ?? 0)g" }) → seen \(seen.map(\.name))")
+        Trace.note(
+            "read \(reader.engine) in \(clock.now - start): scene \(scene ?? "-") food \(reply.food.map(String.init) ?? "-"), "
+                + "items \(reply.items.map { "\($0.brand) \($0.name) \($0.quantity) \($0.unit) \($0.grams ?? 0)g" }) → seen \(seen.map(\.name))")
         guard !seen.isEmpty else { return MealDraft(scene: scene, isFood: false, items: []) }
         let looking = clock.now
         let found = await candidates(for: seen, catalog: catalog, personal: personal)
@@ -43,8 +48,9 @@ enum MealAnalysis {
             let meal = [scene, description.nilIfEmpty].compactMap { $0 }.joined(separator: ". ")
             let asking = clock.now
             do {
-                picks = try await picker.pick(instructions: Prompts.pickInstructions,
-                                              prompt: Matching.pickPrompt(seen: seen, found: found, asked: asked, meal: meal), foods: asked.count)
+                picks = try await picker.pick(
+                    instructions: Prompts.pickInstructions,
+                    prompt: Matching.pickPrompt(seen: seen, found: found, asked: asked, meal: meal), foods: asked.count)
                 Trace.note("picked \(picks.map { "\($0.food):\($0.entry)" }) for \(asked.map { seen[$0].name }) in \(clock.now - asking)")
             } catch is CancellationError {
                 throw CancellationError()
@@ -54,7 +60,9 @@ enum MealAnalysis {
             }
         }
         for (food, row) in zip(seen, found) {
-            Trace.note("  \(food.name): sure \(row.sure) tied \(row.tied) " + row.matches.prefix(4).map { "\($0.food.name) [\($0.score)]" }.joined(separator: " | "))
+            Trace.note(
+                "  \(food.name): sure \(row.sure) tied \(row.tied) "
+                    + row.matches.prefix(4).map { "\($0.food.name) [\($0.score)]" }.joined(separator: " | "))
         }
         let chosen = Matching.choices(picks, found: found, asked: asked)
         let items = seen.indices.map { Drafting.item(seen[$0], found[$0], chosen: chosen[$0], said: description, meal: seen, catalog: catalog) }
@@ -87,19 +95,22 @@ enum Trace {
 enum Drafting {
     /// `meal` is every food seen with this one.
     static func item(_ seen: SeenFood, _ found: Candidates, chosen: Int?, said: String, meal: [SeenFood] = [], catalog: any MealCatalog)
-        -> GuessedItem {
+        -> GuessedItem
+    {
         let brand = seen.brand.nilIfEmpty
         guard let chosen, found.matches.indices.contains(chosen) else {
-            return GuessedItem(seenName: seen.label ?? seen.name, seenBrand: brand, match: nil, alternatives: [], unit: nil, count: seen.quantity,
-                               nutrients: .zero, sure: false, approximate: true)
+            return GuessedItem(
+                seenName: seen.label ?? seen.name, seenBrand: brand, match: nil, alternatives: [], unit: nil, count: seen.quantity,
+                nutrients: .zero, sure: false, approximate: true)
         }
         let match = found.matches[chosen]
         let resolved = Amounts.resolve(seen, food: match.food)
         let (unit, count) = portionUnit(for: resolved, food: match.food, units: catalog.units(for: match.food))
-        return GuessedItem(seenName: seen.label ?? seen.name, seenBrand: brand, match: match,
-                           alternatives: Matching.alternatives(found.matches, chosen: chosen, branded: brand != nil),
-                           unit: unit, count: count, nutrients: FoodUnits.nutrients(match.food, count: count, unit: unit),
-                           sure: found.sure, approximate: !resolved.exact || !stated(seen, in: said, among: meal))
+        return GuessedItem(
+            seenName: seen.label ?? seen.name, seenBrand: brand, match: match,
+            alternatives: Matching.alternatives(found.matches, chosen: chosen, branded: brand != nil),
+            unit: unit, count: count, nutrients: FoodUnits.nutrients(match.food, count: count, unit: unit),
+            sure: found.sure, approximate: !resolved.exact || !stated(seen, in: said, among: meal))
     }
 
     /// The catalog's own unit for a resolved amount, so the portion editor opens on it: the same id
@@ -109,19 +120,25 @@ enum Drafting {
         func near(_ a: Double, _ b: Double, _ tolerance: Double) -> Bool { abs(a - b) <= max(abs(a), abs(b)) * tolerance }
         switch resolved.unit {
         case .basis:
-            let (key, kind): (String, PortionUnit.Kind) = switch food.basis {
-            case .g: ("g", .mass)
-            case .ml: ("ml", .volume)
-            case .serving: ("serving", .serving)
-            }
-            let unit = units.first { $0.id == key }
+            let (key, kind): (String, PortionUnit.Kind) =
+                switch food.basis {
+                case .g: ("g", .mass)
+                case .ml: ("ml", .volume)
+                case .serving: ("serving", .serving)
+                }
+            let unit =
+                units.first { $0.id == key }
                 ?? units.first { $0.kind == kind && near($0.amount, 1, 0.001) && Measures.unitKey($0.label) == key }
                 ?? units.first { $0.kind == kind && near($0.amount, 1, 0.001) }
                 ?? PortionUnit(id: key, label: key, kind: kind, amount: 1)
             return (unit, round(resolved.amount / unit.amount))
         case .measure(let key, let perUnit):
-            let kind: PortionUnit.Kind = Measures.weights[key] != nil ? .mass : Measures.volumes[key] != nil ? .volume
-                : key == "kcal" ? .energy : .serving
+            let kind: PortionUnit.Kind =
+                Measures.weights[key] != nil
+                ? .mass
+                : Measures.volumes[key] != nil
+                    ? .volume
+                    : key == "kcal" ? .energy : .serving
             if let unit = units.first(where: { $0.id == key }) ?? units.first(where: { $0.kind == kind && Measures.unitKey($0.label) == key }) {
                 return (unit, resolved.count)
             }
@@ -130,7 +147,8 @@ enum Drafting {
             let own = units.filter { $0.kind == .portion || $0.kind == .serving }
             let head = FoodText.words(label).first ?? label
             if let unit = own.first(where: { $0.id == "portion:\(index)" }) ?? own.first(where: { $0.label.lowercased() == label })
-                ?? own.first(where: { near($0.amount, perUnit, 0.01) && FoodText.words($0.label).first == head }) {
+                ?? own.first(where: { near($0.amount, perUnit, 0.01) && FoodText.words($0.label).first == head })
+            {
                 return (unit, resolved.count)
             }
             return (PortionUnit(id: "portion:\(index)", label: label, kind: .portion, amount: perUnit), resolved.count)
@@ -139,8 +157,10 @@ enum Drafting {
 
     private static func round(_ count: Double) -> Double { (count * 100).rounded() / 100 }
 
-    private static let countTokens: Set<String> = ["a", "an", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-                                                   "eleven", "twelve", "dozen", "half", "couple", "single", "pair"]
+    private static let countTokens: Set<String> = [
+        "a", "an", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "dozen", "half", "couple", "single", "pair",
+    ]
     private static let sizeTokens: Set<String> = ["small", "medium", "large", "big", "jumbo", "extra", "regular", "whole", "mini", "of"]
     private static let leadingDigits = Pattern(#"^[\d.]+"#)
 

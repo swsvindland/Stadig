@@ -253,9 +253,11 @@ public struct ActivityLog: Hashable, Codable, Sendable, Identifiable {
     public var martialArts: MartialArtsDetails?
     public var note: String
 
-    public init(id: UUID = UUID(), type: ActivityType, start: Date, minutes: Int, intensity: Int? = nil,
-                source: ActivitySource = .manual, averageHeartRate: Double? = nil, distanceMeters: Double? = nil,
-                martialArts: MartialArtsDetails? = nil, note: String = "") {
+    public init(
+        id: UUID = UUID(), type: ActivityType, start: Date, minutes: Int, intensity: Int? = nil,
+        source: ActivitySource = .manual, averageHeartRate: Double? = nil, distanceMeters: Double? = nil,
+        martialArts: MartialArtsDetails? = nil, note: String = ""
+    ) {
         self.id = id
         self.type = type
         self.start = start

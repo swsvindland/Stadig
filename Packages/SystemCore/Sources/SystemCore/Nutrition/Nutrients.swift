@@ -12,8 +12,10 @@ public struct Nutrients: Hashable, Codable, Sendable {
     /// Milligrams.
     public var sodium: Double?
 
-    public init(kcal: Double, protein: Double, carbs: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-                saturatedFat: Double? = nil, sodium: Double? = nil) {
+    public init(
+        kcal: Double, protein: Double, carbs: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
+        saturatedFat: Double? = nil, sodium: Double? = nil
+    ) {
         self.kcal = kcal
         self.protein = protein
         self.carbs = carbs
@@ -30,16 +32,18 @@ public struct Nutrients: Hashable, Codable, Sendable {
     public var macroKcal: Double { protein * 4 + carbs * 4 + fat * 9 }
 
     public func scaled(_ factor: Double) -> Nutrients {
-        Nutrients(kcal: kcal * factor, protein: protein * factor, carbs: carbs * factor, fat: fat * factor,
-                  fiber: fiber.map { $0 * factor }, sugar: sugar.map { $0 * factor },
-                  saturatedFat: saturatedFat.map { $0 * factor }, sodium: sodium.map { $0 * factor })
+        Nutrients(
+            kcal: kcal * factor, protein: protein * factor, carbs: carbs * factor, fat: fat * factor,
+            fiber: fiber.map { $0 * factor }, sugar: sugar.map { $0 * factor },
+            saturatedFat: saturatedFat.map { $0 * factor }, sodium: sodium.map { $0 * factor })
     }
 
     public static func + (a: Nutrients, b: Nutrients) -> Nutrients {
         func add(_ x: Double?, _ y: Double?) -> Double? { x == nil && y == nil ? nil : (x ?? 0) + (y ?? 0) }
-        return Nutrients(kcal: a.kcal + b.kcal, protein: a.protein + b.protein, carbs: a.carbs + b.carbs, fat: a.fat + b.fat,
-                         fiber: add(a.fiber, b.fiber), sugar: add(a.sugar, b.sugar),
-                         saturatedFat: add(a.saturatedFat, b.saturatedFat), sodium: add(a.sodium, b.sodium))
+        return Nutrients(
+            kcal: a.kcal + b.kcal, protein: a.protein + b.protein, carbs: a.carbs + b.carbs, fat: a.fat + b.fat,
+            fiber: add(a.fiber, b.fiber), sugar: add(a.sugar, b.sugar),
+            saturatedFat: add(a.saturatedFat, b.saturatedFat), sodium: add(a.sodium, b.sodium))
     }
 
     public static func sum(_ list: [Nutrients]) -> Nutrients { list.reduce(.zero, +) }

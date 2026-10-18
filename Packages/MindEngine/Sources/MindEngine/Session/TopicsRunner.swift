@@ -29,14 +29,18 @@ struct TopicsRunner: PartRunner {
 
     func nextCandidate(_ run: StudyRun) -> String? {
         if domain == .maths {
-            return (MathsPlan.inProgress(run.cards, strand: strand) + MathsPlan.frontier(run.cards, strand: strand)).map(\.id).first { !done.contains($0) }
+            return (MathsPlan.inProgress(run.cards, strand: strand) + MathsPlan.frontier(run.cards, strand: strand)).map(\.id).first {
+                !done.contains($0)
+            }
         }
         return WritingPlan.candidates(run.cards, bank: run.catalogs.writing).map(\.id).first { !done.contains($0) }
     }
 
     func question(_ id: String, kind: AttemptKind, run: StudyRun) -> Question? {
         if domain == .maths {
-            return MathCurriculum.topic(id).map { $0.problem(seed: run.seed, data: run.catalogs.systemData).question(kind: kind, id: "\(id).\(run.seed)") }
+            return MathCurriculum.topic(id).map {
+                $0.problem(seed: run.seed, data: run.catalogs.systemData).question(kind: kind, id: "\(id).\(run.seed)")
+            }
         }
         let bank = run.catalogs.writing
         return bank.item(for: id, seen: run.asked, seed: run.today.iso).map { bank.question($0, kind: kind, seed: run.seed) }

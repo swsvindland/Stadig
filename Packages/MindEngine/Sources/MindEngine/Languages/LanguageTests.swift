@@ -5,8 +5,10 @@ import Foundation
 /// the app are just part of the bands, so the number only rises by knowing more of the language.
 public enum LanguageTests {
     /// Frequency bands, by rank: the first 250 words, the next 250, then doubling.
-    public static let bands: [ClosedRange<Int>] = [1...250, 251...500, 501...1000, 1001...2000, 2001...4000, 4001...8000,
-                                                   8001...14000, 14001...20000]
+    public static let bands: [ClosedRange<Int>] = [
+        1...250, 251...500, 501...1000, 1001...2000, 2001...4000, 4001...8000,
+        8001...14000, 14001...20000,
+    ]
     public static let wordsPerBand = 5
     /// Placement stops once a band is mostly unknown.
     public static let stopBelow = 0.35
@@ -62,7 +64,8 @@ public enum LanguageTests {
     /// count as nothing. The range is about one standard error each way.
     public static func estimate(_ attempts: [Attempt]) -> VocabularyEstimate {
         let tested = attempts.filter { $0.test == .vocabulary && $0.band != nil }
-        var total = 0.0, variance = 0.0
+        var total = 0.0
+        var variance = 0.0
         var shares: [Int: Double] = [:]
         for (index, range) in bands.enumerated() {
             let inBand = tested.filter { $0.band == index }
@@ -74,16 +77,18 @@ public enum LanguageTests {
             variance += size * size * max(0.04, p * (1 - p)) / Double(inBand.count)
         }
         let se = variance.squareRoot()
-        return VocabularyEstimate(words: Int(total.rounded()), low: Int(max(0, total - se).rounded()), high: Int((total + se).rounded()),
-                                  bands: shares)
+        return VocabularyEstimate(
+            words: Int(total.rounded()), low: Int(max(0, total - se).rounded()), high: Int((total + se).rounded()),
+            bands: shares)
     }
 
     public static func result(_ attempts: [Attempt], date: Date, placement: Bool, language: Language) -> TestResult {
         let estimate = estimate(attempts)
         var detail: [String: Double] = ["low": Double(estimate.low), "high": Double(estimate.high)]
         for (band, share) in estimate.bands { detail["band\(band)"] = share }
-        return TestResult(test: .vocabulary, date: date, score: Double(estimate.words), detail: detail, placement: placement,
-                          language: language)
+        return TestResult(
+            test: .vocabulary, date: date, score: Double(estimate.words), detail: detail, placement: placement,
+            language: language)
     }
 
     /// 0–100 for the hub, on a log scale: 1,000 words is about 57, 10,000 is 100.
@@ -123,8 +128,9 @@ public enum LanguageTests {
             let pool = deck.sentences(levels: levels, limit: 24, skip: offset)
             guard pool.count >= 4 else { continue }
             for sentence in pool.prefix(2) {
-                var question = LanguageQuiz.sentence(sentence, language: deck.language, kind: .test, others: pool, seed: seed,
-                                                     key: .practice(deck.language, "listening"))
+                var question = LanguageQuiz.sentence(
+                    sentence, language: deck.language, kind: .test, others: pool, seed: seed,
+                    key: .practice(deck.language, "listening"))
                 question.test = .listening
                 question.band = band
                 questions.append(question)
@@ -148,8 +154,9 @@ public enum LanguageTests {
             let pool = deck.sentences(levels: levels, limit: 24, skip: offset + 11)
             guard pool.count >= 4 else { continue }
             for sentence in pool.suffix(2) {
-                var question = LanguageQuiz.sentence(sentence, language: deck.language, kind: .test, others: pool, seed: seed,
-                                                     key: .practice(deck.language, "reading"))
+                var question = LanguageQuiz.sentence(
+                    sentence, language: deck.language, kind: .test, others: pool, seed: seed,
+                    key: .practice(deck.language, "reading"))
                 question.prompt = .foreign(sentence.text, deck.language)
                 question.instruction = "What does it say?"
                 question.expectedSeconds = 8 + Double(sentence.text.count) * (deck.language.pack.script == .kanaKanji ? 0.4 : 0.15)
@@ -188,10 +195,14 @@ public enum LanguageTests {
 
     /// Any banded skill test: each band's share (corrected for guessing where there were choices),
     /// harder bands weighing more in the score, and the reach in words for the skill's level.
-    public static func skillResult(_ kind: TestKind, _ attempts: [Attempt], date: Date, language: Language, choices: Bool,
-                                   placement: Bool = false) -> TestResult {
+    public static func skillResult(
+        _ kind: TestKind, _ attempts: [Attempt], date: Date, language: Language, choices: Bool,
+        placement: Bool = false
+    ) -> TestResult {
         let tested = attempts.filter { $0.test == kind && $0.band != nil }
-        var weighted = 0.0, weights = 0.0, words = 0.0
+        var weighted = 0.0
+        var weights = 0.0
+        var words = 0.0
         var detail: [String: Double] = [:]
         for band in Set(tested.compactMap(\.band)).sorted() {
             let inBand = tested.filter { $0.band == band }
@@ -206,7 +217,8 @@ public enum LanguageTests {
         for band in listeningLevels.indices where detail["band\(band)"] == nil { weights += Double(band + 1) }
         detail["words"] = words.rounded()
         detail["asked"] = Double(tested.count)
-        return TestResult(test: kind, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail, placement: placement,
-                          language: language)
+        return TestResult(
+            test: kind, date: date, score: weights > 0 ? weighted / weights : 0, detail: detail, placement: placement,
+            language: language)
     }
 }

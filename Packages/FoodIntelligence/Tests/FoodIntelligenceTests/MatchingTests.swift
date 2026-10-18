@@ -3,6 +3,7 @@ import Foundation
 import FoundationModels
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 @Suite("Matching")
@@ -29,8 +30,11 @@ struct MatchingTests {
     }
 
     @Test func tiesThatDontChangeTheNutritionArentAskedAbout() {
-        let butter = Matching.rank([match(food("Butter, without salt", kcal: 717), 3.5), match(food("Butter, salted", kcal: 717), 3.25),
-                                    match(food("Butter, whipped", kcal: 718), 3.2)], branded: false)
+        let butter = Matching.rank(
+            [
+                match(food("Butter, without salt", kcal: 717), 3.5), match(food("Butter, salted", kcal: 717), 3.25),
+                match(food("Butter, whipped", kcal: 718), 3.2),
+            ], branded: false)
         #expect(butter.tied == 3)
         #expect(Matching.asked([butter]).isEmpty)
         let coffee = [food("Coffee, brewed", kcal: 1), food("Coffee, decaffeinated", kcal: 0)]
@@ -41,18 +45,21 @@ struct MatchingTests {
 
     @Test func aFoodWhoseNumbersCantBeRightIsNeverSure() {
         // A powder's values on a bottled flat white, and kilojoules entered as calories.
-        let powder = Food(id: "off:07613036675680", name: "Flat White", brand: "Nestlé", basis: .ml,
-                          nutrients: Nutrients(kcal: 452, protein: 21.8, carbs: 43.6, fat: 19.2), source: .off)
-        let poured = Food(id: "off:00000000000001", name: "Flat White", brand: "Costa", basis: .ml,
-                          nutrients: Nutrients(kcal: 37, protein: 2, carbs: 4, fat: 1.2), source: .off)
+        let powder = Food(
+            id: "off:07613036675680", name: "Flat White", brand: "Nestlé", basis: .ml,
+            nutrients: Nutrients(kcal: 452, protein: 21.8, carbs: 43.6, fat: 19.2), source: .off)
+        let poured = Food(
+            id: "off:00000000000001", name: "Flat White", brand: "Costa", basis: .ml,
+            nutrients: Nutrients(kcal: 37, protein: 2, carbs: 4, fat: 1.2), source: .off)
         #expect(!powder.isPlausible && poured.isPlausible)
         #expect(!Matching.fits("flat white", powder))
         let found = Matching.rank([match(powder, 3), match(poured, 2.5)], branded: true, seen: "flat white")
         #expect(found.matches.first?.food == poured, "a plausible match close behind is promoted")
         let alone = Matching.rank([match(powder, 3)], branded: true, seen: "flat white")
         #expect(alone.matches.first?.food == powder && !alone.sure, "offered, not logged without a look")
-        let kilojoules = Food(id: "off:00000000000002", name: "Cream cheese", brand: "St Môret", basis: .g,
-                              nutrients: Nutrients(kcal: 765, protein: 10, carbs: 5, fat: 8), source: .off)
+        let kilojoules = Food(
+            id: "off:00000000000002", name: "Cream cheese", brand: "St Môret", basis: .g,
+            nutrients: Nutrients(kcal: 765, protein: 10, carbs: 5, fat: 8), source: .off)
         #expect(!Matching.rank([match(kilojoules, 4)], branded: true).sure)
     }
 
@@ -88,7 +95,8 @@ struct MatchingTests {
     }
 
     @Test func aDishContainingTheFoodIsNoNearTie() {
-        let raw = food("Blueberries, raw", kcal: 57), wild = food("Blueberries, wild, raw", kcal: 57)
+        let raw = food("Blueberries, raw", kcal: 57)
+        let wild = food("Blueberries, wild, raw", kcal: 57)
         let muffin = food("Muffins, blueberry, commercially prepared", kcal: 377)
         let found = Matching.rank([match(raw, 3.5), match(muffin, 3.4), match(wild, 3.2)], branded: false, seen: "blueberries")
         #expect(found.matches.map(\.food) == [raw, wild, muffin])
@@ -192,9 +200,13 @@ struct EngineTests {
         #expect(ModelErrors.classify(LanguageModelSession.Error.concurrentRequests) == .busy)
         #expect(ModelErrors.classify(LanguageModelError.guardrailViolation(.init(debugDescription: "no"))) == .refused)
         #expect(ModelErrors.classify(LanguageModelError.refusal(.init(explanation: "no", debugDescription: "no"))) == .refused)
-        #expect(ModelErrors.classify(LanguageModelError.contextSizeExceeded(.init(contextSize: 4096, tokenCount: 5000, debugDescription: "long")))
-            == .tooLong)
-        guard case .unavailable = ModelErrors.classify(LanguageModelError.unsupportedLanguageOrLocale(.init(languageCode: "xx", debugDescription: "xx"))) else {
+        #expect(
+            ModelErrors.classify(LanguageModelError.contextSizeExceeded(.init(contextSize: 4096, tokenCount: 5000, debugDescription: "long")))
+                == .tooLong)
+        guard
+            case .unavailable = ModelErrors.classify(
+                LanguageModelError.unsupportedLanguageOrLocale(.init(languageCode: "xx", debugDescription: "xx")))
+        else {
             Issue.record("language")
             return
         }

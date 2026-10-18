@@ -2,6 +2,7 @@ import Foundation
 import SQLite3
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Supplements")
@@ -19,7 +20,8 @@ struct SupplementTests {
         func run(_ sql: String) throws {
             guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw SQLiteError(code: 1, message: String(cString: sqlite3_errmsg(db))) }
         }
-        try run("""
+        try run(
+            """
             CREATE TABLE supplements (id INTEGER PRIMARY KEY, name TEXT NOT NULL, brand TEXT NOT NULL, barcode INTEGER, serving TEXT NOT NULL,
                                       market INTEGER NOT NULL, data TEXT NOT NULL);
             CREATE TABLE catalog_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -27,10 +29,12 @@ struct SupplementTests {
             BEGIN;
             """)
         for label in labels.sorted(by: { $0.id < $1.id }) {
-            try run("INSERT INTO supplements VALUES (\(label.id), '\(label.name)', 'Brand', NULL, '1 Capsule(s)', \(label.market ? 1 : 0), "
-                + #"'[["Magnesium",200,"mg"]]')"#)
+            try run(
+                "INSERT INTO supplements VALUES (\(label.id), '\(label.name)', 'Brand', NULL, '1 Capsule(s)', \(label.market ? 1 : 0), "
+                    + #"'[["Magnesium",200,"mg"]]')"#)
         }
-        try run("""
+        try run(
+            """
             COMMIT;
             CREATE VIRTUAL TABLE supplement_search USING fts5(name, brand, content='supplements', content_rowid='id',
                                                               tokenize='unicode61 remove_diacritics 2', prefix='2 3', columnsize=0);
@@ -92,31 +96,37 @@ struct SupplementTests {
     }
 
     @Test func fishOilCountsItsOmega3sOnce() {
-        let total = SupplementFacts(id: "t", name: "Fish Oil", servingCount: 2, unit: "softgel", ingredients: [
-            SupplementIngredient(name: "Calories", amount: 20, unit: "Calorie(s)"),
-            SupplementIngredient(name: "Total Fat", amount: 2, unit: "Gram(s)"),
-            SupplementIngredient(name: "Fish Oil concentrate", amount: 2400, unit: "mg"),
-            SupplementIngredient(name: "Total Omega-3 Fatty Acids", amount: 720, unit: "mg"),
-            SupplementIngredient(name: "Eicosapentaenoic Acid", amount: 432, unit: "mg"),
-            SupplementIngredient(name: "Docosahexaenoic Acid", amount: 288, unit: "mg"),
-        ], source: .dsld)
+        let total = SupplementFacts(
+            id: "t", name: "Fish Oil", servingCount: 2, unit: "softgel",
+            ingredients: [
+                SupplementIngredient(name: "Calories", amount: 20, unit: "Calorie(s)"),
+                SupplementIngredient(name: "Total Fat", amount: 2, unit: "Gram(s)"),
+                SupplementIngredient(name: "Fish Oil concentrate", amount: 2400, unit: "mg"),
+                SupplementIngredient(name: "Total Omega-3 Fatty Acids", amount: 720, unit: "mg"),
+                SupplementIngredient(name: "Eicosapentaenoic Acid", amount: 432, unit: "mg"),
+                SupplementIngredient(name: "Docosahexaenoic Acid", amount: 288, unit: "mg"),
+            ], source: .dsld)
         #expect(abs(total.amounts["omega3"]! - 0.72) < 1e-9)
         #expect(total.nutrients?.kcal == 20)
         #expect(total.nutrients?.fat == 2)
         #expect(total.others.map(\.name) == ["Fish Oil concentrate", "Eicosapentaenoic Acid", "Docosahexaenoic Acid"])
-        let parts = SupplementFacts(id: "p", name: "Fish Oil", ingredients: [
-            SupplementIngredient(name: "EPA (Eicosapentaenoic Acid)", amount: 650, unit: "mg"),
-            SupplementIngredient(name: "DHA (Docosahexaenoic Acid)", amount: 450, unit: "mg"),
-        ], source: .dsld)
+        let parts = SupplementFacts(
+            id: "p", name: "Fish Oil",
+            ingredients: [
+                SupplementIngredient(name: "EPA (Eicosapentaenoic Acid)", amount: 650, unit: "mg"),
+                SupplementIngredient(name: "DHA (Docosahexaenoic Acid)", amount: 450, unit: "mg"),
+            ], source: .dsld)
         #expect(abs(parts.amounts["omega3"]! - 1.1) < 1e-9)
         #expect(parts.nutrients == nil)
     }
 
     @Test func aFolateLineInDFEStandsForItsFolicAcid() {
-        let facts = SupplementFacts(id: "m", name: "Multi", ingredients: [
-            SupplementIngredient(name: "Folate", amount: 680, unit: "mcg DFE"),
-            SupplementIngredient(name: "Folic Acid", amount: 400, unit: "mcg"),
-        ], source: .dsld)
+        let facts = SupplementFacts(
+            id: "m", name: "Multi",
+            ingredients: [
+                SupplementIngredient(name: "Folate", amount: 680, unit: "mcg DFE"),
+                SupplementIngredient(name: "Folic Acid", amount: 400, unit: "mcg"),
+            ], source: .dsld)
         #expect(facts.amounts["folate"] == 680)
     }
 
@@ -148,26 +158,31 @@ struct SupplementTests {
     }
 
     @Test func preWorkoutAndSleepPanels() throws {
-        let preWorkout = try #require(SupplementLabel.parse(lines: [
-            "SUPPLEMENT FACTS", "Serving Size 1 Scoop (10.5 g)", "Servings Per Container 30", "Calories 5",
-            "Total Carbohydrate <1 g <1%*", "Niacin (as niacinamide) 30 mg 188%", "Vitamin B12 (as methylcobalamin) 250 mcg 10,417%",
-            "L-Citrulline 6 g †", "Beta-Alanine 3.2 g †", "Caffeine Anhydrous 300 mg †", "L-Theanine 200 mg †",
-            "*Percent Daily Values are based on a 2,000 calorie diet.",
-        ]))
+        let preWorkout = try #require(
+            SupplementLabel.parse(lines: [
+                "SUPPLEMENT FACTS", "Serving Size 1 Scoop (10.5 g)", "Servings Per Container 30", "Calories 5",
+                "Total Carbohydrate <1 g <1%*", "Niacin (as niacinamide) 30 mg 188%", "Vitamin B12 (as methylcobalamin) 250 mcg 10,417%",
+                "L-Citrulline 6 g †", "Beta-Alanine 3.2 g †", "Caffeine Anhydrous 300 mg †", "L-Theanine 200 mg †",
+                "*Percent Daily Values are based on a 2,000 calorie diet.",
+            ]))
         #expect(preWorkout.servingLabel == "1 scoop")
         #expect(preWorkout.amounts["caffeine"] == 300)
         #expect(preWorkout.amounts["niacin"] == 30)
         #expect(preWorkout.nutrients?.kcal == 5)
         #expect(preWorkout.nutrients?.carbs == 0.5)
         // The amino acids aren't tracked, so only the nutrients are kept.
-        #expect(preWorkout.ingredients.map(\.name) == ["Calories", "Total Carbohydrate", "Niacin (as niacinamide)",
-                                                       "Vitamin B12 (as methylcobalamin)", "Caffeine Anhydrous"])
+        #expect(
+            preWorkout.ingredients.map(\.name) == [
+                "Calories", "Total Carbohydrate", "Niacin (as niacinamide)",
+                "Vitamin B12 (as methylcobalamin)", "Caffeine Anhydrous",
+            ])
 
-        let sleep = try #require(SupplementLabel.parse(lines: [
-            "Supplement Facts", "Serving Size: 2 Gummies", "Amount Per Serving", "Calories 15", "Total Sugars 3 g",
-            "Includes 3g Added Sugars 6%", "Magnesium (as magnesium citrate) 50 mg 12%", "Melatonin 3 mg †", "L-Theanine 100 mg †",
-            "Other Ingredients: Glucose Syrup, Sugar, Pectin.",
-        ]))
+        let sleep = try #require(
+            SupplementLabel.parse(lines: [
+                "Supplement Facts", "Serving Size: 2 Gummies", "Amount Per Serving", "Calories 15", "Total Sugars 3 g",
+                "Includes 3g Added Sugars 6%", "Magnesium (as magnesium citrate) 50 mg 12%", "Melatonin 3 mg †", "L-Theanine 100 mg †",
+                "Other Ingredients: Glucose Syrup, Sugar, Pectin.",
+            ]))
         #expect(sleep.servingLabel == "2 gummies")
         #expect(sleep.amounts["magnesium"] == 50)
         #expect(sleep.nutrients?.kcal == 15)
@@ -210,7 +225,8 @@ struct SupplementTests {
         #expect(catalog.search("x").isEmpty)
         // Labels are in DSLD id order, so ranking only the first matches would leave out the newer ones.
         var cutoff: Int64 = 0
-        try SQLiteConnection(url: url).query(#"SELECT rowid FROM supplement_search WHERE supplement_search MATCH '"magnesium"*' LIMIT 1 OFFSET 399"#) {
+        try SQLiteConnection(url: url).query(#"SELECT rowid FROM supplement_search WHERE supplement_search MATCH '"magnesium"*' LIMIT 1 OFFSET 399"#)
+        {
             cutoff = $0.int(0)
         }
         #expect(catalog.search("magnesium").contains { (Int64($0.id.dropFirst(5)) ?? 0) > cutoff })

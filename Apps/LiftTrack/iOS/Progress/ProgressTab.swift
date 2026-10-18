@@ -1,7 +1,7 @@
-import SwiftUI
 import Charts
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The stats this app can measure honestly: Strength, Endurance, Agility, training Discipline,
@@ -26,7 +26,8 @@ struct ProgressTab: View {
                             HStack {
                                 Label("History", systemImage: "clock.arrow.circlepath").font(.headline)
                                 Spacer()
-                                Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(.secondary)
+                                Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(
+                                    .secondary)
                                 Image(systemName: "chevron.right").foregroundStyle(.tertiary)
                             }
                             .card()
@@ -43,7 +44,11 @@ struct ProgressTab: View {
             .navigationTitle("Progress")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { model.showSettings = true } label: { Image(systemName: "gearshape") }.accessibilityLabel("Settings")
+                    Button {
+                        model.showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }.accessibilityLabel("Settings")
                         .accessibilityIdentifier("progress.settings")
                 }
             }
@@ -66,7 +71,8 @@ struct StrengthCard: View {
                 }
             }
             if analysis.strength.categories.isEmpty {
-                Text("Scores appear once the main lifts have working weights: usually in the first two weeks.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Scores appear once the main lifts have working weights: usually in the first two weeks.").font(.subheadline).foregroundStyle(
+                    .secondary)
             }
             ForEach(StrengthCategory.allCases) { category in
                 if let score = analysis.strength[category] {
@@ -94,8 +100,10 @@ struct StrengthCard: View {
             if let first = analysis.strength.priorities.first {
                 Label(first.reason, systemImage: "arrow.up.right.circle").font(.footnote)
             }
-            Text("Scored from estimated one-rep maxes against bodyweight-relative standards. Beginner 20 · novice 40 · intermediate 60 · advanced 80 · elite 100.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                "Scored from estimated one-rep maxes against bodyweight-relative standards. Beginner 20 · novice 40 · intermediate 60 · advanced 80 · elite 100."
+            )
+            .font(.caption).foregroundStyle(.secondary)
         }
         .card()
     }
@@ -139,8 +147,11 @@ struct LiftTrendCard: View {
                 .frame(height: 180)
                 .accessibilityLabel("\(selected.name) estimated one-rep max over time")
                 if let stall = analysis.stalls.first(where: { $0.exerciseID == selected.id }) {
-                    Text(stall.reading == .expectedInDeficit ? "Flat for \(stall.weeks) weeks: expected in a cut." : "No new best for \(stall.weeks) weeks.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        stall.reading == .expectedInDeficit
+                            ? "Flat for \(stall.weeks) weeks: expected in a cut." : "No new best for \(stall.weeks) weeks."
+                    )
+                    .font(.footnote).foregroundStyle(.secondary)
                 }
             } else {
                 Text("Trends appear after a couple of sessions.").font(.subheadline).foregroundStyle(.secondary)
@@ -157,8 +168,10 @@ struct DisciplineCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Training discipline", systemImage: StatKind.discipline.symbol).font(.headline).foregroundStyle(StatKind.discipline.color)
             DisciplineGauge(score: score)
-            Text("\(score.completed) of \(score.planned) planned in the last four weeks\(score.exemptDays > 0 ? ", \(score.exemptDays) days exempt" : "").")
-                .font(.subheadline)
+            Text(
+                "\(score.completed) of \(score.planned) planned in the last four weeks\(score.exemptDays > 0 ? ", \(score.exemptDays) days exempt" : "")."
+            )
+            .font(.subheadline)
             Text(score.note).font(.subheadline).foregroundStyle(.secondary)
             Text("Rest days and deloads are part of the plan. Vacations, illness and exempt crunch days never count.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -200,8 +213,9 @@ struct EnduranceCard: View {
                 if let latest = analysis.latestBenchmark {
                     GridRow {
                         Text(latest.benchmark.label).foregroundStyle(.secondary)
-                        Text(Format.benchmark(latest.value, latest.benchmark)
-                             + (analysis.benchmarkChange.map { " (\($0 >= 0 ? "+" : "")\(Format.percent($0)))" } ?? ""))
+                        Text(
+                            Format.benchmark(latest.value, latest.benchmark)
+                                + (analysis.benchmarkChange.map { " (\($0 >= 0 ? "+" : "")\(Format.percent($0)))" } ?? ""))
                     }
                 }
             }
@@ -241,8 +255,10 @@ struct AgilityCard: View {
                 }
             }
             if !analysis.seePhysio.isEmpty {
-                Label("\(analysis.seePhysio.map(\.label).joined(separator: ", ")): pain or getting worse. See a physio rather than stretching harder.",
-                      systemImage: "cross.case").font(.footnote)
+                Label(
+                    "\(analysis.seePhysio.map(\.label).joined(separator: ", ")): pain or getting worse. See a physio rather than stretching harder.",
+                    systemImage: "cross.case"
+                ).font(.footnote)
             }
         }
         .card()
@@ -258,8 +274,10 @@ struct RatingsCard: View {
             Label("Your ratings", systemImage: "hand.tap").font(.headline)
             Text(trust.label).font(.subheadline.weight(.semibold))
             if let tendency = trust.tendency { Text(tendency).font(.subheadline) }
-            Text("\(trust.evidenceCount) checks so far. Machines can be taken to failure safely, so they check your Easy and Just right; what they learn applies to free weights too.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                "\(trust.evidenceCount) checks so far. Machines can be taken to failure safely, so they check your Easy and Just right; what they learn applies to free weights too."
+            )
+            .font(.caption).foregroundStyle(.secondary)
         }
         .card()
     }
@@ -299,8 +317,10 @@ struct HistoryView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(session.title).font(.headline)
-                            Text("\(session.start.formatted(date: .abbreviated, time: .shortened)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == "Watch" ? " · Watch" : "")")
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text(
+                                "\(session.start.formatted(date: .abbreviated, time: .shortened)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == "Watch" ? " · Watch" : "")"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
@@ -310,8 +330,10 @@ struct HistoryView: View {
                         Image(systemName: log.type.symbol).frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(log.type.label).font(.headline)
-                            Text("\(log.start.formatted(date: .abbreviated, time: .shortened)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))")
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text(
+                                "\(log.start.formatted(date: .abbreviated, time: .shortened)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
@@ -337,7 +359,9 @@ struct SessionDetail: View {
         List {
             if let feedback = record.feedback {
                 Section("Feedback") {
-                    Text("Soreness \(feedback.soreness)/3 · energy \(feedback.energy)/5\(feedback.jointPain.isEmpty ? "" : " · pain: \(feedback.jointPain.map(\.label).joined(separator: ", "))")")
+                    Text(
+                        "Soreness \(feedback.soreness)/3 · energy \(feedback.energy)/5\(feedback.jointPain.isEmpty ? "" : " · pain: \(feedback.jointPain.map(\.label).joined(separator: ", "))")"
+                    )
                 }
             }
             ForEach(record.exercises) { log in
@@ -345,7 +369,8 @@ struct SessionDetail: View {
                 Section(exercise.name) {
                     ForEach(log.sets) { set in
                         HStack {
-                            Text(set.kind == .warmup ? "Warm-up" : set.kind.label).font(.caption).foregroundStyle(.secondary).frame(width: 90, alignment: .leading)
+                            Text(set.kind == .warmup ? "Warm-up" : set.kind.label).font(.caption).foregroundStyle(.secondary).frame(
+                                width: 90, alignment: .leading)
                             Text(Format.logged(set, exercise: exercise, unit: model.gym.unit)).monospacedDigit()
                             Spacer()
                             RatingMark(rating: set.rating)

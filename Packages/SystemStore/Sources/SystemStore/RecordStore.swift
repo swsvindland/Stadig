@@ -1,6 +1,6 @@
 import Foundation
-import Observation
 import OSLog
+import Observation
 import SwiftData
 import SystemCore
 
@@ -79,28 +79,39 @@ public final class RecordStore {
                     // missing bundle identifier when the store is torn down, crashing the process.
                     storeLog.notice("\(name, privacy: .public): no bundle identifier, so no CloudKit (\(cloudKitContainer, privacy: .public))")
                 } else if let cloudKitContainer {
-                    candidates.append((Self.iCloudStatus,
-                                       ModelConfiguration(name, schema: schema, url: url, cloudKitDatabase: .private(cloudKitContainer)),
-                                       url))
+                    candidates.append(
+                        (
+                            Self.iCloudStatus,
+                            ModelConfiguration(name, schema: schema, url: url, cloudKitDatabase: .private(cloudKitContainer)),
+                            url
+                        ))
                 }
                 candidates.append((Self.localStatus, ModelConfiguration(name, schema: schema, url: url, cloudKitDatabase: .none), url))
             } catch {
-                storeLog.error("\(name, privacy: .public): can't create \(folder.path(percentEncoded: false), privacy: .public): \(String(describing: error), privacy: .public)")
+                storeLog.error(
+                    "\(name, privacy: .public): can't create \(folder.path(percentEncoded: false), privacy: .public): \(String(describing: error), privacy: .public)"
+                )
             }
         }
-        candidates.append((Self.memoryStatus,
-                           ModelConfiguration(name, schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none),
-                           nil))
+        candidates.append(
+            (
+                Self.memoryStatus,
+                ModelConfiguration(name, schema: schema, isStoredInMemoryOnly: true, groupContainer: .none, cloudKitDatabase: .none),
+                nil
+            ))
 
         var opened: (container: ModelContainer, status: String, url: URL?)?
         for candidate in candidates {
             do {
-                let container = try ModelContainer(for: schema, migrationPlan: RecordStoreMigrationPlan.self,
-                                                   configurations: [candidate.configuration])
+                let container = try ModelContainer(
+                    for: schema, migrationPlan: RecordStoreMigrationPlan.self,
+                    configurations: [candidate.configuration])
                 opened = (container, candidate.status, candidate.url)
                 break
             } catch {
-                storeLog.error("\(name, privacy: .public): couldn't open the \(candidate.status, privacy: .public) store: \(String(describing: error), privacy: .public)")
+                storeLog.error(
+                    "\(name, privacy: .public): couldn't open the \(candidate.status, privacy: .public) store: \(String(describing: error), privacy: .public)"
+                )
             }
         }
 
@@ -213,13 +224,15 @@ public final class RecordStore {
             do {
                 payload = try encoder.encode(stamped)
             } catch {
-                storeLog.error("Couldn't encode \(T.kind, privacy: .public) \(record.id, privacy: .public): \(String(describing: error), privacy: .public)")
+                storeLog.error(
+                    "Couldn't encode \(T.kind, privacy: .public) \(record.id, privacy: .public): \(String(describing: error), privacy: .public)")
                 continue
             }
             let rows = rowsByID[record.id] ?? (bulk ? [] : fetchRows(kind: T.kind, uuid: record.id))
             rowsByID[record.id] = rows
-            let incoming = RecordVersion(kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt,
-                                         schemaVersion: T.schemaVersion, payload: payload, deleted: false)
+            let incoming = RecordVersion(
+                kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt,
+                schemaVersion: T.schemaVersion, payload: payload, deleted: false)
             if let current = Self.newest(rows).map(RecordVersion.init) {
                 // A save in a deletion's own millisecond wins, unlike in `precedes`: it was made after
                 // the delete (an edit made before it is stamped earlier), as when Macro Track's
@@ -230,7 +243,9 @@ public final class RecordStore {
                     continue
                 }
                 if !current.deleted && current.schemaVersion > T.schemaVersion {
-                    storeLog.notice("Not overwriting \(T.kind, privacy: .public) \(record.id, privacy: .public): stored at schema \(current.schemaVersion), this app knows \(T.schemaVersion)")
+                    storeLog.notice(
+                        "Not overwriting \(T.kind, privacy: .public) \(record.id, privacy: .public): stored at schema \(current.schemaVersion), this app knows \(T.schemaVersion)"
+                    )
                     continue
                 }
             }
@@ -252,10 +267,12 @@ public final class RecordStore {
         guard let context else { return }
         let rows = fetchRows(kind: T.kind, uuid: id)
         guard let current = Self.newest(rows).map(RecordVersion.init),
-              rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty }) else { return }
+            rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty })
+        else { return }
         let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
-        let tombstone = RecordVersion(kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
-                                      payload: Data(), deleted: true)
+        let tombstone = RecordVersion(
+            kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
+            payload: Data(), deleted: true)
         commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context) {
             self.patchCache(T.self, with: [tombstone])
         }
@@ -335,8 +352,10 @@ public final class RecordStore {
 
     /// `@concurrent`, so it runs on the global executor rather than the caller's (main) actor, also
     /// if the package turns on nonisolated(nonsending) by default.
-    @concurrent nonisolated private static func writeBackupDetached(app: AppID, records: [BackupRecord],
-                                                                    shared: SharedContainer?) async throws -> Data {
+    @concurrent nonisolated private static func writeBackupDetached(
+        app: AppID, records: [BackupRecord],
+        shared: SharedContainer?
+    ) async throws -> Data {
         try writeBackup(app: app, records: records, shared: shared)
     }
 
@@ -381,7 +400,9 @@ public final class RecordStore {
         if let shared, !file.shared.isEmpty {
             summary.sharedFiles = try shared.merge(file.shared)
         }
-        storeLog.notice("\(self.name, privacy: .public): imported a backup from \(file.app.rawValue, privacy: .public): \(summary.records) records, \(summary.sharedFiles) shared files")
+        storeLog.notice(
+            "\(self.name, privacy: .public): imported a backup from \(file.app.rawValue, privacy: .public): \(summary.records) records, \(summary.sharedFiles) shared files"
+        )
         return summary
     }
 
@@ -420,7 +441,8 @@ public final class RecordStore {
         do {
             return try RecordCoding.decode(T.self, payload: version.payload, schemaVersion: version.schemaVersion, decoder: decoder)
         } catch {
-            storeLog.error("Couldn't read \(T.kind, privacy: .public) \(version.uuid, privacy: .public): \(String(describing: error), privacy: .public)")
+            storeLog.error(
+                "Couldn't read \(T.kind, privacy: .public) \(version.uuid, privacy: .public): \(String(describing: error), privacy: .public)")
             return nil
         }
     }
@@ -428,15 +450,19 @@ public final class RecordStore {
     /// Writes `version` into every row of its record, so duplicate rows converge, or into a new row.
     private func write(_ version: RecordVersion, into rows: [RecordRow], context: ModelContext) -> (rows: [RecordRow], changed: Bool) {
         guard !rows.isEmpty else {
-            let row = RecordRow(kind: version.kind, uuid: version.uuid, updatedAt: version.updatedAt,
-                                schemaVersion: version.schemaVersion, payload: version.payload, deleted: version.deleted)
+            let row = RecordRow(
+                kind: version.kind, uuid: version.uuid, updatedAt: version.updatedAt,
+                schemaVersion: version.schemaVersion, payload: version.payload, deleted: version.deleted)
             context.insert(row)
             return ([row], true)
         }
         var changed = false
         for row in rows {
             if row.updatedAt == version.updatedAt && row.schemaVersion == version.schemaVersion
-                && row.tombstone == version.deleted && row.payload == version.payload { continue }
+                && row.tombstone == version.deleted && row.payload == version.payload
+            {
+                continue
+            }
             row.updatedAt = version.updatedAt
             row.schemaVersion = version.schemaVersion
             row.payload = version.payload
@@ -498,7 +524,10 @@ public final class RecordStore {
     /// Coalesces a burst of remote-change notifications into one refresh (see `remoteQuietPeriod`).
     func storeChangedRemotely(at url: URL?) {
         if let url, let storeURL,
-           url.resolvingSymlinksInPath().standardizedFileURL != storeURL.resolvingSymlinksInPath().standardizedFileURL { return }
+            url.resolvingSymlinksInPath().standardizedFileURL != storeURL.resolvingSymlinksInPath().standardizedFileURL
+        {
+            return
+        }
         let now = ContinuousClock.now
         let first = remoteChangeNoticed ?? now
         remoteChangeNoticed = first
@@ -569,8 +598,10 @@ public final class RecordStore {
     /// Inserts a row exactly as given, the way a CloudKit import or an older app version would.
     func insertRawRow(kind: String, uuid: UUID, updatedAt: Date, schemaVersion: Int, payload: Data, deleted: Bool = false) {
         guard let context else { return }
-        context.insert(RecordRow(kind: kind, uuid: uuid, updatedAt: updatedAt, schemaVersion: schemaVersion,
-                                 payload: payload, deleted: deleted))
+        context.insert(
+            RecordRow(
+                kind: kind, uuid: uuid, updatedAt: updatedAt, schemaVersion: schemaVersion,
+                payload: payload, deleted: deleted))
         commit(1, kind: kind, context)
     }
 
@@ -624,7 +655,8 @@ struct DecodedKind<T: StoredRecord> {
 
     /// Inserts a record at its place in the order. It mustn't be in the list already.
     mutating func insert(_ record: T, at position: RecordOrder) {
-        var low = 0, high = order.count
+        var low = 0
+        var high = order.count
         while low < high {
             let middle = (low + high) / 2
             if order[middle].comesBefore(position) { low = middle + 1 } else { high = middle }

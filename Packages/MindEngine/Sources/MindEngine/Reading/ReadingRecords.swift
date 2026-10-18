@@ -15,8 +15,10 @@ public struct Passage: Hashable, Sendable, Identifiable, Decodable {
     public var source: String
     public var questions: [PassageQuestion]
 
-    public init(id: String, title: String, author: String, text: String, tier: Int, language: Language? = nil,
-                source: String = "Written for Mind Track", questions: [PassageQuestion] = []) {
+    public init(
+        id: String, title: String, author: String, text: String, tier: Int, language: Language? = nil,
+        source: String = "Written for Mind Track", questions: [PassageQuestion] = []
+    ) {
         self.id = id
         self.title = title
         self.author = author
@@ -93,9 +95,11 @@ public struct BookMeta: Hashable, Codable, Sendable, Identifiable {
     public var fetchedAt: Date
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), isbn: String? = nil, title: String, author: String, pages: Int? = nil, year: Int? = nil,
-                subjects: [String] = [], coverURL: URL? = nil, source: String, tier: Double? = nil, tierConfidence: Double = 0,
-                fetchedAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), isbn: String? = nil, title: String, author: String, pages: Int? = nil, year: Int? = nil,
+        subjects: [String] = [], coverURL: URL? = nil, source: String, tier: Double? = nil, tierConfidence: Double = 0,
+        fetchedAt: Date = Date(), updatedAt: Date = Date()
+    ) {
         self.id = id
         self.isbn = isbn
         self.title = title

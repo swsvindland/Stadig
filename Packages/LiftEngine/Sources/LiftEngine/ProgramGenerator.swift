@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// Everything a new mesocycle is built from.
@@ -25,11 +25,13 @@ public struct GeneratorInput: Sendable {
     public var stalled: Set<String>
     public var trust: TrustState
 
-    public init(profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, kind: BlockKind, start: Day,
-                loadingWeeks: Int, phase: NutritionPhase, strength: StrengthProfile? = nil, physique: PhysiqueAnalysis? = nil,
-                agility: AgilityAnalysis? = nil, endurance: EnduranceAnalysis? = nil, fatigue: FatigueAssessment? = nil,
-                recommendations: [Recommendation] = [], injuries: [Injury] = [], previous: Mesocycle? = nil, stalled: Set<String> = [],
-                trust: TrustState) {
+    public init(
+        profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, kind: BlockKind, start: Day,
+        loadingWeeks: Int, phase: NutritionPhase, strength: StrengthProfile? = nil, physique: PhysiqueAnalysis? = nil,
+        agility: AgilityAnalysis? = nil, endurance: EnduranceAnalysis? = nil, fatigue: FatigueAssessment? = nil,
+        recommendations: [Recommendation] = [], injuries: [Injury] = [], previous: Mesocycle? = nil, stalled: Set<String> = [],
+        trust: TrustState
+    ) {
         self.profile = profile
         self.settings = settings
         self.gym = gym
@@ -64,15 +66,16 @@ struct SlotRequest {
 
 enum Templates {
     static func main(_ category: StrengthCategory, sets: Int = 3) -> SlotRequest {
-        let muscles: [Muscle] = switch category {
-        case .squat: [.quads, .glutes]
-        case .floorPull: [.hamstrings, .glutes, .lowerBack]
-        case .horizontalPress: [.chest, .triceps]
-        case .inclinePress: [.chest, .frontDelts]
-        case .verticalPress: [.frontDelts, .sideDelts, .triceps]
-        case .verticalPull: [.lats, .biceps]
-        case .horizontalPull: [.upperBack, .lats]
-        }
+        let muscles: [Muscle] =
+            switch category {
+            case .squat: [.quads, .glutes]
+            case .floorPull: [.hamstrings, .glutes, .lowerBack]
+            case .horizontalPress: [.chest, .triceps]
+            case .inclinePress: [.chest, .frontDelts]
+            case .verticalPress: [.frontDelts, .sideDelts, .triceps]
+            case .verticalPull: [.lats, .biceps]
+            case .horizontalPull: [.upperBack, .lats]
+            }
         return SlotRequest(role: .main, patterns: category.patterns, category: category, muscles: muscles, sets: sets)
     }
 
@@ -128,7 +131,8 @@ enum Templates {
     /// Every lower and legs day has direct glute work high enough to survive an hour: a hip
     /// thrust after a squat, abduction after a deadlift, which already loads the glutes heavily.
     static func days(_ split: SplitKind, count: Int) -> [DayTemplate] {
-        let upperA = DayTemplate("Upper A", .upper, [main(.horizontalPress), main(.horizontalPull), main(.verticalPress), pulldown, lateral, triceps, curl])
+        let upperA = DayTemplate(
+            "Upper A", .upper, [main(.horizontalPress), main(.horizontalPull), main(.verticalPress), pulldown, lateral, triceps, curl])
         let lowerA = DayTemplate("Lower A", .lower, [main(.squat), rdl, hipThrust, quadAnchor, hamCurl, calves, abs])
         let upperB = DayTemplate("Upper B", .upper, [main(.inclinePress), main(.verticalPull), rowAnchor, fly, rearDelt, curl, triceps])
         let lowerB = DayTemplate("Lower B", .lower, [main(.floorPull), lunge, hamCurl, abduction, legExtension, calves, abs])
@@ -137,8 +141,11 @@ enum Templates {
             // Two days carry all seven scored lifts between them.
             if count == 2 {
                 return [
-                    DayTemplate("Full body A", .full, [main(.squat), main(.horizontalPress), main(.verticalPull), main(.inclinePress), hamCurl, lateral, curl]),
-                    DayTemplate("Full body B", .full, [main(.floorPull), main(.verticalPress), main(.horizontalPull), quadAnchor, fly, triceps, abs]),
+                    DayTemplate(
+                        "Full body A", .full,
+                        [main(.squat), main(.horizontalPress), main(.verticalPull), main(.inclinePress), hamCurl, lateral, curl]),
+                    DayTemplate(
+                        "Full body B", .full, [main(.floorPull), main(.verticalPress), main(.horizontalPull), quadAnchor, fly, triceps, abs]),
                 ]
             }
             let all = [
@@ -219,33 +226,40 @@ struct Builder {
         if input.settings.autoPrioritise, input.kind == .standard {
             list += input.strength?.priorities ?? []
             for gap in input.physique?.gaps.prefix(2) ?? [] where gap.magnitude > 0.15 {
-                list.append(TrainingPriority(target: .physique(gap.region), emphasis: min(1, 0.5 + gap.magnitude),
-                                             reason: "\(gap.finding) \(gap.action)", source: .physique))
+                list.append(
+                    TrainingPriority(
+                        target: .physique(gap.region), emphasis: min(1, 0.5 + gap.magnitude),
+                        reason: "\(gap.finding) \(gap.action)", source: .physique))
             }
         }
         if let limiter = input.agility?.limiter {
-            list.append(TrainingPriority(target: .mobility(limiter), emphasis: 0.5,
-                                         reason: "\(limiter.label) is your weakest mobility test, so every session starts a few minutes there.",
-                                         source: .agility))
+            list.append(
+                TrainingPriority(
+                    target: .mobility(limiter), emphasis: 0.5,
+                    reason: "\(limiter.label) is your weakest mobility test, so every session starts a few minutes there.",
+                    source: .agility))
         }
         if let endurance = input.endurance, endurance.engineLagging || endurance.benchmarkLagging {
-            list.append(TrainingPriority(target: .conditioning, emphasis: 0.5,
-                                         reason: endurance.benchmarkLagging
-                                             ? "Your conditioning benchmark hasn't moved, so the post-lift block uses intervals."
-                                             : "Your aerobic base is light, so the post-lift block is steady Zone 2.",
-                                         source: .endurance))
+            list.append(
+                TrainingPriority(
+                    target: .conditioning, emphasis: 0.5,
+                    reason: endurance.benchmarkLagging
+                        ? "Your conditioning benchmark hasn't moved, so the post-lift block uses intervals."
+                        : "Your aerobic base is light, so the post-lift block is steady Zone 2.",
+                    source: .endurance))
         }
         for rec in input.recommendations where rec.to == .liftTrack && rec.isActive() {
             guard let subject = rec.subject else { continue }
             let sign: Double = rec.kind == .deprioritise ? -0.7 : 1
-            let target: TrainingPriority.Target? = switch subject {
-            case .strength(let c): .category(c)
-            case .physique(let p): .physique(p)
-            case .mobility(let m): .mobility(m)
-            case .conditioning: .conditioning
-            case .muscle(let m): .physique(m.physiqueRegion)
-            case .stat: nil
-            }
+            let target: TrainingPriority.Target? =
+                switch subject {
+                case .strength(let c): .category(c)
+                case .physique(let p): .physique(p)
+                case .mobility(let m): .mobility(m)
+                case .conditioning: .conditioning
+                case .muscle(let m): .physique(m.physiqueRegion)
+                case .stat: nil
+                }
             if let target, rec.kind != .deloadNow { list.append(TrainingPriority(target: target, emphasis: sign, reason: rec.reason, source: .hub)) }
         }
         // Two sources can name the same target (two hub recommendations, say); one priority each.
@@ -326,8 +340,11 @@ struct Builder {
         if exercise.unilateral { score -= 0.8 }
         if exercise.isCompound, exercise.equipment.isFreeWeight { score += 0.3 }
         // Continuity: keep what's working; rotate what stalled.
-        if let previous = input.previous?.exerciseIDs, previous.contains(exercise.id) { score += input.stalled.contains(exercise.id) ? -5 : 1.5 }
-        else if input.stalled.contains(exercise.id) { score -= 5 }
+        if let previous = input.previous?.exerciseIDs, previous.contains(exercise.id) {
+            score += input.stalled.contains(exercise.id) ? -5 : 1.5
+        } else if input.stalled.contains(exercise.id) {
+            score -= 5
+        }
         score -= Double(used[exercise.id, default: 0]) * 2.5
         if input.fatigue?.action == .reduceSystemic, request.category == nil { score -= exercise.fatigue.systemic * 4 }
         // Plain names first among equals.
@@ -399,15 +416,20 @@ struct Builder {
                 // Two main lifts a day; a third scored lift is a secondary compound in the
                 // accessory block, at hypertrophy reps and rests.
                 let role: SlotRole = request.role == .main && main.count >= 2 ? .accessory : request.role
-                let slot = SlotPlan(exerciseID: exercise.id, role: role, sets: weeklySets(base: request.sets, emphasis: e, role: request.role),
-                                    repRange: repRange(for: exercise, role: role), restSeconds: rest(for: exercise, role: role),
-                                    seconds: exercise.timed ? (exercise.seconds ?? 30) : nil,
-                                    reason: slotReason(exercise, emphasis: e, request: request))
+                let slot = SlotPlan(
+                    exerciseID: exercise.id, role: role, sets: weeklySets(base: request.sets, emphasis: e, role: request.role),
+                    repRange: repRange(for: exercise, role: role), restSeconds: rest(for: exercise, role: role),
+                    seconds: exercise.timed ? (exercise.seconds ?? 30) : nil,
+                    reason: slotReason(exercise, emphasis: e, request: request))
                 if role == .main { main.append(slot) } else { accessory.append(slot) }
             }
-            days.append(PlannedDay(name: template.name, focus: template.focus,
-                                   blocks: [SessionBlockPlan(kind: .main, minutes: 0, slots: main),
-                                            SessionBlockPlan(kind: .accessory, minutes: 0, slots: accessory)]))
+            days.append(
+                PlannedDay(
+                    name: template.name, focus: template.focus,
+                    blocks: [
+                        SessionBlockPlan(kind: .main, minutes: 0, slots: main),
+                        SessionBlockPlan(kind: .accessory, minutes: 0, slots: accessory),
+                    ]))
         }
         addPhysiqueVolume(&days)
         applyAsymmetries(&days)
@@ -416,14 +438,18 @@ struct Builder {
         let allowance = fatigueHeadroom / Double(max(1, days.count))
         days = days.map { fitTime($0, minutes: minutes, allowance: allowance) }
 
-        let block = TrainingBlock(kind: input.kind, start: input.start, loadingWeeks: input.loadingWeeks,
-                                  deloadWeeks: input.kind == .assessment ? 0 : 1)
-        return Mesocycle(block: block, split: split, days: days, priorities: priorities, rationale: rationale(split: split, days: days),
-                         minutesPerSession: minutes, phase: input.phase)
+        let block = TrainingBlock(
+            kind: input.kind, start: input.start, loadingWeeks: input.loadingWeeks,
+            deloadWeeks: input.kind == .assessment ? 0 : 1)
+        return Mesocycle(
+            block: block, split: split, days: days, priorities: priorities, rationale: rationale(split: split, days: days),
+            minutesPerSession: minutes, phase: input.phase)
     }
 
     func slotReason(_ exercise: Exercise, emphasis e: Double, request: SlotRequest) -> String? {
-        if input.stalled.contains(where: { id in input.catalog[id]?.pattern == exercise.pattern }) && !(input.previous?.exerciseIDs.contains(exercise.id) ?? true) {
+        if input.stalled.contains(where: { id in input.catalog[id]?.pattern == exercise.pattern })
+            && !(input.previous?.exerciseIDs.contains(exercise.id) ?? true)
+        {
             return "Rotated in for a stalled lift with the same movement."
         }
         if e > 0.3, let p = priorities.first(where: { $0.emphasis > 0 && matches($0, exercise, request) }) { return p.reason }
@@ -453,27 +479,30 @@ struct Builder {
             return nil
         }.filter { seen.insert($0.0).inserted }
         for (region, reason) in wanted {
-            let request: SlotRequest = switch region {
-            case .shoulders: Templates.lateral
-            case .arms: Templates.curl
-            case .chest: Templates.fly
-            case .back: Templates.rowAnchor
-            case .thighs: Templates.hamCurl
-            case .calves: Templates.calves
-            case .glutes: Templates.hipThrust
-            case .core: Templates.abs
-            }
+            let request: SlotRequest =
+                switch region {
+                case .shoulders: Templates.lateral
+                case .arms: Templates.curl
+                case .chest: Templates.fly
+                case .back: Templates.rowAnchor
+                case .thighs: Templates.hamCurl
+                case .calves: Templates.calves
+                case .glutes: Templates.hipThrust
+                case .core: Templates.abs
+                }
             for index in days.indices {
                 let day = days[index]
-                let fits = switch region {
-                case .shoulders, .arms, .chest, .back: day.focus != .lower && day.focus != .legs
-                default: day.focus != .upper && day.focus != .push && day.focus != .pull
-                }
+                let fits =
+                    switch region {
+                    case .shoulders, .arms, .chest, .back: day.focus != .lower && day.focus != .legs
+                    default: day.focus != .upper && day.focus != .push && day.focus != .pull
+                    }
                 guard fits, !day.slots.contains(where: { request.patterns.contains(input.catalog.resolve($0.exerciseID).pattern) }) else { continue }
                 let dayUsed = Set(day.slots.map(\.exerciseID))
                 guard let exercise = choose(request, dayUsed: dayUsed) else { continue }
-                let slot = SlotPlan(exerciseID: exercise.id, role: .accessory, sets: weeklySets(base: 2, emphasis: 0.5, role: .accessory),
-                                    repRange: exercise.reps.hypertrophy, restSeconds: exercise.rest.hypertrophy, reason: reason)
+                let slot = SlotPlan(
+                    exerciseID: exercise.id, role: .accessory, sets: weeklySets(base: 2, emphasis: 0.5, role: .accessory),
+                    repRange: exercise.reps.hypertrophy, restSeconds: exercise.rest.hypertrophy, reason: reason)
                 if let accessory = days[index].blocks.firstIndex(where: { $0.kind == .accessory }) {
                     days[index].blocks[accessory].slots.insert(slot, at: 0)
                 }
@@ -502,8 +531,9 @@ struct Builder {
                 let current = input.catalog.resolve(slot.exerciseID)
                 if !current.unilateral {
                     let dayUsed = Set(days[d].slots.map(\.exerciseID))
-                    let request = SlotRequest(role: .accessory, patterns: [current.pattern], muscles: current.primaryMuscles,
-                                              sets: slot.sets(week: 0))
+                    let request = SlotRequest(
+                        role: .accessory, patterns: [current.pattern], muscles: current.primaryMuscles,
+                        sets: slot.sets(week: 0))
                     let options = strengthCandidates.filter { $0.unilateral && $0.pattern == current.pattern }
                         .compactMap { e in score(e, for: request, dayUsed: dayUsed).map { (e, $0) } }
                     guard let pick = options.max(by: { $0.1 < $1.1 })?.0 else { continue }
@@ -523,9 +553,10 @@ struct Builder {
     /// The week's systemic recovery budget after training outside the gym. Only a standard block
     /// follows the nutrition phase.
     func weeklyBudget(outside: FatigueLoad) -> Double {
-        FatigueBudget.weeklySystemicBudget(experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
-                                           phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
-                                           assessment: input.fatigue, outside: outside)
+        FatigueBudget.weeklySystemicBudget(
+            experience: input.profile.experience, daysPerWeek: input.profile.schedule.daysPerWeek,
+            phase: input.kind == .standard ? input.phase.effects : NutritionPhase.assumedMaintenance.effects,
+            assessment: input.fatigue, outside: outside)
     }
 
     /// Lifts costing at least this much whole-body fatigue are the ones worth swapping for cheaper work.
@@ -559,18 +590,24 @@ struct Builder {
                 let exercise = input.catalog.resolve(days[d].blocks[b].slots[s].exerciseID)
                 return exercise.fatigue.systemic >= Self.costlySystemic && !(exercise.strength != nil && protectScored)
             }.sorted {
-                input.catalog.resolve(days[$0.0].blocks[$0.1].slots[$0.2].exerciseID).fatigue.systemic >
-                    input.catalog.resolve(days[$1.0].blocks[$1.1].slots[$1.2].exerciseID).fatigue.systemic
+                input.catalog.resolve(days[$0.0].blocks[$0.1].slots[$0.2].exerciseID).fatigue.systemic
+                    > input.catalog.resolve(days[$1.0].blocks[$1.1].slots[$1.2].exerciseID).fatigue.systemic
             }
             for (d, b, s) in ranked where swapped.count < 2 {
                 let slot = days[d].blocks[b].slots[s]
                 let exercise = input.catalog.resolve(slot.exerciseID)
                 let dayUsed = Set(days[d].slots.map(\.exerciseID))
                 // The cheaper options, ranked the same way slots are chosen: stimulus and the same muscles first.
-                let request = SlotRequest(role: .accessory, patterns: MovementPattern.allCases, muscles: exercise.primaryMuscles, sets: slot.sets(week: 0))
-                let options = Substitutions.lowerSystemicCost(for: exercise, in: strengthCandidates, availability: availability, injuries: input.injuries)
-                    .prefix(8).filter { !dayUsed.contains($0.id) }
-                guard let cheaper = options.max(by: { (score($0, for: request, dayUsed: dayUsed) ?? -99) < (score($1, for: request, dayUsed: dayUsed) ?? -99) })
+                let request = SlotRequest(
+                    role: .accessory, patterns: MovementPattern.allCases, muscles: exercise.primaryMuscles, sets: slot.sets(week: 0))
+                let options = Substitutions.lowerSystemicCost(
+                    for: exercise, in: strengthCandidates, availability: availability, injuries: input.injuries
+                )
+                .prefix(8).filter { !dayUsed.contains($0.id) }
+                guard
+                    let cheaper = options.max(by: {
+                        (score($0, for: request, dayUsed: dayUsed) ?? -99) < (score($1, for: request, dayUsed: dayUsed) ?? -99)
+                    })
                 else { continue }
                 days[d].blocks[b].slots[s].exerciseID = cheaper.id
                 days[d].blocks[b].slots[s].repRange = cheaper.reps.hypertrophy
@@ -580,9 +617,10 @@ struct Builder {
                 if cost() <= budget { break }
             }
             if !swapped.isEmpty {
-                reasons.append(input.fatigue?.action == .reduceSystemic
-                    ? "You've been beat up and stalled, so the costliest lifts are swapped before any work is cut (\(swapped.joined(separator: ", ")))."
-                    : "To fit your recovery budget, the costliest lifts are swapped (\(swapped.joined(separator: ", "))).")
+                reasons.append(
+                    input.fatigue?.action == .reduceSystemic
+                        ? "You've been beat up and stalled, so the costliest lifts are swapped before any work is cut (\(swapped.joined(separator: ", ")))."
+                        : "To fit your recovery budget, the costliest lifts are swapped (\(swapped.joined(separator: ", "))).")
             }
         }
 
@@ -623,7 +661,9 @@ struct Builder {
             days[d].blocks[b].slots.remove(at: s)
         }
         if trimmed > 0 || !dropped.isEmpty {
-            reasons.append("Some sets trimmed\(dropped.isEmpty ? "" : " (and \(dropped.joined(separator: ", ")) left out)") to stay within your recovery budget, so sessions can come in under your time.")
+            reasons.append(
+                "Some sets trimmed\(dropped.isEmpty ? "" : " (and \(dropped.joined(separator: ", ")) left out)") to stay within your recovery budget, so sessions can come in under your time."
+            )
         }
         fatigueHeadroom = max(0, budget - cost())
     }
@@ -672,10 +712,13 @@ struct Builder {
             BlockSpec(kind: .accessory, minimum: 8, desired: accessorySeconds / 60, priority: 6 + emphasis.hypertrophy - 0.5),
         ]
         let conditioningWanted = priorities.contains { $0.target == .conditioning } ? 1.0 : 0
-        let conditioningDesired = Int(Double(minutes >= 80 ? 30 : (minutes >= 50 ? 12 : 10)) * (0.6 + 0.6 * emphasis.conditioning + 0.3 * conditioningWanted))
+        let conditioningDesired = Int(
+            Double(minutes >= 80 ? 30 : (minutes >= 50 ? 12 : 10)) * (0.6 + 0.6 * emphasis.conditioning + 0.3 * conditioningWanted))
         if input.settings.includeConditioning, input.kind != .minimumEffective {
-            specs.append(BlockSpec(kind: .conditioning, minimum: conditioningMinimum, desired: max(conditioningMinimum, conditioningDesired),
-                                   priority: 4 + emphasis.conditioning * 2 + conditioningWanted))
+            specs.append(
+                BlockSpec(
+                    kind: .conditioning, minimum: conditioningMinimum, desired: max(conditioningMinimum, conditioningDesired),
+                    priority: 4 + emphasis.conditioning * 2 + conditioningWanted))
         }
         if input.settings.includeCooldown { specs.append(BlockSpec(kind: .cooldown, minimum: 5, desired: minutes >= 80 ? 10 : 5, priority: 2)) }
         if short {
@@ -699,8 +742,10 @@ struct Builder {
         // short session; otherwise the main lifts, then accessories in order while they fit.
         if short {
             main = Array(main.prefix(2))
-            if main.count == 2, resolve(main[0]).pattern.isLowerBody != resolve(main[1]).pattern.isLowerBody
-                || region(of: resolve(main[0])) != region(of: resolve(main[1])) {
+            if main.count == 2,
+                resolve(main[0]).pattern.isLowerBody != resolve(main[1]).pattern.isLowerBody
+                    || region(of: resolve(main[0])) != region(of: resolve(main[1]))
+            {
                 main[0].supersetGroup = 1
                 main[1].supersetGroup = 1
             }
@@ -720,7 +765,9 @@ struct Builder {
                 main[i].sets = main[i].sets.map { max(2, $0 - 1) }
             } else if main.count > 1 {
                 main.removeLast()
-            } else { break }
+            } else {
+                break
+            }
         }
         var kept: [SlotPlan] = []
         for slot in accessory where seconds(main + kept + [slot]) <= liftingBudget { kept.append(slot) }
@@ -771,11 +818,18 @@ struct Builder {
             let opener = options.first { $0.equipment.isCardio }
             let moves = Array(options.filter { !$0.equipment.isCardio }.prefix(m >= 12 ? 4 : (m >= 8 ? 3 : 2)))
             let openerSeconds = opener.map { min($0.seconds ?? 300, max(120, (m - moves.count) * 60) / 30 * 30) }
-            let slots = (opener.map { [SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(1, 1), restSeconds: 0,
-                                                seconds: openerSeconds)] } ?? [])
+            let slots =
+                (opener.map {
+                    [
+                        SlotPlan(
+                            exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(1, 1), restSeconds: 0,
+                            seconds: openerSeconds)
+                    ]
+                } ?? [])
                 + moves.map {
-                    SlotPlan(exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(10, 10), restSeconds: 15,
-                             seconds: $0.timed ? min(45, $0.seconds ?? 45) : nil)
+                    SlotPlan(
+                        exerciseID: $0.id, role: .warmup, sets: [1], repRange: RepRange(10, 10), restSeconds: 15,
+                        seconds: $0.timed ? min(45, $0.seconds ?? 45) : nil)
                 }
             blocks.append(SessionBlockPlan(kind: .warmup, minutes: m, slots: Self.stableIDs(slots, in: day, block: .warmup)))
         }
@@ -784,9 +838,10 @@ struct Builder {
         if let m = allocation[.limiter], !limiterDrills.isEmpty {
             let drills = limiterDrills.prefix(m >= 4 ? 2 : 1)
             let slots = drills.map {
-                SlotPlan(exerciseID: $0.id, role: .mobility, sets: [2], repRange: RepRange(8, 8), restSeconds: 15,
-                         seconds: $0.timed ? ($0.seconds ?? 45) : nil,
-                         reason: input.agility?.limiter == nil ? nil : "Your weakest mobility test: \(limiterTarget.label.lowercased()).")
+                SlotPlan(
+                    exerciseID: $0.id, role: .mobility, sets: [2], repRange: RepRange(8, 8), restSeconds: 15,
+                    seconds: $0.timed ? ($0.seconds ?? 45) : nil,
+                    reason: input.agility?.limiter == nil ? nil : "Your weakest mobility test: \(limiterTarget.label.lowercased()).")
             }
             blocks.append(SessionBlockPlan(kind: .limiter, minutes: m, slots: Self.stableIDs(slots, in: day, block: .limiter)))
         } else if short, let drill = limiterDrills.first, !main.isEmpty {
@@ -802,12 +857,15 @@ struct Builder {
             let options = Drills.conditioning(in: input.catalog.all, availability: availability, style: style)
             if let m = allocation[.conditioning], let pick = options.first {
                 let spec = pick.conditioning ?? ConditioningSpec(style: style, zones: style == .steady ? 2...3 : 4...5)
-                let plan = ConditioningPlan(minutes: m, zones: spec.zones, style: spec.style, workSeconds: spec.workSeconds, restSeconds: spec.restSeconds)
-                let slot = SlotPlan(exerciseID: pick.id, role: .conditioning, sets: [1], repRange: RepRange(1, 1), restSeconds: 0, seconds: m * 60,
-                                    conditioning: plan, reason: priorities.first { $0.target == .conditioning }?.reason)
+                let plan = ConditioningPlan(
+                    minutes: m, zones: spec.zones, style: spec.style, workSeconds: spec.workSeconds, restSeconds: spec.restSeconds)
+                let slot = SlotPlan(
+                    exerciseID: pick.id, role: .conditioning, sets: [1], repRange: RepRange(1, 1), restSeconds: 0, seconds: m * 60,
+                    conditioning: plan, reason: priorities.first { $0.target == .conditioning }?.reason)
                 blocks.append(SessionBlockPlan(kind: .conditioning, minutes: m, slots: Self.stableIDs([slot], in: day, block: .conditioning)))
             } else {
-                overflow.append(OverflowItem(kind: .conditioning, title: style == .steady ? "20 min Zone 2" : "15 min intervals", minutes: 20, stat: .endurance))
+                overflow.append(
+                    OverflowItem(kind: .conditioning, title: style == .steady ? "20 min Zone 2" : "15 min intervals", minutes: 20, stat: .endurance))
             }
         }
         if input.settings.includeCooldown {
@@ -862,7 +920,8 @@ struct Builder {
                 headline = "A balanced \(input.loadingWeeks)-week block across every lift, then a deload."
             }
         }
-        list.append("\(split.label), \(days.count) day\(days.count == 1 ? "" : "s") a week, about \(input.profile.schedule.minutesPerSession) minutes each.")
+        list.append(
+            "\(split.label), \(days.count) day\(days.count == 1 ? "" : "s") a week, about \(input.profile.schedule.minutesPerSession) minutes each.")
         for priority in priorities where priority.emphasis != 0 { list.append(priority.reason) }
         // Gaps the waist drives get no extra volume; say why.
         if input.settings.autoPrioritise, input.kind == .standard {
@@ -872,21 +931,27 @@ struct Builder {
         }
         if input.kind == .standard {
             switch input.phase.kind.energy {
-            case .deficit: list.append("You're in a \(input.phase.kind.label.lowercased()), so the block is shorter, heavy compounds are protected, and a stall is expected rather than a problem.")
+            case .deficit:
+                list.append(
+                    "You're in a \(input.phase.kind.label.lowercased()), so the block is shorter, heavy compounds are protected, and a stall is expected rather than a problem."
+                )
             case .surplus: list.append("You're in a \(input.phase.kind.label.lowercased()), so volume and progression targets run a little higher.")
             case .maintenance: break
             }
             if input.phase.source != .macroTrack {
-                list.append("Phase: \(input.phase.source == .selfReported ? "your answer (\(input.phase.kind.label.lowercased()))" : "not known, so maintenance is assumed"). Macro Track would make this more precise.")
+                list.append(
+                    "Phase: \(input.phase.source == .selfReported ? "your answer (\(input.phase.kind.label.lowercased()))" : "not known, so maintenance is assumed"). Macro Track would make this more precise."
+                )
             }
         }
         for injury in input.injuries { list.append("\(injury.summary): exercises that load it are swapped out; everything else keeps progressing.") }
         list += reasons
         let scored = input.strength?.categories.count ?? 0
-        let confidence: String? = switch input.kind {
-        case .assessment: nil
-        default: scored < 4 ? "Early read: \(scored) of 7 lifts scored so far, so this block stays conservative." : nil
-        }
+        let confidence: String? =
+            switch input.kind {
+            case .assessment: nil
+            default: scored < 4 ? "Early read: \(scored) of 7 lifts scored so far, so this block stays conservative." : nil
+            }
         return Rationale(headline: headline, reasons: list, confidence: confidence)
     }
 }

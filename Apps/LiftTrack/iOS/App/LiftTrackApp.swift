@@ -1,7 +1,7 @@
-import SwiftUI
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 @main

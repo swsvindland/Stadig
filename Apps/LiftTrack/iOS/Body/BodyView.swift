@@ -1,9 +1,9 @@
-import SwiftUI
-import PhotosUI
 import Charts
 import ImageIO
-import OSLog
 import LiftEngine
+import OSLog
+import PhotosUI
+import SwiftUI
 import SystemCore
 
 /// Physique on a mesocycle cadence: tape measurements, the ratios that matter, gaps and what
@@ -38,7 +38,11 @@ struct BodyView: View {
             .navigationTitle("Body")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { measuring = true } label: { Image(systemName: "ruler") }.accessibilityLabel("Add measurements")
+                    Button {
+                        measuring = true
+                    } label: {
+                        Image(systemName: "ruler")
+                    }.accessibilityLabel("Add measurements")
                         .accessibilityIdentifier("body.addMeasurements")
                 }
             }
@@ -68,7 +72,11 @@ struct BodyView: View {
             if p.latest == nil {
                 Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
                     .font(.subheadline).foregroundStyle(.secondary)
-                Button { measuring = true } label: { Label("Add measurements", systemImage: "ruler").frame(maxWidth: .infinity) }.primaryAction()
+                Button {
+                    measuring = true
+                } label: {
+                    Label("Add measurements", systemImage: "ruler").frame(maxWidth: .infinity)
+                }.primaryAction()
             } else {
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
                     ForEach(p.proportions) { reading in
@@ -86,11 +94,12 @@ struct BodyView: View {
                         }
                     }
                     if let bf = p.bodyFatPercent {
-                        let source = switch p.bodyFatSource {
-                        case .health: "from Health"
-                        case .entered: "entered"
-                        case .tape, nil: "tape estimate, a soft signal"
-                        }
+                        let source =
+                            switch p.bodyFatSource {
+                            case .health: "from Health"
+                            case .entered: "entered"
+                            case .tape, nil: "tape estimate, a soft signal"
+                            }
                         GridRow {
                             Text("Body fat").foregroundStyle(.secondary)
                             Text("\(Format.number(bf))%").monospacedDigit()
@@ -108,7 +117,8 @@ struct BodyView: View {
                         GridRow {
                             Text("Waist").foregroundStyle(.secondary)
                             Text(Format.length(latest.waistCm, unit: length))
-                            Text(p.waistTrend.map { "\($0 > 0 ? "+" : "")\(Format.length($0, unit: length)) since first" } ?? "").font(.caption).foregroundStyle(.secondary)
+                            Text(p.waistTrend.map { "\($0 > 0 ? "+" : "")\(Format.length($0, unit: length)) since first" } ?? "").font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -257,14 +267,20 @@ struct BodyView: View {
         VStack(alignment: .leading, spacing: 8) {
             if !model.measurements.isEmpty { SectionHeader(title: "Measurements") }
             ForEach(model.measurements.reversed()) { m in
-                Button { editing = m } label: {
+                Button {
+                    editing = m
+                } label: {
                     HStack {
                         Text(Format.day(m.day, style: .dateTime.month(.abbreviated).day().year())).font(.subheadline.weight(.semibold))
                         Spacer()
-                        Text([m.waistCm.map { "waist \(Format.length($0, unit: model.units.length))" },
-                              m.shouldersCm.map { "shoulders \(Format.length($0, unit: model.units.length))" },
-                              m.weightKg.map { Format.weight($0, unit: model.units.weight) }].compactMap { $0 }.joined(separator: " · "))
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(
+                            [
+                                m.waistCm.map { "waist \(Format.length($0, unit: model.units.length))" },
+                                m.shouldersCm.map { "shoulders \(Format.length($0, unit: model.units.length))" },
+                                m.weightKg.map { Format.weight($0, unit: model.units.weight) },
+                            ].compactMap { $0 }.joined(separator: " · ")
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                     .card(padding: 12)
                 }
@@ -312,12 +328,13 @@ enum ProgressPhotos {
 
     nonisolated private static func downsampled(_ data: Data, maxPixel: Int) -> UIImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
-        let options = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
-        ] as CFDictionary
+        let options =
+            [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+            ] as CFDictionary
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options).map { UIImage(cgImage: $0) }
     }
 }
@@ -359,8 +376,9 @@ struct MeasurementEditor: View {
         let unit = model.units.length
         NavigationStack {
             Form {
-                DatePicker("Day", selection: Binding(get: { measurements.day.date() }, set: { measurements.day = Day($0) }), in: ...Date(),
-                           displayedComponents: .date)
+                DatePicker(
+                    "Day", selection: Binding(get: { measurements.day.date() }, set: { measurements.day = Day($0) }), in: ...Date(),
+                    displayedComponents: .date)
                 Section {
                     NavigationLink("Where the tape goes") { MeasuringGuide() }
                 } footer: {
@@ -382,8 +400,9 @@ struct MeasurementEditor: View {
                 Section {
                     ForEach(Limb.allCases) { limb in
                         let keys = BodyMeasurements.sides(limb)
-                        SidesField(label: limb == .arm ? "Upper arm, flexed" : limb.label, left: $measurements[dynamicMember: keys.left],
-                                   right: $measurements[dynamicMember: keys.right], unit: unit)
+                        SidesField(
+                            label: limb == .arm ? "Upper arm, flexed" : limb.label, left: $measurements[dynamicMember: keys.left],
+                            right: $measurements[dynamicMember: keys.right], unit: unit)
                     }
                 } header: {
                     Text("Arms and legs")
@@ -455,14 +474,18 @@ struct SidesField: View {
     private func side(_ short: String, _ name: String, _ value: Binding<Double?>) -> some View {
         HStack(spacing: 4) {
             Text(short).font(.caption).foregroundStyle(.secondary)
-            TextField("—", value: Binding(get: { value.wrappedValue.map { (unit.fromCentimetres($0) * 10).rounded() / 10 } },
-                                          set: { value.wrappedValue = $0.map(unit.toCentimetres) }),
-                      format: .number.precision(.fractionLength(0...1)))
-                .keyboardType(.decimalPad)
-                // Next to its letter, so each value reads as that side's.
-                .multilineTextAlignment(.leading)
-                .frame(width: 52)
-                .accessibilityLabel("\(name) \(label.lowercased())")
+            TextField(
+                "—",
+                value: Binding(
+                    get: { value.wrappedValue.map { (unit.fromCentimetres($0) * 10).rounded() / 10 } },
+                    set: { value.wrappedValue = $0.map(unit.toCentimetres) }),
+                format: .number.precision(.fractionLength(0...1))
+            )
+            .keyboardType(.decimalPad)
+            // Next to its letter, so each value reads as that side's.
+            .multilineTextAlignment(.leading)
+            .frame(width: 52)
+            .accessibilityLabel("\(name) \(label.lowercased())")
         }
     }
 }
@@ -472,8 +495,10 @@ struct MeasuringGuide: View {
     var body: some View {
         List {
             Section {
-                Text("In the morning, before eating or training. Keep the tape level and snug on the skin without pressing in, and breathe out normally before reading it. The same way every time matters more than any one reading.")
-                    .font(.subheadline)
+                Text(
+                    "In the morning, before eating or training. Keep the tape level and snug on the skin without pressing in, and breathe out normally before reading it. The same way every time matters more than any one reading."
+                )
+                .font(.subheadline)
             }
             Section("Torso") {
                 site("Neck", "Just below the larynx, the tape sloping slightly down at the front.")
@@ -490,8 +515,10 @@ struct MeasuringGuide: View {
                 site("Calf", "Standing, at the widest point.")
             }
             Section {
-                Text("A centimetre between sides is normal, and a reading can vary that much. The program only acts on a difference that shows at two check-ins at least two weeks apart.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Text(
+                    "A centimetre between sides is normal, and a reading can vary that much. The program only acts on a difference that shows at two check-ins at least two weeks apart."
+                )
+                .font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Where the tape goes")

@@ -166,8 +166,10 @@ public final class LiveWorkoutSession: NSObject {
 }
 
 extension LiveWorkoutSession: HKWorkoutSessionDelegate {
-    nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
-                                           from fromState: HKWorkoutSessionState, date: Date) {
+    nonisolated public func workoutSession(
+        _ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
+        from fromState: HKWorkoutSessionState, date: Date
+    ) {
         Task { @MainActor in self.sessionChanged(workoutSession, running: toState == .running, ended: toState == .ended) }
     }
 
@@ -190,7 +192,8 @@ extension LiveWorkoutSession: HKLiveWorkoutBuilderDelegate {
             (date: heartRate?.mostRecentQuantityDateInterval()?.start ?? Date(), bpm: $0.doubleValue(for: HealthTypes.bpm))
         }
         let average = heartRate?.averageQuantity()?.doubleValue(for: HealthTypes.bpm)
-        let energy = collectedTypes.contains(HealthTypes.activeEnergy)
+        let energy =
+            collectedTypes.contains(HealthTypes.activeEnergy)
             ? workoutBuilder.statistics(for: HealthTypes.activeEnergy)?.sumQuantity()?.doubleValue(for: .kilocalorie())
             : nil
         Task { @MainActor in self.record(from: session, latest: latest, average: average, energy: energy) }

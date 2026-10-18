@@ -1,12 +1,12 @@
-import Foundation
-import Observation
-import OSLog
-import WatchKit
-import WidgetKit
 import ExerciseLibrary
+import Foundation
 import HealthBridge
 import LiftEngine
+import OSLog
+import Observation
 import SystemCore
+import WatchKit
+import WidgetKit
 
 /// What the session screen shows next.
 enum SessionStep: Equatable {
@@ -233,8 +233,9 @@ final class WatchModel {
         guard let environment = session?.context.environment(catalog: catalog) else { return }
         let peak = workout.heartRate
         update { stored in
-            stored.live.log(item: item, set: set, reps: reps, loadKg: loadKg, rating: rating, seconds: seconds,
-                            heartRatePeak: peak, environment: environment)
+            stored.live.log(
+                item: item, set: set, reps: reps, loadKg: loadKg, rating: rating, seconds: seconds,
+                heartRatePeak: peak, environment: environment)
             stored.timer = nil
         }
     }
@@ -487,7 +488,8 @@ final class WatchModel {
                 let cycle = Double(work + easy)
                 let round = (now.timeIntervalSince(timer.started) / cycle).rounded(.down)
                 let workEnds = timer.started.addingTimeInterval(round * cycle + Double(work))
-                let switchAt: (date: Date, alarm: Alarm) = workEnds > now
+                let switchAt: (date: Date, alarm: Alarm) =
+                    workEnds > now
                     ? (workEnds, .interval(work: false))
                     : (timer.started.addingTimeInterval((round + 1) * cycle), .interval(work: true))
                 if switchAt.date < target { next = switchAt }
@@ -495,7 +497,8 @@ final class WatchModel {
             return next
         }
         guard item.sets.indices.contains(timer.set),
-              let seconds = item.sets[timer.set].prescription.seconds ?? item.plan.seconds else { return nil }
+            let seconds = item.sets[timer.set].prescription.seconds ?? item.plan.seconds
+        else { return nil }
         let done = timer.started.addingTimeInterval(TimeInterval(seconds))
         return done > now ? (done, .timerDone) : nil
     }

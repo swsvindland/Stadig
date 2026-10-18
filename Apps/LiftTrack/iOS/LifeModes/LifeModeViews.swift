@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 enum LifeModeKindChoice: String, Identifiable {
@@ -27,7 +27,9 @@ struct LifeModeBanner: View {
     @State private var editing = false
 
     var body: some View {
-        Button { editing = true } label: {
+        Button {
+            editing = true
+        } label: {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: period.kind.symbol).font(.title2).foregroundStyle(.tint).frame(width: 32)
                 VStack(alignment: .leading, spacing: 4) {
@@ -151,12 +153,15 @@ struct LifeModeEditor: View {
                 Toggle("Until it's better", isOn: $openEnded)
             }
             if !isOpenEnded {
-                DatePicker("Until", selection: Binding(get: { period.editorEnd.date() }, set: { period.moveEnd(to: Day($0)) }),
-                           in: period.start.date()..., displayedComponents: .date)
+                DatePicker(
+                    "Until", selection: Binding(get: { period.editorEnd.date() }, set: { period.moveEnd(to: Day($0)) }),
+                    in: period.start.date()..., displayedComponents: .date)
             }
         } footer: {
             if case .vacation = period.kind {
-                Text("Near a planned deload, the trip becomes the deload. Early in a block, the block ends there and a fresh one starts after. The first week back eases in.")
+                Text(
+                    "Near a planned deload, the trip becomes the deload. Early in a block, the block ends there and a fresh one starts after. The first week back eases in."
+                )
             }
         }
     }
@@ -191,34 +196,46 @@ struct LifeModeEditor: View {
             Section {
                 Toggle("Exempt from Discipline", isOn: binding.exemptFromDiscipline)
             } footer: {
-                Text("Sessions become a minimum effective dose: short, far fewer sets, the big lifts kept. Conditioning and accessories go first. Crunch periods never count as failure.")
+                Text(
+                    "Sessions become a minimum effective dose: short, far fewer sets, the big lifts kept. Conditioning and accessories go first. Crunch periods never count as failure."
+                )
             }
         }
     }
 
     private func injuryForm(_ injury: Injury) -> some View {
         // Reads the edited period, not this snapshot, so several writes in one action each see the last.
-        let binding = Binding<Injury>(get: {
-            if case .injury(let current) = period.kind { current } else { injury }
-        }, set: { period.kind = .injury($0) })
+        let binding = Binding<Injury>(
+            get: {
+                if case .injury(let current) = period.kind { current } else { injury }
+            }, set: { period.kind = .injury($0) })
         let excluded = model.catalog.of(kind: .strength).filter { injury.excludes($0) }
         return Group {
             Section("Where") {
                 ForEach(Joint.allCases) { joint in
                     let part = injury.parts.first { $0.joint == joint }
                     HStack {
-                        Toggle(joint.label, isOn: Binding(get: { part != nil }, set: { on in
-                            var i = injury
-                            if on { i.parts.append(InjuredPart(joint)) } else { i.parts.removeAll { $0.joint == joint } }
-                            binding.wrappedValue = i
-                        }))
+                        Toggle(
+                            joint.label,
+                            isOn: Binding(
+                                get: { part != nil },
+                                set: { on in
+                                    var i = injury
+                                    if on { i.parts.append(InjuredPart(joint)) } else { i.parts.removeAll { $0.joint == joint } }
+                                    binding.wrappedValue = i
+                                }))
                     }
                     if let part, joint.isPaired {
-                        Picker("Side", selection: Binding(get: { part.side }, set: { side in
-                            var i = injury
-                            if let index = i.parts.firstIndex(where: { $0.joint == joint }) { i.parts[index].side = side }
-                            binding.wrappedValue = i
-                        })) {
+                        Picker(
+                            "Side",
+                            selection: Binding(
+                                get: { part.side },
+                                set: { side in
+                                    var i = injury
+                                    if let index = i.parts.firstIndex(where: { $0.joint == joint }) { i.parts[index].side = side }
+                                    binding.wrappedValue = i
+                                })
+                        ) {
                             ForEach(BodySide.allCases, id: \.self) { Text($0.label).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -236,7 +253,9 @@ struct LifeModeEditor: View {
                 Section {
                     Button("\(excluded.count) exercises set aside · adjust") { showExercises = true }
                 } footer: {
-                    Text("Filtering uses the joints each exercise loads. Add any back or take more out by hand. Persistent or worsening pain means a physio or doctor, not more training around it.")
+                    Text(
+                        "Filtering uses the joints each exercise loads. Add any back or take more out by hand. Persistent or worsening pain means a physio or doctor, not more training around it."
+                    )
                 }
                 .sheet(isPresented: $showExercises) { InjuryOverrides(injury: binding) }
             }
@@ -278,8 +297,12 @@ struct InjuryOverrides: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(exercise.name)
-                                Text(exercise.joints.filter { injury.joints.contains($0.joint) }.map { "\($0.joint.label): \($0.stress.label.lowercased())" }.joined(separator: ", "))
-                                    .font(.caption).foregroundStyle(.secondary)
+                                Text(
+                                    exercise.joints.filter { injury.joints.contains($0.joint) }.map {
+                                        "\($0.joint.label): \($0.stress.label.lowercased())"
+                                    }.joined(separator: ", ")
+                                )
+                                .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Text(out ? "Set aside" : "Allowed").font(.subheadline).foregroundStyle(out ? .orange : .green)

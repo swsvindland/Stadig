@@ -69,12 +69,14 @@ public final class SupplementCatalog: Sendable {
         let expression = words.enumerated().map { i, word in i == words.count - 1 ? "\"\(word)\"*" : "\"\(word)\"" }.joined(separator: " ")
         var found: [SupplementFacts] = []
         pool.read { connection in
-            try connection.query("""
+            try connection.query(
+                """
                 SELECT \(Self.columns) FROM (
                   SELECT rowid, bm25(supplement_search, 3.0, 1.0) AS score FROM supplement_search WHERE supplement_search MATCH ?
                 ) AS hit JOIN supplements ON supplements.id = hit.rowid
                 ORDER BY supplements.market DESC, hit.score LIMIT ?
-                """, [.text(expression), .integer(Int64(limit))]) { row in
+                """, [.text(expression), .integer(Int64(limit))]
+            ) { row in
                 if let facts = Self.facts(row) { found.append(facts) }
             }
         }
@@ -99,8 +101,9 @@ public final class SupplementCatalog: Sendable {
         }
         let brand = row.string(2)
         // Only the lines Macro Track tracks: a label's herbs and blends add nothing it counts.
-        return SupplementFacts(id: "dsld:\(row.int(0))", name: name, brand: brand?.isEmpty == false ? brand : nil,
-                               barcode: row.isNull(3) ? nil : barcodeKey(String(row.int(3))), servingCount: serving.count,
-                               unit: serving.unit, ingredients: ingredients.filter(\.isTracked), source: .dsld)
+        return SupplementFacts(
+            id: "dsld:\(row.int(0))", name: name, brand: brand?.isEmpty == false ? brand : nil,
+            barcode: row.isNull(3) ? nil : barcodeKey(String(row.int(3))), servingCount: serving.count,
+            unit: serving.unit, ingredients: ingredients.filter(\.isTracked), source: .dsld)
     }
 }

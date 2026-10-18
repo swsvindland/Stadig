@@ -1,8 +1,8 @@
+import MindEngine
 import OSLog
 import PencilKit
 import PhotosUI
 import SwiftUI
-import MindEngine
 import SystemCore
 
 /// Write something: a prompt, a rewrite, a practical task, Franklin notes. Typed, written with
@@ -100,10 +100,12 @@ private struct ComposeEditor: View {
             BottomBar { bottom }
         }
         .fullScreenCover(item: $scanning) { target in
-            DocumentScanner(done: { pages in
-                scanning = nil
-                read(into: target) { try await TextRecognizer.read(pages, handwriting: target == .writing) }
-            }, cancel: { scanning = nil })
+            DocumentScanner(
+                done: { pages in
+                    scanning = nil
+                    read(into: target) { try await TextRecognizer.read(pages, handwriting: target == .writing) }
+                }, cancel: { scanning = nil }
+            )
             .ignoresSafeArea()
         }
         .task { await restoreDraft() }
@@ -130,7 +132,8 @@ private struct ComposeEditor: View {
             if launch.has("-pencil") { input = .pencil }
             // -readImage page.png reads a picture from the app's Documents as handwriting.
             if let name = launch.value(after: "-readImage"),
-               let image = UIImage(contentsOfFile: URL.documentsDirectory.appending(path: name).path()) {
+                let image = UIImage(contentsOfFile: URL.documentsDirectory.appending(path: name).path())
+            {
                 read(into: .writing) { try await TextRecognizer.read(image) }
                 if launch.has("-handIn") {
                     while reading { try? await Task.sleep(for: .milliseconds(200)) }
@@ -393,7 +396,8 @@ private struct PieceReview: View {
                     Text(task.exercise == .franklinRewrite ? "Your rewrite beside the original" : "Notes on your piece").font(.title2.bold())
                     if let piece {
                         if task.exercise == .franklinRewrite, let original = task.source {
-                            let layout = sizeClass == .regular ? AnyLayout(HStackLayout(alignment: .top, spacing: 14)) : AnyLayout(VStackLayout(spacing: 14))
+                            let layout =
+                                sizeClass == .regular ? AnyLayout(HStackLayout(alignment: .top, spacing: 14)) : AnyLayout(VStackLayout(spacing: 14))
                             layout {
                                 TextCard(title: "Original", detail: task.sourceCredit ?? "From your book", text: Text(original))
                                 TextCard(title: "Yours", detail: "From your notes", text: MarkedText.text(piece.text, slips: slips))
@@ -406,8 +410,10 @@ private struct PieceReview: View {
                             WritingAssistant.shared.requestNotes(for: piece, source: task.source, model: model, again: true)
                         }
                     }
-                    Text("Notes are suggestions, never a grade. Slips, range of vocabulary and variety in sentence length show as trends in Progress.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        "Notes are suggestions, never a grade. Slips, range of vocabulary and variety in sentence length show as trends in Progress."
+                    )
+                    .font(.footnote).foregroundStyle(.secondary)
                 }
                 .padding(20)
                 .readableWidth(sizeClass == .regular && task.exercise == .franklinRewrite ? 980 : 680)
@@ -476,8 +482,10 @@ private struct SlipList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(slips.isEmpty ? "The checker found no slips." : "Marked in your text", systemImage: slips.isEmpty ? "checkmark.circle" : "highlighter")
-                .font(.subheadline.weight(.semibold))
+            Label(
+                slips.isEmpty ? "The checker found no slips." : "Marked in your text", systemImage: slips.isEmpty ? "checkmark.circle" : "highlighter"
+            )
+            .font(.subheadline.weight(.semibold))
             ForEach(Array(slips.prefix(Self.shown).enumerated()), id: \.offset) { _, slip in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("“\(slip.text)”").font(.callout.weight(.medium))

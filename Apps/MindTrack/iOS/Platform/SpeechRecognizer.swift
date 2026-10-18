@@ -1,9 +1,9 @@
 import AVFoundation
 import Foundation
-import Observation
-import OSLog
-import Speech
 import MindEngine
+import OSLog
+import Observation
+import Speech
 import SystemCore
 
 /// Listens for a spoken answer in the language being learned, on the device: Apple's SpeechAnalyzer
@@ -88,8 +88,9 @@ final class SpeechRecognizer {
         // What reads the transcriber's results, started only once listening really begins.
         let listen: () -> Task<Void, Never>
         if SpeechTranscriber.isAvailable, let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) {
-            let transcriber = SpeechTranscriber(locale: supported, transcriptionOptions: [], reportingOptions: [.volatileResults],
-                                                attributeOptions: [])
+            let transcriber = SpeechTranscriber(
+                locale: supported, transcriptionOptions: [], reportingOptions: [.volatileResults],
+                attributeOptions: [])
             module = transcriber
             listen = { [weak self] in
                 Task { [weak self] in
@@ -222,8 +223,10 @@ final class SpeechRecognizer {
     }
 
     /// The microphone tap runs on the audio thread, so it's made away from the main actor.
-    nonisolated private static func tap(_ converter: BufferConverter,
-                                        _ continuation: AsyncStream<AnalyzerInput>.Continuation) -> AVAudioNodeTapBlock {
+    nonisolated private static func tap(
+        _ converter: BufferConverter,
+        _ continuation: AsyncStream<AnalyzerInput>.Continuation
+    ) -> AVAudioNodeTapBlock {
         { buffer, _ in
             if let converted = converter.convert(buffer) { continuation.yield(AnalyzerInput(buffer: converted)) }
         }

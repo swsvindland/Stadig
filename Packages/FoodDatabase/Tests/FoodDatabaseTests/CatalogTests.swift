@@ -2,12 +2,15 @@ import Foundation
 import Synchronization
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Catalog rows and files")
 struct CatalogTests {
-    static let order = ["calories", "protein", "carbs", "fat", "fiber", "sodium", "sugar", "saturatedFat", "cholesterol", "calcium",
-                        "iron", "transFat", "potassium", "addedSugar", "vitaminD", "vitaminC", "vitaminA"]
+    static let order = [
+        "calories", "protein", "carbs", "fat", "fiber", "sodium", "sugar", "saturatedFat", "cholesterol", "calcium",
+        "iron", "transFat", "potassium", "addedSugar", "vitaminD", "vitaminC", "vitaminA",
+    ]
 
     @Test("version 3 rows keep values in the catalog's nutrient order, null where unknown")
     func packedRow() throws {
@@ -26,7 +29,8 @@ struct CatalogTests {
 
     @Test("version 2 rows keep an object, with escapes and unicode in labels")
     func objectRow() throws {
-        let data = #"{"basis":"g","nutrients":{"calories":32.0,"protein":0.67,"carbs":7.68,"fat":0.3,"fiber":2.0,"sodium":1.0,"#
+        let data =
+            #"{"basis":"g","nutrients":{"calories":32.0,"protein":0.67,"carbs":7.68,"fat":0.3,"fiber":2.0,"sodium":1.0,"#
             + #""sugar":4.89,"vitaminC":58.8,"caffeine":0.0,"iron":null},"portions":[{"label":"1 large (1-3/8\" dia)","amount":18.0},"#
             + #"{"label":"1 tasse à café 🍓","amount":1e2}]}"#
         let row = try #require(RowData(data: data, order: nil))
@@ -40,8 +44,9 @@ struct CatalogTests {
 
     @Test("numbers parse exactly as JSON writes them")
     func numbers() {
-        #expect(JSONValue.parse("[80.6, -0.5, 1e3, 0.0001, 12345678901234567890, 3.14159265358979]")
-            == .array([.number(80.6), .number(-0.5), .number(1000), .number(0.0001), .number(1.2345678901234567e19), .number(3.14159265358979)]))
+        #expect(
+            JSONValue.parse("[80.6, -0.5, 1e3, 0.0001, 12345678901234567890, 3.14159265358979]")
+                == .array([.number(80.6), .number(-0.5), .number(1000), .number(0.0001), .number(1.2345678901234567e19), .number(3.14159265358979)]))
         #expect(JSONValue.parse("[true,false,null,\"a\\nb\"]") == .array([.bool(true), .bool(false), .null, .string("a\nb")]))
         #expect(JSONValue.parse("[1,]") == nil)
         #expect(JSONValue.parse("-") == nil)

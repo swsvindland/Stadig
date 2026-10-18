@@ -18,8 +18,10 @@ public struct WritingPassage: Hashable, Codable, Sendable, Identifiable {
     /// Scene-rewrite instructions (creative passages only): another point of view, tense or mood.
     public var twists: [String]
 
-    public init(id: String, title: String, author: String, year: Int? = nil, book: String? = nil, kinds: [WritingKind], tier: Int,
-                text: String, twists: [String] = []) {
+    public init(
+        id: String, title: String, author: String, year: Int? = nil, book: String? = nil, kinds: [WritingKind], tier: Int,
+        text: String, twists: [String] = []
+    ) {
         self.id = id
         self.title = title
         self.author = author
@@ -87,8 +89,9 @@ public struct WritingLibrary: Sendable {
                 return nil
             }
         }
-        return WritingLibrary(passages: load("writing-passages", as: PassageFile.self)?.passages ?? [],
-                              prompts: load("writing-prompts", as: PromptFile.self)?.prompts ?? [])
+        return WritingLibrary(
+            passages: load("writing-passages", as: PassageFile.self)?.passages ?? [],
+            prompts: load("writing-prompts", as: PromptFile.self)?.prompts ?? [])
     }()
 
     public func passage(_ id: String) -> WritingPassage? { passages.first { $0.id == id } }

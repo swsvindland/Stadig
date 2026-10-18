@@ -1,6 +1,6 @@
 import Foundation
-import SystemCore
 import Synchronization
+import SystemCore
 
 /// The offline catalogs, read-only: USDA's generic foods and, when the app ships it, Open Food
 /// Facts' packaged foods. Each file is opened in place (no copy) and one that fails to open leaves
@@ -46,16 +46,18 @@ public final class FoodCatalog: Sendable {
 
     /// USDA from this package, plus `off.db` from the app bundle when it ships one.
     public static func standard(region: String = Locale.current.region?.identifier.lowercased() ?? "us") -> FoodCatalog {
-        FoodCatalog(usda: Bundle.module.url(forResource: "usda", withExtension: "db"),
-                    off: Bundle.main.url(forResource: "off", withExtension: "db"), region: region)
+        FoodCatalog(
+            usda: Bundle.module.url(forResource: "usda", withExtension: "db"),
+            off: Bundle.main.url(forResource: "off", withExtension: "db"), region: region)
     }
 
     /// Each open catalog's provenance and licence, for the attribution screen.
     public var sources: [CatalogInfo] {
         catalogs.map { catalog in
-            CatalogInfo(name: catalog.kind == .generic ? "USDA FoodData Central SR Legacy" : "Open Food Facts",
-                        version: catalog.version, license: catalog.license, attribution: catalog.attribution,
-                        source: catalog.source, foods: catalog.foods)
+            CatalogInfo(
+                name: catalog.kind == .generic ? "USDA FoodData Central SR Legacy" : "Open Food Facts",
+                version: catalog.version, license: catalog.license, attribution: catalog.attribution,
+                source: catalog.source, foods: catalog.foods)
         }
     }
 
@@ -71,8 +73,9 @@ public final class FoodCatalog: Sendable {
         // The person's own foods come first, ranked like the catalog below them, so rows already on
         // screen don't move when the catalog answers. A typo the catalog corrected finds them too.
         let matcher = QueryMatcher(query, fixes: found.fixes)
-        let own = rankSearch(query, personal.map(\.food).filter(matcher.matches), known: known,
-                             hints: RankHints(fixes: found.fixes, brand: found.brand))
+        let own = rankSearch(
+            query, personal.map(\.food).filter(matcher.matches), known: known,
+            hints: RankHints(fixes: found.fixes, brand: found.brand))
         var results = own.prefix(limit).map { FoodMatch(food: $0.food, score: $0.score, personal: true) }
         var listed = Set(results.map(\.food.id))
         for row in found.ranked where results.count < limit && listed.insert(row.food.id).inserted {

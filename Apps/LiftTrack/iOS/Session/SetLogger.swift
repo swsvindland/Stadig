@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The current set: load and reps already filled in, then one tap to rate it.
@@ -42,13 +42,21 @@ struct SetLogger: View {
 
     private func header(item: LiveItem, set: LiveSet, exercise: Exercise) -> some View {
         let work = item.sets.filter { $0.prescription.kind != .warmup }
-        let position = item.sets[...setIndex].filter { $0.prescription.kind == set.prescription.kind || set.prescription.kind != .warmup && $0.prescription.kind != .warmup }.count
-        let label: String = switch set.prescription.kind {
-        case .warmup: "Warm-up \(item.sets[...setIndex].filter { $0.prescription.kind == .warmup }.count) of \(item.sets.filter { $0.prescription.kind == .warmup }.count)"
-        case .repOut: set.prescription.stopAtFormBreakdown ? "Rep-out: stop when your form starts to slip" : "Rep-out: as many good reps as you can"
-        case .findingWeight: set.prescription.loadKg == nil ? "Pick a weight you think you can do for \(set.prescription.targetReps)" : "Finding your weight · set \(position) of \(work.count)"
-        default: "Set \(position) of \(work.count)"
-        }
+        let position = item.sets[...setIndex].filter {
+            $0.prescription.kind == set.prescription.kind || set.prescription.kind != .warmup && $0.prescription.kind != .warmup
+        }.count
+        let label: String =
+            switch set.prescription.kind {
+            case .warmup:
+                "Warm-up \(item.sets[...setIndex].filter { $0.prescription.kind == .warmup }.count) of \(item.sets.filter { $0.prescription.kind == .warmup }.count)"
+            case .repOut:
+                set.prescription.stopAtFormBreakdown ? "Rep-out: stop when your form starts to slip" : "Rep-out: as many good reps as you can"
+            case .findingWeight:
+                set.prescription.loadKg == nil
+                    ? "Pick a weight you think you can do for \(set.prescription.targetReps)"
+                    : "Finding your weight · set \(position) of \(work.count)"
+            default: "Set \(position) of \(work.count)"
+            }
         return VStack(alignment: .leading, spacing: 2) {
             Text(exercise.name).font(.title3.bold()).lineLimit(1)
             Text(label).font(.subheadline).foregroundStyle(.secondary)
@@ -62,14 +70,17 @@ struct SetLogger: View {
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 if hasLoad {
-                    LoadControl(title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
-                                identifier: "logger.load")
+                    LoadControl(
+                        title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
+                        identifier: "logger.load")
                 }
-                Stepperish(title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
-                           minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
-                           entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
-                           identifier: "logger.reps")
-                    .frame(maxWidth: hasLoad ? 140 : .infinity)
+                Stepperish(
+                    title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
+                    minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
+                    entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
+                    identifier: "logger.reps"
+                )
+                .frame(maxWidth: hasLoad ? 140 : .infinity)
             }
             if let plates = increments.platesPerSide(load), !plates.isEmpty, exercise.equipment.platePaired {
                 Text("Per side: \(plates.map { Format.number($0, digits: 2) }.joined(separator: " + ")) \(increments.gym.unit.symbol)")
@@ -77,13 +88,21 @@ struct SetLogger: View {
             }
             switch set.prescription.kind {
             case .warmup:
-                Button { log(rating: nil) } label: { Text("Done").font(.headline).frame(maxWidth: .infinity) }
-                    .primaryAction().controlSize(.large)
-                    .accessibilityIdentifier("logger.done")
+                Button {
+                    log(rating: nil)
+                } label: {
+                    Text("Done").font(.headline).frame(maxWidth: .infinity)
+                }
+                .primaryAction().controlSize(.large)
+                .accessibilityIdentifier("logger.done")
             case .repOut:
-                Button { log(rating: nil) } label: { Text("Log \(reps) reps").font(.headline).frame(maxWidth: .infinity) }
-                    .primaryAction().controlSize(.large)
-                    .accessibilityIdentifier("logger.logRepOut")
+                Button {
+                    log(rating: nil)
+                } label: {
+                    Text("Log \(reps) reps").font(.headline).frame(maxWidth: .infinity)
+                }
+                .primaryAction().controlSize(.large)
+                .accessibilityIdentifier("logger.logRepOut")
             default:
                 RatingButtons { rating in
                     if rating == .red, reps >= set.prescription.targetReps { askMissed = true } else { log(rating: rating) }
@@ -124,7 +143,9 @@ struct SetLogger: View {
                         .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
                         .frame(maxWidth: .infinity)
                 } else {
-                    Button { timerStart = Date() } label: {
+                    Button {
+                        timerStart = Date()
+                    } label: {
                         Label("Start \(Format.duration(seconds))", systemImage: "timer").frame(maxWidth: .infinity)
                     }
                     .secondaryAction()
@@ -136,8 +157,9 @@ struct SetLogger: View {
             Button {
                 let elapsed = timerStart.map { Int(Date().timeIntervalSince($0)) }
                 model.update { live in
-                    live.log(item: itemIndex, set: setIndex, reps: set.prescription.targetReps, loadKg: nil, rating: nil,
-                             seconds: elapsed ?? set.prescription.seconds, environment: environment, now: Date())
+                    live.log(
+                        item: itemIndex, set: setIndex, reps: set.prescription.targetReps, loadKg: nil, rating: nil,
+                        seconds: elapsed ?? set.prescription.seconds, environment: environment, now: Date())
                 }
                 timerStart = nil
             } label: {
@@ -158,9 +180,13 @@ struct SetLogger: View {
             }
             HStack {
                 if timerStart == nil {
-                    Button { timerStart = Date() } label: { Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity) }
-                        .secondaryAction()
-                        .accessibilityIdentifier("logger.startTimer")
+                    Button {
+                        timerStart = Date()
+                    } label: {
+                        Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
+                    }
+                    .secondaryAction()
+                    .accessibilityIdentifier("logger.startTimer")
                 }
                 Button {
                     let now = Date()
@@ -188,9 +214,11 @@ struct SetLogger: View {
     // MARK: Logic
 
     private var environment: SessionEnvironment {
-        model.environment ?? SessionEnvironment(catalog: model.catalog, gym: model.gym, trust: TrustState(prior: 0.5),
-                                                phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: nil, history: [:],
-                                                enduranceScore: nil, heartRateGuidedRest: false)
+        model.environment
+            ?? SessionEnvironment(
+                catalog: model.catalog, gym: model.gym, trust: TrustState(prior: 0.5),
+                phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: nil, history: [:],
+                enduranceScore: nil, heartRateGuidedRest: false)
     }
 
     /// Fills load and reps from the prescription, or a sensible starting guess when the person
@@ -206,8 +234,9 @@ struct SetLogger: View {
         let exercise = model.catalog.resolve(model.live?.items[itemIndex].exerciseID ?? "")
         let peak: Double? = nil
         model.update { live in
-            live.log(item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load, rating: rating,
-                     heartRatePeak: peak, environment: environment, now: Date())
+            live.log(
+                item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load, rating: rating,
+                heartRatePeak: peak, environment: environment, now: Date())
         }
         UIAccessibility.post(notification: .announcement, argument: model.live?.message ?? "Logged")
     }
@@ -224,13 +253,14 @@ struct LoadControl: View {
 
     var body: some View {
         let unit = increments.gym.unit
-        Stepperish(title: title, value: Format.load(load, unit: unit, basis: basis),
-                   minus: { load = increments.step(load, direction: -1) },
-                   plus: { load = increments.step(load, direction: 1) },
-                   entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
-                       if let typed = Self.typedLoad(text, increments: increments) { load = typed }
-                   },
-                   identifier: identifier)
+        Stepperish(
+            title: title, value: Format.load(load, unit: unit, basis: basis),
+            minus: { load = increments.step(load, direction: -1) },
+            plus: { load = increments.step(load, direction: 1) },
+            entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
+                if let typed = Self.typedLoad(text, increments: increments) { load = typed }
+            },
+            identifier: identifier)
     }
 
     /// A typed load in kilograms, rounded to what the gym can make; nil for anything that isn't a
@@ -239,7 +269,8 @@ struct LoadControl: View {
     static func typedLoad(_ text: String, increments: GymIncrements) -> Double? {
         let unit = increments.gym.unit
         guard let value = Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")), value >= 0,
-              unit.toKilograms(value) <= GymIncrements.maximumLoadKg else { return nil }
+            unit.toKilograms(value) <= GymIncrements.maximumLoadKg
+        else { return nil }
         return increments.round(unit.toKilograms(value), down: false)
     }
 }
@@ -362,14 +393,20 @@ struct FeedbackSheet: View {
                 }
                 Section {
                     ForEach(Joint.allCases) { joint in
-                        Toggle(joint.label, isOn: Binding(get: { pain.contains(joint) }, set: { on in
-                            if on { pain.insert(joint) } else { pain.remove(joint) }
-                        }))
+                        Toggle(
+                            joint.label,
+                            isOn: Binding(
+                                get: { pain.contains(joint) },
+                                set: { on in
+                                    if on { pain.insert(joint) } else { pain.remove(joint) }
+                                }))
                     }
                 } header: {
                     Text("Any joint pain?")
                 } footer: {
-                    Text("Feeling beat up and stalling means less whole-body fatigue next block before less work. Pain that persists or worsens means a physio.")
+                    Text(
+                        "Feeling beat up and stalling means less whole-body fatigue next block before less work. Pain that persists or worsens means a physio."
+                    )
                 }
             }
             .navigationTitle("How was it?")
@@ -402,11 +439,15 @@ struct SwapSheet: View {
                 if let live = model.live, live.items.indices.contains(index) {
                     let current = model.catalog.resolve(live.items[index].exerciseID)
                     let injuries = model.analysis?.life.injuries ?? []
-                    let options = query.isEmpty
-                        ? Substitutions.candidates(for: current, in: model.catalog.all, availability: model.gymForToday.availability,
-                                                   injuries: injuries, avoid: model.settings.avoid, limit: 20)
-                        : ExerciseSearch.search(InjuryFilter.allowed(model.catalog.of(kind: .strength).filter { model.gymForToday.availability.allows($0) },
-                                                                     injuries: injuries), query)
+                    let options =
+                        query.isEmpty
+                        ? Substitutions.candidates(
+                            for: current, in: model.catalog.all, availability: model.gymForToday.availability,
+                            injuries: injuries, avoid: model.settings.avoid, limit: 20)
+                        : ExerciseSearch.search(
+                            InjuryFilter.allowed(
+                                model.catalog.of(kind: .strength).filter { model.gymForToday.availability.allows($0) },
+                                injuries: injuries), query)
                     ForEach(options.prefix(30)) { exercise in
                         Button {
                             if let environment = model.environment {
@@ -447,7 +488,8 @@ struct EditSetSheet: View {
     var body: some View {
         NavigationStack {
             if let live = model.live, live.items.indices.contains(itemIndex), live.items[itemIndex].sets.indices.contains(setIndex),
-               let logged = live.items[itemIndex].sets[setIndex].logged {
+                let logged = live.items[itemIndex].sets[setIndex].logged
+            {
                 // The exercise the set was done on, which a swap since may have replaced: its loads and steps.
                 let exercise = model.catalog.resolve(logged.exerciseID)
                 let increments = model.gymForToday.increments(for: exercise.equipment)
@@ -455,13 +497,16 @@ struct EditSetSheet: View {
                     Section {
                         HStack(spacing: 12) {
                             if exercise.loadBasis != .none {
-                                LoadControl(title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis,
-                                            identifier: "editSet.load")
+                                LoadControl(
+                                    title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis,
+                                    identifier: "editSet.load")
                             }
-                            Stepperish(title: "Reps", value: "\(reps)", minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
-                                       entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
-                                       identifier: "editSet.reps")
-                                .frame(maxWidth: exercise.loadBasis != .none ? 140 : .infinity)
+                            Stepperish(
+                                title: "Reps", value: "\(reps)", minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
+                                entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
+                                identifier: "editSet.reps"
+                            )
+                            .frame(maxWidth: exercise.loadBasis != .none ? 140 : .infinity)
                         }
                         .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                     } footer: {
@@ -484,8 +529,9 @@ struct EditSetSheet: View {
                         Button("Save") {
                             if let environment = model.environment {
                                 model.update { live in
-                                    live.edit(item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load,
-                                              rating: rating, environment: environment)
+                                    live.edit(
+                                        item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load,
+                                        rating: rating, environment: environment)
                                 }
                             }
                             dismiss()
@@ -532,7 +578,8 @@ struct HeartRateLine: View {
                     }
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Heart rate \(Int(bpm)), zone \(zone)\(inside ? "" : aim.map { ", aim zone \($0.lowerBound) to \($0.upperBound)" } ?? "")")
+                .accessibilityLabel(
+                    "Heart rate \(Int(bpm)), zone \(zone)\(inside ? "" : aim.map { ", aim zone \($0.lowerBound) to \($0.upperBound)" } ?? "")")
             }
         }
     }
@@ -571,13 +618,21 @@ struct HeatControls: View {
                     let end = started.addingTimeInterval(TimeInterval(minutes * 60))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
                         .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
-                    Button { finished = Date() } label: { Text("Done").font(.headline).frame(maxWidth: .infinity) }
-                        .primaryAction().controlSize(.large)
-                        .accessibilityIdentifier("heat.done")
+                    Button {
+                        finished = Date()
+                    } label: {
+                        Text("Done").font(.headline).frame(maxWidth: .infinity)
+                    }
+                    .primaryAction().controlSize(.large)
+                    .accessibilityIdentifier("heat.done")
                 } else {
-                    Button { started = Date() } label: { Label("Start \(minutes) min", systemImage: "timer").font(.headline).frame(maxWidth: .infinity) }
-                        .primaryAction().controlSize(.large)
-                        .accessibilityIdentifier("heat.start")
+                    Button {
+                        started = Date()
+                    } label: {
+                        Label("Start \(minutes) min", systemImage: "timer").font(.headline).frame(maxWidth: .infinity)
+                    }
+                    .primaryAction().controlSize(.large)
+                    .accessibilityIdentifier("heat.start")
                 }
                 Text("Leave whenever you feel dizzy or unwell, and drink water afterwards.").font(.caption2).foregroundStyle(.tertiary)
             } else {
@@ -594,7 +649,8 @@ struct HeatControls: View {
     func rating(_ value: SetRating, _ label: String, _ detail: String) -> some View {
         Button {
             let end = finished ?? Date()
-            let spent = started.map { max(1, end.timeIntervalSince($0) / 60) }
+            let spent =
+                started.map { max(1, end.timeIntervalSince($0) / 60) }
                 ?? Double(HeatDose.plan(model.environment?.heat ?? [], room: room).minutes(at: temperatureC ?? HeatDose.reference(room), room: room))
             let reading = temperatureC ?? HeatDose.plan(model.environment?.heat ?? [], room: room).temperatureC
             model.update { $0.logHeat(item: itemIndex, minutes: (spent * 2).rounded() / 2, temperatureC: reading, rating: value, now: end) }
@@ -617,13 +673,16 @@ struct HeatControls: View {
         guard let last = plan.last else {
             return "First time: about ten minutes at \(Format.temperature(HeatDose.reference(room), fahrenheit: fahrenheit)), less when it's hotter."
         }
-        let then = "\(Int(last.minutes.rounded())) min at \(last.temperatureC.map { Format.temperature($0, fahrenheit: fahrenheit) } ?? "an unknown heat")"
-        let felt = switch plan.change {
-        case .more: "felt easy, so a little more"
-        case .less: "was too much, so a little less"
-        default: "was right, so the same"
-        }
-        let hotter = last.temperatureC.map { today - $0 >= 2 ? " Hotter today, so shorter." : ($0 - today >= 2 ? " Cooler today, so longer." : "") } ?? ""
+        let then =
+            "\(Int(last.minutes.rounded())) min at \(last.temperatureC.map { Format.temperature($0, fahrenheit: fahrenheit) } ?? "an unknown heat")"
+        let felt =
+            switch plan.change {
+            case .more: "felt easy, so a little more"
+            case .less: "was too much, so a little less"
+            default: "was right, so the same"
+            }
+        let hotter =
+            last.temperatureC.map { today - $0 >= 2 ? " Hotter today, so shorter." : ($0 - today >= 2 ? " Cooler today, so longer." : "") } ?? ""
         return "Last time \(then) \(felt).\(hotter)"
     }
 
@@ -641,9 +700,13 @@ struct Thermometer: View {
         VStack(spacing: 4) {
             Text("Thermometer").font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button { set(step(by: -1)) } label: { Image(systemName: "minus").frame(width: 36, height: 36) }
-                    .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
-                    .accessibilityLabel("Cooler")
+                Button {
+                    set(step(by: -1))
+                } label: {
+                    Image(systemName: "minus").frame(width: 36, height: 36)
+                }
+                .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                .accessibilityLabel("Cooler")
                 Spacer()
                 Button {
                     typed = Format.temperature(celsius, fahrenheit: fahrenheit).filter(\.isNumber)
@@ -656,9 +719,13 @@ struct Thermometer: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Type the reading")
                 Spacer()
-                Button { set(step(by: 1)) } label: { Image(systemName: "plus").frame(width: 36, height: 36) }
-                    .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
-                    .accessibilityLabel("Hotter")
+                Button {
+                    set(step(by: 1))
+                } label: {
+                    Image(systemName: "plus").frame(width: 36, height: 36)
+                }
+                .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                .accessibilityLabel("Hotter")
             }
         }
         .padding(8)
@@ -700,15 +767,18 @@ extension AppModel {
         }
         if let last = analysis?.history[exercise.id]?.last?.loadKg { return last }
         if let profile,
-           let guess = StartingLoad.estimate(exercise, reps: set.prescription.targetReps, bodyweightKg: state?.effectiveBodyweight,
-                                             sex: profile.sex, experience: profile.experience) {
+            let guess = StartingLoad.estimate(
+                exercise, reps: set.prescription.targetReps, bodyweightKg: state?.effectiveBodyweight,
+                sex: profile.sex, experience: profile.experience)
+        {
             return increments.round(guess, down: true)
         }
         return switch exercise.loadBasis {
         case .bodyweightPlus, .assisted, .none: 0
         case .perHand: increments.round(gym.unit == .kg ? 8 : 8.5, down: false)
         case .external:
-            exercise.equipment.platePaired ? increments.round(increments.gym.unit.toKilograms(increments.gym.barWeight) * 1.5, down: false)
+            exercise.equipment.platePaired
+                ? increments.round(increments.gym.unit.toKilograms(increments.gym.barWeight) * 1.5, down: false)
                 : increments.round(20, down: false)
         }
     }

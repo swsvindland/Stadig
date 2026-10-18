@@ -42,7 +42,8 @@ public struct WritingBank: Sendable {
 
     public static let standard: WritingBank = {
         guard let url = Bundle.module.url(forResource: "writing", withExtension: "json"),
-              let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(File.self, from: data) else {
+            let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(File.self, from: data)
+        else {
             mindLog.error("The writing bank is missing or unreadable")
             return WritingBank(skills: [], items: [])
         }
@@ -66,10 +67,11 @@ public struct WritingBank: Sendable {
         var rng = SeededRandom("writing", item.id, seed)
         let order = Array(item.choices.indices).shuffled(using: &rng)
         let sentences = item.choices.contains { $0.count > 40 }
-        return Question(id: "\(item.id).\(seed)", key: .skill(item.skill), kind: kind,
-                        instruction: item.prompt.contains("___") ? "Fill the gap" : "Choose one",
-                        prompt: .text(item.prompt), choices: order.map { item.choices[$0] },
-                        answer: .choice(order.firstIndex(of: item.answer) ?? 0), expectedSeconds: sentences ? 30 : 15,
-                        reveal: .note(item.explanation))
+        return Question(
+            id: "\(item.id).\(seed)", key: .skill(item.skill), kind: kind,
+            instruction: item.prompt.contains("___") ? "Fill the gap" : "Choose one",
+            prompt: .text(item.prompt), choices: order.map { item.choices[$0] },
+            answer: .choice(order.firstIndex(of: item.answer) ?? 0), expectedSeconds: sentences ? 30 : 15,
+            reveal: .note(item.explanation))
     }
 }

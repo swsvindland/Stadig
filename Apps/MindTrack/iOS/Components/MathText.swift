@@ -41,7 +41,10 @@ struct MathRow: View {
         var run: [MathNode] = []
         for node in nodes {
             if node.isTall {
-                if !run.isEmpty { out.append(.inline(run)); run = [] }
+                if !run.isEmpty {
+                    out.append(.inline(run))
+                    run = []
+                }
                 out.append(.tall(node))
             } else {
                 run.append(node)
@@ -192,8 +195,10 @@ struct FractionLayout: Layout {
         }
     }
 
-    func explicitAlignment(of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
-                           cache: inout ()) -> CGFloat? {
+    func explicitAlignment(
+        of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? {
         guard guide == .firstTextBaseline || guide == .lastTextBaseline, subviews.count == 3 else { return nil }
         let top = subviews[0].sizeThatFits(.unspecified).height
         let bar = subviews[1].sizeThatFits(.unspecified).height

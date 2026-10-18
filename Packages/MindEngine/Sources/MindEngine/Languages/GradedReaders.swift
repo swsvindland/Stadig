@@ -18,8 +18,9 @@ public struct GradedReader: Hashable, Sendable, Identifiable {
     public var free: URL?
 
     public func book(status: BookStatus, started: Day? = nil) -> Book {
-        Book(ladderID: id, title: title, author: author, tier: level, pages: pages, genres: [], status: status, started: started,
-             language: language)
+        Book(
+            ladderID: id, title: title, author: author, tier: level, pages: pages, genres: [], status: status, started: started,
+            language: language)
     }
 }
 
@@ -76,7 +77,9 @@ public enum GradedReaders {
             if let hard = shelf.filter({ $0.done || $0.status == .abandoned }).map(\.tier).min() { return max(1, hard - 1) }
             return startingLevel(words: words)
         }
-        let recent = shelf.filter { $0.done || $0.status == .abandoned }.max { ($0.finished ?? .init(year: 2000, month: 1, day: 1)) < ($1.finished ?? .init(year: 2000, month: 1, day: 1)) }
+        let recent = shelf.filter { $0.done || $0.status == .abandoned }.max {
+            ($0.finished ?? .init(year: 2000, month: 1, day: 1)) < ($1.finished ?? .init(year: 2000, month: 1, day: 1))
+        }
         if let recent, recent.status == .abandoned || recent.feel == .hard { return max(1, min(comfort, recent.tier)) }
         return min(levels.upperBound, comfort + 1)
     }
@@ -95,83 +98,119 @@ public enum GradedReaders {
 
     public static let all: [GradedReader] = [
         // Spanish
-        GradedReader(id: "es.pobre-ana", language: .spanish, level: 1, title: "Pobre Ana", author: "Blaine Ray", pages: 60,
-                     about: "A first novel in a few hundred words: a teenager who thinks her life is hard."),
-        GradedReader(id: "es.brandon-brown-perro", language: .spanish, level: 1, title: "Brandon Brown quiere un perro", author: "Carol Gaab",
-                     pages: 60, about: "A boy who wants a dog, told in the simplest Spanish."),
-        GradedReader(id: "es.agentes-secretos", language: .spanish, level: 1, title: "Agentes secretos y el mural de Picasso",
-                     author: "Mira Canion", pages: 70, about: "A short mystery around a stolen painting, in present-tense beginner Spanish."),
-        GradedReader(id: "es.esperanza", language: .spanish, level: 2, title: "Esperanza", author: "Carol Gaab", pages: 80,
-                     about: "A family forced to flee Guatemala; a true-to-life story in easy Spanish."),
-        GradedReader(id: "es.short-stories-beginners", language: .spanish, level: 2, title: "Short Stories in Spanish for Beginners",
-                     author: "Olly Richards", pages: 250, about: "Eight stories with summaries and word lists after each chapter."),
-        GradedReader(id: "es.easy-spanish-reader", language: .spanish, level: 2, title: "Easy Spanish Reader", author: "William T. Tardy",
-                     pages: 270, about: "A classic course reader: a story, then Latin American history, a little harder each chapter."),
-        GradedReader(id: "es.short-stories-intermediate", language: .spanish, level: 3,
-                     title: "Short Stories in Spanish for Intermediate Learners", author: "Olly Richards", pages: 270,
-                     about: "Longer stories in natural intermediate Spanish, with support after each chapter."),
-        GradedReader(id: "es.principito", language: .spanish, level: 3, title: "El principito", author: "Antoine de Saint-Exupéry",
-                     pages: 100, about: "The Little Prince in Spanish: simple sentences, a story you may know already."),
-        GradedReader(id: "es.platero", language: .spanish, level: 3, title: "Platero y yo", author: "Juan Ramón Jiménez", pages: 160,
-                     about: "Short prose poems about a man and his donkey in Andalusia. Free on Project Gutenberg.", free: gutenberg(9980)),
-        GradedReader(id: "es.harry-potter-1", language: .spanish, level: 4, title: "Harry Potter y la piedra filosofal", author: "J. K. Rowling",
-                     pages: 250, about: "A familiar story makes a long book in Spanish manageable."),
-        GradedReader(id: "es.sombrero-tres-picos", language: .spanish, level: 4, title: "El sombrero de tres picos",
-                     author: "Pedro Antonio de Alarcón", pages: 200,
-                     about: "A comic novella, in an edition with notes for students. Free on Project Gutenberg.", free: gutenberg(29506)),
-        GradedReader(id: "es.marina", language: .spanish, level: 4, title: "Marina", author: "Carlos Ruiz Zafón", pages: 290,
-                     about: "A gothic mystery in Barcelona, written for young adults."),
-        GradedReader(id: "es.cronica-muerte", language: .spanish, level: 5, title: "Crónica de una muerte anunciada",
-                     author: "Gabriel García Márquez", pages: 120, about: "A short novel told like a report: a killing everyone saw coming."),
-        GradedReader(id: "es.cuentos-quiroga", language: .spanish, level: 5, title: "Cuentos de amor de locura y de muerte",
-                     author: "Horacio Quiroga", pages: 200, about: "Short, dark stories from the jungle. Free on Project Gutenberg.",
-                     free: gutenberg(13507)),
-        GradedReader(id: "es.marianela", language: .spanish, level: 5, title: "Marianela", author: "Benito Pérez Galdós", pages: 220,
-                     about: "A nineteenth-century novel of a blind man and his guide. Free on Project Gutenberg.", free: gutenberg(17340)),
-        GradedReader(id: "es.sombra-del-viento", language: .spanish, level: 5, title: "La sombra del viento", author: "Carlos Ruiz Zafón",
-                     pages: 570, about: "A long literary mystery about a forgotten book."),
-        GradedReader(id: "es.niebla", language: .spanish, level: 6, title: "Niebla", author: "Miguel de Unamuno", pages: 300,
-                     about: "A novel whose hero argues with his author. Free on Project Gutenberg.", free: gutenberg(49836)),
-        GradedReader(id: "es.pedro-paramo", language: .spanish, level: 6, title: "Pedro Páramo", author: "Juan Rulfo", pages: 130,
-                     about: "Short and strange: a son looks for his father in a town of the dead."),
-        GradedReader(id: "es.cien-anos", language: .spanish, level: 6, title: "Cien años de soledad", author: "Gabriel García Márquez",
-                     pages: 470, about: "Seven generations of one family in Macondo."),
-        GradedReader(id: "es.quijote", language: .spanish, level: 6, title: "Don Quijote", author: "Miguel de Cervantes", pages: 1000,
-                     about: "Seventeenth-century Spanish, the summit. Free on Project Gutenberg.", free: gutenberg(2000)),
+        GradedReader(
+            id: "es.pobre-ana", language: .spanish, level: 1, title: "Pobre Ana", author: "Blaine Ray", pages: 60,
+            about: "A first novel in a few hundred words: a teenager who thinks her life is hard."),
+        GradedReader(
+            id: "es.brandon-brown-perro", language: .spanish, level: 1, title: "Brandon Brown quiere un perro", author: "Carol Gaab",
+            pages: 60, about: "A boy who wants a dog, told in the simplest Spanish."),
+        GradedReader(
+            id: "es.agentes-secretos", language: .spanish, level: 1, title: "Agentes secretos y el mural de Picasso",
+            author: "Mira Canion", pages: 70, about: "A short mystery around a stolen painting, in present-tense beginner Spanish."),
+        GradedReader(
+            id: "es.esperanza", language: .spanish, level: 2, title: "Esperanza", author: "Carol Gaab", pages: 80,
+            about: "A family forced to flee Guatemala; a true-to-life story in easy Spanish."),
+        GradedReader(
+            id: "es.short-stories-beginners", language: .spanish, level: 2, title: "Short Stories in Spanish for Beginners",
+            author: "Olly Richards", pages: 250, about: "Eight stories with summaries and word lists after each chapter."),
+        GradedReader(
+            id: "es.easy-spanish-reader", language: .spanish, level: 2, title: "Easy Spanish Reader", author: "William T. Tardy",
+            pages: 270, about: "A classic course reader: a story, then Latin American history, a little harder each chapter."),
+        GradedReader(
+            id: "es.short-stories-intermediate", language: .spanish, level: 3,
+            title: "Short Stories in Spanish for Intermediate Learners", author: "Olly Richards", pages: 270,
+            about: "Longer stories in natural intermediate Spanish, with support after each chapter."),
+        GradedReader(
+            id: "es.principito", language: .spanish, level: 3, title: "El principito", author: "Antoine de Saint-Exupéry",
+            pages: 100, about: "The Little Prince in Spanish: simple sentences, a story you may know already."),
+        GradedReader(
+            id: "es.platero", language: .spanish, level: 3, title: "Platero y yo", author: "Juan Ramón Jiménez", pages: 160,
+            about: "Short prose poems about a man and his donkey in Andalusia. Free on Project Gutenberg.", free: gutenberg(9980)),
+        GradedReader(
+            id: "es.harry-potter-1", language: .spanish, level: 4, title: "Harry Potter y la piedra filosofal", author: "J. K. Rowling",
+            pages: 250, about: "A familiar story makes a long book in Spanish manageable."),
+        GradedReader(
+            id: "es.sombrero-tres-picos", language: .spanish, level: 4, title: "El sombrero de tres picos",
+            author: "Pedro Antonio de Alarcón", pages: 200,
+            about: "A comic novella, in an edition with notes for students. Free on Project Gutenberg.", free: gutenberg(29506)),
+        GradedReader(
+            id: "es.marina", language: .spanish, level: 4, title: "Marina", author: "Carlos Ruiz Zafón", pages: 290,
+            about: "A gothic mystery in Barcelona, written for young adults."),
+        GradedReader(
+            id: "es.cronica-muerte", language: .spanish, level: 5, title: "Crónica de una muerte anunciada",
+            author: "Gabriel García Márquez", pages: 120, about: "A short novel told like a report: a killing everyone saw coming."),
+        GradedReader(
+            id: "es.cuentos-quiroga", language: .spanish, level: 5, title: "Cuentos de amor de locura y de muerte",
+            author: "Horacio Quiroga", pages: 200, about: "Short, dark stories from the jungle. Free on Project Gutenberg.",
+            free: gutenberg(13507)),
+        GradedReader(
+            id: "es.marianela", language: .spanish, level: 5, title: "Marianela", author: "Benito Pérez Galdós", pages: 220,
+            about: "A nineteenth-century novel of a blind man and his guide. Free on Project Gutenberg.", free: gutenberg(17340)),
+        GradedReader(
+            id: "es.sombra-del-viento", language: .spanish, level: 5, title: "La sombra del viento", author: "Carlos Ruiz Zafón",
+            pages: 570, about: "A long literary mystery about a forgotten book."),
+        GradedReader(
+            id: "es.niebla", language: .spanish, level: 6, title: "Niebla", author: "Miguel de Unamuno", pages: 300,
+            about: "A novel whose hero argues with his author. Free on Project Gutenberg.", free: gutenberg(49836)),
+        GradedReader(
+            id: "es.pedro-paramo", language: .spanish, level: 6, title: "Pedro Páramo", author: "Juan Rulfo", pages: 130,
+            about: "Short and strange: a son looks for his father in a town of the dead."),
+        GradedReader(
+            id: "es.cien-anos", language: .spanish, level: 6, title: "Cien años de soledad", author: "Gabriel García Márquez",
+            pages: 470, about: "Seven generations of one family in Macondo."),
+        GradedReader(
+            id: "es.quijote", language: .spanish, level: 6, title: "Don Quijote", author: "Miguel de Cervantes", pages: 1000,
+            about: "Seventeenth-century Spanish, the summit. Free on Project Gutenberg.", free: gutenberg(2000)),
 
         // Japanese
-        GradedReader(id: "ja.tadoku-0", language: .japanese, level: 1, title: "Tadoku free readers: first books", author: "NPO Tadoku Supporters",
-                     pages: 16, about: "Very short illustrated readers in kana with a few kanji. Free to read online.", free: tadoku),
-        GradedReader(id: "ja.graded-readers-0", language: .japanese, level: 1, title: "Japanese Graded Readers: starter booklets",
-                     author: "NPO Tadoku Supporters", pages: 16,
-                     about: "Booklets of a few hundred words with pictures and audio."),
-        GradedReader(id: "ja.tadoku-2", language: .japanese, level: 2, title: "Tadoku free readers: longer books", author: "NPO Tadoku Supporters",
-                     pages: 30, about: "Longer free readers with more kanji and everyday grammar.", free: tadoku),
-        GradedReader(id: "ja.graded-readers-2", language: .japanese, level: 2, title: "Japanese Graded Readers: early booklets",
-                     author: "NPO Tadoku Supporters", pages: 30, about: "Folk tales and short stories in plain Japanese."),
-        GradedReader(id: "ja.yotsuba-1", language: .japanese, level: 2, title: "よつばと! 1", author: "あずまきよひこ", pages: 210,
-                     about: "Manga about a curious five-year-old: everyday speech with furigana, and pictures to lean on."),
-        GradedReader(id: "ja.graded-readers-4", language: .japanese, level: 3, title: "Japanese Graded Readers: longer stories",
-                     author: "NPO Tadoku Supporters", pages: 60, about: "Longer stories and adapted classics."),
-        GradedReader(id: "ja.hoshi-no-oujisama", language: .japanese, level: 3, title: "星の王子さま", author: "サン＝テグジュペリ", pages: 150,
-                     about: "The Little Prince in Japanese, a story you may know already."),
-        GradedReader(id: "ja.majo-no-takkyubin", language: .japanese, level: 3, title: "魔女の宅急便", author: "角野栄子", pages: 250,
-                     about: "Kiki's Delivery Service, the children's novel: simple prose, with furigana."),
-        GradedReader(id: "ja.totto-chan", language: .japanese, level: 4, title: "窓ぎわのトットちゃん", author: "黒柳徹子", pages: 300,
-                     about: "Short memoir chapters of an unusual school in wartime Tokyo."),
-        GradedReader(id: "ja.kitchen", language: .japanese, level: 4, title: "キッチン", author: "吉本ばなな", pages: 180,
-                     about: "A short modern novel in clear, conversational prose."),
-        GradedReader(id: "ja.breaking-into", language: .japanese, level: 4, title: "Breaking into Japanese Literature", author: "Giles Murray",
-                     pages: 250, about: "Stories by Sōseki and Akutagawa with a dictionary on every page."),
-        GradedReader(id: "ja.read-real", language: .japanese, level: 5, title: "Read Real Japanese Fiction", author: "Michael Emmerich (ed.)",
-                     pages: 150, about: "Contemporary short stories with notes and audio."),
-        GradedReader(id: "ja.konbini-ningen", language: .japanese, level: 5, title: "コンビニ人間", author: "村田沙耶香", pages: 160,
-                     about: "A short, sharp novel about a woman who fits in only at work."),
-        GradedReader(id: "ja.hakase", language: .japanese, level: 5, title: "博士の愛した数式", author: "小川洋子", pages: 290,
-                     about: "A housekeeper, her son and a mathematician whose memory lasts eighty minutes."),
-        GradedReader(id: "ja.botchan", language: .japanese, level: 6, title: "坊っちゃん", author: "夏目漱石", pages: 180,
-                     about: "Sōseki's comic novel of a hot-headed young teacher. Free on Aozora Bunko."),
-        GradedReader(id: "ja.norwegian-wood", language: .japanese, level: 6, title: "ノルウェイの森", author: "村上春樹", pages: 600,
-                     about: "Murakami's most realist novel, in two volumes."),
+        GradedReader(
+            id: "ja.tadoku-0", language: .japanese, level: 1, title: "Tadoku free readers: first books", author: "NPO Tadoku Supporters",
+            pages: 16, about: "Very short illustrated readers in kana with a few kanji. Free to read online.", free: tadoku),
+        GradedReader(
+            id: "ja.graded-readers-0", language: .japanese, level: 1, title: "Japanese Graded Readers: starter booklets",
+            author: "NPO Tadoku Supporters", pages: 16,
+            about: "Booklets of a few hundred words with pictures and audio."),
+        GradedReader(
+            id: "ja.tadoku-2", language: .japanese, level: 2, title: "Tadoku free readers: longer books", author: "NPO Tadoku Supporters",
+            pages: 30, about: "Longer free readers with more kanji and everyday grammar.", free: tadoku),
+        GradedReader(
+            id: "ja.graded-readers-2", language: .japanese, level: 2, title: "Japanese Graded Readers: early booklets",
+            author: "NPO Tadoku Supporters", pages: 30, about: "Folk tales and short stories in plain Japanese."),
+        GradedReader(
+            id: "ja.yotsuba-1", language: .japanese, level: 2, title: "よつばと! 1", author: "あずまきよひこ", pages: 210,
+            about: "Manga about a curious five-year-old: everyday speech with furigana, and pictures to lean on."),
+        GradedReader(
+            id: "ja.graded-readers-4", language: .japanese, level: 3, title: "Japanese Graded Readers: longer stories",
+            author: "NPO Tadoku Supporters", pages: 60, about: "Longer stories and adapted classics."),
+        GradedReader(
+            id: "ja.hoshi-no-oujisama", language: .japanese, level: 3, title: "星の王子さま", author: "サン＝テグジュペリ", pages: 150,
+            about: "The Little Prince in Japanese, a story you may know already."),
+        GradedReader(
+            id: "ja.majo-no-takkyubin", language: .japanese, level: 3, title: "魔女の宅急便", author: "角野栄子", pages: 250,
+            about: "Kiki's Delivery Service, the children's novel: simple prose, with furigana."),
+        GradedReader(
+            id: "ja.totto-chan", language: .japanese, level: 4, title: "窓ぎわのトットちゃん", author: "黒柳徹子", pages: 300,
+            about: "Short memoir chapters of an unusual school in wartime Tokyo."),
+        GradedReader(
+            id: "ja.kitchen", language: .japanese, level: 4, title: "キッチン", author: "吉本ばなな", pages: 180,
+            about: "A short modern novel in clear, conversational prose."),
+        GradedReader(
+            id: "ja.breaking-into", language: .japanese, level: 4, title: "Breaking into Japanese Literature", author: "Giles Murray",
+            pages: 250, about: "Stories by Sōseki and Akutagawa with a dictionary on every page."),
+        GradedReader(
+            id: "ja.read-real", language: .japanese, level: 5, title: "Read Real Japanese Fiction", author: "Michael Emmerich (ed.)",
+            pages: 150, about: "Contemporary short stories with notes and audio."),
+        GradedReader(
+            id: "ja.konbini-ningen", language: .japanese, level: 5, title: "コンビニ人間", author: "村田沙耶香", pages: 160,
+            about: "A short, sharp novel about a woman who fits in only at work."),
+        GradedReader(
+            id: "ja.hakase", language: .japanese, level: 5, title: "博士の愛した数式", author: "小川洋子", pages: 290,
+            about: "A housekeeper, her son and a mathematician whose memory lasts eighty minutes."),
+        GradedReader(
+            id: "ja.botchan", language: .japanese, level: 6, title: "坊っちゃん", author: "夏目漱石", pages: 180,
+            about: "Sōseki's comic novel of a hot-headed young teacher. Free on Aozora Bunko."),
+        GradedReader(
+            id: "ja.norwegian-wood", language: .japanese, level: 6, title: "ノルウェイの森", author: "村上春樹", pages: 600,
+            about: "Murakami's most realist novel, in two volumes."),
     ]
 }

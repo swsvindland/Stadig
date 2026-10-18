@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 
 /// What meal recognition needs from a food catalog. `FoodCatalog` conforms; tests use a small
 /// in-memory one.
@@ -12,8 +12,8 @@ public protocol MealCatalog: Sendable {
     func units(for food: Food) -> [PortionUnit]
 }
 
-public extension MealCatalog {
-    func units(for food: Food) -> [PortionUnit] { FoodUnits.units(for: food) }
+extension MealCatalog {
+    public func units(for food: Food) -> [PortionUnit] { FoodUnits.units(for: food) }
 }
 
 extension FoodCatalog: MealCatalog {}

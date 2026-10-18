@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// The language courses' page: what a language session is now, what Japanese script you read
 /// already, how two languages share the week, and whether speaking exercises can use the microphone.
@@ -12,15 +12,21 @@ struct LanguageOnboarding: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Languages").font(.title.bold())
                 .accessibilityIdentifier("onboarding.languagesTitle")
-            Text("The aim is understanding real people and being understood, not conjugation tables. The first session finds how many words you know already.")
-                .foregroundStyle(.secondary)
+            Text(
+                "The aim is understanding real people and being understood, not conjugation tables. The first session finds how many words you know already."
+            )
+            .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 10) {
                 Label("Four skills, four levels", systemImage: "square.grid.2x2").font(.headline)
-                Text("Listening, speaking, reading and writing each get their own level, like separate lifts, from their own short tests. Listening and speaking count most.")
-                    .font(.subheadline)
+                Text(
+                    "Listening, speaking, reading and writing each get their own level, like separate lifts, from their own short tests. Listening and speaking count most."
+                )
+                .font(.subheadline)
                 Label("Real use, with drills as support", systemImage: "bubble.left.and.bubble.right").font(.headline)
-                Text("New words go on spaced repetition; the rest of a session is a short dialogue, sentences by ear, saying and writing what you know, and pictures. Help under new words (furigana, romaji, a stress guide) fades word by word as each one sticks.")
-                    .font(.subheadline)
+                Text(
+                    "New words go on spaced repetition; the rest of a session is a short dialogue, sentences by ear, saying and writing what you know, and pictures. Help under new words (furigana, romaji, a stress guide) fades word by word as each one sticks."
+                )
+                .font(.subheadline)
             }
             .card()
             if settings.mode(.japanese) == .focus {
@@ -32,8 +38,12 @@ struct LanguageOnboarding: View {
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("onboarding.kana")
-                    Text(settings.readsKana == false ? "You'll start with hiragana, with romaji under each kana until it sticks. Words follow once hiragana is in." : "You'll start with a word test to find your vocabulary.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        settings.readsKana == false
+                            ? "You'll start with hiragana, with romaji under each kana until it sticks. Words follow once hiragana is in."
+                            : "You'll start with a word test to find your vocabulary."
+                    )
+                    .font(.footnote).foregroundStyle(.secondary)
                 }
                 .card()
             }
@@ -44,12 +54,16 @@ struct LanguageOnboarding: View {
                 }
                 .accessibilityIdentifier("onboarding.speaking")
                 .onChange(of: settings.speaking) { _, on in if on { ask() } }
-                Text("You answer out loud and on-device speech recognition checks you. Nothing leaves the phone. Off skips speaking without leaving a gap; turn it on again in Settings.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Text(
+                    "You answer out loud and on-device speech recognition checks you. Nothing leaves the phone. Off skips speaking without leaving a gap; turn it on again in Settings."
+                )
+                .font(.footnote).foregroundStyle(.secondary)
                 if settings.speaking {
                     if allowed == false {
-                        Text("The microphone or speech recognition isn't allowed. You can allow it in Settings later; until then, speaking is skipped.")
-                            .font(.footnote).foregroundStyle(.orange)
+                        Text(
+                            "The microphone or speech recognition isn't allowed. You can allow it in Settings later; until then, speaking is skipped."
+                        )
+                        .font(.footnote).foregroundStyle(.orange)
                     } else if allowed == nil {
                         Button("Allow the microphone", systemImage: "mic") { ask() }.secondaryAction()
                             .accessibilityIdentifier("onboarding.allowMicrophone")
@@ -82,8 +96,10 @@ private struct TwoLanguages: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Two languages", systemImage: "globe").font(.headline)
-            Text("Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so each extra Focus course dilutes the others.")
-                .font(.subheadline)
+            Text(
+                "Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so each extra Focus course dilutes the others."
+            )
+            .font(.subheadline)
             ForEach(settings.languages.filter { $0 != settings.languages.first }) { domain in
                 Picker(domain.label, selection: Binding(get: { settings.mode(domain) ?? .focus }, set: { settings.courses[domain] = $0 })) {
                     ForEach(CourseMode.allCases) { Text($0.label).tag($0) }
@@ -92,10 +108,12 @@ private struct TwoLanguages: View {
                 .accessibilityIdentifier("onboarding.languageMode.\(domain.rawValue)")
             }
             if settings.has(.japanese), settings.has(.spanish) {
-                Text(settings.readsKana == false
-                     ? "Suggested: Japanese as Focus, and Spanish in Maintenance-sized doses until kana are solid. Make it a second Focus then."
-                     : "Suggested: Japanese as Focus. Spanish works as a second Focus, or in Maintenance-sized doses for now.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Text(
+                    settings.readsKana == false
+                        ? "Suggested: Japanese as Focus, and Spanish in Maintenance-sized doses until kana are solid. Make it a second Focus then."
+                        : "Suggested: Japanese as Focus. Spanish works as a second Focus, or in Maintenance-sized doses for now."
+                )
+                .font(.footnote).foregroundStyle(.secondary)
             }
             if let warning = CourseLoad.check(settings).warning {
                 Label(warning, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange)
@@ -115,19 +133,29 @@ struct LanguageSettings: View {
     var body: some View {
         Section {
             if settings.has(.japanese) {
-                Toggle("I can read kana", isOn: Binding(get: { settings.readsKana != false }, set: { on in
-                    var s = settings
-                    s.readsKana = on
-                    model.save(settings: s)
-                }))
+                Toggle(
+                    "I can read kana",
+                    isOn: Binding(
+                        get: { settings.readsKana != false },
+                        set: { on in
+                            var s = settings
+                            s.readsKana = on
+                            model.save(settings: s)
+                        })
+                )
                 .accessibilityIdentifier("settings.readsKana")
             }
-            Toggle("Speaking exercises", isOn: Binding(get: { settings.speaking }, set: { on in
-                var s = settings
-                s.speaking = on
-                model.save(settings: s)
-                if on { Task { _ = await recognizer.authorise() } }
-            }))
+            Toggle(
+                "Speaking exercises",
+                isOn: Binding(
+                    get: { settings.speaking },
+                    set: { on in
+                        var s = settings
+                        s.speaking = on
+                        model.save(settings: s)
+                        if on { Task { _ = await recognizer.authorise() } }
+                    })
+            )
             .accessibilityIdentifier("settings.speaking")
             if settings.speaking, recognizer.permissionDenied {
                 Button("Allow the microphone in Settings", systemImage: "mic.slash") {
@@ -139,7 +167,9 @@ struct LanguageSettings: View {
                 if let language = domain.language {
                     LabeledContent("\(domain.label) voice", value: model.speech.voiceName(language))
                     if settings.speaking {
-                        LabeledContent("\(domain.label) recognition", value: recognises[language].map { $0 ? "On this device" : "Not on this device" } ?? "Checking…")
+                        LabeledContent(
+                            "\(domain.label) recognition",
+                            value: recognises[language].map { $0 ? "On this device" : "Not on this device" } ?? "Checking…")
                     }
                 }
             }
@@ -150,7 +180,9 @@ struct LanguageSettings: View {
         } header: {
             Text("Languages")
         } footer: {
-            Text("Speaking is checked by on-device speech recognition, leniently: being understood is the bar. Turn it off for a while if you're often somewhere you can't talk; nothing is missed. Help under new words fades as each one is mastered. The dialogues and the list of graded readers were written for Mind Track.")
+            Text(
+                "Speaking is checked by on-device speech recognition, leniently: being understood is the bar. Turn it off for a while if you're often somewhere you can't talk; nothing is missed. Help under new words fades as each one is mastered. The dialogues and the list of graded readers were written for Mind Track."
+            )
         }
         // Again when a language is turned on, which keeps this section on screen.
         .task(id: settings.languages) {

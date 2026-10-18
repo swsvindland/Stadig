@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 // Liquid Glass belongs to the controls that float over content (bars, the rest timer, the set
@@ -123,7 +123,9 @@ struct RatingButtons: View {
                     VStack(spacing: 4) {
                         Image(systemName: rating.symbol).font(compact ? .title3 : .title2)
                         Text(rating.label).font(.subheadline.weight(.semibold))
-                        if !compact { Text(rating.detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).lineLimit(2).multilineTextAlignment(.center) }
+                        if !compact {
+                            Text(rating.detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).lineLimit(2).multilineTextAlignment(.center)
+                        }
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: compact ? 56 : 84)
@@ -248,7 +250,9 @@ struct WhyDisclosure: View {
 struct BulletLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
+            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) {
+                $0[VerticalAlignment.center] + 4
+            }
             configuration.title
         }
     }

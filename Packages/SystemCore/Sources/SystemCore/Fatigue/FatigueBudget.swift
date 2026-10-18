@@ -49,8 +49,8 @@ public enum FatigueStatus: String, Codable, Sendable, Comparable {
     case fresh, productive, strained, overreached
 
     public static func < (a: FatigueStatus, b: FatigueStatus) -> Bool {
-        [FatigueStatus.fresh, .productive, .strained, .overreached].firstIndex(of: a)! <
-            [FatigueStatus.fresh, .productive, .strained, .overreached].firstIndex(of: b)!
+        [FatigueStatus.fresh, .productive, .strained, .overreached].firstIndex(of: a)! < [FatigueStatus.fresh, .productive, .strained, .overreached]
+            .firstIndex(of: b)!
     }
 }
 
@@ -76,8 +76,10 @@ public struct FatigueAssessment: Hashable, Codable, Sendable {
     /// Multiplies the next block's systemic budget.
     public var budgetFactor: Double
 
-    public init(status: FatigueStatus, loadRatio: Double, acute: Double, chronic: Double, signals: [String], action: FatigueAction,
-                budgetFactor: Double) {
+    public init(
+        status: FatigueStatus, loadRatio: Double, acute: Double, chronic: Double, signals: [String], action: FatigueAction,
+        budgetFactor: Double
+    ) {
         self.status = status
         self.loadRatio = loadRatio
         self.acute = acute
@@ -93,12 +95,13 @@ public enum FatigueBudget {
     public static func cost(of set: LoggedSet, exercise: some ExerciseTraits) -> FatigueLoad {
         guard set.kind.countsAsWork else { return .zero }
         let reserve = set.rating?.nominalRIR ?? 2
-        var intensity: Double = switch reserve {
-        case ..<0.5: 1.15
-        case ..<1.5: 1.05
-        case ..<2.5: 1.0
-        default: 0.85
-        }
+        var intensity: Double =
+            switch reserve {
+            case ..<0.5: 1.15
+            case ..<1.5: 1.05
+            case ..<2.5: 1.0
+            default: 0.85
+            }
         if set.reachedFailure { intensity *= exercise.fatigue.failureMultiplier }
         if set.kind == .deload { intensity *= 0.6 }
         var local: [Muscle.Region: Double] = [:]
@@ -114,8 +117,10 @@ public enum FatigueBudget {
     }
 
     /// Infers the budget's state from the last four weeks.
-    public static func assess(events: [FatigueEvent], recovery: [RecoveryDay], lifeStress: [Day: Double],
-                              performanceTrend: Double?, today: Day) -> FatigueAssessment {
+    public static func assess(
+        events: [FatigueEvent], recovery: [RecoveryDay], lifeStress: [Day: Double],
+        performanceTrend: Double?, today: Day
+    ) -> FatigueAssessment {
         let start = today.adding(days: -27)
         var daily = [Double](repeating: 0, count: 28)
         for event in events where event.day >= start && event.day <= today {
@@ -168,12 +173,13 @@ public enum FatigueBudget {
             points += 0.5
         }
 
-        let status: FatigueStatus = switch points {
-        case ..<0.5: ratio < 0.8 ? .fresh : .productive
-        case ..<2: .productive
-        case ..<3.5: .strained
-        default: .overreached
-        }
+        let status: FatigueStatus =
+            switch points {
+            case ..<0.5: ratio < 0.8 ? .fresh : .productive
+            case ..<2: .productive
+            case ..<3.5: .strained
+            default: .overreached
+            }
         let stalled = (performanceTrend ?? 0) <= 0.002
         let action: FatigueAction
         if status == .overreached || (status == .strained && (performanceTrend ?? 0) < -0.01) {
@@ -183,25 +189,30 @@ public enum FatigueBudget {
         } else {
             action = .none
         }
-        let factor: Double = switch status {
-        case .fresh: 1.05
-        case .productive: 1
-        case .strained: 0.85
-        case .overreached: 0.7
-        }
-        return FatigueAssessment(status: status, loadRatio: ratio, acute: acute, chronic: chronic, signals: signals,
-                                 action: action, budgetFactor: factor)
+        let factor: Double =
+            switch status {
+            case .fresh: 1.05
+            case .productive: 1
+            case .strained: 0.85
+            case .overreached: 0.7
+            }
+        return FatigueAssessment(
+            status: status, loadRatio: ratio, acute: acute, chronic: chronic, signals: signals,
+            action: action, budgetFactor: factor)
     }
 
     /// Weekly systemic budget for planning, in hard-set units of a heavy compound.
-    public static func weeklySystemicBudget(experience: TrainingExperience, daysPerWeek: Int, phase: PhaseEffects,
-                                            assessment: FatigueAssessment?, outside: FatigueLoad) -> Double {
+    public static func weeklySystemicBudget(
+        experience: TrainingExperience, daysPerWeek: Int, phase: PhaseEffects,
+        assessment: FatigueAssessment?, outside: FatigueLoad
+    ) -> Double {
         // About what a full session of compounds and accessories costs.
-        let perDay: Double = switch experience {
-        case .novice: 8.5
-        case .intermediate: 9.5
-        case .experienced: 10.5
-        }
+        let perDay: Double =
+            switch experience {
+            case .novice: 8.5
+            case .intermediate: 9.5
+            case .experienced: 10.5
+            }
         let base = perDay * Double(daysPerWeek) * phase.volumeTolerance * (assessment?.budgetFactor ?? 1)
         // Outside training spends from the same budget, but never all of it.
         return max(base * 0.45, base - outside.systemic * 0.8)

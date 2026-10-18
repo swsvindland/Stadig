@@ -10,8 +10,10 @@ public struct Catalogs: Sendable {
     /// Steps, training and food from Lift Track and Macro Track; empty when they aren't installed.
     public var systemData: SystemData
 
-    public init(decks: [Language: LanguageDeck] = [:], writing: WritingBank = .standard, ladder: ReadingLadder = .standard,
-                systemData: SystemData = .none) {
+    public init(
+        decks: [Language: LanguageDeck] = [:], writing: WritingBank = .standard, ladder: ReadingLadder = .standard,
+        systemData: SystemData = .none
+    ) {
         self.decks = decks
         self.writing = writing
         self.ladder = ladder

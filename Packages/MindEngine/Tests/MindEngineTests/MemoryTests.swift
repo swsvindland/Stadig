@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import MindEngine
 
 @Suite("Spaced repetition")
@@ -36,7 +37,8 @@ struct MemoryTests {
     @Test("a learner whose memory follows the curve recalls about 90% of reviews")
     func simulatedRetention() {
         var rng = SeededRandom(seed: 7)
-        var recalled = 0, reviews = 0
+        var recalled = 0
+        var reviews = 0
         for _ in 0..<400 {
             var memory = Scheduler.first(.good, at: start)
             for _ in 0..<8 {
@@ -74,17 +76,19 @@ struct MemoryTests {
         #expect(Rational(1, 3) + Rational(1, 6) == Rational(1, 2))
         #expect(Rational(2).power(-3) == Rational(1, 8))
         #expect(Rational(-3, 4).tex == #"-\frac{3}{4}"#)
-        let question = Question(id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""), answer: .number(Rational(1, 3)),
-                                expectedSeconds: 10)
+        let question = Question(
+            id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""), answer: .number(Rational(1, 3)),
+            expectedSeconds: 10)
         #expect(question.check(typed: "2/6") && !question.check(typed: "0.333"))
-        let rounded = Question(id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""),
-                               answer: .number(Rational(314, 100), tolerance: 0.011), expectedSeconds: 10)
+        let rounded = Question(
+            id: "q", key: .topic("x"), kind: .learn, instruction: "", prompt: .math(""),
+            answer: .number(Rational(314, 100), tolerance: 0.011), expectedSeconds: 10)
         #expect(rounded.check(typed: "3.14") && rounded.check(typed: "3.15") && !rounded.check(typed: "3.2"))
     }
 
     @Test("the same key always makes the same record id, so two devices converge")
     func cardIDs() {
-        #expect(CardKey.word(1358280).recordID == CardKey("jp.word.1358280").recordID)
+        #expect(CardKey.word(1_358_280).recordID == CardKey("jp.word.1358280").recordID)
         #expect(CardKey.word(1).recordID != CardKey.word(2).recordID)
         #expect(CardKey.topic("limits").domain == .maths && CardKey.skill("commas").domain == .writing && CardKey.kana("あ").domain == .japanese)
         #expect(CardKey.word(42).wordID == 42 && CardKey.kana("きゃ").item == "きゃ")

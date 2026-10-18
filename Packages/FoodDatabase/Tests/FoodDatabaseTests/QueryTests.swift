@@ -1,52 +1,55 @@
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Reading a typed search")
 struct QueryTests {
-    @Test("search expressions keep the food words as stemmed prefixes", arguments: [
-        ("eggs", #""egg"*"#),
-        ("cherry", #""cherr"*"#),
-        ("blueberries", #""blueberr"*"#),
-        ("mcdonalds", #""mcdonald"*"#),
-        ("McDonald's", #""mcdonald"*"#),
-        ("Wendy's", #""wend"*"#),
-        ("cookies", #""cookie"*"#),
-        ("cup of coffee", #""coffee"*"#),
-        ("2 eggs", #""egg"*"#),
-        ("200 g chicken breast", #""chicken"* AND "breast"*"#),
-        ("200g chicken breast", #""chicken"* AND "breast"*"#),
-        ("1.5 cups rice", #""rice"*"#),
-        ("1/2 cup oats", #""oat"*"#),
-        ("8 fl oz milk", #""milk"*"#),
-        ("slice of pizza", #""pizza"*"#),
-        ("large egg", #""egg"*"#),
-        ("2 large eggs", #""egg"*"#),
-        ("2 cups", #""cup"*"#),
-        ("12", ""),
-        // Numbers written into a name stay, and match only themselves.
-        ("2% milk", #""2" AND "milk"*"#),
-        ("3.25% milk", #""3" AND "25" AND "milk"*"#),
-        ("93/7 ground beef", #""93" AND "7" AND "ground"* AND "beef"*"#),
-        ("7-up", #""7" AND "up"*"#),
-        ("7up", #""7up"*"#),
-        // Count and unit words stay when they name the food.
-        ("cup", #""cup"*"#),
-        ("cup noodles", #""cup"* AND "noodle"*"#),
-        // A letter on its own is a whole word: a search waits for a last word's second letter.
-        ("k cup", #""k" AND "cup"*"#),
-        ("peanut butter cups", #""peanut"* AND "butter"* AND "cup"*"#),
-        ("mini wheats", #""mini"* AND "wheat"*"#),
-        ("or", #""or"*"#),
-        ("crème brûlée", #""creme"* AND "brulee"*"#),
-        // The model's looser wordings don't take over a typed word.
-        ("fries", #""fries"*"#),
-        ("pop", #""pop"*"#),
-        ("ketchup", #"("ketchup"* OR "catsup"*)"#),
-        (#"" OR - NEAR ( *"#, #""near"*"#),
-        ("", ""),
-    ])
+    @Test(
+        "search expressions keep the food words as stemmed prefixes",
+        arguments: [
+            ("eggs", #""egg"*"#),
+            ("cherry", #""cherr"*"#),
+            ("blueberries", #""blueberr"*"#),
+            ("mcdonalds", #""mcdonald"*"#),
+            ("McDonald's", #""mcdonald"*"#),
+            ("Wendy's", #""wend"*"#),
+            ("cookies", #""cookie"*"#),
+            ("cup of coffee", #""coffee"*"#),
+            ("2 eggs", #""egg"*"#),
+            ("200 g chicken breast", #""chicken"* AND "breast"*"#),
+            ("200g chicken breast", #""chicken"* AND "breast"*"#),
+            ("1.5 cups rice", #""rice"*"#),
+            ("1/2 cup oats", #""oat"*"#),
+            ("8 fl oz milk", #""milk"*"#),
+            ("slice of pizza", #""pizza"*"#),
+            ("large egg", #""egg"*"#),
+            ("2 large eggs", #""egg"*"#),
+            ("2 cups", #""cup"*"#),
+            ("12", ""),
+            // Numbers written into a name stay, and match only themselves.
+            ("2% milk", #""2" AND "milk"*"#),
+            ("3.25% milk", #""3" AND "25" AND "milk"*"#),
+            ("93/7 ground beef", #""93" AND "7" AND "ground"* AND "beef"*"#),
+            ("7-up", #""7" AND "up"*"#),
+            ("7up", #""7up"*"#),
+            // Count and unit words stay when they name the food.
+            ("cup", #""cup"*"#),
+            ("cup noodles", #""cup"* AND "noodle"*"#),
+            // A letter on its own is a whole word: a search waits for a last word's second letter.
+            ("k cup", #""k" AND "cup"*"#),
+            ("peanut butter cups", #""peanut"* AND "butter"* AND "cup"*"#),
+            ("mini wheats", #""mini"* AND "wheat"*"#),
+            ("or", #""or"*"#),
+            ("crème brûlée", #""creme"* AND "brulee"*"#),
+            // The model's looser wordings don't take over a typed word.
+            ("fries", #""fries"*"#),
+            ("pop", #""pop"*"#),
+            ("ketchup", #"("ketchup"* OR "catsup"*)"#),
+            (#"" OR - NEAR ( *"#, #""near"*"#),
+            ("", ""),
+        ])
     func expression(query: String, expected: String) {
         #expect(searchExpression(query) == expected)
     }

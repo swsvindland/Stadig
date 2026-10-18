@@ -70,7 +70,10 @@ public enum SpanishSounds {
         var nuclei: [Range<Int>] = []
         var j = 0
         while j < units.count {
-            guard case .vowel(let strong) = units[j].kind else { j += 1; continue }
+            guard case .vowel(let strong) = units[j].kind else {
+                j += 1
+                continue
+            }
             var end = j + 1
             var lastStrong = strong
             while end < units.count, case .vowel(let s) = units[end].kind, !(lastStrong && s) {

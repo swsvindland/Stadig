@@ -1,4 +1,5 @@
 import Foundation
+
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -68,7 +69,7 @@ public enum AIRouting {
     public static func fallback(after error: AIError, from engine: AIEngine, in state: AIAvailability) -> AIEngine? {
         switch (engine, error) {
         case (.privateCloud, .network), (.privateCloud, .quotaReached), (.privateCloud, .unavailable), (.privateCloud, .busy),
-             (.privateCloud, .failed):
+            (.privateCloud, .failed):
             return state.onDevice ? .onDevice : nil
         case (.onDevice, .tooLong), (.onDevice, .busy), (.onDevice, .unavailable), (.onDevice, .failed):
             return state.privateCloud ? .privateCloud : nil
@@ -125,7 +126,9 @@ public actor SystemAI {
     /// them for as long as both keep failing.
     public func respond(instructions: String, prompt: String, weight: AIWeight, maxTokens: Int = 600) async throws -> String {
         let state = currentAvailability(allowCloud)
-        guard var engine = AIRouting.engine(weight, in: state) else { throw AIError.unavailable(state.reason ?? "Apple Intelligence isn't available.") }
+        guard var engine = AIRouting.engine(weight, in: state) else {
+            throw AIError.unavailable(state.reason ?? "Apple Intelligence isn't available.")
+        }
         var tried: Set<AIEngine> = [engine]
         while true {
             try Task.checkCancellation()

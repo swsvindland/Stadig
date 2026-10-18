@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import MindEngine
 
 @Suite("Export")
@@ -10,8 +11,9 @@ struct ExportTests {
         let new = WritingPiece(date: Date(timeIntervalSince1970: 86_400 * 40), exercise: .prompt, writingKind: .creative, prompt: "A", text: "Later.")
         let judged = BlindComparison(date: new.date, older: old.id, newer: new.id, pickedNewer: true, aiPickedNewer: false)
         let open = BlindComparison(date: new.date.addingTimeInterval(60), older: old.id, newer: new.id)
-        let tables = MindExport.tables(sessions: [], cards: [], tests: [], books: [], reflections: [], pieces: [new, old],
-                                       comparisons: [open, judged])
+        let tables = MindExport.tables(
+            sessions: [], cards: [], tests: [], books: [], reflections: [], pieces: [new, old],
+            comparisons: [open, judged])
         let table = try #require(tables.first { $0.name == "blind_comparisons" })
         #expect(table.rows.count == 2)
         #expect(table.rows.allSatisfy { $0.count == table.header.count })

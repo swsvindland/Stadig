@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 @main
@@ -64,8 +64,9 @@ enum DebugLaunch {
         // -courses maths,writing keeps only those courses (as Focus), to reach their screens without
         // scrolling; with -onboarded, the first session is theirs alone.
         let courses = launch.value(after: "-courses").map {
-            Dictionary($0.split(separator: ",").compactMap { Domain(rawValue: String($0)) }.map { ($0, CourseMode.focus) },
-                       uniquingKeysWith: { first, _ in first })
+            Dictionary(
+                $0.split(separator: ",").compactMap { Domain(rawValue: String($0)) }.map { ($0, CourseMode.focus) },
+                uniquingKeysWith: { first, _ in first })
         }
         // -onboarded skips setup with the defaults and starts the first session.
         if launch.has("-onboarded"), !model.onboarded {
@@ -74,11 +75,12 @@ enum DebugLaunch {
             model.completeOnboarding(settings, booksRead: [])
         }
         if let tab = launch.value(after: "-tab") {
-            model.tab = switch tab {
-            case "plan": .plan
-            case "progress": .progress
-            default: .today
-            }
+            model.tab =
+                switch tab {
+                case "plan": .plan
+                case "progress": .progress
+                default: .today
+                }
         }
         if launch.has("-showSettings") { model.showSettings = true }
         // -showShelf opens the reading shelf (-findBook <title or ISBN> then searches for a book).

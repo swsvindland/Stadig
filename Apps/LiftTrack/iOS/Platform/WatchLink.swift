@@ -1,9 +1,9 @@
-import Foundation
-import WatchConnectivity
 import ExerciseLibrary
+import Foundation
 import LiftEngine
 import SystemCore
 import SystemStore
+import WatchConnectivity
 
 /// The iPhone side of WatchConnectivity. The phone keeps the Watch's copy of today's session,
 /// gym and history current in the application context, so the Watch can run the session on its
@@ -30,7 +30,8 @@ final class WatchLink: NSObject {
 
     func publish(_ model: AppModel) {
         guard let session, session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
-              let analysis = model.analysis, let profile = model.profile else { return }
+            let analysis = model.analysis, let profile = model.profile
+        else { return }
         let plan = model.plan()
         var upNext: String?
         if let next = analysis.next, !next.scheduledToday {
@@ -55,15 +56,18 @@ final class WatchLink: NSObject {
         var startingLoads: [String: Double] = [:]
         for item in plan?.items ?? [] where item.isStrength && (analysis.history[item.exerciseID] ?? []).isEmpty {
             let exercise = model.catalog.resolve(item.exerciseID)
-            if let guess = StartingLoad.estimate(exercise, reps: item.repRange.middle, bodyweightKg: model.state?.effectiveBodyweight,
-                                                 sex: profile.sex, experience: profile.experience) {
+            if let guess = StartingLoad.estimate(
+                exercise, reps: item.repRange.middle, bodyweightKg: model.state?.effectiveBodyweight,
+                sex: profile.sex, experience: profile.experience)
+            {
                 startingLoads[item.exerciseID] = model.gymForToday.increments(for: exercise.equipment).round(guess, down: true)
             }
         }
-        let context = PhoneContext(plan: plan, upNext: upNext, gym: model.gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
-                                   bodyweightKg: model.state?.effectiveBodyweight, history: history,
-                                   enduranceScore: analysis.endurance.score, heartRateGuidedRest: model.settings.heartRateGuidedRest,
-                                   zones: zones, units: profile.units, startingLoads: startingLoads, sentAt: .distantPast)
+        let context = PhoneContext(
+            plan: plan, upNext: upNext, gym: model.gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
+            bodyweightKg: model.state?.effectiveBodyweight, history: history,
+            enduranceScore: analysis.endurance.score, heartRateGuidedRest: model.settings.heartRateGuidedRest,
+            zones: zones, units: profile.units, startingLoads: startingLoads, sentAt: .distantPast)
         guard let data = try? SystemJSON.encoder().encode(context), data != lastContext else { return }
         lastContext = data
         var stamped = context

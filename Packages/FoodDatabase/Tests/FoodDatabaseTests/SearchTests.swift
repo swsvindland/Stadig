@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
+
 @testable import FoodDatabase
 
 /// Everyday searches and a pattern one of the first three results must match ("(?i)" ignores case).
@@ -129,20 +130,22 @@ let firstResults: [(String, String)] = [
 /// Generic foods USDA names in inverted form, searched without the packaged-food catalog.
 @Suite("Search without packaged foods")
 struct GenericSearchTests {
-    @Test("a food named by its leading parts comes first", arguments: [
-        ("olive oil", "^Oil, olive, salad or cooking$"),
-        ("canola oil", "^Oil, canola$"),
-        ("peanut butter", "^Peanut butter, (smooth|chunk)"),
-        ("white rice", "^Rice, white, long-grain, .*cooked"),
-        ("brown rice", "^Rice, brown, .*cooked"),
-        ("chicken breast", "^Chicken, broilers or fryers, breast, .*cooked, roasted"),
-        ("whole milk", "^Milk, whole, "),
-        ("cheddar cheese", "^Cheese, cheddar"),
-        ("eggs", "^Egg, whole, cooked"),
-        ("apples", "^Apples, raw"),
-        ("coffee", "^Beverages, coffee, brewed"),
-        ("chicken br", "^Chicken, broilers or fryers, breast"),
-    ])
+    @Test(
+        "a food named by its leading parts comes first",
+        arguments: [
+            ("olive oil", "^Oil, olive, salad or cooking$"),
+            ("canola oil", "^Oil, canola$"),
+            ("peanut butter", "^Peanut butter, (smooth|chunk)"),
+            ("white rice", "^Rice, white, long-grain, .*cooked"),
+            ("brown rice", "^Rice, brown, .*cooked"),
+            ("chicken breast", "^Chicken, broilers or fryers, breast, .*cooked, roasted"),
+            ("whole milk", "^Milk, whole, "),
+            ("cheddar cheese", "^Cheese, cheddar"),
+            ("eggs", "^Egg, whole, cooked"),
+            ("apples", "^Apples, raw"),
+            ("coffee", "^Beverages, coffee, brewed"),
+            ("chicken br", "^Chicken, broilers or fryers, breast"),
+        ])
     func first(query: String, pattern: String) {
         let names = Catalogs.usda.top(query)
         #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
@@ -182,7 +185,9 @@ struct ConcurrentSearchTests {
         let runs = queries.count * 4
         let found = Mutex<[[String]]>(Array(repeating: [], count: runs))
         DispatchQueue.concurrentPerform(iterations: runs) { i in
-            let ids = i % 2 == 0 ? catalog.search(queries[i % queries.count]).map(\.food.id)
+            let ids =
+                i % 2 == 0
+                ? catalog.search(queries[i % queries.count]).map(\.food.id)
                 : catalog.candidates(name: queries[i % queries.count], brand: nil).map(\.food.id)
             found.withLock { $0[i] = ids }
         }
@@ -228,8 +233,9 @@ struct SearchTests {
         #expect(catalog.top("kind bar", 3).contains { matches("(?i)^kind bar$", $0) })
     }
 
-    @Test("a search naming a brand finds that brand's version first, then the name brand",
-          arguments: ["trader joes mini wheats", "mini wheats trader joes"])
+    @Test(
+        "a search naming a brand finds that brand's version first, then the name brand",
+        arguments: ["trader joes mini wheats", "mini wheats trader joes"])
     func namedBrand(query: String) {
         // Trader Joe's sells Mini-Wheats as "Shredded Bite Size Wheats", in either word order; its
         // pita pockets have every word but bread's macros, and come after Kellogg's own.
@@ -287,8 +293,9 @@ struct SearchTests {
     func unrelatedPersonal() throws {
         let rice = try #require(catalog.search("white rice").first { $0.food.name == "Rice, white, long-grain, regular, enriched, cooked" }?.food)
         let flat = catalog.search("flat white", personal: [PersonalFood(food: rice, score: 20)])
-        #expect(flat.first.map { matches("(?i)flat white", "\($0.food.name) \($0.food.brand ?? "")") } == true,
-                "\(flat.prefix(3).map(\.food.name))")
+        #expect(
+            flat.first.map { matches("(?i)flat white", "\($0.food.name) \($0.food.brand ?? "")") } == true,
+            "\(flat.prefix(3).map(\.food.name))")
         #expect(!flat.contains { $0.food.id == rice.id })
         let breast = try #require(catalog.search("chicken breast").first?.food)
         #expect(!catalog.search("chicken soup", personal: [PersonalFood(food: breast, score: 20)]).contains { $0.food.id == breast.id })
@@ -339,21 +346,24 @@ struct CandidateTests {
         #expect(queries.contains { $0.contains(#"("bun"* OR "roll"*)"#) })
         // Count words are not searched as foods.
         #expect(catalog.catalogQueries(Named(name: "tomato slice", brand: "")).first == #""tomato"*"#)
-        #expect(catalog.catalogQueries(Named(name: "cheddar cheese slice", brand: "")) == [#""cheddar"* AND "cheese"*"#, #""cheese"*"#, #""cheddar"*"#])
+        #expect(
+            catalog.catalogQueries(Named(name: "cheddar cheese slice", brand: "")) == [#""cheddar"* AND "cheese"*"#, #""cheese"*"#, #""cheddar"*"#])
     }
 
-    @Test("seen foods match the everyday catalog food, not a variation", arguments: [
-        ("lettuce", "^Lettuce, .*raw", ""),
-        ("tomato slice", "^Tomatoes, red, ripe", ""),
-        ("hamburger bun", "^Rolls, hamburger", ""),
-        ("bacon", "(?i)bacon", "(?i)meatless|turkey|bits|sticks"),
-        ("french fries", "(?i)french fr", ""),
-        ("black coffee", "^Beverages, coffee, brewed", ""),
-        ("egg", "^Egg, whole", ""),
-        ("chicken", "^Chicken", "(?i)feet|giblets|liver|skin"),
-        ("white rice", "long-grain", ""),
-        ("cheese", "(?i)cheddar|american", ""),
-    ])
+    @Test(
+        "seen foods match the everyday catalog food, not a variation",
+        arguments: [
+            ("lettuce", "^Lettuce, .*raw", ""),
+            ("tomato slice", "^Tomatoes, red, ripe", ""),
+            ("hamburger bun", "^Rolls, hamburger", ""),
+            ("bacon", "(?i)bacon", "(?i)meatless|turkey|bits|sticks"),
+            ("french fries", "(?i)french fr", ""),
+            ("black coffee", "^Beverages, coffee, brewed", ""),
+            ("egg", "^Egg, whole", ""),
+            ("chicken", "^Chicken", "(?i)feet|giblets|liver|skin"),
+            ("white rice", "long-grain", ""),
+            ("cheese", "(?i)cheddar|american", ""),
+        ])
     func everyday(name: String, pattern: String, not: String) throws {
         let found = catalog.candidates(name: name, brand: nil)
         let first = try #require(found.first)
@@ -364,18 +374,20 @@ struct CandidateTests {
         #expect(found.count > 1, "alternatives to swap to")
     }
 
-    @Test("a plain seen food is the form it's usually eaten in", arguments: [
-        ("salmon", "^Fish, salmon, .*cooked", "(?i)smoked|lox|raw"),
-        ("oatmeal", "^Cereals, oats, .*cooked with water", "(?i)dry|cookie|bread|bran"),
-        ("beans", "^Beans, (black|pinto), mature seeds, cooked", "(?i)snap|baked|raw"),
-        ("lentils", "^Lentils, .*cooked", "(?i)raw"),
-        ("chicken", "^Chicken, .*cooked", "(?i)raw|feet|frankfurter"),
-        ("rice", "^Rice, white, long-grain, .*cooked", "(?i)raw"),
-        ("green beans", "^Beans, snap, green", "(?i)raw|black|pinto"),
-        ("toast", "^Bread, (white|wheat), .*toasted", "(?i)rye|egg|oatmeal|muffin"),
-        ("rye toast", "^Bread, rye, toasted", "(?i)wheat|white"),
-        ("raw salmon", "^Fish, salmon, .*raw", "(?i)cooked|smoked"),
-    ])
+    @Test(
+        "a plain seen food is the form it's usually eaten in",
+        arguments: [
+            ("salmon", "^Fish, salmon, .*cooked", "(?i)smoked|lox|raw"),
+            ("oatmeal", "^Cereals, oats, .*cooked with water", "(?i)dry|cookie|bread|bran"),
+            ("beans", "^Beans, (black|pinto), mature seeds, cooked", "(?i)snap|baked|raw"),
+            ("lentils", "^Lentils, .*cooked", "(?i)raw"),
+            ("chicken", "^Chicken, .*cooked", "(?i)raw|feet|frankfurter"),
+            ("rice", "^Rice, white, long-grain, .*cooked", "(?i)raw"),
+            ("green beans", "^Beans, snap, green", "(?i)raw|black|pinto"),
+            ("toast", "^Bread, (white|wheat), .*toasted", "(?i)rye|egg|oatmeal|muffin"),
+            ("rye toast", "^Bread, rye, toasted", "(?i)wheat|white"),
+            ("raw salmon", "^Fish, salmon, .*raw", "(?i)cooked|smoked"),
+        ])
     func cookedForm(name: String, pattern: String, not: String) throws {
         let found = catalog.candidates(name: name, brand: nil)
         let first = try #require(found.first)

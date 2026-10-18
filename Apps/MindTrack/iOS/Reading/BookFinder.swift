@@ -1,6 +1,6 @@
+import MindEngine
 import PhotosUI
 import SwiftUI
-import MindEngine
 
 /// Adding a book: search by title, author or ISBN, scan the barcode, or photograph the cover, then
 /// confirm the details and level. The ladder and earlier lookups answer at once, offline; Open
@@ -61,8 +61,12 @@ struct BookFinder: View {
                 if !results.ladder.isEmpty {
                     Section("On the ladder") {
                         ForEach(results.ladder) { book in
-                            Button { draft = BookDraft(ladder: book) } label: {
-                                FoundRow(title: book.title, author: book.author, detail: "Tier \(book.tier)\(book.levelledFromText ? " · levelled from its text" : "")")
+                            Button {
+                                draft = BookDraft(ladder: book)
+                            } label: {
+                                FoundRow(
+                                    title: book.title, author: book.author,
+                                    detail: "Tier \(book.tier)\(book.levelledFromText ? " · levelled from its text" : "")")
                             }
                             .foregroundStyle(.primary)
                             .accessibilityIdentifier("bookFinder.ladder.\(book.id)")
@@ -72,9 +76,12 @@ struct BookFinder: View {
                 if !results.found.isEmpty {
                     Section("Found") {
                         ForEach(results.found) { meta in
-                            Button { pick(meta) } label: {
-                                FoundRow(title: meta.title, author: meta.author,
-                                         detail: [meta.year.map(String.init), meta.pages.map { "\($0) pages" }].compactMap { $0 }.joined(separator: " · "))
+                            Button {
+                                pick(meta)
+                            } label: {
+                                FoundRow(
+                                    title: meta.title, author: meta.author,
+                                    detail: [meta.year.map(String.init), meta.pages.map { "\($0) pages" }].compactMap { $0 }.joined(separator: " · "))
                             }
                             .foregroundStyle(.primary)
                         }
@@ -137,8 +144,11 @@ struct BookFinder: View {
             guard !Task.isCancelled else { return }
             searching = false
             results = found
-            if found.unreachable { message = "Couldn't reach Open Library or Google Books. Books on the ladder and ones looked up before still work offline." }
-            else if found.ladder.isEmpty && found.found.isEmpty { message = "Nothing found. Try fewer words, or enter it yourself." }
+            if found.unreachable {
+                message = "Couldn't reach Open Library or Google Books. Books on the ladder and ones looked up before still work offline."
+            } else if found.ladder.isEmpty && found.found.isEmpty {
+                message = "Nothing found. Try fewer words, or enter it yourself."
+            }
         }
     }
 

@@ -129,7 +129,8 @@ public enum QualityAnalyst {
         let fermented = eaten.filter { Fermented.isFermented($0) }
         let fermentedDays = Set(fermented.map(\.day)).count
         let fermentedFoods = Dictionary(grouping: fermented, by: \.name).sorted { $0.value.count > $1.value.count }.map(\.key)
-        return QualityReport(days: Array(days), shares: shares, coverage: total > 0 ? known / total : 0, ultraSources: Array(sources),
-                             fermentedDays: fermentedDays, fermentedFoods: fermentedFoods)
+        return QualityReport(
+            days: Array(days), shares: shares, coverage: total > 0 ? known / total : 0, ultraSources: Array(sources),
+            fermentedDays: fermentedDays, fermentedFoods: fermentedFoods)
     }
 }

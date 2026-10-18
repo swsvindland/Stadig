@@ -16,8 +16,8 @@ public protocol StoredRecord: Codable, Sendable, Identifiable where ID == UUID {
     var updatedAt: Date { get set }
 }
 
-public extension StoredRecord {
-    static func migrate(_ json: inout [String: Any], from version: Int) throws {}
+extension StoredRecord {
+    public static func migrate(_ json: inout [String: Any], from version: Int) throws {}
 }
 
 /// One SwiftData model for every record kind. CloudKit-compatible: every attribute has a default,
@@ -80,15 +80,17 @@ struct RecordVersion: Sendable {
     }
 
     init(_ row: RecordRow) {
-        self.init(kind: row.kind, uuid: row.uuid, updatedAt: row.updatedAt, schemaVersion: row.schemaVersion,
-                  payload: row.payload, deleted: row.tombstone)
+        self.init(
+            kind: row.kind, uuid: row.uuid, updatedAt: row.updatedAt, schemaVersion: row.schemaVersion,
+            payload: row.payload, deleted: row.tombstone)
     }
 
     /// True when `self` loses to `other` as the copy that speaks for a record: older to the
     /// millisecond, then a live copy before a deletion, then the lower schema version, then the
     /// payload bytes. Total, so every device picks the same winner from the same rows.
     func precedes(_ other: RecordVersion) -> Bool {
-        let mine = updatedAt.wholeMilliseconds, theirs = other.updatedAt.wholeMilliseconds
+        let mine = updatedAt.wholeMilliseconds
+        let theirs = other.updatedAt.wholeMilliseconds
         if mine != theirs { return mine < theirs }
         if deleted != other.deleted { return !deleted }
         if schemaVersion != other.schemaVersion { return schemaVersion < other.schemaVersion }
@@ -99,8 +101,10 @@ struct RecordVersion: Sendable {
 enum RecordCoding {
     /// Decodes a payload, running the type's migrations step by step when it was stored at an older
     /// schema version. A payload from a newer version than the type knows throws.
-    static func decode<T: StoredRecord>(_ type: T.Type, payload: Data, schemaVersion: Int,
-                                        decoder: JSONDecoder) throws -> T {
+    static func decode<T: StoredRecord>(
+        _ type: T.Type, payload: Data, schemaVersion: Int,
+        decoder: JSONDecoder
+    ) throws -> T {
         guard schemaVersion <= T.schemaVersion else {
             throw SystemStoreError.newerRecordSchema(kind: T.kind, stored: schemaVersion, known: T.schemaVersion)
         }

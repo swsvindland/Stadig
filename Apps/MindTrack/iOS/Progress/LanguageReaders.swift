@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// The graded reader on the go in a language, and its own reading level.
@@ -27,9 +27,11 @@ struct ReadersSection: View {
                     ProgressView(value: current.progress).tint(language.domain.color)
                 }
             }
-            Text(comfort.map { "Reading level \($0) of 6, \(GradedReaders.label($0).lowercased()). Its own level, beside English." }
-                 ?? "Finish a reader to set your \(language.pack.name) reading level. It's separate from English.")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                comfort.map { "Reading level \($0) of 6, \(GradedReaders.label($0).lowercased()). Its own level, beside English." }
+                    ?? "Finish a reader to set your \(language.pack.name) reading level. It's separate from English."
+            )
+            .font(.caption).foregroundStyle(.secondary)
         }
         .sheet(isPresented: $showing) { ReaderSheet(language: language) }
     }
@@ -87,7 +89,9 @@ struct ReaderSheet: View {
                     } header: {
                         Text("At your level")
                     } footer: {
-                        Text("Level \(GradedReaders.targetLevel(language, books: model.books, words: words)) next: one above the last that felt comfortable, or where your vocabulary says to start.")
+                        Text(
+                            "Level \(GradedReaders.targetLevel(language, books: model.books, words: words)) next: one above the last that felt comfortable, or where your vocabulary says to start."
+                        )
                     }
                 }
                 ForEach(Array(GradedReaders.levels), id: \.self) { level in

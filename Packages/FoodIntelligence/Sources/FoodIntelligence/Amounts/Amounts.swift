@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 
 /// What a resolved count counts.
 enum CountUnit: Hashable, Sendable {
@@ -121,7 +121,8 @@ enum Amounts {
     /// weighed food, volume for a drink, the other kind through a plain measured portion, a
     /// serving's printed weight or volume, and kcal.
     static func directUnits(_ food: Food) -> [String: Double] {
-        let massKeys = ["g", "oz"], volumeKeys = ["ml", "floz", "cup", "tbsp", "tsp"]
+        let massKeys = ["g", "oz"]
+        let volumeKeys = ["ml", "floz", "cup", "tbsp", "tsp"]
         var units: [String: Double] = [:]
         // The first plain portion of each measure of the other kind: "1 cup" of a weighed food.
         var own: [(String, Double)] = []

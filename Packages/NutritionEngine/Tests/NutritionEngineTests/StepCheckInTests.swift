@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 @Suite("Steps in check-ins")
@@ -17,24 +18,27 @@ struct StepCheckInTests {
         init() {
             run = eater.run(days: 35) { _, _ in 2_100 }
             day = eater.start.adding(days: 35)
-            previous = CheckIn(day: day.adding(days: -7), expenditure: 2_600, kcal: 2_100, protein: 180, carbs: 190, fat: 65,
-                               status: .updated, reason: "Last week")
+            previous = CheckIn(
+                day: day.adding(days: -7), expenditure: 2_600, kcal: 2_100, protein: 180, carbs: 190, fat: 65,
+                status: .updated, reason: "Last week")
             phase = PlannedPhase(kind: .cut, weeks: 12, start: eater.start)
         }
 
         /// Steps a day in the four weeks before the check-in's window, then during it.
         func steps(before: Int, during: Int) -> StepSummary {
             let window = DayRange(day.adding(days: -21), day.adding(days: -1))
-            let days = DayRange(window.start.adding(days: -28), window.start.adding(days: -1)).days.map { StepDay(day: $0, steps: before) }
+            let days =
+                DayRange(window.start.adding(days: -28), window.start.adding(days: -1)).days.map { StepDay(day: $0, steps: before) }
                 + window.days.map { StepDay(day: $0, steps: during) }
             return StepSummary(days: days, aim: 10_000, baseline: before)
         }
 
         func review(previous: CheckIn? = nil, steps: StepSummary?) -> CheckIn {
             let trend = Weight.trend(run.weighIns.filter { $0.day < day }, through: day.adding(days: -1))
-            return CheckIns.review(previous: previous ?? self.previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
-                                   phase: phase, weightKg: trend.latest?.trend ?? 90, referenceKg: 90, fallbackExpenditure: 2_600,
-                                   steps: steps)
+            return CheckIns.review(
+                previous: previous ?? self.previous, trend: trend, usable: usable(run).filter { $0.key < day }, today: day,
+                phase: phase, weightKg: trend.latest?.trend ?? 90, referenceKg: 90, fallbackExpenditure: 2_600,
+                steps: steps)
         }
     }
 

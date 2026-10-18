@@ -1,6 +1,6 @@
 import CoreGraphics
-import Foundation
 import FoodDatabase
+import Foundation
 import FoundationModels
 import SystemCore
 
@@ -67,9 +67,11 @@ public actor MealAI {
             return try await run(description: note, image: photo, engine: engine, personal: personal, state: state, start: start)
         } catch let error as MealAIError {
             guard pinned == nil,
-                  let next = MealEngines.fallback(after: error, from: engine, photo: true, hasNote: !note.isEmpty, in: state) else { throw error }
-            return try await run(description: note, image: next.photo ? photo : nil, engine: next.engine, personal: personal, state: state,
-                                 start: start)
+                let next = MealEngines.fallback(after: error, from: engine, photo: true, hasNote: !note.isEmpty, in: state)
+            else { throw error }
+            return try await run(
+                description: note, image: next.photo ? photo : nil, engine: next.engine, personal: personal, state: state,
+                start: start)
         }
     }
 
@@ -181,21 +183,25 @@ public actor MealAI {
 
     // MARK: Running
 
-    private func run(description: String, image: CGImage?, engine: MealEngine, personal: [PersonalFood], state: MealAIAvailability,
-                     start: ContinuousClock.Instant) async throws -> MealGuess {
+    private func run(
+        description: String, image: CGImage?, engine: MealEngine, personal: [PersonalFood], state: MealAIAvailability,
+        start: ContinuousClock.Instant
+    ) async throws -> MealGuess {
         let reader = model(engine)
         // Near-ties are settled on the device when it can: text only, quick, and no cloud quota.
         let picker = state.onDevice && pinned != .privateCloud ? model(.onDevice) : reader
-        let draft = try await MealAnalysis.run(description: description, image: image, personal: personal, reader: reader,
-                                               picker: picker, catalog: catalog)
+        let draft = try await MealAnalysis.run(
+            description: description, image: image, personal: personal, reader: reader,
+            picker: picker, catalog: catalog)
         // The next meal starts as warm as this one did.
         if warmedAt != nil { warm(reader) }
         if image == nil && draft.items.isEmpty {
             throw MealAIError.notFood("No food or drink found in “\(FoodText.clean(description, limit: 60))”. Try naming what you ate.")
         }
         let elapsed = ContinuousClock.now - start
-        return MealGuess(scene: draft.scene, isFood: draft.isFood, items: draft.items, engine: engine,
-                         seconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
+        return MealGuess(
+            scene: draft.scene, isFood: draft.isFood, items: draft.items, engine: engine,
+            seconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
     }
 
     private func state() -> MealAIAvailability {

@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 /// The "do this next" list on Today, each kind from a fixed day and a fixed time of day.
@@ -11,16 +12,20 @@ struct MacroActionTests {
 
     /// Full days at 2,600 kcal and 140 g protein through `last`, weighed each morning at 84 kg,
     /// with a cut from week four; today has `todayProtein` grams logged so far, if anything.
-    func state(through last: Day? = nil, weighedToday: Bool = true, todayProtein: Double? = nil, hour: Double = 10,
-               plan: PhasePlan?? = nil, calendar: SystemCalendar? = nil) -> MacroState {
+    func state(
+        through last: Day? = nil, weighedToday: Bool = true, todayProtein: Double? = nil, hour: Double = 10,
+        plan: PhasePlan?? = nil, calendar: SystemCalendar? = nil
+    ) -> MacroState {
         var entries: [FoodEntry] = []
         var weighIns: [WeighIn] = []
         var statuses: [DayStatus] = []
         for day in DayRange(start, last ?? today.adding(days: -1)).days {
             for meal in [8.0, 12, 15, 19] {
                 let date = day.date().addingTimeInterval(meal * 3600)
-                entries.append(FoodEntry(date: date, name: "Meal", amountLabel: "1", nutrients: Nutrients(kcal: 650, protein: 35, carbs: 70, fat: 22),
-                                         source: .search, updatedAt: date))
+                entries.append(
+                    FoodEntry(
+                        date: date, name: "Meal", amountLabel: "1", nutrients: Nutrients(kcal: 650, protein: 35, carbs: 70, fat: 22),
+                        source: .search, updatedAt: date))
             }
             statuses.append(DayStatus(day: day, state: .complete))
         }
@@ -28,14 +33,18 @@ struct MacroActionTests {
             weighIns.append(WeighIn(date: day.date().addingTimeInterval(7 * 3600), kg: 84))
         }
         if let todayProtein {
-            entries.append(FoodEntry(date: today.date().addingTimeInterval(8 * 3600), name: "Breakfast", amountLabel: "1",
-                                     nutrients: Nutrients(kcal: 600, protein: todayProtein, carbs: 60, fat: 15), source: .search))
+            entries.append(
+                FoodEntry(
+                    date: today.date().addingTimeInterval(8 * 3600), name: "Breakfast", amountLabel: "1",
+                    nutrients: Nutrients(kcal: 600, protein: todayProtein, carbs: 60, fat: 15), source: .search))
         }
-        let cut = PhasePlan(phases: [PlannedPhase(kind: .cut, weeks: 12, start: start.adding(days: 21))], headline: "", reasons: [],
-                            confidence: nil, arc: "", created: start.adding(days: 21).date())
-        return MacroState(profile: profile(), settings: MacroSettings(assessmentStart: start), entries: entries, weighIns: weighIns,
-                          dayStatus: statuses, plan: plan ?? cut, calendar: calendar, today: today,
-                          now: today.date().addingTimeInterval(hour * 3600))
+        let cut = PhasePlan(
+            phases: [PlannedPhase(kind: .cut, weeks: 12, start: start.adding(days: 21))], headline: "", reasons: [],
+            confidence: nil, arc: "", created: start.adding(days: 21).date())
+        return MacroState(
+            profile: profile(), settings: MacroSettings(assessmentStart: start), entries: entries, weighIns: weighIns,
+            dayStatus: statuses, plan: plan ?? cut, calendar: calendar, today: today,
+            now: today.date().addingTimeInterval(hour * 3600))
     }
 
     func actions(_ state: MacroState) -> [MacroAction] { MacroAnalyst.analyse(state).actions }
@@ -73,8 +82,9 @@ struct MacroActionTests {
 
     @Test("a stalled scale during a deload diet break is expected")
     func whoosh() {
-        let deload = SystemCalendar(currentBlock: DayRange(today.adding(days: -27), today.adding(days: 6)), deloads: [DayRange(today, today.adding(days: 6))],
-                                    checkIns: [], publishedBy: .liftTrack)
+        let deload = SystemCalendar(
+            currentBlock: DayRange(today.adding(days: -27), today.adding(days: 6)), deloads: [DayRange(today, today.adding(days: 6))],
+            checkIns: [], publishedBy: .liftTrack)
         let a = MacroAnalyst.analyse(state(calendar: deload))
         #expect(a.targets.mode == .dietBreak && a.actions.contains { $0.kind == .whoosh })
         #expect(!kinds(state()).contains(.whoosh))
@@ -82,8 +92,9 @@ struct MacroActionTests {
 
     @Test("a finished plan says so without Lift Track's calendar")
     func planEnded() throws {
-        let short = PhasePlan(phases: [PlannedPhase(kind: .cut, weeks: 4, start: start.adding(days: 7))], headline: "", reasons: [],
-                              confidence: nil, arc: "", created: start.adding(days: 7).date())
+        let short = PhasePlan(
+            phases: [PlannedPhase(kind: .cut, weeks: 4, start: start.adding(days: 7))], headline: "", reasons: [],
+            confidence: nil, arc: "", created: start.adding(days: 7).date())
         let ended = try #require(actions(state(plan: short)).first { $0.kind == .reviewPlan })
         #expect(ended.id == "plan-ended-\(short.phases[0].end.iso)" && ended.title == "Plan finished")
         // Mid-plan, with no block ending today, there's nothing to review.

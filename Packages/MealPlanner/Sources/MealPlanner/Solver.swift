@@ -27,7 +27,8 @@ enum PortionSolver {
         for _ in 0..<300 {
             var moved = 0.0
             for j in parts.indices {
-                var numerator = 0.0, denominator = 0.0
+                var numerator = 0.0
+                var denominator = 0.0
                 for r in 0..<4 {
                     let others = fixed[r] + parts.indices.filter { $0 != j }.map { parts[$0].perGram[r] * x[$0] }.reduce(0, +)
                     let a = parts[j].perGram[r]

@@ -1,10 +1,10 @@
 import Foundation
-import Observation
-import OSLog
-import UIKit
 import MindEngine
+import OSLog
+import Observation
 import SystemAI
 import SystemStore
+import UIKit
 
 /// The writing jobs that use the platform: spelling from the system dictionary, notes on a piece
 /// and a blind second opinion from Apple Intelligence through SystemAI. Notes are a heavy job
@@ -47,8 +47,10 @@ final class WritingAssistant {
             guard range.location != NSNotFound, range.length > 0 else { break }
             let word = (text as NSString).substring(with: range)
             let known = languages.dropFirst().contains { language in
-                checker.rangeOfMisspelledWord(in: word, range: NSRange(location: 0, length: (word as NSString).length), startingAt: 0,
-                                              wrap: false, language: language).location == NSNotFound
+                checker.rangeOfMisspelledWord(
+                    in: word, range: NSRange(location: 0, length: (word as NSString).length), startingAt: 0,
+                    wrap: false, language: language
+                ).location == NSNotFound
             }
             if !known { found.insert(word) }
             location = range.location + range.length
@@ -110,10 +112,12 @@ final class WritingAssistant {
         let ai = model.ai
         Task {
             do {
-                let shown = try await ai.respond(instructions: WritingCoach.comparisonInstructions,
-                                                 prompt: WritingCoach.comparisonPrompt(pair, swapped: false), weight: .heavy, maxTokens: 200)
-                let swapped = try await ai.respond(instructions: WritingCoach.comparisonInstructions,
-                                                   prompt: WritingCoach.comparisonPrompt(pair, swapped: true), weight: .heavy, maxTokens: 200)
+                let shown = try await ai.respond(
+                    instructions: WritingCoach.comparisonInstructions,
+                    prompt: WritingCoach.comparisonPrompt(pair, swapped: false), weight: .heavy, maxTokens: 200)
+                let swapped = try await ai.respond(
+                    instructions: WritingCoach.comparisonInstructions,
+                    prompt: WritingCoach.comparisonPrompt(pair, swapped: true), weight: .heavy, maxTokens: 200)
                 let picked = WritingCoach.secondOpinion(pair, shown: WritingCoach.pick(from: shown), swapped: WritingCoach.pick(from: swapped))
                 appLog.info("Blind second opinion: \(picked.map { $0 ? "newer" : "older" } ?? "no clear pick", privacy: .public)")
                 opinions[pair.id] = .picked(picked)
@@ -130,7 +134,8 @@ final class WritingAssistant {
     /// Puts the AI's pick on the comparison, once the person's pick has made one. It's saved
     /// straight away, since a session saves each comparison once, when it's first picked.
     func record(_ pickedNewer: Bool, pair: BlindPair, model: AppModel) {
-        let older = pair.older.id, newer = pair.newer.id
+        let older = pair.older.id
+        let newer = pair.newer.id
         if model.run?.newComparisons.contains(where: { $0.older == older && $0.newer == newer }) == true {
             model.act { $0.attachSecondOpinion(pickedNewer, older: older, newer: newer) }
         }

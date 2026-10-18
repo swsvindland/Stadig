@@ -19,10 +19,12 @@ public enum MobilityTest: String, CaseIterable, Codable, CodingKeyRepresentable,
     public var instructions: String {
         switch self {
         case .hip9090: "Sit in 90/90. Switch sides without hands, ten times. Rate how it went."
-        case .deepSquatHold: "Heels down, feet about shoulder width. Hold the bottom of a bodyweight squat as long as you comfortably can, up to 60 seconds."
+        case .deepSquatHold:
+            "Heels down, feet about shoulder width. Hold the bottom of a bodyweight squat as long as you comfortably can, up to 60 seconds."
         case .kneeToWall: "Facing a wall, keep the heel down and touch the knee to the wall. Measure the toe-to-wall distance; take the worse side."
         case .sitAndReach: "Legs straight, reach toward the toes. Measure fingertips past the toes (negative if short)."
-        case .overheadReach: "Back flat against a wall, arms straight, raise them overhead. Rate how close the thumbs get to the wall without the ribs flaring."
+        case .overheadReach:
+            "Back flat against a wall, arms straight, raise them overhead. Rate how close the thumbs get to the wall without the ribs flaring."
         }
     }
 
@@ -125,8 +127,9 @@ public enum Agility {
             if recent.count == 3, recent[2] < recent[1], recent[1] < recent[0] { return test }
             return nil
         }
-        return AgilityAnalysis(latest: latest, limiter: limiter, limiterTest: limiter == nil ? nil : weakest?.test,
-                               score: scores.isEmpty ? nil : scores.reduce(0, +) / Double(scores.count),
-                               seePhysio: seePhysio.sorted { $0.rawValue < $1.rawValue })
+        return AgilityAnalysis(
+            latest: latest, limiter: limiter, limiterTest: limiter == nil ? nil : weakest?.test,
+            score: scores.isEmpty ? nil : scores.reduce(0, +) / Double(scores.count),
+            seePhysio: seePhysio.sorted { $0.rawValue < $1.rawValue })
     }
 }

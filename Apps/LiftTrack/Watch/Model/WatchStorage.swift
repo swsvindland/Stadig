@@ -1,6 +1,6 @@
 import Foundation
-import OSLog
 import LiftEngine
+import OSLog
 
 /// JSON the way SystemJSON writes it (SystemStore isn't linked into the Watch): dates as whole
 /// milliseconds since 1970, keys sorted, so payloads read the same on both ends of the link.

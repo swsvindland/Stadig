@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Reading's honest measures: the level from reading tests and finished books, and focus from

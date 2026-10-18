@@ -24,7 +24,8 @@ public enum HealthMapping {
         case .highIntensityIntervalTraining, .crossTraining, .jumpRope: .hiit
         case .climbing: .climbing
         case .soccer, .basketball, .americanFootball, .australianFootball, .baseball, .softball, .cricket,
-             .handball, .hockey, .lacrosse, .rugby, .volleyball, .waterPolo, .discSports: .teamSport
+            .handball, .hockey, .lacrosse, .rugby, .volleyball, .waterPolo, .discSports:
+            .teamSport
         case .tennis, .badminton, .squash, .racquetball, .tableTennis, .pickleball: .racquet
         case .cardioDance, .socialDance: .dance
         case .traditionalStrengthTraining, .functionalStrengthTraining, .coreTraining: .strength

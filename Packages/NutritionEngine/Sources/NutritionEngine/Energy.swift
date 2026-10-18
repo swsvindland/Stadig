@@ -31,8 +31,10 @@ public struct WeightTrend: Hashable, Sendable {
         let xs = window.map { Double(first.day.days(until: $0.day)) }
         let ys = window.map(\.trend)
         let n = Double(window.count)
-        let mx = xs.reduce(0, +) / n, my = ys.reduce(0, +) / n
-        var num = 0.0, den = 0.0
+        let mx = xs.reduce(0, +) / n
+        let my = ys.reduce(0, +) / n
+        var num = 0.0
+        var den = 0.0
         for (x, y) in zip(xs, ys) {
             num += (x - mx) * (y - my)
             den += (x - mx) * (x - mx)
@@ -101,8 +103,10 @@ public enum Weight {
                 last = day
             }
             let ahead = Double(min(last.days(until: day), projectionDays))
-            points.append(WeightTrend.Point(day: day, trend: level + slope * ahead, scale: scale,
-                                            counted: scale != nil && !ignored.contains(day)))
+            points.append(
+                WeightTrend.Point(
+                    day: day, trend: level + slope * ahead, scale: scale,
+                    counted: scale != nil && !ignored.contains(day)))
         }
         let noise = residuals.count >= 5 ? sqrt(residuals.map { $0 * $0 }.reduce(0, +) / Double(residuals.count)) : 0.6
         return WeightTrend(points: points, noise: max(0.2, noise), outliers: outliers)
@@ -192,8 +196,10 @@ public enum Energy {
     }
 
     /// The formula guess, with a typical error of about 15%.
-    public static func formula(sex: BiologicalSex, kg: Double, heightCm: Double?, age: Int?, trainingDays: Int,
-                               otherActiveMinutes: Double, dailySteps: Double? = nil) -> Double {
+    public static func formula(
+        sex: BiologicalSex, kg: Double, heightCm: Double?, age: Int?, trainingDays: Int,
+        otherActiveMinutes: Double, dailySteps: Double? = nil
+    ) -> Double {
         let height = heightCm ?? (sex == .female ? 165 : 177)
         return restingEnergy(sex: sex, kg: kg, heightCm: height, age: age ?? 35)
             * activityFactor(trainingDays: trainingDays, otherActiveMinutes: otherActiveMinutes, dailySteps: dailySteps)
@@ -210,14 +216,17 @@ public enum Energy {
 
         let readings = trend.points.filter { window.contains($0.day) && $0.counted }.compactMap { p in p.scale.map { (p.day, $0) } }
         guard readings.count >= 2, let first = readings.first?.0, let last = readings.last?.0 else {
-            return EnergyObservation(used: used, intake: intake, intakeSpread: intakeSpread, slope: 0, slopeError: 1,
-                                     weighInDays: readings.count, span: 0)
+            return EnergyObservation(
+                used: used, intake: intake, intakeSpread: intakeSpread, slope: 0, slopeError: 1,
+                weighInDays: readings.count, span: 0)
         }
         let xs = readings.map { Double(first.days(until: $0.0)) }
         let ys = readings.map(\.1)
         let n = Double(readings.count)
-        let mx = xs.reduce(0, +) / n, my = ys.reduce(0, +) / n
-        var sxy = 0.0, sxx = 0.0
+        let mx = xs.reduce(0, +) / n
+        let my = ys.reduce(0, +) / n
+        var sxy = 0.0
+        var sxx = 0.0
         for (x, y) in zip(xs, ys) {
             sxy += (x - mx) * (y - my)
             sxx += (x - mx) * (x - mx)
@@ -229,8 +238,9 @@ public enum Energy {
         let fitted = readings.count > 2 ? (residual.map { $0 * $0 }.reduce(0, +) / (n - 2)).squareRoot() : 0.6
         let sigma = max(fitted * 1.3, readings.count >= 8 ? 0.3 : 0.6)
         let slopeError = sxx == 0 ? 1 : sigma / sxx.squareRoot()
-        return EnergyObservation(used: used, intake: intake, intakeSpread: intakeSpread, slope: slope, slopeError: slopeError,
-                                 weighInDays: readings.count, span: first.days(until: last))
+        return EnergyObservation(
+            used: used, intake: intake, intakeSpread: intakeSpread, slope: slope, slopeError: slopeError,
+            weighInDays: readings.count, span: first.days(until: last))
     }
 
     /// Blends the formula with energy balance by how much each can be trusted. The first week
@@ -247,7 +257,8 @@ public enum Energy {
             return estimate(formula, sd: formulaSD, basis: .formula, days: observation.used, formula: formula)
         }
         let dataSD = max(50, observation.rawError)
-        let wf = 1 / (formulaSD * formulaSD), wd = 1 / (dataSD * dataSD)
+        let wf = 1 / (formulaSD * formulaSD)
+        let wd = 1 / (dataSD * dataSD)
         let blended = (formula * wf + observation.raw * wd) / (wf + wd)
         let sd = 1 / (wf + wd).squareRoot()
         return estimate(blended, sd: sd, basis: wd > wf * 3 ? .data : .blended, days: observation.used, formula: formula)
@@ -255,8 +266,9 @@ public enum Energy {
 
     private static func estimate(_ kcal: Double, sd: Double, basis: MaintenanceEstimate.Basis, days: Int, formula: Double) -> MaintenanceEstimate {
         func round50(_ x: Double) -> Double { (x / 50).rounded() * 50 }
-        return MaintenanceEstimate(kcal: round50(kcal), low: round50(kcal - 1.5 * sd), high: round50(kcal + 1.5 * sd), basis: basis,
-                                   days: days, formula: round50(formula))
+        return MaintenanceEstimate(
+            kcal: round50(kcal), low: round50(kcal - 1.5 * sd), high: round50(kcal + 1.5 * sd), basis: basis,
+            days: days, formula: round50(formula))
     }
 }
 
@@ -289,8 +301,10 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
     public var reason: String
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), day: Day, expenditure: Double, kcal: Double, protein: Double, carbs: Double, fat: Double,
-                status: Status, reason: String, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), day: Day, expenditure: Double, kcal: Double, protein: Double, carbs: Double, fat: Double,
+        status: Status, reason: String, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.day = day
         self.expenditure = expenditure
@@ -326,17 +340,20 @@ public enum CheckIns {
         let phase = plan.phase(on: today)
         let kcal = Targets.calories(maintenance: maintenance, phase: phase, weightKg: weightKg)
         let m = Targets.macros(kcal: kcal, referenceKg: referenceKg, phase: phase?.kind)
-        return CheckIn(id: CheckIn.id(for: today), day: today, expenditure: maintenance, kcal: kcal, protein: m.protein, carbs: m.carbs,
-                       fat: m.fat, status: .updated,
-                       reason: "Starting \(phase?.kind.label.lowercased() ?? "the plan") from maintenance of about \(Int(maintenance)) kcal.")
+        return CheckIn(
+            id: CheckIn.id(for: today), day: today, expenditure: maintenance, kcal: kcal, protein: m.protein, carbs: m.carbs,
+            fat: m.fat, status: .updated,
+            reason: "Starting \(phase?.kind.label.lowercased() ?? "the plan") from maintenance of about \(Int(maintenance)) kcal.")
     }
 
     /// The week's review: observe the last 21 days, move expenditure part of the way, and move
     /// targets at most 150 kcal (or 7.5%). Holds rather than reacting to a jump or a lone misread.
     /// In a deficit, when fewer steps explain most of a lower maintenance, it holds once and says
     /// to walk back up before calories come down.
-    public static func review(previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
-                              weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil) -> CheckIn {
+    public static func review(
+        previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
+        weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil
+    ) -> CheckIn {
         let prior = previous?.expenditure ?? fallbackExpenditure
         let window = DayRange(today.adding(days: -21), today.adding(days: -1))
         let observation = Energy.observe(trend: trend, usable: usable, window: window)
@@ -350,15 +367,18 @@ public enum CheckIns {
                 kcal = clamp(kcal, old - step, old + step)
             }
             let m = Targets.macros(kcal: kcal, referenceKg: referenceKg, phase: phase?.kind)
-            return CheckIn(id: CheckIn.id(for: today), day: today, expenditure: (expenditure / 10).rounded() * 10, kcal: kcal,
-                           protein: m.protein, carbs: m.carbs, fat: m.fat, status: status, reason: reason)
+            return CheckIn(
+                id: CheckIn.id(for: today), day: today, expenditure: (expenditure / 10).rounded() * 10, kcal: kcal,
+                protein: m.protein, carbs: m.carbs, fat: m.fat, status: status, reason: reason)
         }
         let recentWeighIn = trend.points.last { $0.scale != nil }?.day
         guard let recentWeighIn, recentWeighIn >= window.end.adding(days: -3) else {
             return make(prior, .learning, "Add a recent weigh-in so the plan can use your current trend.")
         }
         guard observation.used >= 12, observation.weighInDays >= 6 else {
-            return make(prior, .learning, "Learning from your logs: 12 complete days and 6 weigh-ins over three weeks. Gaps pause learning without resetting it.")
+            return make(
+                prior, .learning,
+                "Learning from your logs: 12 complete days and 6 weigh-ins over three weeks. Gaps pause learning without resetting it.")
         }
         // A misread is already out of the math, so it holds once, at the first check-in to see it,
         // to point it out; not every week it stays in the window. It shows once the next reading is
@@ -386,15 +406,21 @@ public enum CheckIns {
         let change = expenditure - prior
         if change <= -25, phase?.kind.energy == .deficit, let steps, let fall = Steps.fall(steps.days, window: window) {
             let burned = Double(fall.before - fall.during) * Steps.kcalPerStep(kg: weightKg)
-            let fell = "Steps fell from \(fall.before.formatted()) to \(fall.during.formatted()) a day, about \(Int((burned / 10).rounded() * 10)) kcal less burned"
+            let fell =
+                "Steps fell from \(fall.before.formatted()) to \(fall.during.formatted()) a day, about \(Int((burned / 10).rounded() * 10)) kcal less burned"
             let aim = steps.aim.map { "back toward \($0.formatted()) a day" } ?? "back up"
             if burned >= min(prior - raw, 500) * 0.5, previous?.status != .steps {
-                return make(prior, .steps, "\(fell), which is most of the lower maintenance. Maintenance holds this week: walk \(aim) before calories come down. If steps stay down, next week follows the data.")
+                return make(
+                    prior, .steps,
+                    "\(fell), which is most of the lower maintenance. Maintenance holds this week: walk \(aim) before calories come down. If steps stay down, next week follows the data."
+                )
             }
-            let lower = "Maintenance looks lower than last week (about \(Int((expenditure / 10).rounded() * 10)) kcal), so targets move down a little."
+            let lower =
+                "Maintenance looks lower than last week (about \(Int((expenditure / 10).rounded() * 10)) kcal), so targets move down a little."
             return make(expenditure, .updated, "\(lower) \(fell); walking \(aim) would win some of it back.")
         }
-        let reason = abs(change) < 25
+        let reason =
+            abs(change) < 25
             ? "Maintenance holding at about \(Int((expenditure / 10).rounded() * 10)) kcal."
             : "Maintenance looks \(change > 0 ? "higher" : "lower") than last week (about \(Int((expenditure / 10).rounded() * 10)) kcal), so targets move \(change > 0 ? "up" : "down") a little."
         return make(expenditure, .updated, reason)

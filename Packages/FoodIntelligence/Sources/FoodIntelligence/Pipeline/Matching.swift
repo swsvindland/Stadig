@@ -1,5 +1,5 @@
-import Foundation
 import FoodDatabase
+import Foundation
 
 /// A seen food's catalog candidates, best first, and how sure the ranking is.
 struct Candidates: Sendable {
@@ -67,8 +67,9 @@ enum Matching {
     }
 
     /// Cooking and cutting words a catalog name may leave out: grilled chicken is roasted chicken.
-    private static let preparation: Set<String> = Set(("grilled baked roasted boiled steamed poached sauteed broiled cooked raw fresh "
-        + "homemade sliced chopped diced shredded hot cold iced toasted plain organic").split(separator: " ").map(String.init))
+    private static let preparation: Set<String> = Set(
+        ("grilled baked roasted boiled steamed poached sauteed broiled cooked raw fresh "
+            + "homemade sliced chopped diced shredded hot cold iced toasted plain organic").split(separator: " ").map(String.init))
 
     /// Every word of the seen name, but its preparation, is in the food's name or brand in some form.
     static func covers(_ name: String, _ food: Food) -> Bool {
@@ -91,7 +92,8 @@ enum Matching {
         }
         let head = Array(ranked.prefix(branded ? 6 : 8))
         let ids = Set(head.map(\.id))
-        let generic = branded
+        let generic =
+            branded
             ? Array((ranked.filter { !ids.contains($0.id) && !isBranded($0.food) } + extra.filter { !ids.contains($0.id) }).prefix(2))
             : []
         var listed = Set<String>()
@@ -99,7 +101,8 @@ enum Matching {
         guard let first = top.first else { return Candidates(matches: [], tied: 0, sure: false) }
         // The model only settles near-ties (raw or cooked, which lettuce); it can't override a far
         // better name match, and a clear winner needs no second opinion at all. Ties lead the list.
-        let best = first.score, fitting = fit(first)
+        let best = first.score
+        let fitting = fit(first)
         // When the best match files under what was seen ("Blueberries, raw"), a food filed under
         // something else ("Muffins, blueberry") is a dish that contains it, not a near-tie.
         let itself = { (match: FoodMatch) in seen.map { filedUnder($0, match.food) } ?? true }
@@ -158,7 +161,8 @@ enum Matching {
         let others = matches.indices.filter { $0 != chosen }.map { matches[$0] }
         var list = Array(others.prefix(maxAlternatives))
         if branded, !list.isEmpty, !list.contains(where: { !isBranded($0.food) }),
-           let plain = others.dropFirst(maxAlternatives).first(where: { !isBranded($0.food) }) {
+            let plain = others.dropFirst(maxAlternatives).first(where: { !isBranded($0.food) })
+        {
             list[list.count - 1] = plain
         }
         return list

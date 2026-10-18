@@ -2,20 +2,25 @@ import Foundation
 import FoundationModels
 import Synchronization
 import Testing
+
 @testable import FoodIntelligence
 
 @Suite("Model requests")
 struct ModelTests {
     /// Runs `Retry.whileBusy` over scripted failures, recording each pause instead of sleeping.
-    func retry(_ failures: [any Error], classify: (any Error) -> MealAIError = { $0 as? MealAIError ?? .failed("?") },
-               pause: (Duration) async throws -> Void = { _ in }) async -> (Result<Int, any Error>, tries: Int, pauses: [Duration]) {
-        let tries = Mutex(0), pauses = Mutex<[Duration]>([])
+    func retry(
+        _ failures: [any Error], classify: (any Error) -> MealAIError = { $0 as? MealAIError ?? .failed("?") },
+        pause: (Duration) async throws -> Void = { _ in }
+    ) async -> (Result<Int, any Error>, tries: Int, pauses: [Duration]) {
+        let tries = Mutex(0)
+        let pauses = Mutex<[Duration]>([])
         let result: Result<Int, any Error>
         do {
-            let value = try await Retry.whileBusy(classify: classify, pause: { duration in
+            func recordingPause(_ duration: Duration) async throws {
                 pauses.withLock { $0.append(duration) }
                 try await pause(duration)
-            }) {
+            }
+            let value = try await Retry.whileBusy(classify: classify, pause: recordingPause) {
                 let attempt = tries.withLock { count in
                     count += 1
                     return count

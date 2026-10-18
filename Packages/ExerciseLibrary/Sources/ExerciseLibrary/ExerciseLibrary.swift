@@ -49,14 +49,15 @@ public struct ExerciseCatalog: Sendable {
     public func of(kind: ExerciseKind) -> [Exercise] { all.filter { $0.kind == kind } }
 }
 
-public extension Exercise {
+extension Exercise {
     /// Stands in for an unknown id: a name made from the id, no muscles or joints, a middling cost
     /// and the most cautious safety tier.
-    static func placeholder(id: String) -> Exercise {
-        Exercise(id: id, name: id.replacingOccurrences(of: "-", with: " ").capitalized, pattern: .core, equipment: .bodyweight,
-                 muscles: [], joints: [], fatigue: FatigueProfile(systemic: 0.3, local: 0.4, stimulus: 0.7),
-                 safetyTier: .neverToFailure,
-                 reps: RepDefaults(strength: RepRange(8, 12), hypertrophy: RepRange(8, 12)),
-                 rest: RestDefaults(strength: 90, hypertrophy: 75))
+    public static func placeholder(id: String) -> Exercise {
+        Exercise(
+            id: id, name: id.replacingOccurrences(of: "-", with: " ").capitalized, pattern: .core, equipment: .bodyweight,
+            muscles: [], joints: [], fatigue: FatigueProfile(systemic: 0.3, local: 0.4, stimulus: 0.7),
+            safetyTier: .neverToFailure,
+            reps: RepDefaults(strength: RepRange(8, 12), hypertrophy: RepRange(8, 12)),
+            rest: RestDefaults(strength: 90, hypertrophy: 75))
     }
 }

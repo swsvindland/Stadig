@@ -74,8 +74,9 @@ public enum LanguageSkills {
     public static func level(_ result: TestResult) -> SkillLevel? {
         guard let skill = skill(result.test) else { return nil }
         let words = words(result)
-        return SkillLevel(skill: skill, test: result, words: words, level: level(words: words),
-                          score: LanguageTests.vocabularyScore(Double(words)))
+        return SkillLevel(
+            skill: skill, test: result, words: words, level: level(words: words),
+            score: LanguageTests.vocabularyScore(Double(words)))
     }
 
     /// The latest level of each skill measured in a course, on or before `day` when given.

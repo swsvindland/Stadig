@@ -1,18 +1,24 @@
 import FoodDatabase
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 @Suite("Analysis")
 struct AnalysisTests {
-    let lettuce = [food("Lettuce, cos or romaine, raw", kcal: 17, portions: [("1 leaf", 6)]),
-                   food("Lettuce, iceberg, raw", kcal: 40, portions: [("1 leaf", 8)]),
-                   food("Lettuce, green leaf, raw", kcal: 60, portions: [("1 leaf", 10)])]
+    let lettuce = [
+        food("Lettuce, cos or romaine, raw", kcal: 17, portions: [("1 leaf", 6)]),
+        food("Lettuce, iceberg, raw", kcal: 40, portions: [("1 leaf", 8)]),
+        food("Lettuce, green leaf, raw", kcal: 60, portions: [("1 leaf", 10)]),
+    ]
 
-    func run(_ model: ScriptedModel, _ catalog: FakeCatalog, description: String = "my meal", photo: Bool = false,
-             personal: [PersonalFood] = []) async throws -> MealDraft {
-        try await MealAnalysis.run(description: description, image: photo ? blankImage() : nil, personal: personal, reader: model,
-                                   picker: model, catalog: catalog)
+    func run(
+        _ model: ScriptedModel, _ catalog: FakeCatalog, description: String = "my meal", photo: Bool = false,
+        personal: [PersonalFood] = []
+    ) async throws -> MealDraft {
+        try await MealAnalysis.run(
+            description: description, image: photo ? blankImage() : nil, personal: personal, reader: model,
+            picker: model, catalog: catalog)
     }
 
     @Test func nutrientsComeFromTheCatalogFoodAndItsPortion() async throws {
@@ -98,14 +104,16 @@ struct AnalysisTests {
         let toast = food("Bread, toasted", kcal: 290, portions: [("1 slice", 30)])
         let bacon = food("Bacon, cooked", kcal: 540, portions: [("1 slice", 8)])
         let model = ScriptedModel(reply([item("Toast", 1, "slice", 30), item("Bacon", 2, "slice", 16)]))
-        let draft = try await run(model, FakeCatalog(scripted: ["toast": [match(toast, 3)], "bacon": [match(bacon, 3)]]),
-                                  description: "toast and 2 slices of bacon")
+        let draft = try await run(
+            model, FakeCatalog(scripted: ["toast": [match(toast, 3)], "bacon": [match(bacon, 3)]]),
+            description: "toast and 2 slices of bacon")
         #expect(draft.items.map(\.approximate) == [true, false], "the person said how much bacon, not how much toast")
     }
 
     @Test func aLongDescriptionReachesTheModelWhole() async throws {
         // A dictated day, with its last foods past the 500th character.
-        let day = "for breakfast I had two scrambled eggs on sourdough toast with butter and a flat white, then mid morning "
+        let day =
+            "for breakfast I had two scrambled eggs on sourdough toast with butter and a flat white, then mid morning "
             + "an apple and a handful of almonds, for lunch a chicken caesar salad with croutons and parmesan and a diet coke, "
             + "in the afternoon a protein bar and a coffee with oat milk, for dinner salmon with rice and broccoli and a glass "
             + "of white wine, and after dinner a square of dark chocolate, some strawberries with whipped cream, a few crackers "
@@ -123,8 +131,9 @@ struct AnalysisTests {
     @Test func thePersonsOwnFoodsArePreferred() async throws {
         let oats = food("My overnight oats", id: "custom:oats", basis: .serving, kcal: 380, portions: [("1 jar", 1)], source: .custom)
         let model = ScriptedModel(reply([item("overnight oats", 1, "jar", 300)]))
-        let draft = try await run(model, FakeCatalog([food("Oats", kcal: 389)]), description: "my overnight oats",
-                                  personal: [PersonalFood(food: oats, score: 5)])
+        let draft = try await run(
+            model, FakeCatalog([food("Oats", kcal: 389)]), description: "my overnight oats",
+            personal: [PersonalFood(food: oats, score: 5)])
         let guess = try #require(draft.items.first)
         #expect(guess.match?.food.id == "custom:oats")
         #expect(guess.match?.personal == true)

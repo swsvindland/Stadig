@@ -12,8 +12,10 @@ public struct LabelFrame: Hashable, Sendable {
     /// at least two of its lines; a package's front, with its "20g PROTEIN" banner, doesn't.
     public var isPanel: Bool
 
-    public init(amounts: [String: Double], servingLabel: String? = nil, servingGrams: Double? = nil, servingMilliliters: Double? = nil,
-                isPanel: Bool) {
+    public init(
+        amounts: [String: Double], servingLabel: String? = nil, servingGrams: Double? = nil, servingMilliliters: Double? = nil,
+        isPanel: Bool
+    ) {
         self.amounts = amounts
         self.servingLabel = servingLabel
         self.servingGrams = servingGrams
@@ -285,7 +287,8 @@ public struct LiveSupplementLabel: Sendable {
             guard parts.count == 2, let count = Double(parts[0]) else { return nil }
             return (count, parts[1])
         }
-        return SupplementFacts(id: "custom:\(UUID().uuidString)", name: "", servingCount: serving?.0 ?? 1, unit: serving?.1 ?? "serving",
-                               ingredients: read, source: .label)
+        return SupplementFacts(
+            id: "custom:\(UUID().uuidString)", name: "", servingCount: serving?.0 ?? 1, unit: serving?.1 ?? "serving",
+            ingredients: read, source: .label)
     }
 }

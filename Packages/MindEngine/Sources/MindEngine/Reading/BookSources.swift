@@ -7,14 +7,17 @@ public enum ISBN {
     /// on another keyboard (full-width ９７８) come back as plain ones; anything else that counts as
     /// a number (½, ①) isn't a digit of an ISBN.
     public static func normalize(_ raw: String) -> String? {
-        let characters = String(raw.uppercased().compactMap { character -> Character? in
-            if character == "X" { return "X" }
-            guard character.unicodeScalars.count == 1, character.unicodeScalars.first?.properties.numericType == .decimal,
-                  let value = character.wholeNumberValue else { return nil }
-            return Character(String(value))
-        })
+        let characters = String(
+            raw.uppercased().compactMap { character -> Character? in
+                if character == "X" { return "X" }
+                guard character.unicodeScalars.count == 1, character.unicodeScalars.first?.properties.numericType == .decimal,
+                    let value = character.wholeNumberValue
+                else { return nil }
+                return Character(String(value))
+            })
         if characters.count == 13, characters.allSatisfy(\.isNumber), characters.hasPrefix("978") || characters.hasPrefix("979"),
-           checkDigit13(String(characters.prefix(12))) == characters.last?.wholeNumberValue {
+            checkDigit13(String(characters.prefix(12))) == characters.last?.wholeNumberValue
+        {
             return characters
         }
         if characters.count == 10, characters.dropLast().allSatisfy(\.isNumber), valid10(characters) {
@@ -73,11 +76,13 @@ public enum OpenLibrary {
 
     public static func parseISBN(_ data: Data, isbn: String, now: Date = Date()) -> BookMeta? {
         guard let editions = try? JSONDecoder().decode([String: Edition].self, from: data),
-              let edition = editions["ISBN:\(isbn)"] ?? editions.values.first else { return nil }
-        return BookMeta(isbn: isbn, title: edition.title, author: edition.authors?.map(\.name).joined(separator: ", ") ?? "",
-                        pages: edition.numberOfPages, year: edition.publishDate.flatMap(year), subjects: (edition.subjects ?? []).prefix(20).map(\.name),
-                        coverURL: (edition.cover?["medium"] ?? edition.cover?["small"]).flatMap(URL.init(string:)), source: "openlibrary",
-                        fetchedAt: now, updatedAt: now)
+            let edition = editions["ISBN:\(isbn)"] ?? editions.values.first
+        else { return nil }
+        return BookMeta(
+            isbn: isbn, title: edition.title, author: edition.authors?.map(\.name).joined(separator: ", ") ?? "",
+            pages: edition.numberOfPages, year: edition.publishDate.flatMap(year), subjects: (edition.subjects ?? []).prefix(20).map(\.name),
+            coverURL: (edition.cover?["medium"] ?? edition.cover?["small"]).flatMap(URL.init(string:)), source: "openlibrary",
+            fetchedAt: now, updatedAt: now)
     }
 
     /// One entry of a list that reads as nil when it doesn't parse, so one odd record in a reply
@@ -111,10 +116,11 @@ public enum OpenLibrary {
         return search.docs.compactMap { doc in
             guard let doc = doc.value, let title = doc.title, !title.isEmpty else { return nil }
             let isbns = (doc.isbn ?? []).compactMap(ISBN.normalize)
-            return BookMeta(isbn: isbns.first { $0.hasPrefix("978") } ?? isbns.first, title: title,
-                            author: doc.authorName?.first ?? "", pages: doc.numberOfPagesMedian, year: doc.firstPublishYear,
-                            subjects: Array((doc.subject ?? []).prefix(20)), coverURL: doc.coverID.map(coverURL), source: "openlibrary",
-                            fetchedAt: now, updatedAt: now)
+            return BookMeta(
+                isbn: isbns.first { $0.hasPrefix("978") } ?? isbns.first, title: title,
+                author: doc.authorName?.first ?? "", pages: doc.numberOfPagesMedian, year: doc.firstPublishYear,
+                subjects: Array((doc.subject ?? []).prefix(20)), coverURL: doc.coverID.map(coverURL), source: "openlibrary",
+                fetchedAt: now, updatedAt: now)
         }
     }
 
@@ -122,7 +128,10 @@ public enum OpenLibrary {
     static func year(_ text: String) -> Int? {
         var digits = ""
         for character in text + " " {
-            if character.isNumber { digits.append(character); continue }
+            if character.isNumber {
+                digits.append(character)
+                continue
+            }
             if digits.count == 4, let year = Int(digits), (1000...2100).contains(year) { return year }
             digits = ""
         }
@@ -139,8 +148,10 @@ public enum GoogleBooks {
 
     public static func searchURL(_ query: String) -> URL {
         var components = URLComponents(string: "https://www.googleapis.com/books/v1/volumes")!
-        components.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "maxResults", value: "12"),
-                                 URLQueryItem(name: "printType", value: "books")]
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query), URLQueryItem(name: "maxResults", value: "12"),
+            URLQueryItem(name: "printType", value: "books"),
+        ]
         return components.url!
     }
 
@@ -174,9 +185,10 @@ public enum GoogleBooks {
                 .lazy.compactMap { ISBN.normalize($0.identifier) }.first
             // Covers come over http; the https address is the same image.
             let cover = (info.imageLinks?["thumbnail"] ?? info.imageLinks?["smallThumbnail"])?.replacingOccurrences(of: "http://", with: "https://")
-            return BookMeta(isbn: isbn, title: title, author: info.authors?.joined(separator: ", ") ?? "", pages: info.pageCount,
-                            year: info.publishedDate.flatMap(OpenLibrary.year), subjects: info.categories ?? [],
-                            coverURL: cover.flatMap(URL.init(string:)), source: "googlebooks", fetchedAt: now, updatedAt: now)
+            return BookMeta(
+                isbn: isbn, title: title, author: info.authors?.joined(separator: ", ") ?? "", pages: info.pageCount,
+                year: info.publishedDate.flatMap(OpenLibrary.year), subjects: info.categories ?? [],
+                coverURL: cover.flatMap(URL.init(string:)), source: "googlebooks", fetchedAt: now, updatedAt: now)
         }
     }
 }
@@ -204,10 +216,10 @@ public enum CoverText {
 
     /// For SystemAI: a light job, on the device.
     public static let instructions = """
-    You read the text recognised on a photo of a book's cover and name the book. Answer in exactly two lines: \
-    "Title: <title>" and "Author: <author>". Leave out taglines, quotes, prizes, series names and publishers. \
-    If there is no author on the cover, write "Author: unknown".
-    """
+        You read the text recognised on a photo of a book's cover and name the book. Answer in exactly two lines: \
+        "Title: <title>" and "Author: <author>". Leave out taglines, quotes, prizes, series names and publishers. \
+        If there is no author on the cover, write "Author: unknown".
+        """
 
     public static func prompt(_ lines: [Line]) -> String {
         "Text on the cover, largest first:\n" + lines.sorted { $0.height > $1.height }.map(\.text).joined(separator: "\n")
@@ -229,8 +241,10 @@ public enum CoverText {
         return title.map { Guess(title: $0, author: author) }
     }
 
-    static let noise = ["bestsell", "new york times", "a novel", "winner", "author of", "prize", "praise", "edition", "copyright",
-                        "now a major", "the guardian", "the times", "magnificent", "brilliant", "extraordinary", "★", "translated"]
+    static let noise = [
+        "bestsell", "new york times", "a novel", "winner", "author of", "prize", "praise", "edition", "copyright",
+        "now a major", "the guardian", "the times", "magnificent", "brilliant", "extraordinary", "★", "translated",
+    ]
 
     /// The tallest lines are the title (a title over two lines joined), and the tallest remaining
     /// line shaped like a name is the author.

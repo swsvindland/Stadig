@@ -121,12 +121,14 @@ public struct Exercise: ExerciseTraits, Identifiable, Hashable, Codable, Sendabl
     public var cue: String
     public var custom: Bool
 
-    public init(id: String, name: String, aliases: [String] = [], kind: ExerciseKind = .strength, pattern: MovementPattern,
-                equipment: Equipment, apparatus: [Apparatus] = [], muscles: [MuscleShare], joints: [JointLoad],
-                fatigue: FatigueProfile, safetyTier: SafetyTier, strength: StrengthMapping? = nil, loadBasis: LoadBasis = .external,
-                unilateral: Bool = false, reps: RepDefaults, rest: RestDefaults, restRole: RestRole = .accessory,
-                mobilityTargets: [MobilityTarget] = [], timed: Bool = false, seconds: Int? = nil,
-                conditioning: ConditioningSpec? = nil, cue: String = "", custom: Bool = false) {
+    public init(
+        id: String, name: String, aliases: [String] = [], kind: ExerciseKind = .strength, pattern: MovementPattern,
+        equipment: Equipment, apparatus: [Apparatus] = [], muscles: [MuscleShare], joints: [JointLoad],
+        fatigue: FatigueProfile, safetyTier: SafetyTier, strength: StrengthMapping? = nil, loadBasis: LoadBasis = .external,
+        unilateral: Bool = false, reps: RepDefaults, rest: RestDefaults, restRole: RestRole = .accessory,
+        mobilityTargets: [MobilityTarget] = [], timed: Bool = false, seconds: Int? = nil,
+        conditioning: ConditioningSpec? = nil, cue: String = "", custom: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.aliases = aliases

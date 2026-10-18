@@ -77,18 +77,24 @@ struct PracticeRunner: PartRunner {
         switch exercise {
         case .listen:
             guard let sentence = nextSentence() else { return nil }
-            return .question(LanguageQuiz.sentence(sentence, language: language, kind: .learn, others: sentences, seed: seed,
-                                                   key: .practice(language, "sentences")))
+            return .question(
+                LanguageQuiz.sentence(
+                    sentence, language: language, kind: .learn, others: sentences, seed: seed,
+                    key: .practice(language, "sentences")))
         case .read:
             guard let sentence = nextSentence() else { return nil }
-            return .question(LanguageQuiz.read(sentence, help: Scaffolds.sentence(sentence, deck: deck, context), others: sentences,
-                                               kind: .learn, seed: seed))
+            return .question(
+                LanguageQuiz.read(
+                    sentence, help: Scaffolds.sentence(sentence, deck: deck, context), others: sentences,
+                    kind: .learn, seed: seed))
         case .picture:
             guard let word = nextWord(where: { Pictures.symbol(for: $0) != nil }), let symbol = Pictures.symbol(for: word) else { return nil }
             var rng = SeededRandom(seed, "pictures")
             let others = Array(Set(Pictures.symbols.values)).sorted().shuffled(using: &rng)
-            return .question(LanguageQuiz.picture(word, symbol: symbol, others: others, heard: turn % 2 == 0,
-                                                  help: Scaffolds.word(word, context), kind: .learn, seed: seed))
+            return .question(
+                LanguageQuiz.picture(
+                    word, symbol: symbol, others: others, heard: turn % 2 == 0,
+                    help: Scaffolds.word(word, context), kind: .learn, seed: seed))
         case .sayWord, .write:
             if exercise == .sayWord && muted { return nil }
             guard let word = nextWord(where: LanguageQuiz.producible) else { return nil }
@@ -99,8 +105,9 @@ struct PracticeRunner: PartRunner {
             return speak(LanguageQuiz.produce(sentence, deck: deck, mode: exercise == .sayBack ? .say : .write, kind: .learn, seed: seed))
         case .script:
             guard language.pack.script == .kanaKanji,
-                  let word = nextWord(where: { $0.hasKanji || $0.hasKatakana }),
-                  let question = LanguageQuiz.script(word, deck: deck, kind: .learn, seed: seed) else { return nil }
+                let word = nextWord(where: { $0.hasKanji || $0.hasKatakana }),
+                let question = LanguageQuiz.script(word, deck: deck, kind: .learn, seed: seed)
+            else { return nil }
             return .question(question)
         }
     }
@@ -148,22 +155,31 @@ struct PracticeRunner: PartRunner {
         switch line.speaker {
         case .them:
             let wrong = options.map(\.english)
-            return .question(.choosing(id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what did they say?",
-                                       prompt: .audio(line.text, language), correct: line.english, wrong: wrong.shuffled(using: &rng),
-                                       expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
+            return .question(
+                .choosing(
+                    id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what did they say?",
+                    prompt: .audio(line.text, language), correct: line.english, wrong: wrong.shuffled(using: &rng),
+                    expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
         case .you:
             if muted {
                 let wrong = options.filter { $0.speaker == .you }.map(\.text)
-                return .question(.choosing(id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what would you say?",
-                                           prompt: .text("“\(line.english)”"), correct: line.text, wrong: wrong.shuffled(using: &rng),
-                                           style: .foreign, expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
+                return .question(
+                    .choosing(
+                        id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what would you say?",
+                        prompt: .text("“\(line.english)”"), correct: line.text, wrong: wrong.shuffled(using: &rng),
+                        style: .foreign, expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
             }
-            let hint = dialogueSeen < 2 ? Scaffolds.line(line.text, reading: line.reading, language: language, seen: dialogueSeen,
-                                                         run.scaffolds(language)) : nil
-            return speak(SpeakingTask(id: id, key: dialogue.key, language: language, kind: .learn, instruction: "\(dialogue.title): your turn",
-                                      prompt: .text("“\(line.english)”"), hint: hint, expected: line.expected,
-                                      shape: .sentence(line.text, words: []), answer: line.text, meaning: line.english,
-                                      expectedSeconds: 10))
+            let hint =
+                dialogueSeen < 2
+                ? Scaffolds.line(
+                    line.text, reading: line.reading, language: language, seen: dialogueSeen,
+                    run.scaffolds(language)) : nil
+            return speak(
+                SpeakingTask(
+                    id: id, key: dialogue.key, language: language, kind: .learn, instruction: "\(dialogue.title): your turn",
+                    prompt: .text("“\(line.english)”"), hint: hint, expected: line.expected,
+                    shape: .sentence(line.text, words: []), answer: line.text, meaning: line.english,
+                    expectedSeconds: 10))
         }
     }
 }

@@ -15,8 +15,9 @@ public struct MealAIAvailability: Sendable, Equatable {
     var privateCloudVision: Bool
 
     public init(onDevice: Bool, onDeviceVision: Bool, privateCloud: Bool, reason: String?) {
-        self.init(onDevice: onDevice, onDeviceVision: onDeviceVision, privateCloud: privateCloud, privateCloudVision: privateCloud,
-                  reason: reason)
+        self.init(
+            onDevice: onDevice, onDeviceVision: onDeviceVision, privateCloud: privateCloud, privateCloudVision: privateCloud,
+            reason: reason)
     }
 
     init(onDevice: Bool, onDeviceVision: Bool, privateCloud: Bool, privateCloudVision: Bool, reason: String?) {
@@ -35,8 +36,9 @@ public struct MealAIAvailability: Sendable, Equatable {
     /// Safe to call on any OS version: before iOS 27 nothing is available.
     public static func current(allowCloud: Bool) -> MealAIAvailability {
         if #available(iOS 27.0, macOS 27.0, *) { return MealEngines.availability(allowCloud: allowCloud) }
-        return MealAIAvailability(onDevice: false, onDeviceVision: false, privateCloud: false,
-                                  reason: "Meal recognition needs iOS 27 with Apple Intelligence.")
+        return MealAIAvailability(
+            onDevice: false, onDeviceVision: false, privateCloud: false,
+            reason: "Meal recognition needs iOS 27 with Apple Intelligence.")
     }
 }
 
@@ -52,8 +54,10 @@ enum MealEngines {
 
     /// What to try after `engine` failed with `error`: the other engine when it can do the same
     /// job, or for a photo the on-device model reading only the person's note. Nil to give up.
-    static func fallback(after error: MealAIError, from engine: MealEngine, photo: Bool, hasNote: Bool,
-                         in state: MealAIAvailability) -> (engine: MealEngine, photo: Bool)? {
+    static func fallback(
+        after error: MealAIError, from engine: MealEngine, photo: Bool, hasNote: Bool,
+        in state: MealAIAvailability
+    ) -> (engine: MealEngine, photo: Bool)? {
         switch engine {
         case .privateCloud:
             // The device model may still answer what the cloud couldn't: a description, or a photo's note.
@@ -93,18 +97,21 @@ enum MealEngines {
             deviceReason = "Apple Intelligence isn't available right now."
         }
         let vision = device && model.capabilities.contains(.vision)
-        var cloud = false, cloudVision = false
+        var cloud = false
+        var cloudVision = false
         if allowCloud {
             let pcc = PrivateCloudComputeLanguageModel()
             cloud = pcc.isAvailable && !pcc.quotaUsage.isLimitReached
             cloudVision = cloud && pcc.capabilities.contains(.vision)
         }
-        var state = MealAIAvailability(onDevice: device, onDeviceVision: vision, privateCloud: cloud, privateCloudVision: cloudVision,
-                                       reason: nil)
+        var state = MealAIAvailability(
+            onDevice: device, onDeviceVision: vision, privateCloud: cloud, privateCloudVision: cloudVision,
+            reason: nil)
         if !state.descriptions {
             state.reason = deviceReason ?? "Apple Intelligence isn't available right now."
         } else if !state.photos {
-            state.reason = allowCloud
+            state.reason =
+                allowCloud
                 ? "Photo recognition isn't available on this device right now. Describe the meal instead."
                 : "This device's model can't read photos. Allow Private Cloud Compute to log meals from photos."
         }

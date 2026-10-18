@@ -1,5 +1,5 @@
-import SwiftUI
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Recurring declarations: "BJJ Tue/Thu evenings", "hot yoga Saturdays".
@@ -16,7 +16,9 @@ struct OutsideActivitiesEditor: View {
                 if !detail.isEmpty { Text(detail).foregroundStyle(.secondary) }
             }
             ForEach(recurring) { item in
-                Button { editing = item } label: {
+                Button {
+                    editing = item
+                } label: {
                     HStack {
                         Image(systemName: item.activity.symbol).font(.title3).frame(width: 32)
                         VStack(alignment: .leading) {
@@ -141,8 +143,10 @@ struct ActivityLogSheet: View {
                 }
                 Section { TextField("Note", text: $note, axis: .vertical) }
                 Section {
-                    Text("Counts against the same recovery budget as lifting, and toward \(type.statCredit.keys.map(\.label).sorted().joined(separator: " and ")).")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        "Counts against the same recovery budget as lifting, and toward \(type.statCredit.keys.map(\.label).sorted().joined(separator: " and "))."
+                    )
+                    .font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Log activity")
@@ -151,10 +155,13 @@ struct ActivityLogSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("logActivity.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let martial = type.isMartialArt ? MartialArtsDetails(classType: classType, sparringRounds: rounds, roundsBeforeGassed: gassed) : nil
+                        let martial =
+                            type.isMartialArt ? MartialArtsDetails(classType: classType, sparringRounds: rounds, roundsBeforeGassed: gassed) : nil
                         let source: ActivitySource = declared.map { .declared($0.id) } ?? .manual
-                        model.save(activity: ActivityLog(type: type, start: start, minutes: minutes, intensity: intensity, source: source,
-                                                         martialArts: martial, note: note))
+                        model.save(
+                            activity: ActivityLog(
+                                type: type, start: start, minutes: minutes, intensity: intensity, source: source,
+                                martialArts: martial, note: note))
                         dismiss()
                     }
                     .accessibilityIdentifier("logActivity.save")

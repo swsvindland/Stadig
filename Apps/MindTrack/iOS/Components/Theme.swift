@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 // Liquid Glass belongs to the controls that float over content. Content sits on quiet grouped

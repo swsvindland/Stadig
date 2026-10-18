@@ -57,11 +57,13 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         var genres: [String] = []
     }
 
-    public init(courses: [Domain: CourseMode] = [.japanese: .focus, .maths: .focus, .writing: .focus, .reading: .focus],
-                schedule: StudySchedule = StudySchedule(), onboardedAt: Date? = nil, readsKana: Bool? = nil,
-                mathsBackground: MathsBackground = .algebra, mathsStrands: [MathsStrand] = MathsStrand.allCases,
-                writingKinds: [WritingKind] = [.creative], genres: [Genre] = [], speaking: Bool = true, allowCloudAI: Bool = true,
-                autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date(), earlierSchedules: [EarlierSchedule] = []) {
+    public init(
+        courses: [Domain: CourseMode] = [.japanese: .focus, .maths: .focus, .writing: .focus, .reading: .focus],
+        schedule: StudySchedule = StudySchedule(), onboardedAt: Date? = nil, readsKana: Bool? = nil,
+        mathsBackground: MathsBackground = .algebra, mathsStrands: [MathsStrand] = MathsStrand.allCases,
+        writingKinds: [WritingKind] = [.creative], genres: [Genre] = [], speaking: Bool = true, allowCloudAI: Bool = true,
+        autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date(), earlierSchedules: [EarlierSchedule] = []
+    ) {
         id = Self.singletonID
         self.courses = courses
         self.schedule = schedule
@@ -104,7 +106,7 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, courses, domains, schedule, earlierSchedules, onboardedAt, readsKana, mathsBackground, mathsStrands, writingKinds, genres,
-             speaking, allowCloudAI, autoPrioritise, reminders, updatedAt
+            speaking, allowCloudAI, autoPrioritise, reminders, updatedAt
     }
 
     /// The values that parse, in order, and the raw ones that don't.
@@ -128,7 +130,8 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         } else {
             // Version 1 kept a plain list of subjects: every one was a full course. A repeat (from
             // a hand-edited backup) counts once.
-            let old = try c.decodeIfPresent([String].self, forKey: .domains)?.compactMap(Domain.init(rawValue:))
+            let old =
+                try c.decodeIfPresent([String].self, forKey: .domains)?.compactMap(Domain.init(rawValue:))
                 ?? [.japanese, .maths, .writing, .reading]
             courses = Dictionary(old.map { ($0, CourseMode.focus) }, uniquingKeysWith: { first, _ in first })
         }

@@ -1,5 +1,5 @@
-import SwiftUI
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// The plain, low-key check-in at the end of a deload: tape measurements, mobility tests and a
@@ -19,7 +19,9 @@ struct CheckInView: View {
         NavigationStack {
             Form {
                 Section {
-                    Button { measuring = true } label: {
+                    Button {
+                        measuring = true
+                    } label: {
                         if let last = model.measurements.last, last.day >= .today.adding(days: -7) {
                             Label("Measured \(Format.day(last.day))", systemImage: "checkmark.circle.fill")
                         } else {
@@ -40,7 +42,8 @@ struct CheckInView: View {
                         Text(test.instructions).font(.caption).foregroundStyle(.secondary)
                         switch test.measure {
                         case .quality:
-                            Picker("Result", selection: Binding(get: { Int(values[test] ?? -1) }, set: { values[test] = $0 < 0 ? nil : Double($0) })) {
+                            Picker("Result", selection: Binding(get: { Int(values[test] ?? -1) }, set: { values[test] = $0 < 0 ? nil : Double($0) }))
+                            {
                                 Text("—").tag(-1)
                                 ForEach(0..<4) { Text(MobilityTest.qualityLabels[$0]).tag($0) }
                             }
@@ -48,20 +51,29 @@ struct CheckInView: View {
                             HStack {
                                 Text(test.measure == .seconds ? "Held" : "Distance")
                                 Spacer()
-                                TextField("—", value: Binding(get: { values[test] }, set: { values[test] = $0 }),
-                                          format: .number.precision(.fractionLength(0...1)))
-                                    .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 80)
+                                TextField(
+                                    "—", value: Binding(get: { values[test] }, set: { values[test] = $0 }),
+                                    format: .number.precision(.fractionLength(0...1))
+                                )
+                                .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 80)
                                 Text(test.unit).foregroundStyle(.secondary)
                             }
                         }
-                        Toggle("It hurt", isOn: Binding(get: { painful.contains(test) }, set: { on in
-                            if on { painful.insert(test) } else { painful.remove(test) }
-                        }))
+                        Toggle(
+                            "It hurt",
+                            isOn: Binding(
+                                get: { painful.contains(test) },
+                                set: { on in
+                                    if on { painful.insert(test) } else { painful.remove(test) }
+                                }))
                         // Pain is kept with a result, so it needs one: what was managed, even none.
                         if painful.contains(test) && values[test] == nil {
-                            Text(test.measure == .quality ? "Pick what you managed (Can't counts) so the pain is recorded."
-                                                          : "Enter what you managed, even 0, so the pain is recorded.")
-                                .font(.caption).foregroundStyle(.orange)
+                            Text(
+                                test.measure == .quality
+                                    ? "Pick what you managed (Can't counts) so the pain is recorded."
+                                    : "Enter what you managed, even 0, so the pain is recorded."
+                            )
+                            .font(.caption).foregroundStyle(.orange)
                         }
                     }
                 }
@@ -82,11 +94,19 @@ struct CheckInView: View {
                         HStack {
                             Text(benchmark.measure == .floors ? "Floors" : "Metres")
                             Spacer()
-                            TextField("—", value: $benchmarkValue, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                            TextField("—", value: $benchmarkValue, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(
+                                width: 90)
                         }
                     }
                     // Shows exactly what Save will do.
-                    Toggle("Record it", isOn: Binding(get: { hasBenchmark }, set: { recordTime = $0; if !$0 { benchmarkValue = nil } }))
+                    Toggle(
+                        "Record it",
+                        isOn: Binding(
+                            get: { hasBenchmark },
+                            set: {
+                                recordTime = $0
+                                if !$0 { benchmarkValue = nil }
+                            }))
                 } header: {
                     Text("Conditioning benchmark")
                 } footer: {

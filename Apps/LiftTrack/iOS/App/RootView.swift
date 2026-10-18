@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 
 /// Today to train, Plan for the block, Progress for the stats, Body for physique.
 struct RootView: View {

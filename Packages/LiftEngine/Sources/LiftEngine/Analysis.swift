@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// Everything Lift Track knows, as plain values.
@@ -31,12 +31,14 @@ public struct LiftState: Sendable {
     public var recommendations: [Recommendation]
     public var today: Day
 
-    public init(profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
-                activities: [ActivityLog] = [], measurements: [BodyMeasurements] = [], mobility: [MobilityResult] = [],
-                benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
-                recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyweightDate: Date? = nil,
-                bodyFatPercent: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil,
-                recommendations: [Recommendation] = [], today: Day = .today) {
+    public init(
+        profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
+        activities: [ActivityLog] = [], measurements: [BodyMeasurements] = [], mobility: [MobilityResult] = [],
+        benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
+        recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyweightDate: Date? = nil,
+        bodyFatPercent: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil,
+        recommendations: [Recommendation] = [], today: Day = .today
+    ) {
         self.profile = profile
         self.settings = settings
         self.gym = gym
@@ -193,8 +195,9 @@ public enum Analyst {
         let bodyweight = state.effectiveBodyweight
         var traits: [String: any ExerciseTraits] = [:]
         for id in history.keys { traits[id] = state.catalog.resolve(id) }
-        let strength = StrengthEstimator.profile(history: history, exercises: traits, trust: trust, bodyweightKg: bodyweight,
-                                                 sex: state.profile.sex, today: today)
+        let strength = StrengthEstimator.profile(
+            history: history, exercises: traits, trust: trust, bodyweightKg: bodyweight,
+            sex: state.profile.sex, today: today)
 
         // Fatigue: lifting, conditioning and everything outside, with feedback and recovery.
         var events: [FatigueEvent] = sessions.map { session in
@@ -206,16 +209,20 @@ public enum Analyst {
         events += state.activities.map { FatigueEvent(day: $0.day, load: $0.fatigue) }
         // Steps: an aim from the usual count and the phase; long unlogged days on foot spend the budget.
         let stepAim = state.phaseStart.flatMap { anchor in
-            Steps.aim(days: state.steps, anchor: anchor, energy: state.phase.kind.energy, age: state.profile.age(on: today), today: today,
-                      exempt: state.illnessDays)
+            Steps.aim(
+                days: state.steps, anchor: anchor, energy: state.phase.kind.energy, age: state.profile.age(on: today), today: today,
+                exempt: state.illnessDays)
         }
         if let stepAim {
             let logged = Set(state.activities.map(\.day))
             let walking = ActivityType.walking.hourlyFatigue
             events += Steps.longDays(state.steps.filter { $0.day < today }, baseline: stepAim.baseline, skipping: logged).map { long in
                 let hours = Double(long.minutes) / 60
-                return FatigueEvent(day: long.day, load: FatigueLoad(systemic: walking.systemic * hours,
-                                                                     local: walking.local.mapValues { $0 * hours }))
+                return FatigueEvent(
+                    day: long.day,
+                    load: FatigueLoad(
+                        systemic: walking.systemic * hours,
+                        local: walking.local.mapValues { $0 * hours }))
             }
         }
         let lifeStress = LifeModes.lifeStress(in: DayRange(today.adding(days: -27), today), periods: state.lifeModes)
@@ -252,25 +259,32 @@ public enum Analyst {
         if let mesocycle {
             for slot in mesocycle.days.flatMap(\.strengthSlots) where !stalls.contains(where: { $0.exerciseID == slot.exerciseID }) {
                 let exercise = state.catalog.resolve(slot.exerciseID)
-                let context = ProgressionContext(exercise: exercise, increments: state.gym.increments(for: exercise.equipment), trust: trust,
-                                                 phase: phase.effects, bodyweightKg: bodyweight, history: history[exercise.id] ?? [])
-                if let stall = Stalls.detect(context, sets: slot.sets(week: 0), repRange: slot.repRange, today: today, phase: phase.effects,
-                                             beatUp: fatigue.action != .none) {
+                let context = ProgressionContext(
+                    exercise: exercise, increments: state.gym.increments(for: exercise.equipment), trust: trust,
+                    phase: phase.effects, bodyweightKg: bodyweight, history: history[exercise.id] ?? [])
+                if let stall = Stalls.detect(
+                    context, sets: slot.sets(week: 0), repRange: slot.repRange, today: today, phase: phase.effects,
+                    beatUp: fatigue.action != .none)
+                {
                     stalls.append(stall)
                 }
             }
         }
 
-        let physique = Physique.analyse(state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm,
-                                        weightKg: state.measuredBodyweight, measuredBodyFat: state.bodyFatPercent,
-                                        targets: state.settings.proportionTargets)
+        let physique = Physique.analyse(
+            state.measurements, sex: state.profile.sex, heightCm: state.profile.heightCm,
+            weightKg: state.measuredBodyweight, measuredBodyFat: state.bodyFatPercent,
+            targets: state.settings.proportionTargets)
         let agility = Agility.analyse(state.mobility)
-        let conditioningMinutes = Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
-            + Double(state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))
+        let conditioningMinutes =
+            Double(sessions.filter { $0.day > today.adding(days: -28) }.flatMap(\.conditioning).map(\.minutes).reduce(0, +))
+            + Double(
+                state.activities.filter { $0.day > today.adding(days: -28) && ($0.type.statCredit[.endurance] ?? 0) > 0 }.map(\.minutes).reduce(0, +))
         let hrrPoints = sessions.flatMap { session in session.sets.compactMap { set in set.heartRateDrop60.map { (day: session.day, drop: $0) } } }
-        let endurance = Endurance.analyse(vo2Max: state.vo2Max, restingHeartRate: state.restingHeartRate, benchmarks: state.benchmarks,
-                                          hrrTrend: HeartRateRecovery.trend(hrrPoints), weeklyConditioningMinutes: conditioningMinutes / 4,
-                                          sex: state.profile.sex, age: state.profile.age(on: today))
+        let endurance = Endurance.analyse(
+            vo2Max: state.vo2Max, restingHeartRate: state.restingHeartRate, benchmarks: state.benchmarks,
+            hrrTrend: HeartRateRecovery.trend(hrrPoints), weeklyConditioningMinutes: conditioningMinutes / 4,
+            sex: state.profile.sex, age: state.profile.age(on: today))
 
         // Discipline: the plan, not perfection.
         let adherence = adherenceItems(state, sessions: sessions, block: block, today: today)
@@ -302,10 +316,11 @@ public enum Analyst {
 
         let upcomingBlock = upcoming.map { BlockScheduler.reflow($0.block, vacations: vacations) }
         let calendar = BlockScheduler.calendar(blocks: [block, upcomingBlock].compactMap { $0 }, today: today)
-        var analysis = LiftAnalysis(trust: trust, history: history, strength: strength, stalls: stalls, fatigue: fatigue, discipline: discipline,
-                                    physique: physique, agility: agility, endurance: endurance, phase: phase, life: life, mesocycle: mesocycle,
-                                    block: block, upcoming: upcoming, suggestedDeload: suggestedDeload, next: next, assessment: assessment,
-                                    actions: [], quests: [], calendar: calendar, adherence: adherence)
+        var analysis = LiftAnalysis(
+            trust: trust, history: history, strength: strength, stalls: stalls, fatigue: fatigue, discipline: discipline,
+            physique: physique, agility: agility, endurance: endurance, phase: phase, life: life, mesocycle: mesocycle,
+            block: block, upcoming: upcoming, suggestedDeload: suggestedDeload, next: next, assessment: assessment,
+            actions: [], quests: [], calendar: calendar, adherence: adherence)
         analysis.heat = sessions.flatMap { $0.heat ?? [] }.sorted { $0.date < $1.date }
         analysis.steps = stepAim
         analysis.actions = actions(state, analysis)
@@ -328,8 +343,9 @@ public enum Analyst {
         if !scheduledToday {
             nextDay = (1...7).map { today.adding(days: $0) }.first { trainingDays.contains($0.weekday) }
         }
-        return NextSession(mesocycle: mesocycle, day: mesocycle.days[index], dayIndex: index, scheduledToday: scheduledToday,
-                           doneThisWeek: doneThisWeek, plannedThisWeek: profile.schedule.daysPerWeek, nextDay: nextDay)
+        return NextSession(
+            mesocycle: mesocycle, day: mesocycle.days[index], dayIndex: index, scheduledToday: scheduledToday,
+            doneThisWeek: doneThisWeek, plannedThisWeek: profile.schedule.daysPerWeek, nextDay: nextDay)
     }
 
     /// Planned sessions and declared classes, day by day. A missed session dents the average;
@@ -392,56 +408,74 @@ public enum Analyst {
                 action = "Recovery first: the next block swaps the costliest lifts before cutting any work."
             } else if let s = stall.suggestion, let load = s.loadKg {
                 let value = unit.fromKilograms(load)
-                action = "Next session, \(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit.symbol) for \(stall.suggestedSets)×\(s.targetReps)."
+                action =
+                    "Next session, \(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit.symbol) for \(stall.suggestedSets)×\(s.targetReps)."
             } else {
                 action = "Next session, add the smallest step and drop to the bottom of the rep range."
             }
-            list.append(NextAction(id: "stall-\(stall.exerciseID)", kind: .stall, stat: .strength, title: "\(exercise.name) has stalled",
-                                   detail: detail, action: action, priority: 5 + Double(stall.weeks) * 0.2))
+            list.append(
+                NextAction(
+                    id: "stall-\(stall.exerciseID)", kind: .stall, stat: .strength, title: "\(exercise.name) has stalled",
+                    detail: detail, action: action, priority: 5 + Double(stall.weeks) * 0.2))
         }
 
         if a.suggestedDeload != nil {
-            list.append(NextAction(id: "deload-early", kind: .deloadEarly, stat: .vitality, title: "Deload now",
-                                   detail: a.fatigue.signals.prefix(3).joined(separator: " "),
-                                   action: "Take this week as the deload: lighter and shorter, then a fresh block.", priority: 9))
+            list.append(
+                NextAction(
+                    id: "deload-early", kind: .deloadEarly, stat: .vitality, title: "Deload now",
+                    detail: a.fatigue.signals.prefix(3).joined(separator: " "),
+                    action: "Take this week as the deload: lighter and shorter, then a fresh block.", priority: 9))
         }
 
         if let block = a.block, let checkIn = block.checkInDay, block.week(of: today) == .deload {
             let days = today.days(until: checkIn)
-            list.append(NextAction(id: "check-in-\(checkIn.iso)", kind: .checkIn, stat: .agility, title: "Check-in \(days <= 0 ? "today" : "this week")",
-                                   detail: "Plain check-ins land at the end of the deload, when you're fresh.",
-                                   action: "Mobility tests, a \(state.settings.benchmark.label) and measurements.", priority: 7))
+            list.append(
+                NextAction(
+                    id: "check-in-\(checkIn.iso)", kind: .checkIn, stat: .agility, title: "Check-in \(days <= 0 ? "today" : "this week")",
+                    detail: "Plain check-ins land at the end of the deload, when you're fresh.",
+                    action: "Mobility tests, a \(state.settings.benchmark.label) and measurements.", priority: 7))
         } else if a.mesocycle?.block.kind == .assessment, state.mobility.isEmpty, let start = a.mesocycle?.block.start,
-                  start.days(until: today) >= 3 {
-            list.append(NextAction(id: "baseline-tests", kind: .checkIn, stat: .agility, title: "Baseline tests",
-                                   detail: "Five quick mobility tests set the starting point and choose your limiter.",
-                                   action: "Take the mobility tests after your next session (about 10 minutes).", priority: 6))
+            start.days(until: today) >= 3
+        {
+            list.append(
+                NextAction(
+                    id: "baseline-tests", kind: .checkIn, stat: .agility, title: "Baseline tests",
+                    detail: "Five quick mobility tests set the starting point and choose your limiter.",
+                    action: "Take the mobility tests after your next session (about 10 minutes).", priority: 6))
         }
 
         let lastMeasured = state.measurements.map(\.day).max()
         if a.mesocycle != nil, lastMeasured.map({ $0.days(until: today) > 35 }) ?? true {
-            list.append(NextAction(id: "measure", kind: .measure, stat: .physique, title: "Measurements due",
-                                   detail: lastMeasured == nil ? "No tape measurements yet." : "It's been over five weeks.",
-                                   action: "Shoulders, waist, arms and thighs: two minutes with a tape.", priority: 3))
+            list.append(
+                NextAction(
+                    id: "measure", kind: .measure, stat: .physique, title: "Measurements due",
+                    detail: lastMeasured == nil ? "No tape measurements yet." : "It's been over five weeks.",
+                    action: "Shoulders, waist, arms and thighs: two minutes with a tape.", priority: 3))
         }
 
         if !a.agility.seePhysio.isEmpty {
-            list.append(NextAction(id: "physio", kind: .physio, stat: .agility, title: "See a physio",
-                                   detail: "\(a.agility.seePhysio.map(\.label).joined(separator: ", ")) hurt or got worse.",
-                                   action: "Pain or worsening symptoms need a physio, not more stretching.", priority: 8))
+            list.append(
+                NextAction(
+                    id: "physio", kind: .physio, stat: .agility, title: "See a physio",
+                    detail: "\(a.agility.seePhysio.map(\.label).joined(separator: ", ")) hurt or got worse.",
+                    action: "Pain or worsening symptoms need a physio, not more stretching.", priority: 8))
         }
 
         if let band = a.discipline.band, band == .below, (a.discipline.rate ?? 1) < 0.7 {
-            list.append(NextAction(id: "smaller-plan", kind: .smallerPlan, stat: .discipline, title: "Make it easier to win",
-                                   detail: "You've done \(a.discipline.completed) of \(a.discipline.planned) planned sessions in four weeks.",
-                                   action: "Try \(max(2, state.profile.schedule.daysPerWeek - 1)) shorter sessions this week. Showing up is the target, not volume.",
-                                   priority: 6))
+            list.append(
+                NextAction(
+                    id: "smaller-plan", kind: .smallerPlan, stat: .discipline, title: "Make it easier to win",
+                    detail: "You've done \(a.discipline.completed) of \(a.discipline.planned) planned sessions in four weeks.",
+                    action: "Try \(max(2, state.profile.schedule.daysPerWeek - 1)) shorter sessions this week. Showing up is the target, not volume.",
+                    priority: 6))
         }
 
         if a.endurance.engineLagging, !state.settings.includeConditioning {
-            list.append(NextAction(id: "zone2", kind: .conditioning, stat: .endurance, title: "Build the engine",
-                                   detail: "Under an hour of easy cardio a week.",
-                                   action: "Add 20 minutes of Zone 2 on a free evening this week.", priority: 2))
+            list.append(
+                NextAction(
+                    id: "zone2", kind: .conditioning, stat: .endurance, title: "Build the engine",
+                    detail: "Under an hour of easy cardio a week.",
+                    action: "Add 20 minutes of Zone 2 on a free evening this week.", priority: 2))
         }
         return list.sorted { $0.priority > $1.priority }
     }
@@ -451,15 +485,19 @@ public enum Analyst {
         let today = state.today
         if let next = a.next, next.scheduledToday {
             for overflow in next.day.overflow {
-                list.append(Quest(id: "lift-\(today.iso)-\(overflow.kind.rawValue)", title: "\(overflow.title) this evening",
-                                  detail: "It didn't fit in today's session.", stat: overflow.stat, source: .liftTrack, minutes: overflow.minutes,
-                                  day: today, timeOfDay: .evening, priority: overflow.stat == .agility ? 2 : 1))
+                list.append(
+                    Quest(
+                        id: "lift-\(today.iso)-\(overflow.kind.rawValue)", title: "\(overflow.title) this evening",
+                        detail: "It didn't fit in today's session.", stat: overflow.stat, source: .liftTrack, minutes: overflow.minutes,
+                        day: today, timeOfDay: .evening, priority: overflow.stat == .agility ? 2 : 1))
             }
         }
         if let limiter = a.agility.limiter, !list.contains(where: { $0.stat == .agility }), a.next?.scheduledToday != true {
-            list.append(Quest(id: "lift-\(today.iso)-mobility", title: "10 min \(limiter.label.lowercased()) mobility",
-                              detail: "Your weakest mobility test.", stat: .agility, source: .liftTrack, minutes: 10, day: today,
-                              timeOfDay: .evening, priority: 1.5))
+            list.append(
+                Quest(
+                    id: "lift-\(today.iso)-mobility", title: "10 min \(limiter.label.lowercased()) mobility",
+                    detail: "Your weakest mobility test.", stat: .agility, source: .liftTrack, minutes: 10, day: today,
+                    timeOfDay: .evening, priority: 1.5))
         }
         if let walk = walkQuest(state, a) { list.append(walk) }
         return Quests.forDay(today, from: list)
@@ -471,15 +509,17 @@ public enum Analyst {
     static func walkQuest(_ state: LiftState, _ a: LiftAnalysis) -> Quest? {
         let today = state.today
         guard let steps = a.steps, steps.actionable, steps.onTrack == false, let recent = steps.recent, (steps.today ?? 0) < steps.aim,
-              a.next?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
-              !state.profile.recurring.contains(where: { $0.weekdays.contains(today.weekday) }),
-              !state.illnessDays.contains(today),
-              !a.life.injuries.contains(where: { $0.parts.contains { [.hip, .knee, .ankle].contains($0.joint) } }) else { return nil }
+            a.next?.scheduledToday != true, !state.sessions.contains(where: { $0.day == today }),
+            !state.profile.recurring.contains(where: { $0.weekdays.contains(today.weekday) }),
+            !state.illnessDays.contains(today),
+            !a.life.injuries.contains(where: { $0.parts.contains { [.hip, .knee, .ankle].contains($0.joint) } })
+        else { return nil }
         let minutes = clamp(Int((Double(steps.gap) / Double(Steps.perMinute) / 5).rounded()) * 5, 10, 40)
-        return Quest(id: "lift-\(today.iso)-walk", title: "\(minutes)-minute walk",
-                     detail: "Steps have averaged \(Steps.round(recent, to: 100).formatted()) a day over the last week; the aim is \(steps.aim.formatted()).",
-                     stat: .vitality, source: .liftTrack, minutes: minutes, day: today, timeOfDay: .evening,
-                     priority: steps.energy == .deficit ? 1.8 : 1.2)
+        return Quest(
+            id: "lift-\(today.iso)-walk", title: "\(minutes)-minute walk",
+            detail: "Steps have averaged \(Steps.round(recent, to: 100).formatted()) a day over the last week; the aim is \(steps.aim.formatted()).",
+            stat: .vitality, source: .liftTrack, minutes: minutes, day: today, timeOfDay: .evening,
+            priority: steps.energy == .deficit ? 1.8 : 1.2)
     }
 
     // MARK: Publishing
@@ -489,17 +529,25 @@ public enum Analyst {
         let today = state.today
         var stats: [StatReading] = []
         if let overall = a.strength.overall {
-            stats.append(StatReading(stat: .strength, score: overall, label: StrengthStandards.level(for: overall),
-                                     trend: strengthTrend(a, catalog: state.catalog)))
+            stats.append(
+                StatReading(
+                    stat: .strength, score: overall, label: StrengthStandards.level(for: overall),
+                    trend: strengthTrend(a, catalog: state.catalog)))
         }
         if let score = a.physique.score { stats.append(StatReading(stat: .physique, score: score, label: "Proportions", trend: .notEnoughData)) }
         if let score = a.endurance.score {
             let trend: Trajectory = a.endurance.benchmarkChange.map { $0 > 0.005 ? .onPace : ($0 < -0.01 ? .regressing : .stalled) } ?? .notEnoughData
             stats.append(StatReading(stat: .endurance, score: score, label: "Engine", trend: trend))
         }
-        if let score = a.agility.score { stats.append(StatReading(stat: .agility, score: score, label: a.agility.limiter.map { "Limiter: \($0.label)" } ?? "Mobile", trend: .notEnoughData)) }
+        if let score = a.agility.score {
+            stats.append(
+                StatReading(stat: .agility, score: score, label: a.agility.limiter.map { "Limiter: \($0.label)" } ?? "Mobile", trend: .notEnoughData))
+        }
         if let rate = a.discipline.rate {
-            stats.append(StatReading(stat: .discipline, score: (a.discipline.credit ?? 0) * 100, label: "Training \(Int((rate * 100).rounded()))%", trend: .notEnoughData))
+            stats.append(
+                StatReading(
+                    stat: .discipline, score: (a.discipline.credit ?? 0) * 100, label: "Training \(Int((rate * 100).rounded()))%",
+                    trend: .notEnoughData))
         }
         // Stamped with the day, not the moment, so an unchanged summary compares equal.
         stats = stats.map { reading in
@@ -513,22 +561,25 @@ public enum Analyst {
             var load = FatigueLoad.zero
             for set in session.sets { load = load + FatigueBudget.cost(of: set, exercise: state.catalog.resolve(set.exerciseID)) }
             let volume = session.workSets.map { $0.loadKg * Double($0.reps) }.reduce(0, +)
-            return SessionSummary(id: session.id, app: .liftTrack, kind: .strength, start: session.start, minutes: session.minutes,
-                                  metrics: ["sets": Double(session.workSets.count), "volumeKg": volume, "nutritionKnown": nutritionKnown ? 1 : 0],
-                                  fatigue: load, statCredit: [.strength: 1], planned: session.planned)
+            return SessionSummary(
+                id: session.id, app: .liftTrack, kind: .strength, start: session.start, minutes: session.minutes,
+                metrics: ["sets": Double(session.workSets.count), "volumeKg": volume, "nutritionKnown": nutritionKnown ? 1 : 0],
+                fatigue: load, statCredit: [.strength: 1], planned: session.planned)
         }
         shared += state.activities.filter { $0.day >= since }.map { log in
-            SessionSummary(id: log.id, app: .liftTrack, kind: .activity, activity: log.type, start: log.start, minutes: log.minutes,
-                           metrics: ["intensity": Double(log.intensity)], fatigue: log.fatigue, statCredit: log.statCredit, planned: false)
+            SessionSummary(
+                id: log.id, app: .liftTrack, kind: .activity, activity: log.type, start: log.start, minutes: log.minutes,
+                metrics: ["intensity": Double(log.intensity)], fatigue: log.fatigue, statCredit: log.statCredit, planned: false)
         }
         // Complete days only, so today's climbing count doesn't republish all day.
         let stepDays = state.steps.filter { $0.day >= today.adding(days: -56) && $0.day < today }.sorted { $0.day < $1.day }
         let steps = stepDays.isEmpty ? nil : StepSummary(days: stepDays, aim: a.steps?.aim, baseline: a.steps?.baseline)
-        return AppSummary(app: .liftTrack, stats: stats, sessions: shared.sorted { $0.start < $1.start }, quests: a.quests,
-                          strength: a.strength.categories.isEmpty ? nil : a.strength, fatigue: a.fatigue.status, discipline: a.discipline,
-                          measurements: a.physique.latest, physique: a.physique.latest == nil ? nil : a.physique.direction,
-                          mobility: Array(a.agility.latest.values), benchmarks: state.benchmarks.suffix(6),
-                          stalls: a.stalls, phaseUsed: a.phase, steps: steps)
+        return AppSummary(
+            app: .liftTrack, stats: stats, sessions: shared.sorted { $0.start < $1.start }, quests: a.quests,
+            strength: a.strength.categories.isEmpty ? nil : a.strength, fatigue: a.fatigue.status, discipline: a.discipline,
+            measurements: a.physique.latest, physique: a.physique.latest == nil ? nil : a.physique.direction,
+            mobility: Array(a.agility.latest.values), benchmarks: state.benchmarks.suffix(6),
+            stalls: a.stalls, phaseUsed: a.phase, steps: steps)
     }
 
     /// Each exercise's e1RM over its last eight sessions, by its own load basis: assisted lifts get

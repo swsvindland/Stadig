@@ -1,6 +1,6 @@
-import SwiftUI
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Home, the session in progress, or the summary of the one just finished.

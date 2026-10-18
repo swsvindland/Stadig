@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// Where the assessment stands, with the weekly "what we've learned" notes that make it feel like
@@ -29,8 +29,10 @@ public struct NextBlockDecision: Hashable, Sendable {
 }
 
 public enum Assessment {
-    public static func status(_ mesocycle: Mesocycle, sessions: [SessionRecord], trust: TrustState, strength: StrengthProfile,
-                              catalog: ExerciseCatalog, today: Day) -> AssessmentStatus {
+    public static func status(
+        _ mesocycle: Mesocycle, sessions: [SessionRecord], trust: TrustState, strength: StrengthProfile,
+        catalog: ExerciseCatalog, today: Day
+    ) -> AssessmentStatus {
         let block = mesocycle.block
         let week = max(1, min(block.loadingWeeks, block.start.days(until: today) / 7 + 1))
         let mine = sessions.filter { $0.mesocycleID == mesocycle.id }
@@ -50,33 +52,43 @@ public enum Assessment {
         }
         let scored = strength.categories
         if !scored.isEmpty {
-            let parts = scored.sorted { $0.score > $1.score }.prefix(3).map { "\($0.category.label.lowercased()) \(Int($0.score.rounded())) (\($0.level.lowercased()))" }
+            let parts = scored.sorted { $0.score > $1.score }.prefix(3).map {
+                "\($0.category.label.lowercased()) \(Int($0.score.rounded())) (\($0.level.lowercased()))"
+            }
             learned.append("Early strength read: \(parts.joined(separator: ", ")).")
         }
         if week >= 3, let first = strength.priorities.first { learned.append("Imbalance spotted: \(first.reason)") }
 
-        let complete = today > block.loadingEnd || (week >= block.loadingWeeks && found.count == exercises.count && mine.count >= 2 * mesocycle.days.count * (block.loadingWeeks - 1))
+        let complete =
+            today > block.loadingEnd
+            || (week >= block.loadingWeeks && found.count == exercises.count && mine.count >= 2 * mesocycle.days.count * (block.loadingWeeks - 1))
         let canFinishEarly = !complete && week >= 2 && trust.provenAccurate && found.count == exercises.count
         if canFinishEarly { learned.append("Your ratings have proven reliable, so you can finish the lifting assessment early.") }
-        return AssessmentStatus(week: week, totalWeeks: block.loadingWeeks, workingWeightsFound: found.count, exercisesTotal: exercises.count,
-                                scoredLifts: scored.count, learned: learned, complete: complete, canFinishEarly: canFinishEarly)
+        return AssessmentStatus(
+            week: week, totalWeeks: block.loadingWeeks, workingWeightsFound: found.count, exercisesTotal: exercises.count,
+            scoredLifts: scored.count, learned: learned, complete: complete, canFinishEarly: canFinishEarly)
     }
 
     /// After the assessment: a standard block when the phase is known (from Macro Track, or the
     /// person's one-tap answer); a neutral block while Macro Track is still deciding.
     public static func nextBlock(nutrition: NutritionSummary?, selfReported: SelfReportedPhase?) -> NextBlockDecision {
         if let phase = nutrition?.phase {
-            return NextBlockDecision(kind: .standard, phase: phase, reason: "Macro Track has set your phase: \(phase.kind.label.lowercased()).", askPhase: false)
+            return NextBlockDecision(
+                kind: .standard, phase: phase, reason: "Macro Track has set your phase: \(phase.kind.label.lowercased()).", askPhase: false)
         }
         if nutrition != nil {
-            return NextBlockDecision(kind: .neutral, phase: .assumedMaintenance,
-                                     reason: "Macro Track is still learning your maintenance, so this block is general strength and size that works in any phase. Volume adjusts at the next boundary.",
-                                     askPhase: false)
+            return NextBlockDecision(
+                kind: .neutral, phase: .assumedMaintenance,
+                reason:
+                    "Macro Track is still learning your maintenance, so this block is general strength and size that works in any phase. Volume adjusts at the next boundary.",
+                askPhase: false)
         }
         if let selfReported {
-            return NextBlockDecision(kind: .standard, phase: selfReported.phase,
-                                     reason: selfReported == .notSure ? "Phase not known, so maintenance is assumed." : "Planned for \(selfReported.label.lowercased()), as you said.",
-                                     askPhase: false)
+            return NextBlockDecision(
+                kind: .standard, phase: selfReported.phase,
+                reason: selfReported == .notSure
+                    ? "Phase not known, so maintenance is assumed." : "Planned for \(selfReported.label.lowercased()), as you said.",
+                askPhase: false)
         }
         return NextBlockDecision(kind: .standard, phase: .assumedMaintenance, reason: "Are you cutting, maintaining or bulking?", askPhase: true)
     }

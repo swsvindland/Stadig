@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 
 /// Something new, shown before it's asked.
 struct LessonView: View {

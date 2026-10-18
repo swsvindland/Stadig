@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 @Suite("Courses")
@@ -9,7 +10,8 @@ struct CourseTests {
 
     @Test("settings saved before courses read back with every subject as a Focus course and defaults for the rest")
     func oldSettings() throws {
-        let json = #"{"id":"00000000-0000-0000-0000-00000000317D","domains":["japanese","maths","reading"],"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"readsKana":true,"mathsBackground":"calculus","genres":["fantasy"],"autoPrioritise":true,"reminders":false,"updatedAt":0}"#
+        let json =
+            #"{"id":"00000000-0000-0000-0000-00000000317D","domains":["japanese","maths","reading"],"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"readsKana":true,"mathsBackground":"calculus","genres":["fantasy"],"autoPrioritise":true,"reminders":false,"updatedAt":0}"#
         let settings = try JSONDecoder().decode(MindSettings.self, from: Data(json.utf8))
         #expect(settings.courses == [.japanese: .focus, .maths: .focus, .reading: .focus])
         #expect(settings.schedule.daysPerWeek == 4 && settings.mathsBackground == .calculus)
@@ -44,10 +46,15 @@ struct CourseTests {
         memory.due = now
         let spanish = MemoryCard(key: .word(42, .spanish), memory: memory, introduced: now)
         store.cards[spanish.key] = spanish
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.japanese], planned: true,
-                                       ranToEnd: true)]
-        store.tests = [TestResult(test: .vocabulary, date: now, score: 300, language: .japanese),
-                       TestResult(test: .mathsPlacement, date: now, score: 4)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.japanese], planned: true,
+                ranToEnd: true)
+        ]
+        store.tests = [
+            TestResult(test: .vocabulary, date: now, score: 300, language: .japanese),
+            TestResult(test: .mathsPlacement, date: now, score: 4),
+        ]
         let state = store.state(on: monday.adding(days: 2))
         #expect(state.due(on: state.today).contains { $0.key == spanish.key }, "Maintenance reviews are due like any others")
         #expect(!state.needsPlacement(.spanish, catalogs: Catalogs()), "Maintenance courses never place")
@@ -79,8 +86,11 @@ struct CourseTests {
     func missingCatalog() {
         var store = Store(settings: Fixtures.settings([.spanish, .maths]))
         store.tests = [TestResult(test: .mathsPlacement, date: monday.date(), score: 4)]
-        store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: [.maths],
-                                       planned: true, ranToEnd: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: [.maths],
+                planned: true, ranToEnd: true)
+        ]
         let state = store.state(on: monday.adding(days: 1))
         #expect(!state.needsPlacement(.spanish, catalogs: Catalogs()))
         let plan = SessionPlanner.plan(.regular, domains: [.spanish], state: state, catalogs: Catalogs())
@@ -91,7 +101,8 @@ struct CourseTests {
 extension CourseTests {
     @Test("settings from a newer version decode: unknown courses, strands, kinds and genres are kept aside and written back")
     func newerSettings() throws {
-        let json = #"{"id":"00000000-0000-0000-0000-00000000317D","courses":{"japanese":"focus","piano":"focus","maths":"paused","reading":"maintenance"},"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"mathsStrands":["numeracy","geometry","classic"],"writingKinds":["poetry","practical"],"genres":["fantasy","romance"],"updatedAt":0}"#
+        let json =
+            #"{"id":"00000000-0000-0000-0000-00000000317D","courses":{"japanese":"focus","piano":"focus","maths":"paused","reading":"maintenance"},"schedule":{"daysPerWeek":4,"minutes":25,"preferredDays":[]},"mathsStrands":["numeracy","geometry","classic"],"writingKinds":["poetry","practical"],"genres":["fantasy","romance"],"updatedAt":0}"#
         let settings = try JSONDecoder().decode(MindSettings.self, from: Data(json.utf8))
         #expect(settings.courses == [.japanese: .focus, .reading: .maintenance])
         #expect(settings.mathsStrands == [.numeracy, .classic] && settings.writingKinds == [.practical] && settings.genres == [.fantasy])
@@ -118,8 +129,9 @@ extension CourseTests {
 
     @Test("a session from a newer version keeps the courses this version knows")
     func newerSession() throws {
-        let session = StudySession(purpose: .regular, start: monday.date(), end: monday.date() + 1500, plannedMinutes: 25, domains: [.japanese, .maths],
-                                   planned: true, activeSeconds: 1500, ranToEnd: true, updatedAt: monday.date())
+        let session = StudySession(
+            purpose: .regular, start: monday.date(), end: monday.date() + 1500, plannedMinutes: 25, domains: [.japanese, .maths],
+            planned: true, activeSeconds: 1500, ranToEnd: true, updatedAt: monday.date())
         var object = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(session)) as? [String: Any])
         #expect(try JSONDecoder().decode(StudySession.self, from: JSONEncoder().encode(session)) == session)
         object["domains"] = ["japanese", "piano", "maths"]

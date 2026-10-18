@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 @Suite("Swaps and one-tap fixes")
@@ -55,8 +56,9 @@ struct FixTests {
 
     @Test("the swap for a report's source reads its name and the entry it was last logged as")
     func swapForSource() {
-        let entry = FoodEntry(date: Date(timeIntervalSince1970: 1_773_000_000), name: "Pastrami", foodID: "x", amountLabel: "2 slices",
-                              nutrients: Self.food(147, protein: 22, sugar: 0), processing: .ultraProcessed, source: .search)
+        let entry = FoodEntry(
+            date: Date(timeIntervalSince1970: 1_773_000_000), name: "Pastrami", foodID: "x", amountLabel: "2 slices",
+            nutrients: Self.food(147, protein: 22, sugar: 0), processing: .ultraProcessed, source: .search)
         let source = QualityReport.Source(name: "Pastrami", foodID: "x", kcal: 147, share: 0.1, entry: entry)
         #expect(QualitySwap.advice(for: source) == Self.meat)
     }

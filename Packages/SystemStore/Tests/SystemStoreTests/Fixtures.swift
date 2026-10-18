@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import SystemStore
 
 /// A record at schema version 2. Version 1 called the lift's name `title` and had no `notes`.
@@ -37,9 +38,10 @@ func payload(_ lift: Lift) throws -> Data {
 
 /// The v1 shape of a lift, as an older app version stored it.
 func v1Payload(id: UUID, title: String, reps: Int, updatedAt: Date) throws -> Data {
-    try JSONSerialization.data(withJSONObject: [
-        "id": id.uuidString, "title": title, "reps": reps, "updatedAt": updatedAt.wholeMilliseconds,
-    ] as [String: Any])
+    try JSONSerialization.data(
+        withJSONObject: [
+            "id": id.uuidString, "title": title, "reps": reps, "updatedAt": updatedAt.wholeMilliseconds,
+        ] as [String: Any])
 }
 
 func temporaryDirectory() -> URL {

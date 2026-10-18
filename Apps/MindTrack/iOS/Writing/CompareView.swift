@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Two pieces, unlabelled and in random order: which is stronger? The AI judges the same pair
@@ -15,8 +15,10 @@ struct CompareView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Which is stronger?").font(.title.bold())
-                    Text("\(pair.prompt) Both are yours, written at least five weeks apart. Neither is labelled, and the order is random. Judge the writing, not which you remember.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text(
+                        "\(pair.prompt) Both are yours, written at least five weeks apart. Neither is labelled, and the order is random. Judge the writing, not which you remember."
+                    )
+                    .font(.subheadline).foregroundStyle(.secondary)
                     let layout = sizeClass == .regular ? AnyLayout(HStackLayout(alignment: .top, spacing: 14)) : AnyLayout(VStackLayout(spacing: 14))
                     layout {
                         card("A", pair.first)

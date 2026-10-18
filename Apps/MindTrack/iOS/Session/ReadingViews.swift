@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// No book on the go: the ladder's three suggestions at the next tier, or a book of your own.
@@ -41,7 +41,8 @@ struct PickBookView: View {
     func intro(_ reading: ReadingSummary) -> String {
         guard let tested = reading.testedLevel else { return "Tier \(reading.targetTier), in the genres you like." }
         if reading.finished.isEmpty {
-            return "Tier \(reading.targetTier): just below the tier \(ReadingPlan.format(tested)) your reading test found, so it starts comfortably and climbs."
+            return
+                "Tier \(reading.targetTier): just below the tier \(ReadingPlan.format(tested)) your reading test found, so it starts comfortably and climbs."
         }
         return "Tier \(reading.targetTier), from your test and how your last books felt, in the genres you like."
     }
@@ -94,9 +95,12 @@ struct ReadingTimerView: View {
                                     .font(.system(size: 44, weight: .light).monospacedDigit())
                             }
                             .frame(width: 220, height: 220)
-                            Text(left > 0 ? (listening ? "Listen. The phone can go face down." : "Read. The phone can go face down.")
-                                 : "That's the block. Finish the page, or keep going if focus holds.")
-                                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            Text(
+                                left > 0
+                                    ? (listening ? "Listen. The phone can go face down." : "Read. The phone can go face down.")
+                                    : "That's the block. Finish the page, or keep going if focus holds."
+                            )
+                            .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }
                     }
                     if !listening {
@@ -176,21 +180,23 @@ struct ColourRating<Value: Hashable>: View {
 
 extension ColourRating where Value == BookFeel {
     init(selection: Binding<BookFeel?>) {
-        self.init(options: [
-            .init(value: .easy, label: BookFeel.easy.label, detail: "Breezed through it", color: .green),
-            .init(value: .right, label: BookFeel.right.label, detail: "A stretch, in a good way", color: .orange),
-            .init(value: .hard, label: BookFeel.hard.label, detail: "Hard going", color: .red),
-        ], selection: selection)
+        self.init(
+            options: [
+                .init(value: .easy, label: BookFeel.easy.label, detail: "Breezed through it", color: .green),
+                .init(value: .right, label: BookFeel.right.label, detail: "A stretch, in a good way", color: .orange),
+                .init(value: .hard, label: BookFeel.hard.label, detail: "Hard going", color: .red),
+            ], selection: selection)
     }
 }
 
 extension ColourRating where Value == ReadingFocus {
     init(selection: Binding<ReadingFocus?>) {
-        self.init(options: [
-            .init(value: .held, label: ReadingFocus.held.label, detail: "All the way through", color: .green),
-            .init(value: .drifted, label: ReadingFocus.drifted.label, detail: "Wandered near the end", color: .orange),
-            .init(value: .lost, label: ReadingFocus.lost.label, detail: "Couldn't settle", color: .red),
-        ], selection: selection)
+        self.init(
+            options: [
+                .init(value: .held, label: ReadingFocus.held.label, detail: "All the way through", color: .green),
+                .init(value: .drifted, label: ReadingFocus.drifted.label, detail: "Wandered near the end", color: .orange),
+                .init(value: .lost, label: ReadingFocus.lost.label, detail: "Couldn't settle", color: .red),
+            ], selection: selection)
     }
 }
 
@@ -250,7 +256,9 @@ struct PageSheet: View {
                     } header: {
                         Text("How did your focus hold?")
                     } footer: {
-                        Text("This sets the next block: longer while focus holds, the same when it drifts, shorter when it's lost. It's apart from how hard the book is.")
+                        Text(
+                            "This sets the next block: longer while focus holds, the same when it drifts, shorter when it's lost. It's apart from how hard the book is."
+                        )
                     }
                 }
                 if finished {
@@ -260,7 +268,9 @@ struct PageSheet: View {
                     } header: {
                         Text("How did it feel?")
                     } footer: {
-                        Text("Easy moves the next book up a tier and just right half a tier; a slog holds it. It also refines this book's level and yours.")
+                        Text(
+                            "Easy moves the next book up a tier and just right half a tier; a slog holds it. It also refines this book's level and yours."
+                        )
                     }
                 }
             }
@@ -295,8 +305,11 @@ struct ReflectView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(finished ? "What will you keep from it?" : "What happened, and what struck you?").font(.title2.bold())
-                    Text(finished ? "A few sentences about \(book.title) as a whole." : "Two or three sentences are plenty. Next time starts with them.")
-                        .foregroundStyle(.secondary)
+                    Text(
+                        finished
+                            ? "A few sentences about \(book.title) as a whole." : "Two or three sentences are plenty. Next time starts with them."
+                    )
+                    .foregroundStyle(.secondary)
                     TextEditor(text: $text)
                         .frame(minHeight: 160)
                         .padding(10)
@@ -378,8 +391,10 @@ struct BookEditor: View {
                     Picker("Format", selection: $format) { ForEach(BookFormat.allCases) { Text($0.label).tag($0) } }
                         .pickerStyle(.segmented)
                 } footer: {
-                    Text(format == .audiobook ? "Audiobooks count for understanding and taste, not reading stamina."
-                         : "Print and ebooks build reading stamina as well as level.")
+                    Text(
+                        format == .audiobook
+                            ? "Audiobooks count for understanding and taste, not reading stamina."
+                            : "Print and ebooks build reading stamina as well as level.")
                 }
                 if finishedBefore {
                     Section("How did it feel?") {
@@ -424,16 +439,22 @@ struct BookEditor: View {
     }
 
     var edited: Book {
-        var edited = book ?? Book(ladderID: draft?.ladderID, title: title, author: author, tier: tier, pages: pages, genres: [genre],
-                                  status: status, isbn: draft?.isbn)
+        var edited =
+            book
+            ?? Book(
+                ladderID: draft?.ladderID, title: title, author: author, tier: tier, pages: pages, genres: [genre],
+                status: status, isbn: draft?.isbn)
         edited.title = title
         edited.author = author
         edited.tier = tier
         edited.pages = pages
         edited.genres = [genre]
         edited.format = format
-        if setByHand { edited.tierConfidence = BookLevel.guessConfidence }
-        else if let draft, book == nil { edited.tierConfidence = draft.estimate.confidence }
+        if setByHand {
+            edited.tierConfidence = BookLevel.guessConfidence
+        } else if let draft, book == nil {
+            edited.tierConfidence = draft.estimate.confidence
+        }
         if edited.status == .readBefore {
             edited.feel = feel
             edited.page = edited.pages

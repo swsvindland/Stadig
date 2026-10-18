@@ -1,15 +1,19 @@
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodDatabase
 
 @Suite("Implausible packaged foods")
 struct PlausibilityTests {
     /// The id is the name and brand, so two brands' foods of one name stay two foods.
-    func off(_ name: String, _ basis: FoodBasis = .g, kcal: Double, p: Double, c: Double, f: Double, fiber: Double? = nil,
-             brand: String? = nil) -> Food {
-        Food(id: "off:\(name)|\(brand ?? "")", name: name, brand: brand, basis: basis,
-             nutrients: Nutrients(kcal: kcal, protein: p, carbs: c, fat: f, fiber: fiber), source: .off)
+    func off(
+        _ name: String, _ basis: FoodBasis = .g, kcal: Double, p: Double, c: Double, f: Double, fiber: Double? = nil,
+        brand: String? = nil
+    ) -> Food {
+        Food(
+            id: "off:\(name)|\(brand ?? "")", name: name, brand: brand, basis: basis,
+            nutrients: Nutrients(kcal: kcal, protein: p, carbs: c, fat: f, fiber: fiber), source: .off)
     }
 
     @Test("numbers that can't be right are caught")
@@ -41,11 +45,13 @@ struct PlausibilityTests {
         #expect(off("All-Bran", kcal: 260, p: 14, c: 74, f: 5, fiber: 29).isPlausible)
         #expect(off("Greek yogurt", kcal: 97, p: 9, c: 4, f: 5).isPlausible)
         // Curated and personal foods aren't second-guessed.
-        let vodka = Food(id: "usda:174832", name: "Alcoholic beverage, distilled, vodka, 80 proof", basis: .g,
-                         nutrients: Nutrients(kcal: 231, protein: 0, carbs: 0, fat: 0), source: .usda)
+        let vodka = Food(
+            id: "usda:174832", name: "Alcoholic beverage, distilled, vodka, 80 proof", basis: .g,
+            nutrients: Nutrients(kcal: 231, protein: 0, carbs: 0, fat: 0), source: .usda)
         #expect(vodka.isPlausible)
-        let own = Food(id: "custom:x", name: "Flat white", basis: .ml, nutrients: Nutrients(kcal: 400, protein: 20, carbs: 40, fat: 18),
-                       source: .custom)
+        let own = Food(
+            id: "custom:x", name: "Flat white", basis: .ml, nutrients: Nutrients(kcal: 400, protein: 20, carbs: 40, fat: 18),
+            source: .custom)
         #expect(own.isPlausible)
     }
 

@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Maths on Progress: each strand's level at its last test, and the strands over time. Only the
@@ -25,7 +25,8 @@ struct MathsProgress: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(level.measured.map { "\(level.strand.label): level \($0) of 10" } ?? "\(level.strand.label): not measured yet")
+                    .accessibilityLabel(
+                        level.measured.map { "\(level.strand.label): level \($0) of 10" } ?? "\(level.strand.label): not measured yet")
                 }
             }
             Text("Levels of 10 at the last test, the placement or a check-in. Numeracy counts speed as well as accuracy.")
@@ -55,7 +56,8 @@ struct MathsProgress: View {
                 LabeledContent("Next measured", value: "At the first check-in")
             } else {
                 ForEach(checks, id: \.0) { strand, test in
-                    LabeledContent(strand.label, value: "\(Format.percent(test.score)) right · \(Format.seconds(test.detail["seconds"] ?? 0)) a problem")
+                    LabeledContent(
+                        strand.label, value: "\(Format.percent(test.score)) right · \(Format.seconds(test.detail["seconds"] ?? 0)) a problem")
                 }
             }
         }

@@ -49,18 +49,22 @@ public enum Groceries {
                 count = n
                 unit = n == 1 ? buy.name : buy.plural
             }
-            return GroceryItem(id: ingredient.id, name: name, aisle: ingredient.aisle, grams: roundUp(entry.grams), count: count, unit: unit,
-                               size: size, liquid: ingredient.liquid, pantry: ingredient.pantry, uses: entry.uses)
+            return GroceryItem(
+                id: ingredient.id, name: name, aisle: ingredient.aisle, grams: roundUp(entry.grams), count: count, unit: unit,
+                size: size, liquid: ingredient.liquid, pantry: ingredient.pantry, uses: entry.uses)
         }
         let aisles = Aisle.allCases
         items.sort { a, b in
-            a.pantry != b.pantry ? !a.pantry
+            a.pantry != b.pantry
+                ? !a.pantry
                 : (a.aisle != b.aisle ? aisles.firstIndex(of: a.aisle)! < aisles.firstIndex(of: b.aisle)! : a.name < b.name)
         }
-        return items + spices(for: plan).map {
-            GroceryItem(id: "spice:\($0)", name: $0, aisle: .pantry, grams: 0, count: nil, unit: nil, size: nil, liquid: false, pantry: true,
-                        uses: [])
-        }
+        return items
+            + spices(for: plan).map {
+                GroceryItem(
+                    id: "spice:\($0)", name: $0, aisle: .pantry, grams: 0, count: nil, unit: nil, size: nil, liquid: false, pantry: true,
+                    uses: [])
+            }
     }
 
     /// The herbs, spices and aromatics the week's flavours use, with salt and pepper.

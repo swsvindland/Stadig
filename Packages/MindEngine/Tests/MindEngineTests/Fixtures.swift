@@ -1,5 +1,6 @@
 import Foundation
 import SystemCore
+
 @testable import MindEngine
 
 enum Fixtures {
@@ -8,25 +9,30 @@ enum Fixtures {
     static func deck(words count: Int = 3000, sentences: Int = 3000) -> LanguageDeck {
         let kinds = ["noun", "verb", "i-adjective"]
         let words = (1...count).map { i in
-            Word(id: 100_000 + i, rank: i, text: i % 3 == 0 ? "語\(i)" : "ご\(i)", kana: "ご\(i)", meaning: "meaning \(i)",
-                 pos: kinds[i % 3])
+            Word(
+                id: 100_000 + i, rank: i, text: i % 3 == 0 ? "語\(i)" : "ご\(i)", kana: "ご\(i)", meaning: "meaning \(i)",
+                pos: kinds[i % 3])
         }
         let list = (1...sentences).map { i -> Sentence in
             let ranks = [1 + i % 40, 1 + (i * 13) % 400, 1 + (i * 31) % max(1, min(count, i * 3))]
-            return Sentence(id: i, text: "文\(i)です。", english: "Sentence number \(i) in English.", level: ranks.max()!,
-                            words: ranks.map { 100_000 + $0 })
+            return Sentence(
+                id: i, text: "文\(i)です。", english: "Sentence number \(i) in English.", level: ranks.max()!,
+                words: ranks.map { 100_000 + $0 })
         }
         return LanguageDeck(words: words, sentences: list)
     }
 
     static let monday = Day(year: 2026, month: 3, day: 2)
 
-    static func settings(_ domains: [Domain] = [.japanese, .maths, .writing, .reading], maintenance: [Domain] = [], readsKana: Bool = true,
-                         days: Int = 5, background: MathsBackground = .algebra) -> MindSettings {
+    static func settings(
+        _ domains: [Domain] = [.japanese, .maths, .writing, .reading], maintenance: [Domain] = [], readsKana: Bool = true,
+        days: Int = 5, background: MathsBackground = .algebra
+    ) -> MindSettings {
         var courses = Dictionary(uniqueKeysWithValues: domains.map { ($0, CourseMode.focus) })
         for domain in maintenance { courses[domain] = .maintenance }
-        return MindSettings(courses: courses, schedule: StudySchedule(daysPerWeek: days), onboardedAt: monday.date(), readsKana: readsKana,
-                            mathsBackground: background, genres: [.fantasy, .sciFi])
+        return MindSettings(
+            courses: courses, schedule: StudySchedule(daysPerWeek: days), onboardedAt: monday.date(), readsKana: readsKana,
+            mathsBackground: background, genres: [.fantasy, .sciFi])
     }
 
     static func catalogs(_ deck: LanguageDeck) -> Catalogs { Catalogs(decks: [deck.language: deck]) }
@@ -160,9 +166,10 @@ struct Store {
     var calendar: SystemCalendar?
 
     func state(on day: Day, at hour: Double = 18) -> StudyState {
-        StudyState(settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
-                   pieces: pieces, comparisons: comparisons,
-                   lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600))
+        StudyState(
+            settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
+            pieces: pieces, comparisons: comparisons,
+            lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600))
     }
 
     mutating func save(_ run: StudyRun) {

@@ -70,7 +70,8 @@ enum SeenFoods {
         if let chain = Chain.find(in: description) ?? Chain.implied(by: description) {
             // The person's description can name the chain when the model didn't.
             if !foods.contains(where: { !$0.brand.isEmpty }),
-               let dish = foods.firstIndex(where: { wholeDish.matches($0.name) }) ?? (foods.count == 1 ? 0 : nil) {
+                let dish = foods.firstIndex(where: { wholeDish.matches($0.name) }) ?? (foods.count == 1 ? 0 : nil)
+            {
                 foods[dish].brand = chain.brand
             }
             foods = collapse(foods, chain: chain)
@@ -90,9 +91,10 @@ enum SeenFoods {
         func listed(_ food: SeenFood) -> Bool {
             let own = FoodText.nameWords(food.name).map(FoodText.stem)
             return wholeDish.matches(food.name) || named.allSatisfy(own.contains)
-                || (!parts.contains(food) && own.contains { word in
-                    named.contains { $0 == word || (word.count > 3 && $0.hasSuffix(word)) }
-                })
+                || (!parts.contains(food)
+                    && own.contains { word in
+                        named.contains { $0 == word || (word.count > 3 && $0.hasSuffix(word)) }
+                    })
         }
         guard !named.isEmpty, parts.count > 1, !foods.contains(where: listed) else { return foods }
         return [SeenFood(name: dish, brand: chain.brand, quantity: 1, unit: "serving", grams: nil)] + foods.filter { !parts.contains($0) }
@@ -106,7 +108,10 @@ enum SeenFoods {
         let said = FoodText.words(description).map(FoodText.stem)
         func mentioned(_ word: String) -> Bool {
             FoodText.forms(word).contains { form in
-                said.contains { FoodText.same($0, form) || FoodText.same(form, $0) || (min($0.count, form.count) >= 4 && ($0.hasPrefix(form) || form.hasPrefix($0))) }
+                said.contains {
+                    FoodText.same($0, form) || FoodText.same(form, $0)
+                        || (min($0.count, form.count) >= 4 && ($0.hasPrefix(form) || form.hasPrefix($0)))
+                }
             }
         }
         let foods = foods.map { food in
@@ -145,7 +150,8 @@ enum SeenFoods {
         // A whole dish, else the item the chain names ("a starbucks latte", not "fries from
         // mcdonalds"), else the first thing named.
         let via = Pattern(#"\b(?:from|at|by)\s+(?:"# + chain.pattern.regex.pattern + ")")
-        let at = find { wholeDish.matches($0) }
+        let at =
+            find { wholeDish.matches($0) }
             ?? find { chain.pattern.matches($0) && !via.matches($0) && !clean($0).isEmpty }
             ?? find { !clean($0).isEmpty }
         let start = at ?? 0
@@ -175,22 +181,26 @@ enum SeenFoods {
     private static let eggOrCheese = Pattern(#"^\s*(?:eggs?|cheese)\s*$"#)
 
     /// Words for a dish of several foods, which may be split into parts the description doesn't name.
-    private static let dishWords = Pattern(#"\b(?:pizza|burger|cheeseburger|sandwich|sub|burrito|taco|wrap|bowl|salad|quesadilla|"#
-        + #"hot ?dog|big mac|whopper|blt|club|panini|toastie|toast|omelett?e|breakfast|brunch|lunch|dinner|supper|meal|platter|combo|"#
-        + #"stir[- ]?fry|curry|stew|soup|casserole|bento|poke|fry[- ]up|smoothie|shake|parfait)s?\b"#)
+    private static let dishWords = Pattern(
+        #"\b(?:pizza|burger|cheeseburger|sandwich|sub|burrito|taco|wrap|bowl|salad|quesadilla|"#
+            + #"hot ?dog|big mac|whopper|blt|club|panini|toastie|toast|omelett?e|breakfast|brunch|lunch|dinner|supper|meal|platter|combo|"#
+            + #"stir[- ]?fry|curry|stew|soup|casserole|bento|poke|fry[- ]up|smoothie|shake|parfait)s?\b"#)
 
     static let wholeDish = Pattern(
         #"\b(?:pizza|burger|cheeseburger|sandwich|sub|burrito|taco|wrap|bowl|salad|quesadilla|hot ?dog|big mac|whopper)\b"#)
 
     /// Words that only ever describe what is on or in a dish: its toppings, fillings and sauces.
-    private static let toppingWords: Set<String> = Set(("bacon ham pepperoni salami sausage beef ground chicken turkey steak patty "
-        + "meatball meatballs mushroom mushrooms onion onions pepper peppers olive olives cheese mozzarella cheddar parmesan "
-        + "provolone american swiss lettuce tomato tomatoes pickle pickles jalapeno jalapenos pineapple spinach sauce marinara "
-        + "pizza bbq ketchup mustard mayo mayonnaise dressing guacamole guac salsa sour cream rice beans bean corn sliced diced "
-        + "chopped shredded grilled fried crispy fresh green red black white brown pinto refried banana bell hot mild spicy "
-        + "crumbled extra").split(separator: " ").map(String.init))
-    private static let toppingUnits: Set<String> = ["slice", "strip", "leaf", "leave", "tbsp", "tsp", "pinch", "dash", "sprinkle",
-                                                    "dollop", "drizzle", "pat"]
+    private static let toppingWords: Set<String> = Set(
+        ("bacon ham pepperoni salami sausage beef ground chicken turkey steak patty "
+            + "meatball meatballs mushroom mushrooms onion onions pepper peppers olive olives cheese mozzarella cheddar parmesan "
+            + "provolone american swiss lettuce tomato tomatoes pickle pickles jalapeno jalapenos pineapple spinach sauce marinara "
+            + "pizza bbq ketchup mustard mayo mayonnaise dressing guacamole guac salsa sour cream rice beans bean corn sliced diced "
+            + "chopped shredded grilled fried crispy fresh green red black white brown pinto refried banana bell hot mild spicy "
+            + "crumbled extra").split(separator: " ").map(String.init))
+    private static let toppingUnits: Set<String> = [
+        "slice", "strip", "leaf", "leave", "tbsp", "tsp", "pinch", "dash", "sprinkle",
+        "dollop", "drizzle", "pat",
+    ]
     private static let partWords = Pattern(#"\b(?:buns?|rolls?|bread|patty|patties|tortilla|crust|muffins?|biscuits?|eggs?|sauces?)\b"#)
 
     static func isTopping(_ name: String) -> Bool {
@@ -231,8 +241,10 @@ enum Chain {
 
     /// Menu items only one chain sells: a Big Mac is McDonald's whether or not anyone says so.
     static let signatures: [(Pattern, String)] = [
-        (#"\bbig ?macs?\b|\bquarter ?pounders?\b|\bmc ?nuggets?\b|\bmc ?muffins?\b|\bmc ?flurr(?:y|ies)\b|\bmc ?chickens?\b|\bmc ?griddles?\b|\bfilet-o-fish\b"#,
-         "McDonald's"),
+        (
+            #"\bbig ?macs?\b|\bquarter ?pounders?\b|\bmc ?nuggets?\b|\bmc ?muffins?\b|\bmc ?flurr(?:y|ies)\b|\bmc ?chickens?\b|\bmc ?griddles?\b|\bfilet-o-fish\b"#,
+            "McDonald's"
+        ),
         (#"\bwhoppers?\b"#, "Burger King"), (#"\bbaconators?\b"#, "Wendy's"), (#"\bcrunchwraps?\b|\bchalupas?\b"#, "Taco Bell"),
         (#"\bfrappuccinos?\b"#, "Starbucks"),
     ].map { (Pattern($0.0), $0.1) }

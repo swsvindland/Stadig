@@ -12,7 +12,8 @@ public struct PassageBank: Sendable {
 
     public static let standard: PassageBank = {
         guard let url = Bundle.module.url(forResource: "passages", withExtension: "json"),
-              let data = try? Data(contentsOf: url) else {
+            let data = try? Data(contentsOf: url)
+        else {
             mindLog.error("The reading test's passages are missing")
             return PassageBank(passages: [])
         }
@@ -204,9 +205,11 @@ struct ReadingTestRunner: PartRunner {
     static func questions(_ passage: Passage, seed: String) -> [Question] {
         var rng = SeededRandom("reading-test", passage.id, seed)
         return passage.questions.enumerated().map { index, item in
-            var question = Question.choosing(id: "reading.\(passage.id).\(index).\(seed)", key: CardKey("reading.passage.\(passage.id).\(index)"),
-                                             kind: .test, instruction: "About the passage", prompt: .text(item.prompt), correct: item.answer,
-                                             wrong: item.wrong, expectedSeconds: 20, rng: &rng).asTest(.readingTest)
+            var question = Question.choosing(
+                id: "reading.\(passage.id).\(index).\(seed)", key: CardKey("reading.passage.\(passage.id).\(index)"),
+                kind: .test, instruction: "About the passage", prompt: .text(item.prompt), correct: item.answer,
+                wrong: item.wrong, expectedSeconds: 20, rng: &rng
+            ).asTest(.readingTest)
             question.band = passage.tier
             return question
         }

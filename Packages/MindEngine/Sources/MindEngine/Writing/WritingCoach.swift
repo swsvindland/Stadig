@@ -8,24 +8,24 @@ public enum WritingCoach {
 
     public static func instructions(for exercise: WritingExercise) -> String {
         let rules = """
-        Never give a score, grade, mark, rating or percentage, and never sum up how good the piece is. British and American \
-        spelling are both fine. Write each note on its own line starting with "- ". No headings, no introduction, no summary.
-        """
+            Never give a score, grade, mark, rating or percentage, and never sum up how good the piece is. British and American \
+            spelling are both fine. Write each note on its own line starting with "- ". No headings, no introduction, no summary.
+            """
         if exercise == .franklinRewrite {
             return """
-            You coach writers using Benjamin Franklin's method: they read a passage, took brief notes, and later rewrote it from \
-            the notes alone. Compare the rewrite with the original. Give exactly two or three notes on what the original does \
-            that the rewrite doesn't (a word chosen, a sentence's shape, the order of ideas, a detail kept or lost), quoting \
-            both versions briefly, and say what to borrow next time. \(rules)
-            """
+                You coach writers using Benjamin Franklin's method: they read a passage, took brief notes, and later rewrote it from \
+                the notes alone. Compare the rewrite with the original. Give exactly two or three notes on what the original does \
+                that the rewrite doesn't (a word chosen, a sentence's shape, the order of ideas, a detail kept or lost), quoting \
+                both versions briefly, and say what to borrow next time. \(rules)
+                """
         }
         return """
-        You are a writing coach giving brief, specific notes on a short piece. Give exactly two or three fixes, the ones that \
-        would help most, drawn from: grammar and spelling, clarity (does each sentence make sense?), logical flow (does each \
-        part lead to the next?) and craft (concrete detail, sentence variety, pacing). For each fix, quote the words it's \
-        about, say what to change and why in one or two plain sentences, and show a better version where it helps. If the \
-        piece is strong, say what to try next rather than inventing errors. \(rules)
-        """
+            You are a writing coach giving brief, specific notes on a short piece. Give exactly two or three fixes, the ones that \
+            would help most, drawn from: grammar and spelling, clarity (does each sentence make sense?), logical flow (does each \
+            part lead to the next?) and craft (concrete detail, sentence variety, pacing). For each fix, quote the words it's \
+            about, say what to change and why in one or two plain sentences, and show a better version where it helps. If the \
+            piece is strong, say what to try next rather than inventing errors. \(rules)
+            """
     }
 
     /// The job: the task as it was set, the text it rewrote (or the original, for a Franklin
@@ -71,11 +71,11 @@ public enum WritingCoach {
     /// Weaknesses first, then the verdict: reading both before choosing makes the small model less
     /// likely to pick whichever came first.
     public static let comparisonInstructions = """
-    You judge writing blind. You'll see two short pieces, A and B, each with the task it was written for. Decide which is the \
-    stronger piece of writing for its task: clearer, better organised, more precise, and more vivid or persuasive as the task \
-    needs. Don't favour the longer one for its length, or the first one for coming first. Write one line naming piece A's main \
-    weakness, one line naming piece B's, then a last line that is exactly "Stronger: A" or "Stronger: B".
-    """
+        You judge writing blind. You'll see two short pieces, A and B, each with the task it was written for. Decide which is the \
+        stronger piece of writing for its task: clearer, better organised, more precise, and more vivid or persuasive as the task \
+        needs. Don't favour the longer one for its length, or the first one for coming first. Write one line naming piece A's main \
+        weakness, one line naming piece B's, then a last line that is exactly "Stronger: A" or "Stronger: B".
+        """
 
     /// The pair as the model sees it: in the order shown, or swapped. It's asked both ways, since
     /// models tend to favour one position.
@@ -104,9 +104,11 @@ public enum WritingCoach {
         let fromSwapped = swapped.map { 1 - $0 }
         let index: Int
         switch (shown, fromSwapped) {
-        case let (a?, b?): guard a == b else { return nil }; index = a
-        case let (a?, nil): index = a
-        case let (nil, b?): index = b
+        case (let a?, let b?):
+            guard a == b else { return nil }
+            index = a
+        case (let a?, nil): index = a
+        case (nil, let b?): index = b
         case (nil, nil): return nil
         }
         return (index == 0 ? pair.first : pair.second).id == pair.newer.id

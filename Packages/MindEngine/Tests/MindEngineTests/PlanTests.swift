@@ -1,7 +1,8 @@
 import Foundation
 import SQLite3
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 @Suite("Plans and the calendar")
@@ -43,15 +44,19 @@ struct PlanTests {
         #expect(phase(56) == .loading(week: 0, of: 5))
         #expect(StudyCalendar.checkInDue(on: monday.adding(days: 54), start: monday, calendar: nil, lifeModes: [], lastCheckIn: nil))
         #expect(!StudyCalendar.checkInDue(on: monday.adding(days: 50), start: monday, calendar: nil, lifeModes: [], lastCheckIn: nil))
-        #expect(StudyCalendar.checkInDue(on: monday.adding(days: 57), start: monday, calendar: nil, lifeModes: [], lastCheckIn: nil),
-                "missed at the end of the review week, it comes the next days")
-        #expect(!StudyCalendar.checkInDue(on: monday.adding(days: 57), start: monday, calendar: nil, lifeModes: [],
-                                          lastCheckIn: monday.adding(days: 55)))
+        #expect(
+            StudyCalendar.checkInDue(on: monday.adding(days: 57), start: monday, calendar: nil, lifeModes: [], lastCheckIn: nil),
+            "missed at the end of the review week, it comes the next days")
+        #expect(
+            !StudyCalendar.checkInDue(
+                on: monday.adding(days: 57), start: monday, calendar: nil, lifeModes: [],
+                lastCheckIn: monday.adding(days: 55)))
 
         // Lift Track's deload is the review week.
         let deload = DayRange(monday.adding(days: 20), monday.adding(days: 26))
-        let lift = SystemCalendar(currentBlock: DayRange(monday.adding(days: -15), monday.adding(days: 26)), deloads: [deload], checkIns: [deload.end],
-                                  publishedBy: .liftTrack)
+        let lift = SystemCalendar(
+            currentBlock: DayRange(monday.adding(days: -15), monday.adding(days: 26)), deloads: [deload], checkIns: [deload.end],
+            publishedBy: .liftTrack)
         #expect(phase(21, calendar: lift).isReview)
         #expect(phase(16, calendar: lift) == .loading(week: 4, of: 5))
 
@@ -65,15 +70,23 @@ struct PlanTests {
     @Test("crunch mode: nothing planned, a five-minute review offered, and the days left out of Discipline")
     func crunch() {
         var store = Store(settings: Fixtures.settings())
-        store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
-                                       planned: true, ranToEnd: true)]
-        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
-                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
-                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
+                planned: true, ranToEnd: true)
+        ]
+        store.tests = [
+            TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+            TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
+            TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
+        ]
         let word = deck.word(100_100)!
         store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 1, at: monday.date()), introduced: monday.date())
-        store.lifeModes = [LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 0)), start: monday.adding(days: 1),
-                                          end: monday.adding(days: 12), createdBy: .liftTrack)]
+        store.lifeModes = [
+            LifeModePeriod(
+                kind: .crunch(CrunchDials(minutesAvailable: 0)), start: monday.adding(days: 1),
+                end: monday.adding(days: 12), createdBy: .liftTrack)
+        ]
         let state = store.state(on: monday.adding(days: 8))
         #expect(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) == nil)
         let analysis = Analyst.analyse(state, catalogs: Fixtures.catalogs(deck))
@@ -93,8 +106,10 @@ struct PlanTests {
                 missed = true
                 continue
             }
-            store.sessions.append(StudySession(purpose: .regular, start: day.date().addingTimeInterval(64_800), end: day.date().addingTimeInterval(66_300),
-                                               plannedMinutes: 25, domains: [.japanese], planned: true, activeSeconds: 1500))
+            store.sessions.append(
+                StudySession(
+                    purpose: .regular, start: day.date().addingTimeInterval(64_800), end: day.date().addingTimeInterval(66_300),
+                    plannedMinutes: 25, domains: [.japanese], planned: true, activeSeconds: 1500))
         }
         let score = Analyst.discipline(store.state(on: today))
         #expect(score.planned - score.completed == 1)
@@ -104,12 +119,17 @@ struct PlanTests {
     @Test("review weeks plan practice and reading for pleasure, never new material")
     func reviewWeek() throws {
         var store = Store(settings: Fixtures.settings())
-        store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
-                                       planned: true, ranToEnd: true)]
-        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
-                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
-                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
-                       TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
+                planned: true, ranToEnd: true)
+        ]
+        store.tests = [
+            TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+            TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
+            TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
+            TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true),
+        ]
         for offset in 49...53 {
             let state = store.state(on: monday.adding(days: offset))
             guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { continue }
@@ -143,7 +163,8 @@ struct JapaneseMeasureTests {
     @Test("words known: each band's size times the share known, with lucky guesses taken out")
     func estimate() {
         // Knows the first 1,000 words, none after.
-        let knower = (0..<3).flatMap { attempts($0, right: 5, wrong: 0, skipped: 0) } + (3..<8).flatMap { attempts($0, right: 0, wrong: 0, skipped: 5) }
+        let knower =
+            (0..<3).flatMap { attempts($0, right: 5, wrong: 0, skipped: 0) } + (3..<8).flatMap { attempts($0, right: 0, wrong: 0, skipped: 5) }
         #expect(LanguageTests.estimate(knower).words == 1000)
         // A guesser who never says "don't know": one right in four is luck, and comes out.
         let guesser = (0..<8).flatMap { attempts($0, right: 1, wrong: 3, skipped: 0) }
@@ -209,7 +230,9 @@ struct MasteryTests {
             memory.due = now.addingTimeInterval(-86_400)
             store.cards[.topic(id)] = MemoryCard(key: .topic(id), memory: memory, introduced: now)
         }
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true)]
+        store.sessions = [
+            StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true)
+        ]
         store.tests = [TestResult(test: .mathsPlacement, date: now, score: 3)]
         for day in [monday.adding(days: 1), monday.adding(days: 3)] {
             let state = store.state(on: day)
@@ -219,7 +242,11 @@ struct MasteryTests {
             while case .question(let question) = run.step {
                 clock += 30
                 if question.key == .topic("linear-equations") && question.kind == .review {
-                    if let index = question.correctChoice { run.choose((index + 1) % question.choices.count, now: clock) } else { run.type("12345", now: clock) }
+                    if let index = question.correctChoice {
+                        run.choose((index + 1) % question.choices.count, now: clock)
+                    } else {
+                        run.type("12345", now: clock)
+                    }
                 } else if let index = question.correctChoice {
                     run.choose(index, now: clock)
                 } else if case .number(let value, _) = question.answer {
@@ -253,7 +280,9 @@ struct QuickReviewTests {
             memory.due = now
             store.cards[topic.key] = MemoryCard(key: topic.key, memory: memory, introduced: now)
         }
-        store.sessions = [StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true)]
+        store.sessions = [
+            StudySession(purpose: .placement, start: now, end: now, plannedMinutes: 25, domains: [.maths], planned: true, ranToEnd: true)
+        ]
         let plan = SessionPlanner.plan(.extra, domains: [], state: store.state(on: Fixtures.monday), catalogs: Catalogs(), minutes: 5)
         let part = try #require(plan.parts.first)
         #expect(plan.parts.count == 1 && part.kind == .reviews && part.minutes == 5, "\(plan.parts.map { ($0.kind, $0.minutes) })")
@@ -268,8 +297,10 @@ extension PlanTests {
         #expect(threeDays == [.monday, .wednesday, .friday])
         for offset in 0...37 where threeDays.contains(monday.adding(days: offset).weekday) {
             let day = monday.adding(days: offset)
-            store.sessions.append(StudySession(purpose: .regular, start: day.date().addingTimeInterval(64_800), end: day.date().addingTimeInterval(66_300),
-                                               plannedMinutes: 25, domains: [.japanese], planned: true, activeSeconds: 1500))
+            store.sessions.append(
+                StudySession(
+                    purpose: .regular, start: day.date().addingTimeInterval(64_800), end: day.date().addingTimeInterval(66_300),
+                    plannedMinutes: 25, domains: [.japanese], planned: true, activeSeconds: 1500))
         }
         // On a Wednesday, four days a week from now on.
         let change = monday.adding(days: 37)
@@ -373,12 +404,19 @@ extension JapaneseMeasureTests {
         // The reading test's own offset gives it a different sample from listening's.
         #expect(Set(first).intersection(catalog.sentences(levels: 1...500, limit: 24, skip: day + 11).map(\.id)).count <= 3)
 
-        let sentences = (1...count).map { i in Sentence(id: i * 7 + 1000, text: "Frase \(i).", english: "Sentence \(i).", level: 1 + i % 500, words: [1]) }
-        let memory = LanguageDeck(language: .spanish, words: [Word(id: 1, language: .spanish, rank: 1, text: "uno", kana: "uno", meaning: "one", pos: "number")],
-                                  sentences: sentences)
+        let sentences = (1...count).map { i in
+            Sentence(id: i * 7 + 1000, text: "Frase \(i).", english: "Sentence \(i).", level: 1 + i % 500, words: [1])
+        }
+        let memory = LanguageDeck(
+            language: .spanish, words: [Word(id: 1, language: .spanish, rank: 1, text: "uno", kana: "uno", meaning: "one", pos: "number")],
+            sentences: sentences)
         for skip in [0, day, day + 11] {
-            #expect(memory.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id) == catalog.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id))
-            #expect(memory.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id) == catalog.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id))
+            #expect(
+                memory.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id)
+                    == catalog.sentences(levels: 1...500, limit: 24, skip: skip).map(\.id))
+            #expect(
+                memory.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id)
+                    == catalog.sentences(levels: 100...200, limit: 10, skip: skip).map(\.id))
         }
     }
 
@@ -415,8 +453,11 @@ extension PlanTests {
         let reviews = (0..<40).map { i in
             Attempt(key: deck.word(100_500 + i)!.key, kind: .review, correct: Double(i) < recall * 40, seconds: 5, at: now - 3 * 86_400)
         }
-        store.sessions = [StudySession(purpose: .regular, start: now - 3 * 86_400, end: now - 3 * 86_400 + 1500, plannedMinutes: 25,
-                                       domains: [.japanese], planned: true, attempts: reviews, ranToEnd: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .regular, start: now - 3 * 86_400, end: now - 3 * 86_400 + 1500, plannedMinutes: 25,
+                domains: [.japanese], planned: true, attempts: reviews, ranToEnd: true)
+        ]
         store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 300, language: .japanese)]
         return store.state(on: today)
     }
@@ -436,20 +477,26 @@ extension PlanTests {
         #expect(piled.dueThisWeek == 210 && piled.count <= 4 && piled.reason?.contains("210 reviews") == true, "\(piled)")
 
         var notes: [String] = []
-        let learn = LanguageModule.learnPart(.japanese, minutes: 10, session: 25, state: paceState(due: 50, recall: 0.7),
-                                             catalogs: Fixtures.catalogs(deck), notes: &notes)
+        let learn = LanguageModule.learnPart(
+            .japanese, minutes: 10, session: 25, state: paceState(due: 50, recall: 0.7),
+            catalogs: Fixtures.catalogs(deck), notes: &notes)
         #expect(learn.items == slipping.count && notes.contains { $0.contains("70%") }, "\(learn) \(notes)")
     }
 
     @Test("Today's actions carry what they start: minutes of reviews, the missed session's domains, the episode's language")
     func actionCommands() {
         var store = Store(settings: Fixtures.settings())
-        store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
-                                       planned: true, ranToEnd: true)]
-        store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
-                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
-                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
-                       TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
+                planned: true, ranToEnd: true)
+        ]
+        store.tests = [
+            TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+            TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
+            TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
+            TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true),
+        ]
         for rank in 1...100 {
             let word = deck.word(100_000 + rank)!
             store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 1, at: monday.date()), introduced: monday.date())

@@ -56,9 +56,11 @@ public enum WritingSchedule {
 
     static func rewriteTask(_ notes: WritingPiece, minutes: Int, library: WritingLibrary) -> WritingTask? {
         guard let original = original(of: notes, library: library) else { return nil }
-        return WritingTask(id: "franklin-rewrite.\(notes.id)", exercise: .franklinRewrite, writingKind: notes.writingKind,
-                           instruction: "Rewrite the passage from your notes, in full sentences, as well as you can. Don't look it up: finding the words is the exercise. Then you'll see the original beside it.",
-                           source: original.text, sourceCredit: original.credit, notes: notes.notes, minutes: minutes, taskID: notes.taskID)
+        return WritingTask(
+            id: "franklin-rewrite.\(notes.id)", exercise: .franklinRewrite, writingKind: notes.writingKind,
+            instruction:
+                "Rewrite the passage from your notes, in full sentences, as well as you can. Don't look it up: finding the words is the exercise. Then you'll see the original beside it.",
+            source: original.text, sourceCredit: original.credit, notes: notes.notes, minutes: minutes, taskID: notes.taskID)
     }
 
     // MARK: What comes next
@@ -67,7 +69,8 @@ public enum WritingSchedule {
     /// exercise in the rotation.
     public static func task(_ state: StudyState, minutes: Int, library: WritingLibrary) -> WritingTask? {
         if let notes = franklinDue(state.pieces, today: state.today, library: library),
-           let task = rewriteTask(notes, minutes: minutes, library: library) {
+            let task = rewriteTask(notes, minutes: minutes, library: library)
+        {
             return task
         }
         return nextExercise(state, minutes: minutes, library: library)
@@ -128,30 +131,35 @@ public enum WritingSchedule {
         switch exercise {
         case .prompt, .argument:
             guard let prompt = fresh(library.prompts(exercise, kind), id: \.id, used: used, seed: exercise.rawValue) else { return nil }
-            return WritingTask(id: id, exercise: exercise, writingKind: kind, instruction: "\(prompt.text) \(length(minutes, exercise))",
-                               minutes: minutes, taskID: prompt.id)
+            return WritingTask(
+                id: id, exercise: exercise, writingKind: kind, instruction: "\(prompt.text) \(length(minutes, exercise))",
+                minutes: minutes, taskID: prompt.id)
         case .practical:
             guard let prompt = fresh(library.prompts(.practical, kind), id: \.id, used: used, seed: "practical"), let source = prompt.source
             else { return nil }
-            return WritingTask(id: id, exercise: .practical, writingKind: kind, instruction: prompt.text, source: source, minutes: minutes,
-                               taskID: prompt.id)
+            return WritingTask(
+                id: id, exercise: .practical, writingKind: kind, instruction: prompt.text, source: source, minutes: minutes,
+                taskID: prompt.id)
         case .sceneRewrite:
             let scenes = passages(.creative, state: state, library: library).flatMap { passage in
                 passage.twists.indices.map { (passage: passage, twist: $0) }
             }
             guard let scene = fresh(scenes, id: { "\($0.passage.id)#\($0.twist)" }, used: used, seed: "scene") else { return nil }
-            return WritingTask(id: id, exercise: .sceneRewrite, writingKind: kind,
-                               instruction: "\(scene.passage.twists[scene.twist]) \(length(minutes, .sceneRewrite))",
-                               source: scene.passage.text, sourceCredit: scene.passage.credit, minutes: minutes,
-                               taskID: "\(scene.passage.id)#\(scene.twist)")
+            return WritingTask(
+                id: id, exercise: .sceneRewrite, writingKind: kind,
+                instruction: "\(scene.passage.twists[scene.twist]) \(length(minutes, .sceneRewrite))",
+                source: scene.passage.text, sourceCredit: scene.passage.credit, minutes: minutes,
+                taskID: "\(scene.passage.id)#\(scene.twist)")
         case .franklinNotes:
             let pool = passages(kind, state: state, library: library)
             let reading = state.currentBook?.ladderID
             let ownBook = pool.filter { $0.book != nil && $0.book == reading && used[$0.id] == nil }
             guard let passage = ownBook.first ?? fresh(pool, id: \.id, used: used, seed: "franklin.\(kind.rawValue)") else { return nil }
-            return WritingTask(id: id, exercise: .franklinNotes, writingKind: kind,
-                               instruction: "Read the passage twice. Then jot brief notes: a few words for the point of each sentence, not the sentence itself. Next time you'll rewrite it from these notes alone and compare.",
-                               source: passage.text, sourceCredit: passage.credit, minutes: minutes, taskID: passage.id)
+            return WritingTask(
+                id: id, exercise: .franklinNotes, writingKind: kind,
+                instruction:
+                    "Read the passage twice. Then jot brief notes: a few words for the point of each sentence, not the sentence itself. Next time you'll rewrite it from these notes alone and compare.",
+                source: passage.text, sourceCredit: passage.credit, minutes: minutes, taskID: passage.id)
         case .benchmark:
             return benchmarkTask(state, library: library)
         case .franklinRewrite:
@@ -169,9 +177,11 @@ public enum WritingSchedule {
     public static func benchmarkTask(_ state: StudyState, library: WritingLibrary) -> WritingTask? {
         guard let prompt = benchmarkPrompt(state.settings, library: library) else { return nil }
         let minutes = prompt.minutes ?? 12
-        return WritingTask(id: "benchmark.\(state.today.iso)", exercise: .benchmark, writingKind: prompt.writingKind,
-                           instruction: "\(prompt.text) You have \(minutes) minutes. The same prompt comes back each term, so later pieces can be set beside this one.",
-                           minutes: minutes, taskID: prompt.id)
+        return WritingTask(
+            id: "benchmark.\(state.today.iso)", exercise: .benchmark, writingKind: prompt.writingKind,
+            instruction:
+                "\(prompt.text) You have \(minutes) minutes. The same prompt comes back each term, so later pieces can be set beside this one.",
+            minutes: minutes, taskID: prompt.id)
     }
 
     public static func lastBenchmark(_ pieces: [WritingPiece]) -> WritingPiece? { pieces.last { $0.exercise == .benchmark } }
@@ -198,8 +208,10 @@ public enum WritingSchedule {
     /// Older and newer pieces to set side by side at a check-in: the newest benchmark against the
     /// one a term before it, then recent pieces against one of the same exercise and kind from at
     /// least five weeks earlier. No pair twice, and no piece judged as the newer one twice.
-    public static func pairs(_ pieces: [WritingPiece], comparisons: [BlindComparison], today: Day,
-                             limit: Int = pairsPerCheckIn) -> [BlindPair] {
+    public static func pairs(
+        _ pieces: [WritingPiece], comparisons: [BlindComparison], today: Day,
+        limit: Int = pairsPerCheckIn
+    ) -> [BlindPair] {
         let eligible = comparable(pieces)
         let done = Set(comparisons.map { "\($0.older).\($0.newer)" })
         let judged = Set(comparisons.map(\.newer))
@@ -214,7 +226,8 @@ public enum WritingSchedule {
 
         let benchmarks = eligible.filter { $0.exercise == .benchmark }
         if let newest = benchmarks.last, !judged.contains(newest.id),
-           let previous = benchmarks.last(where: { $0.taskID == newest.taskID && $0.day.days(until: newest.day) >= pairGap }) {
+            let previous = benchmarks.last(where: { $0.taskID == newest.taskID && $0.day.days(until: newest.day) >= pairGap })
+        {
             add(previous, newest)
         }
         let recent = eligible.filter { $0.exercise != .benchmark && $0.day.days(until: today) <= pairGap && !judged.contains($0.id) }
@@ -232,7 +245,8 @@ public enum WritingSchedule {
     public static func pair(_ older: WritingPiece, _ newer: WritingPiece) -> BlindPair {
         var rng = SeededRandom("blind", older.id.uuidString, newer.id.uuidString)
         let newerFirst = rng.chance(0.5)
-        let prompt = older.taskID != nil && older.taskID == newer.taskID
+        let prompt =
+            older.taskID != nil && older.taskID == newer.taskID
             ? "Both were written for the same prompt. Which is the stronger piece of writing?"
             : "Two \(newer.exercise.plural), each with its task. Which is the stronger piece of writing?"
         return BlindPair(id: "\(older.id).\(newer.id)", first: newerFirst ? newer : older, second: newerFirst ? older : newer, prompt: prompt)

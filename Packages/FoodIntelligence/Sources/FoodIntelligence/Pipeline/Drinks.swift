@@ -1,13 +1,14 @@
-import Foundation
 import FoodDatabase
+import Foundation
 
 /// Drinks versus food, so a match of the wrong kind (rice for a flat white, a cappuccino powder for
 /// a cappuccino) is never taken as sure.
 enum Drinks {
-    private static let words: Set<String> = Set(("water coffee espresso latte cappuccino americano macchiato cortado mocha "
-        + "frappuccino tea chai matcha juice lemonade limeade soda cola coke pepsi sprite fanta beer lager ale wine cider cocktail "
-        + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull").split(separator: " ")
-        .map { FoodText.stem(String($0)) })
+    private static let words: Set<String> = Set(
+        ("water coffee espresso latte cappuccino americano macchiato cortado mocha "
+            + "frappuccino tea chai matcha juice lemonade limeade soda cola coke pepsi sprite fanta beer lager ale wine cider cocktail "
+            + "smoothie shake milkshake kombucha beverage beverages drink drinks milk gatorade powerade redbull").split(separator: " ")
+            .map { FoodText.stem(String($0)) })
     private static let phrases = Pattern(#"\b(?:flat white|hot chocolate|iced tea|soft drink|energy drink|red bull|sports drink)\b"#)
 
     /// A drink by its name: what its last word, the head noun, names ("chocolate milk", not
@@ -67,7 +68,9 @@ enum CoffeeDrinks {
         (#"\b2\s?%|\b(?:semi-skimmed|reduced fat|low-fat|lowfat)\b"#, "2% milk"),
     ].map { (Pattern($0.0), $0.1) }
 
-    private static let cupParts = Pattern(#"^(?:(?:whole|oat|almond|soy|coconut|skim|skimmed|nonfat|steamed|2%|semi-skimmed|low-fat|lowfat)\s+)*(?:milk|espresso|espresso shots?|shots? of espresso|coffee)$"#)
+    private static let cupParts = Pattern(
+        #"^(?:(?:whole|oat|almond|soy|coconut|skim|skimmed|nonfat|steamed|2%|semi-skimmed|low-fat|lowfat)\s+)*(?:milk|espresso|espresso shots?|shots? of espresso|coffee)$"#
+    )
     private static let cupWords: Set<String> = ["milk", "espresso", "coffee", "shot"]
     private static let larger = Pattern(#"\b(?:large|grande|venti|big|extra large)\b"#)
     private static let smaller = Pattern(#"\b(?:small|tall|short|mini)\b"#)
@@ -84,7 +87,8 @@ enum CoffeeDrinks {
     static func expand(_ foods: [SeenFood], description: String = "") -> [SeenFood] {
         let drinks = foods.filter { food in food.brand.isEmpty && recipes.contains { $0.0.matches(food.name) } }
         guard !drinks.isEmpty else { return foods }
-        let items = description.isEmpty
+        let items =
+            description.isEmpty
             ? [] : itemSeparators.splitKeepingMatches(FoodText.plain(description)).enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element)
         // The milk or espresso the model listed beside the drink is the drink's own, unless the
         // person ordered it as an item of its own: "a mocha and a glass of milk".
@@ -104,7 +108,8 @@ enum CoffeeDrinks {
             let size = poured.map { $0 / cup } ?? (larger.matches(said) ? 1.4 : smaller.matches(said) ? 0.75 : 1)
             let count = poured == nil ? food.quantity : 1
             // The drink's own name first ("soy cappuccino"), then its order, then the milk listed beside the only drink.
-            let milk = milks.first { $0.0.matches(food.name) }?.1
+            let milk =
+                milks.first { $0.0.matches(food.name) }?.1
                 ?? ([ordered] + added).lazy.compactMap { text in milks.first { $0.0.matches(text) }?.1 }.first
                 ?? (drinks.count == 1 ? milks.first { milk in inCup.contains { milk.0.matches($0.name) } }?.1 : nil)
                 ?? "whole milk"

@@ -79,10 +79,11 @@ public struct SystemData: Hashable, Sendable {
         for day in nutrition?.days ?? [] where day.logged {
             if let hit = day.proteinHit { hits[day.day] = hit }
         }
-        self.init(steps: steps, training: minutes.map { Point(day: $0.key, value: $0.value) },
-                  protein: food.compactMap { session in session.metrics["protein"].map { Point(day: session.day, value: $0) } },
-                  calories: food.compactMap { session in session.metrics["kcal"].map { Point(day: session.day, value: $0) } },
-                  proteinHits: hits)
+        self.init(
+            steps: steps, training: minutes.map { Point(day: $0.key, value: $0.value) },
+            protein: food.compactMap { session in session.metrics["protein"].map { Point(day: session.day, value: $0) } },
+            calories: food.compactMap { session in session.metrics["kcal"].map { Point(day: session.day, value: $0) } },
+            proteinHits: hits)
     }
 
     public var isEmpty: Bool { steps.isEmpty && training.isEmpty && protein.isEmpty && proteinHits.isEmpty }
@@ -109,7 +110,8 @@ public struct SystemData: Hashable, Sendable {
             case (false, false): table.restMissed += 1
             }
         }
-        let trainedDays = table.trainedHit + table.trainedMissed, restDays = table.restHit + table.restMissed
+        let trainedDays = table.trainedHit + table.trainedMissed
+        let restDays = table.restHit + table.restMissed
         return days.count >= 10 && trainedDays >= 3 && restDays >= 3 ? table : nil
     }
 }

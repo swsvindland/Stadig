@@ -66,8 +66,10 @@ public final class WorkoutMirror: NSObject {
 }
 
 extension WorkoutMirror: HKWorkoutSessionDelegate {
-    nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
-                                           from fromState: HKWorkoutSessionState, date: Date) {
+    nonisolated public func workoutSession(
+        _ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
+        from fromState: HKWorkoutSessionState, date: Date
+    ) {
         guard toState == .ended || toState == .stopped else { return }
         Task { @MainActor in self.detach(workoutSession) }
     }

@@ -36,10 +36,10 @@ public protocol PartRunner: Sendable {
     mutating func finish(_ run: inout StudyRun)
 }
 
-public extension PartRunner {
-    mutating func record(_ question: Question, correct: Bool, _ run: inout StudyRun) {}
-    mutating func respond(_ response: StepResponse, _ run: inout StudyRun) -> Bool { false }
-    mutating func finish(_ run: inout StudyRun) {}
+extension PartRunner {
+    public mutating func record(_ question: Question, correct: Bool, _ run: inout StudyRun) {}
+    public mutating func respond(_ response: StepResponse, _ run: inout StudyRun) -> Bool { false }
+    public mutating func finish(_ run: inout StudyRun) {}
 }
 
 /// A part with nothing to do (its catalog isn't installed, say).
@@ -111,12 +111,15 @@ extension Question {
 }
 
 /// Accuracy and time over a test's attempts, as a result.
-func accuracyResult(_ kind: TestKind, _ attempts: [Attempt], placement: Bool, language: Language? = nil, at date: Date,
-                    extra: [String: Double] = [:]) -> TestResult {
+func accuracyResult(
+    _ kind: TestKind, _ attempts: [Attempt], placement: Bool, language: Language? = nil, at date: Date,
+    extra: [String: Double] = [:]
+) -> TestResult {
     let right = attempts.filter(\.correct).count
     var detail = extra
     detail["seconds"] = attempts.map(\.seconds).reduce(0, +) / Double(max(1, attempts.count))
     detail["asked"] = Double(attempts.count)
-    return TestResult(test: kind, date: date, score: Double(right) / Double(max(1, attempts.count)), detail: detail,
-                      placement: placement, language: language)
+    return TestResult(
+        test: kind, date: date, score: Double(right) / Double(max(1, attempts.count)), detail: detail,
+        placement: placement, language: language)
 }

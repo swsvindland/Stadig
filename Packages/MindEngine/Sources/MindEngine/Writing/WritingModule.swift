@@ -18,22 +18,30 @@ enum WritingModule: SubjectModule {
         [PlanPart(kind: .placement, domain: .writing, minutes: 5, title: "Writing level", detail: "One item for each skill")]
     }
 
-    static func mainParts(_ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
-                          notes: inout [String]) -> [PlanPart] {
+    static func mainParts(
+        _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
+        notes: inout [String]
+    ) -> [PlanPart] {
         if kind == .review {
-            return [PlanPart(kind: .practice, domain: .writing, minutes: minutes, title: "Writing practice", detail: "Mixed items from what you've learned")]
+            return [
+                PlanPart(
+                    kind: .practice, domain: .writing, minutes: minutes, title: "Writing practice", detail: "Mixed items from what you've learned")
+            ]
         }
         let bank = catalogs.writing
         let franklinDue = WritingSchedule.franklinDue(state.pieces, today: state.today, library: bank.library)
         if WritingSchedule.lastBenchmark(state.pieces) == nil, franklinDue == nil,
-           let task = WritingSchedule.benchmarkTask(state, library: bank.library) {
+            let task = WritingSchedule.benchmarkTask(state, library: bank.library)
+        {
             notes.append("Writing starts with a benchmark piece: the same prompt comes back each term, so you can see how your writing changes.")
             return [benchmarkPart(task)]
         }
         let grammar = franklinDue == nil ? WritingPlan.next(state.cards, bank: bank) : nil
         if let skill = grammar, minutes >= 16 {
-            return [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "Next: \(skill.title)"),
-                    composePart(state, minutes: minutes - 5, bank: bank)]
+            return [
+                PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "Next: \(skill.title)"),
+                composePart(state, minutes: minutes - 5, bank: bank),
+            ]
         }
         if let skill = grammar, WritingSchedule.grammarTurn(state) {
             return [PlanPart(kind: .learn, domain: .writing, minutes: minutes, title: "Grammar", detail: "Next: \(skill.title)")]
@@ -44,13 +52,15 @@ enum WritingModule: SubjectModule {
     static func composePart(_ state: StudyState, minutes: Int, bank: WritingBank) -> PlanPart {
         let minutes = max(5, minutes)
         let task = WritingSchedule.task(state, minutes: minutes, library: bank.library)
-        return PlanPart(kind: .custom(compose), domain: .writing, minutes: minutes, title: "Writing",
-                        detail: task.map(WritingSchedule.detail) ?? "Grammar practice")
+        return PlanPart(
+            kind: .custom(compose), domain: .writing, minutes: minutes, title: "Writing",
+            detail: task.map(WritingSchedule.detail) ?? "Grammar practice")
     }
 
     static func benchmarkPart(_ task: WritingTask) -> PlanPart {
-        PlanPart(kind: .test(.writingBenchmark), domain: .writing, minutes: task.minutes, title: "Benchmark piece",
-                 detail: "\(task.minutes) minutes on the term's prompt")
+        PlanPart(
+            kind: .test(.writingBenchmark), domain: .writing, minutes: task.minutes, title: "Benchmark piece",
+            detail: "\(task.minutes) minutes on the term's prompt")
     }
 
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
@@ -64,9 +74,12 @@ enum WritingModule: SubjectModule {
         }
         let pairs = WritingSchedule.plannedPairs(state, benchmark: benchmark)
         if pairs > 0 {
-            parts.append(PlanPart(kind: .test(.blindComparison), domain: .writing, minutes: 3 * pairs, title: "Blind comparison",
-                                  detail: pairs == 1 ? "An older and a newer piece, unlabelled: which is stronger?"
-                                      : "\(pairs) pairs of older and newer pieces, unlabelled"))
+            parts.append(
+                PlanPart(
+                    kind: .test(.blindComparison), domain: .writing, minutes: 3 * pairs, title: "Blind comparison",
+                    detail: pairs == 1
+                        ? "An older and a newer piece, unlabelled: which is stronger?"
+                        : "\(pairs) pairs of older and newer pieces, unlabelled"))
         }
         return parts
     }

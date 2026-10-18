@@ -1,6 +1,6 @@
 import Foundation
-import WatchConnectivity
 import LiftEngine
+import WatchConnectivity
 
 /// The Watch side of WatchConnectivity. The phone keeps today's context in the application
 /// context; finished sessions go back both live (when the phone is reachable) and queued, and the

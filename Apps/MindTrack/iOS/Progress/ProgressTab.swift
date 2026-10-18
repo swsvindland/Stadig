@@ -1,6 +1,6 @@
 import Charts
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// The honest measures: tests at check-ins and finished books. Time spent and cards reviewed never
@@ -55,8 +55,10 @@ private struct StatCards: View {
                 }
                 .card()
             }
-            Text("Intelligence moves only on the check-in tests; Wisdom only on the reading test and finished books. Reviewing or reading for longer doesn't raise either.")
-                .font(.footnote).foregroundStyle(.secondary)
+            Text(
+                "Intelligence moves only on the check-in tests; Wisdom only on the reading test and finished books. Reviewing or reading for longer doesn't raise either."
+            )
+            .font(.footnote).foregroundStyle(.secondary)
         }
     }
 }

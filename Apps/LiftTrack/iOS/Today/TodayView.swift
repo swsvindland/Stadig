@@ -1,8 +1,8 @@
-import SwiftUI
 import Charts
 import ExerciseLibrary
 import HealthBridge
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Opens ready to train: today's session with every target, then Start. Around it, only what
@@ -69,9 +69,13 @@ struct TodayView: View {
                     .accessibilityIdentifier("today.add")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { model.showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
-                        .accessibilityIdentifier("today.settings")
+                    Button {
+                        model.showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("today.settings")
                 }
             }
             .refreshable { await model.refreshHealth() }
@@ -95,7 +99,9 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(live.plan.title).font(.title2.bold())
                 ProgressView(value: live.progress)
-                Button { model.showSession = true } label: {
+                Button {
+                    model.showSession = true
+                } label: {
                     Label("Resume session", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
                 .primaryAction()
@@ -124,7 +130,8 @@ struct TodayView: View {
                     Image(systemName: item.activity.symbol).font(.title3).frame(width: 32)
                     VStack(alignment: .leading) {
                         Text("\(item.activity.label) \(item.timeOfDay.label.lowercased())").font(.headline)
-                        Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.subheadline).foregroundStyle(.secondary)
+                        Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.subheadline).foregroundStyle(
+                            .secondary)
                     }
                     Spacer()
                     if !logged {
@@ -191,8 +198,10 @@ struct SessionCard: View {
                 Pill(text: "\(next.doneThisWeek) of \(next.plannedThisWeek) this week", color: .secondary)
             }
             if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
-                Text("Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                Text(
+                    "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along."
+                )
+                .font(.subheadline).foregroundStyle(.secondary)
             }
             if !life.trainingExpected {
                 Text("Nothing is expected today. If you train anyway, keep it easy.").font(.subheadline).foregroundStyle(.secondary)
@@ -256,7 +265,10 @@ struct SessionCard: View {
                 if let c = item.conditioning {
                     Text(c.summary)
                 } else if item.isStrength, let first = work.first {
-                    Text(first.loadKg == nil ? "\(work.count) × \(first.targetReps) · find weight" : "\(work.count) × \(Format.set(first, exercise: exercise, unit: model.gym.unit))")
+                    Text(
+                        first.loadKg == nil
+                            ? "\(work.count) × \(first.targetReps) · find weight"
+                            : "\(work.count) × \(Format.set(first, exercise: exercise, unit: model.gym.unit))")
                 } else if let seconds = item.seconds {
                     Text(Format.duration(seconds))
                 }
@@ -392,8 +404,10 @@ struct StepsCard: View {
                 Label("\(average) a day over the last week: on track", systemImage: "checkmark.circle.fill")
                     .font(.subheadline).foregroundStyle(.green)
             } else {
-                Label("\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill")
-                    .font(.subheadline).foregroundStyle(.orange)
+                Label(
+                    "\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill"
+                )
+                .font(.subheadline).foregroundStyle(.orange)
             }
         } else {
             Label("Too few days with your phone or Watch to judge the week yet", systemImage: "questionmark.circle")
@@ -411,11 +425,15 @@ struct StepsWaitingCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Steps", systemImage: "figure.walk").font(.headline)
             if connected {
-                Text("A daily aim comes once Health has a week of steps from your phone or Watch. It starts from your usual count, not a universal 10,000.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                Text(
+                    "A daily aim comes once Health has a week of steps from your phone or Watch. It starts from your usual count, not a universal 10,000."
+                )
+                .font(.subheadline).foregroundStyle(.secondary)
             } else {
-                Text("Lift Track sets a daily step aim from your usual count, read from Apple Health. Already connected? Turn on Steps for Lift Track in the Health app, under Profile → Apps.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                Text(
+                    "Lift Track sets a daily step aim from your usual count, read from Apple Health. Already connected? Turn on Steps for Lift Track in the Health app, under Profile → Apps."
+                )
+                .font(.subheadline).foregroundStyle(.secondary)
                 Button("Connect Apple Health", action: connect).secondaryAction().controlSize(.small)
             }
         }

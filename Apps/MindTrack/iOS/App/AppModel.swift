@@ -1,7 +1,7 @@
 import Foundation
-import Observation
-import OSLog
 import MindEngine
+import OSLog
+import Observation
 import SystemAI
 import SystemCore
 import SystemStore
@@ -111,7 +111,8 @@ final class AppModel {
         if memory {
             let scratch = URL.temporaryDirectory.appending(path: "MindTrack \(UUID().uuidString)", directoryHint: .isDirectory)
             let shared = SharedContainer(directory: scratch.appending(path: "Shared", directoryHint: .isDirectory))
-            self.init(store: store, shared: shared, drafts: WritingDrafts(folder: scratch.appending(path: "Writing drafts", directoryHint: .isDirectory)))
+            self.init(
+                store: store, shared: shared, drafts: WritingDrafts(folder: scratch.appending(path: "Writing drafts", directoryHint: .isDirectory)))
         } else {
             self.init(store: store, shared: SharedContainer(), drafts: WritingDrafts(folder: WritingDrafts.defaultFolder))
         }
@@ -189,12 +190,15 @@ final class AppModel {
         let calendar = shared.read(.calendar)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .knowledge }
         let lifeModes = syncLifeModes()
-        var systemData = SystemData(lift: shared.read(.summary(.liftTrack)), macro: shared.read(.summary(.macroTrack)), nutrition: shared.read(.nutrition))
+        var systemData = SystemData(
+            lift: shared.read(.summary(.liftTrack)), macro: shared.read(.summary(.macroTrack)), nutrition: shared.read(.nutrition))
         #if DEBUG
         if systemData.isEmpty, LaunchOptions.current.has("-seedSampleData") { systemData = SampleData.systemData(ending: today) }
         #endif
-        guard calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes
-            || systemData != catalogs.systemData else { return }
+        guard
+            calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes
+                || systemData != catalogs.systemData
+        else { return }
         self.calendar = calendar
         self.recommendations = recommendations
         self.lifeModes = lifeModes
@@ -227,9 +231,10 @@ final class AppModel {
     /// Everything the engine plans from, as of now.
     private func makeState() -> StudyState? {
         guard let settings else { return nil }
-        return StudyState(settings: settings, cards: cards, sessions: sessions, tests: tests, books: books, reflections: reflections,
-                          pieces: pieces, comparisons: comparisons, lifeModes: lifeModes, calendar: calendar, recommendations: recommendations,
-                          today: today, now: now())
+        return StudyState(
+            settings: settings, cards: cards, sessions: sessions, tests: tests, books: books, reflections: reflections,
+            pieces: pieces, comparisons: comparisons, lifeModes: lifeModes, calendar: calendar, recommendations: recommendations,
+            today: today, now: now())
     }
 
     func recompute() {
@@ -472,8 +477,10 @@ final class AppModel {
         let folder = URL.temporaryDirectory.appending(path: "Mind Track Export \(today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try MindExport.tables(sessions: sessions, cards: cards, tests: tests, books: books, reflections: reflections,
-                                     pieces: pieces, comparisons: comparisons).map { table in
+        return try MindExport.tables(
+            sessions: sessions, cards: cards, tests: tests, books: books, reflections: reflections,
+            pieces: pieces, comparisons: comparisons
+        ).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }
             let url = folder.appending(path: "\(table.name).csv")
@@ -520,15 +527,26 @@ final class AppModel {
                 switch run.step {
                 case .lesson: run.next(now: now)
                 case .question(let question):
-                    if run.feedback != nil { run.next(now: now); return }
+                    if run.feedback != nil {
+                        run.next(now: now)
+                        return
+                    }
                     let right = n % 3 != 2
-                    if let index = question.correctChoice { run.choose(right ? index : (index + 1) % question.choices.count, now: now) }
-                    else if case .number(let value, _) = question.answer { run.type(right ? value.description : "0", now: now) }
+                    if let index = question.correctChoice {
+                        run.choose(right ? index : (index + 1) % question.choices.count, now: now)
+                    } else if case .number(let value, _) = question.answer {
+                        run.type(right ? value.description : "0", now: now)
+                    }
                 case .pickBook(let options): if let first = options.first { run.pickBook(first, now: now) }
                 case .speak(let task):
-                    if run.feedback != nil { run.next(now: now); return }
+                    if run.feedback != nil {
+                        run.next(now: now)
+                        return
+                    }
                     let said = n % 3 != 2 ? task.answer : ""
-                    run.respond(task.mode == .say ? .spoken(transcript: said, seconds: 3) : .written(text: said.isEmpty ? "?" : said, source: .typed), now: now)
+                    run.respond(
+                        task.mode == .say ? .spoken(transcript: said, seconds: 3) : .written(text: said.isEmpty ? "?" : said, source: .typed),
+                        now: now)
                 case .passage(let passage): run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
                 default: break
                 }
@@ -537,8 +555,10 @@ final class AppModel {
     }
 
     /// For sample data: saves records straight to the store.
-    func seed(settings: MindSettings, cards: [MemoryCard], sessions: [StudySession], tests: [TestResult], books: [Book],
-              reflections: [Reflection], pieces: [WritingPiece] = []) {
+    func seed(
+        settings: MindSettings, cards: [MemoryCard], sessions: [StudySession], tests: [TestResult], books: [Book],
+        reflections: [Reflection], pieces: [WritingPiece] = []
+    ) {
         store.save(settings)
         store.save(cards)
         store.save(sessions)

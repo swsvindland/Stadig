@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Books: where you are, the one on the go, what the ladder suggests next, and what's been read.
@@ -19,7 +19,9 @@ struct ShelfView: View {
                 Section {
                     LevelRows(reading: reading)
                 } footer: {
-                    Text("Level comes from the reading test and how finished books felt. Focus comes from reading blocks on print and ebooks. Neither moves on time alone.")
+                    Text(
+                        "Level comes from the reading test and how finished books felt. Focus comes from reading blocks on print and ebooks. Neither moves on time alone."
+                    )
                 }
             }
             if let current = shelf.first(where: { $0.status == .reading }) {
@@ -27,8 +29,10 @@ struct ShelfView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(current.title).font(.headline)
                             .accessibilityIdentifier("shelf.current")
-                        Text([current.author, tierText(current), "page \(current.page) of \(current.pages)", current.format?.label.lowercased()]
-                            .compactMap { $0 }.joined(separator: " · ")).font(.subheadline).foregroundStyle(.secondary)
+                        Text(
+                            [current.author, tierText(current), "page \(current.page) of \(current.pages)", current.format?.label.lowercased()]
+                                .compactMap { $0 }.joined(separator: " · ")
+                        ).font(.subheadline).foregroundStyle(.secondary)
                     }
                     Button("Finished it", systemImage: "checkmark") { finishing = current }
                         .accessibilityIdentifier("shelf.finished")
@@ -39,8 +43,11 @@ struct ShelfView: View {
                 }
             }
             Section {
-                ForEach(ReadingPlan.suggestions(shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today,
-                                                ladder: model.catalogs.ladder)) { book in
+                ForEach(
+                    ReadingPlan.suggestions(
+                        shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today,
+                        ladder: model.catalogs.ladder)
+                ) { book in
                     Button {
                         model.start(book: book)
                     } label: {
@@ -210,7 +217,9 @@ struct SetAsideSheet: View {
                 } header: {
                     Text("How was it going?")
                 } footer: {
-                    Text("Set aside as a slog, the next book steps back a tier. Easy or just right, it's taste, not difficulty, and nothing changes. Either way it's fine to stop.")
+                    Text(
+                        "Set aside as a slog, the next book steps back a tier. Easy or just right, it's taste, not difficulty, and nothing changes. Either way it's fine to stop."
+                    )
                 }
             }
             .navigationTitle("Set it aside")

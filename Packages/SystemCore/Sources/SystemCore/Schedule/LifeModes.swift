@@ -26,8 +26,10 @@ public struct CrunchDials: Hashable, Codable, Sendable {
     /// Discipline is measured against the reduced plan unless the person exempts the period.
     public var exemptFromDiscipline: Bool
 
-    public init(minutesAvailable: Int = 20, equipment: EquipmentAccess = .hotelGym, food: FoodControl = .mixed,
-                exemptFromDiscipline: Bool = false) {
+    public init(
+        minutesAvailable: Int = 20, equipment: EquipmentAccess = .hotelGym, food: FoodControl = .mixed,
+        exemptFromDiscipline: Bool = false
+    ) {
         self.minutesAvailable = max(0, minutesAvailable)
         self.equipment = equipment
         self.food = food
@@ -215,8 +217,10 @@ public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
     /// everything written before deletes were shared.
     public var deletedAt: Date?
 
-    public init(id: UUID = UUID(), kind: LifeModeKind, start: Day, end: Day? = nil, createdBy: AppID, updatedAt: Date = Date(),
-                deletedAt: Date? = nil) {
+    public init(
+        id: UUID = UUID(), kind: LifeModeKind, start: Day, end: Day? = nil, createdBy: AppID, updatedAt: Date = Date(),
+        deletedAt: Date? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.start = start
@@ -292,7 +296,8 @@ public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
         var merged: [UUID: LifeModePeriod] = [:]
         for period in sources.joined() {
             if let existing = merged[period.id] {
-                let new = milliseconds(period.updatedAt), old = milliseconds(existing.updatedAt)
+                let new = milliseconds(period.updatedAt)
+                let old = milliseconds(existing.updatedAt)
                 guard new > old || (new == old && period.isDeleted && !existing.isDeleted) else { continue }
             }
             merged[period.id] = period
@@ -304,9 +309,9 @@ public struct LifeModePeriod: Hashable, Codable, Sendable, Identifiable {
     private static func milliseconds(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
 }
 
-public extension Array where Element == LifeModePeriod {
+extension Array where Element == LifeModePeriod {
     /// Without the tombstones: the periods that are in force, for the engines and the screens.
-    var live: [LifeModePeriod] { filter { !$0.isDeleted } }
+    public var live: [LifeModePeriod] { filter { !$0.isDeleted } }
 }
 
 /// An injury marked better, with the fraction of normal load affected lifts ramp back from.

@@ -1,5 +1,6 @@
-import Testing
 import SystemCore
+import Testing
+
 @testable import ExerciseLibrary
 
 @Suite("Library data")
@@ -16,7 +17,8 @@ struct LibraryDataTests {
         let allowed = Set("abcdefghijklmnopqrstuvwxyz0123456789-")
         for exercise in library {
             let id = exercise.id
-            #expect(!id.isEmpty && id.allSatisfy(allowed.contains) && !id.hasPrefix("-") && !id.hasSuffix("-")
+            #expect(
+                !id.isEmpty && id.allSatisfy(allowed.contains) && !id.hasPrefix("-") && !id.hasSuffix("-")
                     && !id.contains("--"), "\(id) is not kebab-case")
         }
     }
@@ -106,17 +108,23 @@ struct LibraryDataTests {
         for e in library where e.equipment.isMachine && e.id != "smith-rdl" {
             #expect(e.safetyTier == .safeToFail, "\(e.id) is a machine")
         }
-        for id in ["leg-press", "hack-squat", "db-curl", "db-lateral-raise", "standing-calf-raise", "cable-crunch",
-                   "push-up", "pull-up", "chin-up", "back-extension-45", "bodyweight-squat"] {
+        for id in [
+            "leg-press", "hack-squat", "db-curl", "db-lateral-raise", "standing-calf-raise", "cable-crunch",
+            "push-up", "pull-up", "chin-up", "back-extension-45", "bodyweight-squat",
+        ] {
             #expect(tier(id) == .safeToFail, "\(id)")
         }
-        for id in ["barbell-bench-press", "barbell-incline-bench-press", "barbell-back-squat", "front-squat", "box-squat",
-                   "pause-squat", "conventional-deadlift", "sumo-deadlift", "trap-bar-deadlift", "deficit-deadlift",
-                   "db-bench-press", "chest-dip", "barbell-hip-thrust", "db-bulgarian-split-squat"] {
+        for id in [
+            "barbell-bench-press", "barbell-incline-bench-press", "barbell-back-squat", "front-squat", "box-squat",
+            "pause-squat", "conventional-deadlift", "sumo-deadlift", "trap-bar-deadlift", "deficit-deadlift",
+            "db-bench-press", "chest-dip", "barbell-hip-thrust", "db-bulgarian-split-squat",
+        ] {
             #expect(tier(id) == .failWithSetup, "\(id)")
         }
-        for id in ["barbell-overhead-press", "barbell-row", "pendlay-row", "barbell-rdl", "good-morning",
-                   "db-overhead-extension", "kb-swing", "farmers-carry", "push-press"] {
+        for id in [
+            "barbell-overhead-press", "barbell-row", "pendlay-row", "barbell-rdl", "good-morning",
+            "db-overhead-extension", "kb-swing", "farmers-carry", "push-press",
+        ] {
             #expect(tier(id) == .neverToFailure, "\(id)")
         }
     }

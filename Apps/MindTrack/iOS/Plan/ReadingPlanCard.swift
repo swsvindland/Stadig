@@ -1,5 +1,5 @@
-import SwiftUI
 import MindEngine
+import SwiftUI
 import SystemCore
 
 /// Reading on the Plan tab: the tested level, focus, the next tier and block, and the book on the go.

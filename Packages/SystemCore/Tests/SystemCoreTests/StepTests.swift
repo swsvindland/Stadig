@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SystemCore
 
 @Suite("Steps")
@@ -60,8 +61,9 @@ struct StepTests {
         let busy = Steps.aim(days: days(anchor.adding(days: -28), today, 13_000), anchor: anchor, energy: .maintenance, age: 35, today: today)
         #expect(busy?.aim == 10_000 && busy?.actionable == false && busy?.reason.contains("bonus") == true)
         // Slipped by more than 1,000 a day: something to do, and it says so.
-        let slipped = Steps.aim(days: before + days(anchor, today.adding(days: -8), 9_000) + days(today.adding(days: -7), today, 7_000),
-                                anchor: anchor, energy: .maintenance, age: 35, today: today)
+        let slipped = Steps.aim(
+            days: before + days(anchor, today.adding(days: -8), 9_000) + days(today.adding(days: -7), today, 7_000),
+            anchor: anchor, energy: .maintenance, age: 35, today: today)
         #expect(slipped?.actionable == true && slipped?.onTrack == false && slipped?.gap == 2_000)
         #expect(slipped?.reason.contains("slipped") == true)
         // Below the floor: something to do while it builds.

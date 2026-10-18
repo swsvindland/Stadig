@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import NutritionEngine
 
 @Suite("Vitamins and minerals")
@@ -8,9 +9,10 @@ struct MicronutrientTests {
     let today = Day(year: 2026, month: 3, day: 10)
 
     func entry(_ day: Day, _ name: String, kcal: Double, fiber: Double? = nil, sodium: Double? = nil, micros: [String: Double]? = nil) -> FoodEntry {
-        FoodEntry(date: day.date().addingTimeInterval(12 * 3600), name: name, amountLabel: "1",
-                  nutrients: Nutrients(kcal: kcal, protein: 20, carbs: 30, fat: 10, fiber: fiber, sodium: sodium), micros: micros,
-                  source: .search)
+        FoodEntry(
+            date: day.date().addingTimeInterval(12 * 3600), name: name, amountLabel: "1",
+            nutrients: Nutrients(kcal: kcal, protein: 20, carbs: 30, fat: 10, fiber: fiber, sodium: sodium), micros: micros,
+            source: .search)
     }
 
     @Test("targets follow sex, age and calories")
@@ -30,9 +32,11 @@ struct MicronutrientTests {
     func lowIsFlagged() throws {
         let days = (1...5).map { today.adding(days: -$0) }
         let entries = days.flatMap { day in
-            [entry(day, "Pop-Tarts", kcal: 800, fiber: 2, sodium: 600, micros: ["potassium": 150, "calcium": 50]),
-             entry(day, "Protein shake", kcal: 600, fiber: 1, sodium: 300, micros: ["potassium": 400, "calcium": 500]),
-             entry(day, "Chicken and rice", kcal: 900, fiber: 3, sodium: 700, micros: ["potassium": 600, "calcium": 40])]
+            [
+                entry(day, "Pop-Tarts", kcal: 800, fiber: 2, sodium: 600, micros: ["potassium": 150, "calcium": 50]),
+                entry(day, "Protein shake", kcal: 600, fiber: 1, sodium: 300, micros: ["potassium": 400, "calcium": 500]),
+                entry(day, "Chicken and rice", kcal: 900, fiber: 3, sodium: 700, micros: ["potassium": 600, "calcium": 40]),
+            ]
         }
         let report = MicroAnalyst.report(entries: entries, complete: Set(days), profile: profile(), kcal: 2300, today: today)
         #expect(report.days.count == 5)
@@ -66,8 +70,11 @@ struct MicronutrientTests {
         let entries = days.flatMap { day in
             [entry(day, "Potato", kcal: 1000, micros: ["potassium": 1600]), entry(day, "Mystery bar", kcal: 1000)]
         }
-        let reading = try #require(MicroAnalyst.report(entries: entries, complete: Set(days), profile: profile(), kcal: 2000,
-                                                       today: today).reading("potassium"))
+        let reading = try #require(
+            MicroAnalyst.report(
+                entries: entries, complete: Set(days), profile: profile(), kcal: 2000,
+                today: today
+            ).reading("potassium"))
         #expect(reading.measured == 1600 && reading.coverage == 0.5 && reading.daily == 3200 && reading.status == .ok)
     }
 
@@ -84,8 +91,9 @@ struct MicronutrientTests {
     func needsDays() {
         let days = [today.adding(days: -1), today.adding(days: -2)]
         let entries = days.map { entry($0, "Pop-Tarts", kcal: 2000, fiber: 2, micros: ["potassium": 100]) }
-        let report = MicroAnalyst.report(entries: entries + [entry(today.adding(days: -3), "Half a day", kcal: 500, fiber: 0)],
-                                         complete: Set(days), profile: profile(), kcal: 2000, today: today)
+        let report = MicroAnalyst.report(
+            entries: entries + [entry(today.adding(days: -3), "Half a day", kcal: 500, fiber: 0)],
+            complete: Set(days), profile: profile(), kcal: 2000, today: today)
         #expect(report.days.count == 2 && report.flagged.isEmpty)
     }
 
@@ -93,8 +101,9 @@ struct MicronutrientTests {
     func inAnalysis() {
         let eater = SimulatedEater(maintenance: 2500, startKg: 80)
         let run = eater.run(days: 10) { _, _ in 2400 }
-        let state = MacroState(profile: profile(), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
-                               weighIns: run.weighIns, dayStatus: run.statuses, today: eater.start.adding(days: 10))
+        let state = MacroState(
+            profile: profile(), settings: MacroSettings(assessmentStart: eater.start), entries: run.entries,
+            weighIns: run.weighIns, dayStatus: run.statuses, today: eater.start.adding(days: 10))
         let a = MacroAnalyst.analyse(state)
         #expect(!a.micros.days.isEmpty)
         // The simulated foods list no vitamins: unknown, not low.

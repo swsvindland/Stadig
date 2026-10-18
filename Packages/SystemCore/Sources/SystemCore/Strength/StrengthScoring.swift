@@ -78,7 +78,8 @@ public enum StrengthStandards {
 
     /// The reference-lift 1RM that scores a given number, for goals like "reach intermediate".
     public static func oneRepMax(for score: Double, _ category: StrengthCategory, bodyweightKg: Double, sex: BiologicalSex) -> Double {
-        var lo = 0.0, hi = bodyweightKg * 5
+        var lo = 0.0
+        var hi = bodyweightKg * 5
         for _ in 0..<50 {
             let mid = (lo + hi) / 2
             if self.score(category, oneRepMaxKg: mid, bodyweightKg: bodyweightKg, sex: sex) < score { lo = mid } else { hi = mid }
@@ -154,7 +155,9 @@ public struct StrengthProfile: Hashable, Codable, Sendable {
     public var overall: Double?
 
     public init(categories: [CategoryScore], bodyweightKg: Double, sex: BiologicalSex) {
-        self.categories = categories.sorted { StrengthCategory.allCases.firstIndex(of: $0.category)! < StrengthCategory.allCases.firstIndex(of: $1.category)! }
+        self.categories = categories.sorted {
+            StrengthCategory.allCases.firstIndex(of: $0.category)! < StrengthCategory.allCases.firstIndex(of: $1.category)!
+        }
         self.bodyweightKg = bodyweightKg
         self.sex = sex
         overall = categories.isEmpty ? nil : categories.map(\.score).reduce(0, +) / Double(categories.count)
@@ -170,7 +173,8 @@ public struct StrengthProfile: Hashable, Codable, Sendable {
     /// The weakest lift relative to the rest, when it lags by a meaningful margin.
     public var weakest: CategoryScore? {
         guard let overall, categories.count >= 3, let low = categories.min(by: { $0.score < $1.score }),
-              overall - low.score >= 7 else { return nil }
+            overall - low.score >= 7
+        else { return nil }
         return low
     }
 
@@ -181,39 +185,55 @@ public struct StrengthProfile: Hashable, Codable, Sendable {
         let upper = [regionScore(.upperPush), regionScore(.upperPull)].compactMap { $0 }.mean
         if let lower, let upper {
             if lower - upper >= 12 {
-                list.append(TrainingPriority(target: .region(.upperPush), emphasis: 1,
-                                             reason: "Legs are well ahead of upper body, so upper body comes first this block.", source: .strength))
-                list.append(TrainingPriority(target: .region(.upperPull), emphasis: 1,
-                                             reason: "Legs are well ahead of upper body, so upper body comes first this block.", source: .strength))
-                list.append(TrainingPriority(target: .region(.lower), emphasis: -0.5,
-                                             reason: "Legs hold at maintenance volume while upper body catches up.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.upperPush), emphasis: 1,
+                        reason: "Legs are well ahead of upper body, so upper body comes first this block.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.upperPull), emphasis: 1,
+                        reason: "Legs are well ahead of upper body, so upper body comes first this block.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.lower), emphasis: -0.5,
+                        reason: "Legs hold at maintenance volume while upper body catches up.", source: .strength))
             } else if upper - lower >= 12 {
-                list.append(TrainingPriority(target: .region(.lower), emphasis: 1,
-                                             reason: "Upper body is well ahead of legs, so legs come first this block.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.lower), emphasis: 1,
+                        reason: "Upper body is well ahead of legs, so legs come first this block.", source: .strength))
             }
         }
         if let push = regionScore(.upperPush), let pull = regionScore(.upperPull) {
             if push - pull >= 10 {
-                list.append(TrainingPriority(target: .region(.upperPull), emphasis: 0.7,
-                                             reason: "Pressing is ahead of pulling; more pulling evens it out and is kinder to shoulders.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.upperPull), emphasis: 0.7,
+                        reason: "Pressing is ahead of pulling; more pulling evens it out and is kinder to shoulders.", source: .strength))
             } else if pull - push >= 10 {
-                list.append(TrainingPriority(target: .region(.upperPush), emphasis: 0.7,
-                                             reason: "Pulling is ahead of pressing.", source: .strength))
+                list.append(
+                    TrainingPriority(
+                        target: .region(.upperPush), emphasis: 0.7,
+                        reason: "Pulling is ahead of pressing.", source: .strength))
             }
         }
-        if let weakest, !list.contains(where: { if case .region(let r) = $0.target { r == weakest.category.region && $0.emphasis > 0 } else { false } }) {
-            list.append(TrainingPriority(target: .category(weakest.category), emphasis: 0.8,
-                                         reason: "\(weakest.category.label) is the weakest lift relative to the rest.", source: .strength))
+        if let weakest,
+            !list.contains(where: { if case .region(let r) = $0.target { r == weakest.category.region && $0.emphasis > 0 } else { false } })
+        {
+            list.append(
+                TrainingPriority(
+                    target: .category(weakest.category), emphasis: 0.8,
+                    reason: "\(weakest.category.label) is the weakest lift relative to the rest.", source: .strength))
         }
         // Legs ahead and pressing ahead of pulling can both ask for pulling: one row, both reasons.
         return list.mergedByID()
     }
 }
 
-public extension Array where Element == TrainingPriority {
+extension Array where Element == TrainingPriority {
     /// One priority per id (target and source), so lists keyed by id never repeat one. Emphasis adds
     /// up, as the generator would add it anyway, and the reasons are joined.
-    func mergedByID() -> [TrainingPriority] {
+    public func mergedByID() -> [TrainingPriority] {
         var merged: [TrainingPriority] = []
         for priority in self {
             if let i = merged.firstIndex(where: { $0.id == priority.id }) {
@@ -284,8 +304,10 @@ public enum StrengthEstimator {
 
     /// Category scores from every mapped exercise's recent history. Only free-weight variants
     /// with known ratios are mapped; machines never are.
-    public static func profile(history: [String: [LoggedSet]], exercises: [String: any ExerciseTraits], trust: TrustState,
-                               bodyweightKg: Double, sex: BiologicalSex, today: Day, windowDays: Int = 56) -> StrengthProfile {
+    public static func profile(
+        history: [String: [LoggedSet]], exercises: [String: any ExerciseTraits], trust: TrustState,
+        bodyweightKg: Double, sex: BiologicalSex, today: Day, windowDays: Int = 56
+    ) -> StrengthProfile {
         var best: [StrengthCategory: CategoryScore] = [:]
         let cutoff = today.adding(days: -windowDays)
         for (id, sets) in history {
@@ -295,8 +317,9 @@ public enum StrengthEstimator {
                 let reference = point.e1rm * mapping.factor
                 let score = StrengthStandards.score(mapping.category, oneRepMaxKg: reference, bodyweightKg: bodyweightKg, sex: sex)
                 if score > best[mapping.category]?.score ?? -1 {
-                    best[mapping.category] = CategoryScore(category: mapping.category, oneRepMaxKg: reference, score: score,
-                                                           exerciseID: id, day: point.day)
+                    best[mapping.category] = CategoryScore(
+                        category: mapping.category, oneRepMaxKg: reference, score: score,
+                        exerciseID: id, day: point.day)
                 }
             }
         }

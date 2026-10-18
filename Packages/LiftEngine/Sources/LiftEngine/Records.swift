@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 // Lift Track's own records. Each is stored whole (one payload per record) and synced; derived
@@ -39,11 +39,13 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     public var assessmentStart: Day?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), gymID: UUID? = nil, selfReportedPhase: SelfReportedPhase? = nil, autoPrioritise: Bool = true,
-                focus: Set<PhysiqueRegion> = [], proportionTargets: ProportionTargets? = nil, heartRateGuidedRest: Bool = true,
-                includeConditioning: Bool = true, includeCooldown: Bool = false, benchmark: EnduranceBenchmark = .stairs10min,
-                avoid: Set<String> = [], saveToHealth: Bool = true, onboardedAt: Date? = nil, assessmentStart: Day? = nil,
-                selfReportedPhaseSince: Day? = nil, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), gymID: UUID? = nil, selfReportedPhase: SelfReportedPhase? = nil, autoPrioritise: Bool = true,
+        focus: Set<PhysiqueRegion> = [], proportionTargets: ProportionTargets? = nil, heartRateGuidedRest: Bool = true,
+        includeConditioning: Bool = true, includeCooldown: Bool = false, benchmark: EnduranceBenchmark = .stairs10min,
+        avoid: Set<String> = [], saveToHealth: Bool = true, onboardedAt: Date? = nil, assessmentStart: Day? = nil,
+        selfReportedPhaseSince: Day? = nil, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.gymID = gymID
         self.selfReportedPhase = selfReportedPhase
@@ -146,9 +148,11 @@ public struct SlotPlan: Codable, Hashable, Sendable, Identifiable {
     /// Why this slot is here, when it isn't obvious.
     public var reason: String?
 
-    public init(id: UUID = UUID(), exerciseID: String, role: SlotRole, sets: [Int], repRange: RepRange, restSeconds: Int,
-                seconds: Int? = nil, supersetGroup: Int? = nil, restFiller: String? = nil, conditioning: ConditioningPlan? = nil,
-                reason: String? = nil) {
+    public init(
+        id: UUID = UUID(), exerciseID: String, role: SlotRole, sets: [Int], repRange: RepRange, restSeconds: Int,
+        seconds: Int? = nil, supersetGroup: Int? = nil, restFiller: String? = nil, conditioning: ConditioningPlan? = nil,
+        reason: String? = nil
+    ) {
         self.id = id
         self.exerciseID = exerciseID
         self.role = role
@@ -260,8 +264,10 @@ public struct Mesocycle: Codable, Hashable, Sendable, Identifiable {
     public var createdAt: Date
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), block: TrainingBlock, split: SplitKind, days: [PlannedDay], priorities: [TrainingPriority],
-                rationale: Rationale, minutesPerSession: Int, phase: NutritionPhase, createdAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), block: TrainingBlock, split: SplitKind, days: [PlannedDay], priorities: [TrainingPriority],
+        rationale: Rationale, minutesPerSession: Int, phase: NutritionPhase, createdAt: Date = Date(), updatedAt: Date = Date()
+    ) {
         self.id = id
         self.block = block
         self.split = split
@@ -353,8 +359,10 @@ public struct HeatLog: Codable, Hashable, Sendable {
     public var averageHeartRate: Double?
     public var peakHeartRate: Double?
 
-    public init(exerciseID: String, date: Date, minutes: Double, temperatureC: Double?, rating: SetRating?,
-                averageHeartRate: Double? = nil, peakHeartRate: Double? = nil) {
+    public init(
+        exerciseID: String, date: Date, minutes: Double, temperatureC: Double?, rating: SetRating?,
+        averageHeartRate: Double? = nil, peakHeartRate: Double? = nil
+    ) {
         self.exerciseID = exerciseID
         self.date = date
         self.minutes = minutes
@@ -390,10 +398,12 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var timeZoneID: String?
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), start: Date, end: Date, title: String, mesocycleID: UUID? = nil, dayID: UUID? = nil, planned: Bool = true,
-                deload: Bool = false, exercises: [ExerciseLog] = [], conditioning: [ConditioningLog] = [], mobility: [String] = [],
-                feedback: SessionFeedback? = nil, device: String = "iPhone", averageHeartRate: Double? = nil, heat: [HeatLog]? = nil,
-                timeZoneID: String? = TimeZone.current.identifier, updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), start: Date, end: Date, title: String, mesocycleID: UUID? = nil, dayID: UUID? = nil, planned: Bool = true,
+        deload: Bool = false, exercises: [ExerciseLog] = [], conditioning: [ConditioningLog] = [], mobility: [String] = [],
+        feedback: SessionFeedback? = nil, device: String = "iPhone", averageHeartRate: Double? = nil, heat: [HeatLog]? = nil,
+        timeZoneID: String? = TimeZone.current.identifier, updatedAt: Date = Date()
+    ) {
         self.id = id
         self.start = start
         self.end = end

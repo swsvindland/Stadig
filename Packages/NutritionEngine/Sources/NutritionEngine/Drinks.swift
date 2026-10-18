@@ -44,8 +44,9 @@ public enum Hydration {
     }
 
     public static func day(_ day: Day, water: [WaterLog], entries: [FoodEntry], target: Double) -> HydrationDay {
-        HydrationDay(day: day, water: water.filter { $0.day == day }.map(\.ml).reduce(0, +),
-                     drinks: entries.filter { $0.day == day }.compactMap(fluid).reduce(0, +), target: target)
+        HydrationDay(
+            day: day, water: water.filter { $0.day == day }.map(\.ml).reduce(0, +),
+            drinks: entries.filter { $0.day == day }.compactMap(fluid).reduce(0, +), target: target)
     }
 
     /// The fluid in a logged food: what was set when it was logged, else its weight when its name
@@ -61,8 +62,10 @@ public enum Hydration {
         "beverage", "beverages", "drink", "gatorade", "powerade", "electrolyte", "milk", "buttermilk", "sparkling", "redbull",
         "energy", "punch",
     ]
-    private static let drinkPhrases = ["cold brew", "flat white", "energy drink", "sports drink", "coconut water", "red bull", "dr pepper",
-                                       "mountain dew", "iced tea", "sweet tea"]
+    private static let drinkPhrases = [
+        "cold brew", "flat white", "energy drink", "sports drink", "coconut water", "red bull", "dr pepper",
+        "mountain dew", "iced tea", "sweet tea",
+    ]
     /// Words that make a drink's name mean something eaten: coffee cake, milk chocolate, tea biscuits.
     private static let notDrinks: Set<String> = [
         "cake", "cakes", "creamer", "powder", "powdered", "dry", "dried", "condensed", "evaporated", "cookie", "cookies", "candy",
@@ -70,8 +73,10 @@ public enum Hydration {
         "cheese", "pie", "thistle", "teaspoon", "mix", "bites", "gel", "gels", "chews", "gummies",
     ]
     private static let notDrinkPhrases = ["milk chocolate", "ice cream", "frozen yogurt"]
-    private static let alcohol: Set<String> = ["beer", "wine", "vodka", "whiskey", "whisky", "rum", "gin", "tequila", "liqueur", "cocktail",
-                                               "cider", "lager", "ale"]
+    private static let alcohol: Set<String> = [
+        "beer", "wine", "vodka", "whiskey", "whisky", "rum", "gin", "tequila", "liqueur", "cocktail",
+        "cider", "lager", "ale",
+    ]
 
     /// Whether a food is something drunk, by name.
     public static func isDrink(_ name: String) -> Bool {
@@ -90,7 +95,8 @@ public enum Hydration {
         }
         guard words.contains("water") else { return false }
         // Water something was cooked or packed in isn't drunk.
-        return !["with water", "in water", "with tap water", "water-packed", "water packed", "and water", "water chestnut"].contains(where: lower.contains)
+        return !["with water", "in water", "with tap water", "water-packed", "water packed", "and water", "water chestnut"].contains(
+            where: lower.contains)
     }
 }
 
@@ -180,8 +186,10 @@ public enum Caffeine {
 
     /// The day's report. `bedtime` is that day's bedtime; `known` are days whose log can be trusted
     /// to say how much caffeine there was (complete days, and any day with caffeine logged).
-    public static func report(day: Day, entries: [FoodEntry], supplements: [SupplementLog], bedtime: Date, limit: Double,
-                              cutBack: CaffeineCutBack?, complete: Set<Day>) -> CaffeineReport {
+    public static func report(
+        day: Day, entries: [FoodEntry], supplements: [SupplementLog], bedtime: Date, limit: Double,
+        cutBack: CaffeineCutBack?, complete: Set<Day>
+    ) -> CaffeineReport {
         let doses = doses(on: day, entries: entries, supplements: supplements)
         let limit = cutBack.map { min(limit, $0.limit(on: day)) } ?? limit
         // The last week before today: complete days, and days with caffeine logged (a coffee is
@@ -194,8 +202,9 @@ public enum Caffeine {
         }
         let average = totals.count >= 3 ? totals.reduce(0, +) / Double(totals.count) : nil
         // Bedtime after midnight belongs to the night of `day`.
-        return CaffeineReport(day: day, doses: doses, limit: limit, bedtime: bedtime, atBedtime: active(doses, at: bedtime),
-                              cutoff: bedtime.addingTimeInterval(-cutoffBeforeBed), weekAverage: average, cutBack: cutBack)
+        return CaffeineReport(
+            day: day, doses: doses, limit: limit, bedtime: bedtime, atBedtime: active(doses, at: bedtime),
+            cutoff: bedtime.addingTimeInterval(-cutoffBeforeBed), weekAverage: average, cutBack: cutBack)
     }
 
     /// Typical caffeine in mg per 100 ml, for drinks logged without a value (a café's latte, a can
@@ -217,7 +226,8 @@ public enum Caffeine {
     /// About how much caffeine a drink has, from its name, when it was logged without a value.
     public static func estimate(name: String, brand: String?, grams: Double?) -> Double? {
         guard let grams, grams > 0, Hydration.isDrink("\(name) \(brand ?? "")") else { return nil }
-        let text = " " + ([name, brand ?? ""].joined(separator: " ").lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")) + " "
+        let text =
+            " " + ([name, brand ?? ""].joined(separator: " ").lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")) + " "
         guard let match = typical.first(where: { $0.words.contains { text.contains(" \($0) ") } }) else { return nil }
         return match.mg * grams / 100
     }

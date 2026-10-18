@@ -1,6 +1,6 @@
-import SwiftUI
 import ExerciseLibrary
 import LiftEngine
+import SwiftUI
 import SystemCore
 
 /// Every item in the session, to jump ahead, skip, or add a set.
@@ -33,9 +33,12 @@ struct ExerciseListView: View {
         let work = item.sets.filter { $0.prescription.kind != .warmup }
         let done = work.filter { !$0.isOpen }.count
         return HStack(spacing: 8) {
-            Image(systemName: item.skipped ? "forward.fill" : item.isDone ? "checkmark.circle.fill" : current ? "arrow.right.circle.fill" : item.plan.block.symbol)
-                .foregroundStyle(item.isDone && !item.skipped ? .green : current ? Color.accentColor : .secondary)
-                .accessibilityHidden(true)
+            Image(
+                systemName: item.skipped
+                    ? "forward.fill" : item.isDone ? "checkmark.circle.fill" : current ? "arrow.right.circle.fill" : item.plan.block.symbol
+            )
+            .foregroundStyle(item.isDone && !item.skipped ? .green : current ? Color.accentColor : .secondary)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.catalog.resolve(item.exerciseID).name)
                     .font(.footnote.weight(current ? .semibold : .regular))
@@ -135,7 +138,8 @@ struct ItemDetailView: View {
         let exercise = set.logged.map { model.catalog.resolve($0.exerciseID) } ?? exercise
         let position = WatchFormat.setPosition(index, in: item.sets)
         if let logged = set.logged {
-            return "\(position), done, \(WatchFormat.logged(logged, exercise: exercise, unit: model.unit))\(logged.rating.map { ", \($0.label)" } ?? "")"
+            return
+                "\(position), done, \(WatchFormat.logged(logged, exercise: exercise, unit: model.unit))\(logged.rating.map { ", \($0.label)" } ?? "")"
         }
         if set.skipped { return "\(position), skipped" }
         return "\(position), \(WatchFormat.prescription(set.prescription, exercise: exercise, unit: model.unit, plannedSeconds: item.plan.seconds))"

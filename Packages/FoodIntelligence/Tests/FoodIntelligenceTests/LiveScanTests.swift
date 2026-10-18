@@ -4,6 +4,7 @@ import FoodDatabase
 import Foundation
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 /// A live scan as the camera sees it: a label taller than one frame, read a slice at a time by
@@ -57,8 +58,9 @@ struct LiveScanTests {
     @Test func aModelsCheckKeepsOnlyNumbersPrintedOnThePanel() {
         let panel = ["Nutrition Facts", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%", "Protein 3g"]
         // The model "read" 12 g of carbs, which isn't printed anywhere: it's dropped.
-        let guess = LabelGuess(name: "Oat crunch", brand: "None", servingSize: "2/3 cup (55g)", servingGrams: 55,
-                               values: [.kcal: 230, .fat: 8, .protein: 3, .carbs: 12])
+        let guess = LabelGuess(
+            name: "Oat crunch", brand: "None", servingSize: "2/3 cup (55g)", servingGrams: 55,
+            values: [.kcal: 230, .fat: 8, .protein: 3, .carbs: 12])
         let check = LiveCheck.label(guess, panel: panel)
         #expect(check.values == ["kcal": 230, "fat": 8, "protein": 3])
         #expect(check.servingLabel == "2/3 cup" && check.servingGrams == 55)
@@ -68,9 +70,11 @@ struct LiveScanTests {
     }
 
     @Test func aModelsCheckKeepsAValueOnlyFromItsOwnRow() {
-        let panel = ["Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%",
-                     "Saturated Fat 1g 5%", "Sodium 160mg 7%", "Total Carbohydrate 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
-                     "Includes 10g Added Sugars 20%", "Protein 3g"]
+        let panel = [
+            "Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Calories 230", "Total Fat 8g 10%",
+            "Saturated Fat 1g 5%", "Sodium 160mg 7%", "Total Carbohydrate 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
+            "Includes 10g Added Sugars 20%", "Protein 3g",
+        ]
         // Sugar from the added-sugars row, sodium from a % Daily Value, fiber from the servings
         // count and fat from saturated fat's row are all mix-ups.
         let mixed = LabelGuess(name: nil, brand: nil, values: [.sugar: 10, .sodium: 7, .fiber: 8, .fat: 1, .protein: 3, .kcal: 230])
@@ -89,14 +93,20 @@ struct LiveScanTests {
             LiveCheck.label(LabelGuess(name: nil, brand: nil, values: values), panel: panel).values
         }
         // A row's Spanish label is still its own row.
-        #expect(kept([.kcal: 230, .fat: 8, .protein: 3], ["Calories/Calorías 230", "Total Fat/Grasa Total 8g 10%", "Protein/Proteínas 3g"])
-            == ["kcal": 230, "fat": 8, "protein": 3])
+        #expect(
+            kept([.kcal: 230, .fat: 8, .protein: 3], ["Calories/Calorías 230", "Total Fat/Grasa Total 8g 10%", "Protein/Proteínas 3g"])
+                == ["kcal": 230, "fat": 8, "protein": 3])
         // A linear label's % DV is skipped, not the row, and "Incl. 10g Added Sugars" is another row.
-        let linear = ["Amount per serving: Calories 190, Total Fat 7g (9% DV), Sat. Fat 2.5g (13% DV),",
-                      "Sodium 150mg (7% DV), Total Carb. 22g (8% DV), Fiber 3g (11% DV), Total Sugars 12g (Incl. 10g Added Sugars, 20% DV),",
-                      "Protein 10g. *Percent Daily Values are based on a 2,000 calorie diet."]
-        let all: [LabelGuess.Field: Double] = [.kcal: 190, .fat: 7, .saturatedFat: 2.5, .sodium: 150, .carbs: 22, .fiber: 3, .sugar: 12, .protein: 10]
-        #expect(kept(all, linear) == ["kcal": 190, "fat": 7, "saturatedFat": 2.5, "sodium": 150, "carbs": 22, "fiber": 3, "sugar": 12, "protein": 10])
+        let linear = [
+            "Amount per serving: Calories 190, Total Fat 7g (9% DV), Sat. Fat 2.5g (13% DV),",
+            "Sodium 150mg (7% DV), Total Carb. 22g (8% DV), Fiber 3g (11% DV), Total Sugars 12g (Incl. 10g Added Sugars, 20% DV),",
+            "Protein 10g. *Percent Daily Values are based on a 2,000 calorie diet.",
+        ]
+        let all: [LabelGuess.Field: Double] = [
+            .kcal: 190, .fat: 7, .saturatedFat: 2.5, .sodium: 150, .carbs: 22, .fiber: 3, .sugar: 12, .protein: 10,
+        ]
+        #expect(
+            kept(all, linear) == ["kcal": 190, "fat": 7, "saturatedFat": 2.5, "sodium": 150, "carbs": 22, "fiber": 3, "sugar": 12, "protein": 10])
         #expect(kept([.sugar: 10, .fat: 9, .kcal: 2000], linear).isEmpty)
         // The old format printed calories from fat on the calories row.
         let old = ["Calories 250 Calories from Fat 110", "Total Fat 12g 18%"]
@@ -106,21 +116,26 @@ struct LiveScanTests {
 
     @Test func aModelsSupplementCheckDropsADailyValueAndANonBrand() {
         let panel = ["Supplement Facts", "Serving Size 1 Softgel", "Vitamin D3 25 mcg 125%"]
-        let reply = SupplementReply(name: "Vitamin D3", brand: "N/A", servingSize: "1 softgel",
-                                    lines: [.init(name: "Vitamin D3", amount: 125, unit: "mcg")])
+        let reply = SupplementReply(
+            name: "Vitamin D3", brand: "N/A", servingSize: "1 softgel",
+            lines: [.init(name: "Vitamin D3", amount: 125, unit: "mcg")])
         let check = LiveCheck.supplement(reply, panel: panel)
         #expect(check.facts.ingredients.isEmpty, "125 is the % Daily Value, not the amount")
         #expect(check.brand == nil)
     }
 
     @Test func aModelsSupplementCheckKeepsTrackedPrintedLines() throws {
-        let panel = ["Supplement Facts", "Serving Size Two Softgels", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
-                     "DHA 450 mg †", "Lemon Oil 10 mg †"]
-        let reply = SupplementReply(name: "Fish Oil 1200 mg", brand: "", servingSize: "Two Softgels", lines: [
-            .init(name: "Vitamin D3", amount: 25, unit: "mcg"), .init(name: "Fish Oil", amount: 2400, unit: "mg"),
-            .init(name: "EPA", amount: 650, unit: "mg"), .init(name: "DHA", amount: 450, unit: "mg"),
-            .init(name: "Lemon Oil", amount: 10, unit: "mg"), .init(name: "Vitamin C", amount: 90, unit: "mg"),
-        ])
+        let panel = [
+            "Supplement Facts", "Serving Size Two Softgels", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
+            "DHA 450 mg †", "Lemon Oil 10 mg †",
+        ]
+        let reply = SupplementReply(
+            name: "Fish Oil 1200 mg", brand: "", servingSize: "Two Softgels",
+            lines: [
+                .init(name: "Vitamin D3", amount: 25, unit: "mcg"), .init(name: "Fish Oil", amount: 2400, unit: "mg"),
+                .init(name: "EPA", amount: 650, unit: "mg"), .init(name: "DHA", amount: 450, unit: "mg"),
+                .init(name: "Lemon Oil", amount: 10, unit: "mg"), .init(name: "Vitamin C", amount: 90, unit: "mg"),
+            ])
         let check = LiveCheck.supplement(reply, panel: panel)
         // Fish oil and lemon oil aren't tracked; vitamin C's 90 mg isn't printed.
         #expect(check.facts.ingredients.map(\.name) == ["Vitamin D3", "EPA", "DHA"])
@@ -132,15 +147,19 @@ struct LiveScanTests {
     /// A box's front: a big name, then small claims.
     func renderFront(title: String, lines: [String]) -> CGImage {
         let (width, height) = (900, 900)
-        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         func draw(_ text: String, y: CGFloat, size: CGFloat) {
-            let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
-                NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName("Helvetica-Bold" as CFString, size, nil),
-                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(red: 0, green: 0, blue: 0, alpha: 1),
-            ]))
+            let line = CTLineCreateWithAttributedString(
+                NSAttributedString(
+                    string: text,
+                    attributes: [
+                        NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName("Helvetica-Bold" as CFString, size, nil),
+                        NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(red: 0, green: 0, blue: 0, alpha: 1),
+                    ]))
             context.textPosition = CGPoint(x: 60, y: y)
             CTLineDraw(line, context)
         }

@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 /// A simulated reader with a true level (the tier they understand comfortably), a true focus span
@@ -106,8 +107,10 @@ struct ReadingTests {
                 let placed = try #require(test.detail["tier"])
                 errors.append(abs(placed - Double(level)))
                 if abs(placed - Double(level)) > 1.5 {
-                    worst.append("level \(level) placed \(placed): " + (run?.session.attempts.filter { $0.test == .readingTest }
-                        .map { "\($0.band ?? 0)\($0.correct ? "+" : "-")" }.joined(separator: " ") ?? ""))
+                    worst.append(
+                        "level \(level) placed \(placed): "
+                            + (run?.session.attempts.filter { $0.test == .readingTest }
+                                .map { "\($0.band ?? 0)\($0.correct ? "+" : "-")" }.joined(separator: " ") ?? ""))
                 }
                 #expect(test.placement && test.domain == .reading)
                 #expect(test.detail["wpm"] ?? 0 > 60)
@@ -144,7 +147,8 @@ struct ReadingTests {
         #expect(!slow.passed)
         #expect(try #require(ReadingTest.estimate([slow])) < (try #require(ReadingTest.estimate([passage(5, 3)]))))
         // Three of three says more than two of three.
-        #expect(try #require(ReadingTest.estimate([passage(6, 3), passage(7, 1)])) > (try #require(ReadingTest.estimate([passage(6, 2), passage(7, 1)]))))
+        #expect(
+            try #require(ReadingTest.estimate([passage(6, 3), passage(7, 1)])) > (try #require(ReadingTest.estimate([passage(6, 2), passage(7, 1)]))))
         #expect(try #require(ReadingTest.estimate([passage(3, 0), passage(2, 1)])) <= 1.5)
         let between = try #require(ReadingTest.estimate([passage(4, 3), passage(6, 0)]))
         #expect(between > 4 && between < 5.5, "\(between)")
@@ -164,8 +168,11 @@ struct ReadingTests {
         var store = Store(settings: Fixtures.settings([.reading]))
         let first = try #require(placementTest(&reader).0)
         store.tests = [first]
-        store.sessions = [StudySession(purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
-                                       domains: [.reading], planned: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
+                domains: [.reading], planned: true)
+        ]
         let day = Fixtures.monday.adding(days: 55)
         let state = store.state(on: day)
         let plan = SessionPlanner.plan(.checkIn, domains: [.reading], state: state, catalogs: catalogs)
@@ -193,8 +200,9 @@ struct ReadingTests {
         let day = Fixtures.monday
         let test = TestResult(test: .readingTest, date: day.date(), score: 0.8, detail: ["tier": 6])
         func book(_ tier: Int, _ status: BookStatus, _ feel: BookFeel?, after days: Int) -> Book {
-            Book(title: "Book \(tier).\(days)", author: "Author", tier: tier, pages: 300, genres: [.literary], status: status,
-                 finished: day.adding(days: days), feel: feel, tierConfidence: 1)
+            Book(
+                title: "Book \(tier).\(days)", author: "Author", tier: tier, pages: 300, genres: [.literary], status: status,
+                finished: day.adding(days: days), feel: feel, tierConfidence: 1)
         }
         var shelf: [Book] = []
         func target() -> Double { ReadingPlan.target(books: shelf, tests: [test], on: day.adding(days: 100)) }
@@ -214,8 +222,11 @@ struct ReadingTests {
 
         // Without a test, recent reading places the start; without either, the ladder's start.
         #expect(ReadingPlan.target(books: [], tests: [], on: day) == Double(ReadingPlan.startingTier))
-        let recent = [Book(ladderID: "x", title: "Recent", author: "A", tier: 5, pages: 300, genres: [], status: .readBefore, finished: day,
-                           feel: .right)]
+        let recent = [
+            Book(
+                ladderID: "x", title: "Recent", author: "A", tier: 5, pages: 300, genres: [], status: .readBefore, finished: day,
+                feel: .right)
+        ]
         #expect(ReadingPlan.target(books: recent, tests: [], on: day) == 4)
 
         // Suggestions sit at the next tier, in liked genres, by different authors, none owned.
@@ -232,22 +243,25 @@ struct ReadingTests {
         let test = TestResult(test: .readingTest, date: day.date(), score: 0.8, detail: ["tier": 5])
         #expect(ReadingPlan.level(books: [], tests: [test], on: day) == 5)
         #expect(ReadingPlan.level(books: [], tests: [], on: day) == nil)
-        var easy = Book(ladderID: "x", title: "Easy", author: "A", tier: 7, pages: 300, genres: [], status: .finished,
-                        finished: day.adding(days: 20), feel: .easy, tierConfidence: 1)
+        var easy = Book(
+            ladderID: "x", title: "Easy", author: "A", tier: 7, pages: 300, genres: [], status: .finished,
+            finished: day.adding(days: 20), feel: .easy, tierConfidence: 1)
         let lifted = try #require(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30)))
         #expect(lifted > 5.5 && lifted < 6.5, "\(lifted)")
         // An easy book far below the level says nothing new.
         easy.tier = 2
         #expect(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30)) == 5)
         // An audiobook counts for half; one's own book with a guessed tier counts for less still.
-        var audio = Book(title: "Heard", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
-                         feel: .right, format: .audiobook, tierConfidence: 1)
+        var audio = Book(
+            title: "Heard", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
+            feel: .right, format: .audiobook, tierConfidence: 1)
         let heard = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30)))
         audio.format = .print
         let read = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30)))
         #expect(heard < read && heard > 5)
-        let guessed = Book(title: "Own", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
-                           feel: .right)
+        let guessed = Book(
+            title: "Own", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
+            feel: .right)
         #expect(try #require(ReadingPlan.level(books: [guessed], tests: [test], on: day.adding(days: 30))) < heard)
     }
 
@@ -261,11 +275,14 @@ struct ReadingTests {
         let before = try #require(ReadingPlan.wisdom(store.state(on: day)).score)
         for offset in 1...20 {
             let start = Fixtures.monday.adding(days: offset).date().addingTimeInterval(19 * 3600)
-            store.sessions.append(StudySession(purpose: .regular, start: start, end: start.addingTimeInterval(3600), plannedMinutes: 25,
-                                               domains: [.reading], planned: true,
-                                               reading: ReadingLog(bookID: book.id, fromPage: offset * 15, toPage: offset * 15 + 15, minutes: 60,
-                                                                   planned: 25, focus: .held),
-                                               activeSeconds: 3600, ranToEnd: true))
+            store.sessions.append(
+                StudySession(
+                    purpose: .regular, start: start, end: start.addingTimeInterval(3600), plannedMinutes: 25,
+                    domains: [.reading], planned: true,
+                    reading: ReadingLog(
+                        bookID: book.id, fromPage: offset * 15, toPage: offset * 15 + 15, minutes: 60,
+                        planned: 25, focus: .held),
+                    activeSeconds: 3600, ranToEnd: true))
         }
         #expect(ReadingPlan.wisdom(store.state(on: day)).score == before, "twenty hours of reading moved nothing")
         var finished = book
@@ -300,8 +317,9 @@ struct ReadingTests {
         let print = Book(title: "Print", author: "A", tier: 4, pages: 300, genres: [], status: .reading, format: .print)
         let audio = Book(title: "Audio", author: "A", tier: 4, pages: 300, genres: [], status: .reading, format: .audiobook)
         let sessions = [print, audio, print].enumerated().map { index, book in
-            StudySession(purpose: .regular, start: day.adding(days: index).date(), plannedMinutes: 25, domains: [.reading], planned: true,
-                         reading: ReadingLog(bookID: book.id, fromPage: 0, toPage: 20, minutes: 40, planned: 20, focus: .held))
+            StudySession(
+                purpose: .regular, start: day.adding(days: index).date(), plannedMinutes: 25, domains: [.reading], planned: true,
+                reading: ReadingLog(bookID: book.id, fromPage: 0, toPage: 20, minutes: 40, planned: 20, focus: .held))
         }
         #expect(ReadingPlan.blocks(sessions, books: [print, audio]).count == 2, "the audiobook block is left out")
     }
@@ -310,8 +328,11 @@ struct ReadingTests {
     func blockRespectsStamina() throws {
         var store = Store(settings: Fixtures.settings([.reading], days: 7))
         store.tests = [TestResult(test: .readingTest, date: Fixtures.monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
-        store.sessions = [StudySession(purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
-                                       domains: [.reading], planned: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
+                domains: [.reading], planned: true)
+        ]
         let book = Book(title: "On the go", author: "A", tier: 4, pages: 400, genres: [.literary], status: .reading, format: .print)
         store.books = [book]
         let state = store.state(on: Fixtures.monday.adding(days: 1))
@@ -320,7 +341,10 @@ struct ReadingTests {
         #expect(part.minutes == ReadingPlan.firstBlock, "\(plan.parts)")
         #expect(plan.notes.contains { $0.contains("\(ReadingPlan.firstBlock)-minute block") })
         let run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
-        guard case .read(_, let minutes) = run.step else { Issue.record("no reading step: \(String(describing: run.step))"); return }
+        guard case .read(_, let minutes) = run.step else {
+            Issue.record("no reading step: \(String(describing: run.step))")
+            return
+        }
         #expect(minutes == ReadingPlan.firstBlock)
 
         // An audiobook gets the whole share: listening doesn't build reading stamina.
@@ -397,29 +421,29 @@ struct ReadingTests {
     @Test("Open Library and Google Books replies become cached book records")
     func sources() throws {
         let edition = """
-        {"ISBN:9780141439518": {"title": "Pride and Prejudice", "authors": [{"name": "Jane Austen"}], "number_of_pages": 435,
-         "publish_date": "2003", "subjects": [{"name": "Fiction, Romance, Historical, Regency"}, {"name": "Courtship"}],
-         "cover": {"small": "https://covers.openlibrary.org/b/id/1-S.jpg", "medium": "https://covers.openlibrary.org/b/id/1-M.jpg"}}}
-        """
+            {"ISBN:9780141439518": {"title": "Pride and Prejudice", "authors": [{"name": "Jane Austen"}], "number_of_pages": 435,
+             "publish_date": "2003", "subjects": [{"name": "Fiction, Romance, Historical, Regency"}, {"name": "Courtship"}],
+             "cover": {"small": "https://covers.openlibrary.org/b/id/1-S.jpg", "medium": "https://covers.openlibrary.org/b/id/1-M.jpg"}}}
+            """
         let meta = try #require(OpenLibrary.parseISBN(Data(edition.utf8), isbn: "9780141439518"))
         #expect(meta.title == "Pride and Prejudice" && meta.author == "Jane Austen" && meta.pages == 435 && meta.year == 2003)
         #expect(meta.coverURL?.absoluteString.hasSuffix("1-M.jpg") == true && meta.source == "openlibrary")
 
         let search = """
-        {"numFound": 1, "docs": [{"author_name": ["Susanna Clarke"], "cover_i": 10226290, "first_publish_year": 2020,
-         "isbn": ["1635575648", "9781526622440"], "number_of_pages_median": 272, "title": "Piranesi",
-         "subject": ["form:novel", "genre:fantasy", "Labyrinths"]}]}
-        """
+            {"numFound": 1, "docs": [{"author_name": ["Susanna Clarke"], "cover_i": 10226290, "first_publish_year": 2020,
+             "isbn": ["1635575648", "9781526622440"], "number_of_pages_median": 272, "title": "Piranesi",
+             "subject": ["form:novel", "genre:fantasy", "Labyrinths"]}]}
+            """
         let found = OpenLibrary.parseSearch(Data(search.utf8))
         #expect(found.count == 1 && found[0].isbn == "9781635575644" && found[0].pages == 272)
         #expect(found[0].coverURL?.absoluteString == "https://covers.openlibrary.org/b/id/10226290-M.jpg")
         #expect(OpenLibrary.parseSearch(Data("{}".utf8)).isEmpty)
 
         let google = """
-        {"items": [{"volumeInfo": {"title": "The Name of the Wind", "authors": ["Patrick Rothfuss"], "publishedDate": "2007-03-27",
-         "pageCount": 662, "categories": ["Fiction"], "imageLinks": {"thumbnail": "http://books.google.com/x.jpg"},
-         "industryIdentifiers": [{"type": "ISBN_10", "identifier": "0756404746"}, {"type": "ISBN_13", "identifier": "9780756404741"}]}}]}
-        """
+            {"items": [{"volumeInfo": {"title": "The Name of the Wind", "authors": ["Patrick Rothfuss"], "publishedDate": "2007-03-27",
+             "pageCount": 662, "categories": ["Fiction"], "imageLinks": {"thumbnail": "http://books.google.com/x.jpg"},
+             "industryIdentifiers": [{"type": "ISBN_10", "identifier": "0756404746"}, {"type": "ISBN_13", "identifier": "9780756404741"}]}}]}
+            """
         let volume = try #require(GoogleBooks.parse(Data(google.utf8)).first)
         #expect(volume.isbn == "9780756404741" && volume.year == 2007 && volume.pages == 662 && volume.source == "googlebooks")
         #expect(volume.coverURL?.scheme == "https")
@@ -457,11 +481,13 @@ struct ReadingTests {
         let tolkien = BookLevel.estimate(title: "The Children of Húrin", author: "J.R.R. Tolkien", ladder: ladder)
         #expect(tolkien.confidence == BookLevel.authorConfidence && tolkien.tier >= 2 && tolkien.tier <= 6, "\(tolkien)")
 
-        let thriller = BookLevel.estimate(title: "Some Thriller", author: "Nobody Known", pages: 380, year: 2019,
-                                          subjects: ["Fiction", "Thrillers", "Suspense"], ladder: ladder)
+        let thriller = BookLevel.estimate(
+            title: "Some Thriller", author: "Nobody Known", pages: 380, year: 2019,
+            subjects: ["Fiction", "Thrillers", "Suspense"], ladder: ladder)
         #expect(thriller.genres == [.crime] && thriller.tier <= 3 && thriller.confidence == BookLevel.guessConfidence)
-        let treatise = BookLevel.estimate(title: "An Old Treatise", author: "Nobody Known", pages: 950, year: 1690,
-                                          subjects: ["Philosophy", "Metaphysics"], ladder: ladder)
+        let treatise = BookLevel.estimate(
+            title: "An Old Treatise", author: "Nobody Known", pages: 950, year: 1690,
+            subjects: ["Philosophy", "Metaphysics"], ladder: ladder)
         #expect(treatise.tier >= 9, "\(treatise.tier)")
         #expect(BookLevel.estimate(title: "Picture Book", author: "Nobody Known", subjects: ["Juvenile fiction"]).tier <= 1.5)
 
@@ -475,10 +501,12 @@ struct ReadingTests {
         #expect(BookLevel.refined(own, readerLevel: 4) == 4, "no feedback until it's finished or set aside")
 
         // The same book however it's written.
-        #expect(BookLevel.matchKey(title: "The Hobbit: or There and Back Again", author: "J. R. R. Tolkien")
-            == BookLevel.matchKey(title: "Hobbit", author: "Tolkien, J. R. R."))
-        #expect(BookLevel.matchKey(title: "A Canticle for Leibowitz", author: "Walter M. Miller Jr.")
-            == BookLevel.matchKey(title: "A Canticle for Leibowitz", author: "Walter M. Miller"))
+        #expect(
+            BookLevel.matchKey(title: "The Hobbit: or There and Back Again", author: "J. R. R. Tolkien")
+                == BookLevel.matchKey(title: "Hobbit", author: "Tolkien, J. R. R."))
+        #expect(
+            BookLevel.matchKey(title: "A Canticle for Leibowitz", author: "Walter M. Miller Jr.")
+                == BookLevel.matchKey(title: "A Canticle for Leibowitz", author: "Walter M. Miller"))
     }
 
     // MARK: Content
@@ -551,7 +579,8 @@ struct ReadingTests {
         let (ra, rb) = (ranks(a), ranks(b))
         let (ma, mb) = (ra.reduce(0, +) / Double(ra.count), rb.reduce(0, +) / Double(rb.count))
         let cov = zip(ra, rb).map { ($0 - ma) * ($1 - mb) }.reduce(0, +)
-        let va = ra.map { ($0 - ma) * ($0 - ma) }.reduce(0, +), vb = rb.map { ($0 - mb) * ($0 - mb) }.reduce(0, +)
+        let va = ra.map { ($0 - ma) * ($0 - ma) }.reduce(0, +)
+        let vb = rb.map { ($0 - mb) * ($0 - mb) }.reduce(0, +)
         return cov / sqrt(va * vb)
     }
 
@@ -580,8 +609,11 @@ extension ReadingTests {
     func readingDay() -> (store: Store, state: StudyState) {
         var store = Store(settings: Fixtures.settings([.reading], days: 7))
         store.tests = [TestResult(test: .readingTest, date: Fixtures.monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
-        store.sessions = [StudySession(purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
-                                       domains: [.reading], planned: true)]
+        store.sessions = [
+            StudySession(
+                purpose: .placement, start: Fixtures.monday.date(), end: Fixtures.monday.date(), plannedMinutes: 25,
+                domains: [.reading], planned: true)
+        ]
         return (store, store.state(on: Fixtures.monday.adding(days: 1)))
     }
 
@@ -590,7 +622,10 @@ extension ReadingTests {
         var (store, state) = readingDay()
         let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
-        guard case .pickBook = run.step else { Issue.record("no book to pick: \(String(describing: run.step))"); return }
+        guard case .pickBook = run.step else {
+            Issue.record("no book to pick: \(String(describing: run.step))")
+            return
+        }
         run.skipPart(now: state.now + 5)
         #expect(run.isComplete)
         run.finish(now: state.now + 8)
@@ -607,17 +642,29 @@ extension ReadingTests {
         let (_, state) = readingDay()
         let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
-        guard case .pickBook(let books) = run.step, let ladderBook = books.first else { Issue.record("no book to pick"); return }
+        guard case .pickBook(let books) = run.step, let ladderBook = books.first else {
+            Issue.record("no book to pick")
+            return
+        }
         run.pickBook(ladderBook, now: state.now + 5)
-        guard case .read(let book, let minutes) = run.step else { Issue.record("not reading"); return }
+        guard case .read(let book, let minutes) = run.step else {
+            Issue.record("not reading")
+            return
+        }
         run.pickBook(books.last ?? ladderBook, now: state.now + 6)
         #expect(run.books.filter { $0.status == .reading }.count == 1 && run.changedBooks == [book.id], "one book on the go")
-        guard case .read(let still, _) = run.step else { Issue.record("not reading"); return }
+        guard case .read(let still, _) = run.step else {
+            Issue.record("not reading")
+            return
+        }
         #expect(still.id == book.id)
 
         let end = state.now + Double(minutes) * 60
         run.finishReading(page: 30, finished: false, feel: nil, minutes: Double(minutes), focus: .held, now: end)
-        guard case .reflect = run.step else { Issue.record("no reflection"); return }
+        guard case .reflect = run.step else {
+            Issue.record("no reflection")
+            return
+        }
         run.finishReading(page: 30, finished: false, feel: nil, minutes: Double(minutes), focus: .held, now: end + 1)
         #expect(run.session.reading?.fromPage == 0 && run.session.reading?.toPage == 30, "\(String(describing: run.session.reading))")
 
@@ -631,16 +678,16 @@ extension ReadingTests {
     @Test("an odd record in a lookup reply drops only itself, and ISBNs typed in full-width digits read as plain ones")
     func untrustedReplies() throws {
         let google = """
-        {"items": [{"kind": "books#volume"},
-                   {"volumeInfo": {"title": "Odd", "industryIdentifiers": [{"type": "OTHER"}, {"type": "ISBN_13", "identifier": "9780141439518"}]}},
-                   {"volumeInfo": {"title": "The Name of the Wind", "authors": ["Patrick Rothfuss"], "pageCount": 662}}]}
-        """
+            {"items": [{"kind": "books#volume"},
+                       {"volumeInfo": {"title": "Odd", "industryIdentifiers": [{"type": "OTHER"}, {"type": "ISBN_13", "identifier": "9780141439518"}]}},
+                       {"volumeInfo": {"title": "The Name of the Wind", "authors": ["Patrick Rothfuss"], "pageCount": 662}}]}
+            """
         let books = GoogleBooks.parse(Data(google.utf8))
         #expect(books.map(\.title) == ["Odd", "The Name of the Wind"], "an identifier without a value loses only itself")
         #expect(books.first?.isbn == "9780141439518")
         let search = """
-        {"docs": [{"title": "Piranesi", "number_of_pages_median": "many"}, {"title": "Jonathan Strange", "author_name": ["Susanna Clarke"]}]}
-        """
+            {"docs": [{"title": "Piranesi", "number_of_pages_median": "many"}, {"title": "Jonathan Strange", "author_name": ["Susanna Clarke"]}]}
+            """
         #expect(OpenLibrary.parseSearch(Data(search.utf8)).map(\.title) == ["Jonathan Strange"])
         #expect(OpenLibrary.parseISBN(Data(#"{"ISBN:9780141439518": {"authors": []}}"#.utf8), isbn: "9780141439518") == nil)
 
@@ -658,8 +705,9 @@ extension ReadingTests {
             TestResult(test: .readingTest, date: Fixtures.monday.adding(days: i * 42).date(), score: 0.8, detail: ["tier": Double(3 + i)])
         }
         store.books = (0..<6).map { i in
-            Book(ladderID: "book-\(i)", title: "Book \(i)", author: "A", tier: 4 + i % 3, pages: 300, genres: [], status: .finished,
-                 finished: Fixtures.monday.adding(days: 10 + i * 20), feel: [.easy, .right, .hard][i % 3])
+            Book(
+                ladderID: "book-\(i)", title: "Book \(i)", author: "A", tier: 4 + i % 3, pages: 300, genres: [], status: .finished,
+                finished: Fixtures.monday.adding(days: 10 + i * 20), feel: [.easy, .right, .hard][i % 3])
         }
         let state = store.state(on: Fixtures.monday.adding(days: 200))
         let full = ReadingPlan.series(state)
@@ -697,9 +745,10 @@ extension ReadingTests {
         #expect(old.page == 40 && old.format == nil && old.language == nil && old.title == "Short")
 
         // Every field round-trips through the hand-written decoder.
-        let full = Book(ladderID: "x", title: "Full", author: "B", tier: 6, pages: 300, genres: [.sciFi, .fantasy], status: .finished,
-                        started: Fixtures.monday, finished: Fixtures.monday.adding(days: 9), page: 300, feel: .easy, format: .ebook, isbn: "9780141439518",
-                        language: .spanish, tierConfidence: 0.7, updatedAt: Fixtures.monday.date())
+        let full = Book(
+            ladderID: "x", title: "Full", author: "B", tier: 6, pages: 300, genres: [.sciFi, .fantasy], status: .finished,
+            started: Fixtures.monday, finished: Fixtures.monday.adding(days: 9), page: 300, feel: .easy, format: .ebook, isbn: "9780141439518",
+            language: .spanish, tierConfidence: 0.7, updatedAt: Fixtures.monday.date())
         #expect(try JSONDecoder().decode(Book.self, from: JSONEncoder().encode(full)) == full)
 
         // An edition with fewer pages brings the bookmark with it.

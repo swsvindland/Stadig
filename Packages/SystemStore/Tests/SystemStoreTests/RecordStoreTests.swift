@@ -2,6 +2,7 @@ import Foundation
 import Synchronization
 import SystemCore
 import Testing
+
 @testable import SystemStore
 
 @MainActor
@@ -58,9 +59,11 @@ struct RecordStoreTests {
         #expect(store.rows(kind: Lift.kind).count == 1, "upsert, not insert")
 
         // In a batch too, and the newest of two copies in one batch wins.
-        store.save([Lift(id: id, name: "Bench", reps: 1, updatedAt: t0 + 15),
-                    Lift(id: id, name: "Bench", reps: 10, updatedAt: t0 + 40),
-                    Lift(id: id, name: "Bench", reps: 9, updatedAt: t0 + 30)])
+        store.save([
+            Lift(id: id, name: "Bench", reps: 1, updatedAt: t0 + 15),
+            Lift(id: id, name: "Bench", reps: 10, updatedAt: t0 + 40),
+            Lift(id: id, name: "Bench", reps: 9, updatedAt: t0 + 30),
+        ])
         #expect(store.get(Lift.self, id: id)?.reps == 10)
         #expect(store.rows(kind: Lift.kind).count == 1)
     }
@@ -132,8 +135,9 @@ struct RecordStoreTests {
     @Test func v1RowIsMigratedOnRead() throws {
         let store = memoryStore()
         let id = UUID()
-        store.insertRawRow(kind: Lift.kind, uuid: id, updatedAt: t0, schemaVersion: 1,
-                           payload: try v1Payload(id: id, title: "Squat", reps: 3, updatedAt: t0))
+        store.insertRawRow(
+            kind: Lift.kind, uuid: id, updatedAt: t0, schemaVersion: 1,
+            payload: try v1Payload(id: id, title: "Squat", reps: 3, updatedAt: t0))
 
         let expected = Lift(id: id, name: "Squat", reps: 3, notes: "", updatedAt: t0)
         #expect(store.get(Lift.self, id: id) == expected)
@@ -187,8 +191,9 @@ struct RecordStoreTests {
         store.save([bench, row, dip])
         store.delete(Lift.self, id: dip.id)
         let squatID = UUID()
-        store.insertRawRow(kind: Lift.kind, uuid: squatID, updatedAt: t0, schemaVersion: 1,
-                           payload: try v1Payload(id: squatID, title: "Squat", reps: 3, updatedAt: t0))
+        store.insertRawRow(
+            kind: Lift.kind, uuid: squatID, updatedAt: t0, schemaVersion: 1,
+            payload: try v1Payload(id: squatID, title: "Squat", reps: 3, updatedAt: t0))
 
         let backup = try store.exportBackup(app: .liftTrack, shared: shared)
         let file = try BackupFile(data: backup)
@@ -240,9 +245,14 @@ struct RecordStoreTests {
 
         // A bad shared path fails the import before anything is written.
         let lift = Lift(name: "Bench", updatedAt: t0)
-        let hostile = BackupFile(app: .liftTrack, records: [BackupRecord(kind: Lift.kind, uuid: lift.id, updatedAt: t0, schemaVersion: 2,
-                                                                        payload: try payload(lift), deleted: false)],
-                                 shared: ["../outside.json": Data("{}".utf8)])
+        let hostile = BackupFile(
+            app: .liftTrack,
+            records: [
+                BackupRecord(
+                    kind: Lift.kind, uuid: lift.id, updatedAt: t0, schemaVersion: 2,
+                    payload: try payload(lift), deleted: false)
+            ],
+            shared: ["../outside.json": Data("{}".utf8)])
         let data = try SystemJSON.encoder().encode(hostile)
         #expect(throws: SystemStoreError.invalidPath("../outside.json")) {
             try store.importBackup(data, app: .liftTrack, shared: temporarySharedContainer())
@@ -269,8 +279,9 @@ struct RecordStoreTests {
     /// `swift test`'s runner has no bundle identifier or iCloud entitlement; a test host on a simulator may have both.
     @Test(.enabled(if: Bundle.main.bundleIdentifier == nil, "needs a runner without a bundle identifier"))
     func cloudKitStoreThatCantOpenFallsBackWithoutCrashing() {
-        let store = RecordStore(name: "cloud-\(UUID().uuidString)", cloudKitContainer: "iCloud.dev.svindland.systemstore.tests",
-                                inMemory: false, directory: temporaryDirectory())
+        let store = RecordStore(
+            name: "cloud-\(UUID().uuidString)", cloudKitContainer: "iCloud.dev.svindland.systemstore.tests",
+            inMemory: false, directory: temporaryDirectory())
         #expect(store.syncStatus == "This device only")
         let lift = Lift(name: "Bench", updatedAt: t0)
         store.save(lift)
@@ -445,11 +456,12 @@ struct RecordStoreCacheTests {
         #expect(decodes() == decoded)
 
         // A big batch is read again whole, and still lands in order.
-        store.save((0..<40).map { i in
-            var note = notes[100 + i]
-            note.updatedAt = t0 + 1000 + Double(i % 3)
-            return note
-        })
+        store.save(
+            (0..<40).map { i in
+                var note = notes[100 + i]
+                note.updatedAt = t0 + 1000 + Double(i % 3)
+                return note
+            })
         #expect(store.all(TimedNote.self).count == 202)
         #expect(store.all(TimedNote.self) == store.uncachedAll(TimedNote.self))
     }
@@ -457,13 +469,17 @@ struct RecordStoreCacheTests {
     @Test func aPatchedListMatchesReadingTheRows() throws {
         let store = memoryStore()
         // Two rows of one record from two devices, a row an older app version wrote, and one from a newer.
-        let duplicate = UUID(), old = UUID(), future = UUID()
+        let duplicate = UUID()
+        let old = UUID()
+        let future = UUID()
         for offset in [0.0, 5.0] {
-            store.insertRawRow(kind: Lift.kind, uuid: duplicate, updatedAt: t0 + offset, schemaVersion: 2,
-                               payload: try payload(Lift(id: duplicate, name: "Copy", updatedAt: t0 + offset)))
+            store.insertRawRow(
+                kind: Lift.kind, uuid: duplicate, updatedAt: t0 + offset, schemaVersion: 2,
+                payload: try payload(Lift(id: duplicate, name: "Copy", updatedAt: t0 + offset)))
         }
-        store.insertRawRow(kind: Lift.kind, uuid: old, updatedAt: t0, schemaVersion: 1,
-                           payload: try v1Payload(id: old, title: "Squat", reps: 3, updatedAt: t0))
+        store.insertRawRow(
+            kind: Lift.kind, uuid: old, updatedAt: t0, schemaVersion: 1,
+            payload: try v1Payload(id: old, title: "Squat", reps: 3, updatedAt: t0))
         let futurePayload = Data(#"{"id":"\#(future.uuidString)","name":"Clean","reps":2,"notes":"","updatedAt":1760000000000,"tempo":"31X1"}"#.utf8)
         store.insertRawRow(kind: Lift.kind, uuid: future, updatedAt: t0, schemaVersion: 3, payload: futurePayload)
         let bench = Lift(name: "Bench", updatedAt: t0 + 1)
@@ -510,8 +526,13 @@ struct RecordStoreCacheTests {
         heavier.updatedAt = t0 + 1
         store.save(heavier)
         store.delete(Lift.self, id: bench.id)
-        let backup = BackupFile(app: .liftTrack, records: [BackupRecord(kind: Lift.kind, uuid: UUID(), updatedAt: t0, schemaVersion: 2,
-                                                                       payload: try payload(Lift(name: "Row", updatedAt: t0)), deleted: false)])
+        let backup = BackupFile(
+            app: .liftTrack,
+            records: [
+                BackupRecord(
+                    kind: Lift.kind, uuid: UUID(), updatedAt: t0, schemaVersion: 2,
+                    payload: try payload(Lift(name: "Row", updatedAt: t0)), deleted: false)
+            ])
         try store.importBackup(SystemJSON.encoder().encode(backup), app: .liftTrack, shared: nil)
         #expect(store.all(CountedNote.self).count == 1000)
         #expect(CountedNote.decodes.withLock { $0 } == decoded, "no note was decoded again")
@@ -552,9 +573,14 @@ struct RecordStoreCacheTests {
         #expect(stale.isEmpty)
         let lift = Lift(name: "Bench", updatedAt: t0)
         // "core" as a file and as a folder: valid paths, but the second can't be written.
-        let damaged = BackupFile(app: .liftTrack, records: [BackupRecord(kind: Lift.kind, uuid: lift.id, updatedAt: t0, schemaVersion: 2,
-                                                                        payload: try payload(lift), deleted: false)],
-                                 shared: ["core": Data("{}".utf8), "core/x.json": Data("{}".utf8)])
+        let damaged = BackupFile(
+            app: .liftTrack,
+            records: [
+                BackupRecord(
+                    kind: Lift.kind, uuid: lift.id, updatedAt: t0, schemaVersion: 2,
+                    payload: try payload(lift), deleted: false)
+            ],
+            shared: ["core": Data("{}".utf8), "core/x.json": Data("{}".utf8)])
         let revision = store.revision
         #expect(throws: (any Error).self) {
             try store.importBackup(SystemJSON.encoder().encode(damaged), app: .liftTrack, shared: temporarySharedContainer())
@@ -592,13 +618,15 @@ struct RecordStoreCacheTests {
         #expect(store.rows(kind: Lift.kind).count == 40)
 
         // A duplicate row from another device, and a row from a newer app version.
-        let duplicate = ids[1], future = ids[2]
-        store.insertRawRow(kind: Lift.kind, uuid: duplicate, updatedAt: t0, schemaVersion: 2,
-                           payload: try payload(Lift(id: duplicate, name: "Old copy", updatedAt: t0)))
+        let duplicate = ids[1]
+        let future = ids[2]
+        store.insertRawRow(
+            kind: Lift.kind, uuid: duplicate, updatedAt: t0, schemaVersion: 2,
+            payload: try payload(Lift(id: duplicate, name: "Old copy", updatedAt: t0)))
         let futurePayload = Data(#"{"id":"\#(future.uuidString)","name":"Clean","reps":2,"notes":"","updatedAt":1760000020000,"tempo":"31X1"}"#.utf8)
         store.insertRawRow(kind: Lift.kind, uuid: future, updatedAt: t0 + 20, schemaVersion: 3, payload: futurePayload)
 
-        var batch = ids.map { Lift(id: $0, name: "Older", reps: 1, updatedAt: t0) }   // all older: ignored
+        var batch = ids.map { Lift(id: $0, name: "Older", reps: 1, updatedAt: t0) }  // all older: ignored
         batch += ids.map { Lift(id: $0, name: "Second", reps: 8, updatedAt: t0 + 30) }
         batch.append(Lift(id: ids[0], name: "Newest in the batch", updatedAt: t0 + 40))
         batch.append(Lift(id: ids[0], name: "Older in the batch", updatedAt: t0 + 35))
@@ -673,7 +701,7 @@ struct RecordStoreCacheTests {
         let payloads = [
             encoded,
             Data("[1,2,3]".utf8),
-            Data([0xFF, 0x00, 0x7B]),   // not JSON at all: embeds as base64
+            Data([0xFF, 0x00, 0x7B]),  // not JSON at all: embeds as base64
             Data(#""a bare string""#.utf8),
         ]
         for original in payloads {

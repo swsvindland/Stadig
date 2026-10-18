@@ -1,6 +1,7 @@
 import Foundation
 import SystemCore
 import Testing
+
 @testable import SystemStore
 
 struct SharedContainerTests {
@@ -93,9 +94,12 @@ struct SharedContainerTests {
 
     @Test func olderEnvelopeIsMigratedStepByStep() throws {
         let shared = temporarySharedContainer()
-        try writeRaw(["schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
-                      "payload": [["body": "Deload next week"], ["body": "Sleep"]]],
-                     to: Self.notes.path, in: shared)
+        try writeRaw(
+            [
+                "schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
+                "payload": [["body": "Deload next week"], ["body": "Sleep"]],
+            ],
+            to: Self.notes.path, in: shared)
 
         #expect(shared.read(Self.notes) == [Note(text: "Deload next week", pinned: false), Note(text: "Sleep", pinned: false)])
         let envelope = try #require(shared.envelope(Self.notes))
@@ -106,9 +110,12 @@ struct SharedContainerTests {
 
     @Test func newerSchemaIsNeitherReadNorOverwritten() throws {
         let shared = temporarySharedContainer()
-        try writeRaw(["schemaVersion": 3, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
-                      "payload": ["notes": [["text": "From the future", "pinned": true, "colour": "red"]]]],
-                     to: Self.notes.path, in: shared)
+        try writeRaw(
+            [
+                "schemaVersion": 3, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
+                "payload": ["notes": [["text": "From the future", "pinned": true, "colour": "red"]]],
+            ],
+            to: Self.notes.path, in: shared)
         let url = shared.directory.appending(path: Self.notes.path)
         let original = try Data(contentsOf: url)
 
@@ -184,15 +191,20 @@ struct SharedContainerTests {
                 new.stats[i].updated = old.stats.first { $0.stat == new.stats[i].stat }?.updated ?? new.stats[i].updated
             }
         }
-        #expect(try !shared.writeIfChanged(summary, to: .summary(.liftTrack), by: .liftTrack, now: t0 + 240,
-                                           carryOver: carry, stamp: { $0.updated = $1 }))
+        #expect(
+            try !shared.writeIfChanged(
+                summary, to: .summary(.liftTrack), by: .liftTrack, now: t0 + 240,
+                carryOver: carry, stamp: { $0.updated = $1 }))
     }
 
     @Test func writeIfChangedUpgradesAnOlderFile() throws {
         let shared = temporarySharedContainer()
-        try writeRaw(["schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
-                      "payload": [["body": "Sleep"]]],
-                     to: Self.notes.path, in: shared)
+        try writeRaw(
+            [
+                "schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds,
+                "payload": [["body": "Sleep"]],
+            ],
+            to: Self.notes.path, in: shared)
         // The same notes, but the file is at schema 1: rewritten so it's at 2 on disk.
         let notes = [Note(text: "Sleep", pinned: false)]
         #expect(try shared.writeIfChanged(notes, to: Self.notes, by: .liftTrack, now: t0, carryOver: { _, _ in }, stamp: { _, _ in }))
@@ -223,11 +235,12 @@ struct CSVTableTests {
         table.append(["Row", "crlf\r\ninside"])
         table.append([" Dip", "Ünïcødé – ×", "-5"])
 
-        #expect(table.text == "Exercise,Note,kg\r\n"
-            + "\"Bench, paused\",\"Said \"\"go\"\"\",100\r\n"
-            + "Squat,\"line one\nline two\",140.5\r\n"
-            + "Row,\"crlf\r\ninside\",\r\n"
-            + "\" Dip\",Ünïcødé – ×,-5\r\n")
+        #expect(
+            table.text == "Exercise,Note,kg\r\n"
+                + "\"Bench, paused\",\"Said \"\"go\"\"\",100\r\n"
+                + "Squat,\"line one\nline two\",140.5\r\n"
+                + "Row,\"crlf\r\ninside\",\r\n"
+                + "\" Dip\",Ünïcødé – ×,-5\r\n")
         #expect(Array(table.data.prefix(3)) == [0xEF, 0xBB, 0xBF])
         #expect(String(decoding: table.data.dropFirst(3), as: UTF8.self) == table.text)
     }
@@ -239,11 +252,12 @@ struct CSVTableTests {
         table.append(["-1+cmd|' /C calc'!A0", "\tTabbed", "+2.5"])
         table.append(["Ünïcødé = fine", "a-b", "1e-3"])
 
-        #expect(table.text == "Food,Brand,kcal\r\n"
-            + "'+Proteinas,'@ Ease,-5\r\n"
-            + "\"'=HYPERLINK(\"\"http://x\"\",\"\"Open\"\")\",'-foo,-0.5\r\n"
-            + "'-1+cmd|' /C calc'!A0,'\tTabbed,+2.5\r\n"
-            + "Ünïcødé = fine,a-b,1e-3\r\n")
+        #expect(
+            table.text == "Food,Brand,kcal\r\n"
+                + "'+Proteinas,'@ Ease,-5\r\n"
+                + "\"'=HYPERLINK(\"\"http://x\"\",\"\"Open\"\")\",'-foo,-0.5\r\n"
+                + "'-1+cmd|' /C calc'!A0,'\tTabbed,+2.5\r\n"
+                + "Ünïcødé = fine,a-b,1e-3\r\n")
     }
 
     @Test func emptyTableIsJustTheHeader() {

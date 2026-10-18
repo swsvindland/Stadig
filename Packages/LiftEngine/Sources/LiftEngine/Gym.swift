@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// A gym: what it has and which loads it can make. Loads are stored in kg everywhere else; a gym
@@ -23,9 +23,11 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
     public var included: Set<String>
     public var updatedAt: Date
 
-    public init(id: UUID = UUID(), name: String, access: EquipmentAccess, unit: WeightUnit, barWeight: Double, plates: [Double],
-                dumbbellStep: Double, dumbbellMax: Double, machineStep: Double, equipment: Set<Equipment>, apparatus: Set<Apparatus>,
-                excluded: Set<String> = [], included: Set<String> = [], updatedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(), name: String, access: EquipmentAccess, unit: WeightUnit, barWeight: Double, plates: [Double],
+        dumbbellStep: Double, dumbbellMax: Double, machineStep: Double, equipment: Set<Equipment>, apparatus: Set<Apparatus>,
+        excluded: Set<String> = [], included: Set<String> = [], updatedAt: Date = Date()
+    ) {
         self.id = id
         self.name = name
         self.access = access
@@ -47,15 +49,17 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         let availability = Availability(access: access)
         let kg = unit == .kg
         let cap = availability.dumbbellMaxKg.map { unit.fromKilograms($0).rounded() } ?? (kg ? 50 : 120)
-        return Gym(name: access.label, access: access, unit: unit, barWeight: kg ? 20 : 45,
-                   plates: kg ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5],
-                   dumbbellStep: kg ? 2 : 5, dumbbellMax: max(kg ? 2 : 5, cap), machineStep: kg ? 5 : 10,
-                   equipment: availability.equipment, apparatus: availability.apparatus)
+        return Gym(
+            name: access.label, access: access, unit: unit, barWeight: kg ? 20 : 45,
+            plates: kg ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5],
+            dumbbellStep: kg ? 2 : 5, dumbbellMax: max(kg ? 2 : 5, cap), machineStep: kg ? 5 : 10,
+            equipment: availability.equipment, apparatus: availability.apparatus)
     }
 
     public var availability: Availability {
-        Availability(equipment: equipment, apparatus: apparatus, dumbbellMaxKg: unit.toKilograms(dumbbellMax),
-                     excluded: excluded, included: included)
+        Availability(
+            equipment: equipment, apparatus: apparatus, dumbbellMaxKg: unit.toKilograms(dumbbellMax),
+            excluded: excluded, included: included)
     }
 
     public var hasSafeties: Bool { apparatus.contains(.rack) }
@@ -191,7 +195,8 @@ public struct GymIncrements: LoadIncrements, Hashable {
         let target = gym.unit.fromKilograms(max(kg ?? 0, 0))
         let loads = loadsFromZero(upTo: max(target * 1.6, target + 60))
         let index = loads.firstIndex { $0 >= target - 1e-9 } ?? loads.count - 1
-        let lo = max(0, index - below), hi = min(loads.count - 1, index + above)
+        let lo = max(0, index - below)
+        let hi = min(loads.count - 1, index + above)
         return loads[lo...hi].map { gym.unit.toKilograms($0) }
     }
 

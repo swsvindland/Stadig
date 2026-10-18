@@ -10,8 +10,10 @@ public struct PlanChange: Hashable, Sendable {
     public var cheaper: Bool?
     public var quicker: Bool?
 
-    public init(avoid: Set<String> = [], want: Set<String> = [], diet: PlanPreferences.Diet? = nil, cheaper: Bool? = nil,
-                quicker: Bool? = nil) {
+    public init(
+        avoid: Set<String> = [], want: Set<String> = [], diet: PlanPreferences.Diet? = nil, cheaper: Bool? = nil,
+        quicker: Bool? = nil
+    ) {
         self.avoid = avoid
         self.want = want
         self.diet = diet
@@ -80,14 +82,18 @@ public enum PlanRequests {
         "poultry": ["chicken-breast", "turkey"], "eggs": ["egg-muffins"], "egg": ["egg-muffins"],
     ]
 
-    static let negations: Set<String> = ["no", "not", "without", "avoid", "hate", "hates", "dislike", "dislikes", "skip", "less", "fewer",
-                                         "never", "stop", "remove", "drop", "allergic", "dont", "don't", "cant", "can't", "cannot",
-                                         "doesnt", "doesn't", "didnt", "didn't", "won't", "wouldnt", "wouldn't", "sick",
-                                         "tired", "bored", "except", "nothing", "instead", "lose", "ditch", "swap", "replace"]
+    static let negations: Set<String> = [
+        "no", "not", "without", "avoid", "hate", "hates", "dislike", "dislikes", "skip", "less", "fewer",
+        "never", "stop", "remove", "drop", "allergic", "dont", "don't", "cant", "can't", "cannot",
+        "doesnt", "doesn't", "didnt", "didn't", "won't", "wouldnt", "wouldn't", "sick",
+        "tired", "bored", "except", "nothing", "instead", "lose", "ditch", "swap", "replace",
+    ]
     /// Words that end what a negation covers: "no chicken, more salmon". Not "and" or "or", which
     /// carry it along a list: "allergic to shellfish and peanuts".
-    static let breaks: Set<String> = [",", ";", ".", "but", "though", "more", "want", "add", "love", "like", "prefer", "please",
-                                      "with", "plus"]
+    static let breaks: Set<String> = [
+        ",", ";", ".", "but", "though", "more", "want", "add", "love", "like", "prefer", "please",
+        "with", "plus",
+    ]
     /// Breaks that belong to the negation just before them: "don't want", "not like", "no more".
     static let negatedVerbs: Set<String> = ["want", "like", "love", "prefer", "more"]
     /// Words that can sit between a negation and its verb: "don't really want", "don't want to eat any more".
@@ -123,11 +129,23 @@ public enum PlanRequests {
         var i = 0
         while i < tokens.count {
             let token = tokens[i]
-            if verbOfNegation, negatedVerbs.contains(token) || fillers.contains(token) { i += 1; continue }
+            if verbOfNegation, negatedVerbs.contains(token) || fillers.contains(token) {
+                i += 1
+                continue
+            }
             verbOfNegation = false
             let newClause = i > 0 && tokens[i - 1] == "and" && clauseVerbs.contains(token)
-            if breaks.contains(token) || newClause { negated = false; i += 1; continue }
-            if negations.contains(token) { negated = true; verbOfNegation = true; i += 1; continue }
+            if breaks.contains(token) || newClause {
+                negated = false
+                i += 1
+                continue
+            }
+            if negations.contains(token) {
+                negated = true
+                verbOfNegation = true
+                i += 1
+                continue
+            }
             // The longest phrase starting here.
             var matched = false
             for length in stride(from: 3, through: 1, by: -1) where i + length <= tokens.count {
@@ -197,7 +215,10 @@ public enum PlanRequests {
             if character.isLetter || character == "-" || character == "'" {
                 word.append(character)
             } else {
-                if !word.isEmpty { tokens.append(word); word = "" }
+                if !word.isEmpty {
+                    tokens.append(word)
+                    word = ""
+                }
                 if [",", ";", "."].contains(character) { tokens.append(String(character)) }
             }
         }

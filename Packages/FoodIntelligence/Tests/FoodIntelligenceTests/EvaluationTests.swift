@@ -5,6 +5,7 @@ import Foundation
 import ImageIO
 import SystemCore
 import Testing
+
 @testable import FoodIntelligence
 
 /// The real pipeline on this Mac: Apple's model, the real catalogs. Prints what it found and how
@@ -34,8 +35,9 @@ struct EvaluationTests {
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    static let catalog = FoodCatalog(usda: root.appending(path: "Packages/FoodDatabase/Sources/FoodDatabase/Resources/usda.db"),
-                                     off: root.appending(path: "Apps/MacroTrack/Catalogs/off.db"))
+    static let catalog = FoodCatalog(
+        usda: root.appending(path: "Packages/FoodDatabase/Sources/FoodDatabase/Resources/usda.db"),
+        off: root.appending(path: "Apps/MacroTrack/Catalogs/off.db"))
 
     @Test @available(macOS 27.0, iOS 27.0, *)
     func descriptions() async throws {
@@ -46,7 +48,10 @@ struct EvaluationTests {
         let ai = MealAI(catalog: Self.catalog, allowCloud: false)
         await ai.prewarm()
         try await Task.sleep(for: .seconds(2))
-        var hits = 0, expected = 0, inRange = 0, seconds: [Double] = []
+        var hits = 0
+        var expected = 0
+        var inRange = 0
+        var seconds: [Double] = []
         for (description, wanted, range) in Self.meals {
             do {
                 let guess = try await traced { try await ai.recognize(description: description, personal: []) }
@@ -57,16 +62,18 @@ struct EvaluationTests {
                 let kcal = guess.nutrients.kcal
                 if range.contains(kcal) { inRange += 1 }
                 seconds.append(guess.seconds)
-                print(report(description, guess) + "  foods \(found.count)/\(wanted.count), kcal \(Int(kcal)) "
-                    + (range.contains(kcal) ? "in" : "OUT OF") + " range \(Int(range.lowerBound))–\(Int(range.upperBound))\n")
+                print(
+                    report(description, guess) + "  foods \(found.count)/\(wanted.count), kcal \(Int(kcal)) "
+                        + (range.contains(kcal) ? "in" : "OUT OF") + " range \(Int(range.lowerBound))–\(Int(range.upperBound))\n")
             } catch {
                 expected += wanted.count
                 print("“\(description)” failed: \(error)\n")
             }
         }
         let sorted = seconds.sorted()
-        print("SUMMARY descriptions: foods \(hits)/\(expected), kcal in range \(inRange)/\(Self.meals.count), "
-            + "seconds median \(format(sorted.isEmpty ? 0 : sorted[sorted.count / 2])) max \(format(sorted.last ?? 0))")
+        print(
+            "SUMMARY descriptions: foods \(hits)/\(expected), kcal in range \(inRange)/\(Self.meals.count), "
+                + "seconds median \(format(sorted.isEmpty ? 0 : sorted[sorted.count / 2])) max \(format(sorted.last ?? 0))")
     }
 
     @Test @available(macOS 27.0, iOS 27.0, *)
@@ -113,7 +120,9 @@ struct EvaluationTests {
             print("label sideways=\(sideways) in \(elapsed): lines \(result.lines)")
             print("  name \(result.suggestedName ?? "-") brand \(result.brand ?? "-")")
             if let reading = result.reading {
-                print("  serving \(reading.servingLabel ?? "-") \(reading.servingGrams.map { "\($0) g" } ?? "") · \(reading.nutrients) · fields \(reading.fieldsRead)\n")
+                print(
+                    "  serving \(reading.servingLabel ?? "-") \(reading.servingGrams.map { "\($0) g" } ?? "") · \(reading.nutrients) · fields \(reading.fieldsRead)\n"
+                )
             } else {
                 print("  no reading\n")
             }
@@ -126,23 +135,30 @@ struct EvaluationTests {
     func liveChecks() async throws {
         let ai = MealAI(catalog: Self.catalog, allowCloud: false)
         let front = ["Oat Crunch", "HONEY ALMOND", "20g PROTEIN", "Whole grain oats", "NET WT 12 OZ (340g)"]
-        let panel = ["Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Amount per serving", "Calories 230",
-                     "% Daily Value*", "Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g", "Cholesterol 0mg 0%",
-                     "Sodium 160mg 7%", "Sodium 160mg 7%", "Total Carb. 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
-                     "Includes 10g Added Sugars 20%", "Protein 3g", "Protcin 3g", "Vitamin D 2mcg 10%", "Calcium 260mg 20%"]
+        let panel = [
+            "Nutrition Facts", "8 servings per container", "Serving size 2/3 cup (55g)", "Amount per serving", "Calories 230",
+            "% Daily Value*", "Total Fat 8g 10%", "Saturated Fat 1g 5%", "Trans Fat 0g", "Cholesterol 0mg 0%",
+            "Sodium 160mg 7%", "Sodium 160mg 7%", "Total Carb. 37g 13%", "Dietary Fiber 4g 14%", "Total Sugars 12g",
+            "Includes 10g Added Sugars 20%", "Protein 3g", "Protcin 3g", "Vitamin D 2mcg 10%", "Calcium 260mg 20%",
+        ]
         var start = ContinuousClock.now
         let label = try #require(try await ai.checkLabel(panel: panel, other: front, onDeviceOnly: true))
         print("live label check in \(ContinuousClock.now - start): \(label)")
         #expect(label.values["kcal"] == 230 && label.values["protein"] == 3 && label.values["carbs"] == 37 && label.values["fat"] == 8)
-        let supplementPanel = ["Supplement Facts", "Serving Size 2 Softgels", "Servings Per Container 50", "Amount Per Serving % DV",
-                               "Calories 20", "Total Fat 2 g 3%", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
-                               "DHA 450 mg †", "Other Omega-3s 120 mg †", "Vitamin E 13.5 mg 90%", "Lemon Oil 10 mg †",
-                               "Rosemary Extract 2 mg †", "† Daily Value not established.", "Other ingredients: Gelatin, Glycerin."]
+        let supplementPanel = [
+            "Supplement Facts", "Serving Size 2 Softgels", "Servings Per Container 50", "Amount Per Serving % DV",
+            "Calories 20", "Total Fat 2 g 3%", "Vitamin D3 25 mcg 125%", "Fish Oil 2,400 mg †", "EPA 650 mg †",
+            "DHA 450 mg †", "Other Omega-3s 120 mg †", "Vitamin E 13.5 mg 90%", "Lemon Oil 10 mg †",
+            "Rosemary Extract 2 mg †", "† Daily Value not established.", "Other ingredients: Gelatin, Glycerin.",
+        ]
         start = ContinuousClock.now
-        let supplement = try #require(try await ai.checkSupplement(panel: supplementPanel, other: ["Fish Oil", "1200 mg", "Heart health"],
-                                                                   onDeviceOnly: true))
-        print("live supplement check in \(ContinuousClock.now - start): \(supplement.name ?? "-") · \(supplement.facts.servingLabel) · "
-              + supplement.facts.ingredients.map { "\($0.name) \($0.amountLabel ?? "")" }.joined(separator: ", "))
+        let supplement = try #require(
+            try await ai.checkSupplement(
+                panel: supplementPanel, other: ["Fish Oil", "1200 mg", "Heart health"],
+                onDeviceOnly: true))
+        print(
+            "live supplement check in \(ContinuousClock.now - start): \(supplement.name ?? "-") · \(supplement.facts.servingLabel) · "
+                + supplement.facts.ingredients.map { "\($0.name) \($0.amountLabel ?? "")" }.joined(separator: ", "))
         #expect(supplement.facts.amounts["vitaminD"] == 25)
         #expect(!supplement.facts.ingredients.contains { $0.name.localizedCaseInsensitiveContains("lemon") })
     }
@@ -152,12 +168,14 @@ struct EvaluationTests {
     /// Runs with the pipeline's notes printed, when `MEAL_AI_TRACE=1`.
     func traced<T>(_ body: () async throws -> T) async throws -> T {
         guard ProcessInfo.processInfo.environment["MEAL_AI_TRACE"] == "1" else { return try await body() }
-        return try await Trace.$receiver.withValue({ print("    … " + $0) }) { try await body() }
+        return try await Trace.$receiver.withValue({ print("    … " + $0) }, operation: { try await body() })
     }
 
     func report(_ title: String, _ guess: MealGuess) -> String {
-        var lines = ["\(title) — \(guess.engine.rawValue), \(format(guess.seconds)) s, \(Int(guess.nutrients.kcal)) kcal"
-            + (guess.scene.map { ", scene “\($0)”" } ?? "") + (guess.isFood ? "" : ", NOT FOOD")]
+        var lines = [
+            "\(title) — \(guess.engine.rawValue), \(format(guess.seconds)) s, \(Int(guess.nutrients.kcal)) kcal"
+                + (guess.scene.map { ", scene “\($0)”" } ?? "") + (guess.isFood ? "" : ", NOT FOOD")
+        ]
         for item in guess.items {
             let seen = [item.seenBrand, item.seenName].compactMap { $0 }.joined(separator: " ")
             guard let match = item.match, let unit = item.unit else {
@@ -165,9 +183,10 @@ struct EvaluationTests {
                 continue
             }
             let amount = FoodUnits.label(count: item.count, unit: unit)
-            lines.append("  · \(seen) → \(match.food.title) [\(format(match.score))] \(item.approximate ? "≈ " : "")\(amount) "
-                + "= \(Int(item.nutrients.kcal)) kcal\(item.sure ? "" : " (unsure)")"
-                + (item.alternatives.isEmpty ? "" : " | alt: " + item.alternatives.prefix(2).map(\.food.name).joined(separator: "; ")))
+            lines.append(
+                "  · \(seen) → \(match.food.title) [\(format(match.score))] \(item.approximate ? "≈ " : "")\(amount) "
+                    + "= \(Int(item.nutrients.kcal)) kcal\(item.sure ? "" : " (unsure)")"
+                    + (item.alternatives.isEmpty ? "" : " | alt: " + item.alternatives.prefix(2).map(\.food.name).joined(separator: "; ")))
         }
         return lines.joined(separator: "\n")
     }
@@ -182,15 +201,19 @@ struct EvaluationTests {
     /// Emoji drawn large on a white plate-coloured background.
     static func emoji(_ text: String) -> CGImage {
         let size = 900
-        let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let context = CGContext(
+            data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.setFillColor(CGColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: size, height: size))
         let font = CTFontCreateWithName("Apple Color Emoji" as CFString, 300, nil)
         for (i, row) in text.split(separator: "\n").enumerated() {
-            let line = CTLineCreateWithAttributedString(NSAttributedString(string: String(row), attributes: [
-                NSAttributedString.Key(kCTFontAttributeName as String): font,
-            ]))
+            let line = CTLineCreateWithAttributedString(
+                NSAttributedString(
+                    string: String(row),
+                    attributes: [
+                        NSAttributedString.Key(kCTFontAttributeName as String): font
+                    ]))
             context.textPosition = CGPoint(x: 60, y: CGFloat(size - 380 - i * 380))
             CTLineDraw(line, context)
         }

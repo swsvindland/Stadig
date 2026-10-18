@@ -1,5 +1,5 @@
-import Foundation
 import ExerciseLibrary
+import Foundation
 import SystemCore
 
 /// What the live session needs from outside to adjust sets: the same on the phone and the Watch.
@@ -15,8 +15,10 @@ public struct SessionEnvironment: Sendable {
     /// Past sauna and steam sessions, for today's time.
     public var heat: [HeatLog] = []
 
-    public init(catalog: ExerciseCatalog, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
-                history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool) {
+    public init(
+        catalog: ExerciseCatalog, gym: Gym, trust: TrustState, phase: PhaseEffects, bodyweightKg: Double?,
+        history: [String: [LoggedSet]], enduranceScore: Double?, heartRateGuidedRest: Bool
+    ) {
         self.catalog = catalog
         self.gym = gym
         self.trust = trust
@@ -102,8 +104,9 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     mutating func adjustOpenSets(after logged: LoggedSet, at index: Int, environment: SessionEnvironment) -> SetAdjustment? {
         guard let next = sets.indices.first(where: { $0 > index && sets[$0].isOpen && sets[$0].prescription.kind != .warmup }) else { return nil }
         let exercise = environment.catalog.resolve(exerciseID)
-        let context = Autoregulation.Context(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
-                                             repRange: plan.repRange, verifiedAlready: verified, hasSafeties: environment.gym.hasSafeties)
+        let context = Autoregulation.Context(
+            exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
+            repRange: plan.repRange, verifiedAlready: verified, hasSafeties: environment.gym.hasSafeties)
         let result = Autoregulation.next(after: logged, planned: sets[next].prescription, context: context)
         if result.kind == .verify { verified = true }
         for later in sets.indices where later >= next && sets[later].isOpen {
@@ -212,7 +215,8 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             let members = items.indices.filter { items[$0].plan.supersetGroup == group && !items[$0].isDone }
             // The member with the fewest logged sets goes next.
             if let pick = members.min(by: { items[$0].sets.filter { !$0.isOpen }.count < items[$1].sets.filter { !$0.isOpen }.count }),
-               let set = items[pick].nextSet {
+                let set = items[pick].nextSet
+            {
                 return (pick, set)
             }
         }
@@ -232,20 +236,24 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
 
     /// Logs a set and adapts the rest of the exercise to its rating. Returns the adjustment.
     @discardableResult
-    public mutating func log(item index: Int, set setIndex: Int, reps: Int, loadKg: Double?, rating: SetRating?, seconds: Int? = nil,
-                             heartRatePeak: Double? = nil, environment: SessionEnvironment, now: Date = Date()) -> SetAdjustment? {
+    public mutating func log(
+        item index: Int, set setIndex: Int, reps: Int, loadKg: Double?, rating: SetRating?, seconds: Int? = nil,
+        heartRatePeak: Double? = nil, environment: SessionEnvironment, now: Date = Date()
+    ) -> SetAdjustment? {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return nil }
         var item = items[index]
         let prescription = item.sets[setIndex].prescription
         let restBefore = rest.map { Int(now.timeIntervalSince($0.started)) }
-        let logged = LoggedSet(exerciseID: item.exerciseID, date: now, kind: prescription.kind, loadKg: loadKg ?? prescription.loadKg ?? 0,
-                               reps: reps, targetReps: prescription.targetReps, rating: prescription.kind == .warmup ? nil : rating,
-                               bodyweightKg: environment.bodyweightKg, stoppedAtFormBreakdown: prescription.stopAtFormBreakdown,
-                               restBeforeSeconds: restBefore, heartRatePeak: heartRatePeak, seconds: seconds)
+        let logged = LoggedSet(
+            exerciseID: item.exerciseID, date: now, kind: prescription.kind, loadKg: loadKg ?? prescription.loadKg ?? 0,
+            reps: reps, targetReps: prescription.targetReps, rating: prescription.kind == .warmup ? nil : rating,
+            bodyweightKg: environment.bodyweightKg, stoppedAtFormBreakdown: prescription.stopAtFormBreakdown,
+            restBeforeSeconds: restBefore, heartRatePeak: heartRatePeak, seconds: seconds)
         item.sets[setIndex].logged = logged
         var adjustment: SetAdjustment?
         if item.plan.isStrength, prescription.kind != .warmup, rating != nil,
-           let result = item.adjustOpenSets(after: logged, at: setIndex, environment: environment) {
+            let result = item.adjustOpenSets(after: logged, at: setIndex, environment: environment)
+        {
             adjustment = result
             message = result.message
             lastAdjustment = result.kind
@@ -268,10 +276,13 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
 
     /// Corrects a logged set (the wrong weight, a rating tapped too fast) and redoes what it set in
     /// motion: the sets still to come are worked out again from the plan and the corrected log.
-    public mutating func edit(item index: Int, set setIndex: Int, reps: Int, loadKg: Double?, rating: SetRating?,
-                              environment: SessionEnvironment, now: Date = Date()) {
+    public mutating func edit(
+        item index: Int, set setIndex: Int, reps: Int, loadKg: Double?, rating: SetRating?,
+        environment: SessionEnvironment, now: Date = Date()
+    ) {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex),
-              var logged = items[index].sets[setIndex].logged else { return }
+            var logged = items[index].sets[setIndex].logged
+        else { return }
         logged.reps = reps
         if let loadKg { logged.loadKg = loadKg }
         if logged.kind != .warmup { logged.rating = rating }
@@ -344,8 +355,12 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     public mutating func addSet(item index: Int, now: Date = Date()) {
         guard items.indices.contains(index), items[index].takesMoreSets else { return }
         let last = items[index].sets.last { $0.prescription.kind != .warmup }
-        var prescription = last?.prescription ?? SetPrescription(kind: .working, loadKg: nil, targetReps: items[index].plan.repRange.middle, targetRIR: 2)
-        if prescription.kind == .repOut { prescription.kind = .working; prescription.targetRIR = 1 }
+        var prescription =
+            last?.prescription ?? SetPrescription(kind: .working, loadKg: nil, targetReps: items[index].plan.repRange.middle, targetRIR: 2)
+        if prescription.kind == .repOut {
+            prescription.kind = .working
+            prescription.targetRIR = 1
+        }
         if let logged = last?.logged { prescription.loadKg = logged.loadKg }
         items[index].sets.append(LiveSet(prescription: prescription))
         items[index].skipped = false
@@ -357,11 +372,13 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         guard items.indices.contains(index) else { return }
         var item = items[index]
         let open = item.sets.filter { $0.isOpen && $0.prescription.kind != .warmup }
-        let target = SlotTarget(sets: max(1, open.count), repRange: item.plan.repRange, targetRIR: open.first?.prescription.targetRIR ?? 2,
-                                deload: open.first?.prescription.kind == .deload)
-        let context = ProgressionContext(exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
-                                         phase: environment.phase, bodyweightKg: environment.bodyweightKg,
-                                         history: environment.history[exercise.id] ?? [])
+        let target = SlotTarget(
+            sets: max(1, open.count), repRange: item.plan.repRange, targetRIR: open.first?.prescription.targetRIR ?? 2,
+            deload: open.first?.prescription.kind == .deload)
+        let context = ProgressionContext(
+            exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
+            phase: environment.phase, bodyweightKg: environment.bodyweightKg,
+            history: environment.history[exercise.id] ?? [])
         let prescription = Progression.prescribe(target, context)
         item.plan.substitutedFor = item.plan.substitutedFor ?? item.exerciseID
         item.exerciseID = exercise.id
@@ -376,11 +393,13 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     public mutating func logConditioning(item index: Int, minutes: Int, averageHeartRate: Double?, zoneMinutes: [Int: Double], now: Date = Date()) {
         guard items.indices.contains(index) else { return }
         let zone = items[index].plan.conditioning?.zones.lowerBound ?? 2
-        items[index].conditioning = ConditioningLog(exerciseID: items[index].exerciseID, minutes: minutes,
-                                                    averageHeartRate: averageHeartRate, zoneMinutes: zoneMinutes, zone: zone)
+        items[index].conditioning = ConditioningLog(
+            exerciseID: items[index].exerciseID, minutes: minutes,
+            averageHeartRate: averageHeartRate, zoneMinutes: zoneMinutes, zone: zone)
         for s in items[index].sets.indices where items[index].sets[s].isOpen {
-            items[index].sets[s].logged = LoggedSet(exerciseID: items[index].exerciseID, date: now, kind: .working, loadKg: 0, reps: 1,
-                                                    seconds: minutes * 60)
+            items[index].sets[s].logged = LoggedSet(
+                exerciseID: items[index].exerciseID, date: now, kind: .working, loadKg: 0, reps: 1,
+                seconds: minutes * 60)
         }
         rest = nil
         updatedAt = now
@@ -391,12 +410,14 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         guard items.indices.contains(index) else { return }
         let start = now.addingTimeInterval(-minutes * 60)
         let readings = heartRateSamples.filter { $0.date >= start && $0.date <= now }.map(\.bpm)
-        items[index].heat = HeatLog(exerciseID: items[index].exerciseID, date: now, minutes: minutes, temperatureC: temperatureC,
-                                    rating: rating, averageHeartRate: readings.isEmpty ? nil : readings.reduce(0, +) / Double(readings.count),
-                                    peakHeartRate: readings.max())
+        items[index].heat = HeatLog(
+            exerciseID: items[index].exerciseID, date: now, minutes: minutes, temperatureC: temperatureC,
+            rating: rating, averageHeartRate: readings.isEmpty ? nil : readings.reduce(0, +) / Double(readings.count),
+            peakHeartRate: readings.max())
         for s in items[index].sets.indices where items[index].sets[s].isOpen {
-            items[index].sets[s].logged = LoggedSet(exerciseID: items[index].exerciseID, date: now, kind: .working, loadKg: 0, reps: 1,
-                                                    rating: nil, seconds: Int(minutes * 60))
+            items[index].sets[s].logged = LoggedSet(
+                exerciseID: items[index].exerciseID, date: now, kind: .working, loadKg: 0, reps: 1,
+                rating: nil, seconds: Int(minutes * 60))
         }
         rest = nil
         updatedAt = now
@@ -408,10 +429,12 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         let item = items[index]
         // Within a superset, move straight to the partner.
         if let group = item.plan.supersetGroup,
-           items.contains(where: { $0.id != item.id && $0.plan.supersetGroup == group && !$0.isDone }),
-           let current, items[current.item].id != item.id {
-            rest = RestState(started: now, plan: RestPlan(target: 20, minimum: 0, heartRateGuided: false), itemID: item.id,
-                             endsAt: now.addingTimeInterval(20), preSetHeartRate: nil, filler: nil)
+            items.contains(where: { $0.id != item.id && $0.plan.supersetGroup == group && !$0.isDone }),
+            let current, items[current.item].id != item.id
+        {
+            rest = RestState(
+                started: now, plan: RestPlan(target: 20, minimum: 0, heartRateGuided: false), itemID: item.id,
+                endsAt: now.addingTimeInterval(20), preSetHeartRate: nil, filler: nil)
             return
         }
         let plan = item.plan.rest
@@ -420,8 +443,9 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             return
         }
         let preSet = heartRateSamples.last { $0.date <= now.addingTimeInterval(-30) }?.bpm
-        rest = RestState(started: now, plan: plan, itemID: item.id, endsAt: now.addingTimeInterval(TimeInterval(plan.target)),
-                         preSetHeartRate: preSet, filler: item.plan.restFiller)
+        rest = RestState(
+            started: now, plan: plan, itemID: item.id, endsAt: now.addingTimeInterval(TimeInterval(plan.target)),
+            preSetHeartRate: preSet, filler: item.plan.restFiller)
     }
 
     public mutating func endRest(now: Date = Date()) {
@@ -490,8 +514,10 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             // keeps its own log, so its history and progression never see the other's loads.
             let planned = item.plan.substitutedFor ?? item.plan.exerciseID
             for group in sets.groupedByExercise() {
-                exercises.append(ExerciseLog(slotID: item.plan.slotID, exerciseID: group.exerciseID, sets: group.sets,
-                                             substitutedFor: group.exerciseID == planned ? nil : planned))
+                exercises.append(
+                    ExerciseLog(
+                        slotID: item.plan.slotID, exerciseID: group.exerciseID, sets: group.sets,
+                        substitutedFor: group.exerciseID == planned ? nil : planned))
             }
         }
         let average = samples.isEmpty ? nil : samples.map(\.bpm).reduce(0, +) / Double(samples.count)
@@ -502,10 +528,11 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             guard let done = item.loggedSets.last, let seconds = done.seconds, seconds > 0 else { return nil }
             return HeatLog(exerciseID: item.exerciseID, date: done.date, minutes: Double(seconds) / 60, temperatureC: nil, rating: nil)
         }
-        return SessionRecord(id: id, start: startedAt, end: now, title: plan.title, mesocycleID: plan.mesocycleID, dayID: plan.dayID,
-                             planned: plan.mesocycleID != nil, deload: plan.deload, exercises: exercises, conditioning: conditioning,
-                             mobility: mobilityDone.filter { id in !items.contains { $0.exerciseID == id && $0.plan.role == .recovery } },
-                             feedback: feedback, device: device, averageHeartRate: average, heat: heat.isEmpty ? nil : heat,
-                             timeZoneID: timeZone.identifier, updatedAt: now)
+        return SessionRecord(
+            id: id, start: startedAt, end: now, title: plan.title, mesocycleID: plan.mesocycleID, dayID: plan.dayID,
+            planned: plan.mesocycleID != nil, deload: plan.deload, exercises: exercises, conditioning: conditioning,
+            mobility: mobilityDone.filter { id in !items.contains { $0.exerciseID == id && $0.plan.role == .recovery } },
+            feedback: feedback, device: device, averageHeartRate: average, heat: heat.isEmpty ? nil : heat,
+            timeZoneID: timeZone.identifier, updatedAt: now)
     }
 }

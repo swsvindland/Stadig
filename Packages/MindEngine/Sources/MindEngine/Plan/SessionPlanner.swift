@@ -17,10 +17,12 @@ public struct StudyState: Sendable {
     public var today: Day
     public var now: Date
 
-    public init(settings: MindSettings, cards: [MemoryCard] = [], sessions: [StudySession] = [], tests: [TestResult] = [],
-                books: [Book] = [], reflections: [Reflection] = [], pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [],
-                lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil, recommendations: [Recommendation] = [], today: Day,
-                now: Date) {
+    public init(
+        settings: MindSettings, cards: [MemoryCard] = [], sessions: [StudySession] = [], tests: [TestResult] = [],
+        books: [Book] = [], reflections: [Reflection] = [], pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [],
+        lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil, recommendations: [Recommendation] = [], today: Day,
+        now: Date
+    ) {
         self.settings = settings
         self.cards = Dictionary(cards.map { ($0.key, $0) }, uniquingKeysWith: { $0.updatedAt >= $1.updatedAt ? $0 : $1 })
         self.sessions = sessions.sorted { $0.start < $1.start }
@@ -142,8 +144,10 @@ public enum SessionPlanner {
             let trajectory = Analyst.trajectory(domain, state: state)
             if trajectory == .stalled || trajectory == .regressing { out.insert(domain) }
         }
-        for recommendation in state.recommendations where recommendation.to == .knowledge && recommendation.isActive(at: state.now)
-            && recommendation.kind == .prioritise {
+        for recommendation in state.recommendations
+        where recommendation.to == .knowledge && recommendation.isActive(at: state.now)
+            && recommendation.kind == .prioritise
+        {
             if case .stat(let stat) = recommendation.subject {
                 out.formUnion(state.settings.focus.filter { $0.stat == stat })
             }
@@ -158,8 +162,10 @@ public enum SessionPlanner {
         if state.sessions.isEmpty || placing && state.sessions.allSatisfy({ $0.purpose == .placement }) {
             return plan(.placement, domains: state.settings.focus, state: state, catalogs: catalogs)
         }
-        if StudyCalendar.checkInDue(on: state.today, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes,
-                                    lastCheckIn: state.lastCheckIn) {
+        if StudyCalendar.checkInDue(
+            on: state.today, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes,
+            lastCheckIn: state.lastCheckIn)
+        {
             return plan(.checkIn, domains: state.settings.domains, state: state, catalogs: catalogs)
         }
         let domains = domains(on: state.today, state: state, priorities: priorities)
@@ -188,8 +194,10 @@ public enum SessionPlanner {
             // What's left of the first session goes to the first language's new material.
             let used = parts.map(\.minutes).reduce(0, +)
             if let language = domains.sorted().first(where: \.isLanguage), total - used >= 4 {
-                parts.append(LanguageModule.learnPart(language, minutes: total - used, session: total - used, state: state,
-                                                      catalogs: catalogs, notes: &notes))
+                parts.append(
+                    LanguageModule.learnPart(
+                        language, minutes: total - used, session: total - used, state: state,
+                        catalogs: catalogs, notes: &notes))
             }
             notes.append("The first session finds where you are, so nothing is too easy or out of reach.")
         default:
@@ -224,8 +232,9 @@ public enum SessionPlanner {
         case .extra: headline = "Quick review · \(total) min"
         default: headline = "\(ListFormatter.localizedString(byJoining: names)) · \(minutesTotal) min"
         }
-        return SessionPlan(day: state.today, kind: kind, minutes: minutesTotal, domains: domains.sorted(), parts: parts, headline: headline,
-                           notes: notes, planned: kind != .extra)
+        return SessionPlan(
+            day: state.today, kind: kind, minutes: minutesTotal, domains: domains.sorted(), parts: parts, headline: headline,
+            notes: notes, planned: kind != .extra)
     }
 
     static func reviewDetail(_ due: [MemoryCard]) -> String {

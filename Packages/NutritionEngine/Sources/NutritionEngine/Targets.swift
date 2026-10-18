@@ -86,9 +86,11 @@ public enum Targets {
     }
 
     /// Today's targets from the plan, the latest check-in and what life is doing.
-    public static func today(day: Day, assessing: Bool, plan: PhasePlan?, override: PhaseKind?, maintenance: MaintenanceEstimate,
-                             checkIn: CheckIn?, weightKg: Double, heightCm: Double?, waistToHeight: Double?,
-                             life: LifeModeEffects, deload: Bool) -> DailyTargets {
+    public static func today(
+        day: Day, assessing: Bool, plan: PhasePlan?, override: PhaseKind?, maintenance: MaintenanceEstimate,
+        checkIn: CheckIn?, weightKg: Double, heightCm: Double?, waistToHeight: Double?,
+        life: LifeModeEffects, deload: Bool
+    ) -> DailyTargets {
         let reference = referenceWeight(kg: weightKg, heightCm: heightCm, waistToHeight: waistToHeight)
         var phase = plan?.phase(on: day)
         if let override, override != phase?.kind {
@@ -96,30 +98,35 @@ public enum Targets {
         }
 
         if life.active.contains(where: { if case .vacation = $0.kind { true } else { false } }) {
-            return DailyTargets(mode: .vacation, kcal: nil, protein: nil, carbs: nil, fat: nil,
-                                note: "Enjoy the trip. No logging expected, and the first days back won't count against the scale.")
+            return DailyTargets(
+                mode: .vacation, kcal: nil, protein: nil, carbs: nil, fat: nil,
+                note: "Enjoy the trip. No logging expected, and the first days back won't count against the scale.")
         }
         if life.active.contains(where: { if case .illness = $0.kind { true } else { false } }) {
             let protein = (reference * 1.2 / 5).rounded() * 5
-            return DailyTargets(mode: .illness, kcal: nil, protein: protein, carbs: nil, fat: nil,
-                                note: "Eat what you can: fluids first, some protein if it's easy. A soup day is fine.")
+            return DailyTargets(
+                mode: .illness, kcal: nil, protein: protein, carbs: nil, fat: nil,
+                note: "Eat what you can: fluids first, some protein if it's easy. A soup day is fine.")
         }
         if life.minimumEffectiveDose {
             let kcal = (maintenance.kcal / 10).rounded() * 10
             let m = macros(kcal: kcal, referenceKg: reference, phase: .maintenance)
-            return DailyTargets(mode: .crunch, kcal: kcal, protein: m.protein, carbs: nil, fat: nil,
-                                note: "Busy stretch: protein first, maintenance calories. Rough restaurant estimates are fine.")
+            return DailyTargets(
+                mode: .crunch, kcal: kcal, protein: m.protein, carbs: nil, fat: nil,
+                note: "Busy stretch: protein first, maintenance calories. Rough restaurant estimates are fine.")
         }
         if assessing {
             let m = macros(kcal: maintenance.kcal, referenceKg: reference, phase: .maintenance)
-            return DailyTargets(mode: .assessment, kcal: nil, protein: m.protein, carbs: nil, fat: nil,
-                                note: "Eat as you normally do and log everything. No deficit or surplus yet.")
+            return DailyTargets(
+                mode: .assessment, kcal: nil, protein: m.protein, carbs: nil, fat: nil,
+                note: "Eat as you normally do and log everything. No deficit or surplus yet.")
         }
         if deload, phase?.kind.energy == .deficit {
             let kcal = ((checkIn?.expenditure ?? maintenance.kcal) / 10).rounded() * 10
             let m = macros(kcal: kcal, referenceKg: reference, phase: .dietBreak)
-            return DailyTargets(mode: .dietBreak, kcal: kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
-                                note: "Deload week, so calories go back to maintenance. A stalled scale now is water and expected; the cut resumes next week.")
+            return DailyTargets(
+                mode: .dietBreak, kcal: kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+                note: "Deload week, so calories go back to maintenance. A stalled scale now is water and expected; the cut resumes next week.")
         }
 
         // The weekly check-in sets the numbers. Without one, or with one from before this phase began
@@ -134,14 +141,15 @@ public enum Targets {
             kcal = calories(maintenance: checkIn?.expenditure ?? maintenance.kcal, phase: phase, weightKg: weightKg)
             m = macros(kcal: kcal, referenceKg: reference, phase: phase?.kind)
         }
-        let note: String = switch phase?.kind {
-        case .cut, .miniCut: "In a cut. The scale is read as a trend across the block, not day to day."
-        case .reverseDiet: "Calories rise a little each week while weight stays roughly stable."
-        case .leanBulk: "A slow surplus. Gaining faster than planned eases it back."
-        case .recomp: "Around maintenance with plenty of protein."
-        case .dietBreak: "A diet break at maintenance."
-        default: "Maintenance."
-        }
+        let note: String =
+            switch phase?.kind {
+            case .cut, .miniCut: "In a cut. The scale is read as a trend across the block, not day to day."
+            case .reverseDiet: "Calories rise a little each week while weight stays roughly stable."
+            case .leanBulk: "A slow surplus. Gaining faster than planned eases it back."
+            case .recomp: "Around maintenance with plenty of protein."
+            case .dietBreak: "A diet break at maintenance."
+            default: "Maintenance."
+            }
         return DailyTargets(mode: .phase, kcal: kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, note: note)
     }
 }

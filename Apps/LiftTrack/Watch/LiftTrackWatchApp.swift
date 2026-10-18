@@ -1,7 +1,7 @@
-import SwiftUI
 import HealthKit
-import WatchKit
+import SwiftUI
 import SystemCore
+import WatchKit
 
 /// The phone starting a session asks this Watch for a workout, to measure heart rate.
 final class WatchDelegate: NSObject, WKApplicationDelegate {
@@ -21,10 +21,10 @@ struct LiftTrackWatchApp: App {
             RootView()
                 .environment(model)
                 #if DEBUG
-                // `-largeText` previews an accessibility text size (simctl can't set one on watchOS).
-                .transformEnvironment(\.dynamicTypeSize) { size in
-                    if LaunchOptions.current.has("-largeText") { size = .accessibility3 }
-                }
+            // `-largeText` previews an accessibility text size (simctl can't set one on watchOS).
+            .transformEnvironment(\.dynamicTypeSize) { size in
+                if LaunchOptions.current.has("-largeText") { size = .accessibility3 }
+            }
                 #endif
                 .task {
                     #if DEBUG

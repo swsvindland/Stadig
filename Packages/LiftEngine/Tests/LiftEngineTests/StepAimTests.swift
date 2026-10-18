@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 @Suite("Step aim")
@@ -10,17 +11,24 @@ struct StepAimTests {
     let today = Day(year: 2026, month: 10, day: 16)
 
     /// Cutting for two weeks: 8,000 a day before, 6,000 since, 2,500 so far today.
-    func cutting(steps extra: [StepDay] = [], activities: [ActivityLog] = [], recurring: [RecurringActivity] = [],
-                 lifeModes: [LifeModePeriod] = []) -> LiftState {
+    func cutting(
+        steps extra: [StepDay] = [], activities: [ActivityLog] = [], recurring: [RecurringActivity] = [],
+        lifeModes: [LifeModePeriod] = []
+    ) -> LiftState {
         let since = today.adding(days: -14)
         var settings = LiftSettings(selfReportedPhase: .cutting, assessmentStart: today.adding(days: -60))
         settings.selfReportedPhaseSince = since
-        var steps = DayRange(since.adding(days: -28), since.adding(days: -1)).days.map { StepDay(day: $0, steps: 8_000) }
+        var steps =
+            DayRange(since.adding(days: -28), since.adding(days: -1)).days.map { StepDay(day: $0, steps: 8_000) }
             + DayRange(since, today.adding(days: -1)).days.map { StepDay(day: $0, steps: 6_000) }
             + [StepDay(day: today, steps: 2_500)]
-        for day in extra { steps.removeAll { $0.day == day.day }; steps.append(day) }
-        return LiftState(profile: Fixture.profile(recurring: recurring), settings: settings, gym: Gym.preset(.fullGym, unit: .kg),
-                         catalog: Fixture.catalog, activities: activities, lifeModes: lifeModes, steps: steps, today: today)
+        for day in extra {
+            steps.removeAll { $0.day == day.day }
+            steps.append(day)
+        }
+        return LiftState(
+            profile: Fixture.profile(recurring: recurring), settings: settings, gym: Gym.preset(.fullGym, unit: .kg),
+            catalog: Fixture.catalog, activities: activities, lifeModes: lifeModes, steps: steps, today: today)
     }
 
     @Test func aCutSetsTheAimFromTheUsualCountBeforeIt() {
@@ -46,8 +54,11 @@ struct StepAimTests {
         #expect(!Analyst.analyse(walked).quests.contains { $0.id.hasSuffix("-walk") })
         let ill = cutting(lifeModes: [LifeModePeriod(kind: .illness(.systemic), start: today.adding(days: -1), createdBy: .liftTrack)])
         #expect(!Analyst.analyse(ill).quests.contains { $0.id.hasSuffix("-walk") })
-        let knee = cutting(lifeModes: [LifeModePeriod(kind: .injury(Injury(parts: [InjuredPart(.knee, side: .left)], severity: .moderate)),
-                                                      start: today.adding(days: -3), createdBy: .liftTrack)])
+        let knee = cutting(lifeModes: [
+            LifeModePeriod(
+                kind: .injury(Injury(parts: [InjuredPart(.knee, side: .left)], severity: .moderate)),
+                start: today.adding(days: -3), createdBy: .liftTrack)
+        ])
         #expect(!Analyst.analyse(knee).quests.contains { $0.id.hasSuffix("-walk") })
     }
 
@@ -79,8 +90,9 @@ struct StepAimTests {
         #expect(state.phaseStart == today.adding(days: -60))
         #expect(state.stepsNeededSince == today.adding(days: -88))
         // Macro Track's phase start wins.
-        state.nutrition = NutritionSummary(phase: NutritionPhase(kind: .cut, start: today.adding(days: -7), source: .macroTrack),
-                                           maintenanceKcal: 2600, days: [])
+        state.nutrition = NutritionSummary(
+            phase: NutritionPhase(kind: .cut, start: today.adding(days: -7), source: .macroTrack),
+            maintenanceKcal: 2600, days: [])
         #expect(state.phaseStart == today.adding(days: -7))
     }
 }

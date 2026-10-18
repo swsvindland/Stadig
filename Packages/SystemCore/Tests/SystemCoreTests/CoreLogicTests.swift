@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SystemCore
 
 @Suite("Days")
@@ -113,8 +114,10 @@ struct DayTests {
 
     @Test func isoAcceptsOnlyRealDates() {
         #expect(Day(iso: "2024-02-29") == Day(year: 2024, month: 2, day: 29))
-        for text in ["2026-02-29", "2026-02-30", "2026-13-01", "2026-00-10", "2026-10-00", "2026-x-10-18", "2026-10", "", "2026-10-18T00:00",
-                     "2026--10-18", "2026-01-9223372036854775807", "9223372036854775807-01-01", "2026-9223372036854775807-01"] {
+        for text in [
+            "2026-02-29", "2026-02-30", "2026-13-01", "2026-00-10", "2026-10-00", "2026-x-10-18", "2026-10", "", "2026-10-18T00:00",
+            "2026--10-18", "2026-01-9223372036854775807", "9223372036854775807-01-01", "2026-9223372036854775807-01",
+        ] {
             #expect(Day(iso: text) == nil, "\(text)")
         }
         #expect(throws: DecodingError.self) { try JSONDecoder().decode([Day].self, from: Data(#"["2026-02-30"]"#.utf8)) }
@@ -167,13 +170,14 @@ struct StrengthScoringTests {
 
     @Test func imbalancePriorities() {
         let day = Day(year: 2026, month: 1, day: 1)
-        let profile = StrengthProfile(categories: [
-            CategoryScore(category: .squat, oneRepMaxKg: 160, score: 82, exerciseID: "a", day: day),
-            CategoryScore(category: .floorPull, oneRepMaxKg: 190, score: 80, exerciseID: "b", day: day),
-            CategoryScore(category: .horizontalPress, oneRepMaxKg: 80, score: 55, exerciseID: "c", day: day),
-            CategoryScore(category: .verticalPull, oneRepMaxKg: 95, score: 52, exerciseID: "d", day: day),
-            CategoryScore(category: .verticalPress, oneRepMaxKg: 50, score: 50, exerciseID: "e", day: day),
-        ], bodyweightKg: 80, sex: .male)
+        let profile = StrengthProfile(
+            categories: [
+                CategoryScore(category: .squat, oneRepMaxKg: 160, score: 82, exerciseID: "a", day: day),
+                CategoryScore(category: .floorPull, oneRepMaxKg: 190, score: 80, exerciseID: "b", day: day),
+                CategoryScore(category: .horizontalPress, oneRepMaxKg: 80, score: 55, exerciseID: "c", day: day),
+                CategoryScore(category: .verticalPull, oneRepMaxKg: 95, score: 52, exerciseID: "d", day: day),
+                CategoryScore(category: .verticalPress, oneRepMaxKg: 50, score: 50, exerciseID: "e", day: day),
+            ], bodyweightKg: 80, sex: .male)
         let priorities = profile.priorities
         #expect(priorities.contains { $0.target == .region(.upperPush) && $0.emphasis > 0 })
         #expect(priorities.contains { $0.target == .region(.lower) && $0.emphasis < 0 })
@@ -184,14 +188,15 @@ struct StrengthScoringTests {
     @Test func eachPriorityAppearsOnce() {
         let day = Day(year: 2026, month: 1, day: 1)
         // Legs ahead of upper body and pressing ahead of pulling: both rules ask for more pulling.
-        let profile = StrengthProfile(categories: [
-            CategoryScore(category: .squat, oneRepMaxKg: 160, score: 80, exerciseID: "a", day: day),
-            CategoryScore(category: .floorPull, oneRepMaxKg: 190, score: 80, exerciseID: "b", day: day),
-            CategoryScore(category: .horizontalPress, oneRepMaxKg: 100, score: 70, exerciseID: "c", day: day),
-            CategoryScore(category: .verticalPress, oneRepMaxKg: 60, score: 70, exerciseID: "d", day: day),
-            CategoryScore(category: .verticalPull, oneRepMaxKg: 90, score: 55, exerciseID: "e", day: day),
-            CategoryScore(category: .horizontalPull, oneRepMaxKg: 70, score: 55, exerciseID: "f", day: day),
-        ], bodyweightKg: 80, sex: .male)
+        let profile = StrengthProfile(
+            categories: [
+                CategoryScore(category: .squat, oneRepMaxKg: 160, score: 80, exerciseID: "a", day: day),
+                CategoryScore(category: .floorPull, oneRepMaxKg: 190, score: 80, exerciseID: "b", day: day),
+                CategoryScore(category: .horizontalPress, oneRepMaxKg: 100, score: 70, exerciseID: "c", day: day),
+                CategoryScore(category: .verticalPress, oneRepMaxKg: 60, score: 70, exerciseID: "d", day: day),
+                CategoryScore(category: .verticalPull, oneRepMaxKg: 90, score: 55, exerciseID: "e", day: day),
+                CategoryScore(category: .horizontalPull, oneRepMaxKg: 70, score: 55, exerciseID: "f", day: day),
+            ], bodyweightKg: 80, sex: .male)
         let ids = profile.priorities.map(\.id)
         #expect(Set(ids).count == ids.count, "\(ids)")
         let pull = profile.priorities.first { $0.target == .region(.upperPull) }
@@ -272,9 +277,10 @@ struct TrustTests {
         var trust = TrustState(experience: .experienced)
         let start = trust.score
         let day = Day(year: 2026, month: 1, day: 1)
-        trust.record((0..<8).map { _ in
-            CalibrationObservation(day: day, exerciseID: "x", rating: .green, error: -3, source: .repOut, tier: .safeToFail)
-        })
+        trust.record(
+            (0..<8).map { _ in
+                CalibrationObservation(day: day, exerciseID: "x", rating: .green, error: -3, source: .repOut, tier: .safeToFail)
+            })
         #expect(trust.score < start - 0.2)
         #expect(trust.bias < -1)
         #expect(trust.reserve(for: .green) < SetRating.green.nominalRIR)
@@ -292,8 +298,9 @@ struct TrustTests {
 
 @Suite("Autoregulation")
 struct AutoregulationTests {
-    let context = Autoregulation.Context(exercise: TestExercise.chestPress, increments: FixedIncrements(stepKg: 5),
-                                         trust: TrustState(prior: 0.8), repRange: RepRange(8, 12))
+    let context = Autoregulation.Context(
+        exercise: TestExercise.chestPress, increments: FixedIncrements(stepKg: 5),
+        trust: TrustState(prior: 0.8), repRange: RepRange(8, 12))
     let planned = SetPrescription(kind: .working, loadKg: 50, targetReps: 10, targetRIR: 2)
 
     @Test func greenBumps() {
@@ -353,10 +360,12 @@ struct AutoregulationTests {
     @Test func assistedGetsHarderByRemovingAssistance() {
         var assisted = TestExercise.pullUp
         assisted.loadBasis = .assisted
-        let ctx = Autoregulation.Context(exercise: assisted, increments: FixedIncrements(stepKg: 5), trust: TrustState(prior: 0.8),
-                                         repRange: RepRange(6, 10))
+        let ctx = Autoregulation.Context(
+            exercise: assisted, increments: FixedIncrements(stepKg: 5), trust: TrustState(prior: 0.8),
+            repRange: RepRange(6, 10))
         let done = LoggedSet(exerciseID: "pull-up", kind: .working, loadKg: 30, reps: 8, rating: .green, bodyweightKg: 80)
-        let adjustment = Autoregulation.next(after: done, planned: SetPrescription(kind: .working, loadKg: 30, targetReps: 8, targetRIR: 2), context: ctx)
+        let adjustment = Autoregulation.next(
+            after: done, planned: SetPrescription(kind: .working, loadKg: 30, targetReps: 8, targetRIR: 2), context: ctx)
         #expect((adjustment.next.loadKg ?? 99) < 30)
     }
 }
@@ -364,8 +373,9 @@ struct AutoregulationTests {
 @Suite("Progression")
 struct ProgressionTests {
     @Test func firstTimeFindsAWeight() {
-        let context = ProgressionContext(exercise: TestExercise.chestPress, increments: FixedIncrements(stepKg: 5), trust: TrustState(prior: 0.3),
-                                         phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: [])
+        let context = ProgressionContext(
+            exercise: TestExercise.chestPress, increments: FixedIncrements(stepKg: 5), trust: TrustState(prior: 0.3),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: [])
         let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(8, 12), targetRIR: 2), context)
         #expect(p.mode == .findingWeight)
         #expect(p.sets.allSatisfy { $0.loadKg == nil && $0.targetReps == 10 })
@@ -373,9 +383,12 @@ struct ProgressionTests {
 
     @Test func deloadHalvesSetsAndLightens() {
         let date = Date()
-        let history = (0..<3).map { _ in LoggedSet(exerciseID: "barbell-bench-press", date: date, kind: .working, loadKg: 100, reps: 6, rating: .orange) }
-        let context = ProgressionContext(exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: TrustState(prior: 0.6),
-                                         phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
+        let history = (0..<3).map { _ in
+            LoggedSet(exerciseID: "barbell-bench-press", date: date, kind: .working, loadKg: 100, reps: 6, rating: .orange)
+        }
+        let context = ProgressionContext(
+            exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: TrustState(prior: 0.6),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
         let p = Progression.prescribe(SlotTarget(sets: 4, repRange: RepRange(5, 8), targetRIR: 1, deload: true), context)
         #expect(p.mode == .deload)
         #expect(p.sets.count == 2)
@@ -388,8 +401,9 @@ struct ProgressionTests {
         var exercise = TestExercise.chestPress
         exercise.equipment = .dumbbell
         exercise.loadBasis = .perHand
-        let context = ProgressionContext(exercise: exercise, increments: FixedIncrements(stepKg: 2), trust: TrustState(prior: 0.6),
-                                         phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
+        let context = ProgressionContext(
+            exercise: exercise, increments: FixedIncrements(stepKg: 2), trust: TrustState(prior: 0.6),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
         let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(8, 12), targetRIR: 2), context)
         #expect(p.mode == .reps)
         #expect(p.sets.first?.targetReps == 11)
@@ -398,9 +412,12 @@ struct ProgressionTests {
 
     @Test func injuryRampLightensTheLoad() {
         let date = Date()
-        let history = (0..<3).map { _ in LoggedSet(exerciseID: "barbell-bench-press", date: date, kind: .working, loadKg: 100, reps: 6, rating: .orange) }
-        let full = ProgressionContext(exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: TrustState(prior: 0.6),
-                                      phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
+        let history = (0..<3).map { _ in
+            LoggedSet(exerciseID: "barbell-bench-press", date: date, kind: .working, loadKg: 100, reps: 6, rating: .orange)
+        }
+        let full = ProgressionContext(
+            exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), trust: TrustState(prior: 0.6),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
         var ramp = full
         ramp.loadFactor = 0.7
         let target = SlotTarget(sets: 3, repRange: RepRange(5, 8), targetRIR: 2)
@@ -417,22 +434,27 @@ struct ProgressionTests {
         let sets = Progression.rampUp(to: 100, reps: 5, exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), bodyweightKg: 80)
         #expect(sets.count == 3)
         #expect(sets.allSatisfy { $0.kind == .warmup && ($0.loadKg ?? 0) < 100 })
-        #expect(Progression.rampUp(to: 40, reps: 10, exercise: TestExercise.legExtension, increments: FixedIncrements(stepKg: 5), bodyweightKg: 80).isEmpty)
+        #expect(
+            Progression.rampUp(to: 40, reps: 10, exercise: TestExercise.legExtension, increments: FixedIncrements(stepKg: 5), bodyweightKg: 80)
+                .isEmpty)
     }
 
     /// Midnight on a fixed summer day, in this machine's time zone (sets are grouped by its days).
     static let night = Day(year: 2026, month: 6, day: 10).date()
 
     func context(_ exercise: TestExercise, step: Double, history: [LoggedSet], loadFactor: Double = 1) -> ProgressionContext {
-        ProgressionContext(exercise: exercise, increments: FixedIncrements(stepKg: step), trust: TrustState(prior: 0.6),
-                           phase: NutritionPhase.assumedMaintenance.effects, loadFactor: loadFactor, bodyweightKg: 80, history: history)
+        ProgressionContext(
+            exercise: exercise, increments: FixedIncrements(stepKg: step), trust: TrustState(prior: 0.6),
+            phase: NutritionPhase.assumedMaintenance.effects, loadFactor: loadFactor, bodyweightKg: 80, history: history)
     }
 
     @Test(arguments: [0.6, 0.92])
     func aDeloadDuringARampScalesTheEffectiveLoad(_ factor: Double) {
         let deload = SlotTarget(sets: 4, repRange: RepRange(5, 8), targetRIR: 1, deload: true)
         // External: 87.5 kg last time, so at most 87.5 × 0.88 × the factor, on the gym's 2.5 kg steps.
-        let bench = (0..<3).map { _ in LoggedSet(exerciseID: "barbell-bench-press", date: Self.night, kind: .working, loadKg: 87.5, reps: 6, rating: .orange) }
+        let bench = (0..<3).map { _ in
+            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night, kind: .working, loadKg: 87.5, reps: 6, rating: .orange)
+        }
         for set in Progression.prescribe(deload, context(.bench, step: 2.5, history: bench, loadFactor: factor)).sets {
             let load = set.loadKg ?? 0
             #expect(load <= 87.5 * 0.88 * factor && load > 0)
@@ -441,7 +463,9 @@ struct ProgressionTests {
         // Assisted: 20 kg of help at 80 kg is 60 kg lifted. Easing in means more help, never less.
         var assisted = TestExercise.pullUp
         assisted.loadBasis = .assisted
-        let pullUps = (0..<3).map { _ in LoggedSet(exerciseID: "pull-up", date: Self.night, kind: .working, loadKg: 20, reps: 8, rating: .orange, bodyweightKg: 80) }
+        let pullUps = (0..<3).map { _ in
+            LoggedSet(exerciseID: "pull-up", date: Self.night, kind: .working, loadKg: 20, reps: 8, rating: .orange, bodyweightKg: 80)
+        }
         for set in Progression.prescribe(deload, context(assisted, step: 2.5, history: pullUps, loadFactor: factor)).sets {
             let help = set.loadKg ?? 0
             #expect(help > 20)
@@ -450,7 +474,9 @@ struct ProgressionTests {
     }
 
     @Test func noRepOutWhileALiftRampsBack() {
-        let history = (0..<3).map { _ in LoggedSet(exerciseID: "leg-extension", date: Self.night, kind: .working, loadKg: 60, reps: 12, rating: .orange) }
+        let history = (0..<3).map { _ in
+            LoggedSet(exerciseID: "leg-extension", date: Self.night, kind: .working, loadKg: 60, reps: 12, rating: .orange)
+        }
         let checkIn = SlotTarget(sets: 3, repRange: RepRange(10, 15), targetRIR: 1, deload: true, repOut: true)
         // Fresh: the check-in's last set goes to failure at the last working weight.
         let fresh = Progression.prescribe(checkIn, context(.legExtension, step: 5, history: history))
@@ -472,20 +498,31 @@ struct ProgressionTests {
     @Test func aWorkoutPastMidnightIsOneSession() {
         // Two sets just before midnight, then a third, fatigued, just after it.
         let history = [
-            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-10 * 60), kind: .working, loadKg: 100, reps: 6, rating: .orange),
-            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-4 * 60), kind: .working, loadKg: 100, reps: 6, rating: .orange),
-            LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(3 * 60), kind: .working, loadKg: 100, reps: 4, targetReps: 6,
-                      rating: .red),
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-10 * 60), kind: .working, loadKg: 100, reps: 6,
+                rating: .orange),
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-4 * 60), kind: .working, loadKg: 100, reps: 6, rating: .orange
+            ),
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(3 * 60), kind: .working, loadKg: 100, reps: 4, targetReps: 6,
+                rating: .red),
         ]
         #expect(StrengthEstimator.sessions(history).count == 1)
-        #expect(StrengthEstimator.sessionBests(history, basis: .external, trust: TrustState(prior: 0.6)).map(\.day) == [Day(year: 2026, month: 6, day: 9)])
+        #expect(
+            StrengthEstimator.sessionBests(history, basis: .external, trust: TrustState(prior: 0.6)).map(\.day) == [Day(year: 2026, month: 6, day: 9)]
+        )
         // One red set at the end isn't a miss, so the one-step floor holds: 97.5, not 90.
         let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(5, 8), targetRIR: 2), context(.bench, step: 2.5, history: history))
         #expect(p.mode == .load)
         #expect(p.sets.allSatisfy { ($0.loadKg ?? 0) >= 97.5 })
         // Sessions further apart than three hours are separate, even on one day.
-        let twoADay = [history[0], LoggedSet(exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-6 * 3600), kind: .working, loadKg: 90,
-                                             reps: 6, rating: .orange)]
+        let twoADay = [
+            history[0],
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(-6 * 3600), kind: .working, loadKg: 90,
+                reps: 6, rating: .orange),
+        ]
         #expect(StrengthEstimator.sessions(twoADay).map { $0.map(\.loadKg) } == [[90], [100]])
     }
 
@@ -494,16 +531,19 @@ struct ProgressionTests {
         let start = Day(year: 2026, month: 3, day: 2)
         var history = stride(from: 0, through: 32, by: 4).flatMap { offset in
             (0..<3).map { _ in
-                LoggedSet(exerciseID: "barbell-bench-press", date: start.adding(days: offset).date().addingTimeInterval(18 * 3600), kind: .working,
-                          loadKg: 100, reps: 5, rating: .orange)
+                LoggedSet(
+                    exerciseID: "barbell-bench-press", date: start.adding(days: offset).date().addingTimeInterval(18 * 3600), kind: .working,
+                    loadKg: 100, reps: 5, rating: .orange)
             }
         }
         history += (0..<2).map { _ in
-            LoggedSet(exerciseID: "barbell-bench-press", date: start.adding(days: 35).date().addingTimeInterval(18 * 3600), kind: .deload, loadKg: 87.5,
-                      reps: 5, rating: .green)
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: start.adding(days: 35).date().addingTimeInterval(18 * 3600), kind: .deload, loadKg: 87.5,
+                reps: 5, rating: .green)
         }
-        let report = Stalls.detect(context(.bench, step: 2.5, history: history), sets: 3, repRange: RepRange(5, 8), today: start.adding(days: 36),
-                                   phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
+        let report = Stalls.detect(
+            context(.bench, step: 2.5, history: history), sets: 3, repRange: RepRange(5, 8), today: start.adding(days: 36),
+            phase: NutritionPhase.assumedMaintenance.effects, beatUp: false)
         #expect(report?.reading == .programming)
         #expect(report?.suggestion?.loadKg == 102.5)
     }
@@ -561,17 +601,23 @@ struct ScheduleTests {
     }
 
     @Test func aTripDuringAnEarlyDeloadStretchesIt() {
-        let fatigue = FatigueAssessment(status: .overreached, loadRatio: 1.6, acute: 10, chronic: 6, signals: ["Sleep is short."],
-                                        action: .deloadEarly, budgetFactor: 0.7)
-        let early = BlockScheduler.deloadEarly(TrainingBlock(kind: .standard, start: start, loadingWeeks: 5), today: start.adding(days: 17),
-                                               fatigue: fatigue)!
+        let fatigue = FatigueAssessment(
+            status: .overreached, loadRatio: 1.6, acute: 10, chronic: 6, signals: ["Sleep is short."],
+            action: .deloadEarly, budgetFactor: 0.7)
+        let early = BlockScheduler.deloadEarly(
+            TrainingBlock(kind: .standard, start: start, loadingWeeks: 5), today: start.adding(days: 17),
+            fatigue: fatigue)!
         let reflowed = BlockScheduler.reflow(early, vacations: [DayRange(start.adding(days: 20), start.adding(days: 30))])
         #expect(reflowed.effectiveDeloadStart == start.adding(days: 17))
         #expect(reflowed.end == start.adding(days: 30))
         // Two overlapping trips near the deload: the first becomes it, the second stretches it.
         let block = TrainingBlock(kind: .standard, start: start, loadingWeeks: 5)
-        let both = BlockScheduler.reflow(block, vacations: [DayRange(start.adding(days: 36), start.adding(days: 45)),
-                                                            DayRange(start.adding(days: 30), start.adding(days: 38))])
+        let both = BlockScheduler.reflow(
+            block,
+            vacations: [
+                DayRange(start.adding(days: 36), start.adding(days: 45)),
+                DayRange(start.adding(days: 30), start.adding(days: 38)),
+            ])
         #expect(both.effectiveDeloadStart == start.adding(days: 30))
         #expect(both.end == start.adding(days: 45))
     }
@@ -584,8 +630,9 @@ struct ScheduleTests {
 
     @Test func earlyDeloadFromFatigue() {
         let block = TrainingBlock(kind: .standard, start: start, loadingWeeks: 5)
-        let fatigue = FatigueAssessment(status: .overreached, loadRatio: 1.6, acute: 10, chronic: 6, signals: ["Sleep is short."],
-                                        action: .deloadEarly, budgetFactor: 0.7)
+        let fatigue = FatigueAssessment(
+            status: .overreached, loadRatio: 1.6, acute: 10, chronic: 6, signals: ["Sleep is short."],
+            action: .deloadEarly, budgetFactor: 0.7)
         #expect(BlockScheduler.deloadEarly(block, today: start.adding(days: 8), fatigue: fatigue) == nil)
         let moved = BlockScheduler.deloadEarly(block, today: start.adding(days: 17), fatigue: fatigue)
         #expect(moved?.effectiveDeloadStart == start.adding(days: 17))
@@ -599,8 +646,9 @@ struct ScheduleTests {
         let after = LifeModes.effects(on: start.adding(days: 9), periods: [vacation])
         #expect(after.reentry && after.trainingExpected && !after.disciplineExempt)
 
-        let crunch = LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: start,
-                                    end: start.adding(days: 10), createdBy: .macroTrack)
+        let crunch = LifeModePeriod(
+            kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: start,
+            end: start.adding(days: 10), createdBy: .macroTrack)
         let c = LifeModes.effects(on: start.adding(days: 1), periods: [crunch])
         #expect(c.minimumEffectiveDose && c.maxMinutes == 20 && c.equipment == .hotelGym && !c.disciplineExempt && c.lifeStress > 0)
 
@@ -730,7 +778,8 @@ struct FatigueTests {
     }
 
     @Test func failureSetsCostMoreOnDeadlifts() {
-        let normal = FatigueBudget.cost(of: LoggedSet(exerciseID: "d", kind: .working, loadKg: 150, reps: 5, rating: .orange), exercise: TestExercise.deadlift)
+        let normal = FatigueBudget.cost(
+            of: LoggedSet(exerciseID: "d", kind: .working, loadKg: 150, reps: 5, rating: .orange), exercise: TestExercise.deadlift)
         let failed = FatigueBudget.cost(of: LoggedSet(exerciseID: "d", kind: .repOut, loadKg: 150, reps: 8), exercise: TestExercise.deadlift)
         #expect(failed.systemic > normal.systemic * 1.8)
     }
@@ -739,12 +788,14 @@ struct FatigueTests {
         let phase = NutritionPhase.assumedMaintenance.effects
         let none = FatigueBudget.weeklySystemicBudget(experience: .intermediate, daysPerWeek: 4, phase: phase, assessment: nil, outside: .zero)
         let bjj = ActivityLog(type: .bjj, start: Date(), minutes: 90, martialArts: MartialArtsDetails(classType: .sparring, sparringRounds: 6))
-        let withBJJ = FatigueBudget.weeklySystemicBudget(experience: .intermediate, daysPerWeek: 4, phase: phase, assessment: nil,
-                                                         outside: bjj.fatigue + bjj.fatigue)
+        let withBJJ = FatigueBudget.weeklySystemicBudget(
+            experience: .intermediate, daysPerWeek: 4, phase: phase, assessment: nil,
+            outside: bjj.fatigue + bjj.fatigue)
         #expect(withBJJ < none)
         #expect(withBJJ >= none * 0.45)
-        let cut = FatigueBudget.weeklySystemicBudget(experience: .intermediate, daysPerWeek: 4,
-                                                     phase: NutritionPhase(kind: .cut, source: .selfReported).effects, assessment: nil, outside: .zero)
+        let cut = FatigueBudget.weeklySystemicBudget(
+            experience: .intermediate, daysPerWeek: 4,
+            phase: NutritionPhase(kind: .cut, source: .selfReported).effects, assessment: nil, outside: .zero)
         #expect(cut < none)
     }
 }
@@ -776,11 +827,13 @@ struct StatsTests {
         // Every order, each a fresh dictionary with its own iteration order: a pick that followed the
         // dictionary would land on another test in some of them.
         func permutations(_ list: [MobilityResult]) -> [[MobilityResult]] {
-            list.count <= 1 ? [list] : list.indices.flatMap { i in
-                var rest = list
-                let first = rest.remove(at: i)
-                return permutations(rest).map { [first] + $0 }
-            }
+            list.count <= 1
+                ? [list]
+                : list.indices.flatMap { i in
+                    var rest = list
+                    let first = rest.remove(at: i)
+                    return permutations(rest).map { [first] + $0 }
+                }
         }
         for order in permutations(results) {
             let analysis = Agility.analyse(order)
@@ -805,8 +858,9 @@ struct StatsTests {
 
     @Test func physiqueGapsSpeakInProportions() {
         let day = Day(year: 2026, month: 1, day: 1)
-        let analysis = Physique.analyse([BodyMeasurements(day: day, neckCm: 39, shouldersCm: 112, waistCm: 86, armCm: 36)],
-                                        sex: .male, heightCm: 180)
+        let analysis = Physique.analyse(
+            [BodyMeasurements(day: day, neckCm: 39, shouldersCm: 112, waistCm: 86, armCm: 36)],
+            sex: .male, heightCm: 180)
         #expect(analysis.gaps.first?.region == .shoulders)
         #expect(analysis.bodyFatEstimated)
         #expect((analysis.bodyFatPercent ?? 0) > 10 && (analysis.bodyFatPercent ?? 100) < 25)
@@ -816,9 +870,11 @@ struct StatsTests {
     @Test func tapeBodyFatUsesEachSexsSites() {
         let day = Day(year: 2026, month: 1, day: 1)
         let m = BodyMeasurements(day: day, neckCm: 33, waistCm: 84, naturalWaistCm: 72, glutesCm: 100)
-        #expect(Physique.tapeBodyFat(m, sex: .female, heightCm: 165)
+        #expect(
+            Physique.tapeBodyFat(m, sex: .female, heightCm: 165)
                 == Physique.navyBodyFat(sex: .female, heightCm: 165, neckCm: 33, waistCm: 72, hipsCm: 100))
-        #expect(Physique.tapeBodyFat(m, sex: .male, heightCm: 180)
+        #expect(
+            Physique.tapeBodyFat(m, sex: .male, heightCm: 180)
                 == Physique.navyBodyFat(sex: .male, heightCm: 180, neckCm: 33, waistCm: 84, hipsCm: nil))
         // Women's estimate needs the glutes; men's doesn't.
         #expect(Physique.tapeBodyFat(BodyMeasurements(day: day, neckCm: 33, waistCm: 84), sex: .female, heightCm: 165) == nil)
@@ -883,13 +939,15 @@ struct StatsTests {
     @Test func hourglassTellsWaistFromGlutes() {
         let day = Day(year: 2026, month: 1, day: 1)
         // Waist 76 over glutes 98 is 0.78; at a lean waist the glutes shrink half as fast and it's about 0.75.
-        let soft = Physique.analyse([BodyMeasurements(day: day, shouldersCm: 100, waistCm: 82, naturalWaistCm: 76, glutesCm: 98)],
-                                    sex: .female, heightCm: 165)
+        let soft = Physique.analyse(
+            [BodyMeasurements(day: day, shouldersCm: 100, waistCm: 82, naturalWaistCm: 76, glutesCm: 98)],
+            sex: .female, heightCm: 165)
         #expect(soft.targets == .hourglass)
         #expect(soft.proportions.first { $0.rule == .waistToGlutes }?.cause == .fat)
         // Lean, with the glutes behind: build them.
-        let lean = Physique.analyse([BodyMeasurements(day: day, shouldersCm: 94, waistCm: 74, naturalWaistCm: 70, glutesCm: 88)],
-                                    sex: .female, heightCm: 165)
+        let lean = Physique.analyse(
+            [BodyMeasurements(day: day, shouldersCm: 94, waistCm: 74, naturalWaistCm: 70, glutesCm: 88)],
+            sex: .female, heightCm: 165)
         #expect(lean.proportions.first { $0.rule == .waistToGlutes }?.cause == .build)
         #expect(lean.gaps.contains { $0.region == .glutes })
     }
@@ -905,8 +963,9 @@ struct StatsTests {
         let m = BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), neckCm: 39, shouldersCm: 112, waistCm: 80)
         #expect(Physique.analyse([m], sex: .male, heightCm: 180, targets: .off).gaps.isEmpty)
         // A health ratio only ever asks for fat loss.
-        let wide = Physique.analyse([BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), waistCm: 100, glutesCm: 105)],
-                                    sex: .male, heightCm: 180)
+        let wide = Physique.analyse(
+            [BodyMeasurements(day: Day(year: 2026, month: 1, day: 1), waistCm: 100, glutesCm: 105)],
+            sex: .male, heightCm: 180)
         let health = wide.proportions.first { $0.rule == .waistToHips }
         #expect(health?.cause == .fat && health?.region == nil)
     }
@@ -972,8 +1031,9 @@ struct HubTests {
 
     @Test func trajectoryReadsTheTrend() {
         let start = Day(year: 2026, month: 1, day: 1)
-        let goal = TargetGoal(stat: .strength, title: "Bench 100", metric: "category:horizontalPress", target: 100, start: start,
-                              deadline: start.adding(days: 120))
+        let goal = TargetGoal(
+            stat: .strength, title: "Bench 100", metric: "category:horizontalPress", target: 100, start: start,
+            deadline: start.adding(days: 120))
         let onPace = (0..<6).map { (start.adding(days: $0 * 7), 80 + Double($0) * 1.3) }
         #expect(Trajectories.assess(onPace, goal: goal, today: start.adding(days: 35)) == .onPace)
         let flat = (0..<6).map { (start.adding(days: $0 * 7), 80.0) }
@@ -996,8 +1056,9 @@ struct HubTests {
 
     @Test func pastTheDeadlineAReachedGoalIsAheadAndAMissedOneStalled() {
         let start = Day(year: 2026, month: 1, day: 1)
-        let goal = TargetGoal(stat: .strength, title: "Bench 100", metric: "category:horizontalPress", target: 100, start: start,
-                              deadline: start.adding(days: 35))
+        let goal = TargetGoal(
+            stat: .strength, title: "Bench 100", metric: "category:horizontalPress", target: 100, start: start,
+            deadline: start.adding(days: 35))
         let today = start.adding(days: 49)
         #expect(Trajectories.assess((0..<8).map { (start.adding(days: $0 * 7), 90 + 2 * Double($0)) }, goal: goal, today: today) == .ahead)
         #expect(Trajectories.assess((0..<8).map { (start.adding(days: $0 * 7), 80 + 0.5 * Double($0)) }, goal: goal, today: today) == .stalled)

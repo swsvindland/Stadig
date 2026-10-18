@@ -1,7 +1,8 @@
-import Foundation
-import Testing
 import ExerciseLibrary
+import Foundation
 import SystemCore
+import Testing
+
 @testable import LiftEngine
 
 /// A lifter who performs exactly to a true strength, for driving whole sessions.
@@ -21,12 +22,14 @@ struct Performer {
             let item = session.items[i]
             let prescription = item.sets[s].prescription
             if item.plan.role == .conditioning {
-                session.logConditioning(item: i, minutes: item.plan.conditioning?.minutes ?? 10, averageHeartRate: 130, zoneMinutes: [2: 10], now: clock)
+                session.logConditioning(
+                    item: i, minutes: item.plan.conditioning?.minutes ?? 10, averageHeartRate: 130, zoneMinutes: [2: 10], now: clock)
                 continue
             }
             if !item.plan.isStrength {
-                session.log(item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
-                            environment: environment, now: clock)
+                session.log(
+                    item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
+                    environment: environment, now: clock)
                 continue
             }
             let exercise = environment.catalog.resolve(item.exerciseID)
@@ -44,8 +47,9 @@ struct Performer {
                 session.log(item: i, set: s, reps: capacity, loadKg: logged, rating: .red, environment: environment, now: clock)
             } else {
                 let reserve = capacity - prescription.targetReps
-                session.log(item: i, set: s, reps: prescription.targetReps, loadKg: logged, rating: reserve >= 3 ? .green : .orange,
-                            environment: environment, now: clock)
+                session.log(
+                    item: i, set: s, reps: prescription.targetReps, loadKg: logged, rating: reserve >= 3 ? .green : .orange,
+                    environment: environment, now: clock)
             }
         }
         for key in e1rm.keys { e1rm[key]! *= 1 + growthPerSession }
@@ -55,11 +59,14 @@ struct Performer {
 
 @Suite("Sessions")
 struct SessionTests {
-    func context(_ profile: SharedProfile, history: [String: [LoggedSet]] = [:], life: LifeModeEffects = LifeModeEffects(),
-                 trust: TrustState? = nil) -> PlanningContext {
-        PlanningContext(catalog: Fixture.catalog, gym: Gym.preset(profile.equipment, unit: .kg), profile: profile, settings: LiftSettings(),
-                        trust: trust ?? TrustState(experience: profile.experience), phase: .assumedMaintenance, life: life, history: history,
-                        bodyweightKg: 80, enduranceScore: 50, sessionIndexInWeek: 0)
+    func context(
+        _ profile: SharedProfile, history: [String: [LoggedSet]] = [:], life: LifeModeEffects = LifeModeEffects(),
+        trust: TrustState? = nil
+    ) -> PlanningContext {
+        PlanningContext(
+            catalog: Fixture.catalog, gym: Gym.preset(profile.equipment, unit: .kg), profile: profile, settings: LiftSettings(),
+            trust: trust ?? TrustState(experience: profile.experience), phase: .assumedMaintenance, life: life, history: history,
+            bodyweightKg: 80, enduranceScore: 50, sessionIndexInWeek: 0)
     }
 
     @Test func firstSessionFindsWeights() {
@@ -79,8 +86,9 @@ struct SessionTests {
     @Test func crunchModeIsTheMinimumEffectiveDose() {
         let profile = Fixture.profile()
         let m = ProgramGenerator.generate(Fixture.input(profile))
-        let crunch = LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: Fixture.start,
-                                    end: Fixture.start.adding(days: 7), createdBy: .liftTrack)
+        let crunch = LifeModePeriod(
+            kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: Fixture.start,
+            end: Fixture.start.adding(days: 7), createdBy: .liftTrack)
         let life = LifeModes.effects(on: Fixture.start, periods: [crunch])
         let plan = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: context(profile, life: life))
         #expect(plan.minimumEffectiveDose)
@@ -106,8 +114,9 @@ struct SessionTests {
         let ctx = context(profile)
         let plan = SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx)
         var live = LiveSession(plan: plan, device: "Test", now: Fixture.start.date())
-        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
-                                     history: [:], enduranceScore: 50, heartRateGuidedRest: true)
+        let env = SessionEnvironment(
+            catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+            history: [:], enduranceScore: 50, heartRateGuidedRest: true)
         var performer = Performer()
         performer.train(&live, environment: env, at: Fixture.start.date())
         #expect(live.isComplete)
@@ -122,8 +131,9 @@ struct SessionTests {
         let m = ProgramGenerator.generate(Fixture.input(profile))
         let ctx = context(profile)
         var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx), device: "Test")
-        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
-                                     history: [:], enduranceScore: 50, heartRateGuidedRest: true)
+        let env = SessionEnvironment(
+            catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+            history: [:], enduranceScore: 50, heartRateGuidedRest: true)
         let index = live.items.firstIndex { $0.plan.isStrength }!
         let original = live.items[index].exerciseID
         let alternative = Substitutions.candidates(for: Fixture.catalog.resolve(original), in: Fixture.catalog.all, availability: nil).first!
@@ -145,16 +155,21 @@ struct SessionTests {
         let replacement = try #require(options.first)
         // The replacement has a history of its own, far lighter than the lift it replaces.
         let lastWeek = Fixture.start.adding(days: -7).date().addingTimeInterval(18 * 3600)
-        let history = [replacement.id: (0..<3).map {
-            LoggedSet(exerciseID: replacement.id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 30, reps: 10, rating: .orange,
-                      bodyweightKg: 80)
-        }]
-        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
-                                     history: history, enduranceScore: 50, heartRateGuidedRest: true)
+        let history = [
+            replacement.id: (0..<3).map {
+                LoggedSet(
+                    exerciseID: replacement.id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 30, reps: 10, rating: .orange,
+                    bodyweightKg: 80)
+            }
+        ]
+        let env = SessionEnvironment(
+            catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+            history: history, enduranceScore: 50, heartRateGuidedRest: true)
         let work = live.items[index].sets.indices.filter { live.items[index].sets[$0].prescription.kind != .warmup }
         for (n, set) in work.prefix(2).enumerated() {
-            live.log(item: index, set: set, reps: 8, loadKg: 100, rating: .orange, environment: env,
-                     now: start.addingTimeInterval(Double(n + 1) * 180))
+            live.log(
+                item: index, set: set, reps: 8, loadKg: 100, rating: .orange, environment: env,
+                now: start.addingTimeInterval(Double(n + 1) * 180))
         }
         live.swap(item: index, to: replacement, environment: env, now: start.addingTimeInterval(540))
         let prescribed = live.items[index].sets.filter(\.isOpen).map(\.prescription)
@@ -177,8 +192,11 @@ struct SessionTests {
 
         // The analysis files every set under its own exercise, also in a session saved as one log.
         func analysedHistory(_ record: SessionRecord) -> [String: [LoggedSet]] {
-            Analyst.analyse(LiftState(profile: profile, settings: LiftSettings(), gym: ctx.gym, catalog: Fixture.catalog, sessions: [record],
-                                      bodyweightKg: 80, today: Fixture.start)).history
+            Analyst.analyse(
+                LiftState(
+                    profile: profile, settings: LiftSettings(), gym: ctx.gym, catalog: Fixture.catalog, sessions: [record],
+                    bodyweightKg: 80, today: Fixture.start)
+            ).history
         }
         var saved = record
         saved.exercises = [ExerciseLog(slotID: logs[0].slotID, exerciseID: replacement.id, sets: logs.flatMap(\.sets), substitutedFor: original)]
@@ -199,19 +217,28 @@ struct SessionTests {
         let pair = all.lazy.filter { $0.kind == .strength && $0.safetyTier == .safeToFail && !$0.timed && availability.allows($0) }
             .compactMap { planned -> (Exercise, Exercise)? in
                 guard let standIn = Substitutions.candidates(for: planned, in: all, availability: availability, avoid: [planned.id]).first,
-                      standIn.safetyTier == .neverToFailure, !standIn.timed else { return nil }
+                    standIn.safetyTier == .neverToFailure, !standIn.timed
+                else { return nil }
                 return (planned, standIn)
             }.first
         let (planned, standIn) = try #require(pair)
         let slot = SlotPlan(exerciseID: planned.id, role: .main, sets: [3], repRange: RepRange(8, 12), restSeconds: 120)
         let day = PlannedDay(name: "Full body A", focus: .full, blocks: [SessionBlockPlan(kind: .main, minutes: 20, slots: [slot])])
-        let m = Mesocycle(block: TrainingBlock(kind: .assessment, start: Fixture.start, loadingWeeks: 4, deloadWeeks: 0), split: .fullBody,
-                          days: [day], priorities: [], rationale: Rationale(headline: ""), minutesPerSession: 60, phase: .assumedMaintenance)
+        let m = Mesocycle(
+            block: TrainingBlock(kind: .assessment, start: Fixture.start, loadingWeeks: 4, deloadWeeks: 0), split: .fullBody,
+            days: [day], priorities: [], rationale: Rationale(headline: ""), minutesPerSession: 60, phase: .assumedMaintenance)
         let lastWeek = Fixture.start.adding(weeks: 1).date().addingTimeInterval(18 * 3600)
-        let history = Dictionary(uniqueKeysWithValues: [planned.id, standIn.id].map { id in
-            (id, (0..<3).map { LoggedSet(exerciseID: id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 40, reps: 10, rating: .orange,
-                                         bodyweightKg: 80) })
-        })
+        let history = Dictionary(
+            uniqueKeysWithValues: [planned.id, standIn.id].map { id in
+                (
+                    id,
+                    (0..<3).map {
+                        LoggedSet(
+                            exerciseID: id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 40, reps: 10, rating: .orange,
+                            bodyweightKg: 80)
+                    }
+                )
+            })
         func plan(avoid: Set<String>) throws -> PlannedItem {
             var ctx = context(profile, history: history)
             ctx.settings.avoid = avoid
@@ -227,8 +254,9 @@ struct SessionTests {
     @Test("crunch mode's stand-in gym is the same every time it's asked for")
     func crunchGymIsStable() {
         let profile = Fixture.profile()
-        let crunch = LifeModePeriod(kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: Fixture.start,
-                                    end: Fixture.start.adding(days: 7), createdBy: .liftTrack)
+        let crunch = LifeModePeriod(
+            kind: .crunch(CrunchDials(minutesAvailable: 20, equipment: .hotelGym)), start: Fixture.start,
+            end: Fixture.start.adding(days: 7), createdBy: .liftTrack)
         let ctx = context(profile, life: LifeModes.effects(on: Fixture.start, periods: [crunch]))
         #expect(ctx.todaysGym == ctx.todaysGym)
         #expect(ctx.todaysGym.access == .hotelGym && ctx.todaysGym.id != ctx.gym.id)
@@ -241,8 +269,9 @@ struct SessionTests {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = pagoPago
         let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 18, hour: 23, minute: 30)))
-        let plan = SessionPlan(day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
-                               assessment: false, minimumEffectiveDose: false, items: [], notes: [], quests: [])
+        let plan = SessionPlan(
+            day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
+            assessment: false, minimumEffectiveDose: false, items: [], notes: [], quests: [])
         let record = LiveSession(plan: plan, device: "Test", now: start)
             .record(feedback: nil, now: start.addingTimeInterval(3600), timeZone: pagoPago)
         #expect(record.timeZoneID == "Pacific/Pago_Pago")
@@ -264,8 +293,9 @@ struct SessionTests {
         let ctx = context(profile)
         let start = Fixture.start.date().addingTimeInterval(18 * 3600)
         var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx), device: "Test", now: start)
-        let env = SessionEnvironment(catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
-                                     history: [:], enduranceScore: 50, heartRateGuidedRest: false)
+        let env = SessionEnvironment(
+            catalog: Fixture.catalog, gym: ctx.gym, trust: ctx.trust, phase: ctx.phase.effects, bodyweightKg: 80,
+            history: [:], enduranceScore: 50, heartRateGuidedRest: false)
         let index = try #require(live.items.firstIndex { $0.plan.isStrength && $0.plan.supersetGroup == nil })
         let last = live.items[index].sets.count - 1
         live.items[index].sets[last].prescription.kind = .repOut
@@ -293,29 +323,36 @@ struct SessionTests {
 
     /// A hand-made session, so the order and rests are exactly what the test says.
     func session(_ items: [PlannedItem], at start: Date) -> LiveSession {
-        LiveSession(plan: SessionPlan(day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
-                                      assessment: false, minimumEffectiveDose: false, items: items, notes: [], quests: []),
-                    device: "Test", now: start)
+        LiveSession(
+            plan: SessionPlan(
+                day: Fixture.start, title: "Upper A", mesocycleID: nil, dayID: nil, week: 0, deload: false, checkIn: false,
+                assessment: false, minimumEffectiveDose: false, items: items, notes: [], quests: []),
+            device: "Test", now: start)
     }
 
-    func lift(_ id: String, load: Double, group: Int? = nil,
-              rest: RestPlan = RestPlan(target: 90, minimum: 0, heartRateGuided: false)) -> PlannedItem {
-        PlannedItem(slotID: UUID(), block: group == nil ? .main : .accessory, exerciseID: id, role: group == nil ? .main : .accessory,
-                    sets: (0..<3).map { _ in SetPrescription(kind: .working, loadKg: load, targetReps: 10, targetRIR: 2) },
-                    repRange: RepRange(8, 12), rest: rest, supersetGroup: group)
+    func lift(
+        _ id: String, load: Double, group: Int? = nil,
+        rest: RestPlan = RestPlan(target: 90, minimum: 0, heartRateGuided: false)
+    ) -> PlannedItem {
+        PlannedItem(
+            slotID: UUID(), block: group == nil ? .main : .accessory, exerciseID: id, role: group == nil ? .main : .accessory,
+            sets: (0..<3).map { _ in SetPrescription(kind: .working, loadKg: load, targetReps: 10, targetRIR: 2) },
+            repRange: RepRange(8, 12), rest: rest, supersetGroup: group)
     }
 
     var environment: SessionEnvironment {
-        SessionEnvironment(catalog: Fixture.catalog, gym: Gym.preset(.fullGym, unit: .kg), trust: TrustState(experience: .intermediate),
-                           phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: [:], enduranceScore: 50,
-                           heartRateGuidedRest: true)
+        SessionEnvironment(
+            catalog: Fixture.catalog, gym: Gym.preset(.fullGym, unit: .kg), trust: TrustState(experience: .intermediate),
+            phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: [:], enduranceScore: 50,
+            heartRateGuidedRest: true)
     }
 
     @Test("a superset done ahead of an open lift alternates, with the 20-second changeover")
     func supersetDoneNext() throws {
         let start = Fixture.start.date().addingTimeInterval(18 * 3600)
-        var live = session([lift("barbell-bench-press", load: 60), lift("db-curl", load: 12, group: 1), lift("cable-fly", load: 15, group: 1)],
-                           at: start)
+        var live = session(
+            [lift("barbell-bench-press", load: 60), lift("db-curl", load: 12, group: 1), lift("cable-fly", load: 15, group: 1)],
+            at: start)
         let (bench, curl, fly) = (live.items[0].id, live.items[1].id, live.items[2].id)
         live.log(item: 0, set: 0, reps: 10, loadKg: 60, rating: .orange, environment: environment, now: start.addingTimeInterval(60))
         // The cable's free: the pair goes in front of the bench, which picks up again after it.
@@ -346,13 +383,16 @@ struct SessionTests {
         func timed(_ seconds: Int) -> [SetPrescription] {
             [SetPrescription(kind: .working, loadKg: nil, targetReps: 1, targetRIR: 5, seconds: seconds)]
         }
-        let bike = PlannedItem(slotID: UUID(), block: .conditioning, exerciseID: "bike-zone-2", role: .conditioning, sets: timed(900),
-                               repRange: RepRange(1, 1), rest: none, seconds: 900,
-                               conditioning: ConditioningPlan(minutes: 15, zones: 2...2, style: .steady))
-        let sauna = PlannedItem(slotID: nil, block: .recovery, exerciseID: "sauna", role: .recovery, sets: timed(600), repRange: RepRange(1, 1),
-                                rest: none, seconds: 600)
-        let stretch = PlannedItem(slotID: UUID(), block: .cooldown, exerciseID: "couch-stretch", role: .stretch, sets: timed(60),
-                                  repRange: RepRange(1, 1), rest: none, seconds: 60)
+        let bike = PlannedItem(
+            slotID: UUID(), block: .conditioning, exerciseID: "bike-zone-2", role: .conditioning, sets: timed(900),
+            repRange: RepRange(1, 1), rest: none, seconds: 900,
+            conditioning: ConditioningPlan(minutes: 15, zones: 2...2, style: .steady))
+        let sauna = PlannedItem(
+            slotID: nil, block: .recovery, exerciseID: "sauna", role: .recovery, sets: timed(600), repRange: RepRange(1, 1),
+            rest: none, seconds: 600)
+        let stretch = PlannedItem(
+            slotID: UUID(), block: .cooldown, exerciseID: "couch-stretch", role: .stretch, sets: timed(60),
+            repRange: RepRange(1, 1), rest: none, seconds: 60)
         var live = session([bike, sauna, stretch], at: start)
         #expect(live.items.map(\.takesMoreSets) == [false, false, true])
         live.logConditioning(item: 0, minutes: 15, averageHeartRate: 128, zoneMinutes: [2: 15], now: start.addingTimeInterval(900))
@@ -412,31 +452,41 @@ struct JourneyTests {
         let gym = Gym.preset(.fullGym, unit: .kg)
         let assessment = ProgramGenerator.generate(Fixture.input(profile, kind: .assessment))
         var sessions: [SessionRecord] = []
-        var performer = Performer(e1rm: ["barbell-back-squat": 120, "conventional-deadlift": 140, "barbell-bench-press": 60,
-                                         "barbell-overhead-press": 38, "pull-up": 100, "barbell-row": 55, "barbell-incline-bench-press": 50],
-                                  defaultE1RM: 60)
+        var performer = Performer(
+            e1rm: [
+                "barbell-back-squat": 120, "conventional-deadlift": 140, "barbell-bench-press": 60,
+                "barbell-overhead-press": 38, "pull-up": 100, "barbell-row": 55, "barbell-incline-bench-press": 50,
+            ],
+            defaultE1RM: 60)
         for week in 0..<4 {
             for (i, day) in [0, 2, 4].enumerated() {
                 let date = Fixture.start.adding(weeks: week).adding(days: day)
-                var state = LiftState(profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions,
-                                      mesocycles: [assessment], bodyweightKg: 80, today: date)
+                var state = LiftState(
+                    profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions,
+                    mesocycles: [assessment], bodyweightKg: 80, today: date)
                 let analysis = Analyst.analyse(state)
-                guard let next = analysis.next else { Issue.record("no next session"); return }
-                let ctx = PlanningContext(catalog: Fixture.catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
-                                          phase: analysis.phase, life: analysis.life, history: analysis.history, bodyweightKg: 80,
-                                          enduranceScore: analysis.endurance.score, sessionIndexInWeek: i)
+                guard let next = analysis.next else {
+                    Issue.record("no next session")
+                    return
+                }
+                let ctx = PlanningContext(
+                    catalog: Fixture.catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
+                    phase: analysis.phase, life: analysis.life, history: analysis.history, bodyweightKg: 80,
+                    enduranceScore: analysis.endurance.score, sessionIndexInWeek: i)
                 let plan = SessionPlanner.plan(next.day, of: assessment, on: date, context: ctx)
                 var live = LiveSession(plan: plan, device: "Test", now: date.date().addingTimeInterval(7 * 3600))
-                let env = SessionEnvironment(catalog: Fixture.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
-                                             bodyweightKg: 80, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
+                let env = SessionEnvironment(
+                    catalog: Fixture.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
+                    bodyweightKg: 80, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
                 performer.train(&live, environment: env, at: date.date().addingTimeInterval(7 * 3600))
                 sessions.append(live.record(feedback: SessionFeedback(soreness: 1, energy: 3), now: date.date().addingTimeInterval(8 * 3600)))
                 state.sessions = sessions
             }
         }
         let end = Fixture.start.adding(weeks: 4)
-        let state = LiftState(profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions,
-                              mesocycles: [assessment], bodyweightKg: 80, today: end)
+        let state = LiftState(
+            profile: profile, settings: settings, gym: gym, catalog: Fixture.catalog, sessions: sessions,
+            mesocycles: [assessment], bodyweightKg: 80, today: end)
         let analysis = Analyst.analyse(state)
         let status = analysis.assessment!
         #expect(status.complete)
@@ -462,7 +512,9 @@ struct JourneyTests {
         #expect(summary.stats.contains { $0.stat == .strength })
         if ProcessInfo.processInfo.environment["PRINT_PROGRAMS"] != nil {
             print(status.learned.joined(separator: "\n"))
-            print(analysis.strength.categories.map { "\($0.category.label): \(Int($0.oneRepMaxKg)) kg → \(Int($0.score)) \($0.level)" }.joined(separator: "\n"))
+            print(
+                analysis.strength.categories.map { "\($0.category.label): \(Int($0.oneRepMaxKg)) kg → \(Int($0.score)) \($0.level)" }.joined(
+                    separator: "\n"))
             print("trust \(analysis.trust.score)")
             print(Fixture.describe(block))
         }
@@ -479,10 +531,17 @@ struct JourneyTests {
 
     @Test func exportsEveryTable() {
         let profile = Fixture.profile()
-        let state = LiftState(profile: profile, settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg), catalog: Fixture.catalog,
-                              sessions: [SessionRecord(start: Date(), end: Date(), title: "Upper A",
-                                                       exercises: [ExerciseLog(exerciseID: "barbell-bench-press",
-                                                                               sets: [LoggedSet(exerciseID: "barbell-bench-press", loadKg: 80, reps: 5, rating: .orange)])])])
+        let state = LiftState(
+            profile: profile, settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg), catalog: Fixture.catalog,
+            sessions: [
+                SessionRecord(
+                    start: Date(), end: Date(), title: "Upper A",
+                    exercises: [
+                        ExerciseLog(
+                            exerciseID: "barbell-bench-press",
+                            sets: [LoggedSet(exerciseID: "barbell-bench-press", loadKg: 80, reps: 5, rating: .orange)])
+                    ])
+            ])
         let tables = Export.tables(state)
         #expect(tables.map(\.name) == ["sessions", "sets", "outside-activities", "measurements", "tests"])
         #expect(tables[1].rows.first?[4] == "Barbell Bench Press")

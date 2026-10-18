@@ -58,11 +58,13 @@ public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
     public var calfCm: Double?
     public var note: String
 
-    public init(id: UUID = UUID(), day: Day, weightKg: Double? = nil, bodyFatPercent: Double? = nil, neckCm: Double? = nil,
-                shouldersCm: Double? = nil, chestCm: Double? = nil, waistCm: Double? = nil, naturalWaistCm: Double? = nil,
-                hipsCm: Double? = nil, glutesCm: Double? = nil, armCm: Double? = nil, armLeftCm: Double? = nil, armRightCm: Double? = nil,
-                thighCm: Double? = nil, thighLeftCm: Double? = nil, thighRightCm: Double? = nil, calfCm: Double? = nil,
-                calfLeftCm: Double? = nil, calfRightCm: Double? = nil, note: String = "") {
+    public init(
+        id: UUID = UUID(), day: Day, weightKg: Double? = nil, bodyFatPercent: Double? = nil, neckCm: Double? = nil,
+        shouldersCm: Double? = nil, chestCm: Double? = nil, waistCm: Double? = nil, naturalWaistCm: Double? = nil,
+        hipsCm: Double? = nil, glutesCm: Double? = nil, armCm: Double? = nil, armLeftCm: Double? = nil, armRightCm: Double? = nil,
+        thighCm: Double? = nil, thighLeftCm: Double? = nil, thighRightCm: Double? = nil, calfCm: Double? = nil,
+        calfLeftCm: Double? = nil, calfRightCm: Double? = nil, note: String = ""
+    ) {
         self.id = id
         self.day = day
         self.weightKg = weightKg
@@ -130,8 +132,10 @@ public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
     }
 
     static var fields: [WritableKeyPath<BodyMeasurements, Double?>] {
-        [\.weightKg, \.bodyFatPercent, \.neckCm, \.shouldersCm, \.chestCm, \.waistCm, \.naturalWaistCm, \.hipsCm, \.glutesCm,
-         \.armLeftCm, \.armRightCm, \.thighLeftCm, \.thighRightCm, \.calfLeftCm, \.calfRightCm, \.armCm, \.thighCm, \.calfCm]
+        [
+            \.weightKg, \.bodyFatPercent, \.neckCm, \.shouldersCm, \.chestCm, \.waistCm, \.naturalWaistCm, \.hipsCm, \.glutesCm,
+            \.armLeftCm, \.armRightCm, \.thighLeftCm, \.thighRightCm, \.calfLeftCm, \.calfRightCm, \.armCm, \.thighCm, \.calfCm,
+        ]
     }
 
     public var isEmpty: Bool { Self.fields.allSatisfy { self[keyPath: $0] == nil } }
@@ -172,11 +176,12 @@ public struct Asymmetry: Hashable, Codable, Sendable, Identifiable {
     }
 
     public var action: String {
-        let work = switch limb {
-        case .arm: "Arm work goes"
-        case .thigh: "Leg accessories go"
-        case .calf: "Calf raises go"
-        }
+        let work =
+            switch limb {
+            case .arm: "Arm work goes"
+            case .thigh: "Leg accessories go"
+            case .calf: "Calf raises go"
+            }
         return "\(work) one side at a time, \(smaller.label.lowercased()) first; the \(bigger.label.lowercased()) matches its reps."
     }
 }
@@ -278,7 +283,9 @@ public enum Physique {
 
     /// US Navy body-fat estimate from tape measurements; a soft signal only.
     public static func navyBodyFat(sex: BiologicalSex, heightCm: Double, neckCm: Double, waistCm: Double, hipsCm: Double?) -> Double? {
-        let h = heightCm / 2.54, n = neckCm / 2.54, w = waistCm / 2.54
+        let h = heightCm / 2.54
+        let n = neckCm / 2.54
+        let w = waistCm / 2.54
         switch sex {
         case .female:
             guard let hips = hipsCm else { return nil }
@@ -340,8 +347,9 @@ public enum Physique {
             guard let side = flagged, let last = entries.last else { return nil }
             let difference = abs(last.left - last.right)
             let share = difference / max(last.left, last.right)
-            return Asymmetry(limb: limb, smaller: side, differenceCm: difference, percent: share,
-                             magnitude: clamp((share - asymmetryMinimumShare) / 0.06, 0, 1))
+            return Asymmetry(
+                limb: limb, smaller: side, differenceCm: difference, percent: share,
+                magnitude: clamp((share - asymmetryMinimumShare) / 0.06, 0, 1))
         }
     }
 
@@ -349,8 +357,10 @@ public enum Physique {
     /// scoring, since a weight typed at onboarding would otherwise stand as the latest for good.
     /// `measuredBodyFat` is a recent Health sample; it beats a typed reading, which beats the tape.
     /// `targets` defaults to the set for the person's standards.
-    public static func analyse(_ history: [BodyMeasurements], sex: BiologicalSex, heightCm: Double?,
-                               weightKg: Double? = nil, measuredBodyFat: Double? = nil, targets: ProportionTargets? = nil) -> PhysiqueAnalysis {
+    public static func analyse(
+        _ history: [BodyMeasurements], sex: BiologicalSex, heightCm: Double?,
+        weightKg: Double? = nil, measuredBodyFat: Double? = nil, targets: ProportionTargets? = nil
+    ) -> PhysiqueAnalysis {
         let sorted = history.sorted { $0.day < $1.day }
         var latest: BodyMeasurements?
         for entry in sorted { latest = latest.map { entry.filled(from: $0) } ?? entry }
@@ -358,8 +368,10 @@ public enum Physique {
 
         let ratio = latest?.shoulderToWaist
         let wth = latest?.waistToHeight(heightCm: heightCm)
-        let readings: [(Double?, BodyFatSource)] = [(measuredBodyFat, .health), (latest?.bodyFatPercent, .entered),
-                                                    (latest.flatMap { tapeBodyFat($0, sex: sex, heightCm: heightCm) }, .tape)]
+        let readings: [(Double?, BodyFatSource)] = [
+            (measuredBodyFat, .health), (latest?.bodyFatPercent, .entered),
+            (latest.flatMap { tapeBodyFat($0, sex: sex, heightCm: heightCm) }, .tape),
+        ]
         let best = readings.first { $0.0 != nil }
         let bodyFat = best?.0
         let source = best?.1
@@ -393,10 +405,11 @@ public enum Physique {
         for reading in proportions { parts.append((1 - reading.rule.assess(reading.value, sex: sex).magnitude) * 100) }
         if !parts.isEmpty { score = parts.reduce(0, +) / Double(parts.count) }
 
-        return PhysiqueAnalysis(latest: latest, shoulderToWaist: ratio, waistToHeight: wth, bodyFatPercent: bodyFat, bodyFatSource: source,
-                                ffmi: lean?.ffmi, normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
-                                targets: targets, proportions: proportions, direction: direction,
-                                gaps: gaps.sorted { $0.magnitude > $1.magnitude }, asymmetries: asymmetries(sorted),
-                                waistTrend: waistTrend, score: score)
+        return PhysiqueAnalysis(
+            latest: latest, shoulderToWaist: ratio, waistToHeight: wth, bodyFatPercent: bodyFat, bodyFatSource: source,
+            ffmi: lean?.ffmi, normalizedFFMI: lean?.normalized, ffmiBand: lean.map { FFMIBand.of($0.normalized, sex: sex) },
+            targets: targets, proportions: proportions, direction: direction,
+            gaps: gaps.sorted { $0.magnitude > $1.magnitude }, asymmetries: asymmetries(sorted),
+            waistTrend: waistTrend, score: score)
     }
 }

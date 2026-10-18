@@ -109,7 +109,7 @@ public enum ReadingPlan {
             case (.finished, .right), (.finished, nil): target = max(target, tier + 0.5)
             case (.finished, .hard): target = min(target, tier)
             case (.abandoned, .hard): target = min(target, tier - 1)
-            default: break // Given up on for other reasons: taste, not difficulty.
+            default: break  // Given up on for other reasons: taste, not difficulty.
             }
         }
         if let level { target = clamp(target, level - 2, level + 1) }
@@ -122,8 +122,10 @@ public enum ReadingPlan {
 
     /// Up to `count` ladder books near the next tier, liked genres first, none already on the
     /// shelf and no two by the same author.
-    public static func suggestions(shelf: [Book], tests: [TestResult], genres: [Genre], on day: Day,
-                                   ladder: ReadingLadder = .standard, count: Int = 3) -> [LadderBook] {
+    public static func suggestions(
+        shelf: [Book], tests: [TestResult], genres: [Genre], on day: Day,
+        ladder: ReadingLadder = .standard, count: Int = 3
+    ) -> [LadderBook] {
         let target = self.target(books: shelf, tests: tests, on: day)
         let owned = Set(shelf.compactMap(\.ladderID))
         let ownedTitles = Set(shelf.map { BookLevel.matchKey(title: $0.title, author: $0.author) })
@@ -225,8 +227,9 @@ public enum ReadingPlan {
         let level = self.level(books: state.books, tests: state.tests, on: state.today)
         let finished = state.books.filter { $0.status == .finished && $0.language == nil && finishDay($0).days(until: state.today) <= 84 }.count
         let label = level.map { "Reads at tier \(Self.format($0)) of 10 · \(finished) finished in 12 weeks" } ?? "Measured by the reading test"
-        return StatReading(stat: .wisdom, score: score(level), label: label, trend: Analyst.trajectory(.reading, state: state),
-                           updated: state.now)
+        return StatReading(
+            stat: .wisdom, score: score(level), label: label, trend: Analyst.trajectory(.reading, state: state),
+            updated: state.now)
     }
 
     /// The level after each test and each finished book, oldest first; with `last`, only the
@@ -244,11 +247,12 @@ public enum ReadingPlan {
     public static func summary(_ state: StudyState) -> ReadingSummary {
         let blocks = self.blocks(state.sessions, books: state.books)
         let target = self.target(books: state.books, tests: state.tests, on: state.today)
-        return ReadingSummary(current: state.currentBook, level: level(books: state.books, tests: state.tests, on: state.today),
-                              test: tested(state.tests, on: state.today), target: target, targetTier: clamp(Int(target.rounded()), 1, 10),
-                              stamina: stamina(blocks), nextBlock: nextBlock(blocks),
-                              finished: state.books.filter { $0.status == .finished }.sorted { ($0.finished ?? state.today) > ($1.finished ?? state.today) },
-                              pagesPerMinute: pace(state.sessions))
+        return ReadingSummary(
+            current: state.currentBook, level: level(books: state.books, tests: state.tests, on: state.today),
+            test: tested(state.tests, on: state.today), target: target, targetTier: clamp(Int(target.rounded()), 1, 10),
+            stamina: stamina(blocks), nextBlock: nextBlock(blocks),
+            finished: state.books.filter { $0.status == .finished }.sorted { ($0.finished ?? state.today) > ($1.finished ?? state.today) },
+            pagesPerMinute: pace(state.sessions))
     }
 
     /// "5.5", or "5" for a whole tier.

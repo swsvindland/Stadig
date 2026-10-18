@@ -66,25 +66,28 @@ private struct Usual {
     }
 }
 
-private let breadKinds = ("rye egg oatmeal raisin cinnamon french italian vienna multigrain sourdough pumpernickel potato cheese "
+private let breadKinds =
+    ("rye egg oatmeal raisin cinnamon french italian vienna multigrain sourdough pumpernickel potato cheese "
     + "banana corn pita naan garlic gluten protein rice oat muffin muffins sprouted reduced calorie pumpkin irish soda "
     + "boston brown mixed grain cracked crust stuffing crumb crumbs").split(separator: " ").map(String.init)
 
 private let usualVarieties: [String: Usual] = [
     "rice": Usual(["long"], ["short", "medium", "brown", "wild", "basmati", "jasmine"]),
-    "cheese": Usual(["cheddar", "american"],
-                    "mozzarella parmesan swiss feta provolone cottage cream goat blue ricotta monterey brie gouda"
-                        .split(separator: " ").map(String.init)),
+    "cheese": Usual(
+        ["cheddar", "american"],
+        "mozzarella parmesan swiss feta provolone cottage cream goat blue ricotta monterey brie gouda"
+            .split(separator: " ").map(String.init)),
     "milk": Usual(["whole"], "skim nonfat reduced lowfat almond soy oat chocolate buttermilk".split(separator: " ").map(String.init)),
     "egg": Usual(["whole"], ["white", "yolk"]),
     // Toast and a slice of bread are white or wheat; any other kind named is that kind.
     "toast": Usual(["white", "wheat"], breadKinds),
     "bread": Usual(["white", "wheat"], breadKinds),
     // Beans in a bowl or a burrito are black or pinto; any kind named is that kind.
-    "bean": Usual(["black", "pinto"],
-                  ("snap green yellow wax string baked refried lima fava broad navy kidney northern great white cannellini "
-                      + "garbanzo chickpea mung adzuki soy soybean edamame coffee cocoa vanilla jelly french yardlong hyacinth "
-                      + "winged moth cranberry shellie lupini mothbean").split(separator: " ").map(String.init)),
+    "bean": Usual(
+        ["black", "pinto"],
+        ("snap green yellow wax string baked refried lima fava broad navy kidney northern great white cannellini "
+            + "garbanzo chickpea mung adzuki soy soybean edamame coffee cocoa vanilla jelly french yardlong hyacinth "
+            + "winged moth cranberry shellie lupini mothbean").split(separator: " ").map(String.init)),
 ]
 
 /// Searches and seen foods naming these mean the cooked food unless they say "raw": "salmon",
@@ -95,7 +98,9 @@ private let eatenCooked = stems(
 private let cookedWords = stems("cooked roasted baked boiled broiled grilled steamed poached scrambled fried braised microwaved")
 
 /// The cooked words in the catalog's full-text syntax, as prefixes.
-private let cookedTerm = "(" + "cooked roasted baked boiled broiled grilled steamed poached scrambled braised microwaved"
+private let cookedTerm =
+    "("
+    + "cooked roasted baked boiled broiled grilled steamed poached scrambled braised microwaved"
     .split(separator: " ").map { "\"\($0)\"*" }.joined(separator: " OR ") + ")"
 
 /// Extra catalog queries for the everyday form of a plain seen food, run beside the usual ones so
@@ -110,7 +115,8 @@ func everydayQueries(_ seen: Named, pool: [Entry] = []) -> [String] {
     let base = name.map(term).joined(separator: " AND ")
     var variety: String?
     if let usual = said.lazy.compactMap({ usualVarieties[$0] }).first,
-       !said.contains(where: { usual.otherStems.contains($0) || usual.markStems.contains($0) }) {
+        !said.contains(where: { usual.otherStems.contains($0) || usual.markStems.contains($0) })
+    {
         variety = "(" + usual.marks.map { "\"\($0)\"*" }.joined(separator: " OR ") + ")"
     }
     let cooked = said.contains(where: eatenCooked.contains) && !said.contains(where: cookedWords.contains)
@@ -170,7 +176,9 @@ struct FoodText {
         // Each token's bracket (none, a note, or an "(Includes …)" note) and comma-separated part.
         var placed: [(bracket: Int, part: Int)] = []
         placed.reserveCapacity(found.count)
-        var bracket = 0, part = 0, next = 0
+        var bracket = 0
+        var part = 0
+        var next = 0
         var commas: [Int] = []
         for (i, scalar) in scalars.enumerated() {
             if scalar == "(" && bracket == 0 && i < close {
@@ -187,7 +195,9 @@ struct FoodText {
             }
         }
         let stems = found.map { stopWords.contains($0.word) ? "" : stem($0.word) }
-        var titled: [String] = [], said: [String] = [], noted: [String] = []
+        var titled: [String] = []
+        var said: [String] = []
+        var noted: [String] = []
         var parts: [[String]] = [[], [], []]
         for (i, token) in found.enumerated() where !stems[i].isEmpty {
             titled.append(stems[i])
@@ -271,7 +281,8 @@ private func shoutingStart(_ name: String, word: Bool = false) -> Bool {
         if byte == UInt8(ascii: ",") || (word && (byte == 0x20 || (byte >= 0x09 && byte <= 0x0D))) { return true }
         if byte >= 0x61 && byte <= 0x7A {
             let afterM = byte == UInt8(ascii: "c") && previous == UInt8(ascii: "M")
-            let wordStart = !(beforePrevious >= 0x41 && beforePrevious <= 0x5A || beforePrevious >= 0x61 && beforePrevious <= 0x7A
+            let wordStart =
+                !(beforePrevious >= 0x41 && beforePrevious <= 0x5A || beforePrevious >= 0x61 && beforePrevious <= 0x7A
                 || beforePrevious >= 0x30 && beforePrevious <= 0x39 || beforePrevious == 0x5F)
             if !(afterM && wordStart) { return false }
         }
@@ -446,7 +457,11 @@ struct CoverageQuery {
 
     func cover(_ text: FoodText) -> Coverage {
         let found = nameOnly ? text.titled : text.all
-        var total = 0.0, hits = 0.0, partial = 0, fixedCount = 0, missing = 0
+        var total = 0.0
+        var hits = 0.0
+        var partial = 0
+        var fixedCount = 0
+        var missing = 0
         var head = false
         for (i, word) in target.enumerated() {
             // The last word names the food ("coffee" in "black coffee"); earlier words describe it.
@@ -463,7 +478,8 @@ struct CoverageQuery {
             // The word that names the food is in its name: "wheats" in "Shredded Bite Size Wheats".
             if i == target.count - 1 { head = has && !inBrand }
         }
-        var variations = 0, others = 0
+        var variations = 0
+        var others = 0
         // USDA's "mature seeds" are dried beans and lentils as usually cooked, not the seeds of a plant.
         let legume = text.said.contains("mature") || text.said.contains("immature")
         for w in text.said where !isNumber(w) && !(level && fatWords.contains(w)) && !mentioned.contains(where: { fits(w, $0) }) {
@@ -476,13 +492,15 @@ struct CoverageQuery {
         var named = false
         if missing == 0, text.heads.count == 2 {
             let both = text.heads[0] + text.heads[1]
-            named = !target.allSatisfy { has($0, text.heads[0]) } && target.allSatisfy { has($0, both) }
+            named =
+                !target.allSatisfy { has($0, text.heads[0]) } && target.allSatisfy { has($0, both) }
                 && both.allSatisfy { w in mentioned.contains { fits(w, $0) } }
         }
-        let usual = self.usual.map { usual in
-            found.contains { w in usual.markStems.contains { same(w, $0) } }
-                && !found.contains { w in usual.otherStems.contains { same(w, $0) } }
-        } ?? false
+        let usual =
+            self.usual.map { usual in
+                found.contains { w in usual.markStems.contains { same(w, $0) } }
+                    && !found.contains { w in usual.otherStems.contains { same(w, $0) } }
+            } ?? false
         return Coverage(
             name: total > 0 ? hits / total : 0,
             missing: missing,
@@ -513,8 +531,10 @@ func fixValues(_ fixes: Fixes, order: [String]) -> [String] {
     return keys.flatMap { fixes[$0]! }
 }
 
-func coverage(_ seen: Named, _ food: Food, target: [String]? = nil, prefix: Bool = false, fixes: Fixes = [:],
-              nameOnly: Bool = false) -> Coverage {
+func coverage(
+    _ seen: Named, _ food: Food, target: [String]? = nil, prefix: Bool = false, fixes: Fixes = [:],
+    nameOnly: Bool = false
+) -> Coverage {
     CoverageQuery(seen: seen, target: target ?? nameWords(seen.name), prefix: prefix, fixes: fixes, nameOnly: nameOnly)
         .cover(FoodText(food))
 }
@@ -530,7 +550,8 @@ struct Profile: Equatable {
 }
 
 private func point(_ food: Food) -> [Double]? {
-    food.basis == .serving ? nil
+    food.basis == .serving
+        ? nil
         : [log(max(0, food.nutrients.kcal) + 10), food.nutrients.protein, food.nutrients.carbs, food.nutrients.fat]
 }
 
@@ -555,8 +576,9 @@ func profile(_ foods: [Food]) -> Profile? {
 /// The profile of what words name, from the foods named little more than them: "peanut butter"
 /// is the spread, not the cups and cookies named after it.
 func profile(for product: [String], _ entries: [Entry], fixes: Fixes = [:]) -> Profile? {
-    let query = CoverageQuery(seen: Named(name: product.joined(separator: " "), brand: ""), target: product, prefix: true,
-                              fixes: fixes, nameOnly: true)
+    let query = CoverageQuery(
+        seen: Named(name: product.joined(separator: " "), brand: ""), target: product, prefix: true,
+        fixes: fixes, nameOnly: true)
     var named: [Food] = []
     for entry in entries {
         let match = query.cover(entry.text)
@@ -590,13 +612,17 @@ private func boost(_ known: [String: Double], _ id: String) -> Double {
 /// profile, a food unlike the kind of food the words name ranks lower, and the named brand's food
 /// most like it ranks first even under another name: Trader Joe's calls its Mini-Wheats
 /// "Shredded Bite Size Wheats". Foods that don't match are left out.
-func scoreFoods(_ seen: Named, _ foods: [Food], known: [String: Double] = [:], search: Bool = false,
-                hints: RankHints = RankHints()) -> [Ranked] {
+func scoreFoods(
+    _ seen: Named, _ foods: [Food], known: [String: Double] = [:], search: Bool = false,
+    hints: RankHints = RankHints()
+) -> [Ranked] {
     scoreFoods(seen, foods.map(Entry.init), known: known, search: search, hints: hints)
 }
 
-func scoreFoods(_ seen: Named, _ entries: [Entry], known: [String: Double] = [:], search: Bool = false,
-                hints: RankHints = RankHints()) -> [Ranked] {
+func scoreFoods(
+    _ seen: Named, _ entries: [Entry], known: [String: Double] = [:], search: Bool = false,
+    hints: RankHints = RankHints()
+) -> [Ranked] {
     let read = search ? readQuery(seen.name) : nil
     let target = read.map { searchedWords($0.words) } ?? nameWords(seen.name)
     let brand = hints.brand
@@ -606,7 +632,8 @@ func scoreFoods(_ seen: Named, _ entries: [Entry], known: [String: Double] = [:]
     let named = asked ? target.filter { !brand.contains($0) } : target
     // A typed search and a food a model saw both mean the cooked form of what's usually eaten
     // cooked; a model asked for raw salmon says so.
-    let cooked = !target.contains("raw")
+    let cooked =
+        !target.contains("raw")
         && (target + fixValues(fixes, order: target)).contains { eatenCooked.contains(stem($0)) }
     // Catalogs repeat products; the person's own foods are each kept.
     var keys: [String] = []
@@ -615,8 +642,9 @@ func scoreFoods(_ seen: Named, _ entries: [Entry], known: [String: Double] = [:]
         if unique[entry.key] == nil { keys.append(entry.key) }
         if unique[entry.key] == nil || known[entry.food.id] != nil { unique[entry.key] = entry }
     }
-    let query = CoverageQuery(seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
-                              nameOnly: asked && !named.isEmpty)
+    let query = CoverageQuery(
+        seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
+        nameOnly: asked && !named.isEmpty)
     let brandForms = brand.map { word in isNumber(word) ? [word] : searchForms(word) + (fixes[word] ?? []) }
     let mentionForms = target.map(searchForms)
 
@@ -639,22 +667,27 @@ func scoreFoods(_ seen: Named, _ entries: [Entry], known: [String: Double] = [:]
         let mine: Bool
         if asked {
             // The brand asked for: each of its words starts a word of the food's brand.
-            mine = !text.own.isEmpty && brandForms.allSatisfy { options in
-                options.contains { form in text.own.contains { isNumber(form) ? $0 == form : starts($0, form) } }
-            }
+            mine =
+                !text.own.isEmpty
+                && brandForms.allSatisfy { options in
+                    options.contains { form in text.own.contains { isNumber(form) ? $0 == form : starts($0, form) } }
+                }
         } else {
             mine = match.brand == true
         }
         // A search for a brand alone matches all of its foods.
         let name = asked && named.isEmpty && mine ? 1 : match.name
-        rows.append(Row(food: food, text: text, match: match, mine: mine, name: name,
-                        like: hints.profile.map { likeness(food, $0) } ?? 0, plausible: entry.plausible))
+        rows.append(
+            Row(
+                food: food, text: text, match: match, mine: mine, name: name,
+                like: hints.profile.map { likeness(food, $0) } ?? 0, plausible: entry.plausible))
     }
     let sold = rows.contains { $0.mine && $0.name == 1 && $0.like > 0 }
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
-        var score = 3 * row.name + (match.leads ? (search ? 0.75 : 0.5) : 0)
+        var score =
+            3 * row.name + (match.leads ? (search ? 0.75 : 0.5) : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
             // dish that only has them.
             + (match.named && !row.text.branded ? 0.5 : 0)
@@ -678,7 +711,11 @@ func scoreFoods(_ seen: Named, _ entries: [Entry], known: [String: Double] = [:]
             // Only when the food's own name has the word naming the food: Oreo's cookies for "oreo",
             // not the "Flat White" brand's coffee chocolate for "flat white".
             if !asked && !own.isEmpty && match.head
-                && own.allSatisfy({ w in let s = stem(w); return mentionForms.contains { $0.contains { length($0) > 2 && $0 == s } } }) {
+                && own.allSatisfy({ w in
+                    let s = stem(w)
+                    return mentionForms.contains { $0.contains { length($0) > 2 && $0 == s } }
+                })
+            {
                 score += 2
             }
             if !read.counts.isEmpty {

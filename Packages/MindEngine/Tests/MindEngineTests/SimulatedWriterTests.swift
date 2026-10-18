@@ -1,6 +1,7 @@
 import Foundation
-import Testing
 import SystemCore
+import Testing
+
 @testable import MindEngine
 
 /// A simulated writer: pieces whose slips fall and sentences vary more week by week when they're
@@ -9,11 +10,13 @@ import SystemCore
 struct Writer {
     var improving: Bool
     var rng: SeededRandom
-    static let pool = ["river", "lamp", "window", "garden", "winter", "letter", "kitchen", "station", "morning", "silence", "road", "cloud",
-                       "table", "voice", "bridge", "stone", "harbour", "market", "candle", "orchard", "ladder", "engine", "pocket", "mirror",
-                       "walked", "waited", "turned", "carried", "opened", "watched", "slowly", "later", "under", "across", "behind", "quiet",
-                       "bright", "narrow", "heavy", "early", "kettle", "platform", "ticket", "neighbour", "promise", "answer", "reason",
-                       "evening", "corner", "street", "doorway", "shadow", "sister", "brother", "teacher", "stranger", "coat", "glass"]
+    static let pool = [
+        "river", "lamp", "window", "garden", "winter", "letter", "kitchen", "station", "morning", "silence", "road", "cloud",
+        "table", "voice", "bridge", "stone", "harbour", "market", "candle", "orchard", "ladder", "engine", "pocket", "mirror",
+        "walked", "waited", "turned", "carried", "opened", "watched", "slowly", "later", "under", "across", "behind", "quiet",
+        "bright", "narrow", "heavy", "early", "kettle", "platform", "ticket", "neighbour", "promise", "answer", "reason",
+        "evening", "corner", "street", "doorway", "shadow", "sister", "brother", "teacher", "stranger", "coat", "glass",
+    ]
 
     mutating func text(week: Int) -> String {
         let slipRate = improving ? max(0.02, 0.5 - 0.025 * Double(week)) : 0.3
