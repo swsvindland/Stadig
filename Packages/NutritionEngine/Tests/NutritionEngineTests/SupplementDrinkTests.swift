@@ -211,4 +211,53 @@ struct SupplementDrinkTests {
         let diary = tables[0]
         #expect(diary.rows.first?[diary.header.firstIndex(of: "fluid_ml")!] == "237")
     }
+
+    var losAngeles: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        return calendar
+    }
+
+    @Test("export times are on the clock of the day next to them, not UTC")
+    func exportTimes() throws {
+        let calendar = losAngeles
+        let day = Day(year: 2026, month: 10, day: 17)
+        let dinner = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 20)))
+        let entry = FoodEntry(date: dinner, day: day, name: "Dinner", amountLabel: "1 plate",
+                              nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 25), source: .search)
+        let tables = NutritionExport.tables(entries: [entry], weighIns: [], checkIns: [], days: [],
+                                            supplements: [SupplementLog(supplement: multi, doseID: nil, date: dinner, day: day, count: 1)],
+                                            water: [WaterLog(date: dinner, day: day, ml: 500)], calendar: calendar)
+        for table in tables where table.header.starts(with: ["day", "time"]) {
+            #expect(table.rows.first.map { Array($0.prefix(2)) } == ["2026-10-17", "20:00:00"], "\(table.name)")
+        }
+        #expect(tables.filter { $0.header.starts(with: ["day", "time"]) }.map(\.name) == ["diary", "supplements", "water"])
+    }
+
+    @Test("bedtime is by the clock on the days clocks change")
+    func bedtimeAcrossDST() throws {
+        let calendar = losAngeles
+        let state = MacroState(profile: profile(), settings: MacroSettings(), today: today)
+        // Spring forward (a 23-hour day) and fall back (25 hours), at the default 22:30.
+        for day in [Day(year: 2026, month: 3, day: 8), Day(year: 2026, month: 11, day: 1), Day(year: 2026, month: 6, day: 1)] {
+            let bedtime = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: state.bedtime(on: day, calendar: calendar))
+            #expect(bedtime.hour == 22 && bedtime.minute == 30 && bedtime.day == day.dayOfMonth, "\(day): \(bedtime)")
+        }
+        // After midnight, it's that night's: early the next morning.
+        var late = MacroSettings()
+        late.doseTimes = [.bedtime: 60 + 15]
+        let night = MacroState(profile: profile(), settings: late, today: today).bedtime(on: Day(year: 2026, month: 3, day: 7), calendar: calendar)
+        let parts = calendar.dateComponents([.day, .hour, .minute], from: night)
+        #expect(parts.day == 8 && parts.hour == 1 && parts.minute == 15, "\(parts)")
+    }
+
+    @Test("bedtime is the same moment on a phone set to the Buddhist calendar")
+    func bedtimeOnABuddhistCalendar() {
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = losAngeles.timeZone
+        let state = MacroState(profile: profile(), settings: MacroSettings(), today: today)
+        let day = Day(year: 2026, month: 10, day: 18)
+        #expect(state.bedtime(on: day, calendar: buddhist) == state.bedtime(on: day, calendar: losAngeles))
+        #expect(Day(state.bedtime(on: day, calendar: buddhist), calendar: buddhist) == day)
+    }
 }

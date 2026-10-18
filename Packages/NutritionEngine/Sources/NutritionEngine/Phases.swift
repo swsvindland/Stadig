@@ -9,16 +9,20 @@ public struct PlannedPhase: Hashable, Codable, Sendable, Identifiable {
     public var ratePerWeek: Double
     public var weeks: Int
     public var start: Day
+    /// The last day, when a review ended the phase partway through a week. Nil for plans saved
+    /// before it existed, and for phases that ran whole weeks.
+    public var endedEarly: Day?
 
-    public init(id: UUID = UUID(), kind: PhaseKind, ratePerWeek: Double? = nil, weeks: Int, start: Day) {
+    public init(id: UUID = UUID(), kind: PhaseKind, ratePerWeek: Double? = nil, weeks: Int, start: Day, endedEarly: Day? = nil) {
         self.id = id
         self.kind = kind
         self.ratePerWeek = ratePerWeek ?? kind.typicalRate
         self.weeks = max(1, weeks)
         self.start = start
+        self.endedEarly = endedEarly
     }
 
-    public var end: Day { start.adding(days: weeks * 7 - 1) }
+    public var end: Day { endedEarly ?? start.adding(days: weeks * 7 - 1) }
     public var range: DayRange { DayRange(start, end) }
 
     public var summary: String {
@@ -281,7 +285,9 @@ public enum PhasePlanner {
 
     /// Changes worth making at a block boundary, by rule. Nil keeps the plan.
     public static func review(_ plan: PhasePlan, input: PlannerInput) -> PhasePlan? {
-        guard let current = plan.phase(on: input.today) else { return recommend(input) }
+        // Before the plan, or past its end: plan again.
+        guard let current = plan.phase(on: input.today), input.today <= current.end,
+              let index = plan.phases.firstIndex(where: { $0.id == current.id }) else { return recommend(input) }
         var plan = plan
         var reason: String?
         let rateNow = input.weeklyChange.map { $0 / input.weightKg }
@@ -293,37 +299,38 @@ public enum PhasePlanner {
             } else if input.leanness == .lean {
                 reason = "You've reached a lean range, so the cut ends here."
             }
-            if let reason {
-                let index = plan.phases.firstIndex { $0.id == current.id }!
-                plan.phases[index].weeks = max(1, current.start.days(until: input.today) / 7)
-                let breakStart = plan.phases[index].end.adding(days: 1)
-                plan.phases = Array(plan.phases.prefix(index + 1)) + [PlannedPhase(kind: .dietBreak, weeks: 2, start: breakStart)]
-                plan.reasons.insert(reason, at: 0)
-                plan.headline = reason
-            }
+            if reason != nil { endEarly(&plan, at: index, today: input.today, then: PlannedPhase(kind: .dietBreak, weeks: 2, start: input.today)) }
         case .surplus:
             if let rate = rateNow, rate > current.ratePerWeek * 1.6, rate > 0.003 {
-                let index = plan.phases.firstIndex { $0.id == current.id }!
                 plan.phases[index].ratePerWeek = current.ratePerWeek * 0.7
                 reason = "Weight is rising faster than planned, so the surplus comes down a little."
-                plan.reasons.insert(reason!, at: 0)
-                plan.headline = reason!
             } else if input.leanness == .higher || input.leanness == .high {
                 reason = "Waist has grown past the target range, so a short mini-cut comes next."
-                let index = plan.phases.firstIndex { $0.id == current.id }!
-                plan.phases[index].weeks = max(1, current.start.days(until: input.today) / 7)
-                plan.phases = Array(plan.phases.prefix(index + 1)) + [PlannedPhase(kind: .miniCut, ratePerWeek: -0.0075, weeks: 5,
-                                                                                    start: plan.phases[index].end.adding(days: 1))]
-                plan.reasons.insert(reason!, at: 0)
-                plan.headline = reason!
+                endEarly(&plan, at: index, today: input.today,
+                         then: PlannedPhase(kind: .miniCut, ratePerWeek: -0.0075, weeks: 5, start: input.today))
             }
         case .maintenance:
             break
         }
-        // Past the end of the plan: plan again.
-        if input.today > (plan.phases.last?.end ?? input.today) { return recommend(input) }
-        guard reason != nil else { return nil }
+        guard let reason else { return nil }
+        if plan.reasons.first != reason { plan.reasons.insert(reason, at: 0) }
+        plan.headline = reason
         plan.updatedAt = Date()
         return plan
+    }
+
+    /// Ends the phase at `index` yesterday, then `next` (starting today, at its full length), so a
+    /// review mid-week doesn't start the diet break in the past. The days already spent stay in the
+    /// plan as they happened; a phase that hadn't begun is dropped.
+    static func endEarly(_ plan: inout PhasePlan, at index: Int, today: Day, then next: PlannedPhase) {
+        var phases = Array(plan.phases.prefix(index))
+        var current = plan.phases[index]
+        let spent = current.start.days(until: today)
+        if spent > 0 {
+            current.weeks = max(1, Int((Double(spent) / 7).rounded(.up)))
+            current.endedEarly = spent % 7 == 0 ? nil : today.adding(days: -1)
+            phases.append(current)
+        }
+        plan.phases = phases + [next]
     }
 }

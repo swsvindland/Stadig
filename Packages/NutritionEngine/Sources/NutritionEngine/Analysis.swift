@@ -21,32 +21,46 @@ public struct MacroState: Sendable {
     public var supplementLogs: [SupplementLog]
     public var water: [WaterLog]
     public var today: Day
+    /// The moment the analysis is for, on `today`: what "late in the day" is judged by.
+    public var now: Date
 
     public init(profile: SharedProfile, settings: MacroSettings, entries: [FoodEntry] = [], weighIns: [WeighIn] = [],
                 dayStatus: [DayStatus] = [], plan: PhasePlan? = nil, lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil,
                 lift: AppSummary? = nil, checkIns: [CheckIn] = [], supplements: [Supplement] = [], supplementLogs: [SupplementLog] = [],
-                water: [WaterLog] = [], today: Day = .today) {
+                water: [WaterLog] = [], today: Day = .today, now: Date = Date()) {
         self.profile = profile
         self.settings = settings
         self.entries = entries
         self.weighIns = weighIns
         self.dayStatus = dayStatus
         self.plan = plan
-        self.lifeModes = lifeModes
+        // Deleted periods travel as tombstones so the delete reaches every app; the engine never sees them.
+        self.lifeModes = lifeModes.live
         self.calendar = calendar
         self.lift = lift
-        self.checkIns = checkIns.sorted { $0.day < $1.day }
+        // Two on one day (a plan started after the day's check-in, or two devices before they
+        // synced): the newer one is in force.
+        self.checkIns = checkIns.sorted { $0.day != $1.day ? $0.day < $1.day : $0.updatedAt < $1.updatedAt }
         self.supplements = supplements
         self.supplementLogs = supplementLogs
         self.water = water
         self.today = today
+        self.now = now
     }
 
     /// Bedtime on a day, from the person's bedtime (after midnight counts as that night).
     public func bedtime(on day: Day, calendar: Calendar = .current) -> Date {
         let minutes = settings.minutes(.bedtime)
         let night = minutes < 12 * 60 ? day.adding(days: 1) : day
-        return night.date(calendar: calendar).addingTimeInterval(Double(minutes % (24 * 60)) * 60)
+        let clock = minutes % (24 * 60)
+        // By the clock, not midnight plus so many hours, which is an hour off the days clocks change.
+        // A Day is a Gregorian date whatever calendar the phone shows (Buddhist, Japanese), so the
+        // clock is read in a Gregorian calendar in the same zone.
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        let c = night.components
+        return gregorian.date(from: DateComponents(year: c.year, month: c.month, day: c.day, hour: clock / 60, minute: clock % 60))
+            ?? night.date(calendar: calendar).addingTimeInterval(Double(clock) * 60)
     }
 }
 
@@ -88,6 +102,9 @@ public struct MacroAnalysis: Sendable {
     public var plannerInput: PlannerInput
     /// Days that teach the estimate: complete (or fasting) with their calories.
     public var usable: [Day: Double]
+    /// The targets each usable day of the last four weeks had: its own life modes, check-in and
+    /// phase, so a day is judged as it stood, not by today's targets.
+    public var dayTargets: [Day: DailyTargets] = [:]
     /// The check-in in force today, and a new one when this week's is due.
     public var checkIn: CheckIn?
     public var dueCheckIn: CheckIn?
@@ -128,7 +145,11 @@ public enum MacroAnalyst {
             }
         }
         let trend = Weight.trend(state.weighIns, through: today, ignored: ignored)
-        let weight = trend.latest?.trend ?? state.weighIns.last?.kg ?? (state.profile.sex == .female ? 68 : 82)
+        // Without a trend, the newest reading it could have used (never a typo or an ignored one),
+        // else a typical weight.
+        let weight = trend.latest?.trend ?? state.weighIns.filter(Weight.counts).max { $0.date < $1.date }?.kg
+            ?? (state.profile.sex == .female ? 68 : 82)
+        let weighInDays = state.weighIns.map(\.day)
 
         // Intake per day, and which days count as fully logged.
         var intakeByDay: [Day: Nutrients] = [:]
@@ -157,6 +178,7 @@ public enum MacroAnalyst {
         // three entries logged live reaching 70% of the day's need. Everything else is unknown.
         let states = Dictionary(state.dayStatus.map { ($0.day, $0.state) }, uniquingKeysWith: { a, _ in a })
         let entriesByDay = Dictionary(grouping: state.entries, by: \.day)
+        let calendar = Calendar.current
         var complete: [Day: Double] = [:]
         for day in Set(intakeByDay.keys).union(states.keys) where day < today {
             let kcal = intakeByDay[day]?.kcal ?? 0
@@ -165,7 +187,8 @@ public enum MacroAnalyst {
             case .fasting?: if kcal == 0 { complete[day] = 0 }
             case .partial?, .inProgress?: break
             case nil:
-                let live = (entriesByDay[day] ?? []).filter { $0.updatedAt <= day.adding(days: 1).date().addingTimeInterval(4 * 3600) }
+                let cutoff = day.adding(days: 1).date(calendar: calendar).addingTimeInterval(4 * 3600)
+                let live = (entriesByDay[day] ?? []).filter { $0.updatedAt <= cutoff }
                 if live.count >= 3, kcal >= formula * 0.7 { complete[day] = kcal }
             }
         }
@@ -175,14 +198,14 @@ public enum MacroAnalyst {
         // Assessment.
         var assessment: AssessmentProgress?
         if let start = state.settings.assessmentStart {
-            let before = state.weighIns.filter { $0.day < start && $0.day >= start.adding(days: -21) }.map(\.day)
+            let before = weighInDays.filter { $0 < start && $0 >= start.adding(days: -21) }
             let total = assessmentDays(weighInsBeforeStart: Set(before).count)
             let elapsed = start.days(until: today) + 1
             if state.plan == nil {
                 var learned: [String] = []
                 let logged = complete.keys.filter { $0 >= start }.count
                 learned.append(logged == 0 ? "Log what you eat today; nothing needs to change yet." : "\(logged) full day\(logged == 1 ? "" : "s") logged so far.")
-                let weighed = Set(state.weighIns.filter { $0.day >= start }.map(\.day)).count
+                let weighed = Set(weighInDays.filter { $0 >= start }).count
                 if elapsed <= 7 {
                     learned.append("Week 1 weight is mostly water, so it isn't used for the estimate yet.")
                 } else {
@@ -209,7 +232,6 @@ public enum MacroAnalyst {
 
         let life = LifeModes.effects(on: today, periods: state.lifeModes)
         let assessing = state.plan == nil
-        let deload = state.calendar?.isDeload(today) ?? false
         let checkIn = state.checkIns.last { $0.day <= today }
         let referenceKg = Targets.referenceWeight(kg: weight, heightCm: state.profile.heightCm, waistToHeight: input.waistToHeight)
         var dueCheckIn: CheckIn?
@@ -218,9 +240,20 @@ public enum MacroAnalyst {
                                          phase: state.plan?.phase(on: today), weightKg: weight, referenceKg: referenceKg,
                                          fallbackExpenditure: maintenance.kcal, steps: state.lift?.steps)
         }
-        let targets = Targets.today(day: today, assessing: assessing, plan: state.plan, override: state.settings.phaseOverride,
-                                    maintenance: maintenance, checkIn: dueCheckIn ?? checkIn, weightKg: weight,
-                                    heightCm: state.profile.heightCm, waistToHeight: input.waistToHeight, life: life, deload: deload)
+        // A day's targets as they stood that day: its life modes, the check-in then in force, the
+        // plan's phase, a deload, and only protein before the plan began.
+        let planStart = (state.plan?.created).map { Day($0) }
+        func targetsThen(on day: Day, checkIn: CheckIn?, assessing: Bool) -> DailyTargets {
+            Targets.today(day: day, assessing: assessing, plan: state.plan, override: state.settings.phaseOverride, maintenance: maintenance,
+                          checkIn: checkIn, weightKg: weight, heightCm: state.profile.heightCm, waistToHeight: input.waistToHeight,
+                          life: LifeModes.effects(on: day, periods: state.lifeModes), deload: state.calendar?.isDeload(day) ?? false)
+        }
+        let targets = targetsThen(on: today, checkIn: dueCheckIn ?? checkIn, assessing: assessing)
+        // Every usable day of the last four weeks (the discipline window and what's published).
+        var dayTargets: [Day: DailyTargets] = [:]
+        for day in DayRange(today.adding(days: -Discipline.windowDays), today.adding(days: -1)).days where complete[day] != nil {
+            dayTargets[day] = targetsThen(on: day, checkIn: state.checkIns.last { $0.day <= day }, assessing: assessing || day < planStart ?? day)
+        }
 
         // Discipline: target adherence on logged days. Not logging is unknown, never a miss.
         let window = Discipline.window(ending: today.adding(days: -1))
@@ -228,20 +261,14 @@ public enum MacroAnalyst {
         var items: [AdherenceItem] = []
         var expected = 0, loggedDays = 0
         for day in window.days where day >= start {
-            let effects = LifeModes.effects(on: day, periods: state.lifeModes)
-            if effects.disciplineExempt { continue }
+            if LifeModes.effects(on: day, periods: state.lifeModes).disciplineExempt { continue }
             expected += 1
-            guard complete[day] != nil, let n = intakeByDay[day] ?? (complete[day] == 0 ? .zero : nil) else {
+            guard let dayTarget = dayTargets[day], let n = intakeByDay[day] ?? (complete[day] == 0 ? .zero : nil) else {
                 items.append(AdherenceItem(day: day, kind: .mealLog, label: "Targets", done: nil))
                 continue
             }
             loggedDays += 1
-            let dayTargets = Targets.today(day: day, assessing: assessing || day < (state.plan?.created).map { Day($0) } ?? day,
-                                           plan: state.plan, override: state.settings.phaseOverride, maintenance: maintenance,
-                                           checkIn: state.checkIns.last { $0.day <= day }, weightKg: weight, heightCm: state.profile.heightCm,
-                                           waistToHeight: input.waistToHeight, life: effects,
-                                           deload: state.calendar?.isDeload(day) ?? false)
-            let hit = dayTargets.hits(n)
+            let hit = dayTarget.hits(n)
             let done: Bool? = switch (hit.protein, hit.calories) {
             case (nil, nil): true
             case (let p?, nil): p
@@ -257,13 +284,17 @@ public enum MacroAnalyst {
                                      plan: state.plan, phase: state.plan?.phase(on: today), targets: targets,
                                      todayIntake: intakeByDay[today] ?? .zero, intakeByDay: intakeByDay, discipline: discipline,
                                      loggingRate: loggingRate, actions: [], life: life, plannerInput: input, usable: complete,
-                                     checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
+                                     dayTargets: dayTargets, checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
         analysis.micros = MicroAnalyst.report(entries: state.entries, supplements: state.supplementLogs, complete: Set(complete.keys),
                                               profile: state.profile, kcal: targets.kcal ?? maintenance.kcal, today: today)
-        analysis.caffeine = Caffeine.report(day: today, entries: state.entries, supplements: state.supplementLogs,
+        // Caffeine and drinks look at today and the week before, so they're handed only those days
+        // rather than rescanning the whole history several times over.
+        let week = DayRange(today.adding(days: -7), today)
+        let weekEntries = state.entries.filter { week.contains($0.day) }
+        analysis.caffeine = Caffeine.report(day: today, entries: weekEntries, supplements: state.supplementLogs.filter { week.contains($0.day) },
                                             bedtime: state.bedtime(on: today), limit: state.settings.caffeineLimit ?? Caffeine.defaultLimit,
                                             cutBack: state.settings.caffeineCutBack, complete: Set(complete.keys))
-        analysis.hydration = Hydration.day(today, water: state.water, entries: state.entries,
+        analysis.hydration = Hydration.day(today, water: state.water, entries: weekEntries,
                                            target: state.settings.waterTarget ?? Hydration.target(sex: state.profile.sex))
         analysis.quality = QualityAnalyst.report(entries: state.entries, complete: Set(complete.keys), today: today)
         analysis.actions = actions(state, analysis)
@@ -289,7 +320,7 @@ public enum MacroAnalyst {
                                     action: "See the recommendation and start it.", priority: 9))
         }
         // Protein short late in the day.
-        let hour = Calendar.current.component(.hour, from: Date())
+        let hour = Calendar.current.component(.hour, from: state.now)
         if let target = a.targets.protein, a.todayIntake.kcal > 0, hour >= 15 {
             let gap = target - a.todayIntake.protein
             if gap >= 25 {
@@ -311,8 +342,13 @@ public enum MacroAnalyst {
                                     detail: "Water held during a cut often drops during a diet break.",
                                     action: "Hold the targets; nothing tightens mid-cut because of the scale.", priority: 2))
         }
-        if let plan = a.plan, let boundary = state.calendar?.currentBlock?.end, boundary.days(until: today) == 0 || today.days(until: boundary) == 0,
-           PhasePlanner.review(plan, input: a.plannerInput) != nil {
+        if let plan = a.plan, let last = plan.phases.last, today > last.end {
+            // Targets hold the last phase after a plan ends; without this, only Lift Track's block
+            // ending or a visit to the Plan tab would say so.
+            list.append(MacroAction(id: "plan-ended-\(last.end.iso)", kind: .reviewPlan, title: "Plan finished",
+                                    detail: "The plan's last phase is over; targets stay where it left them until you choose what comes next.",
+                                    action: "See the new recommendation.", priority: 7))
+        } else if let plan = a.plan, state.calendar?.currentBlock?.end == today, PhasePlanner.review(plan, input: a.plannerInput) != nil {
             list.append(MacroAction(id: "review-\(today.iso)", kind: .reviewPlan, title: "Plan check",
                                     detail: "The training block ends today, so the plan was checked against the data.",
                                     action: "Review the suggested change.", priority: 7))
@@ -331,8 +367,10 @@ public enum MacroAnalyst {
                 days.append(NutritionDay(day: day, logged: false, proteinHit: nil, caloriesHit: nil))
                 continue
             }
-            let hit = a.targets.hits(n)
-            days.append(NutritionDay(day: day, logged: true, proteinHit: hit.protein, caloriesHit: hit.calories))
+            // Judged against that day's own targets, and only when it was fully logged: a partial
+            // day, or today so far, is logged but unknown, never a miss.
+            let hit = a.dayTargets[day]?.hits(n)
+            days.append(NutritionDay(day: day, logged: true, proteinHit: hit?.protein, caloriesHit: hit?.calories))
         }
         return NutritionSummary(phase: phase, maintenanceKcal: a.assessment == nil || a.maintenance.basis != .formula ? a.maintenance.kcal : nil,
                                 days: days)

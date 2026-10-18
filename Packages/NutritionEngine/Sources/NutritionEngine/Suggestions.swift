@@ -98,7 +98,9 @@ public enum NutritionExport {
     }
 
     public static func tables(entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus],
-                              supplements: [SupplementLog] = [], water: [WaterLog] = []) -> [NutritionExportTable] {
+                              supplements: [SupplementLog] = [], water: [WaterLog] = [], calendar: Calendar = .current) -> [NutritionExportTable] {
+        // Times on the clock, in the zone the days are in; `.iso8601` alone writes UTC with no zone.
+        let clock = Date.ISO8601FormatStyle(timeZone: calendar.timeZone).time(includingFractionalSeconds: false)
         // Vitamins and minerals after the label basics, a column each; blank where a food didn't list it.
         let micros = Micronutrients.all.filter { !["fiber", "sodium", "saturatedFat"].contains($0.key) }
         let diary = NutritionExportTable(
@@ -107,7 +109,7 @@ public enum NutritionExport {
                      "sat_fat_g", "sodium_mg"] + micros.map { "\($0.key)_\($0.unit == .µg ? "ug" : $0.unit.symbol)" }
                 + ["nova", "fermented", "fluid_ml", "source", "estimate"],
             rows: entries.sorted { $0.date < $1.date }.map { e in
-                [e.day.iso, e.date.formatted(.iso8601.time(includingFractionalSeconds: false)), e.name, e.brand ?? "",
+                [e.day.iso, e.date.formatted(clock), e.name, e.brand ?? "",
                  e.amountLabel, n(e.grams), n(e.nutrients.kcal), n(e.nutrients.protein), n(e.nutrients.carbs), n(e.nutrients.fat),
                  n(e.nutrients.fiber), n(e.nutrients.sugar), n(e.nutrients.saturatedFat), n(e.nutrients.sodium)]
                     + micros.map { n(e.micros?[$0.key]) }
@@ -143,14 +145,14 @@ public enum NutritionExport {
                     return "\(key)_\(unit == .µg ? "ug" : unit.symbol)"
                 },
                 rows: supplements.sorted { $0.date < $1.date }.map { s in
-                    [s.day.iso, s.date.formatted(.iso8601.time(includingFractionalSeconds: false)), s.name, s.amountLabel,
+                    [s.day.iso, s.date.formatted(clock), s.name, s.amountLabel,
                      s.taken ? "yes" : "skipped", n(s.nutrients?.kcal)] + keys.map { n(s.amounts[$0]) }
                 }))
         }
         if !water.isEmpty {
             tables.append(NutritionExportTable(
                 name: "water", header: ["day", "time", "ml"],
-                rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(.iso8601.time(includingFractionalSeconds: false)), n($0.ml)] }))
+                rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(clock), n($0.ml)] }))
         }
         return tables
     }

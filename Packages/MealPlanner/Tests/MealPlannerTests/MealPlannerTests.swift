@@ -9,6 +9,8 @@ import SystemCore
 let planner = MealPlanner(catalog: FoodCatalog.standard(region: "us"))
 /// A Monday, prepped the Sunday before.
 let monday = Day(year: 2026, month: 10, day: 19)
+/// The Sunday before, prep day: a swap or a change then rebuilds the whole week.
+let prepMorning = monday.adding(days: -1).date().addingTimeInterval(10 * 3600)
 /// A lifter cutting at 2,300 kcal.
 let cut = PlanTargets(kcal: 2300, protein: 180, carbs: 230, fat: 70)
 
@@ -131,7 +133,7 @@ struct MealPlannerTests {
                 "the same inputs give the same plan")
 
         let first = try #require(week1.recipes.first { $0.kind == .bowl })
-        let swapped = planner.swap(first.id, in: week1)
+        let swapped = planner.swap(first.id, in: week1, now: prepMorning)
         #expect(swapped.recipe(first.id) == nil)
         #expect(swapped.recipes.filter { $0.kind == .bowl }.count == 2)
         let other = week1.recipes.filter { $0.kind == .bowl }[1]
@@ -139,7 +141,7 @@ struct MealPlannerTests {
         #expect(swapped.id == week1.id && swapped.meals.count == week1.meals.count)
 
         let breakfast = try #require(week1.recipes.first { $0.slots == [.breakfast] })
-        let newBreakfast = planner.swap(breakfast.id, in: week1)
+        let newBreakfast = planner.swap(breakfast.id, in: week1, now: prepMorning)
         #expect(newBreakfast.recipe(breakfast.id) == nil && newBreakfast.recipes.contains { $0.slots == [.breakfast] })
     }
 
@@ -196,6 +198,33 @@ struct MealPlannerTests {
         #expect(lunchesOnly.containers == 7 && lunchesOnly.minutes < guide.minutes)
     }
 
+    @Test("two bowls sharing a vegetable and a grain: both batches are prepped, and the grain cooks in one pot")
+    func sharedIngredients() throws {
+        let teriyaki = try #require(MealPlanner.Bowl(id: "bowl:teriyaki:chicken-breast:rice-white:broccoli"))
+        let peanut = try #require(MealPlanner.Bowl(id: "bowl:peanut:pork:rice-white:broccoli"))
+        let plan = planner.build(MealPlanner.Choices(bowls: [teriyaki, peanut]), id: UUID(), start: monday, targets: cut,
+                                 preferences: PlanPreferences(), now: monday.date())
+        let guide = PrepGuide.make(for: plan)
+        let bowls = plan.recipes.filter { $0.kind == .bowl }
+        let broccoli = try #require(Library.ingredient("broccoli"))
+        let rice = try #require(Library.ingredient("rice-white"))
+        // Each bowl's broccoli is prepped, with its own amount and seasoning.
+        let preps = guide.steps.filter { $0.title == "Prep for the oven: broccoli" }
+        #expect(preps.count == 2, "\(guide.steps.map(\.title))")
+        for bowl in bowls {
+            let item = try #require(bowl.item("broccoli"))
+            let amount = PrepGuide.amount(item.grams * Double(bowl.servings) / broccoli.yield, broccoli)
+            #expect(preps.contains { $0.detail.hasPrefix("Cut \(amount) broccoli") }, "\(amount): \(preps.map(\.detail))")
+        }
+        #expect(preps.contains { $0.detail.contains("chili flakes") } && preps.contains { !$0.detail.contains("chili flakes") })
+        // Both bowls' rice goes in one pot.
+        let pots = guide.steps.filter { $0.title == "Cook the white rice" }
+        #expect(pots.count == 1, "\(guide.steps.map(\.title))")
+        let raw = bowls.compactMap { b in b.item("rice-white").map { $0.grams * Double(b.servings) / rice.yield } }.reduce(0, +)
+        #expect(pots.first?.detail.hasPrefix("Rinse \(PrepGuide.amount(raw, rice)) white rice") == true, "\(pots.first?.detail ?? "")")
+        #expect(guide.steps.first?.detail.contains("a large pot") == true, "\(guide.steps.first?.detail ?? "")")
+    }
+
     @Test("requests read as changes", arguments: [
         ("no fish this week", ["fish"], [String]()),
         ("I'm sick of chicken, more salmon please", ["chicken-breast", "chicken-thigh"], ["salmon"]),
@@ -205,11 +234,62 @@ struct MealPlannerTests {
         ("dairy-free please", ["dairy"], []),
         ("can we do Asian flavours", [], ["teriyaki", "peanut"]),
         ("skip the egg muffins, I'd like overnight oats", ["egg-muffins"], ["overnight-oats"]),
+        // A verb after a negation is still the negation, not a wish.
+        ("I don't want fish this week", ["fish"], []),
+        ("I don't like spicy", ["tex-mex", "curry"], []),
+        ("no more chicken", ["chicken-breast", "chicken-thigh"], []),
+        ("I don't really want to eat any more rice", ["rice-white", "rice-brown"], []),
+        ("I don't want chicken, I want beef", ["chicken-breast", "chicken-thigh"], ["beef"]),
+        // "and" carries a negation along a list, allergies included.
+        ("no fish and pork", ["fish", "pork"], []),
+        ("I'm allergic to shellfish and peanuts", ["shellfish", "peanuts"], []),
+        ("no chicken and more curry", ["chicken-breast", "chicken-thigh"], ["curry"]),
+        ("no rice and use quinoa", ["rice-white", "rice-brown"], ["quinoa"]),
+        ("no fish and make it spicy", ["fish"], ["tex-mex", "curry"]),
+        ("I can't eat fish and pork", ["fish", "pork"], []),
+        // Other ways of saying no.
+        ("my partner doesn't like fish", ["fish"], []),
+        ("I cannot eat shrimp", ["shrimp"], []),
+        ("we didn't like the cod", ["cod"], []),
+        // A tag word that also names a flavour or a food is avoided as the tag too.
+        ("allergic to fish and peanut", ["fish", "peanut"], []),
+        ("allergic to soy", ["soy", "teriyaki"], []),
+        ("no eggs", ["eggs"], []),
+        ("more eggs", [], ["egg-muffins"]),
     ])
     func requests(text: String, avoid: [String], want: [String]) {
         let change = PlanRequests.read(text)
         #expect(change.avoid == Set(avoid), "\(text): \(change.avoid)")
         #expect(change.want == Set(want), "\(text): \(change.want)")
+    }
+
+    @Test("an allergy read from a request leaves its foods out of the plan")
+    func allergiesReachThePlan() {
+        // Last week asked for the peanut-lime bowl; the allergy wins.
+        let before = PlanPreferences(slots: Set(MealSlot.allCases), want: ["peanut", "shrimp"])
+        #expect(planner.plan(start: monday, targets: cut, preferences: before).recipes.contains { $0.profileID == "peanut" })
+        let change = PlanRequests.read("I'm allergic to shellfish and peanuts")
+        let plan = planner.plan(start: monday, targets: cut, preferences: change.applied(to: before))
+        for recipe in plan.recipes {
+            #expect(recipe.profileID != "peanut", "\(recipe.title)")
+            for item in recipe.items {
+                #expect(Library.ingredient(item.ingredientID)!.tags.isDisjoint(with: [.shellfish, .peanuts]), "\(recipe.title): \(item.name)")
+            }
+        }
+    }
+
+    @Test("the model's reading and the word rules merge, and nothing avoided stays wanted")
+    func assistantMerge() {
+        // The model avoids the tag; a wish for its foods from the word rules goes.
+        let merged = PlanAssistant.merge(PlanChange(avoid: ["fish"]), words: PlanChange(want: ["salmon", "cod", "curry"]))
+        #expect(merged.avoid == ["fish"] && merged.want == ["curry"], "\(merged)")
+        #expect(merged.summary == "No fish · more Curry")
+        // The word rules add what the model missed, and a diet from either side rules foods out.
+        let diet = PlanAssistant.merge(PlanChange(want: ["beef", "tex-mex"], diet: .vegetarian), words: PlanChange(avoid: ["dairy"], quicker: true))
+        #expect(diet.avoid == ["dairy"] && diet.want == ["tex-mex"] && diet.diet == .vegetarian && diet.quicker == true, "\(diet)")
+        // A model reply with nothing in it leaves the word rules' reading.
+        let words = PlanRequests.read("no chicken, something spicy")
+        #expect(PlanAssistant.merge(PlanChange(), words: words) == words)
     }
 
     @Test("diet words and cost or time")
@@ -233,9 +313,55 @@ struct MealPlannerTests {
     func replan() throws {
         let plan = planner.plan(start: monday, targets: cut, preferences: PlanPreferences())
         let change = PlanRequests.read("no chicken, more curry")
-        let next = planner.replan(plan, preferences: change.applied(to: plan.preferences))
+        let next = planner.replan(plan, preferences: change.applied(to: plan.preferences), now: prepMorning)
         #expect(next.recipes.contains { $0.profileID == "curry" })
         #expect(!next.recipes.contains { $0.items.contains { $0.ingredientID.hasPrefix("chicken") } })
         #expect(next.id == plan.id)
+    }
+
+    @Test("a swap or a change once the week has started leaves the days already eaten alone")
+    func midWeek() throws {
+        var plan = planner.plan(start: monday, targets: cut, preferences: PlanPreferences(), now: prepMorning)
+        let wednesday = monday.adding(days: 2)
+        let mondayLunch = try #require(plan.meals.first { $0.day == monday && $0.slot == .lunch })
+        let wednesdayLunch = try #require(plan.meals.first { $0.day == wednesday && $0.slot == .lunch })
+        plan.logged = [mondayLunch.id: [UUID()], wednesdayLunch.id: [UUID()]]
+        let first = try #require(plan.recipes.first { $0.kind == .bowl })
+        #expect(wednesdayLunch.recipeID == first.id, "the bowls alternate: Wednesday's lunch is the first one")
+
+        func check(_ next: MealPlan, from day: Day, replacing gone: (String) -> Bool) {
+            #expect(next.meals.map(\.id) == plan.meals.map(\.id) && next.logged == plan.logged && next.id == plan.id)
+            for meal in plan.meals {
+                guard let after = next.meals.first(where: { $0.id == meal.id }) else { continue }
+                if meal.day < day || plan.logged[meal.id] != nil {
+                    #expect(after.recipeID == meal.recipeID, "\(meal.id) was eaten as planned")
+                    #expect(next.recipe(after.recipeID) != nil)
+                } else {
+                    #expect(!gone(after.recipeID), "\(meal.id): \(after.recipeID)")
+                }
+            }
+            // Servings match the meals, the kept dish's included.
+            #expect(next.recipes.allSatisfy { r in r.servings == next.meals.filter { $0.recipeID == r.id }.count })
+            // Still two bowls a day from here on.
+            for d in next.days where d >= day {
+                #expect(Set(next.meals(on: d).filter { $0.slot == .lunch || $0.slot == .dinner }.map(\.recipeID)).count == 2, "\(d)")
+            }
+        }
+
+        // Swapped at Wednesday noon: Monday, Tuesday and Wednesday's logged lunch keep the first bowl.
+        let noon = wednesday.date().addingTimeInterval(12 * 3600)
+        let swapped = planner.swap(first.id, in: plan, now: noon)
+        check(swapped, from: wednesday) { $0 == first.id }
+        #expect(swapped.recipe(first.id)?.servings == 3, "Monday's lunch, Tuesday's dinner and Wednesday's lunch")
+        // Swapping the new bowl the next day picks from what's still to come, not the kept dish.
+        let thursday = wednesday.adding(days: 1)
+        let added = try #require(swapped.recipes.first { $0.kind == .bowl && plan.recipe($0.id) == nil })
+        let again = planner.swap(added.id, in: swapped, variation: 2, now: thursday.date().addingTimeInterval(12 * 3600))
+        check(again, from: thursday) { $0 == added.id || $0 == first.id }
+
+        // A change mid-week: no chicken from Wednesday on, and what was eaten stays.
+        let change = PlanRequests.read("no chicken")
+        let changed = planner.replan(plan, preferences: change.applied(to: plan.preferences), now: noon)
+        check(changed, from: wednesday) { id in changed.recipe(id)?.items.contains { $0.ingredientID.hasPrefix("chicken") } == true }
     }
 }

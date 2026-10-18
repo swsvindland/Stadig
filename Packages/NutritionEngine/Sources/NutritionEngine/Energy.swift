@@ -52,21 +52,29 @@ public enum Weight {
     /// Past this many days without a reading the trend stops extrapolating and holds.
     public static let projectionDays = 7
 
+    /// A weight a person could be, in kg: anything else is a typo or a misread.
+    public static func isPlausible(kg: Double) -> Bool { kg > 20 && kg < 400 }
+
+    /// A reading the trend can use: not ignored by the person, and a plausible weight.
+    public static func counts(_ weighIn: WeighIn) -> Bool { !weighIn.excluded && isPlausible(kg: weighIn.kg) }
+
     /// The trend through `through`: same-day weigh-ins averaged, then smoothed for both level and
     /// rate (Holt's method), so a steady loss or gain is followed without the lag a plain average
     /// has. Readings marked excluded, days in `ignored` (just back from a trip, or ill: that's
     /// water) and lone misreads don't move it.
     public static func trend(_ weighIns: [WeighIn], through: Day, ignored: Set<Day> = []) -> WeightTrend {
-        let usable = weighIns.filter { !$0.excluded && $0.kg > 20 && $0.kg < 400 }
+        let usable = weighIns.filter(counts)
         var byDay: [Day: Double] = [:]
         for (day, list) in Dictionary(grouping: usable, by: \.day) { byDay[day] = list.map(\.kg).reduce(0, +) / Double(list.count) }
-        // A reading more than 3% away from both neighbours is a likely misread.
+        // A spike more than 3% away from both neighbours, on the same side of both, is a likely
+        // misread. A reading between a higher one and a lower one is a trend, however sparse.
         let days = byDay.keys.sorted()
         var outliers: [WeighIn] = []
         for (i, day) in days.enumerated() {
             guard let kg = byDay[day] else { continue }
             let neighbours = [i > 0 ? byDay[days[i - 1]] : nil, i + 1 < days.count ? byDay[days[i + 1]] : nil].compactMap { $0 }
-            if neighbours.count == 2, neighbours.allSatisfy({ abs($0 - kg) > kg * 0.03 }) {
+            guard neighbours.count == 2, neighbours.allSatisfy({ abs($0 - kg) > kg * 0.03 }) else { continue }
+            if (neighbours[0] - kg) * (neighbours[1] - kg) > 0 {
                 outliers += usable.filter { $0.day == day }
                 byDay[day] = nil
             }
@@ -294,7 +302,14 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
         self.reason = reason
         self.updatedAt = updatedAt
     }
+
+    /// One check-in a day, whichever device makes it: the id comes from the day, so two devices
+    /// that check in before syncing save one record, and the newer save wins.
+    public static func id(for day: Day) -> UUID { UUID(checkInNamespace, salt: day.ordinal) }
 }
+
+/// Stable ids for check-ins, apart from the day summaries' so the two can't collide.
+let checkInNamespace = UUID(uuidString: "3B9F6E2C-8A41-4D7E-B5C0-1E6A9D4F2C87")!
 
 public enum CheckIns {
     /// How far the expenditure moves toward a new observation each week.
@@ -303,6 +318,17 @@ public enum CheckIns {
     public static func isDue(last: CheckIn?, today: Day) -> Bool {
         guard let last else { return true }
         return last.day.days(until: today) >= 7
+    }
+
+    /// A plan's first targets, straight from the maintenance estimate: nothing in this plan came
+    /// before them to step from. It replaces any check-in already made today.
+    public static func start(_ plan: PhasePlan, today: Day, maintenance: Double, weightKg: Double, referenceKg: Double) -> CheckIn {
+        let phase = plan.phase(on: today)
+        let kcal = Targets.calories(maintenance: maintenance, phase: phase, weightKg: weightKg)
+        let m = Targets.macros(kcal: kcal, referenceKg: referenceKg, phase: phase?.kind)
+        return CheckIn(id: CheckIn.id(for: today), day: today, expenditure: maintenance, kcal: kcal, protein: m.protein, carbs: m.carbs,
+                       fat: m.fat, status: .updated,
+                       reason: "Starting \(phase?.kind.label.lowercased() ?? "the plan") from maintenance of about \(Int(maintenance)) kcal.")
     }
 
     /// The week's review: observe the last 21 days, move expenditure part of the way, and move
@@ -316,13 +342,16 @@ public enum CheckIns {
         let observation = Energy.observe(trend: trend, usable: usable, window: window)
         func make(_ expenditure: Double, _ status: CheckIn.Status, _ reason: String) -> CheckIn {
             var kcal = Targets.calories(maintenance: expenditure, phase: phase, weightKg: weightKg)
-            if let old = previous?.kcal {
+            // The cap smooths a noisy estimate within a phase. A planned change of phase (a diet
+            // break, a bulk after a mini-cut) starts at its own calories, as the plan says.
+            if let previous, Targets.belongs(previous, to: phase) {
+                let old = previous.kcal
                 let step = min(Targets.weeklyStep, old * 0.075)
                 kcal = clamp(kcal, old - step, old + step)
             }
             let m = Targets.macros(kcal: kcal, referenceKg: referenceKg, phase: phase?.kind)
-            return CheckIn(day: today, expenditure: (expenditure / 10).rounded() * 10, kcal: kcal, protein: m.protein, carbs: m.carbs,
-                           fat: m.fat, status: status, reason: reason)
+            return CheckIn(id: CheckIn.id(for: today), day: today, expenditure: (expenditure / 10).rounded() * 10, kcal: kcal,
+                           protein: m.protein, carbs: m.carbs, fat: m.fat, status: status, reason: reason)
         }
         let recentWeighIn = trend.points.last { $0.scale != nil }?.day
         guard let recentWeighIn, recentWeighIn >= window.end.adding(days: -3) else {
@@ -331,8 +360,20 @@ public enum CheckIns {
         guard observation.used >= 12, observation.weighInDays >= 6 else {
             return make(prior, .learning, "Learning from your logs: 12 complete days and 6 weigh-ins over three weeks. Gaps pause learning without resetting it.")
         }
-        if !trend.outliers.isEmpty, trend.outliers.contains(where: { window.contains($0.day) }) {
-            return make(prior, .holding, "One weigh-in is far from the ones around it, so it was left out. Ignore it if it was a misread.")
+        // A misread is already out of the math, so it holds once, at the first check-in to see it,
+        // to point it out; not every week it stays in the window. It shows once the next reading is
+        // in: a reading since the last check-in's day, or on that day when that check-in didn't
+        // already hold for it (the reading came after it).
+        let misread = "One weigh-in is far from the ones around it, so it was left out. Ignore it if it was a misread."
+        let since = previous?.day ?? window.start
+        let heldForMisread = previous?.status == .holding && previous?.reason == misread
+        let readings = trend.points.filter { $0.scale != nil }.map(\.day)
+        let seenFirstNow = trend.outliers.contains { outlier in
+            guard window.contains(outlier.day), let seen = readings.first(where: { $0 > outlier.day }) else { return false }
+            return seen > since || (seen == since && !heldForMisread)
+        }
+        if seenFirstNow {
+            return make(prior, .holding, misread)
         }
         if abs(observation.weeklyKg) > weightKg * 0.01 {
             return make(prior, .holding, "Weight moved more than 1% a week, which is mostly water. Holding until it settles.")

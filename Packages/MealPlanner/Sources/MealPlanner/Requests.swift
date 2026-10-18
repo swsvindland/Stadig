@@ -81,10 +81,20 @@ public enum PlanRequests {
     ]
 
     static let negations: Set<String> = ["no", "not", "without", "avoid", "hate", "hates", "dislike", "dislikes", "skip", "less", "fewer",
-                                         "never", "stop", "remove", "drop", "allergic", "dont", "don't", "cant", "can't", "sick",
+                                         "never", "stop", "remove", "drop", "allergic", "dont", "don't", "cant", "can't", "cannot",
+                                         "doesnt", "doesn't", "didnt", "didn't", "won't", "wouldnt", "wouldn't", "sick",
                                          "tired", "bored", "except", "nothing", "instead", "lose", "ditch", "swap", "replace"]
-    static let breaks: Set<String> = [",", ";", ".", "but", "and", "though", "more", "want", "add", "love", "like", "prefer", "please",
+    /// Words that end what a negation covers: "no chicken, more salmon". Not "and" or "or", which
+    /// carry it along a list: "allergic to shellfish and peanuts".
+    static let breaks: Set<String> = [",", ";", ".", "but", "though", "more", "want", "add", "love", "like", "prefer", "please",
                                       "with", "plus"]
+    /// Breaks that belong to the negation just before them: "don't want", "not like", "no more".
+    static let negatedVerbs: Set<String> = ["want", "like", "love", "prefer", "more"]
+    /// Words that can sit between a negation and its verb: "don't really want", "don't want to eat any more".
+    static let fillers: Set<String> = ["really", "much", "particularly", "even", "actually", "any", "to", "eat", "have"]
+    /// A verb starting a new clause after "and" ends the negation the way a comma would: "no rice
+    /// and use quinoa", "no fish and make it spicy". Elsewhere they're just words: "can't eat fish".
+    static let clauseVerbs: Set<String> = ["use", "try", "do", "make", "give", "have", "eat", "get", "include", "go", "put", "keep"]
 
     public static func read(_ text: String) -> PlanChange {
         var change = PlanChange()
@@ -108,36 +118,49 @@ public enum PlanRequests {
 
         let tokens = tokenize(lower)
         var negated = false
+        // Just after a negation, where "want" or "more" is still part of it.
+        var verbOfNegation = false
         var i = 0
         while i < tokens.count {
             let token = tokens[i]
-            if breaks.contains(token) { negated = false; i += 1; continue }
-            if negations.contains(token) { negated = true; i += 1; continue }
+            if verbOfNegation, negatedVerbs.contains(token) || fillers.contains(token) { i += 1; continue }
+            verbOfNegation = false
+            let newClause = i > 0 && tokens[i - 1] == "and" && clauseVerbs.contains(token)
+            if breaks.contains(token) || newClause { negated = false; i += 1; continue }
+            if negations.contains(token) { negated = true; verbOfNegation = true; i += 1; continue }
             // The longest phrase starting here.
             var matched = false
             for length in stride(from: 3, through: 1, by: -1) where i + length <= tokens.count {
                 let phrase = tokens[i..<i + length].joined(separator: " ")
-                if let tag = FoodTags.named.first(where: { $0.word == phrase }), Library.ingredient(phrase) == nil,
-                   !vocabulary.contains(where: { $0.phrase == phrase }) {
-                    if negated { change.avoid.insert(tag.word) } else if let ids = wantedTags[phrase] { change.want.formUnion(ids) }
-                    i += length
-                    matched = true
-                    break
-                }
+                let tag = FoodTags.named.first { $0.word == phrase }?.word
                 let ids = vocabulary.filter { $0.phrase == phrase }.flatMap(\.ids)
-                if !ids.isEmpty {
-                    if negated { change.avoid.formUnion(ids) } else { change.want.formUnion(ids) }
-                    i += length
-                    matched = true
-                    break
+                guard tag != nil || !ids.isEmpty else { continue }
+                if negated {
+                    // A tag word leaves out everything with it, even when it also names a food or a
+                    // flavour: "allergic to peanut" is the Peanut-lime bowl and peanuts, "no soy" is
+                    // teriyaki and soy sauce, "no eggs" is every egg.
+                    if let tag { change.avoid.insert(tag) }
+                    change.avoid.formUnion(ids)
+                } else {
+                    // A food or flavour by name, else the foods a tag stands for: "more fish".
+                    change.want.formUnion(ids.isEmpty ? wantedTags[phrase] ?? [] : ids)
                 }
+                i += length
+                matched = true
+                break
             }
             if !matched { i += 1 }
         }
-        // A diet word isn't also a wish for every food it names.
-        if change.diet == .vegetarian { change.want.subtract(["beef", "pork", "chicken-breast", "chicken-thigh", "turkey", "salmon", "cod", "shrimp"]) }
-        change.want.subtract(change.avoid)
+        change.want = remaining(change.want, avoiding: change.avoid, diet: change.diet)
         return change
+    }
+
+    /// What's still wanted once the avoided things are out: an avoided id, or a food the avoided
+    /// tags or the diet rule out ("no fish" is no salmon either; a vegetarian diet isn't also a wish
+    /// for every food it names).
+    static func remaining(_ want: Set<String>, avoiding avoid: Set<String>, diet: PlanPreferences.Diet? = nil) -> Set<String> {
+        let preferences = PlanPreferences(diet: diet ?? .everything, avoid: avoid)
+        return want.filter { id in !avoid.contains(id) && (Library.ingredient(id).map(preferences.allows) ?? true) }
     }
 
     /// Reads short phrases the model tidied a request into.
@@ -161,7 +184,7 @@ public enum PlanRequests {
         }
         if cheaper { change.cheaper = true }
         if quicker { change.quicker = true }
-        change.want.subtract(change.avoid)
+        change.want = remaining(change.want, avoiding: change.avoid, diet: change.diet)
         return change
     }
 

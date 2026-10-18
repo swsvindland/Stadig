@@ -50,17 +50,24 @@ public struct PlanAssistant: Sendable {
             let reply = try await session.respond(to: request, generating: PlanRequestOutput.self,
                                                   options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 200))
             let output = reply.content
-            var change = PlanRequests.read(avoid: output.avoid, want: output.want, diet: output.diet, cheaper: output.cheaper,
+            let change = PlanRequests.read(avoid: output.avoid, want: output.want, diet: output.diet, cheaper: output.cheaper,
                                            quicker: output.quicker)
-            // The model can miss a word the rules caught, never the other way round on purpose.
-            change.avoid.formUnion(words.avoid)
-            change.want.formUnion(words.want.subtracting(change.avoid))
-            change.diet = change.diet ?? words.diet
-            change.cheaper = change.cheaper ?? words.cheaper
-            change.quicker = change.quicker ?? words.quicker
-            return change.isEmpty ? words : change
+            return Self.merge(change, words: words)
         } catch {
             return words
         }
+    }
+
+    /// The model's reading with the word rules' added: the model can miss a word the rules caught,
+    /// never the other way round on purpose. Nothing stays wanted that the merged avoid list or diet
+    /// rules out, so "no fish" can't also read as "more cod".
+    static func merge(_ model: PlanChange, words: PlanChange) -> PlanChange {
+        var change = model
+        change.avoid.formUnion(words.avoid)
+        change.diet = change.diet ?? words.diet
+        change.want = PlanRequests.remaining(change.want.union(words.want), avoiding: change.avoid, diet: change.diet)
+        change.cheaper = change.cheaper ?? words.cheaper
+        change.quicker = change.quicker ?? words.quicker
+        return change.isEmpty ? words : change
     }
 }

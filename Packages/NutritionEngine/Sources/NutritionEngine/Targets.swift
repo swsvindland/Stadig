@@ -63,6 +63,12 @@ public enum Targets {
         }
     }
 
+    /// Whether a check-in was made for this phase: on or after the day it began. A check-in from an
+    /// earlier phase only lends its maintenance.
+    static func belongs(_ checkIn: CheckIn, to phase: PlannedPhase?) -> Bool {
+        phase.map { checkIn.day >= $0.start } ?? true
+    }
+
     /// Calories for the phase from maintenance, capped at a 25% deficit and a 500 kcal surplus.
     public static func calories(maintenance: Double, phase: PlannedPhase?, weightKg: Double) -> Double {
         guard let phase else { return maintenance }
@@ -116,10 +122,12 @@ public enum Targets {
                                 note: "Deload week, so calories go back to maintenance. A stalled scale now is water and expected; the cut resumes next week.")
         }
 
-        // The weekly check-in sets the numbers; without one, they come straight from the estimate.
+        // The weekly check-in sets the numbers. Without one, or with one from before this phase began
+        // (a late check-in, or the day a diet break starts), they come from the phase and the
+        // maintenance the check-in was built on.
         let kcal: Double
         let m: (protein: Double, carbs: Double, fat: Double)
-        if let checkIn, override == nil {
+        if let checkIn, override == nil, belongs(checkIn, to: phase) {
             kcal = checkIn.kcal
             m = (checkIn.protein, checkIn.carbs, checkIn.fat)
         } else {

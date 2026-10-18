@@ -64,9 +64,11 @@ public struct MealPlanner: Sendable {
         return build(choices, id: UUID(), start: start, targets: targets, preferences: preferences, now: now)
     }
 
-    /// The same week with one recipe replaced by the next best that isn't already in it.
-    public func swap(_ recipeID: String, in plan: MealPlan, variation: Int = 1, now: Date = Date()) -> MealPlan {
-        var choices = self.choices(of: plan)
+    /// The same week with one recipe replaced by the next best that isn't already in it. Once the
+    /// week has started, only the days from `now` on change.
+    public func swap(_ recipeID: String, in plan: MealPlan, variation: Int = 1, now: Date = Date(), calendar: Calendar = .current) -> MealPlan {
+        let today = Day(now, calendar: calendar)
+        var choices = self.choices(of: plan, from: today)
         let used = Set(plan.recipes.map(\.id))
         if let index = choices.bowls.firstIndex(where: { $0.id == recipeID }) {
             let others = choices.bowls.enumerated().filter { $0.offset != index }.map(\.element)
@@ -81,17 +83,16 @@ public struct MealPlanner: Sendable {
             choices.snack = nextTemplate(after: choices.snack, slot: .snack, preferences: plan.preferences)
             choices.snackPinned = true
         }
-        var next = build(choices, id: plan.id, start: plan.start, targets: plan.targets, preferences: plan.preferences, now: now)
-        next.logged = plan.logged
-        next.checked = plan.checked
-        next.createdAt = plan.createdAt
-        return next
+        let next = build(choices, id: plan.id, start: plan.start, targets: plan.targets, preferences: plan.preferences, now: now)
+        return keepingEaten(plan, in: next, today: today)
     }
 
     /// The week again with new preferences: what still fits stays, the rest is chosen afresh.
+    /// Once the week has started, only the days from `now` on change.
     public func replan(_ plan: MealPlan, preferences: PlanPreferences, targets: PlanTargets? = nil, variation: Int = 0,
-                       now: Date = Date()) -> MealPlan {
-        let kept = choices(of: plan)
+                       now: Date = Date(), calendar: Calendar = .current) -> MealPlan {
+        let today = Day(now, calendar: calendar)
+        let kept = choices(of: plan, from: today)
         var choices = choose(preferences: preferences, recent: [], variation: variation)
         // Keep a bowl that still fits and isn't now outranked by something asked for.
         if preferences.want.isEmpty {
@@ -99,10 +100,28 @@ public struct MealPlanner: Sendable {
                 if choices.bowls.enumerated().allSatisfy({ $0.offset == i || differs(bowl, $0.element) }) { choices.bowls[i] = bowl }
             }
         }
-        var next = build(choices, id: plan.id, start: plan.start, targets: targets ?? plan.targets, preferences: preferences, now: now)
-        next.logged = plan.logged
-        next.checked = plan.checked
-        next.createdAt = plan.createdAt
+        let next = build(choices, id: plan.id, start: plan.start, targets: targets ?? plan.targets, preferences: preferences, now: now)
+        return keepingEaten(plan, in: next, today: today)
+    }
+
+    /// The rebuilt week with what's already happened left alone: meals on days before `today`, and
+    /// meals already logged, keep the dish they were (and its recipe), so a change mid-week doesn't
+    /// rewrite what was eaten or tick a dish that wasn't.
+    func keepingEaten(_ old: MealPlan, in rebuilt: MealPlan, today: Day) -> MealPlan {
+        var next = rebuilt
+        next.logged = old.logged
+        next.checked = old.checked
+        next.createdAt = old.createdAt
+        let kept = old.meals.filter { $0.day < today || old.logged[$0.id] != nil }
+        guard !kept.isEmpty else { return next }
+        let keptIDs = Set(kept.map(\.id))
+        next.meals = (kept + rebuilt.meals.filter { !keptIDs.contains($0.id) })
+            .sorted { $0.day != $1.day ? $0.day < $1.day : $0.slot < $1.slot }
+        // The rebuilt dishes first, so the week's current choices read first; then the old ones
+        // still eaten on the kept days.
+        var recipes = rebuilt.recipes + old.recipes.filter { rebuilt.recipe($0.id) == nil }
+        for i in recipes.indices { recipes[i].servings = next.meals.filter { $0.recipeID == recipes[i].id }.count }
+        next.recipes = recipes.filter { $0.servings > 0 }
         return next
     }
 
@@ -221,10 +240,14 @@ public struct MealPlanner: Sendable {
         return Double(hash % 10_000) / 10_000
     }
 
-    func choices(of plan: MealPlan) -> Choices {
-        Choices(bowls: plan.recipes.filter { $0.kind == .bowl }.compactMap { Bowl(id: $0.id) },
-                breakfast: plan.recipes.first { $0.slots.contains(.breakfast) }?.templateID.flatMap(Library.template),
-                snack: plan.recipes.first { $0.slots.contains(.snack) }?.templateID.flatMap(Library.template), snackPinned: true)
+    /// What the plan is made of from `today` on: the dishes still to come, not ones kept only for
+    /// days already eaten. A week that's over, or not started, is all of its dishes.
+    func choices(of plan: MealPlan, from today: Day) -> Choices {
+        let upcoming = Set(plan.meals.filter { $0.day >= today && plan.logged[$0.id] == nil }.map(\.recipeID))
+        let recipes = plan.recipes.filter { upcoming.isEmpty || upcoming.contains($0.id) }
+        return Choices(bowls: recipes.filter { $0.kind == .bowl }.compactMap { Bowl(id: $0.id) },
+                       breakfast: recipes.first { $0.slots.contains(.breakfast) }?.templateID.flatMap(Library.template),
+                       snack: recipes.first { $0.slots.contains(.snack) }?.templateID.flatMap(Library.template), snackPinned: true)
     }
 
     // MARK: Sizing
