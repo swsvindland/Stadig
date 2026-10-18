@@ -1,0 +1,418 @@
+{
+  "passages": [
+    {
+      "id": "addison-philosophy-in-coffee-houses",
+      "title": "The Spectator, No. 10",
+      "author": "Joseph Addison",
+      "year": 1711,
+      "gutenberg": 12030,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 6,
+      "text": "Since I have raised to myself so great an Audience, I shall spare no Pains to make their Instruction agreeable, and their Diversion useful. For which Reasons I shall endeavour to enliven Morality with Wit, and to temper Wit with Morality, that my Readers may, if possible, both Ways find their account in the Speculation of the Day. And to the End that their Virtue and Discretion may not be short transient intermitting Starts of Thought, I have resolved to refresh their Memories from Day to Day, till I have recovered them out of that desperate State of Vice and Folly, into which the Age is fallen. The Mind that lies fallow but a single Day, sprouts up in Follies that are only to be killed by a constant and assiduous Culture. It was said of Socrates, that he brought Philosophy down from Heaven, to inhabit among Men; and I shall be ambitious to have it said of me, that I have brought Philosophy out of Closets and Libraries, Schools and Colleges, to dwell in Clubs and Assemblies, at Tea-tables, and in Coffee-houses.",
+      "twists": []
+    },
+    {
+      "id": "austen-walk-to-netherfield",
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "year": 1813,
+      "gutenberg": 1342,
+      "book": "pride-and-prejudice",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 5,
+      "text": "In Meryton they parted: the two youngest repaired to the lodgings of one of the officers’ wives, and Elizabeth continued her walk alone, crossing field after field at a quick pace, jumping over stiles and springing over puddles, with impatient activity, and finding herself at last within view of the house, with weary ancles, dirty stockings, and a face glowing with the warmth of exercise.\n\nShe was shown into the breakfast parlour, where all but Jane were assembled, and where her appearance created a great deal of surprise. That she should have walked three miles so early in the day in such dirty weather, and by herself, was almost incredible to Mrs. Hurst and Miss Bingley; and Elizabeth was convinced that they held her in contempt for it. She was received, however, very politely by them; and in their brother’s manners there was something better than politeness—there was good-humour and kindness. Mr. Darcy said very little, and Mr. Hurst nothing at all. The former was divided between admiration of the brilliancy which exercise had given to her complexion and doubt as to the occasion’s justifying her coming so far alone. The latter was thinking only of his breakfast.",
+      "twists": [
+        "Rewrite it from Miss Bingley’s point of view, watching Elizabeth come into the breakfast parlour.",
+        "Tell it as a letter Elizabeth writes to her mother that evening, leaving out the dirty stockings."
+      ]
+    },
+    {
+      "id": "beeton-making-tea",
+      "title": "The Book of Household Management",
+      "author": "Isabella Beeton",
+      "year": 1861,
+      "gutenberg": 10136,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 3,
+      "text": "There is very little art in making good tea; if the water is boiling, and there is no sparing of the fragrant leaf, the beverage will almost invariably be good. The old-fashioned plan of allowing a teaspoonful to each person, and one over, is still practised. Warm the teapot with boiling water; let it remain for two or three minutes for the vessel to become thoroughly hot, then pour it away. Put in the tea, pour in from 1/2 to 3/4 pint of boiling water, close the lid, and let it stand for the tea to draw from 5 to 10 minutes; then fill up the pot with water. The tea will be quite spoiled unless made with water that is actually ‘boiling’, as the leaves will not open, and the flavour not be extracted from them; the beverage will consequently be colourless and tasteless,—in fact, nothing but tepid water. Where there is a very large party to make tea for, it is a good plan to have two teapots instead of putting a large quantity of tea into one pot; the tea, besides, will go farther. When the infusion has been once completed, the addition of fresh tea adds very little to the strength; so, when more is required, have the pot emptied of the old leaves, scalded, and fresh tea made in the usual manner.",
+      "twists": []
+    },
+    {
+      "id": "bronte-rider-on-the-ice",
+      "title": "Jane Eyre",
+      "author": "Charlotte Brontë",
+      "year": 1847,
+      "gutenberg": 1260,
+      "book": "jane-eyre",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 5,
+      "text": "It was very near, but not yet in sight; when, in addition to the tramp, tramp, I heard a rush under the hedge, and close down by the hazel stems glided a great dog, whose black and white colour made him a distinct object against the trees. It was exactly one form of Bessie’s Gytrash—a lion-like creature with long hair and a huge head: it passed me, however, quietly enough; not staying to look up, with strange pretercanine eyes, in my face, as I half expected it would. The horse followed,—a tall steed, and on its back a rider. The man, the human being, broke the spell at once. Nothing ever rode the Gytrash: it was always alone; and goblins, to my notions, though they might tenant the dumb carcasses of beasts, could scarce covet shelter in the commonplace human form. No Gytrash was this,—only a traveller taking the short cut to Millcote. He passed, and I went on; a few steps, and I turned: a sliding sound and an exclamation of “What the deuce is to do now?” and a clattering tumble, arrested my attention. Man and horse were down; they had slipped on the sheet of ice which glazed the causeway.",
+      "twists": [
+        "Rewrite it from the rider’s point of view: a tired man taking a short cut who barely notices the girl on the stile until his horse goes down.",
+        "Tell it in the present tense, close on Jane, as if it were happening now."
+      ]
+    },
+    {
+      "id": "darwin-galapagos-tortoises",
+      "title": "The Voyage of the Beagle",
+      "author": "Charles Darwin",
+      "year": 1839,
+      "gutenberg": 944,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 4,
+      "text": "The tortoise is very fond of water, drinking large quantities, and wallowing in the mud. The larger islands alone possess springs, and these are always situated towards the central parts, and at a considerable height. The tortoises, therefore, which frequent the lower districts, when thirsty, are obliged to travel from a long distance. Hence broad and well-beaten paths branch off in every direction from the wells down to the sea-coast; and the Spaniards by following them up, first discovered the watering-places. When I landed at Chatham Island, I could not imagine what animal travelled so methodically along well-chosen tracks. Near the springs it was a curious spectacle to behold many of these huge creatures, one set eagerly travelling onwards with outstretched necks, and another set returning, after having drunk their fill. When the tortoise arrives at the spring, quite regardless of any spectator, he buries his head in the water above his eyes, and greedily swallows great mouthfuls, at the rate of about ten in a minute.",
+      "twists": []
+    },
+    {
+      "id": "dickens-churchyard",
+      "title": "Great Expectations",
+      "author": "Charles Dickens",
+      "year": 1861,
+      "gutenberg": 1400,
+      "book": null,
+      "kinds": [
+        "creative"
+      ],
+      "tier": 4,
+      "text": "Ours was the marsh country, down by the river, within, as the river wound, twenty miles of the sea. My first most vivid and broad impression of the identity of things seems to me to have been gained on a memorable raw afternoon towards evening. At such a time I found out for certain that this bleak place overgrown with nettles was the churchyard; and that Philip Pirrip, late of this parish, and also Georgiana wife of the above, were dead and buried; and that Alexander, Bartholomew, Abraham, Tobias, and Roger, infant children of the aforesaid, were also dead and buried; and that the dark flat wilderness beyond the churchyard, intersected with dikes and mounds and gates, with scattered cattle feeding on it, was the marshes; and that the low leaden line beyond was the river; and that the distant savage lair from which the wind was rushing was the sea; and that the small bundle of shivers growing afraid of it all and beginning to cry, was Pip.\n\n“Hold your noise!” cried a terrible voice, as a man started up from among the graves at the side of the church porch. “Keep still, you little devil, or I’ll cut your throat!”",
+      "twists": [
+        "Rewrite it from the convict’s point of view, hiding among the graves as the boy comes into the churchyard.",
+        "Change the weather and the mood: a warm, bright summer morning, and the voice that starts up is a friendly one."
+      ]
+    },
+    {
+      "id": "dostoevsky-hot-evening",
+      "title": "Crime and Punishment",
+      "author": "Fyodor Dostoevsky",
+      "year": 1866,
+      "gutenberg": 2554,
+      "book": "crime-and-punishment",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 6,
+      "text": "On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge.\n\nHe had successfully avoided meeting his landlady on the staircase. His garret was under the roof of a high, five-storied house and was more like a cupboard than a room. The landlady who provided him with garret, dinners, and attendance, lived on the floor below, and every time he went out he was obliged to pass her kitchen, the door of which invariably stood open. And each time he passed, the young man had a sick, frightened feeling, which made him scowl and feel ashamed. He was hopelessly in debt to his landlady, and was afraid of meeting her.",
+      "twists": [
+        "Rewrite it from the landlady’s point of view, listening from her open kitchen door as he creeps past.",
+        "Move it to a bitter January morning and tell it in the present tense, close on the young man."
+      ]
+    },
+    {
+      "id": "douglass-fourth-of-july",
+      "title": "What to the Slave Is the Fourth of July?",
+      "author": "Frederick Douglass",
+      "year": 1852,
+      "gutenberg": 202,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 4,
+      "text": "What to the American slave is your Fourth of July? I answer, a day that reveals to him, more than all other days in the year, the gross injustice and cruelty to which he is the constant victim. To him, your celebration is a sham; your boasted liberty, an unholy license; your national greatness, swelling vanity; your sounds of rejoicing are empty and heartless; your denunciations of tyrants, brass-fronted impudence; your shouts of liberty and equality, hollow mockery; your prayers and hymns, your sermons and thanksgivings, with all your religious parade and solemnity, are to him mere bombast, fraud, deception, impiety, and hypocrisy—a thin veil to cover up crimes which would disgrace a nation of savages. There is not a nation on the earth guilty of practices more shocking and bloody, than are the people of these United States, at this very hour.\n\nGo where you may, search where you will, roam through all the monarchies and despotisms of the old world, travel through South America, search out every abuse, and when you have found the last, lay your facts by the side of the every-day practices of this nation, and you will say with me, that, for revolting barbarity and shameless hypocrisy, America reigns without a rival.",
+      "twists": []
+    },
+    {
+      "id": "dumas-thrown-into-the-sea",
+      "title": "The Count of Monte Cristo",
+      "author": "Alexandre Dumas",
+      "year": 1844,
+      "gutenberg": 1184,
+      "book": "the-count-of-monte-cristo",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 3,
+      "text": "They ascended five or six more steps, and then Dantès felt that they took him, one by the head and the other by the heels, and swung him to and fro.\n\n“One!” said the grave-diggers, “two! three!”\n\nAnd at the same instant Dantès felt himself flung into the air like a wounded bird, falling, falling, with a rapidity that made his blood curdle. Although drawn downwards by the heavy weight which hastened his rapid descent, it seemed to him as if the fall lasted for a century. At last, with a horrible splash, he darted like an arrow into the ice-cold water, and as he did so he uttered a shrill cry, stifled in a moment by his immersion beneath the waves.\n\nDantès had been flung into the sea, and was dragged into its depths by a thirty-six-pound shot tied to his feet.\n\nThe sea is the cemetery of the Château d’If.",
+      "twists": [
+        "Rewrite it from the point of view of one of the grave-diggers, who thinks the sack holds a dead old priest.",
+        "Tell it in the first person, as Dantès, in the present tense."
+      ]
+    },
+    {
+      "id": "emerson-self-reliance",
+      "title": "Self-Reliance",
+      "author": "Ralph Waldo Emerson",
+      "year": 1841,
+      "gutenberg": 2944,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 6,
+      "text": "To believe your own thought, to believe that what is true for you in your private heart is true for all men,—that is genius. Speak your latent conviction, and it shall be the universal sense; for the inmost in due time becomes the outmost, and our first thought is rendered back to us by the trumpets of the Last Judgment. Familiar as the voice of the mind is to each, the highest merit we ascribe to Moses, Plato and Milton is that they set at naught books and traditions, and spoke not what men, but what they thought. A man should learn to detect and watch that gleam of light which flashes across his mind from within, more than the lustre of the firmament of bards and sages. Yet he dismisses without notice his thought, because it is his. In every work of genius we recognize our own rejected thoughts; they come back to us with a certain alienated majesty.",
+      "twists": []
+    },
+    {
+      "id": "faraday-the-candle-cup",
+      "title": "The Chemical History of a Candle",
+      "author": "Michael Faraday",
+      "year": 1861,
+      "gutenberg": 14474,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 3,
+      "text": "You see, then, in the first instance, that a beautiful cup is formed. As the air comes to the candle it moves upwards by the force of the current which the heat of the candle produces, and it so cools all the sides of the wax, tallow, or fuel, as to keep the edge much cooler than the part within; the part within melts by the flame that runs down the wick as far as it can go before it is extinguished, but the part on the outside does not melt. If I made a current in one direction, my cup would be lop-sided, and the fluid would consequently run over,—for the same force of gravity which holds worlds together holds this fluid in a horizontal position, and if the cup be not horizontal, of course the fluid will run away in guttering. You see, therefore, that the cup is formed by this beautifully regular ascending current of air playing upon all sides, which keeps the exterior of the candle cool.",
+      "twists": []
+    },
+    {
+      "id": "fitzgerald-gatsbys-parties",
+      "title": "The Great Gatsby",
+      "author": "F. Scott Fitzgerald",
+      "year": 1925,
+      "gutenberg": 64317,
+      "book": "the-great-gatsby",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 4,
+      "text": "There was music from my neighbour’s house through the summer nights. In his blue gardens men and girls came and went like moths among the whisperings and the champagne and the stars. At high tide in the afternoon I watched his guests diving from the tower of his raft, or taking the sun on the hot sand of his beach while his two motorboats slit the waters of the Sound, drawing aquaplanes over cataracts of foam. On weekends his Rolls-Royce became an omnibus, bearing parties to and from the city between nine in the morning and long past midnight, while his station wagon scampered like a brisk yellow bug to meet all trains. And on Mondays eight servants, including an extra gardener, toiled all day with mops and scrubbing-brushes and hammers and garden-shears, repairing the ravages of the night before.\n\nEvery Friday five crates of oranges and lemons arrived from a fruiterer in New York—every Monday these same oranges and lemons left his back door in a pyramid of pulpless halves. There was a machine in the kitchen which could extract the juice of two hundred oranges in half an hour if a little button was pressed two hundred times by a butler’s thumb.",
+      "twists": [
+        "Rewrite it from the point of view of one of the eight servants, starting work on a Monday morning.",
+        "Change the season: the same house on a wet weekend in late September, after the guests have stopped coming."
+      ]
+    },
+    {
+      "id": "franklin-learning-from-the-spectator",
+      "title": "The Autobiography of Benjamin Franklin",
+      "author": "Benjamin Franklin",
+      "year": 1791,
+      "gutenberg": 20203,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 4,
+      "text": "About this time I met with an odd volume of the Spectator. It was the third. I had never before seen any of them. I bought it, read it over and over, and was much delighted with it. I thought the writing excellent, and wished, if possible, to imitate it. With this view I took some of the papers, and, making short hints of the sentiment in each sentence, laid them by a few days, and then, without looking at the book, try’d to compleat the papers again, by expressing each hinted sentiment at length, and as fully as it had been expressed before, in any suitable words that should come to hand. Then I compared my Spectator with the original, discovered some of my faults, and corrected them.",
+      "twists": []
+    },
+    {
+      "id": "grahame-mole-spring-cleaning",
+      "title": "The Wind in the Willows",
+      "author": "Kenneth Grahame",
+      "year": 1908,
+      "gutenberg": 289,
+      "book": null,
+      "kinds": [
+        "creative"
+      ],
+      "tier": 2,
+      "text": "The Mole had been working very hard all the morning, spring-cleaning his little home. First with brooms, then with dusters; then on ladders and steps and chairs, with a brush and a pail of whitewash; till he had dust in his throat and eyes, and splashes of whitewash all over his black fur, and an aching back and weary arms. Spring was moving in the air above and in the earth below and around him, penetrating even his dark and lowly little house with its spirit of divine discontent and longing. It was small wonder, then, that he suddenly flung down his brush on the floor, said “Bother!” and “O blow!” and also “Hang spring-cleaning!” and bolted out of the house without even waiting to put on his coat. Something up above was calling him imperiously, and he made for the steep little tunnel which answered in his case to the gravelled carriage-drive owned by animals whose residences are nearer to the sun and air. So he scraped and scratched and scrabbled and scrooged and then he scrooged again and scrabbled and scratched and scraped, working busily with his little paws and muttering to himself, “Up we go! Up we go!” till at last, pop! his snout came out into the sunlight, and he found himself rolling in the warm grass of a great meadow.",
+      "twists": [
+        "Rewrite it from the point of view of a lark in the meadow that sees the Mole’s snout pop out of the grass.",
+        "Change the season: a wet November afternoon, the Mole longs to stay indoors, but something drives him out."
+      ]
+    },
+    {
+      "id": "hazlitt-familiar-style",
+      "title": "On Familiar Style",
+      "author": "William Hazlitt",
+      "year": 1822,
+      "gutenberg": 3020,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 5,
+      "text": "It is not easy to write a familiar style. Many people mistake a familiar for a vulgar style, and suppose that to write without affectation is to write at random. On the contrary, there is nothing that requires more precision, and, if I may so say, purity of expression, than the style I am speaking of. It utterly rejects not only all unmeaning pomp, but all low, cant phrases, and loose, unconnected, slipshod allusions. It is not to take the first word that offers, but the best word in common use; it is not to throw words together in any combinations we please, but to follow and avail ourselves of the true idiom of the language. To write a genuine familiar or truly English style is to write as any one would speak in common conversation who had a thorough command and choice of words, or who could discourse with ease, force, and perspicuity, setting aside all pedantic and oratorical flourishes.",
+      "twists": []
+    },
+    {
+      "id": "huxley-burning-chalk",
+      "title": "On a Piece of Chalk",
+      "author": "Thomas Henry Huxley",
+      "year": 1868,
+      "gutenberg": 10060,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 4,
+      "text": "We all know that if we “burn” chalk the result is quicklime. Chalk, in fact, is a compound of carbonic acid gas, and lime, and when you make it very hot the carbonic acid flies away and the lime is left. By this method of procedure we see the lime, but we do not see the carbonic acid. If, on the other hand, you were to powder a little chalk and drop it into a good deal of strong vinegar, there would be a great bubbling and fizzing, and, finally, a clear liquid, in which no sign of chalk would appear. Here you see the carbonic acid in the bubbles; the lime, dissolved in the vinegar, vanishes from sight. There are a great many other ways of showing that chalk is essentially nothing but carbonic acid and quicklime. Chemists enunciate the result of all the experiments which prove this, by stating that chalk is almost wholly composed of “carbonate of lime.”",
+      "twists": []
+    },
+    {
+      "id": "lincoln-second-inaugural",
+      "title": "Second Inaugural Address",
+      "author": "Abraham Lincoln",
+      "year": 1865,
+      "gutenberg": 8,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 4,
+      "text": "One-eighth of the whole population were colored slaves, not distributed generally over the Union, but localized in the Southern part of it. These slaves constituted a peculiar and powerful interest. All knew that this interest was, somehow, the cause of the war. To strengthen, perpetuate, and extend this interest was the object for which the insurgents would rend the Union, even by war; while the government claimed no right to do more than to restrict the territorial enlargement of it.\n\nNeither party expected for the war the magnitude or the duration which it has already attained. Neither anticipated that the cause of the conflict might cease with, or even before, the conflict itself should cease. Each looked for an easier triumph, and a result less fundamental and astounding. Both read the same Bible, and pray to the same God; and each invokes his aid against the other. It may seem strange that any men should dare to ask a just God’s assistance in wringing their bread from the sweat of other men’s faces; but let us judge not, that we be not judged. The prayers of both could not be answered—that of neither has been answered fully.",
+      "twists": []
+    },
+    {
+      "id": "melville-call-me-ishmael",
+      "title": "Moby-Dick",
+      "author": "Herman Melville",
+      "year": 1851,
+      "gutenberg": 2701,
+      "book": "moby-dick",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 8,
+      "text": "Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can. This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this. If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.",
+      "twists": [
+        "Rewrite it in the third person and the present tense: show Ishmael on a drizzly November street deciding to go to sea, rather than having him explain himself.",
+        "Change the mood: he goes to sea out of high spirits, not gloom. Keep the run of “whenever” clauses."
+      ]
+    },
+    {
+      "id": "mill-silencing-an-opinion",
+      "title": "On Liberty",
+      "author": "John Stuart Mill",
+      "year": 1859,
+      "gutenberg": 34901,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 7,
+      "text": "If all mankind minus one, were of one opinion, and only one person were of the contrary opinion, mankind would be no more justified in silencing that one person, than he, if he had the power, would be justified in silencing mankind. Were an opinion a personal possession of no value except to the owner; if to be obstructed in the enjoyment of it were simply a private injury, it would make some difference whether the injury was inflicted only on a few persons or on many. But the peculiar evil of silencing the expression of an opinion is, that it is robbing the human race; posterity as well as the existing generation; those who dissent from the opinion, still more than those who hold it. If the opinion is right, they are deprived of the opportunity of exchanging error for truth: if wrong, they lose, what is almost as great a benefit, the clearer perception and livelier impression of truth, produced by its collision with error.",
+      "twists": []
+    },
+    {
+      "id": "shelley-the-creature-wakes",
+      "title": "Frankenstein",
+      "author": "Mary Shelley",
+      "year": 1818,
+      "gutenberg": 84,
+      "book": "frankenstein",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 5,
+      "text": "It was on a dreary night of November that I beheld the accomplishment of my toils. With an anxiety that almost amounted to agony, I collected the instruments of life around me, that I might infuse a spark of being into the lifeless thing that lay at my feet. It was already one in the morning; the rain pattered dismally against the panes, and my candle was nearly burnt out, when, by the glimmer of the half-extinguished light, I saw the dull yellow eye of the creature open; it breathed hard, and a convulsive motion agitated its limbs.\n\nHow can I describe my emotions at this catastrophe, or how delineate the wretch whom with such infinite pains and care I had endeavoured to form? His limbs were in proportion, and I had selected his features as beautiful. Beautiful! Great God! His yellow skin scarcely covered the work of muscles and arteries beneath; his hair was of a lustrous black, and flowing; his teeth of a pearly whiteness; but these luxuriances only formed a more horrid contrast with his watery eyes, that seemed almost of the same colour as the dun-white sockets in which they were set, his shrivelled complexion and straight black lips.",
+      "twists": [
+        "Rewrite it from the creature’s point of view, opening its eyes for the first time.",
+        "Tell the same moment in half the words, keeping the rain, the candle and the eye."
+      ]
+    },
+    {
+      "id": "steele-longing-for-retirement",
+      "title": "The Spectator, No. 27",
+      "author": "Richard Steele",
+      "year": 1711,
+      "gutenberg": 12030,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 6,
+      "text": "There is scarce a thinking Man in the World, who is involved in the Business of it, but lives under a secret Impatience of the Hurry and Fatigue he suffers, and has formed a Resolution to fix himself, one time or other, in such a State as is suitable to the End of his Being. You hear Men every Day in Conversation profess, that all the Honour, Power, and Riches which they propose to themselves, cannot give Satisfaction enough to reward them for half the Anxiety they undergo in the Pursuit, or Possession of them. While Men are in this Temper (which happens very frequently) how inconsistent are they with themselves? They are wearied with the Toil they bear, but cannot find in their Hearts to relinquish it; Retirement is what they want, but they cannot betake themselves to it; While they pant after Shade and Covert, they still affect to appear in the most glittering Scenes of Life: But sure this is but just as reasonable as if a Man should call for more Lights, when he has a mind to go to Sleep.",
+      "twists": []
+    },
+    {
+      "id": "stevenson-apple-barrel",
+      "title": "Treasure Island",
+      "author": "Robert Louis Stevenson",
+      "year": 1883,
+      "gutenberg": 120,
+      "book": null,
+      "kinds": [
+        "creative"
+      ],
+      "tier": 2,
+      "text": "In I got bodily into the apple barrel, and found there was scarce an apple left; but sitting down there in the dark, what with the sound of the waters and the rocking movement of the ship, I had either fallen asleep or was on the point of doing so when a heavy man sat down with rather a clash close by. The barrel shook as he leaned his shoulders against it, and I was just about to jump up when the man began to speak. It was Silver’s voice, and before I had heard a dozen words, I would not have shown myself for all the world, but lay there, trembling and listening, in the extreme of fear and curiosity, for from these dozen words I understood that the lives of all the honest men aboard depended upon me alone.",
+      "twists": [
+        "Rewrite it from Long John Silver’s point of view, sitting down against the barrel without knowing anyone is inside.",
+        "Tell it in the present tense in no more than half the words."
+      ]
+    },
+    {
+      "id": "stoker-count-on-the-wall",
+      "title": "Dracula",
+      "author": "Bram Stoker",
+      "year": 1897,
+      "gutenberg": 345,
+      "book": "dracula",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 4,
+      "text": "What I saw was the Count’s head coming out from the window. I did not see the face, but I knew the man by the neck and the movement of his back and arms. In any case I could not mistake the hands which I had had so many opportunities of studying. I was at first interested and somewhat amused, for it is wonderful how small a matter will interest and amuse a man when he is a prisoner. But my very feelings changed to repulsion and terror when I saw the whole man slowly emerge from the window and begin to crawl down the castle wall over that dreadful abyss, face down with his cloak spreading out around him like great wings. At first I could not believe my eyes. I thought it was some trick of the moonlight, some weird effect of shadow; but I kept looking, and it could be no delusion. I saw the fingers and toes grasp the corners of the stones, worn clear of the mortar by the stress of years, and by thus using every projection and inequality move downwards with considerable speed, just as a lizard moves along a wall.",
+      "twists": [
+        "Rewrite it from the Count’s point of view as he climbs down the wall, wondering whether his guest is awake.",
+        "Tell it as a letter Jonathan Harker writes to Mina, trying not to frighten her."
+      ]
+    },
+    {
+      "id": "thoreau-borrowing-an-axe",
+      "title": "Walden",
+      "author": "Henry David Thoreau",
+      "year": 1854,
+      "gutenberg": 205,
+      "book": "walden",
+      "kinds": [
+        "practical"
+      ],
+      "tier": 6,
+      "text": "Near the end of March, 1845, I borrowed an axe and went down to the woods by Walden Pond, nearest to where I intended to build my house, and began to cut down some tall, arrowy white pines, still in their youth, for timber. It is difficult to begin without borrowing, but perhaps it is the most generous course thus to permit your fellow-men to have an interest in your enterprise. The owner of the axe, as he released his hold on it, said that it was the apple of his eye; but I returned it sharper than I received it. It was a pleasant hillside where I worked, covered with pine woods, through which I looked out on the pond, and a small open field in the woods where pines and hickories were springing up. The ice in the pond was not yet dissolved, though there were some open spaces, and it was all dark colored and saturated with water. There were some slight flurries of snow during the days that I worked there; but for the most part when I came out on to the railroad, on my way home, its yellow sand heap stretched away gleaming in the hazy atmosphere, and the rails shone in the spring sun, and I heard the lark and pewee and other birds already come to commence another year with us.",
+      "twists": []
+    },
+    {
+      "id": "thoreau-civil-disobedience",
+      "title": "On the Duty of Civil Disobedience",
+      "author": "Henry David Thoreau",
+      "year": 1849,
+      "gutenberg": 71,
+      "book": null,
+      "kinds": [
+        "argument"
+      ],
+      "tier": 5,
+      "text": "I heartily accept the motto,—“That government is best which governs least;” and I should like to see it acted up to more rapidly and systematically. Carried out, it finally amounts to this, which also I believe—“That government is best which governs not at all;” and when men are prepared for it, that will be the kind of government which they will have. Government is at best but an expedient; but most governments are usually, and all governments are sometimes, inexpedient. The objections which have been brought against a standing army, and they are many and weighty, and deserve to prevail, may also at last be brought against a standing government. The standing army is only an arm of the standing government. The government itself, which is only the mode which the people have chosen to execute their will, is equally liable to be abused and perverted before the people can act through it. Witness the present Mexican war, the work of comparatively a few individuals using the standing government as their tool; for, in the outset, the people would not have consented to this measure.",
+      "twists": []
+    },
+    {
+      "id": "white-the-old-tortoise",
+      "title": "The Natural History of Selborne",
+      "author": "Gilbert White",
+      "year": 1789,
+      "gutenberg": 1408,
+      "book": null,
+      "kinds": [
+        "practical"
+      ],
+      "tier": 5,
+      "text": "A land-tortoise, which has been kept for thirty years in a little walled court belonging to the house where I now am visiting, retires under ground about the middle of November, and comes forth again about the middle of April. When it first appears in the spring it discovers very little inclination towards food; but in the height of summer grows voracious: and then as the summer declines its appetite declines; so that for the last six weeks in autumn it hardly eats at all. Milky plants, such as lettuces, dandelions, sow-thistles, are its favourite dish. In a neighbouring village one was kept till by tradition it was supposed to be an hundred years old. An instance of vast longevity in such a poor reptile!",
+      "twists": []
+    },
+    {
+      "id": "woolf-big-ben",
+      "title": "Mrs Dalloway",
+      "author": "Virginia Woolf",
+      "year": 1925,
+      "gutenberg": 71865,
+      "book": "mrs-dalloway",
+      "kinds": [
+        "creative"
+      ],
+      "tier": 7,
+      "text": "For having lived in Westminster—how many years now? over twenty,—one feels even in the midst of the traffic, or waking at night, Clarissa was positive, a particular hush, or solemnity; an indescribable pause; a suspense (but that might be her heart, affected, they said, by influenza) before Big Ben strikes. There! Out it boomed. First a warning, musical; then the hour, irrevocable. The leaden circles dissolved in the air. Such fools we are, she thought, crossing Victoria Street. For Heaven only knows why one loves it so, how one sees it so, making it up, building it round one, tumbling it, creating it every moment afresh; but the veriest frumps, the most dejected of miseries sitting on doorsteps (drink their downfall) do the same; can’t be dealt with, she felt positive, by Acts of Parliament for that very reason: they love life. In people’s eyes, in the swing, tramp, and trudge; in the bellow and the uproar; the carriages, motor cars, omnibuses, vans, sandwich men shuffling and swinging; brass bands; barrel organs; in the triumph and the jingle and the strange high singing of some aeroplane overhead was what she loved; life; London; this moment of June.",
+      "twists": [
+        "Rewrite it from the point of view of a neighbour who sees her waiting to cross Victoria Street as Big Ben strikes.",
+        "Retell it as a plain past-tense account in half the words, keeping only what Clarissa sees and hears."
+      ]
+    }
+  ]
+}

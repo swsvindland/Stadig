@@ -22,14 +22,17 @@ public struct WritingItem: Hashable, Codable, Sendable, Identifiable {
     public var explanation: String
 }
 
-/// The grammar, punctuation and usage bank that ships with the app.
+/// The grammar, punctuation and usage bank that ships with the app, and the passages and prompts
+/// the writing itself draws on.
 public struct WritingBank: Sendable {
     public var skills: [WritingSkill]
     public var items: [WritingItem]
+    public var library: WritingLibrary
 
-    public init(skills: [WritingSkill], items: [WritingItem]) {
+    public init(skills: [WritingSkill], items: [WritingItem], library: WritingLibrary = .standard) {
         self.skills = skills
         self.items = items
+        self.library = library
     }
 
     private struct File: Decodable {
