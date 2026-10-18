@@ -70,6 +70,7 @@ struct LessonView: View {
             MathText(source: info.lesson, size: 18)
             VStack(alignment: .leading, spacing: 10) {
                 Text("Worked example").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if let figure = example.figure { DataFigureView(figure: figure) }
                 MathText(source: example.prompt, size: 18, weight: .medium)
                 Divider()
                 ForEach(Array(example.steps.enumerated()), id: \.offset) { _, step in MathText(source: step, size: 17) }
@@ -167,8 +168,10 @@ struct QuestionView: View {
                         Spacer()
                         if question.kind == .test { Pill(text: "Test", symbol: "gauge.with.dots.needle.50percent") }
                         if question.kind == .probe { Pill(text: "Quick check", symbol: "bolt") }
+                        if question.timed && question.kind != .test { Pill(text: "Timed", symbol: "stopwatch") }
                     }
                     prompt
+                    if let figure = question.figure { DataFigureView(figure: figure) }
                     answers
                     if let feedback { FeedbackPanel(question: question, feedback: feedback) }
                 }
@@ -187,9 +190,10 @@ struct QuestionView: View {
             if case .number = question.answer { typing = true }
         }
         .task(id: feedback) {
-            // Tests move straight on: they measure, they don't teach.
-            if feedback != nil, question.kind == .test {
-                try? await Task.sleep(for: .milliseconds(450))
+            // Tests move straight on: they measure, they don't teach. So does a timed problem
+            // answered right and quickly; a slow one stays to show the quicker way.
+            if let feedback, question.kind == .test || (question.timed && feedback.correct && question.fluent(model.run?.answered.last?.seconds)) {
+                try? await Task.sleep(for: .milliseconds(question.kind == .test ? 450 : 700))
                 model.act { $0.next(now: Date()) }
             }
         }
@@ -208,7 +212,7 @@ struct QuestionView: View {
                     .disabled(feedback != nil)
                 }
             }
-        case .number(let value, let tolerance):
+        case .number(_, let tolerance):
             VStack(alignment: .leading, spacing: 8) {
                 TextField("Your answer", text: $typed)
                     .keyboardType(.numbersAndPunctuation)
@@ -222,7 +226,7 @@ struct QuestionView: View {
                 Text(tolerance > 0 ? "A decimal, rounded as asked" : "A whole number, a fraction like 3/4, or a decimal")
                     .font(.caption).foregroundStyle(.secondary)
                 if let feedback, !feedback.correct {
-                    MathText(source: "The answer is $\(tolerance > 0 ? String(format: "%.2f", value.double) : value.tex)$", size: 18, weight: .semibold)
+                    MathText(source: "The answer is $\(question.shownAnswer)$", size: 18, weight: .semibold)
                 }
             }
         }
@@ -370,13 +374,20 @@ struct FeedbackPanel: View {
     let question: Question
     let feedback: StudyRun.Feedback
 
+    /// A timed problem says how long it took against its target.
+    var verdict: String {
+        guard feedback.correct else { return feedback.skipped ? "Here it is" : "Not quite" }
+        guard question.timed, let seconds = model.run?.answered.last?.seconds else { return "Right" }
+        let taken = Format.seconds(seconds)
+        return question.fluent(seconds) ? "Right · \(taken)" : "Right, in \(taken): aim for \(Format.seconds(question.expectedSeconds))"
+    }
+
     var body: some View {
         if question.kind == .test {
             EmptyView()
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                Label(feedback.correct ? "Right" : feedback.skipped ? "Here it is" : "Not quite",
-                      systemImage: feedback.correct ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill")
+                Label(verdict, systemImage: feedback.correct ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill")
                     .font(.headline)
                     .foregroundStyle(feedback.correct ? .green : .orange)
                 switch question.reveal {

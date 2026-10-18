@@ -16,8 +16,10 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
 
     /// "3/4", "-2", "0.75", "1 1/2", "−5" (a typographic minus), "2.5". Nil for anything else.
     public init?(parsing raw: String) {
-        let text = raw.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "⁄", with: "/")
+        var text = raw.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "⁄", with: "/")
             .trimmingCharacters(in: .whitespaces)
+        // Thousands separators: "8,400" and "12,000.5", never a decimal comma.
+        if text.wholeMatch(of: /-?\d{1,3}(,\d{3})+(\.\d+)?/) != nil { text = text.replacingOccurrences(of: ",", with: "") }
         guard !text.isEmpty else { return nil }
         let parts = text.split(separator: " ")
         if parts.count == 2, let whole = Int(parts[0]), let fraction = Rational(parsing: String(parts[1])), fraction.numerator >= 0 {
@@ -45,6 +47,23 @@ public struct Rational: Hashable, Sendable, Comparable, CustomStringConvertible 
     }
 
     public var double: Double { Double(numerator) / Double(denominator) }
+
+    /// Written as a decimal when it ends within six places: 3/4 is "0.75", -5/2 is "-2.5". Nil
+    /// for 1/3.
+    public var decimal: String? {
+        var scaled = self
+        var places = 0
+        while !scaled.isInteger && places < 6 {
+            scaled = scaled * 10
+            places += 1
+        }
+        guard scaled.isInteger else { return nil }
+        var digits = String(abs(scaled.numerator))
+        guard places > 0 else { return (scaled.numerator < 0 ? "-" : "") + digits }
+        while digits.count <= places { digits = "0" + digits }
+        let split = digits.index(digits.endIndex, offsetBy: -places)
+        return (scaled.numerator < 0 ? "-" : "") + digits[..<split] + "." + digits[split...]
+    }
     public var isInteger: Bool { denominator == 1 }
 
     /// "3/4", "-2". `tex` gives "\frac{3}{4}".

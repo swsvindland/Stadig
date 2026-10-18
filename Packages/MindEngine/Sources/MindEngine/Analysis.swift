@@ -258,10 +258,7 @@ public enum Analyst {
                 notes.append("Japanese: \(kana) of \(KanaTable.all.count) kana in. Words start once hiragana is.")
             }
         }
-        if state.settings.has(.maths), state.latest(.mathsPlacement) != nil {
-            let next = maths.next.map { " Next up: \($0.title)." } ?? ""
-            notes.append("Maths: solid up to level \(maths.highestLevel) of 10, \(maths.known) of \(maths.total) topics.\(next)")
-        }
+        if state.settings.has(.maths), let note = MathsModule.learnedNote(state) { notes.append(note) }
         if state.settings.has(.writing), let check = state.latest(.writing) {
             notes.append("Writing: \(Int((check.score * 100).rounded()))% on the first pass.\(writing.next.map { " Starting with \($0.lowercased())." } ?? "")")
         }

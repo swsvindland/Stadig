@@ -41,6 +41,10 @@ struct Student {
     var mathsLevel: Int
     /// Writing skills up to this level are known.
     var writingLevel: Int
+    /// Numeracy: fluent up to this level, rarely right two above it.
+    var numeracyLevel = 6
+    /// Statistics and logic topics up to this level are known before starting.
+    var discreteLevel = 3
     /// How likely a taught word or topic is right when asked again in the same session.
     var learnRate = 0.85
     /// Seconds an answer takes, as a share of the question's usual time.
@@ -63,10 +67,15 @@ struct Student {
             }
             return question.kind == .learn ? Double.random(in: 0..<1, using: &rng) < learnRate : nil
         case .maths:
+            if let numeracy = key.numeracy {
+                let p = numeracy.level <= numeracyLevel ? 0.95 : numeracy.level == numeracyLevel + 1 ? 0.35 : 0.05
+                return Double.random(in: 0..<1, using: &rng) < p
+            }
             guard let topic = MathCurriculum.topic(key.item) else { return nil }
-            if topic.level <= mathsLevel { return Double.random(in: 0..<1, using: &rng) < 0.95 }
+            let level = topic.strand == .discrete ? discreteLevel : mathsLevel
+            if topic.level <= level { return Double.random(in: 0..<1, using: &rng) < 0.95 }
             if question.kind == .learn || cards[key]?.memory != nil {
-                return Double.random(in: 0..<1, using: &rng) < (topic.level <= mathsLevel + 2 ? learnRate : 0.3)
+                return Double.random(in: 0..<1, using: &rng) < (topic.level <= level + 2 ? learnRate : 0.3)
             }
             return nil
         case .writing:

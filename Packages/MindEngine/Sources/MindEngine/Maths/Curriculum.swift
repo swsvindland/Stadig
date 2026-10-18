@@ -1,10 +1,14 @@
 import Foundation
 
-/// The maths skill graph, from arithmetic to integration. Each topic lists what it builds on, so a
-/// placement that finds a topic known can assume the ones beneath it, and a new topic is only
-/// offered once everything under it is in place.
+/// The maths skill graphs: the classic ladder from arithmetic to integration, and statistics and
+/// logic from reading a chart to least squares. Each topic lists what it builds on, within its
+/// strand, so a placement that finds a topic known can assume the ones beneath it, and a new topic
+/// is only offered once everything under it is in place. Numeracy has no graph: it's drilled.
 public enum MathCurriculum {
-    public static let topics: [MathTopic] = foundations + algebra + functions + geometry + data + calculus
+    public static let topics: [MathTopic] = foundations + algebra + functions + geometry + calculus + discrete
+
+    /// One strand's topics, in curriculum order.
+    public static func topics(_ strand: MathsStrand) -> [MathTopic] { topics.filter { $0.strand == strand } }
 
     public static let byID: [String: MathTopic] = Dictionary(topics.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 

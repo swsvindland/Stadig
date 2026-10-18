@@ -12,14 +12,17 @@ public struct Problem: Hashable, Sendable {
     /// The worked solution, shown after answering.
     public var steps: [String]
     public var expectedSeconds: Double
+    /// A small chart the problem is about, when it has one.
+    public var figure: DataFigure?
 
-    init(prompt: String, answer: Answer, choices: [String] = [], steps: [String]) {
+    init(prompt: String, answer: Answer, choices: [String] = [], steps: [String], figure: DataFigure? = nil) {
         topic = ""
         self.prompt = prompt
         self.answer = answer
         self.choices = choices
         self.steps = steps
         expectedSeconds = 30
+        self.figure = figure
     }
 
     static func number(_ prompt: String, _ value: Rational, steps: [String], tolerance: Double = 0) -> Problem {
@@ -45,30 +48,74 @@ public struct Problem: Hashable, Sendable {
     public func question(kind: AttemptKind, id: String) -> Question {
         Question(id: id, key: .topic(topic), kind: kind, instruction: choices.isEmpty ? "Type the answer" : "Choose the answer",
                  prompt: .math(prompt), choices: choices, choiceStyle: .math, answer: answer, expectedSeconds: expectedSeconds,
-                 reveal: .steps(steps))
+                 reveal: .steps(steps), figure: figure)
+    }
+
+    /// The same problem with its chart.
+    func with(_ figure: DataFigure) -> Problem {
+        var problem = self
+        problem.figure = figure
+        return problem
     }
 }
 
-/// A topic in the skill graph: what it teaches, what it builds on, and endless problems for it.
+/// A topic in a strand's skill graph: what it teaches, what it builds on, and endless problems
+/// for it.
 public struct MathTopic: Sendable, Identifiable {
     public let id: String
     public let title: String
-    /// 1 (arithmetic) to 10 (integration techniques).
+    /// 1 to 10 within its strand: arithmetic to integration techniques on the classic ladder,
+    /// reading a chart to least squares in statistics and logic.
     public let level: Int
     public let prerequisites: [String]
     public let lesson: String
     /// About how long a problem takes someone who knows the topic.
     public let seconds: Double
+    public let strand: MathsStrand
     let make: @Sendable (inout SeededRandom) -> Problem
+    /// A problem about the person's own numbers, when the System apps have published enough.
+    private(set) var personal: (@Sendable (inout SeededRandom, SystemData) -> Problem?)?
+
+    init(id: String, title: String, level: Int, prerequisites: [String], lesson: String, seconds: Double,
+         strand: MathsStrand = .classic, make: @escaping @Sendable (inout SeededRandom) -> Problem) {
+        self.id = id
+        self.title = title
+        self.level = level
+        self.prerequisites = prerequisites
+        self.lesson = lesson
+        self.seconds = seconds
+        self.strand = strand
+        self.make = make
+    }
+
+    /// The same topic, drawing on the person's data about half the time it can.
+    func withData(_ make: @escaping @Sendable (inout SeededRandom, SystemData) -> Problem?) -> MathTopic {
+        var topic = self
+        topic.personal = make
+        return topic
+    }
 
     public var key: CardKey { .topic(id) }
     public var info: MathTopicInfo { MathTopicInfo(id: id, title: title, lesson: lesson) }
+    public var usesData: Bool { personal != nil }
 
-    public func problem(seed: String) -> Problem {
+    /// A problem for the topic. With the person's data, about half are about their own week.
+    public func problem(seed: String, data: SystemData = .none) -> Problem {
         var rng = SeededRandom("maths", id, seed)
-        var problem = make(&rng)
+        var problem: Problem?
+        if let personal, !data.isEmpty, rng.chance(0.5) { problem = personal(&rng, data) }
+        var made = problem ?? make(&rng)
+        made.topic = id
+        made.expectedSeconds = seconds * (made.figure == nil ? 1 : 1.2)
+        return made
+    }
+
+    /// Only a problem about the person's data, or nil when there isn't enough of it.
+    public func personalProblem(seed: String, data: SystemData) -> Problem? {
+        var rng = SeededRandom("maths", id, "personal", seed)
+        guard var problem = personal?(&rng, data) else { return nil }
         problem.topic = id
-        problem.expectedSeconds = seconds
+        problem.expectedSeconds = seconds * (problem.figure == nil ? 1 : 1.2)
         return problem
     }
 }

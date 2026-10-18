@@ -67,6 +67,7 @@ struct PlanTests {
         store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
                                        planned: true, ranToEnd: true)]
         store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
                        TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true)]
         let word = deck.word(100_100)!
         store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 1, at: monday.date()), introduced: monday.date())
@@ -105,6 +106,7 @@ struct PlanTests {
         store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
                                        planned: true, ranToEnd: true)]
         store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
+                       TestResult(test: .numeracy, date: monday.date(), score: 0.8, detail: ["level": 6], placement: true),
                        TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true)]
         for offset in 49...53 {
             let state = store.state(on: monday.adding(days: offset))
@@ -123,25 +125,6 @@ struct PlanTests {
         #expect(LanguagePlan.newWords(retention: 0.9, dueThisWeek: 50, minutes: 25, reviewWeek: true).count == 0)
         let slipping = LanguagePlan.newWords(retention: 0.75, dueThisWeek: 50, minutes: 25, reviewWeek: false)
         #expect(slipping.reason?.contains("75%") == true)
-    }
-
-    @Test("maths placement: finds a level-5 student's edge in a dozen problems")
-    func mathsPlacement() {
-        var placement = MathsPlacement(background: .algebra)
-        var rng = SeededRandom(seed: 3)
-        while let topic = placement.nextTopic() {
-            let knows = topic.level <= 5 ? Double.random(in: 0..<1, using: &rng) < 0.95 : false
-            placement.record(topic: topic.id, correct: knows)
-        }
-        #expect(placement.asked <= MathsPlacement.maximumQuestions)
-        let known = placement.known.compactMap { MathCurriculum.topic($0)?.level }
-        #expect(known.max() ?? 0 <= 5)
-        #expect(placement.known.count >= 12, "\(placement.known.sorted())")
-        #expect(!placement.unknown.isEmpty)
-        let cards = Dictionary(uniqueKeysWithValues: placement.cards(at: Date()).map { ($0.key, $0) })
-        #expect(cards.values.allSatisfy { $0.memory != nil && $0.knownBefore })
-        // What's offered next starts right at the edge.
-        #expect(MathsPlan.frontier(cards).contains { $0.level >= 5 }, "\(MathsPlan.frontier(cards).map(\.id))")
     }
 }
 

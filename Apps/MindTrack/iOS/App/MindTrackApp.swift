@@ -14,9 +14,15 @@ struct MindTrackApp: App {
         let model = AppModel.shared
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        // -courses maths,writing keeps only those courses (as Focus), to reach their screens without
+        // scrolling; with -onboarded, the first session is theirs alone.
+        let courses = arguments.firstIndex(of: "-courses").flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+            .map { Dictionary(uniqueKeysWithValues: $0.split(separator: ",").compactMap { Domain(rawValue: String($0)) }.map { ($0, CourseMode.focus) }) }
         // -onboarded skips setup with the defaults and starts the first session.
         if arguments.contains("-onboarded"), !model.onboarded {
-            model.completeOnboarding(MindSettings(readsKana: true, genres: [.fantasy]), booksRead: [])
+            var settings = MindSettings(readsKana: true, genres: [.fantasy])
+            if let courses { settings.courses = courses }
+            model.completeOnboarding(settings, booksRead: [])
         }
         if let i = arguments.firstIndex(of: "-tab"), arguments.indices.contains(i + 1) {
             model.tab = switch arguments[i + 1] {
@@ -27,13 +33,26 @@ struct MindTrackApp: App {
         }
         if arguments.contains("-showSettings") { model.showSettings = true }
         if arguments.contains("-startSession") { model.startToday() }
+        if let courses, var settings = model.settings, settings.courses != courses {
+            settings.courses = courses
+            model.save(settings: settings)
+        }
+        // -mathsStrands discrete,classic sets the maths strands after numeracy, most important first.
+        if let i = arguments.firstIndex(of: "-mathsStrands"), arguments.indices.contains(i + 1), var settings = model.settings {
+            settings.mathsStrands = [.numeracy] + arguments[i + 1].split(separator: ",").compactMap { MathsStrand(rawValue: String($0)) }
+            model.save(settings: settings)
+        }
         // -study japanese|maths|writing|reading starts a session of one subject; -steps N then
-        // answers N steps (right, except every third), to reach later screens without tapping.
+        // answers N steps (right, except every third), to reach later screens without tapping, and
+        // -skipParts N moves past N parts (maths' timed numeracy block, say). The two run in the
+        // order given.
         if let i = arguments.firstIndex(of: "-study"), arguments.indices.contains(i + 1), let domain = Domain(rawValue: arguments[i + 1]) {
             model.startSession([domain])
         }
-        if let i = arguments.firstIndex(of: "-steps"), arguments.indices.contains(i + 1), let steps = Int(arguments[i + 1]) {
-            model.debugSteps(steps)
+        for (i, argument) in arguments.enumerated() where arguments.indices.contains(i + 1) {
+            guard let count = Int(arguments[i + 1]) else { continue }
+            if argument == "-steps" { model.debugSteps(count) }
+            if argument == "-skipParts" { for _ in 0..<count { model.act { $0.skipPart(now: Date()) } } }
         }
         #endif
     }
