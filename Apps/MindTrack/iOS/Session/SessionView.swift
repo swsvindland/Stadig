@@ -169,7 +169,7 @@ private struct SessionSummary: View {
                     if run.newPieces.contains(where: { $0.exercise == .franklinNotes }) {
                         Label("Notes kept for a Franklin rewrite next time", systemImage: "text.book.closed")
                     }
-                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.domain == .maths }, id: \.id) { test in
+                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.domain == .maths || $0.test == .readingTest }, id: \.id) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
                     }
                 }
@@ -216,7 +216,7 @@ enum TestLine {
         case .writing: return "Grammar\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
         case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
-        case .readingTest: return "Reading test: tier \(Int(test.detail["tier"] ?? test.score))"
+        case .readingTest: return "Reading test: tier \(ReadingPlan.format(test.detail["tier"] ?? 0)), \(Int(test.detail["wpm"] ?? 0)) words a minute"
         }
     }
 }

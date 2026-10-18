@@ -157,12 +157,17 @@ public struct ReadingLog: Hashable, Codable, Sendable {
     public var fromPage: Int
     public var toPage: Int
     public var minutes: Double
+    /// The block's planned length, from stamina, and how focus held through it. Nil before v2.
+    public var planned: Int?
+    public var focus: ReadingFocus?
 
-    public init(bookID: UUID, fromPage: Int, toPage: Int, minutes: Double) {
+    public init(bookID: UUID, fromPage: Int, toPage: Int, minutes: Double, planned: Int? = nil, focus: ReadingFocus? = nil) {
         self.bookID = bookID
         self.fromPage = fromPage
         self.toPage = toPage
         self.minutes = minutes
+        self.planned = planned
+        self.focus = focus
     }
 
     public var pages: Int { max(0, toPage - fromPage) }
@@ -399,11 +404,15 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
     public var isbn: String?
     /// Nil for English; set for a foreign-language reader, which has its own level per language.
     public var language: Language?
+    /// How sure the tier is, 0–1: a ladder book is certain; one's own book is an estimate. Nil
+    /// means the default for where it came from.
+    public var tierConfidence: Double?
     public var updatedAt: Date
 
     public init(id: UUID = UUID(), ladderID: String? = nil, title: String, author: String, tier: Int, pages: Int, genres: [Genre],
                 status: BookStatus, started: Day? = nil, finished: Day? = nil, page: Int = 0, feel: BookFeel? = nil,
-                format: BookFormat? = nil, isbn: String? = nil, language: Language? = nil, updatedAt: Date = Date()) {
+                format: BookFormat? = nil, isbn: String? = nil, language: Language? = nil, tierConfidence: Double? = nil,
+                updatedAt: Date = Date()) {
         self.id = id
         self.ladderID = ladderID
         self.title = title
@@ -419,6 +428,7 @@ public struct Book: Hashable, Codable, Sendable, Identifiable {
         self.format = format
         self.isbn = isbn
         self.language = language
+        self.tierConfidence = tierConfidence
         self.updatedAt = updatedAt
     }
 

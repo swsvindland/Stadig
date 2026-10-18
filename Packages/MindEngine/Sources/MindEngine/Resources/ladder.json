@@ -174,6 +174,323 @@
       "note": "A small mystery told in a fresh, literal voice; an easy first taste of literary fiction's interest in how a mind works."
     },
     {
+      "id": "a-court-of-thorns-and-roses",
+      "title": "A Court of Thorns and Roses",
+      "author": "Sarah J. Maas",
+      "year": 2015,
+      "pages": 420,
+      "tier": 1,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Breezy first-person romantasy with a fairy-tale frame and short chapters; momentum carries you through without asking anything of you."
+    },
+    {
+      "id": "the-house-in-the-cerulean-sea",
+      "title": "The House in the Cerulean Sea",
+      "author": "TJ Klune",
+      "year": 2020,
+      "pages": 400,
+      "tier": 1,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A gentle, funny found-family story in plain, warm prose; comfort reading that still finishes with something to say."
+    },
+    {
+      "id": "legends-and-lattes",
+      "title": "Legends & Lattes",
+      "author": "Travis Baldree",
+      "year": 2022,
+      "pages": 300,
+      "tier": 1,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A retired orc opens a coffee shop: low stakes, short chapters and easy prose make it a restful way back into fantasy."
+    },
+    {
+      "id": "ready-player-one",
+      "title": "Ready Player One",
+      "author": "Ernest Cline",
+      "year": 2011,
+      "pages": 370,
+      "tier": 1,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A treasure hunt through a virtual world told in chatty, reference-packed first person; pure plot from the first page."
+    },
+    {
+      "id": "project-hail-mary",
+      "title": "Project Hail Mary",
+      "author": "Andy Weir",
+      "year": 2021,
+      "pages": 480,
+      "tier": 1,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "An amnesiac astronaut solves problems one at a time in jokey first person; the science is explained as it goes."
+    },
+    {
+      "id": "red-rising",
+      "title": "Red Rising",
+      "author": "Pierce Brown",
+      "year": 2014,
+      "pages": 380,
+      "tier": 1,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Fast, violent and plainly told in the first person present; a revolution story built on cliffhangers."
+    },
+    {
+      "id": "dark-matter",
+      "title": "Dark Matter",
+      "author": "Blake Crouch",
+      "year": 2016,
+      "pages": 340,
+      "tier": 1,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A multiverse thriller in short, punchy sentences and shorter chapters; built to be read in a weekend."
+    },
+    {
+      "id": "jurassic-park",
+      "title": "Jurassic Park",
+      "author": "Michael Crichton",
+      "year": 1990,
+      "pages": 400,
+      "tier": 1,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A techno-thriller that explains its science in clear briefings between set pieces; easy to follow and hard to put down."
+    },
+    {
+      "id": "the-da-vinci-code",
+      "title": "The Da Vinci Code",
+      "author": "Dan Brown",
+      "year": 2003,
+      "pages": 480,
+      "tier": 1,
+      "genres": [
+        "crime"
+      ],
+      "note": "Very short chapters, a race against time and puzzles explained as you go; the definition of a page-turner."
+    },
+    {
+      "id": "the-girl-on-the-train",
+      "title": "The Girl on the Train",
+      "author": "Paula Hawkins",
+      "year": 2015,
+      "pages": 330,
+      "tier": 1,
+      "genres": [
+        "crime"
+      ],
+      "note": "Three unreliable narrators in plain diary-like entries; the twists come from what each one leaves out."
+    },
+    {
+      "id": "killing-floor",
+      "title": "Killing Floor",
+      "author": "Lee Child",
+      "year": 1997,
+      "pages": 520,
+      "tier": 1,
+      "genres": [
+        "crime"
+      ],
+      "note": "Clipped first-person action with a hero who explains every move; the first Jack Reacher and the easiest."
+    },
+    {
+      "id": "the-thursday-murder-club",
+      "title": "The Thursday Murder Club",
+      "author": "Richard Osman",
+      "year": 2020,
+      "pages": 380,
+      "tier": 1,
+      "genres": [
+        "crime"
+      ],
+      "note": "A cosy retirement-village mystery in short, funny chapters with a warm cast; light and quick."
+    },
+    {
+      "id": "the-firm",
+      "title": "The Firm",
+      "author": "John Grisham",
+      "year": 1991,
+      "pages": 420,
+      "tier": 1,
+      "genres": [
+        "crime"
+      ],
+      "note": "A legal thriller in straightforward prose with a clear villain and rising danger; easy and compulsive."
+    },
+    {
+      "id": "a-man-called-ove",
+      "title": "A Man Called Ove",
+      "author": "Fredrik Backman",
+      "year": 2012,
+      "pages": 340,
+      "tier": 1,
+      "genres": [
+        "literary"
+      ],
+      "note": "A grumpy widower slowly softened by his neighbours, in short, funny chapters; plain prose with a lot of heart."
+    },
+    {
+      "id": "atomic-habits",
+      "title": "Atomic Habits",
+      "author": "James Clear",
+      "year": 2018,
+      "pages": 320,
+      "tier": 1,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Short chapters, one idea each, with stories and summaries; non-fiction that reads as easily as a blog."
+    },
+    {
+      "id": "into-thin-air",
+      "title": "Into Thin Air",
+      "author": "Jon Krakauer",
+      "year": 1997,
+      "pages": 330,
+      "tier": 1,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A first-hand account of the 1996 Everest disaster told with a reporter's plainness and a thriller's pace."
+    },
+    {
+      "id": "the-diary-of-a-young-girl",
+      "title": "The Diary of a Young Girl",
+      "author": "Anne Frank",
+      "year": 1947,
+      "pages": 280,
+      "tier": 1,
+      "genres": [
+        "nonfiction",
+        "classics"
+      ],
+      "note": "A teenager's diary in hiding: simple, direct entries whose weight comes from what we know and she doesn't."
+    },
+    {
+      "id": "freakonomics",
+      "title": "Freakonomics",
+      "author": "Steven D. Levitt and Stephen J. Dubner",
+      "year": 2005,
+      "pages": 260,
+      "tier": 1,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Economics through surprising questions and conversational explanations; one of the easiest idea books there is."
+    },
+    {
+      "id": "where-the-crawdads-sing",
+      "title": "Where the Crawdads Sing",
+      "author": "Delia Owens",
+      "year": 2018,
+      "pages": 370,
+      "tier": 1,
+      "genres": [
+        "literary",
+        "crime"
+      ],
+      "note": "A coming-of-age story in the marshes with a murder trial woven in; lyrical in places but always clear."
+    },
+    {
+      "id": "eleanor-oliphant-is-completely-fine",
+      "title": "Eleanor Oliphant Is Completely Fine",
+      "author": "Gail Honeyman",
+      "year": 2017,
+      "pages": 390,
+      "tier": 1,
+      "genres": [
+        "literary"
+      ],
+      "note": "A funny, literal-minded narrator whose story turns serious by degrees; plain prose that sneaks up on you."
+    },
+    {
+      "id": "the-seven-husbands-of-evelyn-hugo",
+      "title": "The Seven Husbands of Evelyn Hugo",
+      "author": "Taylor Jenkins Reid",
+      "year": 2017,
+      "pages": 390,
+      "tier": 1,
+      "genres": [
+        "literary"
+      ],
+      "note": "An old film star tells her life in a frame interview; easy, gossipy prose with a structure that keeps you turning pages."
+    },
+    {
+      "id": "of-mice-and-men",
+      "title": "Of Mice and Men",
+      "author": "John Steinbeck",
+      "year": 1937,
+      "pages": 110,
+      "tier": 1,
+      "genres": [
+        "classics"
+      ],
+      "note": "Short, plain and mostly dialogue, like a play on the page; a classic you can finish in an evening."
+    },
+    {
+      "id": "the-outsiders",
+      "title": "The Outsiders",
+      "author": "S. E. Hinton",
+      "year": 1967,
+      "pages": 190,
+      "tier": 1,
+      "genres": [
+        "classics"
+      ],
+      "note": "A teenage narrator tells a story of rival gangs in plain, heartfelt prose; the easiest way into a modern classic."
+    },
+    {
+      "id": "the-alchemist",
+      "title": "The Alchemist",
+      "author": "Paulo Coelho",
+      "year": 1988,
+      "pages": 200,
+      "tier": 1,
+      "genres": [
+        "philosophy",
+        "literary"
+      ],
+      "note": "A simple fable about following a dream, told in short sentences and plain parables."
+    },
+    {
+      "id": "tuesdays-with-morrie",
+      "title": "Tuesdays with Morrie",
+      "author": "Mitch Albom",
+      "year": 1997,
+      "pages": 200,
+      "tier": 1,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Conversations with a dying teacher, one theme a chapter, in very plain prose; philosophy at its most approachable."
+    },
+    {
+      "id": "the-little-prince",
+      "title": "The Little Prince",
+      "author": "Antoine de Saint-Exupéry",
+      "year": 1943,
+      "pages": 100,
+      "tier": 1,
+      "genres": [
+        "classics",
+        "philosophy"
+      ],
+      "note": "A short fable with a child's eye and an adult's sadness; simple words that carry more than they first seem to."
+    },
+    {
       "id": "mistborn-final-empire",
       "title": "Mistborn: The Final Empire",
       "author": "Brandon Sanderson",
@@ -307,6 +624,438 @@
         "nonfiction"
       ],
       "note": "Science from the Big Bang onwards told as funny, human stories; popular science at its most welcoming."
+    },
+    {
+      "id": "the-eye-of-the-world",
+      "title": "The Eye of the World",
+      "author": "Robert Jordan",
+      "year": 1990,
+      "pages": 780,
+      "tier": 2,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Traditional epic fantasy with clear prose and a growing cast; long, but every chapter is easy going."
+    },
+    {
+      "id": "assassins-apprentice",
+      "title": "Assassin's Apprentice",
+      "author": "Robin Hobb",
+      "year": 1995,
+      "pages": 400,
+      "tier": 2,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A slow-burning, character-led first-person story in clean, steady prose; fantasy that rewards caring about people."
+    },
+    {
+      "id": "the-blade-itself",
+      "title": "The Blade Itself",
+      "author": "Joe Abercrombie",
+      "year": 2006,
+      "pages": 520,
+      "tier": 2,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Grim, funny fantasy told through a few sharply drawn points of view; a step up in cast, not in prose."
+    },
+    {
+      "id": "guards-guards",
+      "title": "Guards! Guards!",
+      "author": "Terry Pratchett",
+      "year": 1989,
+      "pages": 400,
+      "tier": 2,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A comic fantasy with footnotes and running jokes; the wit rewards attention but the story is easy to follow."
+    },
+    {
+      "id": "the-song-of-achilles",
+      "title": "The Song of Achilles",
+      "author": "Madeline Miller",
+      "year": 2011,
+      "pages": 380,
+      "tier": 2,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "The Iliad retold as a love story in clear, lyrical first person; a gentle bridge from genre to literary fiction."
+    },
+    {
+      "id": "uprooted",
+      "title": "Uprooted",
+      "author": "Naomi Novik",
+      "year": 2015,
+      "pages": 430,
+      "tier": 2,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A fairy-tale fantasy with a forthright narrator and a dark wood; clear prose with a little more world to hold."
+    },
+    {
+      "id": "the-night-circus",
+      "title": "The Night Circus",
+      "author": "Erin Morgenstern",
+      "year": 2011,
+      "pages": 390,
+      "tier": 2,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "Two magicians' rivalry in short, atmospheric chapters that jump in time; more mood than plot, but never hard."
+    },
+    {
+      "id": "foundation",
+      "title": "Foundation",
+      "author": "Isaac Asimov",
+      "year": 1951,
+      "pages": 250,
+      "tier": 2,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Ideas carried almost entirely by dialogue, across stories that leap decades; plain prose with big concepts."
+    },
+    {
+      "id": "the-long-way-to-a-small-angry-planet",
+      "title": "The Long Way to a Small, Angry Planet",
+      "author": "Becky Chambers",
+      "year": 2014,
+      "pages": 440,
+      "tier": 2,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A warm crew-in-space story more interested in people than plot; easy, kind and quietly thoughtful."
+    },
+    {
+      "id": "fahrenheit-451",
+      "title": "Fahrenheit 451",
+      "author": "Ray Bradbury",
+      "year": 1953,
+      "pages": 160,
+      "tier": 2,
+      "genres": [
+        "sciFi",
+        "classics"
+      ],
+      "note": "Short and vivid, with poetic flourishes around a simple story about burning books; a quick classic."
+    },
+    {
+      "id": "children-of-time",
+      "title": "Children of Time",
+      "author": "Adrian Tchaikovsky",
+      "year": 2015,
+      "pages": 600,
+      "tier": 2,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Alternating human and spider chapters spanning millennia; big ideas in clear prose, with a lot of time to keep track of."
+    },
+    {
+      "id": "leviathan-wakes",
+      "title": "Leviathan Wakes",
+      "author": "James S. A. Corey",
+      "year": 2011,
+      "pages": 580,
+      "tier": 2,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Two alternating narrators in a noir-flavoured space thriller; long but plainly written."
+    },
+    {
+      "id": "do-androids-dream-of-electric-sheep",
+      "title": "Do Androids Dream of Electric Sheep?",
+      "author": "Philip K. Dick",
+      "year": 1968,
+      "pages": 210,
+      "tier": 2,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A short, odd detective story about what makes us human; plain prose with questions that linger."
+    },
+    {
+      "id": "flowers-for-algernon",
+      "title": "Flowers for Algernon",
+      "author": "Daniel Keyes",
+      "year": 1966,
+      "pages": 310,
+      "tier": 2,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "Told in progress reports whose spelling and thought change with the narrator; simple on the surface, devastating underneath."
+    },
+    {
+      "id": "kindred",
+      "title": "Kindred",
+      "author": "Octavia E. Butler",
+      "year": 1979,
+      "pages": 260,
+      "tier": 2,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "A woman pulled back in time to a plantation, told in clean, urgent first person; hard subject, clear prose."
+    },
+    {
+      "id": "the-girl-with-the-dragon-tattoo",
+      "title": "The Girl with the Dragon Tattoo",
+      "author": "Stieg Larsson",
+      "year": 2005,
+      "pages": 540,
+      "tier": 2,
+      "genres": [
+        "crime"
+      ],
+      "note": "A slow-starting Swedish thriller with financial detail and a large family to track; plain prose, more patience."
+    },
+    {
+      "id": "shutter-island",
+      "title": "Shutter Island",
+      "author": "Dennis Lehane",
+      "year": 2003,
+      "pages": 370,
+      "tier": 2,
+      "genres": [
+        "crime"
+      ],
+      "note": "A tight psychological thriller on an asylum island; clear prose with a twist that rewards rereading."
+    },
+    {
+      "id": "the-cuckoos-calling",
+      "title": "The Cuckoo's Calling",
+      "author": "Robert Galbraith",
+      "year": 2013,
+      "pages": 450,
+      "tier": 2,
+      "genres": [
+        "crime"
+      ],
+      "note": "A traditional London detective novel with well-drawn suspects; comfortable prose and a puzzle to follow."
+    },
+    {
+      "id": "the-maltese-falcon",
+      "title": "The Maltese Falcon",
+      "author": "Dashiell Hammett",
+      "year": 1930,
+      "pages": 220,
+      "tier": 2,
+      "genres": [
+        "crime",
+        "classics"
+      ],
+      "note": "Hard-boiled and almost entirely external, told through what people say and do; short and sharp."
+    },
+    {
+      "id": "the-godfather",
+      "title": "The Godfather",
+      "author": "Mario Puzo",
+      "year": 1969,
+      "pages": 450,
+      "tier": 2,
+      "genres": [
+        "crime"
+      ],
+      "note": "A family saga of power and loyalty with a big cast and plain, forceful prose."
+    },
+    {
+      "id": "outliers",
+      "title": "Outliers",
+      "author": "Malcolm Gladwell",
+      "year": 2008,
+      "pages": 300,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "An argument about success built from stories, written for anyone; easy to read and easy to argue with."
+    },
+    {
+      "id": "the-immortal-life-of-henrietta-lacks",
+      "title": "The Immortal Life of Henrietta Lacks",
+      "author": "Rebecca Skloot",
+      "year": 2010,
+      "pages": 380,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Science, ethics and a family's story braided together in clear, personal reporting."
+    },
+    {
+      "id": "being-mortal",
+      "title": "Being Mortal",
+      "author": "Atul Gawande",
+      "year": 2014,
+      "pages": 280,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A surgeon on ageing and dying, built from patients' stories; humane, plain and quietly profound."
+    },
+    {
+      "id": "endurance",
+      "title": "Endurance: Shackleton's Incredible Voyage",
+      "author": "Alfred Lansing",
+      "year": 1959,
+      "pages": 280,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The polar survival story told from diaries in brisk, vivid prose; adventure that reads like a novel."
+    },
+    {
+      "id": "when-breath-becomes-air",
+      "title": "When Breath Becomes Air",
+      "author": "Paul Kalanithi",
+      "year": 2016,
+      "pages": 230,
+      "tier": 2,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "A neurosurgeon's memoir of his own terminal illness; short, lucid and full of questions about meaning."
+    },
+    {
+      "id": "hiroshima",
+      "title": "Hiroshima",
+      "author": "John Hersey",
+      "year": 1946,
+      "pages": 150,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Six survivors' accounts in calm, factual prose that lets the events speak; short and unforgettable."
+    },
+    {
+      "id": "bad-blood",
+      "title": "Bad Blood",
+      "author": "John Carreyrou",
+      "year": 2018,
+      "pages": 340,
+      "tier": 2,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The Theranos fraud reported like a thriller; short chapters and a clear chronology."
+    },
+    {
+      "id": "the-kite-runner",
+      "title": "The Kite Runner",
+      "author": "Khaled Hosseini",
+      "year": 2003,
+      "pages": 370,
+      "tier": 2,
+      "genres": [
+        "literary"
+      ],
+      "note": "A story of friendship and guilt across decades of Afghan history; emotional and plainly told."
+    },
+    {
+      "id": "life-of-pi",
+      "title": "Life of Pi",
+      "author": "Yann Martel",
+      "year": 2001,
+      "pages": 320,
+      "tier": 2,
+      "genres": [
+        "literary",
+        "philosophy"
+      ],
+      "note": "A boy and a tiger in a lifeboat, framed by questions about belief; clear prose with a frame worth noticing."
+    },
+    {
+      "id": "the-book-thief",
+      "title": "The Book Thief",
+      "author": "Markus Zusak",
+      "year": 2005,
+      "pages": 550,
+      "tier": 2,
+      "genres": [
+        "literary"
+      ],
+      "note": "Narrated by Death in short, fragmented sections; a stylised voice but always easy to follow."
+    },
+    {
+      "id": "normal-people",
+      "title": "Normal People",
+      "author": "Sally Rooney",
+      "year": 2018,
+      "pages": 270,
+      "tier": 2,
+      "genres": [
+        "literary"
+      ],
+      "note": "Two young people over four years, in spare prose with unmarked dialogue; simple sentences, a lot unsaid."
+    },
+    {
+      "id": "the-catcher-in-the-rye",
+      "title": "The Catcher in the Rye",
+      "author": "J. D. Salinger",
+      "year": 1951,
+      "pages": 230,
+      "tier": 2,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "A restless teenage voice that digresses and contradicts itself; colloquial and quick to read."
+    },
+    {
+      "id": "the-consolations-of-philosophy",
+      "title": "The Consolations of Philosophy",
+      "author": "Alain de Botton",
+      "year": 2000,
+      "pages": 260,
+      "tier": 2,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "Six philosophers applied to everyday troubles in light, witty prose; an easy way into the big names."
+    },
+    {
+      "id": "the-prophet",
+      "title": "The Prophet",
+      "author": "Kahlil Gibran",
+      "year": 1923,
+      "pages": 100,
+      "tier": 2,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "Short poetic sermons on love, work and death in simple, rhythmic prose; read a few pages at a time."
+    },
+    {
+      "id": "siddhartha",
+      "title": "Siddhartha",
+      "author": "Hermann Hesse",
+      "year": 1922,
+      "pages": 150,
+      "tier": 2,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "A spiritual quest told in calm, repetitive, almost biblical sentences; short and simple on the surface."
     },
     {
       "id": "the-name-of-the-wind",
@@ -444,6 +1193,438 @@
         "nonfiction"
       ],
       "note": "Big claims about history and society in short, provocative chapters; a step from storytelling non-fiction to argument."
+    },
+    {
+      "id": "a-game-of-thrones",
+      "title": "A Game of Thrones",
+      "author": "George R. R. Martin",
+      "year": 1996,
+      "pages": 690,
+      "tier": 3,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A huge cast across rotating points of view and a dense political history; clear prose, a lot to keep in mind."
+    },
+    {
+      "id": "american-gods",
+      "title": "American Gods",
+      "author": "Neil Gaiman",
+      "year": 2001,
+      "pages": 560,
+      "tier": 3,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "A road trip among old gods with interludes and digressions; wry, readable and full of half-hidden mythology."
+    },
+    {
+      "id": "the-way-of-kings",
+      "title": "The Way of Kings",
+      "author": "Brandon Sanderson",
+      "year": 2010,
+      "pages": 1000,
+      "tier": 3,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Very long, with several viewpoints, flashbacks and an invented world's history; never hard prose, but a big commitment."
+    },
+    {
+      "id": "watership-down",
+      "title": "Watership Down",
+      "author": "Richard Adams",
+      "year": 1972,
+      "pages": 480,
+      "tier": 3,
+      "genres": [
+        "fantasy",
+        "classics"
+      ],
+      "note": "Rabbits with their own words, myths and politics; old-fashioned narration that rewards settling in."
+    },
+    {
+      "id": "the-player-of-games",
+      "title": "The Player of Games",
+      "author": "Iain M. Banks",
+      "year": 1988,
+      "pages": 300,
+      "tier": 3,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A gamer sent to play an empire's game; witty, assured prose and an easy entry to the Culture novels."
+    },
+    {
+      "id": "brave-new-world",
+      "title": "Brave New World",
+      "author": "Aldous Huxley",
+      "year": 1932,
+      "pages": 270,
+      "tier": 3,
+      "genres": [
+        "sciFi",
+        "classics"
+      ],
+      "note": "A satirical dystopia with ironic narration and long passages of argument; clear but sharper than it looks."
+    },
+    {
+      "id": "slaughterhouse-five",
+      "title": "Slaughterhouse-Five",
+      "author": "Kurt Vonnegut",
+      "year": 1969,
+      "pages": 210,
+      "tier": 3,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "Short sentences and dark jokes in a story unstuck in time; easy line by line, harder to put together."
+    },
+    {
+      "id": "snow-crash",
+      "title": "Snow Crash",
+      "author": "Neal Stephenson",
+      "year": 1992,
+      "pages": 480,
+      "tier": 3,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Manic satire with long digressions on language and Sumerian myth; fun, fast and occasionally dense."
+    },
+    {
+      "id": "the-handmaids-tale",
+      "title": "The Handmaid's Tale",
+      "author": "Margaret Atwood",
+      "year": 1985,
+      "pages": 310,
+      "tier": 3,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "A restricted first-person voice that withholds and circles back; literary dystopia that rewards attention."
+    },
+    {
+      "id": "roadside-picnic",
+      "title": "Roadside Picnic",
+      "author": "Arkady and Boris Strugatsky",
+      "year": 1972,
+      "pages": 200,
+      "tier": 3,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A gritty, unexplained alien zone seen from the ground; short, strange and plainly told."
+    },
+    {
+      "id": "the-moon-is-a-harsh-mistress",
+      "title": "The Moon Is a Harsh Mistress",
+      "author": "Robert A. Heinlein",
+      "year": 1966,
+      "pages": 380,
+      "tier": 3,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A lunar revolution narrated in a clipped invented dialect that takes a chapter to tune into."
+    },
+    {
+      "id": "rebecca",
+      "title": "Rebecca",
+      "author": "Daphne du Maurier",
+      "year": 1938,
+      "pages": 410,
+      "tier": 3,
+      "genres": [
+        "crime",
+        "classics"
+      ],
+      "note": "Gothic suspense in long, atmospheric sentences from a nameless narrator; slow-building and gripping."
+    },
+    {
+      "id": "in-the-woods",
+      "title": "In the Woods",
+      "author": "Tana French",
+      "year": 2007,
+      "pages": 430,
+      "tier": 3,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "A literary police procedural with a confessional narrator and a case that refuses to close; rich, patient prose."
+    },
+    {
+      "id": "the-daughter-of-time",
+      "title": "The Daughter of Time",
+      "author": "Josephine Tey",
+      "year": 1951,
+      "pages": 200,
+      "tier": 3,
+      "genres": [
+        "crime"
+      ],
+      "note": "A bedridden detective investigates Richard III through books and portraits; a historical argument as a mystery."
+    },
+    {
+      "id": "gorky-park",
+      "title": "Gorky Park",
+      "author": "Martin Cruz Smith",
+      "year": 1981,
+      "pages": 430,
+      "tier": 3,
+      "genres": [
+        "crime"
+      ],
+      "note": "A Moscow murder investigation dense with Soviet detail; clear prose with a world to learn."
+    },
+    {
+      "id": "case-histories",
+      "title": "Case Histories",
+      "author": "Kate Atkinson",
+      "year": 2004,
+      "pages": 310,
+      "tier": 3,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "Three cold cases and a detective, with shifting points of view and wry asides; literary crime that ties up neatly."
+    },
+    {
+      "id": "the-sixth-extinction",
+      "title": "The Sixth Extinction",
+      "author": "Elizabeth Kolbert",
+      "year": 2014,
+      "pages": 320,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Science reporting that travels from frogs to coral reefs; clear and personal, with a sustained argument."
+    },
+    {
+      "id": "homage-to-catalonia",
+      "title": "Homage to Catalonia",
+      "author": "George Orwell",
+      "year": 1938,
+      "pages": 230,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Orwell's plain account of fighting in the Spanish Civil War, with chapters of political detail you can skim."
+    },
+    {
+      "id": "the-right-stuff",
+      "title": "The Right Stuff",
+      "author": "Tom Wolfe",
+      "year": 1979,
+      "pages": 440,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The first astronauts in exuberant New Journalism prose; italics, exclamation marks and a voice all its own."
+    },
+    {
+      "id": "the-year-of-magical-thinking",
+      "title": "The Year of Magical Thinking",
+      "author": "Joan Didion",
+      "year": 2005,
+      "pages": 230,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A precise, circling memoir of grief in which repetition is the point; short but exacting."
+    },
+    {
+      "id": "cosmos",
+      "title": "Cosmos",
+      "author": "Carl Sagan",
+      "year": 1980,
+      "pages": 400,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The universe and the history of science in warm, eloquent prose; a little lyrical, always clear."
+    },
+    {
+      "id": "the-double-helix",
+      "title": "The Double Helix",
+      "author": "James D. Watson",
+      "year": 1968,
+      "pages": 230,
+      "tier": 3,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A gossipy, opinionated first-hand account of discovering DNA's structure; quick to read, worth reading critically."
+    },
+    {
+      "id": "the-righteous-mind",
+      "title": "The Righteous Mind",
+      "author": "Jonathan Haidt",
+      "year": 2012,
+      "pages": 420,
+      "tier": 3,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Moral psychology argued step by step with summaries at every turn; an accessible book of real ideas."
+    },
+    {
+      "id": "stoner",
+      "title": "Stoner",
+      "author": "John Williams",
+      "year": 1965,
+      "pages": 280,
+      "tier": 3,
+      "genres": [
+        "literary"
+      ],
+      "note": "A quiet life told in plain, exact sentences; nothing difficult on the page, a lot beneath it."
+    },
+    {
+      "id": "a-gentleman-in-moscow",
+      "title": "A Gentleman in Moscow",
+      "author": "Amor Towles",
+      "year": 2016,
+      "pages": 460,
+      "tier": 3,
+      "genres": [
+        "literary"
+      ],
+      "note": "A count confined to a hotel for decades, told with elegant wit and footnoted asides; leisurely and charming."
+    },
+    {
+      "id": "the-underground-railroad",
+      "title": "The Underground Railroad",
+      "author": "Colson Whitehead",
+      "year": 2016,
+      "pages": 310,
+      "tier": 3,
+      "genres": [
+        "literary"
+      ],
+      "note": "A literal railroad under the antebellum South, in controlled, matter-of-fact prose; stark rather than difficult."
+    },
+    {
+      "id": "pachinko",
+      "title": "Pachinko",
+      "author": "Min Jin Lee",
+      "year": 2017,
+      "pages": 490,
+      "tier": 3,
+      "genres": [
+        "literary"
+      ],
+      "note": "A Korean family across four generations in Japan; clear prose with a long span and a wide cast."
+    },
+    {
+      "id": "the-bell-jar",
+      "title": "The Bell Jar",
+      "author": "Sylvia Plath",
+      "year": 1963,
+      "pages": 240,
+      "tier": 3,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "A sharp, darkly funny first-person account of a breakdown; vivid and readable, with imagery worth noticing."
+    },
+    {
+      "id": "things-fall-apart",
+      "title": "Things Fall Apart",
+      "author": "Chinua Achebe",
+      "year": 1958,
+      "pages": 210,
+      "tier": 3,
+      "genres": [
+        "classics"
+      ],
+      "note": "Plain, proverb-rich prose about an Igbo village before and after colonisation; short and structurally deceptive."
+    },
+    {
+      "id": "lord-of-the-flies",
+      "title": "Lord of the Flies",
+      "author": "William Golding",
+      "year": 1954,
+      "pages": 220,
+      "tier": 3,
+      "genres": [
+        "classics"
+      ],
+      "note": "Boys stranded on an island; the descriptive passages and symbolism ask more than the simple plot suggests."
+    },
+    {
+      "id": "the-color-purple",
+      "title": "The Color Purple",
+      "author": "Alice Walker",
+      "year": 1982,
+      "pages": 290,
+      "tier": 3,
+      "genres": [
+        "literary"
+      ],
+      "note": "Letters in a vernacular voice that grows in confidence across the book; the dialect takes a few pages to settle into."
+    },
+    {
+      "id": "the-art-of-war",
+      "title": "The Art of War",
+      "author": "Sun Tzu",
+      "year": -500,
+      "pages": 100,
+      "tier": 3,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "Short numbered maxims on strategy, best read slowly in a good translation; tiny but layered."
+    },
+    {
+      "id": "how-to-live",
+      "title": "How to Live: A Life of Montaigne",
+      "author": "Sarah Bakewell",
+      "year": 2010,
+      "pages": 390,
+      "tier": 3,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "A biography of Montaigne organised as twenty answers to how to live; light, clear and full of quotation."
+    },
+    {
+      "id": "justice",
+      "title": "Justice: What's the Right Thing to Do?",
+      "author": "Michael J. Sandel",
+      "year": 2009,
+      "pages": 310,
+      "tier": 3,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Moral philosophy through real cases and lecture-hall clarity; the best first book of political philosophy."
+    },
+    {
+      "id": "mere-christianity",
+      "title": "Mere Christianity",
+      "author": "C. S. Lewis",
+      "year": 1952,
+      "pages": 230,
+      "tier": 3,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Radio talks turned into a sustained argument; plain conversational prose with a clear structure."
     },
     {
       "id": "a-wizard-of-earthsea",
@@ -607,6 +1788,504 @@
       "note": "One large argument about why history unfolded as it did, built patiently from evidence; longer-form reasoning than narrative non-fiction."
     },
     {
+      "id": "the-goblin-emperor",
+      "title": "The Goblin Emperor",
+      "author": "Katherine Addison",
+      "year": 2014,
+      "pages": 450,
+      "tier": 4,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Court intrigue with formal address, invented names and a glossary; gentle plot, demanding register."
+    },
+    {
+      "id": "gideon-the-ninth",
+      "title": "Gideon the Ninth",
+      "author": "Tamsyn Muir",
+      "year": 2019,
+      "pages": 450,
+      "tier": 4,
+      "genres": [
+        "fantasy",
+        "sciFi"
+      ],
+      "note": "Necromancers in a gothic space palace, told in dense, jokey, allusive prose; lots of names and little explanation."
+    },
+    {
+      "id": "the-last-unicorn",
+      "title": "The Last Unicorn",
+      "author": "Peter S. Beagle",
+      "year": 1968,
+      "pages": 250,
+      "tier": 4,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "A lyrical, melancholy fairy tale whose sentences reward reading aloud; short but rich."
+    },
+    {
+      "id": "the-once-and-future-king",
+      "title": "The Once and Future King",
+      "author": "T. H. White",
+      "year": 1958,
+      "pages": 640,
+      "tier": 4,
+      "genres": [
+        "fantasy",
+        "classics"
+      ],
+      "note": "Arthurian legend retold with whimsy, anachronism and long reflective digressions that darken as it goes."
+    },
+    {
+      "id": "tigana",
+      "title": "Tigana",
+      "author": "Guy Gavriel Kay",
+      "year": 1990,
+      "pages": 670,
+      "tier": 4,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Lyrical historical fantasy with a large cast and slow, layered reveals; richer prose than most of the genre."
+    },
+    {
+      "id": "babel",
+      "title": "Babel",
+      "author": "R. F. Kuang",
+      "year": 2022,
+      "pages": 540,
+      "tier": 4,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "Translation as magic in 1830s Oxford, with footnotes, etymologies and a sustained argument about empire."
+    },
+    {
+      "id": "hyperion",
+      "title": "Hyperion",
+      "author": "Dan Simmons",
+      "year": 1989,
+      "pages": 480,
+      "tier": 4,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Six pilgrims' tales, each in a different style and genre; a frame narrative to hold together."
+    },
+    {
+      "id": "the-three-body-problem",
+      "title": "The Three-Body Problem",
+      "author": "Cixin Liu",
+      "year": 2008,
+      "pages": 400,
+      "tier": 4,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Hard science, Chinese history and long technical explanations; ideas first, characters second."
+    },
+    {
+      "id": "a-canticle-for-leibowitz",
+      "title": "A Canticle for Leibowitz",
+      "author": "Walter M. Miller Jr.",
+      "year": 1959,
+      "pages": 330,
+      "tier": 4,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Monks preserving science across centuries after a nuclear war; Latin, irony and three linked parts."
+    },
+    {
+      "id": "ancillary-justice",
+      "title": "Ancillary Justice",
+      "author": "Ann Leckie",
+      "year": 2013,
+      "pages": 390,
+      "tier": 4,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A ship's AI in a single body narrates two interleaved timelines, gendering everyone as “she”; disorienting at first."
+    },
+    {
+      "id": "exhalation",
+      "title": "Exhalation",
+      "author": "Ted Chiang",
+      "year": 2019,
+      "pages": 350,
+      "tier": 4,
+      "genres": [
+        "sciFi",
+        "philosophy"
+      ],
+      "note": "Precise, idea-dense stories about free will, time and memory; each one a thought experiment carefully built."
+    },
+    {
+      "id": "solaris",
+      "title": "Solaris",
+      "author": "Stanisław Lem",
+      "year": 1961,
+      "pages": 210,
+      "tier": 4,
+      "genres": [
+        "sciFi",
+        "philosophy"
+      ],
+      "note": "A planet-sized ocean defies understanding; long passages of invented science and philosophy around a ghost story."
+    },
+    {
+      "id": "a-fire-upon-the-deep",
+      "title": "A Fire Upon the Deep",
+      "author": "Vernor Vinge",
+      "year": 1992,
+      "pages": 610,
+      "tier": 4,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Vast space opera with alien minds communicating in fragments; big concepts and a lot of world."
+    },
+    {
+      "id": "the-spy-who-came-in-from-the-cold",
+      "title": "The Spy Who Came in from the Cold",
+      "author": "John le Carré",
+      "year": 1963,
+      "pages": 230,
+      "tier": 4,
+      "genres": [
+        "crime"
+      ],
+      "note": "Short and bleak, with much left unexplained; the easiest le Carré and a step towards Tinker Tailor."
+    },
+    {
+      "id": "gaudy-night",
+      "title": "Gaudy Night",
+      "author": "Dorothy L. Sayers",
+      "year": 1935,
+      "pages": 500,
+      "tier": 4,
+      "genres": [
+        "crime"
+      ],
+      "note": "An Oxford college mystery full of literary quotation and long conversations about work and love."
+    },
+    {
+      "id": "brighton-rock",
+      "title": "Brighton Rock",
+      "author": "Graham Greene",
+      "year": 1938,
+      "pages": 250,
+      "tier": 4,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "A teenage gangster and a question of damnation; taut, seedy and morally serious."
+    },
+    {
+      "id": "fingersmith",
+      "title": "Fingersmith",
+      "author": "Sarah Waters",
+      "year": 2002,
+      "pages": 540,
+      "tier": 4,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "A Victorian con told twice from two narrators; long, twisting and written in convincing period voice."
+    },
+    {
+      "id": "the-black-dahlia",
+      "title": "The Black Dahlia",
+      "author": "James Ellroy",
+      "year": 1987,
+      "pages": 330,
+      "tier": 4,
+      "genres": [
+        "crime"
+      ],
+      "note": "A clipped, slang-heavy noir narrator obsessed with a real murder; fast but often elliptical."
+    },
+    {
+      "id": "the-pledge",
+      "title": "The Pledge",
+      "author": "Friedrich Dürrenmatt",
+      "year": 1958,
+      "pages": 170,
+      "tier": 4,
+      "genres": [
+        "crime",
+        "philosophy"
+      ],
+      "note": "A short anti-detective novel about chance defeating reason; plain prose, unsettling argument."
+    },
+    {
+      "id": "the-emperor-of-all-maladies",
+      "title": "The Emperor of All Maladies",
+      "author": "Siddhartha Mukherjee",
+      "year": 2010,
+      "pages": 570,
+      "tier": 4,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A history of cancer combining medicine, biography and science; long, clear and sometimes technical."
+    },
+    {
+      "id": "the-selfish-gene",
+      "title": "The Selfish Gene",
+      "author": "Richard Dawkins",
+      "year": 1976,
+      "pages": 360,
+      "tier": 4,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A sustained argument about evolution from the gene's point of view; lucid, but you must follow each step."
+    },
+    {
+      "id": "a-brief-history-of-time",
+      "title": "A Brief History of Time",
+      "author": "Stephen Hawking",
+      "year": 1988,
+      "pages": 210,
+      "tier": 4,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Cosmology without equations, still asking you to hold strange ideas in your head; short but demanding."
+    },
+    {
+      "id": "silent-spring",
+      "title": "Silent Spring",
+      "author": "Rachel Carson",
+      "year": 1962,
+      "pages": 380,
+      "tier": 4,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The case against pesticides, built carefully from evidence in clear, often beautiful prose."
+    },
+    {
+      "id": "the-guns-of-august",
+      "title": "The Guns of August",
+      "author": "Barbara W. Tuchman",
+      "year": 1962,
+      "pages": 510,
+      "tier": 4,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The first month of the First World War in elegant, ironic narrative history; many names and fronts to follow."
+    },
+    {
+      "id": "the-fire-next-time",
+      "title": "The Fire Next Time",
+      "author": "James Baldwin",
+      "year": 1963,
+      "pages": 110,
+      "tier": 4,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Two letters on race and religion in long, rhythmic, fiercely argued sentences."
+    },
+    {
+      "id": "the-goldfinch",
+      "title": "The Goldfinch",
+      "author": "Donna Tartt",
+      "year": 2013,
+      "pages": 770,
+      "tier": 4,
+      "genres": [
+        "literary"
+      ],
+      "note": "A long, immersive coming-of-age story with detailed description and slow stretches; Dickensian in scale."
+    },
+    {
+      "id": "a-little-life",
+      "title": "A Little Life",
+      "author": "Hanya Yanagihara",
+      "year": 2015,
+      "pages": 720,
+      "tier": 4,
+      "genres": [
+        "literary"
+      ],
+      "note": "Four friends over decades, increasingly focused on one man's trauma; long, intense and emotionally demanding."
+    },
+    {
+      "id": "their-eyes-were-watching-god",
+      "title": "Their Eyes Were Watching God",
+      "author": "Zora Neale Hurston",
+      "year": 1937,
+      "pages": 220,
+      "tier": 4,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Lyrical narration and dialogue in Southern Black dialect; tune your ear and it sings."
+    },
+    {
+      "id": "catch-22",
+      "title": "Catch-22",
+      "author": "Joseph Heller",
+      "year": 1961,
+      "pages": 450,
+      "tier": 4,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Circular logic, a huge cast and a scrambled timeline; very funny, and harder to hold together than it seems."
+    },
+    {
+      "id": "the-grapes-of-wrath",
+      "title": "The Grapes of Wrath",
+      "author": "John Steinbeck",
+      "year": 1939,
+      "pages": 460,
+      "tier": 4,
+      "genres": [
+        "classics"
+      ],
+      "note": "A family's journey alternating with broad lyrical interchapters; plain dialogue, ambitious structure."
+    },
+    {
+      "id": "brideshead-revisited",
+      "title": "Brideshead Revisited",
+      "author": "Evelyn Waugh",
+      "year": 1945,
+      "pages": 350,
+      "tier": 4,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Lush, nostalgic first-person prose about a Catholic family; long sentences and a slow, elegiac pace."
+    },
+    {
+      "id": "the-unbearable-lightness-of-being",
+      "title": "The Unbearable Lightness of Being",
+      "author": "Milan Kundera",
+      "year": 1984,
+      "pages": 310,
+      "tier": 4,
+      "genres": [
+        "literary",
+        "philosophy"
+      ],
+      "note": "A love story interrupted by the author's philosophical essays; short chapters, big ideas."
+    },
+    {
+      "id": "disgrace",
+      "title": "Disgrace",
+      "author": "J. M. Coetzee",
+      "year": 1999,
+      "pages": 220,
+      "tier": 4,
+      "genres": [
+        "literary"
+      ],
+      "note": "Spare, cold prose about a professor's fall in post-apartheid South Africa; easy sentences, uneasy meaning."
+    },
+    {
+      "id": "gilead",
+      "title": "Gilead",
+      "author": "Marilynne Robinson",
+      "year": 2004,
+      "pages": 250,
+      "tier": 4,
+      "genres": [
+        "literary",
+        "philosophy"
+      ],
+      "note": "A dying minister's letter to his son: slow, meditative and theological, with almost no plot."
+    },
+    {
+      "id": "white-teeth",
+      "title": "White Teeth",
+      "author": "Zadie Smith",
+      "year": 2000,
+      "pages": 450,
+      "tier": 4,
+      "genres": [
+        "literary"
+      ],
+      "note": "Two London families across generations in exuberant, digressive, funny prose with a big cast."
+    },
+    {
+      "id": "candide",
+      "title": "Candide",
+      "author": "Voltaire",
+      "year": 1759,
+      "pages": 130,
+      "tier": 4,
+      "genres": [
+        "classics",
+        "philosophy"
+      ],
+      "note": "A breakneck satire of optimism; short and funny, with eighteenth-century irony to tune into."
+    },
+    {
+      "id": "letters-from-a-stoic",
+      "title": "Letters from a Stoic",
+      "author": "Seneca",
+      "year": 65,
+      "pages": 250,
+      "tier": 4,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "Short letters of practical advice, the next step after Marcus Aurelius; best in a modern translation."
+    },
+    {
+      "id": "the-story-of-philosophy",
+      "title": "The Story of Philosophy",
+      "author": "Will Durant",
+      "year": 1926,
+      "pages": 580,
+      "tier": 4,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "The great philosophers through lives and ideas in confident, quotable prose; a long but friendly survey."
+    },
+    {
+      "id": "tao-te-ching",
+      "title": "Tao Te Ching",
+      "author": "Laozi",
+      "year": -400,
+      "pages": 90,
+      "tier": 4,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "Eighty-one short poems of paradox; minutes to read, a lifetime to understand."
+    },
+    {
+      "id": "the-art-of-loving",
+      "title": "The Art of Loving",
+      "author": "Erich Fromm",
+      "year": 1956,
+      "pages": 130,
+      "tier": 4,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A short, clear argument that love is a skill to practise; psychology and philosophy for general readers."
+    },
+    {
       "id": "the-left-hand-of-darkness",
       "title": "The Left Hand of Darkness",
       "author": "Ursula K. Le Guin",
@@ -755,6 +2434,329 @@
         "nonfiction"
       ],
       "note": "A road-trip memoir that turns into an extended philosophical argument; a bridge from narrative into sustained abstract thinking."
+    },
+    {
+      "id": "the-bloody-chamber",
+      "title": "The Bloody Chamber",
+      "author": "Angela Carter",
+      "year": 1979,
+      "pages": 130,
+      "tier": 5,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "Fairy tales retold in ornate, sensual prose crowded with rare words; short but rich."
+    },
+    {
+      "id": "lud-in-the-mist",
+      "title": "Lud-in-the-Mist",
+      "author": "Hope Mirrlees",
+      "year": 1926,
+      "pages": 270,
+      "tier": 5,
+      "genres": [
+        "fantasy",
+        "classics"
+      ],
+      "note": "A town that bans fairy fruit, told in arch, allusive 1920s prose; a forgotten classic of literary fantasy."
+    },
+    {
+      "id": "the-king-of-elflands-daughter",
+      "title": "The King of Elfland's Daughter",
+      "author": "Lord Dunsany",
+      "year": 1924,
+      "pages": 240,
+      "tier": 5,
+      "genres": [
+        "fantasy",
+        "classics"
+      ],
+      "note": "Incantatory, archaic prose that moves like a song; slow, strange and beautiful."
+    },
+    {
+      "id": "the-dying-earth",
+      "title": "The Dying Earth",
+      "author": "Jack Vance",
+      "year": 1950,
+      "pages": 160,
+      "tier": 5,
+      "genres": [
+        "fantasy",
+        "sciFi"
+      ],
+      "note": "A far-future world in baroque, archaic vocabulary and ironic dialogue; short stories, ornate sentences."
+    },
+    {
+      "id": "we",
+      "title": "We",
+      "author": "Yevgeny Zamyatin",
+      "year": 1924,
+      "pages": 230,
+      "tier": 5,
+      "genres": [
+        "sciFi",
+        "classics"
+      ],
+      "note": "The first great dystopia, written as a fractured mathematical diary; elliptical and dense with images."
+    },
+    {
+      "id": "a-clockwork-orange",
+      "title": "A Clockwork Orange",
+      "author": "Anthony Burgess",
+      "year": 1962,
+      "pages": 210,
+      "tier": 5,
+      "genres": [
+        "sciFi",
+        "classics"
+      ],
+      "note": "Narrated in an invented Russian-English slang you learn as you read; the language is the difficulty."
+    },
+    {
+      "id": "lord-of-light",
+      "title": "Lord of Light",
+      "author": "Roger Zelazny",
+      "year": 1967,
+      "pages": 300,
+      "tier": 5,
+      "genres": [
+        "sciFi",
+        "fantasy"
+      ],
+      "note": "Colonists playing Hindu gods, told out of order in a high mythic style; rewarding once it clicks."
+    },
+    {
+      "id": "babel-17",
+      "title": "Babel-17",
+      "author": "Samuel R. Delany",
+      "year": 1966,
+      "pages": 190,
+      "tier": 5,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A poet decodes a language that changes how its speakers think; short and dense with ideas about language."
+    },
+    {
+      "id": "use-of-weapons",
+      "title": "Use of Weapons",
+      "author": "Iain M. Banks",
+      "year": 1990,
+      "pages": 410,
+      "tier": 5,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Two timelines, one running backwards, converge on a devastating reveal; demanding structure, fluent prose."
+    },
+    {
+      "id": "the-making-of-the-atomic-bomb",
+      "title": "The Making of the Atomic Bomb",
+      "author": "Richard Rhodes",
+      "year": 1986,
+      "pages": 890,
+      "tier": 5,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The physics and the people from the atom to Hiroshima; long, detailed and sometimes technical."
+    },
+    {
+      "id": "the-better-angels-of-our-nature",
+      "title": "The Better Angels of Our Nature",
+      "author": "Steven Pinker",
+      "year": 2011,
+      "pages": 800,
+      "tier": 5,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A very long argument that violence has declined, with charts and data at every step."
+    },
+    {
+      "id": "the-elegant-universe",
+      "title": "The Elegant Universe",
+      "author": "Brian Greene",
+      "year": 1999,
+      "pages": 450,
+      "tier": 5,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "String theory explained with analogies; clear prose, very hard ideas, best taken a chapter at a time."
+    },
+    {
+      "id": "the-rise-and-fall-of-the-third-reich",
+      "title": "The Rise and Fall of the Third Reich",
+      "author": "William L. Shirer",
+      "year": 1960,
+      "pages": 1250,
+      "tier": 5,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A reporter's monumental history; plain prose, but its length and detail ask for real stamina."
+    },
+    {
+      "id": "ways-of-seeing",
+      "title": "Ways of Seeing",
+      "author": "John Berger",
+      "year": 1972,
+      "pages": 160,
+      "tier": 5,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Short essays, some only pictures, on how art and advertising shape seeing; compact theory made readable."
+    },
+    {
+      "id": "the-mismeasure-of-man",
+      "title": "The Mismeasure of Man",
+      "author": "Stephen Jay Gould",
+      "year": 1981,
+      "pages": 350,
+      "tier": 5,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "A critique of intelligence measurement through historical case studies; careful argument with statistics."
+    },
+    {
+      "id": "the-god-of-small-things",
+      "title": "The God of Small Things",
+      "author": "Arundhati Roy",
+      "year": 1997,
+      "pages": 340,
+      "tier": 5,
+      "genres": [
+        "literary"
+      ],
+      "note": "A family tragedy told out of order, with invented words, capitalised phrases and a child's logic."
+    },
+    {
+      "id": "a-passage-to-india",
+      "title": "A Passage to India",
+      "author": "E. M. Forster",
+      "year": 1924,
+      "pages": 360,
+      "tier": 5,
+      "genres": [
+        "classics"
+      ],
+      "note": "A misunderstanding in colonial India, with ironic narration and a famous ambiguity at its centre."
+    },
+    {
+      "id": "the-age-of-innocence",
+      "title": "The Age of Innocence",
+      "author": "Edith Wharton",
+      "year": 1920,
+      "pages": 360,
+      "tier": 5,
+      "genres": [
+        "classics"
+      ],
+      "note": "Old New York society in elegant, ironic prose where everything important is unspoken."
+    },
+    {
+      "id": "the-sea-the-sea",
+      "title": "The Sea, the Sea",
+      "author": "Iris Murdoch",
+      "year": 1978,
+      "pages": 500,
+      "tier": 5,
+      "genres": [
+        "literary"
+      ],
+      "note": "A self-deluding theatre director's memoir by the sea; long, digressive and slyly comic."
+    },
+    {
+      "id": "the-blind-assassin",
+      "title": "The Blind Assassin",
+      "author": "Margaret Atwood",
+      "year": 2000,
+      "pages": 520,
+      "tier": 5,
+      "genres": [
+        "literary"
+      ],
+      "note": "A novel within a novel within a memoir, with newspaper clippings between; layers to keep straight."
+    },
+    {
+      "id": "invisible-man",
+      "title": "Invisible Man",
+      "author": "Ralph Ellison",
+      "year": 1952,
+      "pages": 580,
+      "tier": 5,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "A nameless narrator's journey through American racism in shifting styles, from realism to surreal set pieces."
+    },
+    {
+      "id": "the-leopard",
+      "title": "The Leopard",
+      "author": "Giuseppe Tomasi di Lampedusa",
+      "year": 1958,
+      "pages": 320,
+      "tier": 5,
+      "genres": [
+        "classics"
+      ],
+      "note": "A Sicilian prince watches his world end, in rich, ironic, leisurely prose."
+    },
+    {
+      "id": "wide-sargasso-sea",
+      "title": "Wide Sargasso Sea",
+      "author": "Jean Rhys",
+      "year": 1966,
+      "pages": 180,
+      "tier": 5,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "The first Mrs Rochester's story in fragmented, dreamlike narration; short but oblique."
+    },
+    {
+      "id": "song-of-solomon",
+      "title": "Song of Solomon",
+      "author": "Toni Morrison",
+      "year": 1977,
+      "pages": 340,
+      "tier": 5,
+      "genres": [
+        "literary"
+      ],
+      "note": "A family saga with myth, flight and a large cast; rich, rhythmic prose and a story you piece together."
+    },
+    {
+      "id": "existentialism-is-a-humanism",
+      "title": "Existentialism Is a Humanism",
+      "author": "Jean-Paul Sartre",
+      "year": 1946,
+      "pages": 80,
+      "tier": 5,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Sartre's own short lecture defending existentialism; the clearest door into a difficult tradition."
+    },
+    {
+      "id": "the-denial-of-death",
+      "title": "The Denial of Death",
+      "author": "Ernest Becker",
+      "year": 1973,
+      "pages": 310,
+      "tier": 5,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "A sweeping argument that fear of death drives culture, drawing heavily on psychoanalysis."
     },
     {
       "id": "jonathan-strange-and-mr-norrell",
@@ -922,6 +2924,265 @@
       "note": "A short academic argument about how science really changes; the step from popular science to the philosophy of science."
     },
     {
+      "id": "the-silmarillion",
+      "title": "The Silmarillion",
+      "author": "J. R. R. Tolkien",
+      "year": 1977,
+      "pages": 360,
+      "tier": 6,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "Mythic history in archaic, biblical prose with hundreds of names; read with the index open."
+    },
+    {
+      "id": "anathem",
+      "title": "Anathem",
+      "author": "Neal Stephenson",
+      "year": 2008,
+      "pages": 930,
+      "tier": 6,
+      "genres": [
+        "sciFi",
+        "philosophy"
+      ],
+      "note": "Monastic scientists in an invented vocabulary with a glossary and long philosophical dialogues."
+    },
+    {
+      "id": "stand-on-zanzibar",
+      "title": "Stand on Zanzibar",
+      "author": "John Brunner",
+      "year": 1968,
+      "pages": 650,
+      "tier": 6,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A collage of fragments, adverts and storylines in the style of Dos Passos; you assemble the world yourself."
+    },
+    {
+      "id": "the-female-man",
+      "title": "The Female Man",
+      "author": "Joanna Russ",
+      "year": 1975,
+      "pages": 210,
+      "tier": 6,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "Four women from four worlds in fragmented, shifting narration; angry, funny and deliberately disorienting."
+    },
+    {
+      "id": "accelerando",
+      "title": "Accelerando",
+      "author": "Charles Stross",
+      "year": 2005,
+      "pages": 400,
+      "tier": 6,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Three generations through the singularity in jargon-dense prose that never slows down to explain."
+    },
+    {
+      "id": "the-quantum-thief",
+      "title": "The Quantum Thief",
+      "author": "Hannu Rajaniemi",
+      "year": 2010,
+      "pages": 330,
+      "tier": 6,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "A heist on Mars thrown at you with invented terms and no exposition; you learn by context or not at all."
+    },
+    {
+      "id": "an-instance-of-the-fingerpost",
+      "title": "An Instance of the Fingerpost",
+      "author": "Iain Pears",
+      "year": 1997,
+      "pages": 690,
+      "tier": 6,
+      "genres": [
+        "crime"
+      ],
+      "note": "One death told by four unreliable seventeenth-century narrators in period voices; long and intricate."
+    },
+    {
+      "id": "my-name-is-red",
+      "title": "My Name Is Red",
+      "author": "Orhan Pamuk",
+      "year": 1998,
+      "pages": 420,
+      "tier": 6,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "A murder among Ottoman miniaturists, narrated by many voices including a corpse and a colour; slow and dense."
+    },
+    {
+      "id": "eichmann-in-jerusalem",
+      "title": "Eichmann in Jerusalem",
+      "author": "Hannah Arendt",
+      "year": 1963,
+      "pages": 310,
+      "tier": 6,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Trial reporting that becomes an argument about the banality of evil; dense with history and fine distinctions."
+    },
+    {
+      "id": "the-gulag-archipelago",
+      "title": "The Gulag Archipelago",
+      "author": "Aleksandr Solzhenitsyn",
+      "year": 1973,
+      "pages": 660,
+      "tier": 6,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "The Soviet camp system in sardonic, documentary prose; even abridged, long and harrowing."
+    },
+    {
+      "id": "godels-proof",
+      "title": "Gödel's Proof",
+      "author": "Ernest Nagel and James R. Newman",
+      "year": 1958,
+      "pages": 130,
+      "tier": 6,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "The incompleteness theorem explained for non-specialists; short, but every page asks for concentration."
+    },
+    {
+      "id": "possession",
+      "title": "Possession",
+      "author": "A. S. Byatt",
+      "year": 1990,
+      "pages": 550,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "Two scholars trace Victorian poets through invented letters, poems and journals; pastiche in many registers."
+    },
+    {
+      "id": "lolita",
+      "title": "Lolita",
+      "author": "Vladimir Nabokov",
+      "year": 1955,
+      "pages": 320,
+      "tier": 6,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Dazzling, allusive wordplay from a monstrous, unreliable narrator; the style is a trap you're meant to see through."
+    },
+    {
+      "id": "the-english-patient",
+      "title": "The English Patient",
+      "author": "Michael Ondaatje",
+      "year": 1992,
+      "pages": 300,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "Fragmented, poetic memories in an Italian villa at the end of the war; the story emerges in pieces."
+    },
+    {
+      "id": "wolf-hall",
+      "title": "Wolf Hall",
+      "author": "Hilary Mantel",
+      "year": 2009,
+      "pages": 650,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "Thomas Cromwell in a close present tense where “he” is always him; a huge cast and much left implied."
+    },
+    {
+      "id": "midnights-children",
+      "title": "Midnight's Children",
+      "author": "Salman Rushdie",
+      "year": 1981,
+      "pages": 530,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "A digressive, punning, magical narrator tells India's history through his own; exuberant and overwhelming."
+    },
+    {
+      "id": "if-on-a-winters-night-a-traveler",
+      "title": "If on a Winter's Night a Traveler",
+      "author": "Italo Calvino",
+      "year": 1979,
+      "pages": 260,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "A novel about reading that keeps beginning other novels; playful, but you must keep the structure in mind."
+    },
+    {
+      "id": "the-golden-notebook",
+      "title": "The Golden Notebook",
+      "author": "Doris Lessing",
+      "year": 1962,
+      "pages": 640,
+      "tier": 6,
+      "genres": [
+        "literary"
+      ],
+      "note": "A writer's life split across four coloured notebooks and a framing novel; long and formally ambitious."
+    },
+    {
+      "id": "notes-from-underground",
+      "title": "Notes from Underground",
+      "author": "Fyodor Dostoevsky",
+      "year": 1864,
+      "pages": 130,
+      "tier": 6,
+      "genres": [
+        "classics",
+        "philosophy"
+      ],
+      "note": "A spiteful, self-contradicting narrator argues against reason itself; short and exhausting by design."
+    },
+    {
+      "id": "the-myth-of-sisyphus",
+      "title": "The Myth of Sisyphus",
+      "author": "Albert Camus",
+      "year": 1942,
+      "pages": 200,
+      "tier": 6,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "The essay on the absurd behind The Stranger; lyrical but compressed, with arguments to follow closely."
+    },
+    {
+      "id": "the-courage-to-be",
+      "title": "The Courage to Be",
+      "author": "Paul Tillich",
+      "year": 1952,
+      "pages": 190,
+      "tier": 6,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Anxiety, meaninglessness and faith analysed in abstract theological language; short but dense."
+    },
+    {
       "id": "perdido-street-station",
       "title": "Perdido Street Station",
       "author": "China Miéville",
@@ -1071,6 +3332,232 @@
       "note": "A long, careful Victorian argument built from observation; primary-source science rather than popularisation."
     },
     {
+      "id": "viriconium",
+      "title": "Viriconium",
+      "author": "M. John Harrison",
+      "year": 1982,
+      "pages": 400,
+      "tier": 7,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "A city that changes from story to story, in precise, decadent prose that refuses fantasy's comforts."
+    },
+    {
+      "id": "the-fifth-head-of-cerberus",
+      "title": "The Fifth Head of Cerberus",
+      "author": "Gene Wolfe",
+      "year": 1972,
+      "pages": 250,
+      "tier": 7,
+      "genres": [
+        "sciFi"
+      ],
+      "note": "Three linked novellas about identity and colonisation, full of unreliable narrators and clues easily missed."
+    },
+    {
+      "id": "last-and-first-men",
+      "title": "Last and First Men",
+      "author": "Olaf Stapledon",
+      "year": 1930,
+      "pages": 300,
+      "tier": 7,
+      "genres": [
+        "sciFi",
+        "philosophy"
+      ],
+      "note": "Two billion years of human history told as a philosophical chronicle, with almost no characters."
+    },
+    {
+      "id": "as-i-lay-dying",
+      "title": "As I Lay Dying",
+      "author": "William Faulkner",
+      "year": 1930,
+      "pages": 260,
+      "tier": 7,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Fifteen narrators in short monologues, some in stream of consciousness; the gentlest way into Faulkner."
+    },
+    {
+      "id": "the-crying-of-lot-49",
+      "title": "The Crying of Lot 49",
+      "author": "Thomas Pynchon",
+      "year": 1966,
+      "pages": 150,
+      "tier": 7,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "A short paranoid quest through puns, conspiracies and a secret postal system; the way into Pynchon."
+    },
+    {
+      "id": "hawksmoor",
+      "title": "Hawksmoor",
+      "author": "Peter Ackroyd",
+      "year": 1985,
+      "pages": 220,
+      "tier": 7,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "Alternating chapters in eighteenth-century English and a modern investigation that echo each other uncannily."
+    },
+    {
+      "id": "seeing-like-a-state",
+      "title": "Seeing Like a State",
+      "author": "James C. Scott",
+      "year": 1998,
+      "pages": 450,
+      "tier": 7,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "An academic argument about why grand state schemes fail, built from forestry to city planning."
+    },
+    {
+      "id": "the-second-sex",
+      "title": "The Second Sex",
+      "author": "Simone de Beauvoir",
+      "year": 1949,
+      "pages": 800,
+      "tier": 7,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "A vast philosophical study of womanhood drawing on biology, history and existentialism."
+    },
+    {
+      "id": "the-making-of-the-english-working-class",
+      "title": "The Making of the English Working Class",
+      "author": "E. P. Thompson",
+      "year": 1963,
+      "pages": 850,
+      "tier": 7,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Dense, passionate social history full of primary sources; long and scholarly."
+    },
+    {
+      "id": "the-interpretation-of-cultures",
+      "title": "The Interpretation of Cultures",
+      "author": "Clifford Geertz",
+      "year": 1973,
+      "pages": 470,
+      "tier": 7,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Anthropological essays in elaborate, allusive academic prose; “thick description” in action."
+    },
+    {
+      "id": "the-magic-mountain",
+      "title": "The Magic Mountain",
+      "author": "Thomas Mann",
+      "year": 1924,
+      "pages": 720,
+      "tier": 7,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "A sanatorium novel of ideas with long debates on time, disease and politics; slow, ironic and vast."
+    },
+    {
+      "id": "the-tin-drum",
+      "title": "The Tin Drum",
+      "author": "Günter Grass",
+      "year": 1959,
+      "pages": 560,
+      "tier": 7,
+      "genres": [
+        "literary"
+      ],
+      "note": "A grotesque, unreliable dwarf narrates Danzig's history in dense, inventive, darkly comic prose."
+    },
+    {
+      "id": "lanark",
+      "title": "Lanark",
+      "author": "Alasdair Gray",
+      "year": 1981,
+      "pages": 560,
+      "tier": 7,
+      "genres": [
+        "literary",
+        "fantasy"
+      ],
+      "note": "A realist novel inside a fantastical one, with an epilogue that argues with its own author."
+    },
+    {
+      "id": "a-brief-history-of-seven-killings",
+      "title": "A Brief History of Seven Killings",
+      "author": "Marlon James",
+      "year": 2014,
+      "pages": 690,
+      "tier": 7,
+      "genres": [
+        "literary",
+        "crime"
+      ],
+      "note": "A dozen voices in Jamaican patois and American slang circle an attempt on Bob Marley's life."
+    },
+    {
+      "id": "nicomachean-ethics",
+      "title": "Nicomachean Ethics",
+      "author": "Aristotle",
+      "year": -340,
+      "pages": 300,
+      "tier": 7,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "Lecture notes on virtue and happiness, compressed and technical; read with a commentary close by."
+    },
+    {
+      "id": "fear-and-trembling",
+      "title": "Fear and Trembling",
+      "author": "Søren Kierkegaard",
+      "year": 1843,
+      "pages": 150,
+      "tier": 7,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Abraham and Isaac retold through a pseudonymous narrator; lyrical, ironic and philosophically knotty."
+    },
+    {
+      "id": "i-and-thou",
+      "title": "I and Thou",
+      "author": "Martin Buber",
+      "year": 1923,
+      "pages": 140,
+      "tier": 7,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A poetic, aphoristic treatise on relation; short sections that resist summary."
+    },
+    {
+      "id": "the-open-society-and-its-enemies",
+      "title": "The Open Society and Its Enemies",
+      "author": "Karl Popper",
+      "year": 1945,
+      "pages": 750,
+      "tier": 7,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A long polemic against Plato, Hegel and Marx with heavy scholarly footnotes."
+    },
+    {
       "id": "the-shadow-of-the-torturer",
       "title": "The Shadow of the Torturer",
       "author": "Gene Wolfe",
@@ -1192,6 +3679,181 @@
         "philosophy"
       ],
       "note": "Seventeenth-century English, long chains of definitions and a step-by-step case for the state; the foundation of modern political thought."
+    },
+    {
+      "id": "the-atrocity-exhibition",
+      "title": "The Atrocity Exhibition",
+      "author": "J. G. Ballard",
+      "year": 1970,
+      "pages": 180,
+      "tier": 8,
+      "genres": [
+        "sciFi",
+        "literary"
+      ],
+      "note": "Condensed, fragmentary “novels” of media and violence; there is no plot to hold on to."
+    },
+    {
+      "id": "the-erasers",
+      "title": "The Erasers",
+      "author": "Alain Robbe-Grillet",
+      "year": 1953,
+      "pages": 260,
+      "tier": 8,
+      "genres": [
+        "crime",
+        "literary"
+      ],
+      "note": "An anti-detective novel of flat, obsessive description and loops in time; it frustrates on purpose."
+    },
+    {
+      "id": "discipline-and-punish",
+      "title": "Discipline and Punish",
+      "author": "Michel Foucault",
+      "year": 1975,
+      "pages": 330,
+      "tier": 8,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "A history of the prison as a theory of power; vivid sources wrapped in abstract argument."
+    },
+    {
+      "id": "the-origins-of-totalitarianism",
+      "title": "The Origins of Totalitarianism",
+      "author": "Hannah Arendt",
+      "year": 1951,
+      "pages": 530,
+      "tier": 8,
+      "genres": [
+        "nonfiction",
+        "philosophy"
+      ],
+      "note": "Antisemitism, imperialism and totalitarianism in a vast, dense historical and philosophical argument."
+    },
+    {
+      "id": "mimesis",
+      "title": "Mimesis",
+      "author": "Erich Auerbach",
+      "year": 1946,
+      "pages": 580,
+      "tier": 8,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Close readings of passages from Homer to Woolf; erudite criticism that assumes a wide reading."
+    },
+    {
+      "id": "the-society-of-the-spectacle",
+      "title": "The Society of the Spectacle",
+      "author": "Guy Debord",
+      "year": 1967,
+      "pages": 150,
+      "tier": 8,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Two hundred and twenty-one theses in compressed Marxist theory; short and very dense."
+    },
+    {
+      "id": "naming-and-necessity",
+      "title": "Naming and Necessity",
+      "author": "Saul Kripke",
+      "year": 1980,
+      "pages": 170,
+      "tier": 8,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Transcribed lectures on reference and necessity; conversational, but technical philosophy of language."
+    },
+    {
+      "id": "under-the-volcano",
+      "title": "Under the Volcano",
+      "author": "Malcolm Lowry",
+      "year": 1947,
+      "pages": 400,
+      "tier": 8,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "A consul's last day in Mexico in long, drunken, allusive sentences; dense with symbol."
+    },
+    {
+      "id": "nightwood",
+      "title": "Nightwood",
+      "author": "Djuna Barnes",
+      "year": 1936,
+      "pages": 180,
+      "tier": 8,
+      "genres": [
+        "literary"
+      ],
+      "note": "Baroque, aphoristic monologues more poetry than prose; short and famously difficult."
+    },
+    {
+      "id": "the-man-without-qualities",
+      "title": "The Man Without Qualities",
+      "author": "Robert Musil",
+      "year": 1930,
+      "pages": 1100,
+      "tier": 8,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "An unfinished, essayistic novel of ideas set in prewar Vienna; immensely long and digressive."
+    },
+    {
+      "id": "the-book-of-disquiet",
+      "title": "The Book of Disquiet",
+      "author": "Fernando Pessoa",
+      "year": 1982,
+      "pages": 500,
+      "tier": 8,
+      "genres": [
+        "literary",
+        "philosophy"
+      ],
+      "note": "Fragments from an assistant bookkeeper's inner life, with no story; read a few pages at a time."
+    },
+    {
+      "id": "a-theory-of-justice",
+      "title": "A Theory of Justice",
+      "author": "John Rawls",
+      "year": 1971,
+      "pages": 560,
+      "tier": 8,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A systematic, technical argument for justice as fairness; dry, rigorous and foundational."
+    },
+    {
+      "id": "after-virtue",
+      "title": "After Virtue",
+      "author": "Alasdair MacIntyre",
+      "year": 1981,
+      "pages": 290,
+      "tier": 8,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A sweeping critique of modern moral philosophy that assumes familiarity with its whole history."
+    },
+    {
+      "id": "the-world-as-will-and-representation",
+      "title": "The World as Will and Representation",
+      "author": "Arthur Schopenhauer",
+      "year": 1818,
+      "pages": 1100,
+      "tier": 8,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A complete metaphysical system in long, clear but demanding argument; read after Kant if you can."
     },
     {
       "id": "titus-groan",
@@ -1330,6 +3992,130 @@
       "note": "Abstract economic analysis that opens with notoriously difficult chapters on value; demanding but foundational for political thought."
     },
     {
+      "id": "gormenghast",
+      "title": "Gormenghast",
+      "author": "Mervyn Peake",
+      "year": 1950,
+      "pages": 540,
+      "tier": 9,
+      "genres": [
+        "fantasy"
+      ],
+      "note": "The sequel to Titus Groan, as densely ornamented and slow, with a vast castle of grotesques."
+    },
+    {
+      "id": "jerusalem",
+      "title": "Jerusalem",
+      "author": "Alan Moore",
+      "year": 2016,
+      "pages": 1270,
+      "tier": 9,
+      "genres": [
+        "fantasy",
+        "literary"
+      ],
+      "note": "A Northampton epic in which chapters change style, including one written in a Joycean dialect."
+    },
+    {
+      "id": "the-recognitions",
+      "title": "The Recognitions",
+      "author": "William Gaddis",
+      "year": 1955,
+      "pages": 960,
+      "tier": 9,
+      "genres": [
+        "literary"
+      ],
+      "note": "A huge, erudite novel of forgery with unattributed dialogue and constant allusion."
+    },
+    {
+      "id": "molloy",
+      "title": "Molloy",
+      "author": "Samuel Beckett",
+      "year": 1951,
+      "pages": 240,
+      "tier": 9,
+      "genres": [
+        "literary",
+        "classics"
+      ],
+      "note": "Two monologues without paragraph breaks circling failure and pointlessness; bleak and very funny."
+    },
+    {
+      "id": "philosophical-investigations",
+      "title": "Philosophical Investigations",
+      "author": "Ludwig Wittgenstein",
+      "year": 1953,
+      "pages": 250,
+      "tier": 9,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Numbered remarks that question themselves; deceptively simple sentences, very hard thought."
+    },
+    {
+      "id": "the-order-of-things",
+      "title": "The Order of Things",
+      "author": "Michel Foucault",
+      "year": 1966,
+      "pages": 390,
+      "tier": 9,
+      "genres": [
+        "philosophy",
+        "nonfiction"
+      ],
+      "note": "An archaeology of the human sciences in abstract, allusive prose; harder than Discipline and Punish."
+    },
+    {
+      "id": "truth-and-method",
+      "title": "Truth and Method",
+      "author": "Hans-Georg Gadamer",
+      "year": 1960,
+      "pages": 600,
+      "tier": 9,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "The founding text of philosophical hermeneutics; long, abstract and steeped in German philosophy."
+    },
+    {
+      "id": "the-general-theory-of-employment-interest-and-money",
+      "title": "The General Theory of Employment, Interest and Money",
+      "author": "John Maynard Keynes",
+      "year": 1936,
+      "pages": 400,
+      "tier": 9,
+      "genres": [
+        "nonfiction"
+      ],
+      "note": "Keynes's own theory in dense, technical, often allusive economic argument."
+    },
+    {
+      "id": "ethics-spinoza",
+      "title": "Ethics",
+      "author": "Baruch Spinoza",
+      "year": 1677,
+      "pages": 250,
+      "tier": 9,
+      "genres": [
+        "philosophy",
+        "classics"
+      ],
+      "note": "God and nature laid out like geometry: definitions, axioms, propositions and proofs."
+    },
+    {
+      "id": "reasons-and-persons",
+      "title": "Reasons and Persons",
+      "author": "Derek Parfit",
+      "year": 1984,
+      "pages": 540,
+      "tier": 9,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Hundreds of thought experiments on identity and morality; clear sentences, relentless logic."
+    },
+    {
       "id": "the-waves",
       "title": "The Waves",
       "author": "Virginia Woolf",
@@ -1440,6 +4226,103 @@
         "nonfiction"
       ],
       "note": "A complete guide to the laws of physics written with the full mathematics; the top rung for science readers."
+    },
+    {
+      "id": "being-and-nothingness",
+      "title": "Being and Nothingness",
+      "author": "Jean-Paul Sartre",
+      "year": 1943,
+      "pages": 810,
+      "tier": 10,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Phenomenological ontology in an elaborate technical vocabulary; long, abstract and demanding."
+    },
+    {
+      "id": "a-thousand-plateaus",
+      "title": "A Thousand Plateaus",
+      "author": "Gilles Deleuze and Félix Guattari",
+      "year": 1980,
+      "pages": 610,
+      "tier": 10,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Nonlinear “plateaus” of invented concepts meant to be read in any order; deliberately unsystematic."
+    },
+    {
+      "id": "of-grammatology",
+      "title": "Of Grammatology",
+      "author": "Jacques Derrida",
+      "year": 1967,
+      "pages": 360,
+      "tier": 10,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Deconstruction's founding text, with puns, neologisms and close readings that unravel themselves."
+    },
+    {
+      "id": "process-and-reality",
+      "title": "Process and Reality",
+      "author": "Alfred North Whitehead",
+      "year": 1929,
+      "pages": 410,
+      "tier": 10,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "A metaphysics of process in a coined technical vocabulary; widely considered one of the hardest books in English."
+    },
+    {
+      "id": "totality-and-infinity",
+      "title": "Totality and Infinity",
+      "author": "Emmanuel Levinas",
+      "year": 1961,
+      "pages": 310,
+      "tier": 10,
+      "genres": [
+        "philosophy"
+      ],
+      "note": "Ethics as first philosophy in dense, repetitive phenomenological prose."
+    },
+    {
+      "id": "the-making-of-americans",
+      "title": "The Making of Americans",
+      "author": "Gertrude Stein",
+      "year": 1925,
+      "pages": 925,
+      "tier": 10,
+      "genres": [
+        "classics",
+        "literary"
+      ],
+      "note": "Nine hundred pages of repetition and slow variation; reading it is an act of stamina."
+    },
+    {
+      "id": "jr",
+      "title": "JR",
+      "author": "William Gaddis",
+      "year": 1975,
+      "pages": 730,
+      "tier": 10,
+      "genres": [
+        "literary"
+      ],
+      "note": "Seven hundred pages of almost entirely unattributed dialogue; you work out who is speaking from voice alone."
+    },
+    {
+      "id": "the-tunnel",
+      "title": "The Tunnel",
+      "author": "William H. Gass",
+      "year": 1995,
+      "pages": 650,
+      "tier": 10,
+      "genres": [
+        "literary"
+      ],
+      "note": "A historian's monstrous inner monologue with typographical games; dense, ornate and repellent by design."
     }
   ]
 }

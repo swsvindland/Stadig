@@ -112,7 +112,7 @@ public enum WritingSchedule {
 
     /// Passages near the tier being read, the current book's first.
     static func passages(_ kind: WritingKind, state: StudyState, library: WritingLibrary) -> [WritingPassage] {
-        let target = state.currentBook?.tier ?? ReadingPlan.targetTier(state.books)
+        let target = state.currentBook?.tier ?? ReadingPlan.targetTier(books: state.books, tests: state.tests, on: state.today)
         let matching = library.passages.filter { $0.kinds.contains(kind) }
         let pool = matching.isEmpty ? library.passages : matching
         let near = pool.filter { abs($0.tier - target) <= 2 }

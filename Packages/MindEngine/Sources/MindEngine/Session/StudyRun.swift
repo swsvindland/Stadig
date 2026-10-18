@@ -165,9 +165,10 @@ public struct StudyRun: Sendable {
 
     public mutating func addBook(_ book: Book, now: Date) { respond(.bookPicked(book), now: now) }
 
-    /// The reading timer ended: where the bookmark is now, and how it felt if it's finished.
-    public mutating func finishReading(page: Int, finished: Bool, feel: BookFeel?, minutes: Double, now: Date) {
-        respond(.readingDone(page: page, finished: finished, feel: feel, minutes: minutes), now: now)
+    /// The reading timer ended: where the bookmark is now, how it felt if it's finished, and how
+    /// focus held.
+    public mutating func finishReading(page: Int, finished: Bool, feel: BookFeel?, minutes: Double, focus: ReadingFocus? = nil, now: Date) {
+        respond(.readingDone(page: page, finished: finished, feel: feel, minutes: minutes, focus: focus), now: now)
     }
 
     /// A few sentences after reading, or nil to skip.

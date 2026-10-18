@@ -64,7 +64,9 @@ private struct SessionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                ForEach(plan.domains.filter { plan.kind != .checkIn || $0 != .reading }, id: \.self) { DomainBadge(domain: $0, size: 32) }
+                ForEach(plan.domains.filter { domain in plan.kind != .checkIn || plan.parts.contains { $0.domain == domain } }, id: \.self) {
+                    DomainBadge(domain: $0, size: 32)
+                }
                 Spacer()
                 if plan.kind != .regular { Pill(text: plan.kind.label, color: .accentColor) }
             }

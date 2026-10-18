@@ -1,0 +1,1205 @@
+{
+ "source": "Public-domain excerpts from Project Gutenberg (each passage names its ebook) and passages written for Mind Track.",
+ "passages": [
+  {
+   "id": "ferry",
+   "tier": 1,
+   "title": "The Last Ferry",
+   "author": "Mind Track",
+   "source": "Written for Mind Track",
+   "text": "The last ferry left at nine. Mara reached the dock at five to, soaked from the rain and out of breath, and found the gate already locked. A man in a yellow coat was coiling rope on the deck. She waved. He looked up, looked at her for a long moment, and went back to his rope.\n\n“Please!” she shouted. “I have to get across tonight.”\n\nHe finished the coil, dropped it, and walked slowly to the rail. “Everyone has to get across tonight,” he said. “That’s what they all say.”\n\n“My brother is in the hospital on the other side. They called an hour ago.”\n\nThe man studied her face. Then he took a key from his pocket, climbed down the ladder and unlocked the gate. “Ten minutes later, and I’d have been gone,” he said. “Get on before I change my mind.”\n\nShe did not tell him that her brother had been dead for three years.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "A woman talking a ferryman into taking her across late at night",
+     "wrong": [
+      "A ferryman refusing to sail in a storm",
+      "A woman visiting her brother in hospital",
+      "Two strangers mending a broken boat"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why couldn't Mara board when she first arrived?",
+     "answer": "The gate was already locked",
+     "wrong": [
+      "She had no ticket",
+      "The ferry was full",
+      "The ferryman was asleep"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the last sentence reveal?",
+     "answer": "Mara's reason for crossing was not the one she gave",
+     "wrong": [
+      "Mara's brother was getting better",
+      "The ferryman knew her brother",
+      "Mara had missed the ferry on purpose"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bees",
+   "tier": 1,
+   "title": "Why Bees Dance",
+   "author": "Mind Track",
+   "source": "Written for Mind Track",
+   "text": "When a honeybee finds a good patch of flowers, she does not keep it to herself. She flies back to the hive and dances. The dance is not random. She runs in a straight line, waggling her body from side to side, then loops back and does it again. The direction of the straight run tells the other bees which way to fly, measured against the position of the sun. The length of the run tells them how far to go: the longer she waggles, the farther away the flowers are. Other bees crowd around her in the dark of the hive, feeling the dance with their antennae. Then they fly out and find the flowers themselves, often on the first try. Scientists worked out this code in the 1940s. Many did not believe it at first. It seemed too clever for an insect.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "How honeybees tell each other where to find flowers",
+     "wrong": [
+      "How honeybees turn nectar into honey",
+      "Why bees prefer some flowers to others",
+      "How scientists keep bees in hives"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What does the length of the straight run tell the other bees?",
+     "answer": "How far away the flowers are",
+     "wrong": [
+      "Which way to fly",
+      "How many flowers there are",
+      "What kind of flowers they are"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why did many people doubt the discovery at first?",
+     "answer": "It seemed too clever for an insect",
+     "wrong": [
+      "The bees danced too fast to study",
+      "Nobody could see inside a hive",
+      "The dance changed every day"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "map",
+   "tier": 1,
+   "title": "The Map",
+   "author": "Mind Track",
+   "source": "Written for Mind Track",
+   "text": "Tom found the map inside a library book that nobody had borrowed since 1962. It was drawn in brown ink on thick paper, folded into eight, and it showed his own town. He knew it at once: the river, the bridge, the church with the crooked spire. But there were things on the map that were not in the town. A tower stood where the supermarket was. A forest covered the car park. And in the middle of the old market square, someone had drawn a small black door and written a single word beside it: Knock.\n\nTom put the map back in the book and the book back on the shelf. He walked home the long way, across the square, and did not look at the spot in the middle. That night he dreamed of knocking. In the morning he went back to the library, but the book was gone.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "A boy who finds a strange map of his own town",
+     "wrong": [
+      "A boy who gets lost in a forest",
+      "A librarian who hides a book from a boy",
+      "A town that builds a new tower"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What was drawn in the middle of the market square?",
+     "answer": "A small black door",
+     "wrong": [
+      "A church with a crooked spire",
+      "A tower",
+      "A bridge over the river"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "Judging by what Tom does, how does he feel about the map?",
+     "answer": "Uneasy, but unable to stop thinking about it",
+     "wrong": [
+      "Bored by it",
+      "Angry that someone drew in a library book",
+      "Sure that it is a joke"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "interview",
+   "tier": 2,
+   "title": "The Interview",
+   "author": "Mind Track",
+   "source": "Written for Mind Track",
+   "text": "Mrs Pemberton had interviewed forty-three applicants for the position of housekeeper, and she had disliked every one of them for a different reason. The first had been too cheerful, the second too gloomy, and the third had looked at the silver as though she were counting it. By the time Ada Lyle arrived, on a wet Thursday in March, Mrs Pemberton had stopped expecting anything at all.\n\nAda sat where she was told and answered what she was asked. She could cook, she could keep accounts, and she had no objection to dogs. When Mrs Pemberton mentioned, as a test, that the previous housekeeper had left without notice, Ada said only, “Then she will not have been paid for her last week, I imagine,” and Mrs Pemberton, who had been about to pay her, found herself unexpectedly delighted.\n\nAda started on the Monday. She stayed for thirty years.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "A hard-to-please employer finally finding a housekeeper she likes",
+     "wrong": [
+      "A housekeeper who steals the family silver",
+      "A woman looking for work in a new town",
+      "An employer who refuses to pay her staff"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why did Mrs Pemberton dislike the third applicant?",
+     "answer": "She seemed to be counting the silver",
+     "wrong": [
+      "She was too cheerful",
+      "She disliked dogs",
+      "She arrived late in the rain"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "Why was Mrs Pemberton delighted by Ada's remark?",
+     "answer": "It showed Ada was shrewd about money",
+     "wrong": [
+      "It showed Ada was kind to other servants",
+      "It meant Ada would work for nothing",
+      "It proved Ada had known the last housekeeper"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ackroyd-ralph",
+   "tier": 2,
+   "title": "The Murder of Roger Ackroyd",
+   "author": "Agatha Christie",
+   "source": "Project Gutenberg #69087",
+   "text": "I knew Ralph very well—better, perhaps, than any one else in King’s Abbot, for I had known his mother before him, and therefore I understood much in him that puzzled others. He was, to a certain extent, the victim of heredity. He had not inherited his mother’s fatal propensity for drink, but nevertheless he had in him a strain of weakness. As my new friend of this morning had declared, he was extraordinarily handsome. Just on six feet, perfectly proportioned, with the easy grace of an athlete, he was dark, like his mother, with a handsome, sunburnt face always ready to break into a smile. Ralph Paton was of those born to charm easily and without effort. He was self-indulgent and extravagant, with no veneration for anything on earth, but he was lovable nevertheless, and his friends were all devoted to him.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "The narrator's view of Ralph Paton's character",
+     "wrong": [
+      "Ralph Paton's mother's illness",
+      "How the narrator first met Ralph",
+      "A quarrel between Ralph and his friends"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What did Ralph not inherit from his mother?",
+     "answer": "Her fatal weakness for drink",
+     "wrong": [
+      "Her dark colouring",
+      "Her good looks",
+      "Her love of money"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "How do people feel about Ralph, according to the narrator?",
+     "answer": "They are fond of him despite his faults",
+     "wrong": [
+      "They distrust him because of his mother",
+      "They admire him for his hard work",
+      "They barely notice him"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "siddhartha-fasting",
+   "tier": 2,
+   "title": "Siddhartha",
+   "author": "Hermann Hesse",
+   "source": "Project Gutenberg #2500",
+   "text": "Siddhartha gave his garments to a poor Brahman in the street. He wore nothing more than the loincloth and the earth-coloured, unsown cloak. He ate only once a day, and never something cooked. He fasted for fifteen days. He fasted for twenty-eight days. The flesh waned from his thighs and cheeks. Feverish dreams flickered from his enlarged eyes, long nails grew slowly on his parched fingers and a dry, shaggy beard grew on his chin. His glance turned to ice when he encountered women; his mouth twitched with contempt, when he walked through a city of nicely dressed people. He saw merchants trading, princes hunting, mourners wailing for their dead, whores offering themselves, physicians trying to help the sick, priests determining the most suitable day for seeding, lovers loving, mothers nursing their children—and all of this was not worthy of one look from his eye, it all lied, it all stank, it all stank of lies, it all pretended to be meaningful and joyful and beautiful, and it all was just concealed putrefaction. The world tasted bitter. Life was torture.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does the passage describe?",
+     "answer": "Siddhartha's harsh self-denial and his contempt for ordinary life",
+     "wrong": [
+      "Siddhartha's happy life as a merchant",
+      "A journey Siddhartha makes to a great city",
+      "Siddhartha caring for the sick and poor"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What is the longest fast the passage mentions?",
+     "answer": "Twenty-eight days",
+     "wrong": [
+      "Fifteen days",
+      "Forty days",
+      "Seven days"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "How does Siddhartha see the busy life around him?",
+     "answer": "As false and rotten beneath its show of meaning",
+     "wrong": [
+      "As beautiful but out of his reach",
+      "As something he longs to rejoin",
+      "As dull but harmless"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "monte-cristo-danglars",
+   "tier": 3,
+   "title": "The Count of Monte Cristo",
+   "author": "Alexandre Dumas",
+   "source": "Project Gutenberg #1184",
+   "text": "“I shall get nothing from these fools,” he muttered; “and I am very much afraid of being here between a drunkard and a coward. Here’s an envious fellow making himself boozy on wine when he ought to be nursing his wrath, and here is a fool who sees the woman he loves stolen from under his nose and takes on like a big baby. Yet this Catalan has eyes that glisten like those of the vengeful Spaniards, Sicilians, and Calabrians, and the other has fists big enough to crush an ox at one blow. Unquestionably, Edmond’s star is in the ascendant, and he will marry the splendid girl—he will be captain, too, and laugh at us all, unless”—a sinister smile passed over Danglars’ lips—“unless I take a hand in the affair,” he added.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the speaker thinking about?",
+     "answer": "How he might stop Edmond's good fortune",
+     "wrong": [
+      "How to win back the woman he loves",
+      "Whether to apologise to Edmond",
+      "How to become captain himself by honest work"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "How does he describe the two men he is with?",
+     "answer": "A drunkard and a coward",
+     "wrong": [
+      "A sailor and a priest",
+      "Two loyal friends",
+      "A judge and a soldier"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the sinister smile at the end suggest?",
+     "answer": "He means to interfere himself",
+     "wrong": [
+      "He has decided to leave them alone",
+      "He is pleased for Edmond",
+      "He is about to fall asleep"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inheritance",
+   "tier": 3,
+   "title": "The Inheritance",
+   "author": "Mind Track",
+   "source": "Written for Mind Track",
+   "text": "My grandfather left me three things: a watch that did not work, a house I had never seen, and a letter that began, “By now you will have heard what they say about me.” I had not heard. That was the trouble with my family; nobody told anybody anything until it was too late to matter, and then everyone told you at once.\n\nThe house stood at the end of a lane in a village whose name I had to look up. My aunt drove me there in October, talking the whole way about the cost of roofs. When we arrived she stayed in the car. “You go,” she said. “I was never welcome in it.” I asked why. She looked at the house for a long time, as if it might answer for her, and then she switched on the radio.\n\nInside, every clock had stopped at ten past four.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage mainly about?",
+     "answer": "A narrator visiting a house left by a grandfather with a mysterious past",
+     "wrong": [
+      "A family fighting over who should inherit a house",
+      "An aunt selling her father's house",
+      "A narrator mending old clocks"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What did the aunt talk about on the drive?",
+     "answer": "The cost of roofs",
+     "wrong": [
+      "The grandfather's letter",
+      "The village's history",
+      "The broken watch"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the narrator suggest about the family?",
+     "answer": "They keep things to themselves until it's too late",
+     "wrong": [
+      "They are close and share everything",
+      "They have no interest in the past",
+      "They argue loudly about money"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "siddhartha-self",
+   "tier": 3,
+   "title": "Siddhartha",
+   "author": "Hermann Hesse",
+   "source": "Project Gutenberg #2500",
+   "text": "Siddhartha learned a lot when he was with the Samanas, many ways leading away from the self he learned to go. He went the way of self-denial by means of pain, through voluntarily suffering and overcoming pain, hunger, thirst, tiredness. He went the way of self-denial by means of meditation, through imagining the mind to be void of all conceptions. These and other ways he learned to go, a thousand times he left his self, for hours and days he remained in the non-self. But though the ways led away from the self, their end nevertheless always led back to the self. Though Siddhartha fled from the self a thousand times, stayed in nothingness, stayed in the animal, in the stone, the return was inevitable, inescapable was the hour, when he found himself back in the sunshine or in the moonlight, in the shade or in the rain, and was once again his self and Siddhartha, and again felt the agony of the cycle which had been forced upon him.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does Siddhartha find about the ways of self-denial?",
+     "answer": "They lead away from the self, but always back to it",
+     "wrong": [
+      "They bring him lasting peace",
+      "They are too hard for him to follow",
+      "They make him wise in the eyes of others"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Which two ways of self-denial does the passage name?",
+     "answer": "Pain and meditation",
+     "wrong": [
+      "Fasting and prayer",
+      "Silence and travel",
+      "Poverty and study"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "How does Siddhartha experience coming back to himself?",
+     "answer": "As a renewed agony he cannot escape",
+     "wrong": [
+      "As a welcome rest after hard work",
+      "As proof that he has succeeded",
+      "As a moment of perfect calm"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gatsby-ashes",
+   "tier": 4,
+   "title": "The Great Gatsby",
+   "author": "F. Scott Fitzgerald",
+   "source": "Project Gutenberg #64317",
+   "text": "About halfway between West Egg and New York the motor road hastily joins the railroad and runs beside it for a quarter of a mile, so as to shrink away from a certain desolate area of land. This is a valley of ashes—a fantastic farm where ashes grow like wheat into ridges and hills and grotesque gardens; where ashes take the forms of houses and chimneys and rising smoke and, finally, with a transcendent effort, of ash-grey men, who move dimly and already crumbling through the powdery air. Occasionally a line of grey cars crawls along an invisible track, gives out a ghastly creak, and comes to rest, and immediately the ash-grey men swarm up with leaden spades and stir up an impenetrable cloud, which screens their obscure operations from your sight.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does the passage describe?",
+     "answer": "A bleak stretch of land covered in ashes beside the road to New York",
+     "wrong": [
+      "A busy farm outside the city",
+      "A fire that destroyed part of New York",
+      "A railway station crowded with workers"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What happens when a line of grey cars stops?",
+     "answer": "Grey men swarm up with spades and raise a cloud of dust",
+     "wrong": [
+      "Passengers climb out to look at the view",
+      "The road is closed for repairs",
+      "Farmers load the cars with wheat"
+     ]
+    },
+    {
+     "kind": "vocabulary",
+     "prompt": "What are the ashes compared to?",
+     "answer": "Wheat growing on a farm",
+     "wrong": [
+      "Snow falling on a city",
+      "Waves on the sea",
+      "Smoke from a factory"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "dracula-diary",
+   "tier": 4,
+   "title": "Dracula",
+   "author": "Bram Stoker",
+   "source": "Project Gutenberg #345",
+   "text": "8 May.—I began to fear as I wrote in this book that I was getting too diffuse; but now I am glad that I went into detail from the first, for there is something so strange about this place and all in it that I cannot but feel uneasy. I wish I were safe out of it, or that I had never come. It may be that this strange night-existence is telling on me; but would that that were all! If there were any one to talk to I could bear it, but there is no one. I have only the Count to speak with, and he!—I fear I am myself the only living soul within the place. Let me be prosaic so far as facts can be; it will help me to bear up, and imagination must not run riot with me. If it does I am lost. Let me say at once how I stand—or seem to.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the writer mainly expressing?",
+     "answer": "Growing fear about the strange place where he is staying",
+     "wrong": [
+      "Excitement about a business deal",
+      "Homesickness for his family",
+      "Boredom with a long journey"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Who is the only other person he can talk to?",
+     "answer": "The Count",
+     "wrong": [
+      "A servant",
+      "His fiancée",
+      "A local innkeeper"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "Why does he resolve to stick to plain facts?",
+     "answer": "To stop his imagination running away with him",
+     "wrong": [
+      "Because his employer asked for a short report",
+      "Because he is running out of paper",
+      "To make his diary easier to publish"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "russell-table",
+   "tier": 4,
+   "title": "The Problems of Philosophy",
+   "author": "Bertrand Russell",
+   "source": "Project Gutenberg #5827",
+   "text": "The problem we have to consider is this: Granted that we are certain of our own sense-data, have we any reason for regarding them as signs of the existence of something else, which we can call the physical object? When we have enumerated all the sense-data which we should naturally regard as connected with the table, have we said all there is to say about the table, or is there still something else—something not a sense-datum, something which persists when we go out of the room? Common sense unhesitatingly answers that there is. What can be bought and sold and pushed about and have a cloth laid on it, and so on, cannot be a mere collection of sense-data. If the cloth completely hides the table, we shall derive no sense-data from the table, and therefore, if the table were merely sense-data, it would have ceased to exist, and the cloth would be suspended in empty air, resting, by a miracle, in the place where the table formerly was. This seems plainly absurd; but whoever wishes to become a philosopher must learn not to be frightened by absurdities.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What question does the passage raise?",
+     "answer": "Whether physical objects exist beyond what our senses report",
+     "wrong": [
+      "Whether tables are made of wood or cloth",
+      "How philosophers should choose their words",
+      "Why different people like different furniture"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What would follow if the table were nothing but sense-data?",
+     "answer": "A cloth covering it would hang in empty air",
+     "wrong": [
+      "Everyone would see a different table",
+      "The table could not be sold",
+      "The cloth would disappear too"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the last sentence suggest about doing philosophy?",
+     "answer": "It means taking seemingly absurd ideas seriously",
+     "wrong": [
+      "It means trusting common sense above all",
+      "It is too frightening for most people",
+      "It should avoid everyday examples"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pride-darcy",
+   "tier": 5,
+   "title": "Pride and Prejudice",
+   "author": "Jane Austen",
+   "source": "Project Gutenberg #1342",
+   "text": "Mr. Bingley was good-looking and gentlemanlike: he had a pleasant countenance, and easy, unaffected manners. His sisters were fine women, with an air of decided fashion. His brother-in-law, Mr. Hurst, merely looked the gentleman; but his friend Mr. Darcy soon drew the attention of the room by his fine, tall person, handsome features, noble mien, and the report, which was in general circulation within five minutes after his entrance, of his having ten thousand a year. The gentlemen pronounced him to be a fine figure of a man, the ladies declared he was much handsomer than Mr. Bingley, and he was looked at with great admiration for about half the evening, till his manners gave a disgust which turned the tide of his popularity; for he was discovered to be proud, to be above his company, and above being pleased; and not all his large estate in Derbyshire could save him from having a most forbidding, disagreeable countenance, and being unworthy to be compared with his friend.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What happens to Mr Darcy's standing over the evening?",
+     "answer": "Admiration turns to dislike once his manners show",
+     "wrong": [
+      "He wins everyone over by the end",
+      "He is ignored until his wealth is known",
+      "He becomes the most popular dancer"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What report spread within five minutes of his arrival?",
+     "answer": "That he had ten thousand a year",
+     "wrong": [
+      "That he was engaged to be married",
+      "That he had quarrelled with his friend",
+      "That he owned a house in London"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Who is Mr Darcy unfavourably compared with?",
+     "answer": "His friend, Mr Bingley",
+     "wrong": [
+      "Mr Hurst",
+      "His own father",
+      "The other ladies' brothers"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "jane-eyre-reed",
+   "tier": 5,
+   "title": "Jane Eyre",
+   "author": "Charlotte Brontë",
+   "source": "Project Gutenberg #1260",
+   "text": "From my discourse with Mr. Lloyd, and from the above reported conference between Bessie and Abbot, I gathered enough of hope to suffice as a motive for wishing to get well: a change seemed near,—I desired and waited it in silence. It tarried, however: days and weeks passed: I had regained my normal state of health, but no new allusion was made to the subject over which I brooded. Mrs. Reed surveyed me at times with a severe eye, but seldom addressed me: since my illness, she had drawn a more marked line of separation than ever between me and her own children; appointing me a small closet to sleep in by myself, condemning me to take my meals alone, and pass all my time in the nursery, while my cousins were constantly in the drawing-room. Not a hint, however, did she drop about sending me to school: still I felt an instinctive certainty that she would not long endure me under the same roof with her; for her glance, now more than ever, when turned on me, expressed an insuperable and rooted aversion.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the narrator's situation?",
+     "answer": "Waiting in silence for a change while her aunt keeps her apart",
+     "wrong": [
+      "Preparing to leave for school the next day",
+      "Recovering happily with her cousins",
+      "Running the household in her aunt's absence"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "How has Mrs Reed treated her since her illness?",
+     "answer": "She keeps her further apart from her own children",
+     "wrong": [
+      "She speaks to her kindly every day",
+      "She lets her eat with the family",
+      "She sends her to stay with Bessie"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "Why is the narrator sure she will not stay long?",
+     "answer": "Mrs Reed's looks show a deep dislike of her",
+     "wrong": [
+      "Mrs Reed has told her she is going to school",
+      "Her cousins have asked her to leave",
+      "The doctor has said she needs a change of air"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "frankenstein-letter",
+   "tier": 5,
+   "title": "Frankenstein",
+   "author": "Mary Shelley",
+   "source": "Project Gutenberg #84",
+   "text": "“Get well—and return to us. You will find a happy, cheerful home and friends who love you dearly. Your father’s health is vigorous, and he asks but to see you, but to be assured that you are well; and not a care will ever cloud his benevolent countenance. How pleased you would be to remark the improvement of our Ernest! He is now sixteen and full of activity and spirit. He is desirous to be a true Swiss and to enter into foreign service, but we cannot part with him, at least until his elder brother returns to us. My uncle is not pleased with the idea of a military career in a distant country, but Ernest never had your powers of application. He looks upon study as an odious fetter; his time is spent in the open air, climbing the hills or rowing on the lake. I fear that he will become an idler unless we yield the point and permit him to enter on the profession which he has selected.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the writer of the letter doing?",
+     "answer": "Urging Victor to recover and come home, with news of the family",
+     "wrong": [
+      "Announcing that the family is moving abroad",
+      "Complaining that Victor never writes",
+      "Asking Victor to find Ernest a teacher"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What does Ernest want to do?",
+     "answer": "Enter foreign service as a soldier",
+     "wrong": [
+      "Study at the university",
+      "Become a doctor",
+      "Run the family estate"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the writer fear about Ernest?",
+     "answer": "That he will become an idler",
+     "wrong": [
+      "That he is too ill to travel",
+      "That he has forgotten his brother",
+      "That he studies too hard"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wuthering-young-woman",
+   "tier": 6,
+   "title": "Wuthering Heights",
+   "author": "Emily Brontë",
+   "source": "Project Gutenberg #768",
+   "text": "Her position before was sheltered from the light; now, I had a distinct view of her whole figure and countenance. She was slender, and apparently scarcely past girlhood: an admirable form, and the most exquisite little face that I have ever had the pleasure of beholding; small features, very fair; flaxen ringlets, or rather golden, hanging loose on her delicate neck; and eyes, had they been agreeable in expression, that would have been irresistible: fortunately for my susceptible heart, the only sentiment they evinced hovered between scorn and a kind of desperation, singularly unnatural to be detected there. The canisters were almost out of her reach; I made a motion to aid her; she turned upon me as a miser might turn if any one attempted to assist him in counting his gold.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does the narrator describe?",
+     "answer": "A beautiful young woman whose look is scornful and desperate",
+     "wrong": [
+      "An old servant busy at the fire",
+      "A friendly hostess welcoming a guest",
+      "A portrait hanging above the mantel"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "How does she react when he moves to help her?",
+     "answer": "She turns on him like a miser guarding his gold",
+     "wrong": [
+      "She thanks him and hands him the canisters",
+      "She laughs and walks away",
+      "She calls for her husband"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "Why does he call her expression fortunate for his susceptible heart?",
+     "answer": "Her scorn stopped him from being charmed",
+     "wrong": [
+      "She reminded him of someone he loved",
+      "Her kindness put him at ease",
+      "He was glad she was already married"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "walden-clothes",
+   "tier": 6,
+   "title": "Walden",
+   "author": "Henry David Thoreau",
+   "source": "Project Gutenberg #205",
+   "text": "On the whole, I think that it cannot be maintained that dressing has in this or any country risen to the dignity of an art. At present men make shift to wear what they can get. Like shipwrecked sailors, they put on what they can find on the beach, and at a little distance, whether of space or time, laugh at each other’s masquerade. Every generation laughs at the old fashions, but follows religiously the new. We are amused at beholding the costume of Henry VIII., or Queen Elizabeth, as much as if it was that of the King and Queen of the Cannibal Islands. All costume off a man is pitiful or grotesque. It is only the serious eye peering from and the sincere life passed within it, which restrain laughter and consecrate the costume of any people. Let Harlequin be taken with a fit of the colic and his trappings will have to serve that mood too. When the soldier is hit by a cannon ball rags are as becoming as purple.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the passage's main point about clothes?",
+     "answer": "Fashion is arbitrary; what matters is the life inside them",
+     "wrong": [
+      "Clothes should be made at home, not bought",
+      "Old fashions were better than new ones",
+      "Soldiers should dress more plainly"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What does every generation do, according to the passage?",
+     "answer": "Laughs at the old fashions but follows the new",
+     "wrong": [
+      "Copies the fashions of royalty",
+      "Makes clothes last as long as it can",
+      "Rejects fashion altogether"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the line about the soldier hit by a cannon ball suggest?",
+     "answer": "In serious moments, fine clothing stops mattering",
+     "wrong": [
+      "Soldiers should wear purple into battle",
+      "Rags protect better than fine cloth",
+      "War makes fashion more important"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "crime-beggary",
+   "tier": 6,
+   "title": "Crime and Punishment",
+   "author": "Fyodor Dostoevsky",
+   "source": "Project Gutenberg #2554",
+   "text": "“Honoured sir,” he began almost with solemnity, “poverty is not a vice, that’s a true saying. Yet I know too that drunkenness is not a virtue, and that that’s even truer. But beggary, honoured sir, beggary is a vice. In poverty you may still retain your innate nobility of soul, but in beggary—never—no one. For beggary a man is not chased out of human society with a stick, he is swept out with a broom, so as to make it as humiliating as possible; and quite right, too, forasmuch as in beggary I am ready to be the first to humiliate myself. Hence the pot-house! Honoured sir, a month ago Mr. Lebeziatnikov gave my wife a beating, and my wife is a very different matter from me! Do you understand? Allow me to ask you another question out of simple curiosity: have you ever spent a night on a hay barge, on the Neva?”",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What distinction does the speaker draw?",
+     "answer": "Poverty can keep its dignity, but beggary cannot",
+     "wrong": [
+      "Drunkenness is worse than poverty",
+      "Rich men are worse than beggars",
+      "Work is the cure for poverty"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "How is a beggar driven out of society, according to him?",
+     "answer": "Swept out with a broom",
+     "wrong": [
+      "Chased out with a stick",
+      "Thrown into prison",
+      "Sent to the countryside"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "How does the speaker seem to see himself?",
+     "answer": "As someone already sunk into humiliation",
+     "wrong": [
+      "As a respected man fallen on hard luck",
+      "As a reformer who will help the poor",
+      "As someone better than the other drinkers"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "middlemarch-signs",
+   "tier": 7,
+   "title": "Middlemarch",
+   "author": "George Eliot",
+   "source": "Project Gutenberg #145",
+   "text": "Miss Brooke argued from words and dispositions not less unhesitatingly than other young ladies of her age. Signs are small measurable things, but interpretations are illimitable, and in girls of sweet, ardent nature, every sign is apt to conjure up wonder, hope, belief, vast as a sky, and colored by a diffused thimbleful of matter in the shape of knowledge. They are not always too grossly deceived; for Sinbad himself may have fallen by good-luck on a true description, and wrong reasoning sometimes lands poor mortals in right conclusions: starting a long way off the true point, and proceeding by loops and zigzags, we now and then arrive just where we ought to be. Because Miss Brooke was hasty in her trust, it is not therefore clear that Mr. Casaubon was unworthy of it.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is the narrator's point about Miss Brooke?",
+     "answer": "She builds great hopes on small signs, which doesn't prove her wrong",
+     "wrong": [
+      "She is too sensible to be deceived",
+      "She dislikes Mr Casaubon on sight",
+      "She reasons more carefully than other girls"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What does the narrator say wrong reasoning sometimes does?",
+     "answer": "Lands people in right conclusions",
+     "wrong": [
+      "Ruins a young woman's prospects",
+      "Leads to a happy marriage",
+      "Makes signs easier to read"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the last sentence suggest about Mr Casaubon?",
+     "answer": "Whether he deserves her trust is still open",
+     "wrong": [
+      "He is plainly unworthy of her",
+      "He has already proposed to her",
+      "He trusts her more than she trusts him"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hume-experience",
+   "tier": 7,
+   "title": "An Enquiry Concerning Human Understanding",
+   "author": "David Hume",
+   "source": "Project Gutenberg #9662",
+   "text": "I shall venture to affirm, as a general proposition, which admits of no exception, that the knowledge of this relation is not, in any instance, attained by reasonings a priori; but arises entirely from experience, when we find that any particular objects are constantly conjoined with each other. Let an object be presented to a man of ever so strong natural reason and abilities; if that object be entirely new to him, he will not be able, by the most accurate examination of its sensible qualities, to discover any of its causes or effects. Adam, though his rational faculties be supposed, at the very first, entirely perfect, could not have inferred from the fluidity and transparency of water that it would suffocate him, or from the light and warmth of fire that it would consume him. No object ever discovers, by the qualities which appear to the senses, either the causes which produced it, or the effects which will arise from it; nor can our reason, unassisted by experience, ever draw any inference concerning real existence and matter of fact.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does Hume claim?",
+     "answer": "Knowledge of causes and effects comes from experience, not reasoning alone",
+     "wrong": [
+      "Reason alone can discover every cause",
+      "Adam knew more than any later man",
+      "The senses always deceive us"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What could Adam not have inferred from the fluidity and transparency of water?",
+     "answer": "That it would suffocate him",
+     "wrong": [
+      "That it would freeze in winter",
+      "That it would put out fire",
+      "That it would quench his thirst"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What would a person of strong reason face with an entirely new object, according to Hume?",
+     "answer": "No way to tell its causes or effects by examining it",
+     "wrong": [
+      "An immediate grasp of what it does",
+      "A strong urge to name it",
+      "Certainty after careful study of its qualities"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "darwin-struggle",
+   "tier": 7,
+   "title": "On the Origin of Species",
+   "author": "Charles Darwin",
+   "source": "Project Gutenberg #1228",
+   "text": "A struggle for existence inevitably follows from the high rate at which all organic beings tend to increase. Every being, which during its natural lifetime produces several eggs or seeds, must suffer destruction during some period of its life, and during some season or occasional year, otherwise, on the principle of geometrical increase, its numbers would quickly become so inordinately great that no country could support the product. Hence, as more individuals are produced than can possibly survive, there must in every case be a struggle for existence, either one individual with another of the same species, or with the individuals of distinct species, or with the physical conditions of life. It is the doctrine of Malthus applied with manifold force to the whole animal and vegetable kingdoms; for in this case there can be no artificial increase of food, and no prudential restraint from marriage. Although some species may be now increasing, more or less rapidly, in numbers, all cannot do so, for the world would not hold them.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "Why must there be a struggle for existence, according to the passage?",
+     "answer": "More individuals are produced than can possibly survive",
+     "wrong": [
+      "Species are naturally aggressive",
+      "Food is always growing scarcer",
+      "The climate keeps changing"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Whose doctrine does Darwin say he is applying?",
+     "answer": "Malthus's",
+     "wrong": [
+      "Linnaeus's",
+      "Lamarck's",
+      "Aristotle's"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Which kinds of struggle does he name?",
+     "answer": "With the same species, with other species, and with physical conditions",
+     "wrong": [
+      "With predators, with disease, and with old age",
+      "With hunger, with cold, and with drought",
+      "With rivals for mates only"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "moby-dick-reveries",
+   "tier": 8,
+   "title": "Moby-Dick",
+   "author": "Herman Melville",
+   "source": "Project Gutenberg #2701",
+   "text": "Circumambulate the city of a dreamy Sabbath afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by Whitehall, northward. What do you see?—Posted like silent sentinels all around the town, stand thousands upon thousands of mortal men fixed in ocean reveries. Some leaning against the spiles; some seated upon the pier-heads; some looking over the bulwarks of ships from China; some high aloft in the rigging, as if striving to get a still better seaward peep. But these are all landsmen; of week days pent up in lath and plaster—tied to counters, nailed to benches, clinched to desks. How then is this? Are the green fields gone? What do they here?",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does the passage describe?",
+     "answer": "Crowds of city people drawn to stare out at the sea",
+     "wrong": [
+      "Sailors loading ships for a long voyage",
+      "A storm sweeping over the harbour",
+      "Merchants trading on the docks"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What are these men on weekdays?",
+     "answer": "Landsmen shut up at counters, benches and desks",
+     "wrong": [
+      "Sailors waiting for a ship",
+      "Fishermen mending nets",
+      "Soldiers guarding the town"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What do the closing questions suggest?",
+     "answer": "Something draws people to the water rather than the fields",
+     "wrong": [
+      "The green fields have been built over",
+      "The men are looking for work at sea",
+      "The town has no parks"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "leviathan-absurdity",
+   "tier": 8,
+   "title": "Leviathan",
+   "author": "Thomas Hobbes",
+   "source": "Project Gutenberg #3207",
+   "text": "But this priviledge, is allayed by another; and that is, by the priviledge of Absurdity; to which no living creature is subject, but man onely. And of men, those are of all most subject to it, that professe Philosophy. For it is most true that Cicero sayth of them somewhere; that there can be nothing so absurd, but may be found in the books of Philosophers. And the reason is manifest. For there is not one of them that begins his ratiocination from the Definitions, or Explications of the names they are to use; which is a method that hath been used onely in Geometry; whose Conclusions have thereby been made indisputable.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What does Hobbes claim?",
+     "answer": "Only humans can be absurd, and philosophers most of all",
+     "wrong": [
+      "Animals reason as well as men",
+      "Cicero was the greatest philosopher",
+      "Absurdity is a sign of genius"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why are philosophers so prone to absurdity, according to Hobbes?",
+     "answer": "They don't begin from definitions of the words they use",
+     "wrong": [
+      "They read too many books",
+      "They argue only with each other",
+      "They rely too much on geometry"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Which field does he say has used the right method?",
+     "answer": "Geometry",
+     "wrong": [
+      "Rhetoric",
+      "Medicine",
+      "Theology"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "zarathustra-adder",
+   "tier": 8,
+   "title": "Thus Spake Zarathustra",
+   "author": "Friedrich Nietzsche",
+   "source": "Project Gutenberg #1998",
+   "text": "One day had Zarathustra fallen asleep under a fig-tree, owing to the heat, with his arms over his face. And there came an adder and bit him in the neck, so that Zarathustra screamed with pain. When he had taken his arm from his face he looked at the serpent; and then did it recognise the eyes of Zarathustra, wriggled awkwardly, and tried to get away. “Not at all,” said Zarathustra, “as yet hast thou not received my thanks! Thou hast awakened me in time; my journey is yet long.” “Thy journey is short,” said the adder sadly; “my poison is fatal.” Zarathustra smiled. “When did ever a dragon die of a serpent’s poison?”—said he. “But take thy poison back! Thou art not rich enough to present it to me.” Then fell the adder again on his neck, and licked his wound.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What happens in the passage?",
+     "answer": "An adder bites Zarathustra, who thanks it and refuses its poison",
+     "wrong": [
+      "Zarathustra kills a snake that threatens his disciples",
+      "Zarathustra falls ill and is nursed by a serpent",
+      "An adder guides Zarathustra on his journey"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why does Zarathustra thank the adder?",
+     "answer": "It woke him in time, for his journey is long",
+     "wrong": [
+      "It warned him of danger ahead",
+      "It brought him water in the heat",
+      "It showed him the way home"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does his question about the dragon suggest?",
+     "answer": "He sees himself as far beyond the threat",
+     "wrong": [
+      "He is afraid of dragons",
+      "He believes the adder is lying",
+      "He wants the adder to fetch a dragon"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "swann-great-aunt",
+   "tier": 9,
+   "title": "Swann's Way",
+   "author": "Marcel Proust",
+   "source": "Project Gutenberg #7178",
+   "text": "Now, the effect of that remark about Swann had been, not to raise him in my great-aunt's estimation, but to lower Mme. de Villeparisis. It appeared that the deference which, on my grandmother's authority, we owed to Mme. de Villeparisis imposed on her the reciprocal obligation to do nothing that would render her less worthy of our regard, and that she had failed in her duty in becoming aware of Swann's existence and in allowing members of her family to associate with him. \"How should she know Swann? A lady who, you always made out, was related to Marshal MacMahon!\" This view of Swann's social atmosphere which prevailed in my family seemed to be confirmed later on by his marriage with a woman of the worst class, you might almost say a 'fast' woman, whom, to do him justice, he never attempted to introduce to us, for he continued to come to us alone, though he came more and more seldom; but from whom they thought they could establish, on the assumption that he had found her there, the circle, unknown to them, in which he ordinarily moved.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What effect did the remark about Swann have on the great-aunt?",
+     "answer": "It lowered her opinion of Mme de Villeparisis instead of raising Swann",
+     "wrong": [
+      "It made her invite Swann more often",
+      "It made her admire Swann's connections",
+      "It made her quarrel with the grandmother"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Whom did Swann marry, in the family's view?",
+     "answer": "A woman of the worst class",
+     "wrong": [
+      "A relative of Marshal MacMahon",
+      "Mme de Villeparisis's niece",
+      "A rich widow from Paris"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What does the family conclude about the company Swann usually keeps?",
+     "answer": "That it must be as low as the woman he married",
+     "wrong": [
+      "That it is far grander than their own",
+      "That he has no friends at all",
+      "That it is mostly artists and writers"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "prolegomena-judgments",
+   "tier": 9,
+   "title": "Prolegomena to Any Future Metaphysics",
+   "author": "Immanuel Kant",
+   "source": "Project Gutenberg #52821",
+   "text": "Analytical judgments express nothing in the predicate but what has been already actually thought in the concept of the subject, though not so distinctly or with the same (full) consciousness. When I say: All bodies are extended, I have not amplified in the least my concept of body, but have only analysed it, as extension was really thought to belong to that concept before the judgment was made, though it was not expressed; this judgment is therefore analytical. On the contrary, this judgment, All bodies have weight, contains in its predicate something not actually thought in the general concept of the body; it amplifies my knowledge by adding something to my concept, and must therefore be called synthetical.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What distinction does the passage draw?",
+     "answer": "Judgments that only unpack a concept, and judgments that add to it",
+     "wrong": [
+      "True judgments and false ones",
+      "Judgments about bodies and judgments about minds",
+      "Old philosophy and new philosophy"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Why is “All bodies are extended” analytical?",
+     "answer": "Extension was already thought in the concept of body",
+     "wrong": [
+      "It can only be known by measuring bodies",
+      "It adds weight to the concept of body",
+      "It is a judgment about experience"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What kind of judgment is “All bodies have weight”?",
+     "answer": "Synthetical, because it adds to the concept",
+     "wrong": [
+      "Analytical, because it repeats the concept",
+      "Neither, because it is false",
+      "Analytical, because bodies are extended"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sound-fury-hill",
+   "tier": 9,
+   "title": "The Sound and the Fury",
+   "author": "William Faulkner",
+   "source": "Project Gutenberg #75170",
+   "text": "I wasn’t crying, but I couldn’t stop. I wasn’t crying, but the ground wasn’t still, and then I was crying. The ground kept sloping up and the cows ran up the hill. T. P. tried to get up. He fell down again and the cows ran down the hill. Quentin held my arm and we went toward the barn. Then the barn wasn’t there and we had to wait until it came back. I didn’t see it come back. It came behind us and Quentin set me down in the trough where the cows ate. I held on to it. It was going away too, and I held to it. The cows ran down the hill again, across the door. I couldn’t stop. Quentin and T. P. came up the hill, fighting. T. P. was falling down the hill and Quentin dragged him up the hill. Quentin hit T. P. I couldn’t stop.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is happening to the narrator?",
+     "answer": "He is overwhelmed and confused, and the world seems to move around him",
+     "wrong": [
+      "He is calmly watching cows being herded",
+      "He is chasing T. P. up the hill for fun",
+      "He is hiding in the barn from Quentin"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Where does Quentin set him down?",
+     "answer": "In the trough where the cows ate",
+     "wrong": [
+      "On the barn floor",
+      "At the top of the hill",
+      "By the kitchen door"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Who come up the hill fighting?",
+     "answer": "Quentin and T. P.",
+     "wrong": [
+      "Caddy and Versh",
+      "Two cows",
+      "Quentin and the narrator"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ulysses-mother",
+   "tier": 10,
+   "title": "Ulysses",
+   "author": "James Joyce",
+   "source": "Project Gutenberg #4300",
+   "text": "Ugly and futile: lean neck and tangled hair and a stain of ink, a snail’s bed. Yet someone had loved him, borne him in her arms and in her heart. But for her the race of the world would have trampled him underfoot, a squashed boneless snail. She had loved his weak watery blood drained from her own. Was that then real? The only true thing in life? His mother’s prostrate body the fiery Columbanus in holy zeal bestrode. She was no more: the trembling skeleton of a twig burnt in the fire, an odour of rosewood and wetted ashes. She had saved him from being trampled underfoot and had gone, scarcely having been. A poor soul gone to heaven: and on a heath beneath winking stars a fox, red reek of rapine in his fur, with merciless bright eyes scraped in the earth, listened, scraped up the earth, listened, scraped and scraped.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is Stephen reflecting on?",
+     "answer": "That even this weak, ugly boy was loved by his mother",
+     "wrong": [
+      "That the boy will grow up to be strong",
+      "That his own mother never loved him",
+      "That the boy should be punished"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "How is the boy described?",
+     "answer": "A lean neck, tangled hair and a stain of ink",
+     "wrong": [
+      "Tall, with a red face and clean hands",
+      "Strong, with a loud laugh",
+      "Pale, with a shaved head"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What has happened to the mother the passage turns to?",
+     "answer": "She has died",
+     "wrong": [
+      "She has moved away",
+      "She has fallen ill but recovered",
+      "She has become a nun"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ulysses-strand",
+   "tier": 10,
+   "title": "Ulysses",
+   "author": "James Joyce",
+   "source": "Project Gutenberg #4300",
+   "text": "Stephen closed his eyes to hear his boots crush crackling wrack and shells. You are walking through it howsomever. I am, a stride at a time. A very short space of time through very short times of space. Five, six: the nacheinander. Exactly: and that is the ineluctable modality of the audible. Open your eyes. No. Jesus! If I fell over a cliff that beetles o’er his base, fell through the nebeneinander ineluctably! I am getting on nicely in the dark. My ash sword hangs at my side. Tap with it: they do. My two feet in his boots are at the ends of his legs, nebeneinander. Sounds solid: made by the mallet of Los Demiurgos. Am I walking into eternity along Sandymount strand? Crush, crack, crick, crick. Wild sea money. Dominie Deasy kens them a’.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is Stephen doing?",
+     "answer": "Walking a beach with his eyes shut, thinking about time and space",
+     "wrong": [
+      "Swimming out to sea at dawn",
+      "Sitting on a cliff reading",
+      "Searching the sand for lost money"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "What does he hear under his boots?",
+     "answer": "Crackling wrack and shells",
+     "wrong": [
+      "Wet sand sucking at his heels",
+      "Pebbles rolling in the surf",
+      "Wooden planks of a pier"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Where is he walking?",
+     "answer": "Sandymount strand",
+     "wrong": [
+      "Leahy's terrace",
+      "A road out of Dublin",
+      "A cliff path above the sea"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kant-criticism",
+   "tier": 10,
+   "title": "The Critique of Pure Reason",
+   "author": "Immanuel Kant",
+   "source": "Project Gutenberg #4280",
+   "text": "We very often hear complaints of the shallowness of the present age, and of the decay of profound science. But I do not think that those which rest upon a secure foundation, such as mathematics, physical science, etc., in the least deserve this reproach, but that they rather maintain their ancient fame, and in the latter case, indeed, far surpass it. The same would be the case with the other kinds of cognition, if their principles were but firmly established. In the absence of this security, indifference, doubt, and finally, severe criticism are rather signs of a profound habit of thought. Our age is the age of criticism, to which everything must be subjected. The sacredness of religion, and the authority of legislation, are by many regarded as grounds of exemption from the examination of this tribunal. But, if they are exempted, they become the subjects of just suspicion, and cannot lay claim to sincere respect, which reason accords only to that which has stood the test of a free and public examination.",
+   "questions": [
+    {
+     "kind": "gist",
+     "prompt": "What is Kant's main claim?",
+     "answer": "This is an age of criticism, and nothing is exempt from examination",
+     "wrong": [
+      "This age is shallow and has lost its learning",
+      "Religion and law should be beyond question",
+      "Mathematics has declined since ancient times"
+     ]
+    },
+    {
+     "kind": "detail",
+     "prompt": "Which kinds of knowledge does he say do not deserve the charge of shallowness?",
+     "answer": "Mathematics and physical science",
+     "wrong": [
+      "Religion and law",
+      "Poetry and history",
+      "Logic and rhetoric"
+     ]
+    },
+    {
+     "kind": "inference",
+     "prompt": "What happens to religion and legislation if they claim exemption, according to Kant?",
+     "answer": "They fall under suspicion and lose sincere respect",
+     "wrong": [
+      "They become stronger than ever",
+      "They are finally proved true",
+      "They are replaced by science"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -389,6 +389,7 @@ final class AppModel {
                     if run.feedback != nil { run.next(now: now); return }
                     let said = n % 3 != 2 ? task.answer : ""
                     run.respond(task.mode == .say ? .spoken(transcript: said, seconds: 3) : .written(text: said.isEmpty ? "?" : said, source: .typed), now: now)
+                case .passage(let passage): run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
                 default: break
                 }
             }

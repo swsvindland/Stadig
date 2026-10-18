@@ -21,7 +21,13 @@ enum SampleData {
             settings.schedule = StudySchedule(daysPerWeek: 6)
         }
         settings.updatedAt = start.date()
-        var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { $0.book(status: .readBefore) }
+        var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { entry -> Book in
+            var book = entry.book(status: .readBefore)
+            book.feel = .right
+            book.finished = start
+            book.format = entry.id == "mistborn-final-empire" ? .audiobook : .print
+            return book
+        }
         if books.isEmpty { books = ladder.books.filter { $0.tier == 3 }.prefix(2).map { $0.book(status: .readBefore) } }
         var cards: [CardKey: MemoryCard] = [:]
         var sessions: [StudySession] = []
@@ -74,7 +80,9 @@ enum SampleData {
                     now += Double(minutes) * 60
                     let page = book.page + minutes * 2 + rng.int(0...10)
                     let finished = page >= book.pages
-                    run.finishReading(page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes), now: now)
+                    // Focus holds to about twenty minutes, then drifts.
+                    run.finishReading(page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes),
+                                      focus: minutes <= 20 ? .held : .drifted, now: now)
                 case .reflect(_, let finished):
                     now += 60
                     run.reflect(rng.pick(finished ? bookNotes : sectionNotes), now: now)
@@ -152,7 +160,8 @@ enum SampleData {
             let level = WritingBank.standard.skill(key.item)?.level ?? 3
             return [0.92, 0.8, 0.65][min(2, max(0, level - 1))]
         case .reading:
-            return 1
+            // A reader at about tier six: passages up to it understood, harder ones mostly guessed.
+            return (question.band ?? 5) <= 6 ? 0.92 : 0.35
         }
     }
 

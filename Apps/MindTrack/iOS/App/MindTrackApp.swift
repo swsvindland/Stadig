@@ -32,6 +32,8 @@ struct MindTrackApp: App {
             }
         }
         if arguments.contains("-showSettings") { model.showSettings = true }
+        // -showShelf opens the reading shelf (-findBook <title or ISBN> then searches for a book).
+        if arguments.contains("-showShelf") || arguments.contains("-findBook") { model.showShelf = true }
         if arguments.contains("-startSession") { model.startToday() }
         if let courses, var settings = model.settings, settings.courses != courses {
             settings.courses = courses
