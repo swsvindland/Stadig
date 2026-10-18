@@ -105,7 +105,8 @@ struct PlanTests {
         store.sessions = [StudySession(purpose: .placement, start: monday.date(), end: monday.date(), plannedMinutes: 25, domains: Domain.allCases,
                                        planned: true, ranToEnd: true)]
         store.tests = [TestResult(test: .vocabulary, date: monday.date(), score: 200), TestResult(test: .mathsPlacement, date: monday.date(), score: 5),
-                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true)]
+                       TestResult(test: .writing, date: monday.date(), score: 0.5, placement: true),
+                       TestResult(test: .readingTest, date: monday.date(), score: 0.8, detail: ["tier": 5], placement: true)]
         for offset in 49...53 {
             let state = store.state(on: monday.adding(days: offset))
             guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { continue }

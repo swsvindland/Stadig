@@ -9,7 +9,9 @@ struct SimulatedStudentTests {
 
     @Test("the first session finds a level in each domain and teaches the first words")
     func firstSession() throws {
-        var store = Store(settings: Fixtures.settings())
+        // Reading's reading test is the rest of a first session with all four courses (ReadingTests);
+        // without it, what's left goes to the first new words.
+        var store = Store(settings: Fixtures.settings([.japanese, .maths, .writing]))
         var student = Student(vocabulary: 1200, mathsLevel: 5, writingLevel: 1, deck: deck)
         let state = store.state(on: Fixtures.monday)
         let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))

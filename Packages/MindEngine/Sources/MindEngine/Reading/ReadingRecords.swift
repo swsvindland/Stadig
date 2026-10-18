@@ -1,8 +1,9 @@
 import Foundation
 
 /// A passage for the reading test: real prose at a known difficulty, read silently and timed in
-/// the background, then a few comprehension questions.
-public struct Passage: Hashable, Sendable, Identifiable {
+/// the background, then a few comprehension questions. Public domain (from Project Gutenberg) or
+/// written for Mind Track.
+public struct Passage: Hashable, Sendable, Identifiable, Decodable {
     public var id: String
     public var title: String
     public var author: String
@@ -10,17 +11,66 @@ public struct Passage: Hashable, Sendable, Identifiable {
     /// The ladder tier this passage reads at.
     public var tier: Int
     public var language: Language?
+    /// Where it's from: "Project Gutenberg #1342", or "Written for Mind Track".
+    public var source: String
+    public var questions: [PassageQuestion]
 
-    public init(id: String, title: String, author: String, text: String, tier: Int, language: Language? = nil) {
+    public init(id: String, title: String, author: String, text: String, tier: Int, language: Language? = nil,
+                source: String = "Written for Mind Track", questions: [PassageQuestion] = []) {
         self.id = id
         self.title = title
         self.author = author
         self.text = text
         self.tier = tier
         self.language = language
+        self.source = source
+        self.questions = questions
     }
 
     public var words: Int { text.split { $0.isWhitespace || $0.isNewline }.count }
+}
+
+/// One comprehension question: the gist, a detail, an inference, or a word in context. Asked
+/// after the passage, without it on screen.
+public struct PassageQuestion: Hashable, Sendable, Decodable {
+    public enum Kind: String, Hashable, Sendable, Decodable { case gist, detail, inference, vocabulary }
+
+    public var kind: Kind
+    public var prompt: String
+    public var answer: String
+    public var wrong: [String]
+
+    public init(kind: Kind, prompt: String, answer: String, wrong: [String]) {
+        self.kind = kind
+        self.prompt = prompt
+        self.answer = answer
+        self.wrong = wrong
+    }
+}
+
+/// How focus held through a reading block: the same three-tap pattern as a set's effort. It's
+/// what stamina is measured from, apart from how hard the book is.
+public enum ReadingFocus: String, CaseIterable, Codable, Sendable, Identifiable {
+    case held, drifted, lost
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .held: "Held"
+        case .drifted: "Drifted"
+        case .lost: "Lost it"
+        }
+    }
+
+    /// The share of the block that counts as focused reading.
+    var share: Double {
+        switch self {
+        case .held: 1
+        case .drifted: 0.75
+        case .lost: 0.5
+        }
+    }
 }
 
 /// What's known about a book from outside: Open Library first, Google Books as backup, cached

@@ -58,14 +58,6 @@ public struct WritingSummary: Hashable, Sendable {
     public var check: TestResult?
 }
 
-public struct ReadingSummary: Hashable, Sendable {
-    public var current: Book?
-    public var comfortTier: Int?
-    public var targetTier: Int
-    public var finished: [Book]
-    public var pagesPerMinute: Double?
-}
-
 public struct MindAnalysis: Sendable {
     public var phase: StudyPhase
     public var today: SessionPlan?
@@ -159,14 +151,7 @@ public enum Analyst {
             let label = scored.isEmpty ? "Measured at the first placement" : scored.map { domain, _ in label(domain, state: state) }.joined(separator: " · ")
             out.append(StatReading(stat: .intelligence, score: score, label: label, trend: trend, updated: state.now))
         }
-        if state.settings.has(.reading) {
-            let shelf = state.books
-            let finished = shelf.filter { $0.status == .finished && ($0.finished.map { $0.days(until: state.today) <= 84 } ?? false) }.count
-            let comfort = ReadingPlan.comfortTier(shelf)
-            out.append(StatReading(stat: .wisdom, score: ReadingPlan.score(shelf),
-                                   label: comfort.map { "Comfortable at tier \($0) of 10 · \(finished) finished in 12 weeks" } ?? "Finish a book to place the ladder",
-                                   trend: trajectory(.reading, state: state), updated: state.now))
-        }
+        if state.settings.has(.reading) { out.append(ReadingPlan.wisdom(state)) }
         return out
     }
 
@@ -235,12 +220,7 @@ public enum Analyst {
                               next: WritingPlan.next(state.cards, bank: bank)?.title, check: state.latest(.writing))
     }
 
-    static func readingSummary(_ state: StudyState) -> ReadingSummary {
-        ReadingSummary(current: state.currentBook, comfortTier: ReadingPlan.comfortTier(state.books),
-                       targetTier: ReadingPlan.targetTier(state.books),
-                       finished: state.books.filter { $0.status == .finished }.sorted { ($0.finished ?? state.today) > ($1.finished ?? state.today) },
-                       pagesPerMinute: ReadingPlan.pace(state.sessions))
-    }
+    static func readingSummary(_ state: StudyState) -> ReadingSummary { ReadingPlan.summary(state) }
 
     // MARK: What we've learned
 
@@ -266,8 +246,8 @@ public enum Analyst {
             notes.append("Writing: \(Int((check.score * 100).rounded()))% on the first pass.\(writing.next.map { " Starting with \($0.lowercased())." } ?? "")")
         }
         if state.settings.has(.reading) {
-            if let tier = reading.comfortTier {
-                notes.append("Reading: comfortable at tier \(tier). The ladder suggests tier \(reading.targetTier) next.")
+            if let tested = reading.testedLevel {
+                notes.append("Reading: tested at tier \(ReadingPlan.format(tested)). Books start just below it, at tier \(reading.targetTier), and climb as they feel easy or just right.")
             }
         }
         return notes
@@ -305,7 +285,7 @@ public enum Analyst {
                                           detail: "Nothing logged for two weeks. Read twenty pages tonight, or set it aside and pick another from the ladder.", priority: 0.8))
                 }
             } else if !state.phase.isAssessment || !state.sessions.isEmpty {
-                let picks = ReadingPlan.suggestions(shelf: state.books, genres: state.settings.genres).map(\.title)
+                let picks = ReadingPlan.suggestions(shelf: state.books, tests: state.tests, genres: state.settings.genres, on: state.today).map(\.title)
                 if !picks.isEmpty {
                     out.append(MindAction(id: "pick-book", kind: .pickBook, title: "Pick your next book",
                                           detail: "The ladder suggests \(ListFormatter.localizedString(byJoining: picks)).", priority: 0.7))

@@ -13,8 +13,9 @@ public enum StepResponse: Hashable, Sendable {
     case picked(Int)
     /// A book chosen to read now.
     case bookPicked(Book)
-    /// The reading block ended: where the bookmark is, and how the book felt if it's finished.
-    case readingDone(page: Int, finished: Bool, feel: BookFeel?, minutes: Double)
+    /// The reading block ended: where the bookmark is, how the book felt if it's finished, and how
+    /// focus held.
+    case readingDone(page: Int, finished: Bool, feel: BookFeel?, minutes: Double, focus: ReadingFocus? = nil)
     /// A few sentences after reading, or nil to skip.
     case reflection(String?)
     /// Leave this step.

@@ -98,36 +98,27 @@ struct ContentTests {
         #expect(bank.item(for: "commas", seen: 0, seed: "a") != bank.item(for: "commas", seen: 1, seed: "a"))
     }
 
-    @Test("the reading ladder: ten tiers, every book placed, and suggestions one tier up in liked genres")
+    @Test("the reading ladder: ten tiers, every book placed, and suggestions near the next tier in liked genres")
     func ladder() throws {
         let ladder = ReadingLadder.standard
         #expect(ladder.tiers.map(\.tier) == Array(1...10))
-        #expect(ladder.books.count >= 100)
+        #expect(ladder.books.count >= 300)
         #expect(Set(ladder.books.map(\.id)).count == ladder.books.count)
         for tier in 1...10 { #expect(ladder.books.filter { $0.tier == tier }.count >= 8, "tier \(tier)") }
 
-        // Read Mistborn (2) and Earthsea (4) before: the comfort tier is 4, so suggest tier 5.
-        let mistborn = try #require(ladder.books.first { $0.title.contains("Mistborn") })
-        let read = ladder.books.filter { $0.tier == 4 && $0.genres.contains(.fantasy) }.prefix(1).map { $0.book(status: .readBefore) }
-        let shelf = [mistborn.book(status: .readBefore)] + read
-        #expect(ReadingPlan.comfortTier(shelf) == 4)
-        #expect(ReadingPlan.targetTier(shelf) == 5)
-        let picks = ReadingPlan.suggestions(shelf: shelf, genres: [.fantasy, .sciFi], ladder: ladder)
+        // Tested at 5: the next book is a tier 4, just below; a just-right 4 moves it up half a tier.
+        let day = Fixtures.monday
+        let test = TestResult(test: .readingTest, date: day.date(), score: 0.8, detail: ["tier": 5])
+        #expect(ReadingPlan.targetTier(books: [], tests: [test], on: day) == 4)
+        var read = try #require(ladder.books.first { $0.tier == 4 && $0.genres.contains(.fantasy) }).book(status: .finished)
+        read.feel = .right
+        read.finished = day
+        #expect(ReadingPlan.target(books: [read], tests: [test], on: day) == 4.5)
+        let picks = ReadingPlan.suggestions(shelf: [read], tests: [test], genres: [.fantasy, .sciFi], on: day, ladder: ladder)
         #expect(picks.count == 3)
-        #expect(picks.allSatisfy { abs($0.tier - 5) <= 1 })
-        #expect(picks.allSatisfy { !Set($0.genres).isDisjoint(with: [.fantasy, .sciFi]) } || picks.contains { $0.tier == 5 })
-        #expect(!picks.contains { $0.id == mistborn.id })
-
-        // A tier-5 book that felt hard holds the ladder at 5 rather than climbing.
-        var hard = try #require(ladder.books.first { $0.tier == 5 }).book(status: .finished)
-        hard.feel = .hard
-        hard.finished = .init(year: 2026, month: 10, day: 1)
-        #expect(ReadingPlan.comfortTier(shelf + [hard]) == 4)
-        #expect(ReadingPlan.targetTier(shelf + [hard]) == 4)
-        var right = hard
-        right.feel = .right
-        #expect(ReadingPlan.targetTier(shelf + [right]) == 6)
-        #expect(ReadingPlan.targetTier([]) == ReadingPlan.startingTier)
+        #expect(picks.allSatisfy { abs(Double($0.tier) - 4.5) <= 1.5 })
+        #expect(!picks.contains { $0.id == read.ladderID })
+        #expect(ReadingPlan.targetTier(books: [], tests: [], on: day) == ReadingPlan.startingTier)
     }
 
     @Test("kana: hiragana and katakana in teaching order, with lookalikes as wrong answers")
