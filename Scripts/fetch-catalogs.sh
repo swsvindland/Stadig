@@ -33,6 +33,10 @@ token=${CATALOG_TOKEN:-${GH_TOKEN:-${GITHUB_TOKEN:-}}}
 [[ -n $token ]] || { print -u2 "No token to read $REPO's releases: set CATALOG_TOKEN or sign in with gh"; exit 1 }
 
 release=$(curl -fsSL --retry 3 -H "Authorization: Bearer $token" -H "Accept: application/vnd.github+json" $API/releases/tags/$tag)
+# Downloads land outside the Catalogs folders (which the apps bundle whole) until they're complete
+# and checked, so an interrupted fetch never leaves a partial catalog where a build would ship it.
+work=$(mktemp -d)
+trap 'rm -rf $work' EXIT
 for entry in $wanted; do
   file=${entry% *} sum=${entry##* } asset=${${entry% *}:t}.gz
   id=$(print -r -- $release | jq -r --arg name $asset '.assets[] | select(.name == $name) | .id')
@@ -41,9 +45,9 @@ for entry in $wanted; do
   mkdir -p ${file:h}
   # curl drops the Authorization header when GitHub redirects to its storage host, as that host wants.
   curl -fsSL --retry 3 -H "Authorization: Bearer $token" -H "Accept: application/octet-stream" \
-    $API/releases/assets/$id | gunzip -c > $file.part
-  got=$(shasum -a 256 $file.part | cut -d' ' -f1)
-  [[ $got == $sum ]] || { rm -f $file.part; print -u2 "$file came down with SHA-256 $got, not $sum"; exit 1 }
-  mv -f $file.part $file
+    $API/releases/assets/$id | gunzip -c > $work/${file:t}
+  got=$(shasum -a 256 $work/${file:t} | cut -d' ' -f1)
+  [[ $got == $sum ]] || { print -u2 "$file came down with SHA-256 $got, not $sum"; exit 1 }
+  mv -f $work/${file:t} $file
   print "Installed $file ($(du -h $file | cut -f1))"
 done

@@ -1,0 +1,152 @@
+# Every push, on any branch: lint and every package's tests, with the bundled catalogs fetched so the
+# catalog tests run too. The apps themselves are built, tested and shipped by Xcode Cloud (see
+# docs/ci-cd.md); GitHub's macOS minutes cost ten times Linux ones, so the app jobs here only run when
+# started by hand. Once a week the packages also run under the thread and address sanitizers.
+name: CI
+
+on:
+  push:
+    paths:
+      - "Apps/**"
+      - "Packages/**"
+      - "Scripts/**"
+      - ".swift-format"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "Also build each app and run its unit and UI tests"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 7 * * 1" # Mondays: sanitizers
+
+concurrency:
+  # A feature branch keeps only its latest push's run. Main and release branches get a group per
+  # commit, so every commit there is checked, and scheduled and manual runs never cancel pushes.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')) && github.sha || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    # The packages use Xcode 27 SDK APIs (Foundation Models), which macos-26 doesn't have; this image's
+    # default Xcode is the release, and its swift-format is the one the code was formatted with.
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: swift-format
+        run: Scripts/build.sh lint
+
+      - name: Xcode projects match the generator
+        run: |
+          python3 Scripts/generate-project.py
+          # status, not diff, so a generated file that was never committed fails too.
+          if [[ -n $(git status --porcelain -- Apps) ]]; then
+            git status --short -- Apps
+            echo "::error::The Xcode projects differ from Scripts/generate-project.py. Change the generator, run it, and commit what it writes."
+            exit 1
+          fi
+
+  packages:
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore catalogs
+        uses: actions/cache@v6
+        with:
+          path: |
+            Apps/MacroTrack/Catalogs/*.db
+            Apps/MindTrack/Catalogs/*.db
+          key: catalogs-${{ hashFiles('Scripts/catalogs.manifest') }}
+
+      - name: Fetch catalogs
+        # Through Xcode Cloud's own post-clone step, so that path is exercised on every push.
+        run: |
+          Scripts/xcode-cloud.sh post-clone MacroTrack
+          Scripts/xcode-cloud.sh post-clone MindTrack
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Test packages
+        if: github.event_name != 'schedule'
+        env:
+          # No Neural Engine on these virtual Macs, so tests that run real Vision OCR are skipped.
+          NO_VISION_OCR: "1"
+          STRICT: "1"
+        run: Scripts/build.sh test
+
+      - name: Test packages under the thread sanitizer
+        if: github.event_name == 'schedule'
+        env:
+          NO_VISION_OCR: "1"
+          SANITIZE: thread
+        run: Scripts/build.sh test
+
+      - name: Test packages under the address sanitizer
+        if: github.event_name == 'schedule'
+        env:
+          NO_VISION_OCR: "1"
+          SANITIZE: address
+        run: Scripts/build.sh test
+
+  apps:
+    if: github.event_name == 'workflow_dispatch' && inputs.apps
+    needs: [lint, packages]
+    runs-on: xcode-27
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [lift, macro, mind]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore catalogs
+        uses: actions/cache@v6
+        with:
+          path: |
+            Apps/MacroTrack/Catalogs/*.db
+            Apps/MindTrack/Catalogs/*.db
+          key: catalogs-${{ hashFiles('Scripts/catalogs.manifest') }}
+
+      - name: Fetch catalogs
+        run: Scripts/fetch-catalogs.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Unit and integration tests
+        env:
+          NO_VISION_OCR: "1"
+          STRICT: "1"
+          DERIVED_DATA: ${{ runner.temp }}/dd
+        run: Scripts/build.sh unit ${{ matrix.app }}
+
+      - name: UI tests
+        env:
+          DERIVED_DATA: ${{ runner.temp }}/dd
+        run: Scripts/build.sh ui ${{ matrix.app }}
+
+      - name: Watch app
+        if: matrix.app == 'lift'
+        env:
+          STRICT: "1"
+          DERIVED_DATA: ${{ runner.temp }}/dd
+        run: Scripts/build.sh watch
+
+      - name: Keep the test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.app }}
+          path: ${{ runner.temp }}/dd-results
+          retention-days: 7

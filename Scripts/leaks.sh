@@ -8,7 +8,9 @@ set -u
 cd "${0:A:h}/.."
 APP=${1:?lift, macro or mind}
 shift
-DD=${DERIVED_DATA:-/tmp/system-dd}
+# The same per-checkout DerivedData and simulator Scripts/build.sh uses.
+CHECKOUT=$(print -r -- $PWD | shasum | cut -c1-6)
+DD=${DERIVED_DATA:-/tmp/system-dd-$CHECKOUT}
 SETTLE=${SETTLE:-10}
 
 case $APP in
@@ -22,38 +24,59 @@ case $APP in
 esac
 (( $# )) && screens=("$*")
 
-udid=${SIMULATOR:-$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name == "Stadig Tests")][0].udid // empty')}
+udid=${SIMULATOR:-$(xcrun simctl list devices available -j | jq -r --arg n "Stadig Tests $CHECKOUT" '[.devices[][] | select(.name == $n)][0].udid // empty')}
 [[ -n $udid ]] || { print -u2 "No simulator: run Scripts/build.sh unit $APP once, or set SIMULATOR"; exit 2 }
 app=$DD/Build/Products/Debug-iphonesimulator/$name.app
 [[ -d $app ]] || { print -u2 "No build at $app: run Scripts/build.sh first"; exit 2 }
 xcrun simctl boot $udid 2>/dev/null
 xcrun simctl install $udid $app || exit 1
 
-# Leaks that come from the system, not this code: dyld's image map in the simulator.
-SYSTEM_LEAKS='map_images_nolock'
+# Which leaks are this code's: one whose allocation stack runs through the app's own code (its
+# .debug.dylib, which holds the app and its packages in a Debug build), other than the entry point.
+# The rest are the system's (dyld, SwiftUI, FoundationModels, or allocated before logging began).
+CLASSIFY='
+import re, sys
+name, text = sys.argv[1], open(sys.argv[2]).read()
+total = re.search(r"(\d+) leaks? for", text)
+if not total:
+    print("none 0"); sys.exit()
+ours, shown = 0, []
+for block in re.split(r"\n(?=STACK OF|NO STACK)", text):
+    if "ROOT LEAK" not in block and "ROOT CYCLE" not in block:
+        continue
+    stack, _, tree = block.partition("====")
+    frames = [l for l in stack.splitlines() if f"{name}.debug.dylib" in l or re.search(rf"\b{name}\b\s+0x", l)]
+    # The entry point is in every stack (in a Debug build, __debug_main_executable_dylib_entry_point).
+    frames = [l for l in frames if not re.search(r"\bmain\b|\$main|App\.main|_entry_point", l)]
+    # dyld's image map is the system's whoever loaded the image (Metal loads one under SwiftUI).
+    if frames and "map_images_nolock" not in tree:
+        count = re.search(r"^\s*(\d+) \(", tree, re.M)
+        ours += int(count.group(1)) if count else 1
+        shown.append(tree.strip().splitlines()[0] + "\n" + "\n".join("      " + f.strip() for f in frames[:8]))
+print(total.group(1), ours)
+for s in shown:
+    print(s, file=sys.stderr)
+'
 
 STATUS=0
-for screen in $screens; do
+report=$(mktemp)
+trap 'rm -f $report' EXIT
+# Quoted, so the plain launch ("") is checked too.
+for screen in "${screens[@]}"; do
   pid=$(SIMCTL_CHILD_MallocStackLogging=1 xcrun simctl launch --terminate-running-process $udid $id \
     -uiTesting -seedSampleData ${=screen} | awk '{ print $NF }')
   sleep $SETTLE
-  report=$(leaks $pid 2>/dev/null)
-  # Each "ROOT LEAK"/"ROOT CYCLE" block counts its leaks on its first line; blocks naming a system
-  # allocation are left out of ours.
-  read -r total ours < <(print -r -- $report | awk -v system="$SYSTEM_LEAKS" '
-    /leaks for/ { total = $3 }
-    /ROOT (LEAK|CYCLE):/ { if (block != "" && block !~ system) ours += count; block = $0; count = $1; next }
-    block != "" && /^ +[0-9]+ \(/ { block = block "\n" $0 }
-    END { if (block != "" && block !~ system) ours += count; print (total == "" ? "none" : total), ours + 0 }')
-  if [[ $total == none ]]; then
+  leaks --fullStacks $pid > $report 2>/dev/null
+  read -r total ours < <(python3 -c $CLASSIFY $name $report 2>/dev/null)
+  if [[ ${total:-none} == none ]]; then
     print "== ${screen:-launch}: leaks couldn't read the process (did it crash? try a longer SETTLE)"
     STATUS=1
-    continue
-  fi
-  print "== ${screen:-launch}: $ours leaks in this code ($total in all, the rest the system's)"
-  if (( ours )); then
-    STATUS=1
-    print -r -- $report | grep -E 'ROOT (LEAK|CYCLE)|^ +[0-9]+ \(' | grep -v -E $SYSTEM_LEAKS | head -30
+  else
+    print "== ${screen:-launch}: $ours leaks in this code ($total in all, the rest the system's)"
+    if (( ours )); then
+      STATUS=1
+      python3 -c $CLASSIFY $name $report 2>&1 >/dev/null | head -40
+    fi
   fi
   xcrun simctl terminate $udid $id 2>/dev/null
 done

@@ -1,2 +1,7 @@
+# The catalogs and anything left over from building or downloading one: none of it goes in git.
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+*.part
+*.tmp
