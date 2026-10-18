@@ -9,6 +9,7 @@ The logic is the product, so most tests live with the logic in the packages. The
 | Integration: an app's model over an in-memory store, everything it publishes to the shared container, cross-app contracts | `Apps/<App>/Tests` | Swift Testing, hosted in the app | `Scripts/build.sh unit lift\|macro\|mind` | Xcode Cloud (the `<App>` test plan) |
 | End to end: the app on a simulator, launched with seeded data | `Apps/<App>/UITests` | XCTest (XCUITest) | `Scripts/build.sh ui lift\|macro\|mind` | Xcode Cloud Main and Release (the `<App>UI` test plan) |
 | Sanitizers: the package tests under TSan and ASan | | | `SANITIZE=thread Scripts/build.sh test` | GitHub, Mondays |
+| Leaks: `leaks` on each app's seeded screens, counting only leaks whose allocation runs through the app's own code | `Scripts/leaks.sh`, `Scripts/classify-leaks.py` | | `Scripts/leaks.sh lift\|macro\|mind` after `Scripts/build.sh ios\|macro\|mind` | by hand, before a release |
 
 What the package tests cover, suite by suite, is in [package-tests.md](package-tests.md).
 

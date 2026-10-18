@@ -12,6 +12,7 @@ cd Packages/X && swift test --filter Y # one suite or test
 Scripts/build.sh unit lift|macro|mind  # an app's unit and integration tests (on this checkout's own simulator)
 Scripts/build.sh ui lift|macro|mind    # an app's UI tests
 Scripts/build.sh ios|watch|macro|mind  # build an app
+Scripts/leaks.sh lift|macro|mind       # after a build: `leaks` on the app's seeded screens
 python3 Scripts/generate-project.py    # after changing targets, settings, Info.plist keys or packages
 ```
 

@@ -67,6 +67,7 @@ Scripts/build.sh unit lift          # an app's unit and integration tests (lift,
 Scripts/build.sh ui lift            # an app's UI tests
 Scripts/build.sh ios|watch|macro|mind   # build one app
 Scripts/build.sh all                # lint, every package's tests, every app build
+Scripts/leaks.sh lift               # after building an app: run `leaks` on its seeded screens
 python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
 swift Scripts/make-icons.swift      # redraw Lift Track's icons (make-macro-icons, make-mind-icons for the others)
 Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest
