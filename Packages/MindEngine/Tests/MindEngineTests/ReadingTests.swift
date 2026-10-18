@@ -294,7 +294,8 @@ struct ReadingTests {
         #expect(ReadingPlan.nextBlock([block(30, 30, .held), block(16, 16, .held)]) == 33)
         // Focus held but stopped early (the phone rang): no climb, no drop.
         #expect(ReadingPlan.nextBlock([block(20, 20, .held), block(8, 22, .held)]) == 22)
-        #expect(ReadingPlan.stamina([block(20, 20, .held), block(20, 22, .drifted)]) == 18)
+        #expect(ReadingPlan.stamina([block(20, 20, .held), block(20, 22, .drifted)]) == 19)
+        #expect(ReadingPlan.stamina([block(20, 20, .lost)]) == 10)
 
         let print = Book(title: "Print", author: "A", tier: 4, pages: 300, genres: [], status: .reading, format: .print)
         let audio = Book(title: "Audio", author: "A", tier: 4, pages: 300, genres: [], status: .reading, format: .audiobook)

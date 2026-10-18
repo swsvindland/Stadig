@@ -2,17 +2,18 @@ import SwiftUI
 import MindEngine
 import SystemCore
 
-/// No book on the go: the ladder's three suggestions, or your own.
+/// No book on the go: the ladder's three suggestions at the next tier, or a book of your own.
 struct PickBookView: View {
     @Environment(AppModel.self) private var model
     let options: [LadderBook]
     @State private var addingOwn = false
 
     var body: some View {
+        let reading = model.analysis?.reading
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Your next book").font(.title.bold())
-                Text("One step up from where you're comfortable, in the genres you like.").foregroundStyle(.secondary)
+                Text(reading.map(intro) ?? "Near your level, in the genres you like.").foregroundStyle(.secondary)
                 ForEach(options) { book in
                     Button {
                         model.act { $0.pickBook(book, now: Date()) }
@@ -30,8 +31,16 @@ struct PickBookView: View {
             .readableWidth(640)
         }
         .sheet(isPresented: $addingOwn) {
-            BookEditor(book: nil) { book in model.act { $0.addBook(book, now: Date()) } }
+            BookFinder { book in model.act { $0.addBook(book, now: Date()) } }
         }
+    }
+
+    func intro(_ reading: ReadingSummary) -> String {
+        guard let tested = reading.testedLevel else { return "Tier \(reading.targetTier), in the genres you like." }
+        if reading.finished.isEmpty {
+            return "Tier \(reading.targetTier): just below the tier \(ReadingPlan.format(tested)) your reading test found, so it starts comfortably and climbs."
+        }
+        return "Tier \(reading.targetTier), from your test and how your last books felt, in the genres you like."
     }
 }
 
@@ -53,13 +62,15 @@ struct LadderBookRow: View {
     }
 }
 
-/// The reading block: a quiet timer, then where the bookmark is.
+/// The reading block: a quiet timer as long as focus has held so far, then where the bookmark is.
 struct ReadingTimerView: View {
     @Environment(AppModel.self) private var model
     let book: Book
     let minutes: Int
     @State private var started = Date()
     @State private var logging = false
+
+    var listening: Bool { book.format == .audiobook }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,9 +91,14 @@ struct ReadingTimerView: View {
                                     .font(.system(size: 44, weight: .light).monospacedDigit())
                             }
                             .frame(width: 220, height: 220)
-                            Text(left > 0 ? "Read. The phone can go face down." : "That's the block. Finish the page.")
-                                .font(.subheadline).foregroundStyle(.secondary)
+                            Text(left > 0 ? (listening ? "Listen. The phone can go face down." : "Read. The phone can go face down.")
+                                 : "That's the block. Finish the page, or keep going if focus holds.")
+                                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         }
+                    }
+                    if !listening {
+                        Text("A \(minutes)-minute block: as long as your focus has held so far. It grows while it keeps holding.")
+                            .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     if let last = model.reflections.last(where: { $0.bookID == book.id }) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -99,32 +115,95 @@ struct ReadingTimerView: View {
                 Button {
                     logging = true
                 } label: {
-                    Text("Done reading").font(.headline).frame(maxWidth: .infinity)
+                    Text(listening ? "Done listening" : "Done reading").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
                 .controlSize(.large)
             }
         }
         .sheet(isPresented: $logging) {
-            PageSheet(book: book) { page, finished, feel in
+            PageSheet(book: book, asksFocus: (book.format ?? .print).countsForStamina) { page, finished, feel, focus in
                 let minutes = Date().timeIntervalSince(started) / 60
-                model.act { $0.finishReading(page: page, finished: finished, feel: feel, minutes: minutes, now: Date()) }
+                model.act { $0.finishReading(page: page, finished: finished, feel: feel, minutes: minutes, focus: focus, now: Date()) }
             }
         }
     }
 }
 
-/// Where the bookmark is now, and how the book felt if it's finished.
+/// The three-tap colour rating, as after a set in Lift Track: green, orange or red.
+struct ColourRating<Value: Hashable>: View {
+    struct Option {
+        var value: Value
+        var label: String
+        var detail: String
+        var color: Color
+    }
+
+    let options: [Option]
+    @Binding var selection: Value?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(options, id: \.value) { option in
+                let chosen = selection == option.value
+                Button {
+                    selection = option.value
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(option.label).font(.subheadline.weight(.semibold))
+                        Text(option.detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).lineLimit(2)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .background(option.color.gradient, in: .rect(cornerRadius: 16))
+                    .overlay {
+                        if chosen { RoundedRectangle(cornerRadius: 16).stroke(.primary, lineWidth: 3) }
+                    }
+                    .opacity(selection == nil || chosen ? 1 : 0.4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(option.label): \(option.detail)")
+                .accessibilityAddTraits(chosen ? .isSelected : [])
+            }
+        }
+        .animation(.snappy, value: selection)
+    }
+}
+
+extension ColourRating where Value == BookFeel {
+    init(selection: Binding<BookFeel?>) {
+        self.init(options: [
+            .init(value: .easy, label: BookFeel.easy.label, detail: "Breezed through it", color: .green),
+            .init(value: .right, label: BookFeel.right.label, detail: "A stretch, in a good way", color: .orange),
+            .init(value: .hard, label: BookFeel.hard.label, detail: "Hard going", color: .red),
+        ], selection: selection)
+    }
+}
+
+extension ColourRating where Value == ReadingFocus {
+    init(selection: Binding<ReadingFocus?>) {
+        self.init(options: [
+            .init(value: .held, label: ReadingFocus.held.label, detail: "All the way through", color: .green),
+            .init(value: .drifted, label: ReadingFocus.drifted.label, detail: "Wandered near the end", color: .orange),
+            .init(value: .lost, label: ReadingFocus.lost.label, detail: "Couldn't settle", color: .red),
+        ], selection: selection)
+    }
+}
+
+/// Where the bookmark is now, how focus held, and how the book felt if it's finished.
 struct PageSheet: View {
     @Environment(\.dismiss) private var dismiss
     let book: Book
-    let save: (Int, Bool, BookFeel?) -> Void
+    var asksFocus = false
+    let save: (Int, Bool, BookFeel?, ReadingFocus?) -> Void
     @State private var page: Int
     @State private var finished = false
-    @State private var feel: BookFeel = .right
+    @State private var feel: BookFeel?
+    @State private var focus: ReadingFocus?
 
-    init(book: Book, finished: Bool = false, save: @escaping (Int, Bool, BookFeel?) -> Void) {
+    init(book: Book, finished: Bool = false, asksFocus: Bool = false, save: @escaping (Int, Bool, BookFeel?, ReadingFocus?) -> Void) {
         self.book = book
+        self.asksFocus = asksFocus
         self.save = save
         _page = State(initialValue: min(book.pages, book.page + 20))
         _finished = State(initialValue: finished)
@@ -144,17 +223,24 @@ struct PageSheet: View {
                 } footer: {
                     if !finished { Text("\(max(0, page - book.page)) pages this time.") }
                 }
+                if asksFocus {
+                    Section {
+                        ColourRating(selection: $focus)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    } header: {
+                        Text("How did your focus hold?")
+                    } footer: {
+                        Text("This sets the next block: longer while focus holds, the same when it drifts, shorter when it's lost. It's apart from how hard the book is.")
+                    }
+                }
                 if finished {
                     Section {
-                        Picker("How did it feel?", selection: $feel) {
-                            ForEach(BookFeel.allCases) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                        .labelsHidden()
+                        ColourRating(selection: $feel)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                     } header: {
                         Text("How did it feel?")
                     } footer: {
-                        Text("Easy or a stretch moves the ladder up a tier; hard going holds it here for one more.")
+                        Text("Easy moves the next book up a tier and just right half a tier; a slog holds it. It also refines this book's level and yours.")
                     }
                 }
             }
@@ -163,9 +249,10 @@ struct PageSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        save(min(page, book.pages), finished, finished ? feel : nil)
+                        save(min(page, book.pages), finished, finished ? (feel ?? .right) : nil, asksFocus ? focus : nil)
                         dismiss()
                     }
+                    .disabled(finished && feel == nil)
                 }
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
@@ -224,20 +311,33 @@ struct ReflectView: View {
     }
 }
 
-/// A book of your own: title, author, length, format, and how hard, by comparison with the ladder.
+/// A book's details before it goes on the shelf: from a search, scan or cover (with its estimated
+/// level and where the estimate comes from), or typed in, or an existing book being edited.
 struct BookEditor: View {
     @Environment(\.dismiss) private var dismiss
-    let book: Book?
-    /// For a new book: reading now, or finished before Mind Track.
+    var book: Book?
+    var draft: BookDraft?
+    /// For a new book: reading now, or finished in the last year.
     var status: BookStatus = .reading
     let save: (Book) -> Void
     @State private var title = ""
     @State private var author = ""
     @State private var pages = 300
     @State private var tier = 3
+    @State private var estimatedTier: Int?
     @State private var genre: Genre = .literary
     @State private var format: BookFormat = .print
-    @State private var feel: BookFeel = .right
+    @State private var feel: BookFeel?
+
+    init(book: Book? = nil, draft: BookDraft? = nil, status: BookStatus = .reading, save: @escaping (Book) -> Void) {
+        self.book = book
+        self.draft = draft
+        self.status = status
+        self.save = save
+    }
+
+    var finishedBefore: Bool { (book?.status ?? status) == .readBefore }
+    var setByHand: Bool { estimatedTier.map { $0 != tier } ?? (book == nil) }
 
     var body: some View {
         NavigationStack {
@@ -247,24 +347,30 @@ struct BookEditor: View {
                     TextField("Author", text: $author)
                     Stepper(value: $pages, in: 40...2000, step: 10) { LabeledContent("Pages", value: "\(pages)") }
                     Picker("Genre", selection: $genre) { ForEach(Genre.allCases) { Text($0.label).tag($0) } }
-                    Picker("Format", selection: $format) { ForEach(BookFormat.allCases, id: \.self) { Text($0.label).tag($0) } }
                 }
-                if (book?.status ?? status) == .readBefore {
-                    Section("How it felt") {
-                        Picker("How it felt", selection: $feel) { ForEach(BookFeel.allCases, id: \.self) { Text($0.label).tag($0) } }
-                            .pickerStyle(.segmented)
+                Section {
+                    Picker("Format", selection: $format) { ForEach(BookFormat.allCases) { Text($0.label).tag($0) } }
+                        .pickerStyle(.segmented)
+                } footer: {
+                    Text(format == .audiobook ? "Audiobooks count for understanding and taste, not reading stamina."
+                         : "Print and ebooks build reading stamina as well as level.")
+                }
+                if finishedBefore {
+                    Section("How did it feel?") {
+                        ColourRating(selection: $feel)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                     }
                 }
                 Section {
                     Stepper(value: $tier, in: 1...10) { LabeledContent("Tier", value: "\(tier) of 10") }
-                    let examples = ReadingLadder.standard.books.filter { $0.tier == tier }.prefix(3).map(\.title)
+                    let examples = ReadingLadder.standard.handLevelled.filter { $0.tier == tier && $0.title != title }.prefix(3).map(\.title)
                     if !examples.isEmpty {
                         Text("About as hard as \(ListFormatter.localizedString(byJoining: examples)).").font(.footnote).foregroundStyle(.secondary)
                     }
                 } header: {
                     Text("How hard to read")
                 } footer: {
-                    Text(ReadingLadder.standard.tier(tier)?.description ?? "")
+                    Text(levelNote)
                 }
             }
             .navigationTitle(book == nil ? "Add a book" : "Edit book")
@@ -273,30 +379,59 @@ struct BookEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        var edited = book ?? Book(title: title, author: author, tier: tier, pages: pages, genres: [genre], status: status)
-                        edited.title = title
-                        edited.author = author
-                        edited.tier = tier
-                        edited.pages = pages
-                        edited.genres = [genre]
-                        edited.format = format
-                        if edited.status == .readBefore { edited.feel = feel; edited.page = edited.pages }
                         save(edited)
                         dismiss()
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || (finishedBefore && feel == nil))
                 }
             }
-            .onAppear {
-                guard let book else { return }
-                title = book.title
-                author = book.author
-                pages = book.pages
-                tier = book.tier
-                genre = book.genres.first ?? .literary
-                format = book.format ?? .print
-                feel = book.feel ?? .right
-            }
+            .onAppear(perform: fill)
+        }
+    }
+
+    /// Where the tier comes from, and how much it counts.
+    var levelNote: String {
+        if setByHand { return "Set by you. A tier chosen by hand counts for less towards your level than one from the ladder." }
+        if let draft { return draft.estimate.explanation + "." }
+        return ReadingLadder.standard.tier(tier)?.description ?? ""
+    }
+
+    var edited: Book {
+        var edited = book ?? Book(ladderID: draft?.ladderID, title: title, author: author, tier: tier, pages: pages, genres: [genre],
+                                  status: status, isbn: draft?.isbn)
+        edited.title = title
+        edited.author = author
+        edited.tier = tier
+        edited.pages = pages
+        edited.genres = [genre]
+        edited.format = format
+        if setByHand { edited.tierConfidence = BookLevel.guessConfidence }
+        else if let draft, book == nil { edited.tierConfidence = draft.estimate.confidence }
+        if edited.status == .readBefore {
+            edited.feel = feel
+            edited.page = edited.pages
+            edited.finished = edited.finished ?? Day.today
+        }
+        return edited
+    }
+
+    func fill() {
+        if let book {
+            title = book.title
+            author = book.author
+            pages = book.pages
+            tier = book.tier
+            estimatedTier = book.tierConfidence == BookLevel.guessConfidence ? nil : book.tier
+            genre = book.genres.first ?? .literary
+            format = book.format ?? .print
+            feel = book.feel
+        } else if let draft {
+            title = draft.title
+            author = draft.author
+            pages = draft.pages ?? 300
+            tier = draft.estimate.roundedTier
+            estimatedTier = draft.title.isEmpty ? nil : draft.estimate.roundedTier
+            genre = draft.genres.first ?? draft.estimate.genres.first ?? .literary
         }
     }
 }

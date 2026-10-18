@@ -53,7 +53,7 @@ private struct StatCards: View {
                 }
                 .card()
             }
-            Text("Intelligence moves only on the check-in tests; Wisdom only on finished books. Reviewing more doesn't raise either.")
+            Text("Intelligence moves only on the check-in tests; Wisdom only on the reading test and finished books. Reviewing or reading for longer doesn't raise either.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -175,42 +175,6 @@ private struct WritingProgress: View {
                 TestChart(points: state.tests.filter { $0.test == TestKind.writing }.map { ($0.date, $0.score * 100) }, label: "Writing", color: .orange)
             }
             LabeledContent("Skills in", value: "\(summary.known) of \(summary.total)")
-        }
-        .font(.subheadline)
-        .card()
-    }
-}
-
-private struct ReadingProgress: View {
-    @Environment(AppModel.self) private var model
-    let analysis: MindAnalysis
-    let state: StudyState
-
-    var body: some View {
-        let reading = analysis.reading
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                DomainBadge(domain: .reading)
-                Text("Reading").font(.headline)
-            }
-            Text(reading.comfortTier.map { "Comfortable at tier \($0) of 10" } ?? "Finish a book to place the ladder").font(.title3.bold())
-            if let tier = reading.comfortTier, let info = ReadingLadder.standard.tier(tier) {
-                Text("\(info.label): \(info.description)").font(.subheadline).foregroundStyle(.secondary)
-            }
-            LabeledContent("Finished here", value: "\(reading.finished.count)")
-            if let pace = reading.pagesPerMinute {
-                LabeledContent("Pace", value: "\(Int((pace * 60).rounded())) pages an hour")
-            }
-            ForEach(reading.finished.prefix(4)) { book in
-                LabeledContent(book.title, value: "Tier \(book.tier)\(book.feel.map { " · \($0.label.lowercased())" } ?? "")")
-            }
-            if !state.reflections.isEmpty {
-                NavigationLink {
-                    ReflectionsList(reflections: state.reflections, books: state.books)
-                } label: {
-                    Label("Reflections (\(state.reflections.count))", systemImage: "text.quote")
-                }
-            }
         }
         .font(.subheadline)
         .card()

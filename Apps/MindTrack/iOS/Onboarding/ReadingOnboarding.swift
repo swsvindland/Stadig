@@ -2,8 +2,9 @@ import SwiftUI
 import MindEngine
 import SystemCore
 
-/// Reading: genres you enjoy, and only recent reading (now, and the last twelve months). Older
-/// books say little about where you are today; the reading test does the placing.
+/// Reading: genres you enjoy, and recent reading only (now, and the last twelve months), each
+/// marked print, ebook or audiobook. Books read years ago say what you did, not what you can do
+/// now, so the first session's reading test does the placing.
 struct ReadingOnboarding: View {
     @Binding var settings: MindSettings
     @Binding var books: [Book]
@@ -12,7 +13,7 @@ struct ReadingOnboarding: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Reading").font(.title.bold())
-            Text("What you're reading now and what you've read in the last year. Audiobooks count for taste and understanding, not stamina.")
+            Text("Your level comes from a short reading test in the first session: a few passages, a few questions each. Here, only what you're reading now and what you've read in the last twelve months.")
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Genres you enjoy").font(.headline)
@@ -32,39 +33,57 @@ struct ReadingOnboarding: View {
                 }
             }
             .card()
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Recent reading").font(.headline)
-                ForEach(books) { book in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(book.title).font(.body)
-                            Text([book.author, book.status == .reading ? "reading now" : "finished", book.format?.label.lowercased()]
-                                .compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button("Remove", systemImage: "minus.circle") { books.removeAll { $0.id == book.id } }
-                            .labelStyle(.iconOnly).foregroundStyle(.secondary)
-                    }
-                }
-                HStack {
-                    if !books.contains(where: { $0.status == .reading }) {
-                        Button("Reading now", systemImage: "plus") { adding = .reading }
-                    }
-                    Spacer()
-                    Button("Finished this year", systemImage: "plus") { adding = .readBefore }
-                }
-                .font(.subheadline)
-            }
-            .card()
+            BookList(title: "What are you reading now?", books: books.filter { $0.status == .reading },
+                     add: books.contains { $0.status == .reading } ? nil : "Add the book you're reading",
+                     remove: remove) { adding = .reading }
+            BookList(title: "What have you read in the last 12 months?", books: books.filter { $0.status == .readBefore },
+                     add: "Add a book", remove: remove) { adding = .readBefore }
+            Label("Audiobooks count for understanding and taste, not reading stamina. Stamina is measured from your first reading blocks.",
+                  systemImage: "headphones")
+                .font(.footnote).foregroundStyle(.secondary)
         }
         .sheet(item: $adding) { status in
-            BookEditor(book: nil, status: status) { book in books.append(book) }
+            BookFinder(status: status, title: status == .reading ? "Reading now" : "Read in the last year") { book in books.append(book) }
         }
     }
 
+    func remove(_ book: Book) { books.removeAll { $0.id == book.id } }
+
     static func firstSession(_ settings: MindSettings, books: [Book]) -> String? {
-        if let current = books.first(where: { $0.status == .reading }) { return "Reading: carry on with \(current.title)" }
-        return "Reading: your ladder starts at tier \(ReadingPlan.targetTier(books))"
+        let test = "Reading: a short test, a few passages with questions, to find your level"
+        if let current = books.first(where: { $0.status == .reading }) { return "\(test), then carry on with \(current.title)" }
+        return test
+    }
+}
+
+private struct BookList: View {
+    let title: String
+    let books: [Book]
+    let add: String?
+    let remove: (Book) -> Void
+    let adding: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            ForEach(books) { book in
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(book.title).font(.body)
+                        Text([book.author, (book.format ?? .print).label.lowercased(), book.feel?.label.lowercased()].compactMap { $0 }
+                            .filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Remove", systemImage: "minus.circle") { remove(book) }
+                        .labelStyle(.iconOnly).foregroundStyle(.secondary)
+                }
+            }
+            if let add {
+                Button(add, systemImage: "plus", action: adding).font(.subheadline)
+            }
+        }
+        .card()
     }
 }
 
@@ -72,14 +91,14 @@ extension BookStatus: @retroactive Identifiable {
     public var id: String { rawValue }
 }
 
-/// Genres for the ladder's suggestions, and the shelf.
+/// Genres for the ladder's suggestions, the shelf, and where the passages and book data come from.
 struct ReadingSettings: View {
     @Environment(AppModel.self) private var model
     let settings: MindSettings
     let dismiss: () -> Void
 
     var body: some View {
-        Section("Reading") {
+        Section {
             ForEach(Genre.allCases) { genre in
                 Toggle(genre.label, isOn: Binding(get: { settings.genres.contains(genre) }, set: { on in
                     var s = settings
@@ -91,6 +110,10 @@ struct ReadingSettings: View {
                 dismiss()
                 model.showShelf = true
             }
+        } header: {
+            Text("Reading")
+        } footer: {
+            Text("Reading-test passages are public-domain excerpts from Project Gutenberg, and a few written for Mind Track. Book details come from Open Library, with Google Books as a backup; covers are read on your iPhone.")
         }
     }
 }

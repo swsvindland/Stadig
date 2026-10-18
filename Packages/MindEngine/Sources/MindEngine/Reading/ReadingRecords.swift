@@ -67,7 +67,7 @@ public enum ReadingFocus: String, CaseIterable, Codable, Sendable, Identifiable 
     var share: Double {
         switch self {
         case .held: 1
-        case .drifted: 0.75
+        case .drifted: 0.9
         case .lost: 0.5
         }
     }

@@ -26,6 +26,8 @@ struct MindTrackApp: App {
             }
         }
         if arguments.contains("-showSettings") { model.showSettings = true }
+        // -showShelf opens the reading shelf (-findBook <title or ISBN> then searches for a book).
+        if arguments.contains("-showShelf") || arguments.contains("-findBook") { model.showShelf = true }
         if arguments.contains("-startSession") { model.startToday() }
         // -study japanese|maths|writing|reading starts a session of one subject; -steps N then
         // answers N steps (right, except every third), to reach later screens without tapping.

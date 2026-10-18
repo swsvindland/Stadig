@@ -378,6 +378,7 @@ final class AppModel {
                     if let index = question.correctChoice { run.choose(right ? index : (index + 1) % question.choices.count, now: now) }
                     else if case .number(let value, _) = question.answer { run.type(right ? value.description : "0", now: now) }
                 case .pickBook(let options): if let first = options.first { run.pickBook(first, now: now) }
+                case .passage(let passage): run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
                 default: break
                 }
             }

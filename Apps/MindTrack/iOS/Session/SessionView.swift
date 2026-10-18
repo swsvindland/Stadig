@@ -165,7 +165,7 @@ private struct SessionSummary: View {
                         let words = run.newPieces.map(\.words).reduce(0, +)
                         Label("\(words) words written", systemImage: Domain.writing.symbol)
                     }
-                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary }, id: \.id) { test in
+                    ForEach(run.newTests.filter { !$0.placement || $0.test == .vocabulary || $0.test == .readingTest }, id: \.id) { test in
                         Label(TestLine.text(test), systemImage: "gauge.with.dots.needle.50percent")
                     }
                 }
@@ -210,7 +210,7 @@ enum TestLine {
         case .writing: return "Writing\(test.placement ? " placement" : " check"): \(Format.percent(test.score)) right"
         case .writingBenchmark: return "Benchmark piece written"
         case .blindComparison: return test.score >= 0.5 ? "Blind comparison: the newer piece was picked" : "Blind comparison: the older piece was picked"
-        case .readingTest: return "Reading test: tier \(Int(test.detail["tier"] ?? test.score))"
+        case .readingTest: return "Reading test: tier \(ReadingPlan.format(test.detail["tier"] ?? 0)), \(Int(test.detail["wpm"] ?? 0)) words a minute"
         }
     }
 }
