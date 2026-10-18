@@ -184,6 +184,18 @@ struct EngineTests {
         #expect(MealEngines.fallback(after: .busy, from: .onDevice, photo: false, hasNote: true, in: state()) == nil)
     }
 
+    /// The test runner's Info.plist doesn't set SystemAIPrivateCloud, like the apps until Apple grants the
+    /// entitlement: the cloud is never offered, so a request can't reach it and stop the process.
+    @Test @available(macOS 27.0, iOS 27.0, *)
+    func theCloudNeedsTheEntitlement() {
+        #expect(!MealAIAvailability.privateCloudEntitled)
+        let state = MealAI.availability(allowCloud: true)
+        #expect(!state.privateCloud && !state.privateCloudVision)
+        if state.onDevice && !state.onDeviceVision {
+            #expect(state.reason == "Photo recognition isn't available on this device right now. Describe the meal instead.")
+        }
+    }
+
     @Test @available(macOS 27.0, iOS 27.0, *)
     func modelErrorsAreClassifiedForThePerson() {
         let busy = LanguageModelError.rateLimited(.init(resetDate: nil, debugDescription: "busy"))

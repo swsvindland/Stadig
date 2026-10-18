@@ -7,7 +7,7 @@ public struct MealAIAvailability: Sendable, Equatable {
     public var onDevice: Bool
     /// The on-device model can also read photos.
     public var onDeviceVision: Bool
-    /// Private Cloud Compute is allowed and available.
+    /// Private Cloud Compute is allowed, entitled and available.
     public var privateCloud: Bool
     /// What the person can do about a missing ability; nil when photos and descriptions both work.
     public var reason: String?
@@ -31,6 +31,12 @@ public struct MealAIAvailability: Sendable, Equatable {
     public var photos: Bool { MealEngines.engine(photo: true, in: self) != nil }
     /// A typed or dictated description can be recognized.
     public var descriptions: Bool { MealEngines.engine(photo: false, in: self) != nil }
+
+    /// Private Cloud Compute needs Apple's managed entitlement (com.apple.developer.private-cloud-compute).
+    /// Without it the framework still reports it available, then stops the app on the first request
+    /// with a fatal error, so it's used only when the app says it has the entitlement: `SystemAIPrivateCloud`
+    /// set to true in its Info.plist, the flag SystemAI reads too. Until then, everything runs on the device.
+    public static var privateCloudEntitled: Bool { Bundle.main.object(forInfoDictionaryKey: "SystemAIPrivateCloud") as? Bool ?? false }
 
     /// Safe to call on any OS version: before iOS 27 nothing is available.
     public static func current(allowCloud: Bool) -> MealAIAvailability {
@@ -94,7 +100,7 @@ enum MealEngines {
         }
         let vision = device && model.capabilities.contains(.vision)
         var cloud = false, cloudVision = false
-        if allowCloud {
+        if allowCloud && MealAIAvailability.privateCloudEntitled {
             let pcc = PrivateCloudComputeLanguageModel()
             cloud = pcc.isAvailable && !pcc.quotaUsage.isLimitReached
             cloudVision = cloud && pcc.capabilities.contains(.vision)
@@ -104,7 +110,7 @@ enum MealEngines {
         if !state.descriptions {
             state.reason = deviceReason ?? "Apple Intelligence isn't available right now."
         } else if !state.photos {
-            state.reason = allowCloud
+            state.reason = allowCloud || !MealAIAvailability.privateCloudEntitled
                 ? "Photo recognition isn't available on this device right now. Describe the meal instead."
                 : "This device's model can't read photos. Allow Private Cloud Compute to log meals from photos."
         }

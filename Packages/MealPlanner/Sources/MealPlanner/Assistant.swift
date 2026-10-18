@@ -19,10 +19,15 @@ struct PlanRequestOutput {
 }
 
 /// Reads a request for next week's plan. Apple's on-device model (or Private Cloud Compute when
-/// allowed) tidies messy wording into short phrases; the word rules map those to the library.
-/// Without a model, the word rules read the request directly.
+/// allowed and entitled) tidies messy wording into short phrases; the word rules map those to the
+/// library. Without a model, the word rules read the request directly.
 public struct PlanAssistant: Sendable {
     public init() {}
+
+    /// Private Cloud Compute stops the app with a fatal error without Apple's managed entitlement, so
+    /// it's used only when the app's Info.plist sets `SystemAIPrivateCloud` to true (as in FoodIntelligence
+    /// and SystemAI).
+    static var privateCloudEntitled: Bool { Bundle.main.object(forInfoDictionaryKey: "SystemAIPrivateCloud") as? Bool ?? false }
 
     static let instructions = """
         You turn a request about a weekly meal-prep plan into lists. The plan is built from chicken, turkey, beef, pork, \
@@ -38,7 +43,7 @@ public struct PlanAssistant: Sendable {
         let model: (any LanguageModel)?
         if SystemLanguageModel.default.availability == .available {
             model = SystemLanguageModel.default
-        } else if allowCloud {
+        } else if allowCloud && Self.privateCloudEntitled {
             let cloud = PrivateCloudComputeLanguageModel()
             model = cloud.isAvailable && !cloud.quotaUsage.isLimitReached ? cloud : nil
         } else {

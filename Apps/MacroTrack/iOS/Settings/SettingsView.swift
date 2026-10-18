@@ -63,17 +63,22 @@ struct SettingsView: View {
             Section {
                 LabeledContent("On this iPhone", value: model.ai.availability.onDevice
                     ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
-                Toggle("Use Private Cloud Compute", isOn: Binding(get: { model.settings.allowCloudAI }, set: { on in
-                    var s = model.settings
-                    s.allowCloudAI = on
-                    model.save(settings: s)
-                    model.ai.configure(catalog: model.catalog, allowCloud: on)
-                }))
+                // Only with Apple's managed entitlement; without it the app runs everything on the device.
+                if MealAIAvailability.privateCloudEntitled {
+                    Toggle("Use Private Cloud Compute", isOn: Binding(get: { model.settings.allowCloudAI }, set: { on in
+                        var s = model.settings
+                        s.allowCloudAI = on
+                        model.save(settings: s)
+                        model.ai.configure(catalog: model.catalog, allowCloud: on)
+                    }))
+                }
                 if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
             } header: {
                 Text("Photo and description logging")
             } footer: {
-                Text("Apple's on-device model is used first. Private Cloud Compute steps in for photos when this iPhone can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database.")
+                Text(MealAIAvailability.privateCloudEntitled
+                    ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this iPhone can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
+                    : "Everything is read by Apple's on-device model, on this iPhone. The model only names foods and amounts; nutrients come from the food database.")
             }
 
             Section("Health") {
