@@ -100,10 +100,14 @@ public struct Question: Hashable, Sendable, Identifiable {
     public var reveal: Reveal?
     public var test: TestKind?
     public var band: Int?
+    /// A small chart shown with the prompt (a statistics problem about your week, say).
+    public var figure: DataFigure?
+    /// Scored on speed as well as accuracy (numeracy): a right answer moves straight on.
+    public var timed: Bool
 
     public init(id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, choices: [String] = [],
                 choiceStyle: ChoiceStyle = .text, answer: Answer, allowsDontKnow: Bool = false, expectedSeconds: Double,
-                reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil) {
+                reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil, figure: DataFigure? = nil, timed: Bool = false) {
         self.id = id
         self.key = key
         self.kind = kind
@@ -117,6 +121,8 @@ public struct Question: Hashable, Sendable, Identifiable {
         self.reveal = reveal
         self.test = test
         self.band = band
+        self.figure = figure
+        self.timed = timed
     }
 
     public var correctChoice: Int? {

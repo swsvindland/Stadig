@@ -6,6 +6,8 @@ import SystemCore
 /// quick check first and skip the lesson when both answers are right.
 struct TopicsRunner: PartRunner {
     let domain: Domain
+    /// The maths strand to learn in; nil for writing.
+    let strand: MathsStrand?
     var current: String?
     var probing = false
     var probeRight = 0
@@ -13,7 +15,10 @@ struct TopicsRunner: PartRunner {
     var visit = 0
     var done: Set<String> = []
 
-    init(domain: Domain) { self.domain = domain }
+    init(domain: Domain, strand: MathsStrand? = nil) {
+        self.domain = domain
+        self.strand = strand
+    }
 
     func key(_ id: String) -> CardKey { domain == .maths ? .topic(id) : .skill(id) }
 
@@ -24,7 +29,7 @@ struct TopicsRunner: PartRunner {
 
     func nextCandidate(_ run: StudyRun) -> String? {
         if domain == .maths {
-            return (MathsPlan.inProgress(run.cards) + MathsPlan.frontier(run.cards)).map(\.id).first { !done.contains($0) }
+            return (MathsPlan.inProgress(run.cards, strand: strand) + MathsPlan.frontier(run.cards, strand: strand)).map(\.id).first { !done.contains($0) }
         }
         let learning = run.cards.values.filter { $0.domain == .writing && $0.learning }.map(\.key.item)
         let started = Set(run.cards.values.filter { $0.domain == .writing }.map(\.key.item))
@@ -38,7 +43,7 @@ struct TopicsRunner: PartRunner {
             current = id
             visit = 0
             probeRight = 0
-            let placed = MathsPlan.placedLevel(run.cards)
+            let placed = MathsPlan.placedLevel(run.cards, strand: MathCurriculum.topic(id)?.strand ?? .classic)
             let level = MathCurriculum.topic(id)?.level ?? 99
             probing = domain == .maths && run.cards[key(id)] == nil && level <= placed
             if !probing {
@@ -60,7 +65,9 @@ struct TopicsRunner: PartRunner {
         }
         let kind: AttemptKind = probing ? .probe : .learn
         if domain == .maths {
-            return MathCurriculum.topic(id).map { .question($0.problem(seed: run.seed).question(kind: kind, id: "\(id).\(run.seed)")) }
+            return MathCurriculum.topic(id).map {
+                .question($0.problem(seed: run.seed, data: run.catalogs.systemData).question(kind: kind, id: "\(id).\(run.seed)"))
+            }
         }
         let bank = run.catalogs.writing
         return bank.item(for: id, seen: run.asked, seed: run.today.iso).map { .question(bank.question($0, kind: kind, seed: run.seed)) }

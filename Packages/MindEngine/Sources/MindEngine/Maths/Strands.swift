@@ -20,6 +20,15 @@ public enum MathsStrand: String, CaseIterable, Codable, Sendable, Identifiable {
         }
     }
 
+    /// One word, for a line of levels: "numeracy 6, algebra 5, statistics 3".
+    public var short: String {
+        switch self {
+        case .numeracy: "numeracy"
+        case .classic: "algebra"
+        case .discrete: "statistics"
+        }
+    }
+
     public var detail: String {
         switch self {
         case .numeracy: "Mental arithmetic, estimates, percentages and units, quick and accurate."
@@ -27,15 +36,33 @@ public enum MathsStrand: String, CaseIterable, Codable, Sendable, Identifiable {
         case .discrete: "Probability, statistics, counting and logic: reading studies and charts, base rates."
         }
     }
+
+    /// The test that measures a strand at a check-in.
+    public var test: TestKind {
+        switch self {
+        case .numeracy: .numeracy
+        case .classic: .maths
+        case .discrete: .discrete
+        }
+    }
+
+    /// The strand a maths test measures.
+    public init?(test: TestKind) {
+        switch test {
+        case .numeracy: self = .numeracy
+        case .mathsPlacement, .maths: self = .classic
+        case .discrete: self = .discrete
+        default: return nil
+        }
+    }
 }
 
-extension MathTopic {
-    /// The strand a topic belongs to. The maths rework gives every topic its strand explicitly;
-    /// until then, the data and probability topics are discrete and the rest classic.
-    public var strand: MathsStrand {
-        switch id {
-        case "averages", "probability", "counting", "expected-value": .discrete
-        default: .classic
-        }
+extension MindSettings {
+    /// The maths strands to work on, most important first: numeracy always leads, and the order
+    /// of the rest is the person's.
+    public var strands: [MathsStrand] {
+        var out: [MathsStrand] = [.numeracy]
+        for strand in mathsStrands where !out.contains(strand) { out.append(strand) }
+        return out
     }
 }

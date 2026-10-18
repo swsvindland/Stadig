@@ -25,7 +25,8 @@ struct SimulatedStudentTests {
         let known = MathsPlan.known(store.cards)
         let levels = known.compactMap { MathCurriculum.topic($0)?.level }
         #expect(levels.max() ?? 0 >= 4 && levels.max() ?? 0 <= 6, "placed at \(placement.detail), topics \(known.sorted())")
-        #expect(known.contains("order-of-operations") && known.contains("linear-equations"))
+        #expect(known.contains("order-of-operations") && known.contains("factorising"), "\(known.sorted())")
+        #expect((4...6).contains(MathsPlan.placedLevel(store.cards, strand: .classic)) && store.tests.contains { $0.test == .numeracy && $0.placement })
         #expect(!known.contains("derivatives") && !known.contains("integration"))
 
         let writing = try #require(store.tests.first { $0.test == .writing })
