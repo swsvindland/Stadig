@@ -80,6 +80,29 @@ struct AnalysisTests {
         #expect(!guess.sure)
     }
 
+    // The illustrated breakfast as Apple's on-device model read it (2026-10-18): a bread emoji is a loaf.
+    @Test func aPhotosLoafOfBreadIsASliceAndItsBaconCountsSlices() async throws {
+        let egg = food("Egg, whole, cooked, fried", kcal: 196, portions: [("1 large", 46)])
+        let bacon = food("Pork, cured, bacon, cooked, baked", kcal: 548, portions: [("1 slice cooked", 8.1), ("3 oz", 85)])
+        let bread = food("Bread, wheat", kcal: 274, portions: [("1 slice", 29)])
+        let catalog = FakeCatalog([egg, bacon, bread])
+        let model = ScriptedModel(
+            reply(
+                [item("Egg", 1, "piece", 50), item("Bacon", 2, "strip", 20), item("Bread", 1, "loaf", 450)],
+                scene: "Illustrations of breakfast foods", food: true))
+        func amounts(_ draft: MealDraft) -> [String] {
+            draft.items.map { item in item.unit.map { FoodUnits.label(count: item.count, unit: $0) } ?? "-" }
+        }
+        let draft = try await run(model, catalog, description: "", photo: true)
+        #expect(draft.items.map { $0.match?.food } == [egg, bacon, bread])
+        #expect(amounts(draft) == ["1 large", "2 slices cooked", "1 slice"])
+        #expect(abs(draft.items[2].nutrients.kcal - 274 * 0.29) < 0.01, "a slice, not 1,233 kcal of loaf")
+        #expect(draft.items.allSatisfy { $0.approximate })
+        // Said with the photo, the loaf is the person's to log.
+        let said = try await run(model, catalog, description: "a loaf of bread", photo: true)
+        #expect(amounts(said).last == "450 g")
+    }
+
     @Test func aPhotoWithoutFoodIsReportedWithoutSearching() async throws {
         let catalog = FakeCatalog([food("Hamburger")])
         let model = ScriptedModel(reply([item("Hamburger", 1, "burger", 200)], scene: "a person standing in a kitchen", food: false))

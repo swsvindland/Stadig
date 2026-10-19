@@ -254,32 +254,79 @@ func servingSize(_ food: Food) -> (weight: Double?, volume: Double?) {
 
 /// Size words describe a portion rather than count it: "2 large", not "2 larges".
 private let sizes: Set<String> = ["small", "medium", "large", "regular", "extra", "jumbo", "whole", "kid"]
-private let invariant = sizes.union(["g", "oz", "ml", "fl", "floz", "tbsp", "tsp", "kcal", "lb", "kg", "l", "fl oz"])
+private let invariant = sizes.union(["g", "oz", "ml", "fl", "floz", "tbsp", "tsp", "kcal", "lb", "kg", "l", "fl oz", "shrimp"])
+/// Words that say what a portion is like rather than what it counts: its size or state ("slice
+/// thin", "piece fried") and the words that start a phrase about it ("thigh with skin").
+private let describing = sizes.union([
+    "mini", "miniature", "thick", "thin", "inner", "outer", "raw", "dry", "fresh", "frozen", "boneless", "nfs", "size",
+    "with", "without", "per", "of", "from", "in", "and", "for", "not",
+])
+/// Containers and cuts, which count whatever follows them: "jar gerber second food", "roast rump".
+private let containers: Set<String> = [
+    "slice", "piece", "roast", "leg", "jar", "can", "bottle", "package", "packet", "container", "box", "bag", "envelope", "pouch", "carton", "scoop",
+]
+/// Foods that end in "ie", so "cookies" isn't a "cooky".
+private let ieNouns: Set<String> = ["cookie", "brownie", "pie", "smoothie", "veggie", "hoagie", "calorie"]
 private let qualifierStart = Pattern(#"\s*[,(]"#)
 
-/// "slice" is "slices" and "cup, chopped" is "cups, chopped"; units and sizes stay as they are.
-func plural(_ name: String) -> String {
+/// "slice" is "slices", "slice cooked" "slices cooked", "small bagel" "small bagels", "can or bottle"
+/// "cans or bottles" and "cup, chopped" "cups, chopped"; units and sizes stay as they are.
+func plural(_ name: String) -> String { inflecting(name, with: pluralWord) }
+
+/// What a portion of several counts one of: "slices cooked" is a "slice cooked".
+private func singular(_ name: String) -> String { inflecting(name, with: singularWord) }
+
+/// The name with the noun it counts changed, in each of "can or bottle", leaving its qualifier
+/// ("cup, chopped", "slice (thin)") as it is.
+private func inflecting(_ name: String, with change: (String) -> String) -> String {
     let cut = qualifierStart.first(in: name)?.range.lowerBound
-    let head = cut.map { String(name[..<$0]) } ?? name
-    var parts = head.components(separatedBy: " ")
-    let last = parts.last ?? ""
-    if last.isEmpty || invariant.contains(last.lowercased()) || last.lowercased().hasSuffix("s") { return name }
-    let lower = last.lowercased()
-    if lower.hasSuffix("y"), let before = lower.dropLast().last, !"aeiou".contains(before) {
-        parts[parts.count - 1] = String(last.dropLast()) + "ies"
-    } else if lower.hasSuffix("x") || lower.hasSuffix("ch") || lower.hasSuffix("sh") {
-        parts[parts.count - 1] = last + "es"
-    } else {
-        parts[parts.count - 1] = last + "s"
+    var words = (cut.map { String(name[..<$0]) } ?? name).components(separatedBy: " ")
+    var start = 0
+    for end in words.indices.filter({ words[$0].lowercased() == "or" }) + [words.count] {
+        if let i = countedWord(in: words[start..<end]) { words[i] = change(words[i]) }
+        start = end + 1
     }
-    return parts.joined(separator: " ") + (cut.map { String(name[$0...]) } ?? "")
+    return words.joined(separator: " ") + (cut.map { String(name[$0...]) } ?? "")
 }
 
-private func singular(_ name: String) -> String {
-    let lower = name.lowercased()
-    if lower.hasSuffix("ches") || lower.hasSuffix("shes") || lower.hasSuffix("xes") { return String(name.dropLast(2)) }
-    if lower.hasSuffix("s"), let before = lower.dropLast().last, before != "s" && before != "u" { return String(name.dropLast()) }
-    return name
+/// Which word a portion's name counts. Leading sizes describe it ("small bagel"); then the first
+/// other word when it is a measure or container ("cup penne") or describing words follow it
+/// ("slice cooked", "thigh with skin"), else the last word ("hot dog"). Nil when every word
+/// describes ("extra large").
+private func countedWord(in words: ArraySlice<String>) -> Int? {
+    let lower = words.map { $0.lowercased() }
+    guard let lead = lower.firstIndex(where: { !$0.isEmpty && !describes($0) }) else { return nil }
+    let first = lower[lead]
+    let heads = measureKey(first) != nil || containers.contains(first) || containers.contains(singularWord(first))
+    if heads || lower[(lead + 1)...].contains(where: describes) { return words.startIndex + lead }
+    return words.startIndex + (lower.lastIndex { !$0.isEmpty } ?? lead)
+}
+
+/// A size, a state, a participle ("cooked", "fried") or a word starting a phrase.
+private func describes(_ word: String) -> Bool {
+    describing.contains(word) || (word.count > 4 && word.hasSuffix("ed"))
+}
+
+private func pluralWord(_ word: String) -> String {
+    let lower = word.lowercased()
+    if lower.isEmpty || invariant.contains(lower) || lower.hasSuffix("s") || lower.hasSuffix("fish") { return word }
+    if lower.hasSuffix("y"), let before = lower.dropLast().last, !"aeiou".contains(before) { return String(word.dropLast()) + "ies" }
+    if lower.hasSuffix("x") || lower.hasSuffix("ch") || lower.hasSuffix("sh") || lower.hasSuffix("potato") || lower.hasSuffix("tomato") {
+        return word + "es"
+    }
+    if lower.hasSuffix("leaf") || lower.hasSuffix("loaf") || lower.hasSuffix("half") { return String(word.dropLast()) + "ves" }
+    return word + "s"
+}
+
+private func singularWord(_ word: String) -> String {
+    let lower = word.lowercased()
+    if lower.hasSuffix("ches") || lower.hasSuffix("shes") || lower.hasSuffix("xes") || lower.hasSuffix("potatoes") || lower.hasSuffix("tomatoes") {
+        return String(word.dropLast(2))
+    }
+    if lower.hasSuffix("eaves") || lower.hasSuffix("oaves") || lower.hasSuffix("alves") { return String(word.dropLast(3)) + "f" }
+    if lower.hasSuffix("ies"), lower.count > 4, !ieNouns.contains(String(lower.dropLast())) { return String(word.dropLast(3)) + "y" }
+    if lower.hasSuffix("s"), let before = lower.dropLast().last, before != "s" && before != "u" { return String(word.dropLast()) }
+    return word
 }
 
 /// A catalog portion as a count of a named unit: "2 SLICES (57 g)" is 2 of a 28.5 g "slice".

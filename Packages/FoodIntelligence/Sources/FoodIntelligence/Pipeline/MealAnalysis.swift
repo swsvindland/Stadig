@@ -104,13 +104,14 @@ enum Drafting {
                 nutrients: .zero, sure: false, approximate: true)
         }
         let match = found.matches[chosen]
-        let resolved = Amounts.resolve(seen, food: match.food)
+        let given = stated(seen, in: said, among: meal)
+        let resolved = Amounts.resolve(seen, food: match.food, stated: given)
         let (unit, count) = portionUnit(for: resolved, food: match.food, units: catalog.units(for: match.food))
         return GuessedItem(
             seenName: seen.label ?? seen.name, seenBrand: brand, match: match,
             alternatives: Matching.alternatives(found.matches, chosen: chosen, branded: brand != nil),
             unit: unit, count: count, nutrients: FoodUnits.nutrients(match.food, count: count, unit: unit),
-            sure: found.sure, approximate: !resolved.exact || !stated(seen, in: said, among: meal))
+            sure: found.sure, approximate: !resolved.exact || !given)
     }
 
     /// The catalog's own unit for a resolved amount, so the portion editor opens on it: the same id

@@ -111,6 +111,65 @@ struct UnitsTests {
         #expect(FoodUnits.label(count: 2, unit: PortionUnit(id: "floz", label: "fl oz", kind: .volume, amount: 29.5735)) == "2 fl oz")
     }
 
+    // USDA's portions name what they count and then describe it ("1 slice cooked", "1 thigh with
+    // skin"), size it first ("1 small bagel"), or name a container and its contents ("1 cup penne").
+    @Test(
+        "amount labels count the portion's noun, not the words describing it",
+        arguments: [
+            ("slice cooked", "slices cooked"), ("slice, cooked", "slices, cooked"), ("piece fried", "pieces fried"),
+            ("slice raw", "slices raw"), ("thigh with skin", "thighs with skin"),
+            ("drumstick bone and skin removed", "drumsticks bone and skin removed"),
+            ("potato small", "potatoes small"), ("leaf outer", "leaves outer"), ("small bagel", "small bagels"), ("thick slice", "thick slices"),
+            ("hot dog", "hot dogs"), ("cubic inch", "cubic inches"), ("nlea serving", "nlea servings"), ("cup penne", "cups penne"),
+            ("jar gerber second food", "jars gerber second food"), ("roast rump", "roasts rump"), ("can or bottle", "cans or bottles"),
+            ("large roll or bun", "large rolls or buns"), ("cup chopped or diced", "cups chopped or diced"),
+            // Measures, sizes and words already plural stay as they are, and so does a qualifier.
+            ("oz cooked", "oz cooked"), ("tbsp chopped", "tbsp chopped"), ("large", "large"), ("extra large", "extra large"),
+            ("small or frozen", "small or frozen"), ("fl oz", "fl oz"), ("oz", "oz"), ("cup, chopped", "cups, chopped"),
+            ("slice (thin)", "slices (thin)"), ("cup slices", "cups slices"), ("chips", "chips"),
+            ("slice", "slices"), ("patty", "patties"), ("peach", "peaches"), ("leaf", "leaves"), ("half", "halves"),
+            ("potato", "potatoes"), ("goldfish", "goldfish"), ("shrimp", "shrimp"),
+        ])
+    func plurals(one: String, many: String) {
+        #expect(plural(one) == many)
+        #expect(FoodUnits.label(count: 2, unit: PortionUnit(id: "portion:0", label: one, kind: .portion, amount: 10)) == "2 \(many)")
+    }
+
+    @Test(
+        "a catalog portion of several is that many of one, and its plural reads back",
+        arguments: [
+            ("slices cooked", "slice cooked"), ("SLICES", "slice"), ("thighs with skin", "thigh with skin"),
+            ("potatoes small", "potato small"), ("cans or bottles", "can or bottle"), ("leaves outer", "leaf outer"),
+            ("cups penne", "cup penne"), ("small bagels", "small bagel"), ("pieces pierogies", "piece pierogies"),
+            ("oz cooked", "oz cooked"), ("large", "large"), ("patties", "patty"), ("cookies", "cookie"), ("pies", "pie"),
+            ("anchovies", "anchovy"), ("halves", "half"), ("tomatoes", "tomato"), ("peaches", "peach"), ("olives", "olive"),
+            ("cloves", "clove"), ("goldfish", "goldfish"),
+        ])
+    func singulars(many: String, one: String) throws {
+        let parsed = try #require(parsePortion(Portion(label: "2 \(many) (50 g)", amount: 50)))
+        #expect(parsed.name == one && parsed.count == 2 && parsed.perUnit == 25)
+        #expect(plural(one) == many.lowercased())
+    }
+
+    @Test("the catalog's own portions read as the person would say them")
+    func catalogPortions() throws {
+        for (id, label, count, text) in [
+            ("usda:167914", "slice cooked", 2.0, "2 slices cooked · 16 g"),  // Bacon, cooked, baked
+            ("usda:168277", "slice raw", 3, "3 slices raw · 84 g"),  // Bacon, unprepared
+            ("usda:170359", "thigh with skin", 2, "2 thighs with skin · 272 g"),  // Fried chicken thigh
+            ("usda:168749", "can or bottle", 2, "2 cans or bottles · 708 g"),  // Light beer
+            ("usda:170026", "potato small", 2, "2 potatoes small · 340 g"),
+            ("usda:172664", "small bagel", 2, "2 small bagels · 138 g"),  // Cinnamon-raisin bagels
+            ("usda:168910", "cup penne", 1.5, "1½ cups penne · 146 g"),  // Whole-wheat pasta
+            ("usda:168431", "leaf outer", 3, "3 leaves outer · 51 g"),  // Red leaf lettuce
+        ] {
+            let food = try #require(Catalogs.usda.food(id: id), "\(id)")
+            let unit = try #require(FoodUnits.units(for: food).first { $0.label == label }, "\(id) has \(labels(food))")
+            #expect(FoodUnits.entryLabel(for: food, count: count, unit: unit) == text)
+            #expect(FoodUnits.entryLabel(for: food, count: 1, unit: unit).hasPrefix("1 \(label) · "))
+        }
+    }
+
     @Test(
         "amounts take fractions and mixed numbers",
         arguments: [
