@@ -583,15 +583,17 @@ struct DayStateSection: View {
                         .accessibilityIdentifier("today.dayState.\(choice.rawValue)")
                     }
                 }
+                if Platform.isMac { Text(Self.note).font(.caption).foregroundStyle(.secondary) }
             } header: {
                 Text(day == model.today ? "Done logging today?" : "How complete is this day?")
             } footer: {
-                Text("Complete days teach your maintenance estimate. Partly logged days are left out, never counted as eating less.")
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The Mac's list footers are one line: there the note is a row of the section.
+                if !Platform.isMac { Text(Self.note) }
             }
         }
     }
+
+    static let note = "Complete days teach your maintenance estimate. Partly logged days are left out, never counted as eating less."
 
     func choices(hasEntries: Bool) -> [DayState] { hasEntries ? [.complete, .partial] : [.fasting, .partial] }
 }

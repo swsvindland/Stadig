@@ -264,8 +264,8 @@ private struct LineEditor: View {
         let read = ingredient.amount.flatMap { SupplementIngredients.read(name: ingredient.name, amount: $0, unit: ingredient.unit) }
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                TextField("Name", text: $ingredient.name).font(.subheadline)
-                TextField("0", value: $ingredient.amount, format: .number)
+                TextField("Name", text: $ingredient.name, prompt: Text("Name")).font(.subheadline)
+                TextField("Amount", value: $ingredient.amount, format: .number, prompt: Text("0"))
                     .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 70).font(.subheadline.monospacedDigit())
                 Picker("Unit", selection: $ingredient.unit) {
                     ForEach(units + (units.contains(ingredient.unit) ? [] : [ingredient.unit]), id: \.self) { Text($0).tag($0) }
@@ -273,6 +273,8 @@ private struct LineEditor: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            // The Mac's form would put each field's name beside it; the line reads as one row.
+            .macLabelsHidden()
             if let read {
                 if let note = note(read) { Text(note).font(.caption2).foregroundStyle(.secondary) }
             } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {

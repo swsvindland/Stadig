@@ -167,16 +167,19 @@ struct RemindersSection: View {
                     Label(time.label, systemImage: time.symbol)
                 }
             }
+            if Platform.isMac { Text(note).font(.caption).foregroundStyle(.secondary) }
         } header: {
             Text("Times")
         } footer: {
-            Text(
-                denied
-                    ? "Notifications are off for Macro Track in Settings."
-                    : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app."
-            )
-            .fixedSize(horizontal: false, vertical: true)
+            // The Mac's list footers are one line: there the note is a row of the section.
+            if !Platform.isMac { Text(note) }
         }
+    }
+
+    var note: String {
+        denied
+            ? "Notifications are off for Macro Track in Settings."
+            : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app."
     }
 }
 

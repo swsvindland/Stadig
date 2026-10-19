@@ -205,6 +205,16 @@ extension View {
         #endif
     }
 
+    /// Fields in a row without their names beside them on the Mac, where a form shows them; on iPhone,
+    /// iPad and Vision Pro a field's name is its placeholder already.
+    func macLabelsHidden() -> some View {
+        #if os(macOS)
+        return labelsHidden()
+        #else
+        return self
+        #endif
+    }
+
     /// The system's hover highlight for a custom tappable view: the pointer on iPad, the eyes on
     /// Vision Pro. The Mac's pointer needs none.
     func hoverHighlight() -> some View {
