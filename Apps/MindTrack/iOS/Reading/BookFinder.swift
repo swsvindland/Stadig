@@ -57,8 +57,10 @@ struct BookFinder: View {
                     Button("Enter it yourself", systemImage: "square.and.pencil") { draft = BookDraft(title: query) }
                         .rowButton()
                         .accessibilityIdentifier("bookFinder.enter")
+                    // A Mac list's footer is a single line: there the note is a row of its own.
+                    if Platform.isMac { Text(footer).font(.footnote).foregroundStyle(.secondary) }
                 } footer: {
-                    Text(footer).fixedSize(horizontal: false, vertical: true)
+                    if !Platform.isMac { Text(footer) }
                 }
                 if readingCover || searching {
                     Section {
