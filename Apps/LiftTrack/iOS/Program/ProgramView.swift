@@ -219,7 +219,7 @@ private struct BlockPane: View {
                 TableColumn("Exercise") { row in ExerciseCell(row: row, wide: sizeClass.isWide) }
                     .width(min: width(170, 200), ideal: 230)
                 TableColumn("Block", value: \.role).width(min: width(84, 112), ideal: 92)
-                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: width(84, 112), ideal: 100)
+                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: width(84, 124), ideal: 100)
                 TableColumn("Reps", value: \.reps).width(min: 48, ideal: 64, max: cap(72))
                 TableColumn("Rest", value: \.rest).width(min: 40, ideal: 52, max: cap(64))
                 if allColumns {

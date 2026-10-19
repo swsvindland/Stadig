@@ -16,7 +16,9 @@ struct TodayBoard: View {
         let entries = model.entries(on: model.selectedDay)
         NavigationStack {
             HStack(spacing: 0) {
-                summary.frame(minWidth: 320, idealWidth: 360, maxWidth: 400)
+                // Vision Pro's larger type needs more room for the weigh-in's words beside its field.
+                summary.frame(
+                    minWidth: Platform.isVision ? 390 : 320, idealWidth: Platform.isVision ? 410 : 360, maxWidth: Platform.isVision ? 440 : 400)
                 Divider()
                 log(entries)
                     .overlay {

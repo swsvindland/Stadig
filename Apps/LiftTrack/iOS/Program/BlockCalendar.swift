@@ -88,18 +88,41 @@ private struct DayCell: View {
 /// What the calendar's marks mean.
 struct BlockCalendarKey: View {
     var body: some View {
-        HStack(spacing: 12) {
-            key(Color.orange, "Trained")
-            HStack(spacing: 4) {
-                RoundedRectangle(cornerRadius: 3).strokeBorder(Color.orange, lineWidth: 1.5).frame(width: 12, height: 12)
-                Text("Training day")
+        // One row where it fits; two where one would break "Vacation" over two lines (beside the
+        // block's summary in Vision Pro's window).
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                trained
+                trainingDay
+                deload
+                vacation
             }
-            key(Color.mint.opacity(0.35), "Deload")
-            key(Color.teal, "Vacation")
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                GridRow {
+                    trained
+                    trainingDay
+                }
+                GridRow {
+                    deload
+                    vacation
+                }
+            }
         }
+        .lineLimit(1)
         .font(.caption2)
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
+    }
+
+    private var trained: some View { key(Color.orange, "Trained") }
+    private var deload: some View { key(Color.mint.opacity(0.35), "Deload") }
+    private var vacation: some View { key(Color.teal, "Vacation") }
+
+    private var trainingDay: some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 3).strokeBorder(Color.orange, lineWidth: 1.5).frame(width: 12, height: 12)
+            Text("Training day")
+        }
     }
 
     private func key(_ color: Color, _ title: String) -> some View {
