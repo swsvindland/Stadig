@@ -20,7 +20,7 @@ struct TodayView: View {
                             HStack(alignment: .top, spacing: 18) {
                                 VStack(alignment: .leading, spacing: 14) { main(analysis) }
                                     .frame(minWidth: 420, idealWidth: 480, maxWidth: .infinity, alignment: .leading)
-                                VStack(alignment: .leading, spacing: 14) { side(analysis) }
+                                VStack(alignment: .leading, spacing: 14) { side(analysis, column: true) }
                                     .frame(width: 340)
                             }
                             VStack(alignment: .leading, spacing: 14) {
@@ -76,7 +76,9 @@ struct TodayView: View {
         }
     }
 
-    @ViewBuilder func side(_ analysis: MindAnalysis) -> some View {
+    /// What's been learned and the two stats: under the session, or in a column of their own beside
+    /// it, where the stats stack (side by side, "Intelligence" breaks over two lines).
+    @ViewBuilder func side(_ analysis: MindAnalysis, column: Bool = false) -> some View {
         if !analysis.learned.isEmpty {
             SectionHeader(title: "What we've learned")
             VStack(alignment: .leading, spacing: 10) {
@@ -84,7 +86,7 @@ struct TodayView: View {
             }
             .card()
         }
-        Glance(analysis: analysis)
+        Glance(analysis: analysis, stacked: column)
     }
 
     func phaseSymbol(_ phase: StudyPhase) -> String {
@@ -300,25 +302,35 @@ struct ActionCard: View {
 /// The two stats, quietly, at the bottom.
 private struct Glance: View {
     let analysis: MindAnalysis
+    /// One above the other, in a column too narrow for two.
+    var stacked = false
 
     var body: some View {
         if !analysis.stats.isEmpty {
-            HStack(spacing: 12) {
-                ForEach(analysis.stats, id: \.stat) { reading in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: reading.stat.symbol)
-                            Text(reading.stat.label).font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Image(systemName: reading.trend.symbol).foregroundStyle(reading.trend.color)
-                        }
-                        Text(reading.score.map { "\(Int($0.rounded()))" } ?? "—").font(.title.bold().monospacedDigit())
-                        Text(reading.label).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                    }
-                    .card(padding: 14)
+            Group {
+                if stacked {
+                    VStack(spacing: 12) { cards }
+                } else {
+                    HStack(spacing: 12) { cards }
                 }
             }
             .padding(.top, 6)
+        }
+    }
+
+    var cards: some View {
+        ForEach(analysis.stats, id: \.stat) { reading in
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: reading.stat.symbol)
+                    Text(reading.stat.label).font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: reading.trend.symbol).foregroundStyle(reading.trend.color)
+                }
+                Text(reading.score.map { "\(Int($0.rounded()))" } ?? "—").font(.title.bold().monospacedDigit())
+                Text(reading.label).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            }
+            .card(padding: 14)
         }
     }
 }
