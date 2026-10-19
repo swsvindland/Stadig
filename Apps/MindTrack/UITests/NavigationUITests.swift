@@ -1,7 +1,7 @@
 import XCTest
 
 /// Getting around: the three tabs with eight weeks of study behind them, Settings, and the links the
-/// widget and Shortcuts open.
+/// widget and Shortcuts open. On an iPad the tabs are reached through the sidebar.
 nonisolated final class NavigationUITests: XCTestCase {
     @MainActor
     func testSeededLaunchShowsEachTab() {
@@ -9,15 +9,15 @@ nonisolated final class NavigationUITests: XCTestCase {
         app.element("today.settings").waitToAppear()
         XCTAssertTrue(app.navigationBars["Today"].exists)
 
-        app.tabBars.buttons["Plan"].tap()
+        app.openTab("Plan")
         app.element("plan.phase").waitToAppear(timeout: 10)
         XCTAssertTrue(app.navigationBars["Plan"].exists)
 
-        app.tabBars.buttons["Progress"].tap()
+        app.openTab("Progress")
         app.element("progress.stat.intelligence").waitToAppear(timeout: 10)
         app.scroll(to: app.element("progress.discipline"))
 
-        app.tabBars.buttons["Today"].tap()
+        app.openTab("Today")
         app.element("today.settings").waitToAppear(timeout: 10)
     }
 
@@ -40,14 +40,14 @@ nonisolated final class NavigationUITests: XCTestCase {
 
         app.open(URL(string: "mindtrack://plan")!)
         app.element("plan.phase").waitToAppear(timeout: 10)
-        XCTAssertTrue(app.tabBars.buttons["Plan"].isSelected)
+        XCTAssertTrue(app.tabButton("Plan").isSelected)
 
         app.open(URL(string: "mindtrack://progress")!)
         app.element("progress.stat.intelligence").waitToAppear(timeout: 10)
-        XCTAssertTrue(app.tabBars.buttons["Progress"].isSelected)
+        XCTAssertTrue(app.tabButton("Progress").isSelected)
 
         app.open(URL(string: "mindtrack://today")!)
         app.element("today.settings").waitToAppear(timeout: 10)
-        XCTAssertTrue(app.tabBars.buttons["Today"].isSelected)
+        XCTAssertTrue(app.tabButton("Today").isSelected)
     }
 }

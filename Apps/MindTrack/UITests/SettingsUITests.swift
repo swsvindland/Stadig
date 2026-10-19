@@ -38,7 +38,8 @@ nonisolated final class SettingsUITests: XCTestCase {
         app.buttons["settings.done"].waitToAppear()
         // The whole row opens the menu, not just its words: tapped near the trailing edge.
         let start = app.scroll(to: app.buttons["settings.startLifeMode"])
-        XCTAssertGreaterThan(start.frame.width, app.frame.width * 0.6, "the menu's label fills the row")
+        // The sheet's width: on an iPad it's narrower than the screen.
+        XCTAssertGreaterThan(start.frame.width, app.navigationBars["Settings"].frame.width * 0.6, "the menu's label fills the row")
         start.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
         app.menuButton("settings.startIllness", title: "Ill").waitToAppear(timeout: 5).tap()
         let openEnded = app.switches["lifeMode.openEnded"].waitToAppear(timeout: 10)

@@ -36,6 +36,35 @@ extension XCUIApplication {
         return element
     }
 
+    /// Answers the step on screen the way a person would: reads a lesson, picks the first answer
+    /// (or says "Don't know"), and moves on from the feedback.
+    @MainActor
+    func answerStep() {
+        let lesson = buttons["lesson.continue"]
+        let choice = buttons["question.choice.0"]
+        let dontKnow = buttons["question.dontKnow"]
+        let field = textFields["question.answer"]
+        if lesson.exists {
+            lesson.tap()
+        } else if choice.exists && choice.isEnabled {
+            choice.tap()
+        } else if field.exists && field.isEnabled {
+            field.tap()
+            field.typeText("1")
+            buttons["question.check"].tap()
+        } else if dontKnow.exists {
+            dontKnow.tap()
+        } else if buttons["speak.cantSpeak"].exists {
+            buttons["speak.cantSpeak"].tap()
+        } else if buttons["speak.skip"].exists {
+            buttons["speak.skip"].tap()
+        }
+        // A test moves on by itself; anything else shows what was right, then Continue.
+        for id in ["question.continue", "speak.continue"] where buttons[id].waitForExistence(timeout: 1.5) {
+            buttons[id].tap()
+        }
+    }
+
     /// A button in a menu or dialog: by identifier, or by its title where the system draws the menu
     /// itself and drops identifiers.
     @MainActor
