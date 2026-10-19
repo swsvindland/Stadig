@@ -13,7 +13,11 @@ nonisolated final class ScreensUITests: XCTestCase {
         let settings = app.element("settings.screen").waitToAppear()
 
         app.buttons["settings.exportCSV"].scrolledTo(in: settings).tap()
-        XCTAssertTrue(app.element("settings.shareCSV").waitForExistence(timeout: 10), "The CSV files are ready to share")
+        // The share row comes in under the button, which can be at the bottom of the sheet (an
+        // iPad's is a form sheet, shorter than the screen): a list only builds the rows it shows.
+        let share = app.element("settings.shareCSV")
+        if !share.waitForExistence(timeout: 10) { share.scrolledTo(in: settings) }
+        XCTAssertTrue(share.exists, "The CSV files are ready to share")
 
         app.buttons["settings.done"].tap()
         app.element("settings.screen").waitToDisappear()

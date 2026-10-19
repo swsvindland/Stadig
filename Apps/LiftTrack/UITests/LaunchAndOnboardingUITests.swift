@@ -63,6 +63,7 @@ nonisolated final class LaunchAndOnboardingUITests: XCTestCase {
 
         app.element("today.screen").waitToAppear()
         XCTAssertTrue(app.buttons["today.startSession"].waitForExistence(timeout: 10), "Today offers the first assessment session")
-        XCTAssertTrue(app.tabBars.buttons["Plan"].exists)
+        // An iPad's tab bar has Plan inside its Training section.
+        XCTAssertTrue(app.tabButton(XCUIApplication.isPad ? "Training" : "Plan").exists)
     }
 }
