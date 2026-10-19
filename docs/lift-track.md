@@ -194,6 +194,7 @@ Lift Track is one app on iPhone, iPad, the Mac and Apple Vision Pro, its records
 - `-startSession` starts today's session.
 - `-tab plan|program|library|history|progress|body` opens a destination (the last three are the iPad's, the Mac's and Vision Pro's sidebar).
 - `-exercise <id>` opens Library on that exercise (`-exercise barbell-bench-press`).
+- `-openSettings` opens the Mac's Settings window.
 
 `SIM_DEBUG=1 swift test --filter simulationReport` in `Packages/SystemCore` prints every simulated lifter's sessions and calibration evidence. `PRINT_PROGRAMS=1 swift test` in `Packages/LiftEngine` prints generated programs.
 

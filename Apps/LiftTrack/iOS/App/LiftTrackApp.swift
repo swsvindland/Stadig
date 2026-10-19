@@ -91,6 +91,9 @@ struct LiftTrackApp: App {
 private struct AppRoot: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
+    #if os(macOS) && DEBUG
+    @Environment(\.openSettings) private var openSettings
+    #endif
 
     var body: some View {
         RootView()
@@ -99,6 +102,10 @@ private struct AppRoot: View {
             .onOpenURL { url in model.open(url) }
             // The Mac's forms look as they do on the other platforms, in sheets and panes alike.
             .formStyle(.grouped)
+            #if os(macOS) && DEBUG
+        // -openSettings opens the Settings window, for checking its panes.
+        .task { if LaunchOptions.current.has("-openSettings") { openSettings() } }
+            #endif
             .task {
                 // Tests and UI tests ask StoreKit and Health nothing.
                 guard !LaunchOptions.current.isQuiet else { return }

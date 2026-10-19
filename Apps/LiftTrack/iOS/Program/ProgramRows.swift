@@ -12,7 +12,7 @@ struct ProgramRow: Identifiable, Hashable {
     let exercise: String
     let role: String
     let blockKind: SessionBlockKind
-    /// "3·3·4·4 · 2"; empty for drills, conditioning and the sauna.
+    /// "3·3·4·4 · 2"; conditioning's minutes and zone; empty for drills and the sauna.
     let sets: String
     let reps: String
     let rest: String
@@ -53,9 +53,10 @@ enum ProgramRows {
     ) -> ProgramRow {
         let exercise = catalog.resolve(slot.exerciseID)
         let strength = slot.role == .main || slot.role == .accessory
+        // Conditioning's minutes and zone where the sets go: its reps column has nothing to say.
         let reps: String =
-            if let conditioning = slot.conditioning {
-                conditioning.summary
+            if slot.conditioning != nil {
+                ""
             } else if strength {
                 slot.repRange.label
             } else if let seconds = slot.seconds {
@@ -68,7 +69,7 @@ enum ProgramRows {
         if let filler = slot.restFiller { why += " In the rests: \(catalog.resolve(filler).name)." }
         return ProgramRow(
             id: slot.id, dayID: day.id, exerciseID: exercise.id, exercise: exercise.name, role: kind.label, blockKind: kind,
-            sets: ProgramLayout.summary(ProgramLayout.setsByWeek(slot, block: block)), reps: reps,
+            sets: slot.conditioning?.summary ?? ProgramLayout.summary(ProgramLayout.setsByWeek(slot, block: block)), reps: reps,
             rest: strength && slot.restSeconds > 0 ? Format.duration(slot.restSeconds) : "", superset: letter, why: why,
             setAside: avoid.contains(exercise.id), isStrength: strength)
     }

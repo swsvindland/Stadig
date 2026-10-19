@@ -5,9 +5,13 @@ import XCTest
 nonisolated final class WideLayoutUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+        #if os(iOS)
         try MainActor.assumeIsolated {
             try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "The wide layout is the iPad's")
         }
+        #else
+        throw XCTSkip("These drive the iPad's touch and hardware keyboard")
+        #endif
     }
 
     @MainActor

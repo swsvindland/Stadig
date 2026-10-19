@@ -212,16 +212,15 @@ private struct BlockPane: View {
                 .padding()
             Table(of: ProgramRow.self, selection: $selection) {
                 TableColumn("Exercise") { row in ExerciseCell(row: row, wide: sizeClass.isWide) }
-                    .width(min: 170, ideal: 220)
-                TableColumn("Block", value: \.role).width(min: 90, ideal: 100)
-                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: 90, ideal: 110)
-                TableColumn("Reps", value: \.reps).width(min: 50, ideal: 70)
-                TableColumn("Rest", value: \.rest).width(min: 44, ideal: 56)
-                TableColumn("Superset", value: \.superset).width(min: 64, ideal: 68)
+                    .width(min: 170, ideal: 230)
+                TableColumn("Block", value: \.role).width(min: 84, ideal: 92)
+                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: 84, ideal: 100)
+                TableColumn("Reps", value: \.reps).width(min: 48, ideal: 64)
+                TableColumn("Rest", value: \.rest).width(min: 40, ideal: 52)
                 TableColumn("Why") { row in
                     Text(row.why).foregroundStyle(.secondary).lineLimit(2).help(row.why)
                 }
-                .width(min: 140, ideal: 260)
+                .width(min: 120, ideal: 200)
             } rows: {
                 ForEach(days) { day in
                     Section {
@@ -318,6 +317,10 @@ private struct ExerciseCell: View {
             HStack(spacing: 6) {
                 Image(systemName: row.blockKind.symbol).foregroundStyle(row.blockKind.color).frame(width: 18)
                 Text(row.exercise).fontWeight(row.blockKind == .main ? .semibold : .regular)
+                if !row.superset.isEmpty {
+                    Pill(text: "Superset \(row.superset)", color: .purple)
+                        .help("Done in turn with the other \(row.superset) slot of the day")
+                }
                 if row.setAside {
                     Image(systemName: "nosign").foregroundStyle(.secondary).help("Set aside: today's session swaps it out")
                         .accessibilityLabel("Set aside")

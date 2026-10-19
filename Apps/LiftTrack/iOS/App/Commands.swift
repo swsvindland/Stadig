@@ -131,7 +131,10 @@ struct MacSettings: View {
         Group {
             if model.onboarded, let profile = model.profile {
                 TabView {
-                    Tab("Training", systemImage: "dumbbell") { TrainingSettings().formStyle(.grouped) }
+                    Tab("Training", systemImage: "dumbbell") {
+                        // A stack for Focus, which opens from a row.
+                        NavigationStack { TrainingSettings().formStyle(.grouped) }
+                    }
                     Tab("About You", systemImage: "person.crop.circle") { ProfileEditor(profile: profile).formStyle(.grouped) }
                     Tab("Outside the Gym", systemImage: "figure.martial.arts") { RecurringScreen(profile: profile) }
                     Tab("Gym", systemImage: "building.2") { GymEditor(gym: model.gym).formStyle(.grouped) }
