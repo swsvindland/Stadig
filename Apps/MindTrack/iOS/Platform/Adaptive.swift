@@ -74,6 +74,17 @@ enum Platform {
         #endif
     }
 
+    /// Posted as the app quits on the Mac (⌘Q, logging out), when a window's own close needn't run
+    /// first. iPhone, iPad and Vision Pro have none to watch: the system ends the app in the
+    /// background, and a session's answers were saved as they were given.
+    static var willQuit: Notification.Name? {
+        #if os(macOS)
+        return NSApplication.willTerminateNotification
+        #else
+        return nil
+        #endif
+    }
+
     /// Whether the key press being handled is the keyboard repeating a key held down. Only the Mac
     /// says (its current event); elsewhere every press counts.
     static var isKeyRepeat: Bool {

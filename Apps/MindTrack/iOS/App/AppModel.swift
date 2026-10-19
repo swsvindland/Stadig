@@ -113,6 +113,7 @@ final class AppModel {
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var dayObservers: [NotificationToken] = []
+    @ObservationIgnored private var quitObserver: NotificationToken?
     @ObservationIgnored private var lastRevision = -1
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
     @ObservationIgnored private var readRevisions: [String: Int] = [:]
@@ -154,8 +155,12 @@ final class AppModel {
     }
 
     /// Everything that touches disk or the system comes in, so a test builds one over an in-memory
-    /// store and a temporary shared container. `now` is the clock every date the model makes reads.
-    init(store: RecordStore, shared: SharedContainer, drafts: WritingDrafts, now: @escaping () -> Date = Date.init) {
+    /// store and a temporary shared container. `now` is the clock every date the model makes reads;
+    /// `quit` is what's posted as the app quits (a test posts one of its own).
+    init(
+        store: RecordStore, shared: SharedContainer, drafts: WritingDrafts, now: @escaping () -> Date = Date.init,
+        quit: Notification.Name? = Platform.willQuit
+    ) {
         self.store = store
         self.shared = shared
         self.drafts = drafts
@@ -170,6 +175,12 @@ final class AppModel {
         // Midnight, or a new time zone, with the app open: plan for the new day.
         dayObservers = [.NSCalendarDayChanged, .NSSystemTimeZoneDidChange].map { name in
             NotificationToken.observe(name) { [weak self] in self?.refreshDay() }
+        }
+        // ⌘Q with a session open on the Mac ends it as closing its window does: the window's
+        // onDisappear needn't run at quit, and the part's finish and the minutes since the last
+        // answer would go with it.
+        if let quit {
+            quitObserver = NotificationToken.observe(quit) { [weak self] in self?.endSession() }
         }
     }
 
@@ -390,6 +401,8 @@ final class AppModel {
         persist(current, finished: false)
     }
 
+    /// Ends the running session, once: End, closing the Mac's session window and quitting can all
+    /// ask, one after another, and only the first finds a run to finish.
     func endSession() {
         guard var current = run else { return }
         current.finish(now: now())
