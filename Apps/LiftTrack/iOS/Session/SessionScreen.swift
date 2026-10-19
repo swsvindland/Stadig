@@ -4,9 +4,11 @@ import SwiftUI
 import SystemCore
 
 /// The live session. Every block in order, the current set in thumb reach at the bottom, and the
-/// next set adapting the moment a set is rated.
+/// next set adapting the moment a set is rated. On a wide screen it's two panes: the session's
+/// exercises (drag to reorder) beside the current one with a large logger and rest timer.
 struct SessionScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showFeedback = false
     @State private var swapping: SwapTarget?
     @State private var editing: SetTarget?
@@ -15,81 +17,19 @@ struct SessionScreen: View {
     var body: some View {
         NavigationStack {
             if let live = model.live {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
-                                Text(note).font(.subheadline).foregroundStyle(.secondary)
-                            }
-                            // In the session's order, which the person can change; a heading where the block changes.
-                            ForEach(Array(live.items.enumerated()), id: \.element.id) { index, item in
-                                if index == 0 || live.items[index - 1].plan.block != item.plan.block {
-                                    Label(item.plan.block.label, systemImage: item.plan.block.symbol)
-                                        .font(.headline)
-                                        .foregroundStyle(item.plan.block.color)
-                                        .padding(.top, 6)
-                                }
-                                ItemCard(
-                                    index: index, item: item, current: live.current?.item == index,
-                                    swap: { swapping = SwapTarget(index: index) },
-                                    edit: { set in editing = SetTarget(item: index, set: set) }
-                                )
-                                .id(item.id)
-                            }
-                            Color.clear.frame(height: 24)
-                        }
-                        .padding()
-                        .readableWidth()
-                    }
-                    .accessibilityIdentifier("session.screen")
-                    .background(.pageBackground)
-                    .onChange(of: live.current?.item) { _, item in
-                        guard let item else { return }
-                        withAnimation { proxy.scrollTo(live.items[item].id, anchor: .top) }
+                Group {
+                    if sizeClass.isWide {
+                        SessionWorkspace(
+                            live: live, swap: { swapping = SwapTarget(index: $0) }, edit: { editing = SetTarget(item: $0, set: $1) },
+                            finish: { showFeedback = true })
+                    } else {
+                        column(live)
                     }
                 }
-                .safeAreaInset(edge: .bottom) {
-                    BottomPanel(finish: { showFeedback = true })
-                }
+                .environment(\.sessionScale, sizeClass.isWide ? .large : .compact)
                 .navigationTitle(live.plan.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            model.showSession = false
-                        } label: {
-                            Image(systemName: "chevron.down")
-                        }
-                        .accessibilityLabel("Minimize")
-                        .accessibilityIdentifier("session.minimize")
-                    }
-                    ToolbarItem(placement: .principal) {
-                        VStack(spacing: 0) {
-                            Text(live.plan.title).font(.headline)
-                            HStack(spacing: 8) {
-                                Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                                if let bpm = model.currentHeartRate {
-                                    Label("\(Int(bpm))", systemImage: "heart.fill")
-                                        .font(.caption.weight(.semibold).monospacedDigit())
-                                        .foregroundStyle(.red)
-                                        .accessibilityLabel("Heart rate \(Int(bpm))")
-                                }
-                            }
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
-                                .accessibilityIdentifier("session.finishNow")
-                            Button("Discard session", systemImage: "trash", role: .destructive) { confirmDiscard = true }
-                                .accessibilityIdentifier("session.discard")
-                        } label: {
-                            Image(systemName: "ellipsis")
-                        }
-                        .accessibilityLabel("Session options")
-                        .accessibilityIdentifier("session.options")
-                    }
-                }
+                .inlineTitle()
+                .toolbar { toolbar(live) }
                 .sheet(isPresented: $showFeedback) { FeedbackSheet() }
                 .sheet(item: $swapping) { target in SwapSheet(index: target.index) }
                 .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
@@ -99,10 +39,256 @@ struct SessionScreen: View {
                 } message: {
                     Text("Nothing from it will be saved.")
                 }
+                // The menu bar's Finish… and Discard… land here.
+                .onChange(of: model.sessionRequest, initial: true) { _, request in
+                    switch request {
+                    case .finish?: showFeedback = true
+                    case .discard?: confirmDiscard = true
+                    case nil: return
+                    }
+                    model.sessionRequest = nil
+                }
             } else {
                 ContentUnavailableView("No session", systemImage: "figure.strengthtraining.traditional")
                     .toolbar { Button("Close") { model.showSession = false }.accessibilityIdentifier("session.close") }
             }
+        }
+    }
+
+    /// The phone's layout: every exercise in one scrolling column, the logger at the bottom.
+    private func column(_ live: LiveSession) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
+                        Text(note).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    // In the session's order, which the person can change; a heading where the block changes.
+                    ForEach(Array(live.items.enumerated()), id: \.element.id) { index, item in
+                        if index == 0 || live.items[index - 1].plan.block != item.plan.block {
+                            Label(item.plan.block.label, systemImage: item.plan.block.symbol)
+                                .font(.headline)
+                                .foregroundStyle(item.plan.block.color)
+                                .padding(.top, 6)
+                        }
+                        ItemCard(
+                            index: index, item: item, current: live.current?.item == index,
+                            swap: { swapping = SwapTarget(index: index) },
+                            edit: { set in editing = SetTarget(item: index, set: set) }
+                        )
+                        .id(item.id)
+                    }
+                    Color.clear.frame(height: 24)
+                }
+                .padding()
+                .readableWidth()
+            }
+            .accessibilityIdentifier("session.screen")
+            .background(.pageBackground)
+            .onChange(of: live.current?.item) { _, item in
+                guard let item else { return }
+                withAnimation { proxy.scrollTo(live.items[item].id, anchor: .top) }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            BottomPanel(finish: { showFeedback = true })
+        }
+    }
+
+    @ToolbarContentBuilder
+    private func toolbar(_ live: LiveSession) -> some ToolbarContent {
+        ToolbarItem(placement: .barLeading) {
+            Button {
+                model.showSession = false
+            } label: {
+                Label("Minimize", systemImage: Platform.isMac ? "rectangle.portrait.and.arrow.right" : "chevron.down")
+            }
+            .keyboardShortcut(".", modifiers: .command)
+            .help("Keep the session running and go back to the app (⌘.)")
+            .accessibilityLabel("Minimize")
+            .accessibilityIdentifier("session.minimize")
+        }
+        ToolbarItem(placement: .principal) {
+            VStack(spacing: 0) {
+                // The Mac's window title already names the session.
+                if !Platform.isMac { Text(live.plan.title).font(.headline) }
+                HStack(spacing: 8) {
+                    Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    if let bpm = model.currentHeartRate {
+                        Label("\(Int(bpm))", systemImage: "heart.fill")
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.red)
+                            .accessibilityLabel("Heart rate \(Int(bpm))")
+                    }
+                }
+            }
+        }
+        ToolbarItem(placement: .barTrailing) {
+            Menu {
+                Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
+                    .accessibilityIdentifier("session.finishNow")
+                Button("Discard session", systemImage: "trash", role: .destructive) { confirmDiscard = true }
+                    .accessibilityIdentifier("session.discard")
+            } label: {
+                Label("Session options", systemImage: "ellipsis")
+            }
+            .accessibilityLabel("Session options")
+            .accessibilityIdentifier("session.options")
+        }
+    }
+}
+
+/// The wide session: the exercises and their progress on one side, reordered by dragging, and the
+/// chosen one (the current one, unless another is picked) above a large logger and rest timer.
+struct SessionWorkspace: View {
+    @Environment(AppModel.self) private var model
+    let live: LiveSession
+    let swap: (Int) -> Void
+    let edit: (Int, Int) -> Void
+    let finish: () -> Void
+    /// An exercise picked in the list to look at; nil follows the current one.
+    @State private var picked: LiveItem.ID?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            SessionOutline(live: live, picked: $picked, swap: swap)
+                .frame(minWidth: 280, idealWidth: 340, maxWidth: 380)
+            Divider()
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
+                            Text(note).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        if let index = shownIndex {
+                            let item = live.items[index]
+                            Label(item.plan.block.label, systemImage: item.plan.block.symbol)
+                                .font(.headline).foregroundStyle(item.plan.block.color)
+                            ItemCard(
+                                index: index, item: item, current: live.current?.item == index, swap: { swap(index) },
+                                edit: { set in edit(index, set) })
+                            if picked != nil, live.current?.item != index {
+                                Button("Back to the current exercise", systemImage: "arrow.uturn.backward") { picked = nil }
+                                    .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: 820)
+                    .frame(maxWidth: .infinity)
+                }
+                .background(.pageBackground)
+                BottomPanel(finish: finish)
+                    .frame(maxWidth: 820)
+                    .padding(.top, 8)
+                KeyboardHints()
+                    .padding(.bottom, 8)
+            }
+        }
+        .accessibilityIdentifier("session.screen")
+        // Logging moves on to the next exercise: show it.
+        .onChange(of: live.current?.item) { picked = nil }
+    }
+
+    private var shownIndex: Int? {
+        if let picked, let index = live.items.firstIndex(where: { $0.id == picked }) { return index }
+        return live.current?.item ?? live.items.indices.last
+    }
+}
+
+/// The session's exercises, in order: each one's block, sets done and state. Drag to reorder what
+/// isn't done; supersets move whole.
+private struct SessionOutline: View {
+    @Environment(AppModel.self) private var model
+    let live: LiveSession
+    @Binding var picked: LiveItem.ID?
+    let swap: (Int) -> Void
+
+    var body: some View {
+        List(selection: $picked) {
+            Section {
+                ProgressView(value: live.progress) {
+                    Text("\(Int((live.progress * 100).rounded()))% done").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                ForEach(Array(live.items.enumerated()), id: \.element.id) { index, item in
+                    OutlineRow(item: item, current: live.current?.item == index)
+                        .tag(item.id)
+                        .moveDisabled(item.isDone)
+                        .contextMenu { menu(index, item) }
+                        .accessibilityIdentifier("session.outlineItem")
+                }
+                .onMove { source, destination in model.moveLive(items: source, to: destination) }
+            } header: {
+                Text("Exercises")
+            } footer: {
+                Text(Platform.isMac ? "Drag an exercise to change the order." : "Touch and hold an exercise, then drag, to change the order.")
+            }
+        }
+        .accessibilityIdentifier("session.outline")
+    }
+
+    @ViewBuilder
+    private func menu(_ index: Int, _ item: LiveItem) -> some View {
+        if !item.isDone && live.current?.item != index {
+            Button("Do This Now", systemImage: "arrow.up.to.line") { model.update { $0.doNext(item: index) } }
+        }
+        if item.plan.isStrength {
+            Button("Swap Exercise…", systemImage: "arrow.triangle.2.circlepath") { swap(index) }
+        }
+        if item.takesMoreSets {
+            Button("Add a Set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+        }
+        if !item.isDone {
+            Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } }
+        }
+    }
+}
+
+private struct OutlineRow: View {
+    @Environment(AppModel.self) private var model
+    let item: LiveItem
+    let current: Bool
+
+    var body: some View {
+        let exercise = model.catalog.resolve(item.exerciseID)
+        let work = item.sets.filter { $0.prescription.kind != .warmup }
+        let done = work.filter { !$0.isOpen }.count
+        HStack(spacing: 10) {
+            Image(systemName: item.plan.block.symbol).foregroundStyle(item.plan.block.color).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(exercise.name).fontWeight(current ? .semibold : .regular).lineLimit(1)
+                    if item.plan.supersetGroup != nil { Pill(text: "Superset", color: .purple) }
+                }
+                Text(
+                    item.plan.conditioning?.summary
+                        ?? (work.isEmpty ? item.plan.block.label : "\(done) of \(work.count) \(work.count == 1 ? "set" : "sets")")
+                )
+                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if item.isDone {
+                Image(systemName: item.skipped ? "forward.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(item.skipped ? Color.secondary : Color.green)
+                    .accessibilityLabel(item.skipped ? "Skipped" : "Done")
+            } else if current {
+                Image(systemName: "arrowtriangle.right.fill").foregroundStyle(.tint).accessibilityLabel("Now")
+            }
+        }
+        .opacity(item.isDone ? 0.6 : 1)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The hardware keyboard's shortcuts, under the logger on the Mac (the iPad lists them while ⌘ is held).
+private struct KeyboardHints: View {
+    var body: some View {
+        if Platform.isMac {
+            Text("1 Easy · 2 Just right · 3 Missed · Return Done · ↑↓ weight · − + reps · Space ends a rest · ⌘. minimizes")
+                .font(.caption).foregroundStyle(.secondary)
+                .accessibilityHidden(true)
         }
     }
 }
@@ -191,6 +377,7 @@ struct ItemCard: View {
                                 SetRow(set: set, number: number(of: setIndex), exercise: doneOn, isCurrent: false, editable: true)
                             }
                             .buttonStyle(.plain)
+                            .hoverHighlight()
                             .accessibilityHint("Edit this set")
                             .accessibilityIdentifier("session.loggedSet")
                         } else {
@@ -306,6 +493,7 @@ struct BottomPanel: View {
 /// Rest: the countdown, the adjustment just made, ±15 s and skip.
 struct RestPanel: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.sessionScale) private var scale
     let rest: RestState
     let message: String?
 
@@ -324,7 +512,7 @@ struct RestPanel: View {
                 VStack(spacing: 0) {
                     Text("Rest").font(.caption).foregroundStyle(.secondary)
                     Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
-                        .font(.system(size: 44, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: scale.restSize, weight: .semibold, design: .rounded).monospacedDigit())
                 }
                 .frame(maxWidth: .infinity)
                 Button {
@@ -339,7 +527,8 @@ struct RestPanel: View {
             if let filler = rest.filler {
                 Label("Use the rest: \(model.catalog.resolve(filler).name)", systemImage: "figure.flexibility").font(.footnote)
             }
-            Button("Skip rest") { model.update { $0.endRest() } }.font(.subheadline)
+            Button("Skip rest") { model.update { $0.endRest() } }.font(scale.isLarge ? .headline : .subheadline)
+                .keyboardShortcut(scale.shortcut(.space))
                 .accessibilityIdentifier("rest.skip")
         }
         .padding()

@@ -32,6 +32,7 @@ struct OutsideActivitiesEditor: View {
                     .card()
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
             Button {
                 editing = RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 60)
@@ -81,7 +82,7 @@ struct RecurringEditor: View {
                 }
             }
             .navigationTitle(isNew ? "New activity" : item.activity.label)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -89,6 +90,7 @@ struct RecurringEditor: View {
                 }
             }
         }
+        .sheetFrame()
     }
 }
 
@@ -150,7 +152,7 @@ struct ActivityLogSheet: View {
                 }
             }
             .navigationTitle("Log activity")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("logActivity.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -168,5 +170,6 @@ struct ActivityLogSheet: View {
                 }
             }
         }
+        .sheetFrame()
     }
 }

@@ -1,16 +1,17 @@
 import Charts
-import ImageIO
 import LiftEngine
 import OSLog
 import PhotosUI
 import SwiftUI
 import SystemCore
+import UniformTypeIdentifiers
 
 /// Physique on a mesocycle cadence: tape measurements, the ratios that matter, gaps and what
 /// the program does about them, and progress photos for your own comparison. Trends and next
 /// steps, never appearance.
 struct BodyView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var measuring = false
     @State private var editing: BodyMeasurements?
     @State private var pickerItem: PhotosPickerItem?
@@ -20,32 +21,50 @@ struct BodyView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let physique = model.analysis?.physique {
-                        overview(physique)
-                        sides(physique)
-                        if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
+                if sizeClass.isWide {
+                    wide
+                } else {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let physique = model.analysis?.physique {
+                            overview(physique)
+                            sides(physique)
+                            if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
+                        }
+                        waistTrend
+                        photos
+                        history
                     }
-                    waistTrend
-                    photos
-                    history
+                    .padding()
+                    .readableWidth()
                 }
-                .padding()
-                .readableWidth()
             }
             .accessibilityIdentifier("body.screen")
             .background(.pageBackground)
             .navigationTitle("Body")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         measuring = true
                     } label: {
-                        Image(systemName: "ruler")
-                    }.accessibilityLabel("Add measurements")
-                        .accessibilityIdentifier("body.addMeasurements")
+                        Label("Add Measurements", systemImage: "ruler")
+                    }
+                    .help("Add tape measurements")
+                    .accessibilityLabel("Add measurements")
+                    .accessibilityIdentifier("body.addMeasurements")
                 }
             }
+            .sessionResumeToolbar()
+            #if os(macOS)
+            // Continuity Camera: File ▸ Import from iPhone or iPad takes a photo with the phone.
+            .importsItemProviders([.image]) { providers in
+                guard let provider = providers.first else { return false }
+                _ = provider.loadDataRepresentation(for: .image) { data, _ in
+                    guard let data else { return }
+                    Task { @MainActor in await importPhoto(data: data) }
+                }
+                return true
+            }
+            #endif
             .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
             .sheet(item: $editing) { m in MeasurementEditor(measurements: m) }
             .onChange(of: pickerItem) { _, item in
@@ -58,6 +77,26 @@ struct BodyView: View {
                 Text("It couldn't be read. Try it again, or another photo.")
             }
         }
+    }
+
+    /// The physique cards in a grid, a larger waist chart, photos compared side by side and the
+    /// measurements as a table.
+    private var wide: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let physique = model.analysis?.physique {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 16, alignment: .top)], spacing: 16) {
+                    overview(physique)
+                    sides(physique)
+                    if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
+                }
+            }
+            waistTrend
+            PhotoComparison(pose: $pose, pickerItem: $pickerItem) { data in await importPhoto(data: data) }
+            MeasurementTable(edit: { editing = $0 })
+        }
+        .padding()
+        .frame(maxWidth: 1400)
+        .frame(maxWidth: .infinity)
     }
 
     private func overview(_ p: PhysiqueAnalysis) -> some View {
@@ -212,7 +251,7 @@ struct BodyView: View {
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel(model.units.length.symbol)
-                .frame(height: 140)
+                .frame(height: sizeClass.isWide ? 240 : 140)
             }
             .card()
         }
@@ -285,6 +324,11 @@ struct BodyView: View {
                     .card(padding: 12)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
+                .contextMenu {
+                    Button("Edit…", systemImage: "pencil") { editing = m }
+                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(measurement: m.id) }
+                }
                 .accessibilityIdentifier("body.measurement")
             }
         }
@@ -306,44 +350,204 @@ struct BodyView: View {
             importFailed = true
         }
     }
+
+    /// A photo dropped on the window, or taken with the iPhone through Continuity Camera.
+    private func importPhoto(data: Data) async {
+        let pose = pose
+        guard let jpeg = await ProgressPhotos.jpeg(from: data) else {
+            importFailed = true
+            return
+        }
+        model.save(photo: ProgressPhoto(day: .today, pose: pose, jpeg: jpeg))
+    }
+}
+
+/// An image dropped from Finder, Photos or another app.
+struct DroppedImage: Transferable {
+    let data: Data
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: .image) { DroppedImage(data: $0) }
+    }
+}
+
+/// Progress photos on a wide screen: two of one pose side by side, large, chosen by date (the
+/// first and the latest to start with), above every photo of it. Drop an image to add one.
+private struct PhotoComparison: View {
+    @Environment(AppModel.self) private var model
+    @Binding var pose: ProgressPhoto.Pose
+    @Binding var pickerItem: PhotosPickerItem?
+    let add: (Data) async -> Void
+    @State private var before: UUID?
+    @State private var after: UUID?
+    @State private var dropping = false
+
+    var body: some View {
+        let shown = model.photos.filter { $0.pose == pose }
+        let left = shown.first { $0.id == before } ?? shown.first
+        let right = shown.first { $0.id == after } ?? shown.last
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Progress photos").font(.headline)
+                Spacer()
+                Picker("Pose", selection: $pose) {
+                    ForEach(ProgressPhoto.Pose.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                PhotosPicker(selection: $pickerItem, matching: .images) { Label("Add Photo", systemImage: "plus") }
+                    .accessibilityIdentifier("body.addPhoto")
+            }
+            if shown.isEmpty {
+                Text(
+                    "For your own comparison only. Photos are never analysed or used as a measure. Add one, or drop an image here\(Platform.isMac ? "; File ▸ Import from iPhone takes one with your phone" : "")."
+                )
+                .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    if let left { side(left, selection: $before, in: shown, title: "Before") }
+                    if let right, right.id != left?.id { side(right, selection: $after, in: shown, title: "After") }
+                }
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 8) {
+                        ForEach(shown) { p in
+                            ProgressPhotoImage(photo: p, maxPixel: 360)
+                                .frame(width: 90, height: 120).clipShape(.rect(cornerRadius: 10))
+                                .accessibilityLabel("Progress photo, \(Format.day(p.day))")
+                                .contextMenu {
+                                    Button("Compare as Before") { before = p.id }
+                                    Button("Compare as After") { after = p.id }
+                                    Divider()
+                                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(photo: p.id) }
+                                }
+                        }
+                    }
+                }
+            }
+        }
+        .card()
+        .overlay {
+            if dropping { RoundedRectangle(cornerRadius: 22).strokeBorder(Color.accentColor, lineWidth: 3) }
+        }
+        .dropDestination(for: DroppedImage.self) { items, _ in
+            guard let item = items.first else { return false }
+            Task { await add(item.data) }
+            return true
+        } isTargeted: {
+            dropping = $0
+        }
+        .onChange(of: pose) {
+            before = nil
+            after = nil
+        }
+    }
+
+    private func side(_ photo: ProgressPhoto, selection: Binding<UUID?>, in shown: [ProgressPhoto], title: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Picker(title, selection: Binding(get: { selection.wrappedValue ?? photo.id }, set: { selection.wrappedValue = $0 })) {
+                ForEach(shown) { Text(Format.day($0.day, style: .dateTime.month(.abbreviated).day().year())).tag($0.id) }
+            }
+            .pickerStyle(.menu)
+            ProgressPhotoImage(photo: photo, maxPixel: 1400)
+                .frame(maxWidth: .infinity).frame(height: 440).clipped()
+                .clipShape(.rect(cornerRadius: 14))
+                .accessibilityLabel("\(title): progress photo, \(Format.day(photo.day))")
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// Every tape check-in as a table, newest first: a row opens it for editing.
+private struct MeasurementTable: View {
+    @Environment(AppModel.self) private var model
+    let edit: (BodyMeasurements) -> Void
+
+    var body: some View {
+        let length = model.units.length
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: "Measurements", detail: "\(model.measurements.count) check-ins")
+            ScrollView(.horizontal) {
+                VStack(alignment: .leading, spacing: 0) {
+                    row(
+                        ["Date", "Weight", "Waist", "Shoulders", "Chest", "Hips", "Glutes", "Arm L / R", "Thigh L / R", "Calf L / R", "Body fat"],
+                        header: true)
+                    Divider()
+                    ForEach(model.measurements.reversed()) { m in
+                        Button {
+                            edit(m)
+                        } label: {
+                            row(
+                                [
+                                    Format.day(m.day, style: .dateTime.month(.abbreviated).day().year()),
+                                    m.weightKg.map { Format.weight($0, unit: model.units.weight) } ?? "—",
+                                    Format.length(m.waistCm, unit: length), Format.length(m.shouldersCm, unit: length),
+                                    Format.length(m.chestCm, unit: length), Format.length(m.hipsCm, unit: length),
+                                    Format.length(m.glutesCm, unit: length),
+                                    pair(m, .arm), pair(m, .thigh), pair(m, .calf),
+                                    m.bodyFatPercent.map { "\(Format.number($0))%" } ?? "—",
+                                ], header: false)
+                        }
+                        .buttonStyle(.plain)
+                        .hoverHighlight()
+                        .contextMenu {
+                            Button("Edit…", systemImage: "pencil") { edit(m) }
+                            Button("Delete", systemImage: "trash", role: .destructive) { model.delete(measurement: m.id) }
+                        }
+                        .accessibilityIdentifier("body.measurement")
+                        Divider()
+                    }
+                }
+            }
+        }
+        .card()
+    }
+
+    private func pair(_ m: BodyMeasurements, _ limb: Limb) -> String {
+        guard let sides = m.sides(limb) else { return "—" }
+        let unit = model.units.length
+        return "\(Format.number(unit.fromCentimetres(sides.left))) / \(Format.number(unit.fromCentimetres(sides.right)))"
+    }
+
+    private func row(_ cells: [String], header: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(cells.enumerated()), id: \.offset) { index, cell in
+                Text(cell)
+                    .font(header ? .caption.weight(.semibold) : (index == 0 ? .subheadline.weight(.semibold) : .subheadline.monospacedDigit()))
+                    .foregroundStyle(header ? .secondary : .primary)
+                    .lineLimit(1)
+                    .frame(width: index == 0 ? 130 : 96, alignment: .leading)
+            }
+        }
+        .padding(.vertical, 8)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
 }
 
 /// Progress photo pixels, off the main actor. ImageIO decodes straight to the size asked for, so
-/// a 24 MP original is never held in full.
+/// a 24 MP original is never held in full; the same on every platform (`ImageData`).
 enum ProgressPhotos {
     /// What's stored: at most 1400 pixels on the long side, enough to compare and light to sync.
     @concurrent nonisolated static func jpeg(from data: Data) async -> Data? {
-        downsampled(data, maxPixel: 1400)?.jpegData(compressionQuality: 0.7)
+        ImageData.resizedJPEG(data, maxPixels: 1400, quality: 0.7)
     }
 
     /// For the screen, at about the pixels it's shown at.
-    @concurrent nonisolated static func image(from data: Data, maxPixel: Int) async -> UIImage? {
-        downsampled(data, maxPixel: maxPixel)
+    @concurrent nonisolated static func image(from data: Data, maxPixel: Int) async -> CGImage? {
+        ImageData.downsampled(data, maxPixels: maxPixel)
     }
 
     /// Decoded once per photo and size: the Body tab re-renders on every reload.
-    static let cache = NSCache<NSString, UIImage>()
+    static let cache = NSCache<NSString, CGImage>()
 
     static func key(_ photo: ProgressPhoto, maxPixel: Int) -> NSString { "\(photo.id.uuidString)-\(maxPixel)" as NSString }
-
-    nonisolated private static func downsampled(_ data: Data, maxPixel: Int) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
-        let options =
-            [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceShouldCacheImmediately: true,
-                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
-            ] as CFDictionary
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options).map { UIImage(cgImage: $0) }
-    }
 }
 
 /// One progress photo, decoded off the main actor at the size it's shown and kept in the cache.
-private struct ProgressPhotoImage: View {
+struct ProgressPhotoImage: View {
     let photo: ProgressPhoto
     let maxPixel: Int
-    @State private var image: UIImage?
+    @State private var image: CGImage?
 
     init(photo: ProgressPhoto, maxPixel: Int) {
         self.photo = photo
@@ -354,7 +558,7 @@ private struct ProgressPhotoImage: View {
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(decorative: image, scale: 1).resizable().scaledToFill()
             } else {
                 Rectangle().fill(.secondary.opacity(0.12))
             }
@@ -423,7 +627,7 @@ struct MeasurementEditor: View {
                         Text("Body fat")
                         Spacer()
                         TextField("—", value: $measurements.bodyFatPercent, format: .number.precision(.fractionLength(0...1)))
-                            .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 80)
+                            .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
                         Text("%").foregroundStyle(.secondary)
                     }
                 } footer: {
@@ -438,7 +642,7 @@ struct MeasurementEditor: View {
                 }
             }
             .navigationTitle("Measurements")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("measurements.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -451,6 +655,7 @@ struct MeasurementEditor: View {
                 }
             }
         }
+        .sheetFrame()
     }
 }
 
@@ -481,7 +686,7 @@ struct SidesField: View {
                     set: { value.wrappedValue = $0.map(unit.toCentimetres) }),
                 format: .number.precision(.fractionLength(0...1))
             )
-            .keyboardType(.decimalPad)
+            .fieldKeyboard(.decimal)
             // Next to its letter, so each value reads as that side's.
             .multilineTextAlignment(.leading)
             .frame(width: 52)
@@ -522,7 +727,7 @@ struct MeasuringGuide: View {
             }
         }
         .navigationTitle("Where the tape goes")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
     }
 
     private func site(_ name: String, _ how: String) -> some View {

@@ -61,11 +61,12 @@ struct SessionSummaryView: View {
             }
             .background(.pageBackground)
             .navigationTitle(record.title)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("summary.done") }
             }
         }
+        .sheetFrame()
     }
 
     private func stat(_ value: String, _ label: String) -> some View {

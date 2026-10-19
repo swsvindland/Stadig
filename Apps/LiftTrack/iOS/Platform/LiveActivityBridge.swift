@@ -1,8 +1,10 @@
-import ActivityKit
 import ExerciseLibrary
 import Foundation
 import LiftEngine
 import SystemCore
+
+#if os(iOS)
+import ActivityKit
 
 /// Keeps the session's Live Activity in step with the live session.
 @MainActor
@@ -72,3 +74,13 @@ enum LiveActivityBridge {
             message: rest == nil ? nil : session.message, progress: session.progress)
     }
 }
+#else
+/// Live Activities are the iPhone's (and the iPad's) Lock Screen: the Mac shows the session in a
+/// window of its own and Vision Pro in the app's window, so there's nothing to keep in step.
+@MainActor
+enum LiveActivityBridge {
+    static func update(_ session: LiveSession?, catalog: ExerciseCatalog, unit: WeightUnit) {}
+    static func resume(_ session: LiveSession?, catalog: ExerciseCatalog, unit: WeightUnit) {}
+    static func end() {}
+}
+#endif

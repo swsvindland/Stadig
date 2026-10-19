@@ -65,12 +65,14 @@ final class Purchases {
         unlocked = owned
     }
 
-    func buy() async {
+    /// Buys the unlock through the view's purchase action (`@Environment(\.purchase)`), which shows the
+    /// App Store's sheet over the right window or scene on every platform.
+    func buy(using purchase: (Product) async throws -> Product.PurchaseResult) async {
         guard let product else { return }
         purchasing = true
         defer { purchasing = false }
         do {
-            let result = try await product.purchase()
+            let result = try await purchase(product)
             if case .success(let verification) = result, case .verified(let transaction) = verification {
                 await transaction.finish()
             }

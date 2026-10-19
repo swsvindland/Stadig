@@ -6,6 +6,7 @@ import SystemCore
 /// The current set: load and reps already filled in, then one tap to rate it.
 struct SetLogger: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.sessionScale) private var scale
     let itemIndex: Int
     let setIndex: Int
 
@@ -58,7 +59,7 @@ struct SetLogger: View {
             default: "Set \(position) of \(work.count)"
             }
         return VStack(alignment: .leading, spacing: 2) {
-            Text(exercise.name).font(.title3.bold()).lineLimit(1)
+            Text(exercise.name).font(scale.titleFont).lineLimit(1)
             Text(label).font(.subheadline).foregroundStyle(.secondary)
             if let note = set.note { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(.tint) }
         }
@@ -72,15 +73,15 @@ struct SetLogger: View {
                 if hasLoad {
                     LoadControl(
                         title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
-                        identifier: "logger.load")
+                        identifier: "logger.load", keys: (.downArrow, .upArrow))
                 }
                 Stepperish(
                     title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
                     minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
                     entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
-                    identifier: "logger.reps"
+                    identifier: "logger.reps", keys: ("-", "=")
                 )
-                .frame(maxWidth: hasLoad ? 140 : .infinity)
+                .frame(maxWidth: hasLoad ? (scale.isLarge ? 260 : 140) : .infinity)
             }
             if let plates = increments.platesPerSide(load), !plates.isEmpty, exercise.equipment.platePaired {
                 Text("Per side: \(plates.map { Format.number($0, digits: 2) }.joined(separator: " + ")) \(increments.gym.unit.symbol)")
@@ -94,6 +95,7 @@ struct SetLogger: View {
                     Text("Done").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction().controlSize(.large)
+                .keyboardShortcut(scale.shortcut(.return))
                 .accessibilityIdentifier("logger.done")
             case .repOut:
                 Button {
@@ -102,6 +104,7 @@ struct SetLogger: View {
                     Text("Log \(reps) reps").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction().controlSize(.large)
+                .keyboardShortcut(scale.shortcut(.return))
                 .accessibilityIdentifier("logger.logRepOut")
             default:
                 RatingButtons { rating in
@@ -140,7 +143,7 @@ struct SetLogger: View {
                 if let timerStart {
                     let end = timerStart.addingTimeInterval(TimeInterval(seconds))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
-                        .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
                         .frame(maxWidth: .infinity)
                 } else {
                     Button {
@@ -167,6 +170,7 @@ struct SetLogger: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .keyboardShortcut(scale.shortcut(.return))
             .accessibilityIdentifier("logger.done")
         }
     }
@@ -176,7 +180,7 @@ struct SetLogger: View {
             Text(plan.summary).font(.headline.monospacedDigit())
             HeartRateLine(aim: plan.zones)
             if let timerStart {
-                Text(timerStart, style: .timer).font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+                Text(timerStart, style: .timer).font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
             }
             HStack {
                 if timerStart == nil {
@@ -202,9 +206,11 @@ struct SetLogger: View {
                 }
                 .primaryAction()
                 .controlSize(.large)
+                .keyboardShortcut(scale.shortcut(.return))
                 .accessibilityIdentifier("logger.done")
             }
-            if model.currentHeartRate == nil {
+            // Only an iPhone streams a Watch's heart rate into the session.
+            if model.currentHeartRate == nil && Platform.canPairWatch {
                 Text("Wear your Apple Watch with Lift Track on it and heart rate and zones are logged automatically.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -238,7 +244,7 @@ struct SetLogger: View {
                 item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load, rating: rating,
                 heartRatePeak: peak, environment: environment, now: Date())
         }
-        UIAccessibility.post(notification: .announcement, argument: model.live?.message ?? "Logged")
+        AccessibilityNotification.Announcement(model.live?.message ?? "Logged").post()
     }
 }
 
@@ -250,6 +256,8 @@ struct LoadControl: View {
     let increments: GymIncrements
     let basis: LoadBasis
     var identifier: String?
+    /// The keys for − and + in the session's large layout.
+    var keys: (minus: KeyEquivalent, plus: KeyEquivalent)?
 
     var body: some View {
         let unit = increments.gym.unit
@@ -260,7 +268,7 @@ struct LoadControl: View {
             entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
                 if let typed = Self.typedLoad(text, increments: increments) { load = typed }
             },
-            identifier: identifier)
+            identifier: identifier, keys: keys)
     }
 
     /// A typed load in kilograms, rounded to what the gym can make; nil for anything that isn't a
@@ -293,6 +301,9 @@ struct Stepperish: View {
     /// For UI tests: the value is "<identifier>", its buttons "<identifier>Less" and "<identifier>More",
     /// and the typing alert's field and button "<identifier>Field" and "<identifier>Set".
     var identifier: String?
+    /// The keys for − and + in the session's large layout.
+    var keys: (minus: KeyEquivalent, plus: KeyEquivalent)?
+    @Environment(\.sessionScale) private var scale
     @State private var typing = false
     @State private var typed = ""
 
@@ -304,11 +315,12 @@ struct Stepperish: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(scale.isLarge ? .subheadline : .caption).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button(action: minus) { Image(systemName: "minus").frame(width: 36, height: 36) }
+                Button(action: minus) { Image(systemName: "minus").frame(width: scale.stepButton, height: scale.stepButton) }
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
                     .buttonRepeatBehavior(.enabled)
+                    .keyboardShortcut(keys.flatMap { scale.shortcut($0.minus) })
                     .accessibilityLabel("Less \(title.lowercased())")
                     .accessibilityIdentifier(identifier.map { "\($0)Less" } ?? "")
                 Button {
@@ -317,28 +329,30 @@ struct Stepperish: View {
                     typing = true
                 } label: {
                     Text(value)
-                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .font(scale.valueFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .frame(minWidth: 28, maxWidth: .infinity)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
                 .disabled(entry == nil)
                 // The number wins the space over the round buttons.
                 .layoutPriority(1)
                 .accessibilityHint(entry == nil ? "" : "Type a value")
                 .accessibilityIdentifier(identifier ?? "")
-                Button(action: plus) { Image(systemName: "plus").frame(width: 36, height: 36) }
+                Button(action: plus) { Image(systemName: "plus").frame(width: scale.stepButton, height: scale.stepButton) }
                     .buttonStyle(.bordered).buttonBorderShape(.circle)
                     .buttonRepeatBehavior(.enabled)
+                    .keyboardShortcut(keys.flatMap { scale.shortcut($0.plus) })
                     .accessibilityLabel("More \(title.lowercased())")
                     .accessibilityIdentifier(identifier.map { "\($0)More" } ?? "")
             }
         }
         .alert(title, isPresented: $typing) {
             TextField(entry?.unit ?? "", text: $typed)
-                .keyboardType(entry?.decimal == true ? .decimalPad : .numberPad)
+                .fieldKeyboard(entry?.decimal == true ? .decimal : .number)
                 .accessibilityIdentifier(identifier.map { "\($0)Field" } ?? "")
             Button("Set") { entry?.apply(typed) }
                 .accessibilityIdentifier(identifier.map { "\($0)Set" } ?? "")
@@ -410,7 +424,7 @@ struct FeedbackSheet: View {
                 }
             }
             .navigationTitle("How was it?")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() }.accessibilityIdentifier("feedback.back") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -422,6 +436,7 @@ struct FeedbackSheet: View {
                 }
             }
         }
+        .sheetFrame()
         .presentationDetents([.large])
     }
 }
@@ -467,9 +482,10 @@ struct SwapSheet: View {
             }
             .searchable(text: $query, prompt: "Search exercises")
             .navigationTitle("Swap exercise")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("swap.cancel") } }
         }
+        .sheetFrame()
     }
 }
 
@@ -522,7 +538,7 @@ struct EditSetSheet: View {
                     }
                 }
                 .navigationTitle(exercise.name)
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineTitle()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("editSet.cancel") }
                     ToolbarItem(placement: .confirmationAction) {
@@ -550,6 +566,7 @@ struct EditSetSheet: View {
                 ContentUnavailableView("Set not found", systemImage: "questionmark")
             }
         }
+        .sheetFrame()
         .presentationDetents([.medium])
     }
 }
@@ -589,6 +606,7 @@ struct HeartRateLine: View {
 /// how it felt; afterwards, how this one felt.
 struct HeatControls: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.sessionScale) private var scale
     let itemIndex: Int
     let room: String
     @State private var temperatureC: Double?
@@ -617,13 +635,14 @@ struct HeatControls: View {
                 if let started {
                     let end = started.addingTimeInterval(TimeInterval(minutes * 60))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
-                        .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
                     Button {
                         finished = Date()
                     } label: {
                         Text("Done").font(.headline).frame(maxWidth: .infinity)
                     }
                     .primaryAction().controlSize(.large)
+                    .keyboardShortcut(scale.shortcut(.return))
                     .accessibilityIdentifier("heat.done")
                 } else {
                     Button {
@@ -638,9 +657,9 @@ struct HeatControls: View {
             } else {
                 Text("How was it?").font(.headline)
                 HStack(spacing: 10) {
-                    rating(.green, "Easy", "Could stay longer")
-                    rating(.orange, "Just right", "Ready to leave")
-                    rating(.red, "Too much", "Left early or felt rough")
+                    rating(.green, "Easy", "Could stay longer").keyboardShortcut(scale.shortcut("1"))
+                    rating(.orange, "Just right", "Ready to leave").keyboardShortcut(scale.shortcut("2"))
+                    rating(.red, "Too much", "Left early or felt rough").keyboardShortcut(scale.shortcut("3"))
                 }
             }
         }
@@ -660,10 +679,11 @@ struct HeatControls: View {
                 Text(detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).lineLimit(2)
             }
             .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 64)
+            .frame(maxWidth: .infinity, minHeight: scale.isLarge ? 96 : 64)
             .background(value.color.gradient, in: .rect(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel("\(label): \(detail)")
         .accessibilityIdentifier("heat.rating\(value.rawValue.identifierSuffix)")
     }
@@ -717,6 +737,7 @@ struct Thermometer: View {
                         .fixedSize()
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
                 .accessibilityHint("Type the reading")
                 Spacer()
                 Button {
@@ -734,7 +755,7 @@ struct Thermometer: View {
         .accessibilityLabel("Thermometer")
         .accessibilityValue(Format.temperature(celsius, fahrenheit: fahrenheit))
         .alert("Thermometer", isPresented: $typing) {
-            TextField(fahrenheit ? "°F" : "°C", text: $typed).keyboardType(.numberPad)
+            TextField(fahrenheit ? "°F" : "°C", text: $typed).fieldKeyboard(.number)
             Button("Set") {
                 guard let value = Double(typed) else { return }
                 set(min(120, max(30, fahrenheit ? (value - 32) * 5 / 9 : value)))

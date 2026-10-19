@@ -55,7 +55,7 @@ struct CheckInView: View {
                                     "—", value: Binding(get: { values[test] }, set: { values[test] = $0 }),
                                     format: .number.precision(.fractionLength(0...1))
                                 )
-                                .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 80)
+                                .fieldKeyboard(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 80)
                                 Text(test.unit).foregroundStyle(.secondary)
                             }
                         }
@@ -94,7 +94,7 @@ struct CheckInView: View {
                         HStack {
                             Text(benchmark.measure == .floors ? "Floors" : "Metres")
                             Spacer()
-                            TextField("—", value: $benchmarkValue, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(
+                            TextField("—", value: $benchmarkValue, format: .number).fieldKeyboard(.number).multilineTextAlignment(.trailing).frame(
                                 width: 90)
                         }
                     }
@@ -114,7 +114,7 @@ struct CheckInView: View {
                 }
             }
             .navigationTitle("Check-in")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("checkIn.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -129,6 +129,7 @@ struct CheckInView: View {
             }
             .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
         }
+        .sheetFrame()
     }
 
     @State private var recordTime = false

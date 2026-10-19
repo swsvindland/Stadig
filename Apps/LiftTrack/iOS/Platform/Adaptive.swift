@@ -42,6 +42,9 @@ enum Platform {
         #endif
     }
 
+    /// An iPhone: the one device a Watch pairs with, streaming heart rate into a session led from it.
+    static var canPairWatch: Bool { isPhoneOrPad && !isPad }
+
     static var isPad: Bool {
         #if os(iOS)
         return UIDevice.current.userInterfaceIdiom == .pad
@@ -75,6 +78,18 @@ enum Platform {
     static func disableAnimations() {
         #if canImport(UIKit)
         UIView.setAnimationsEnabled(false)
+        #endif
+    }
+}
+
+extension Optional where Wrapped == UserInterfaceSizeClass {
+    /// Room for the desktop layout: a regular width (iPad full screen or a wide split, Vision Pro),
+    /// and always the Mac, whose windows have a minimum size and may report no size class at all.
+    var isWide: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return self == .regular
         #endif
     }
 }
@@ -136,6 +151,47 @@ extension View {
         #endif
     }
 
+    /// The line under a screen's title (today's date on Today). Vision Pro's window titles have none,
+    /// so there it's left out; a screen that needs the line there shows it itself.
+    func navigationSubtitleIfAvailable(_ subtitle: String) -> some View {
+        #if os(visionOS)
+        return self
+        #else
+        return navigationSubtitle(subtitle)
+        #endif
+    }
+
+    /// A sheet's size on the Mac, where a sheet is only as big as its content asks; the system sizes
+    /// sheets everywhere else.
+    func sheetFrame(minWidth: CGFloat = 440, idealWidth: CGFloat = 520, minHeight: CGFloat = 420, idealHeight: CGFloat = 620) -> some View {
+        #if os(macOS)
+        return frame(minWidth: minWidth, idealWidth: idealWidth, minHeight: minHeight, idealHeight: idealHeight)
+        #else
+        return self
+        #endif
+    }
+
+    /// The trailing inspector column (a sheet in a compact width). Vision Pro has no inspector, so
+    /// there it's a panel at the window's trailing edge, the same width.
+    func sideInspector<Inspector: View>(
+        isPresented: Binding<Bool>, minWidth: CGFloat = 300, idealWidth: CGFloat = 360, maxWidth: CGFloat = 480,
+        @ViewBuilder content: () -> Inspector
+    ) -> some View {
+        #if os(visionOS)
+        return HStack(spacing: 0) {
+            self.frame(maxWidth: .infinity)
+            if isPresented.wrappedValue {
+                Divider()
+                content().frame(width: idealWidth)
+            }
+        }
+        #else
+        return inspector(isPresented: isPresented) {
+            content().inspectorColumnWidth(min: minWidth, ideal: idealWidth, max: maxWidth)
+        }
+        #endif
+    }
+
     /// Liquid Glass behind a floating control. Vision Pro's windows are glass already and its SDK
     /// has no `glassEffect`: a material reads the same there.
     func adaptiveGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {
@@ -161,6 +217,18 @@ extension View {
         return buttonStyle(.bordered)
         #else
         return buttonStyle(.glass)
+        #endif
+    }
+}
+
+extension View {
+    /// The highlight a custom tappable view gets under a pointer on iPad and under the eyes on Vision
+    /// Pro. The Mac's pointer has no lift effect: rows and buttons there highlight themselves.
+    func hoverHighlight() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return hoverEffect(.highlight)
         #endif
     }
 }

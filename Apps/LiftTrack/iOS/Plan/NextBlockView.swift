@@ -36,7 +36,7 @@ struct NextBlockView: View {
             }
             .background(.pageBackground)
             .navigationTitle("Next block")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("nextBlock.cancel")
@@ -49,6 +49,7 @@ struct NextBlockView: View {
             }
             .sheet(isPresented: $showPaywall) { PaywallView() }
         }
+        .sheetFrame()
     }
 
     private var phaseQuestion: some View {
@@ -65,6 +66,7 @@ struct NextBlockView: View {
                     Text(option.label).font(.headline).frame(maxWidth: .infinity, alignment: .leading).card()
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
         }
     }
@@ -114,6 +116,7 @@ struct NextBlockView: View {
 struct PaywallView: View {
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
 
     var body: some View {
         NavigationStack {
@@ -129,7 +132,7 @@ struct PaywallView: View {
                 Spacer()
                 Button {
                     Task {
-                        await purchases.buy()
+                        await purchases.buy { try await purchase($0) }
                         if purchases.unlocked { dismiss() }
                     }
                 } label: {
@@ -146,5 +149,6 @@ struct PaywallView: View {
             .padding(24)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
         }
+        .sheetFrame()
     }
 }

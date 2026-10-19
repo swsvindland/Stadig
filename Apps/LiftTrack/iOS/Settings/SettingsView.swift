@@ -6,18 +6,11 @@ import SystemCore
 import SystemStore
 import UniformTypeIdentifiers
 
+/// Settings as a sheet on iPhone, iPad and Vision Pro. The Mac shows the same parts as panes of its
+/// Settings window (`MacSettings`).
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
-    @State private var exportURLs: [URL] = []
-    @State private var backupURL: URL?
-    @State private var importing = false
-    /// A backup or restore is running: it covers every record, photos included.
-    @State private var working = false
-    @State private var message: String?
-    /// Presented from here: Settings is a sheet already, and a second sheet from the root can't show over it.
-    @State private var showPaywall = false
 
     var body: some View {
         Form {
@@ -41,118 +34,157 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.gym")
             }
-            Section {
-                toggle("Heart-rate guided rest", \.heartRateGuidedRest)
-                toggle("Conditioning after lifting", \.includeConditioning)
-                toggle("Stretching cool-down", \.includeCooldown)
-                toggle("Prioritise automatically", \.autoPrioritise)
-                Picker("Conditioning benchmark", selection: model.setting(\.benchmark)) {
-                    ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
-                }
-                if model.nutrition?.phase == nil {
-                    Picker("Right now I'm", selection: model.setting(\.selfReportedPhase)) {
-                        Text("Not set").tag(SelfReportedPhase?.none)
-                        ForEach(SelfReportedPhase.allCases) { Text($0.label).tag(SelfReportedPhase?.some($0)) }
-                    }
-                } else if let phase = model.nutrition?.phase {
-                    LabeledContent("Phase from Macro Track", value: phase.kind.label)
-                }
-            } header: {
-                Text("Training")
-            } footer: {
-                Text(
-                    "With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest)."
-                )
-            }
-            Section {
-                NavigationLink {
-                    FocusScreen()
-                } label: {
-                    LabeledContent("Focus", value: model.settings.focusSummary)
-                }
-                .accessibilityIdentifier("settings.focus")
-                Picker(
-                    "Proportion targets",
-                    selection: Binding(
-                        get: { proportionTargets },
-                        set: { targets in
-                            var s = model.settings
-                            s.proportionTargets = targets
-                            model.save(settings: s)
-                        })
-                ) {
-                    ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
-                }
-            } header: {
-                Text("Physique")
-            } footer: {
-                Text("\(proportionTargets.detail) Focus areas come first, and nothing asks for fat loss once you're lean.")
-            }
-            Section("Apple Health") {
-                Button("Connect Apple Health") { Task { await model.connectHealth() } }
-                    .disabled(!HealthBridge.shared.isAvailable)
-                toggle("Save sessions to Health", \.saveToHealth)
-            }
-            Section {
-                Button("Export CSV", systemImage: "tablecells") {
-                    do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
-                }
-                .disabled(working)
-                .accessibilityIdentifier("settings.exportCSV")
-                if !exportURLs.isEmpty {
-                    ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
-                        .accessibilityIdentifier("settings.shareCSV")
-                }
-                Button("Make a backup file", systemImage: "externaldrive") { Task { await makeBackup() } }
-                    .disabled(working)
-                    .accessibilityIdentifier("settings.backup")
-                if let backupURL {
-                    ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
-                        .accessibilityIdentifier("settings.shareBackup")
-                }
-                Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
-                    .disabled(working)
-                    .accessibilityIdentifier("settings.restore")
-                if working {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text("Working through your records…").foregroundStyle(.secondary)
-                    }
-                }
-                LabeledContent("Sync", value: model.store.syncStatus)
-            } header: {
-                Text("Your data")
-            } footer: {
-                Text(
-                    "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
-                )
-            }
-            if Purchases.enabled {
-                Section("Lift Track") {
-                    if purchases.unlocked {
-                        Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                    } else {
-                        Button("Unlock Lift Track") { showPaywall = true }
-                        Button("Restore purchase") { Task { await purchases.restore() } }
-                    }
-                }
-            }
-            Section {
-                Text(
-                    "Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
-                )
-                .font(.footnote).foregroundStyle(.secondary)
-            }
-            #if DEBUG
-            Section("Debug") {
-                Button("Erase everything", role: .destructive) { model.eraseEverything() }
-            }
-            #endif
+            TrainingSections()
+            DataSections()
         }
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
+    }
+}
+
+/// The Mac's Training pane.
+struct TrainingSettings: View {
+    var body: some View {
+        Form { TrainingSections() }
+    }
+}
+
+/// The Mac's Data pane.
+struct DataSettings: View {
+    var body: some View {
+        Form { DataSections() }
+    }
+}
+
+/// Training, physique and Apple Health.
+struct TrainingSections: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section {
+            toggle("Heart-rate guided rest", \.heartRateGuidedRest)
+            toggle("Conditioning after lifting", \.includeConditioning)
+            toggle("Stretching cool-down", \.includeCooldown)
+            toggle("Prioritise automatically", \.autoPrioritise)
+            Picker("Conditioning benchmark", selection: model.setting(\.benchmark)) {
+                ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
+            }
+            if model.nutrition?.phase == nil {
+                Picker("Right now I'm", selection: model.setting(\.selfReportedPhase)) {
+                    Text("Not set").tag(SelfReportedPhase?.none)
+                    ForEach(SelfReportedPhase.allCases) { Text($0.label).tag(SelfReportedPhase?.some($0)) }
+                }
+            } else if let phase = model.nutrition?.phase {
+                LabeledContent("Phase from Macro Track", value: phase.kind.label)
+            }
+        } header: {
+            Text("Training")
+        } footer: {
+            Text(
+                "With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest)."
+            )
+        }
+        Section {
+            NavigationLink {
+                FocusScreen()
+            } label: {
+                LabeledContent("Focus", value: model.settings.focusSummary)
+            }
+            .accessibilityIdentifier("settings.focus")
+            Picker(
+                "Proportion targets",
+                selection: Binding(
+                    get: { proportionTargets },
+                    set: { targets in
+                        var s = model.settings
+                        s.proportionTargets = targets
+                        model.save(settings: s)
+                    })
+            ) {
+                ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
+            }
+        } header: {
+            Text("Physique")
+        } footer: {
+            Text("\(proportionTargets.detail) Focus areas come first, and nothing asks for fat loss once you're lean.")
+        }
+        if HealthBridge.shared.isAvailable {
+            Section("Apple Health") {
+                Button("Connect Apple Health") { Task { await model.connectHealth() } }
+                toggle("Save sessions to Health", \.saveToHealth)
+            }
+        } else {
+            Section {
+                Text(
+                    "Apple Health lives on your iPhone, iPad, Apple Watch and Vision Pro, not this \(Platform.deviceName). What you log here, and the outside workouts your iPhone brings in from Health, reach it through iCloud. Steps, sleep, heart rate and Health's weigh-ins stay on your other devices, and sessions logged here aren't saved to Health."
+                )
+                .font(.callout).foregroundStyle(.secondary)
+            } header: {
+                Text("Apple Health")
+            }
+        }
+    }
+
+    /// The chosen set, or the one for the person's standards.
+    private var proportionTargets: ProportionTargets {
+        model.settings.proportionTargets ?? .standard(for: model.profile?.sex ?? .unspecified)
+    }
+
+    private func toggle(_ title: String, _ keyPath: WritableKeyPath<LiftSettings, Bool>) -> some View {
+        Toggle(title, isOn: model.setting(keyPath))
+    }
+}
+
+/// Export, backup and restore, the purchase, and what Lift Track is part of.
+struct DataSections: View {
+    @Environment(AppModel.self) private var model
+    @Environment(Purchases.self) private var purchases
+    @State private var exportURLs: [URL] = []
+    @State private var backupURL: URL?
+    @State private var importing = false
+    /// A backup or restore is running: it covers every record, photos included.
+    @State private var working = false
+    @State private var message: String?
+    /// Presented from here: Settings is a sheet already, and a second sheet from the root can't show over it.
+    @State private var showPaywall = false
+
+    var body: some View {
+        Section {
+            Button("Export CSV", systemImage: "tablecells") {
+                do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
+            }
+            .disabled(working)
+            .accessibilityIdentifier("settings.exportCSV")
+            if !exportURLs.isEmpty {
+                ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
+                    .accessibilityIdentifier("settings.shareCSV")
+            }
+            Button("Make a backup file", systemImage: "externaldrive") { Task { await makeBackup() } }
+                .disabled(working)
+                .accessibilityIdentifier("settings.backup")
+            if let backupURL {
+                ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
+                    .accessibilityIdentifier("settings.shareBackup")
+            }
+            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+                .disabled(working)
+                .accessibilityIdentifier("settings.restore")
+            if working {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Working through your records…").foregroundStyle(.secondary)
+                }
+            }
+            LabeledContent("Sync", value: model.store.syncStatus)
+        } header: {
+            Text("Your data")
+        } footer: {
+            Text(
+                "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
+            )
+        }
         .fileImporter(isPresented: $importing, allowedContentTypes: Self.backupTypes) { result in
             switch result {
             case .success(let url):
@@ -167,6 +199,27 @@ struct SettingsView: View {
         } message: {
             Text(message ?? "")
         }
+        if Purchases.enabled {
+            Section("Lift Track") {
+                if purchases.unlocked {
+                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
+                } else {
+                    Button("Unlock Lift Track") { showPaywall = true }
+                    Button("Restore purchase") { Task { await purchases.restore() } }
+                }
+            }
+        }
+        Section {
+            Text(
+                "Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
+            )
+            .font(.footnote).foregroundStyle(.secondary)
+        }
+        #if DEBUG
+        Section("Debug") {
+            Button("Erase everything", role: .destructive) { model.eraseEverything() }
+        }
+        #endif
     }
 
     /// Lift Track's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
@@ -188,15 +241,6 @@ struct SettingsView: View {
         } catch {
             message = error.localizedDescription
         }
-    }
-
-    /// The chosen set, or the one for the person's standards.
-    private var proportionTargets: ProportionTargets {
-        model.settings.proportionTargets ?? .standard(for: model.profile?.sex ?? .unspecified)
-    }
-
-    private func toggle(_ title: String, _ keyPath: WritableKeyPath<LiftSettings, Bool>) -> some View {
-        Toggle(title, isOn: model.setting(keyPath))
     }
 }
 
@@ -324,7 +368,7 @@ struct FocusScreen: View {
             }
         }
         .navigationTitle("Focus")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
     }
 }
 
