@@ -100,10 +100,19 @@ struct Pill: View {
             Text(text)
         }
         .font(.caption.weight(.semibold))
+        #if os(visionOS)
+        // On glass a tint's own text over a faint wash of it can't be read: the tint fills the
+        // capsule instead, under white text.
+        .foregroundStyle(color == .secondary ? color : .white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(color == .secondary ? color.opacity(0.14) : color.opacity(0.7), in: .capsule)
+        #else
         .foregroundStyle(color)
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
         .background(color.opacity(0.14), in: .capsule)
+        #endif
     }
 }
 
@@ -299,4 +308,16 @@ extension String {
     /// "biggerAndStronger" as "BiggerAndStronger", to end an accessibility identifier built from a raw
     /// value ("onboarding.goalBiggerAndStronger").
     var identifierSuffix: String { prefix(1).uppercased() + dropFirst() }
+}
+
+extension View {
+    /// A choice's tint: the accent when picked, grey otherwise. On Vision Pro's glass a grey tint is
+    /// white on white, so there an unpicked choice keeps the system's own glass.
+    func choiceTint(_ picked: Bool) -> some View {
+        #if os(visionOS)
+        tint(picked ? Color.accentColor : nil)
+        #else
+        tint(picked ? Color.accentColor : .secondary)
+        #endif
+    }
 }

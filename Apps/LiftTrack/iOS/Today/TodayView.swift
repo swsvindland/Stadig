@@ -254,7 +254,7 @@ struct SessionCard: View {
                     Button("\(m)") { minutes = minutes == m ? nil : m }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
-                        .tint(minutes == m ? .accentColor : .secondary)
+                        .choiceTint(minutes == m)
                         .controlSize(.small)
                         .accessibilityLabel("\(m) minutes")
                         .accessibilityIdentifier("today.minutes\(m)")

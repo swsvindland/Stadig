@@ -614,7 +614,7 @@ struct AmountFields: View {
                     }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
-                    .tint(abs(amount.count - value) < 0.001 ? .accentColor : .secondary)
+                    .choiceTint(abs(amount.count - value) < 0.001)
                     .accessibilityIdentifier("portion.quick")
                 }
             }

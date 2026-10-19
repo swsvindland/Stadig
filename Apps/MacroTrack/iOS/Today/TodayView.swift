@@ -323,6 +323,8 @@ struct WeightSection: View {
                 .accessibilityIdentifier("today.weightSave")
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
+                // Never "Sav / e": in Vision Pro's narrow summary column the words beside it wrap instead.
+                .fixedSize()
                 .disabled(parsed(unit) == nil)
         }
     }
@@ -578,7 +580,7 @@ struct DayStateSection: View {
                             Text(choice.label).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
-                        .tint(state == choice ? .accentColor : .secondary)
+                        .choiceTint(state == choice)
                         .buttonBorderShape(.capsule)
                         .accessibilityIdentifier("today.dayState.\(choice.rawValue)")
                     }

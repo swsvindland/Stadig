@@ -90,10 +90,19 @@ struct Pill: View {
             Text(text)
         }
         .font(.caption.weight(.semibold))
+        #if os(visionOS)
+        // On glass a tint's own text over a faint wash of it can't be read: the tint fills the
+        // capsule instead, under white text.
+        .foregroundStyle(color == .secondary ? color : .white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(color == .secondary ? color.opacity(0.14) : color.opacity(0.7), in: .capsule)
+        #else
         .foregroundStyle(color)
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
         .background(color.opacity(0.14), in: .capsule)
+        #endif
     }
 }
 
