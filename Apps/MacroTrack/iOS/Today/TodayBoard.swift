@@ -96,7 +96,8 @@ struct TodayBoard: View {
         let sorted = byTime ? [] : entries.sorted(using: sortOrder)
         return Table(of: FoodEntry.self, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Time", value: \.date) { entry in Text(Format.time(entry.date)).monospacedDigit().foregroundStyle(.secondary) }
-                .width(min: 56, ideal: 60)
+                // Room for the header's sort arrow beside "Time", which is how the log starts out sorted.
+                .width(min: 72, ideal: 76)
             TableColumn("Food", value: \.name) { entry in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.name).lineLimit(1)
