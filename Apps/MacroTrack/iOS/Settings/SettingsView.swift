@@ -78,7 +78,7 @@ struct SettingsView: View {
 
             Section {
                 LabeledContent(
-                    "On this iPhone",
+                    "On this \(Platform.deviceName)",
                     value: model.ai.availability.onDevice
                         ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
                 // Only with Apple's managed entitlement; without it everything runs on the device, since a
@@ -101,17 +101,26 @@ struct SettingsView: View {
             } footer: {
                 Text(
                     MealAIAvailability.privateCloudEntitled
-                        ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this iPhone can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
-                        : "Everything is read by Apple's on-device model, on this iPhone. The model only names foods and amounts; nutrients come from the food database."
+                        ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this \(Platform.deviceName) can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
+                        : "Everything is read by Apple's on-device model, on this \(Platform.deviceName). The model only names foods and amounts; nutrients come from the food database."
                 )
             }
 
-            Section("Health") {
-                Button("Connect Apple Health", systemImage: "heart.fill") { Task { await model.connectHealth() } }
-                    .disabled(!HealthBridge.shared.isAvailable)
-                    .accessibilityIdentifier("settings.connectHealth")
-                Toggle("Save food and weigh-ins to Health", isOn: setting(\.saveToHealth))
-                    .accessibilityIdentifier("settings.saveToHealth")
+            Section {
+                if Platform.isMac {
+                    Label("Apple Health isn't on the Mac", systemImage: "heart.slash")
+                        .accessibilityIdentifier("settings.healthElsewhere")
+                } else {
+                    Button("Connect Apple Health", systemImage: "heart.fill") { Task { await model.connectHealth() } }
+                        .disabled(!HealthBridge.shared.isAvailable)
+                        .accessibilityIdentifier("settings.connectHealth")
+                    Toggle("Save food and weigh-ins to Health", isOn: setting(\.saveToHealth))
+                        .accessibilityIdentifier("settings.saveToHealth")
+                }
+            } header: {
+                Text("Health")
+            } footer: {
+                if Platform.isMac { Text(HealthWords.notOnThisDevice) }
             }
 
             Section {
@@ -239,7 +248,7 @@ struct SettingsView: View {
             #endif
         }
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
         .sheet(item: $editingLifeMode) { period in
             LifeModeEditor(period: period)
@@ -350,7 +359,7 @@ struct LifeModeEditor: View {
                 }
             }
             .navigationTitle(period.kind.label)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel")

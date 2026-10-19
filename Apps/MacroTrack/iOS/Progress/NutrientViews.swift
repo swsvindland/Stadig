@@ -150,7 +150,7 @@ struct AllNutrientsView: View {
             }
         }
         .navigationTitle("Nutrients")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
     }
 }
 

@@ -42,6 +42,9 @@ enum Platform {
         #endif
     }
 
+    /// An iPhone: the one device that keeps to the phone's ways (no file browser, a camera to hand).
+    static var isPhone: Bool { isPhoneOrPad && !isPad }
+
     static var isPad: Bool {
         #if os(iOS)
         return UIDevice.current.userInterfaceIdiom == .pad
@@ -161,6 +164,56 @@ extension View {
         return buttonStyle(.bordered)
         #else
         return buttonStyle(.glass)
+        #endif
+    }
+
+    /// A list of grouped sections on a quiet page: inset grouped on iPhone, iPad and Vision Pro,
+    /// the Mac's inset list.
+    func insetGroupedList() -> some View {
+        #if os(macOS)
+        return listStyle(.inset)
+        #else
+        return listStyle(.insetGrouped)
+        #endif
+    }
+
+    /// Food names and search words aren't sentences: no capital forced on the first letter. The
+    /// Mac never forces one.
+    func noAutocapitalization() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return textInputAutocapitalization(.never)
+        #endif
+    }
+
+    /// The gap between a list's sections on iPhone, iPad and Vision Pro; the Mac's lists keep their own.
+    func sectionSpacing(_ spacing: CGFloat) -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return listSectionSpacing(spacing)
+        #endif
+    }
+
+    /// Picking a time of day: the wheel on iPhone, iPad and Vision Pro, the Mac's clock and field.
+    func timeOfDayPickerStyle() -> some View {
+        #if os(macOS)
+        return datePickerStyle(.graphical)
+        #else
+        return datePickerStyle(.wheel)
+        #endif
+    }
+}
+
+extension SearchFieldPlacement {
+    /// A search field that stays in view under the title on iPhone, iPad and Vision Pro, and sits
+    /// in the window's toolbar on the Mac.
+    static var alwaysShown: SearchFieldPlacement {
+        #if os(macOS)
+        return .toolbar
+        #else
+        return .navigationBarDrawer(displayMode: .always)
         #endif
     }
 }

@@ -102,11 +102,11 @@ struct MealPlanView: View {
                 case .prep: PrepPage(plan: plan)
                 }
             }
-            .listStyle(.insetGrouped)
+            .insetGroupedList()
             .navigationTitle("Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Menu {
                         Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }
                             .disabled(model.swappableRecipes(in: plan).isEmpty)

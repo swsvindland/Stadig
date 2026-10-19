@@ -39,8 +39,8 @@ struct TodayView: View {
                 TimelineSections(day: model.selectedDay, editing: $editing)
                 DayStateSection(day: model.selectedDay)
             }
-            .listStyle(.insetGrouped)
-            .listSectionSpacing(14)
+            .insetGroupedList()
+            .sectionSpacing(14)
             .navigationTitle(
                 model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
             )
@@ -54,7 +54,7 @@ struct TodayView: View {
 
     @ToolbarContentBuilder
     var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarLeading) {
+        ToolbarItemGroup(placement: .barLeading) {
             Button {
                 model.selectedDay = model.selectedDay.adding(days: -1)
             } label: {
@@ -72,7 +72,7 @@ struct TodayView: View {
                 .accessibilityIdentifier("today.nextDay")
             }
         }
-        ToolbarItemGroup(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .barTrailing) {
             if model.selectedDay != model.today {
                 Button("Today") { model.selectedDay = model.today }
                     .accessibilityIdentifier("today.backToToday")
@@ -288,7 +288,7 @@ struct WeightSection: View {
             }
             Spacer()
             TextField(model.latestWeighIn.map { Format.number(unit.fromKilograms($0.kg)) } ?? "0.0", text: $weight)
-                .keyboardType(.decimalPad)
+                .fieldKeyboard(.decimal)
                 .multilineTextAlignment(.trailing)
                 .font(.body.monospacedDigit())
                 .frame(width: 70)

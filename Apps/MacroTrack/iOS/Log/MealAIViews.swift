@@ -24,7 +24,8 @@ enum MealAIMessages {
     }
 }
 
-/// A photo of a meal: take it (or pick it), then confirm what was seen.
+/// A photo of a meal: take it, pick it, choose a file or drop it on the window, then confirm what
+/// was seen.
 struct PhotoLogView: View {
     @Environment(AppModel.self) private var model
     let useCamera: Bool
@@ -32,8 +33,7 @@ struct PhotoLogView: View {
     @Binding var query: String
     let close: () -> Void
     @State private var showCamera = false
-    @State private var pickerItem: PhotosPickerItem?
-    @State private var image: UIImage?
+    @State private var image: CGImage?
     @State private var note = ""
     @State private var guess: MealGuess?
     @State private var working = false
@@ -49,30 +49,27 @@ struct PhotoLogView: View {
                         mode = .search
                     }, close: close)
             } else if working {
-                AnalyzingView(image: image, engine: model.ai.availability.onDeviceVision ? "on your iPhone" : "with Private Cloud Compute")
+                AnalyzingView(
+                    image: image, engine: model.ai.availability.onDeviceVision ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
                 chooser
             }
         }
         .navigationTitle("Photo")
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker { picked in
-                showCamera = false
-                if let picked { analyze { await PhotoInput.prepare(picked, maxDimension: 1280) } }
-            }
-            .ignoresSafeArea()
+        .cameraCapture(isPresented: $showCamera) { photo in
+            if let photo { analyze { await photo.prepared(maxDimension: 1280) } }
         }
-        .onChange(of: pickerItem) { _, item in
-            guard let item else { return }
-            // Cleared, so choosing the same photo again after a failure is a change.
-            pickerItem = nil
-            analyze {
-                guard let data = try await item.loadTransferable(type: Data.self) else { return nil }
-                return await PhotoInput.prepare(data, maxDimension: 1280)
-            }
+        // A photo dropped on the window, or on this screen, is read like one chosen.
+        .dropDestination(for: DroppedImage.self, isEnabled: guess == nil && !working && model.ai.canSeePhotos) { images, _ in
+            guard let data = images.first?.data else { return }
+            analyze { await PhotoInput.prepare(data, maxDimension: 1280) }
         }
         .onAppear {
-            if useCamera, CameraPicker.isAvailable, guess == nil, image == nil, model.ai.canSeePhotos { showCamera = true }
+            if let dropped = model.takeDroppedPhoto(), guess == nil, model.ai.canSeePhotos {
+                analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
+            } else if useCamera, Camera.isAvailable, guess == nil, image == nil, model.ai.canSeePhotos {
+                showCamera = true
+            }
         }
         #if DEBUG
         .task {
@@ -90,22 +87,27 @@ struct PhotoLogView: View {
         Form {
             if !model.ai.canSeePhotos {
                 Section {
-                    Label(model.ai.availability.reason ?? "Photo logging isn't available on this iPhone.", systemImage: "exclamationmark.triangle")
+                    Label(
+                        model.ai.availability.reason ?? "Photo logging isn't available on this \(Platform.deviceName).",
+                        systemImage: "exclamationmark.triangle")
                     Button("Search instead") { mode = .search }
                 }
             } else {
                 Section {
-                    if CameraPicker.isAvailable {
+                    if Camera.isAvailable {
                         Button("Take a photo", systemImage: "camera") { showCamera = true }
+                            .accessibilityIdentifier("photo.take")
                     }
-                    PhotosPicker(selection: $pickerItem, matching: .images) {
-                        Label("Choose a photo", systemImage: "photo.on.rectangle")
+                    PhotoChoices { load in
+                        analyze {
+                            guard let data = try await load() else { return nil }
+                            return await PhotoInput.prepare(data, maxDimension: 1280)
+                        }
                     }
                 } footer: {
                     Text(
-                        MealAIAvailability.privateCloudEntitled
-                            ? "Read on your iPhone, or with Private Cloud Compute when allowed in Settings. Photos aren't kept."
-                            : "Read on your iPhone. Photos aren't kept.")
+                        "\(Platform.isPhoneOrPad ? "" : "Or drop a photo on the window. ")\(MealAIAvailability.privateCloudEntitled ? "Read on your \(Platform.deviceName), or with Private Cloud Compute when allowed in Settings." : "Read on your \(Platform.deviceName).") Photos aren't kept."
+                    )
                 }
                 Section("Anything the photo can't show?") {
                     TextField("Optional: \"large\", \"no dressing\", \"half eaten\"", text: $note)
@@ -135,7 +137,7 @@ struct PhotoLogView: View {
                 error = "Couldn't open that photo. Try another."
                 return
             }
-            image = UIImage(cgImage: cg)
+            image = cg
             do {
                 let result = try await model.ai.recognize(photo: cg, note: note.isEmpty ? nil : note, personal: model.personal)
                 if !result.isFood || result.items.isEmpty {
@@ -172,13 +174,13 @@ struct DescribeLogView: View {
                         mode = .search
                     }, close: close)
             } else if working {
-                AnalyzingView(image: nil, engine: model.ai.availability.onDevice ? "on your iPhone" : "with Private Cloud Compute")
+                AnalyzingView(image: nil, engine: model.ai.availability.onDevice ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
                 Form {
                     if !model.ai.canDescribe {
                         Section {
                             Label(
-                                model.ai.availability.reason ?? "Describing meals isn't available on this iPhone.",
+                                model.ai.availability.reason ?? "Describing meals isn't available on this \(Platform.deviceName).",
                                 systemImage: "exclamationmark.triangle")
                             Button("Search instead") { mode = .search }
                         }
@@ -234,13 +236,13 @@ struct DescribeLogView: View {
 }
 
 struct AnalyzingView: View {
-    let image: UIImage?
+    let image: CGImage?
     let engine: String
 
     var body: some View {
         VStack(spacing: 18) {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill().frame(width: 180, height: 180).clipShape(.rect(cornerRadius: 24))
+                Image(decorative: image, scale: 1).resizable().scaledToFill().frame(width: 180, height: 180).clipShape(.rect(cornerRadius: 24))
             }
             ProgressView()
             Text("Looking \(engine)…").font(.subheadline).foregroundStyle(.secondary)

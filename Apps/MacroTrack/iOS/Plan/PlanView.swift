@@ -37,7 +37,7 @@ struct PlanView: View {
             .background(.pageBackground)
             .navigationTitle("Plan")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         model.showSettings = true
                     } label: {
@@ -264,7 +264,7 @@ struct PhaseChooser: View {
                 .accessibilityIdentifier("phaseChooser.\(kind.rawValue)")
             }
             .navigationTitle("Choose a phase")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("phaseChooser.cancel") }
             }

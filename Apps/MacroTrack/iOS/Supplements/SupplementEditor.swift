@@ -54,7 +54,7 @@ struct SupplementEditor: View {
                     Text("Serving")
                     Spacer()
                     TextField("1", value: $supplement.facts.servingCount, format: .number)
-                        .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 60)
+                        .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 60)
                     Picker("Unit", selection: $supplement.facts.unit) {
                         ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) {
                             Text($0).tag($0)
@@ -93,7 +93,7 @@ struct SupplementEditor: View {
             }
         }
         .navigationTitle(isNew ? "Add supplement" : supplement.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(isNew ? "Add" : "Save") {
@@ -236,7 +236,7 @@ private struct WeekdayPicker: View {
                 .foregroundStyle(.primary)
             }
             .navigationTitle("Days")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -266,7 +266,7 @@ private struct LineEditor: View {
             HStack {
                 TextField("Name", text: $ingredient.name).font(.subheadline)
                 TextField("0", value: $ingredient.amount, format: .number)
-                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 70).font(.subheadline.monospacedDigit())
+                    .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 70).font(.subheadline.monospacedDigit())
                 Picker("Unit", selection: $ingredient.unit) {
                     ForEach(units + (units.contains(ingredient.unit) ? [] : [ingredient.unit]), id: \.self) { Text($0).tag($0) }
                 }

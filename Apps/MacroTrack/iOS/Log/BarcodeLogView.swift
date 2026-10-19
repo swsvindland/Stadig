@@ -42,7 +42,7 @@ struct BarcodeLogView: View {
                 LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
                     .id(scanID)
                     .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
+                        ToolbarItem(placement: .barLeading) {
                             Menu {
                                 Button("Type the barcode", systemImage: "keyboard") { scanning = false }
                                 Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
@@ -66,12 +66,8 @@ struct BarcodeLogView: View {
         } message: {
             Text(error ?? "")
         }
-        .fullScreenCover(isPresented: $capturingLabel) {
-            CameraPicker { image in
-                capturingLabel = false
-                if let image { read(image) }
-            }
-            .ignoresSafeArea()
+        .cameraCapture(isPresented: $capturingLabel) { photo in
+            if let photo { read { await photo.prepared(maxDimension: 2000) } }
         }
     }
 
@@ -79,12 +75,33 @@ struct BarcodeLogView: View {
         Form {
             Section {
                 TextField("Barcode number", text: $manual)
-                    .keyboardType(.numberPad)
+                    .fieldKeyboard(.number)
                     .font(.title3.monospacedDigit())
                     .onSubmit { handle(manual) }
+                    .accessibilityIdentifier("barcode.number")
                 Button("Look up") { handle(manual) }.disabled(manual.count < 6)
+                    .accessibilityIdentifier("barcode.lookUp")
             } footer: {
-                if !LiveCamera.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
+                if !LiveLabelScanner.isAvailable { Text(ScanWords.typeTheBarcode) }
+            }
+            // Without the live scanner, a label photo is the other way in: a food with no barcode, or one
+            // the catalogs don't know.
+            if !LiveLabelScanner.isAvailable {
+                Section {
+                    labelPhotoChoices
+                } footer: {
+                    Text("Its numbers are read for you to check, and it's kept as your own food.")
+                }
+            }
+        }
+    }
+
+    /// A photo of the nutrition label, from Photos or a file, read the way a camera's is.
+    var labelPhotoChoices: some View {
+        PhotoChoices(photosTitle: "Read a label from a photo", fileTitle: "Read a label from a file…") { load in
+            read {
+                guard let data = try await load() else { return nil }
+                return await PhotoInput.prepare(data, maxDimension: 2000)
             }
         }
     }
@@ -93,13 +110,17 @@ struct BarcodeLogView: View {
         ContentUnavailableView {
             Label("Not in the food database", systemImage: "barcode")
         } description: {
-            Text("Photograph the nutrition label and it's saved as your own food, so this barcode works next time.")
+            Text(
+                "\(Camera.isAvailable ? "Photograph" : "Choose a photo of") the nutrition label and it's saved as your own food, so this barcode works next time."
+            )
         } actions: {
-            if CameraPicker.isAvailable {
+            if Camera.isAvailable {
                 Button("Photograph the label") { capturingLabel = true }.primaryAction()
+            } else {
+                labelPhotoChoices
             }
             Button("Search by name") { mode = .search }
-            Button("Scan again") {
+            Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
                 missing = nil
                 error = nil
                 scanning = true
@@ -142,12 +163,20 @@ struct BarcodeLogView: View {
         }
     }
 
-    func read(_ image: UIImage) {
+    /// Reads a photo of a label: loaded and downsampled off the main thread, then parsed.
+    func read(_ photo: @escaping () async throws -> CGImage?) {
         error = nil
         readingLabel = true
         Task {
             defer { readingLabel = false }
-            guard let cg = await PhotoInput.prepare(image, maxDimension: 2000) else {
+            let prepared: CGImage?
+            do {
+                prepared = try await photo()
+            } catch {
+                self.error = "Couldn't load that photo. If it's in iCloud, check your connection and try again."
+                return
+            }
+            guard let cg = prepared else {
                 error = "Couldn't open that photo. Try again."
                 return
             }
@@ -254,7 +283,7 @@ struct LabelReviewView: View {
         HStack {
             Text(title)
             Spacer()
-            TextField("0", text: text).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90)
+            TextField("0", text: text).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
             Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
         }
     }

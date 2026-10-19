@@ -59,7 +59,7 @@ struct QuickAddView: View {
         HStack {
             Text(title)
             Spacer()
-            TextField("0", text: text).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 100)
+            TextField("0", text: text).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 100)
                 .focused($focus, equals: field)
                 .accessibilityIdentifier("quickAdd.\(field)")
             Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
@@ -91,7 +91,7 @@ struct EntryEditor: View {
                 Section("Amount") {
                     HStack {
                         TextField("Amount", text: $countText)
-                            .keyboardType(.decimalPad)
+                            .fieldKeyboard(.decimal)
                             .font(.title3.weight(.semibold).monospacedDigit())
                             .accessibilityIdentifier("entryEditor.amount")
                             .onChange(of: countText) { _, text in
@@ -140,7 +140,7 @@ struct EntryEditor: View {
                 }
             }
             .navigationTitle("Edit")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("entryEditor.cancel")
@@ -236,7 +236,7 @@ struct WeighInSheet: View {
                         nudge(-1)
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             TextField("0.0", text: $value)
-                                .keyboardType(.decimalPad)
+                                .fieldKeyboard(.decimal)
                                 .multilineTextAlignment(.center)
                                 .font(.largeTitle.weight(.semibold).monospacedDigit())
                                 .focused($focused)
@@ -275,7 +275,7 @@ struct WeighInSheet: View {
                 }
             }
             .navigationTitle("Weigh in")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("weighIn.cancel")

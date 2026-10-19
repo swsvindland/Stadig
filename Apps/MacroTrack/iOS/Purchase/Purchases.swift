@@ -67,12 +67,15 @@ final class Purchases {
         unlocked = owned
     }
 
-    func buy() async {
+    /// Buys the unlock through the view's purchase action (`@Environment(\.purchase)`), which shows the
+    /// App Store's sheet over the right window or scene on every platform (Vision Pro has no bare
+    /// `purchase()`).
+    func buy(using purchase: (Product) async throws -> Product.PurchaseResult) async {
         guard let product else { return }
         purchasing = true
         defer { purchasing = false }
         do {
-            let result = try await product.purchase()
+            let result = try await purchase(product)
             if case .success(let verification) = result, case .verified(let transaction) = verification {
                 await transaction.finish()
             }
@@ -95,6 +98,7 @@ final class Purchases {
 struct PaywallView: View {
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
 
     var body: some View {
         NavigationStack {
@@ -110,7 +114,7 @@ struct PaywallView: View {
                 Spacer()
                 Button {
                     Task {
-                        await purchases.buy()
+                        await purchases.buy { try await purchase($0) }
                         if purchases.unlocked { dismiss() }
                     }
                 } label: {

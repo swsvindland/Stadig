@@ -25,7 +25,7 @@ struct LoggerSheet: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineTitle()
                 .toolbar {
                     if mode != .search { ToolbarItem(placement: .principal) { TimeMenu() } }
                     ToolbarItem(placement: .confirmationAction) {
@@ -200,11 +200,11 @@ struct TimePickerSheet: View {
     var body: some View {
         NavigationStack {
             DatePicker("Eaten at", selection: $time, displayedComponents: .hourAndMinute)
-                .datePickerStyle(.wheel)
+                .timeOfDayPickerStyle()
                 .labelsHidden()
                 .frame(maxWidth: .infinity)
                 .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineTitle()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }.accessibilityIdentifier("timePicker.cancel")
@@ -282,14 +282,14 @@ struct SearchLogView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search foods")
+        .insetGroupedList()
+        .searchable(text: $query, placement: .alwaysShown, prompt: "Search foods")
         // The search is active whenever the logger is (the keyboard stays up for the next food), and
         // by default an active search hides the bar with Done in it.
         .searchPresentationToolbarBehavior(.avoidHidingContent)
         .searchFocused($focused)
         .autocorrectionDisabled()
-        .textInputAutocapitalization(.never)
+        .noAutocapitalization()
         .safeAreaInset(edge: .bottom) {
             LogTimeBar().padding(.horizontal).padding(.bottom, 8)
         }
@@ -476,7 +476,7 @@ struct PortionView: View {
             Section("Amount") {
                 HStack {
                     TextField("Amount", text: $countText)
-                        .keyboardType(.decimalPad)
+                        .fieldKeyboard(.decimal)
                         .font(.title2.weight(.semibold).monospacedDigit())
                         .focused($countFocused)
                         .accessibilityIdentifier("portion.amount")
@@ -541,7 +541,7 @@ struct PortionView: View {
         }
         .navigationTitle("Amount")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .barTrailing) {
                 Button {
                     model.toggleFavorite(food.id)
                 } label: {

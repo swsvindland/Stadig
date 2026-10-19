@@ -234,7 +234,7 @@ struct CaffeineCutBackSheet: View {
                 }
             }
             .navigationTitle("Caffeine")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
                 if let average {

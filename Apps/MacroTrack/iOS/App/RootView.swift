@@ -16,8 +16,10 @@ struct RootView: View {
                     Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) { ProgressTab() }
                 }
                 .tabViewStyle(.sidebarAdaptable)
+                #if os(iOS)
                 .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory { QuickLogBar() }
+                #endif
                 .toastOverlay(bottomPadding: 130)
             } else {
                 OnboardingView()
@@ -42,6 +44,7 @@ struct RootView: View {
     }
 }
 
+#if os(iOS)
 /// The ways to log, above the tab bar: search, camera, barcode, description and a weigh-in.
 /// Collapses to icons when the tab bar minimises.
 struct QuickLogBar: View {
@@ -94,6 +97,7 @@ struct QuickLogBar: View {
         model.openLogger(mode)
     }
 }
+#endif
 
 extension View {
     /// Shows the model's toast at the bottom for a few seconds.

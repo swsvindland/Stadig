@@ -39,7 +39,7 @@ struct ProgressTab: View {
             .background(.pageBackground)
             .navigationTitle("Progress")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         model.showWeighIn = true
                     } label: {

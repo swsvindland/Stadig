@@ -10,8 +10,19 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
-enum AppTab: Hashable {
-    case today, plan, progress
+/// Where the app is. The iPhone's tab bar has Today, Plan and Progress; the sidebar on iPad, the
+/// Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
+enum AppTab: String, Hashable, CaseIterable {
+    case today, foods, mealPlan, supplements, plan, progress, history
+
+    /// Only in the sidebar: in a compact width (an iPhone, a narrow iPad window) they're reached
+    /// another way (the logger, the Plan tab, the supplements sheet).
+    var isSidebarOnly: Bool {
+        switch self {
+        case .foods, .mealPlan, .supplements, .history: true
+        case .today, .plan, .progress: false
+        }
+    }
 }
 
 /// The ways into logging. Each opens straight to its first step.
@@ -106,6 +117,8 @@ final class AppModel {
     var showWeighIn = false
     var showSupplements = false
     var toast: Toast?
+    /// A photo dropped on the window, waiting for the photo logger to read it.
+    @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
     /// The day Today shows and logs to: today, or a day being caught up.
     var selectedDay: Day = .today {
@@ -539,6 +552,20 @@ final class AppModel {
     func openLogger(_ mode: LogMode, at time: Date? = nil) {
         loggerTime = time
         logger = mode
+    }
+
+    /// A photo dropped on the window: the photo logger opens and reads it, as if it were chosen there.
+    func logDroppedPhoto(_ data: Data) {
+        dismissSheets()
+        selectedDay = today
+        droppedPhoto = data
+        openLogger(.photoLibrary)
+    }
+
+    /// The dropped photo, once: the logger that reads it takes it.
+    func takeDroppedPhoto() -> Data? {
+        defer { droppedPhoto = nil }
+        return droppedPhoto
     }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
