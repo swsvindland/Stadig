@@ -10,7 +10,7 @@ Two systems share the work. **GitHub Actions** checks every push cheaply: format
 | `main` | the same | **Main** workflow: packages, unit plan and UI plan, then an archive to TestFlight (internal testers) |
 | `release/<app>-<version>` | the same | **Release** workflow: the same tests, then an archive to TestFlight (external testers), ready to submit for review |
 
-Also: on Mondays GitHub runs every package's tests under the thread and address sanitizers, and `CI` can be started by hand with **apps** ticked to build and test all three apps on GitHub (useful when Xcode Cloud's hours run low; about 15 macOS minutes per app, which a private repo on the free plan bills at ten times). `Site` builds the marketing site on pushes that touch `Site/`.
+Also: on Mondays GitHub runs every package's tests under the thread and address sanitizers, and `CI` can be started by hand with **apps** ticked to build all three apps for every platform and run their unit (iPhone and Mac) and UI tests on GitHub (useful when Xcode Cloud's hours run low; about 25 macOS minutes per app, which a private repo on the free plan bills at ten times). `Site` builds the marketing site on pushes that touch `Site/`.
 
 Until the Xcode Cloud workflows below exist, nothing compiles the apps on push: GitHub only lints and runs the package tests. Creating them is the one manual step left.
 
@@ -48,7 +48,7 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 | Files and folders | the app's folders (below) | the app's folders | the app's folders |
 | Auto-cancel builds | on | off | off |
 | Environment | latest Xcode 27 release, latest macOS | same | same |
-| Actions | Test: scheme `<App>`, test plan `<App>`, iOS, one iPhone simulator | Test `<App>`; Test `<App>UI`; Archive (iOS), TestFlight (Internal Testing Only) | Test `<App>`; Test `<App>UI`; Archive (iOS), TestFlight and App Store |
+| Actions | Test: scheme `<App>`, test plan `<App>`, iOS, one iPhone simulator | Test `<App>`; Test `<App>UI`; Archive for iOS, macOS and visionOS (three Archive actions), TestFlight (Internal Testing Only) | Test `<App>`; Test `<App>UI`; Archive for iOS, macOS and visionOS, TestFlight and App Store |
 | Post-actions | none | TestFlight Internal Testing: your internal group | TestFlight External Testing: your beta group |
 
 **The app's folders** (the file filter: start if any file here changes):
@@ -67,9 +67,13 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 - `ci_pre_xcodebuild.sh` runs the tests of the packages the app links before a Test action builds, so a failing engine test stops the build.
 - `ci_post_xcodebuild.sh` writes TestFlight's "What to Test" for each archive from the recent commits that touched the app.
 
-**Watch app**: the Lift Track archive includes the Watch app and its complication; no separate workflow.
+**Every platform from one target**: each app is one multiplatform target (iPhone, iPad, the Mac and Apple Vision Pro, `SDKROOT = auto`), so one bundle id, one App Store Connect record and one purchase cover every device (universal purchase). Xcode Cloud archives once per platform: add an Archive action for iOS, one for macOS and one for visionOS to the Main and Release workflows. In App Store Connect, add the macOS and visionOS platforms to each app's record (the app page → **Add Platform**) before the first upload of those archives. The Mac archive is sandboxed and signed with `Config/<App>-macOS.entitlements` (no HealthKit: Health isn't on the Mac).
 
-**Mac**: Mind Track runs on Apple silicon Macs as the iPad app (Designed for iPad), so the same archive serves the Mac. Lift Track and Macro Track have that turned off.
+**Watch apps**: the iOS archives of Lift Track and Macro Track include their Watch apps and complications; no separate workflow. The Mac and visionOS archives leave them out.
+
+**iCloud, once, before the first device build**: every app lists its own container (`iCloud.dev.svindland.stadig.lift`, `.macro`, `.mind`) and the family's, `iCloud.dev.svindland.stadig`, which carries the shared files (profile, calendar, summaries) between devices (`SystemStore`'s `FamilySync`). Xcode's automatic signing offers to create the family container the first time an app builds for a device with it; or create it in the developer portal (Identifiers → iCloud Containers) and tick it for each app id. After a development build has synced once, deploy each container's schema to production in the CloudKit Console (Schema → Deploy Schema Changes), or TestFlight and App Store builds can't sync.
+
+**Local Mac builds**: `Scripts/build.sh mac <app>` signs ad hoc with only the entitlements that need no profile (the sandbox, files, network, microphone), so it builds and runs on any Mac without an account; that build keeps its data on the Mac and says "This device only". Xcode's Run and the archives sign with the team and the full entitlements.
 
 ## Catalogs
 

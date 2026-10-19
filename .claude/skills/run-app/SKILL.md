@@ -3,7 +3,9 @@ name: run-app
 description: Launch Lift Track, Macro Track or Mind Track in the iOS Simulator with seeded data or on a specific screen, take screenshots and drive it, without touching anyone's stored data. Use to see a change working in the real app, check a screen, or reproduce a bug.
 ---
 
-# Run an app in the simulator
+# Run an app in the simulator (or on the Mac)
+
+Every app runs on iPhone, iPad, the Mac and Vision Pro. Check a regular-width (desktop) layout on the iPad simulator (`Scripts/build.sh simulator ipad`) or the Mac; Vision Pro's is `Scripts/build.sh simulator vision`, installed and launched the same way.
 
 ## Build and install
 
@@ -37,4 +39,15 @@ xcrun simctl launch --terminate-running-process $UDID dev.svindland.stadig.lift 
 - With the simulator tool: SwiftUI toggles need a held tap (`duration: 0.15`); screenshots lag taps by a second or two, so take a second one before deciding a tap failed.
 - No camera in the simulator: Macro Track's `-liveScanDemo` and `-photo <file in Documents>`, and Mind Track's `-readImage <file>`, stand in for it.
 
-When you report what you saw, say which simulator, which launch arguments, and attach the screenshot.
+## On the Mac
+
+```sh
+Scripts/build.sh mac lift     # signed ad hoc: runs on this Mac, keeps its data here ("This device only")
+open -g -n "$(Scripts/build.sh products mac)/LiftTrack.app" --args -inMemoryStore -seedSampleData
+swift Scripts/window-shot.swift "Lift Track" /tmp/mac.png    # just the app's window
+osascript -e 'quit app "Lift Track"'
+```
+
+The same launch arguments work. The Mac app is on the person's screen while it runs: launch it in the background (`-g`), capture only its window, and quit it when done.
+
+When you report what you saw, say which simulator (or the Mac), which launch arguments, and attach the screenshot.

@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       apps:
-        description: "Also build each app and run its unit and UI tests"
+        description: "Also build each app for every platform and run its unit and UI tests"
         type: boolean
         default: false
   schedule:
@@ -136,12 +136,33 @@ jobs:
           DERIVED_DATA: ${{ runner.temp }}/dd
         run: Scripts/build.sh ui ${{ matrix.app }}
 
-      - name: Watch app
-        if: matrix.app == 'lift'
+      - name: Mac build and tests
+        env:
+          NO_VISION_OCR: "1"
+          STRICT: "1"
+          DERIVED_DATA: ${{ runner.temp }}/dd
+        run: |
+          Scripts/build.sh mac ${{ matrix.app }}
+          Scripts/build.sh unit ${{ matrix.app }} mac
+
+      - name: Vision Pro build
         env:
           STRICT: "1"
           DERIVED_DATA: ${{ runner.temp }}/dd
-        run: Scripts/build.sh watch
+        run: |
+          # The runner image may come without the visionOS SDK; say so rather than fail the run.
+          if xcodebuild -showsdks | grep -q xrsimulator; then
+            Scripts/build.sh vision ${{ matrix.app }}
+          else
+            echo "::notice::No visionOS SDK on this runner; skipped the Vision Pro build."
+          fi
+
+      - name: Watch app
+        if: matrix.app == 'lift' || matrix.app == 'macro'
+        env:
+          STRICT: "1"
+          DERIVED_DATA: ${{ runner.temp }}/dd
+        run: Scripts/build.sh ${{ matrix.app == 'lift' && 'watch' || 'macro-watch' }}
 
       - name: Keep the test results
         if: failure()

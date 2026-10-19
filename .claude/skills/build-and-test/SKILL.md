@@ -13,9 +13,11 @@ Everything goes through `Scripts/build.sh` from the repo root. It prints only er
 |---|---|
 | A package's sources or tests | `Scripts/build.sh test <Package>` (and the packages that depend on it: SystemCore → all of them) |
 | An app's model, platform glue or launch handling | `Scripts/build.sh unit <app>` |
-| An app's screens, navigation or identifiers | `Scripts/build.sh unit <app>` then `Scripts/build.sh ui <app>` |
-| The generator | `python3 Scripts/generate-project.py`, then build every app it touched |
-| Widgets, Live Activity, the Watch app | `Scripts/build.sh ios` / `watch` / `macro` |
+| An app's screens, navigation or identifiers | `Scripts/build.sh unit <app>` then `Scripts/build.sh ui <app>`, and `Scripts/build.sh mac <app>` and `vision <app>` (every platform builds) |
+| An iPad, Mac or Vision Pro layout (regular width) | the above, plus `Scripts/build.sh ui <app> ipad` |
+| The app model or anything platform-specific | `Scripts/build.sh unit <app>` and `Scripts/build.sh unit <app> mac` |
+| The generator | `python3 Scripts/generate-project.py`, then build every app it touched on every platform |
+| Widgets, Live Activity, the Watch apps | `Scripts/build.sh ios` / `watch` / `macro` / `macro-watch` |
 | Anything, before committing | `Scripts/build.sh lint` |
 
 `<app>` is `lift`, `macro` or `mind`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything.
@@ -26,7 +28,7 @@ One suite or test: `cd Packages/<Package> && swift test --filter <SuiteOrTestNam
 
 ## Simulators
 
-Each checkout (the main one, each worktree) gets its own simulator, "Stadig Tests <checkout>", created on first use, and its own DerivedData, `/tmp/system-dd-<checkout>`, so it never takes over a simulator or build another session is driving. `Scripts/build.sh simulator` prints the UDID and `Scripts/build.sh products` where the .app files land. `SIMULATOR=<udid>` and `DERIVED_DATA=<path>` override them. Never target `booted`.
+Each checkout (the main one, each worktree) gets its own simulators, "Stadig Tests <checkout>" (iPhone), "Stadig iPad <checkout>" and "Stadig Vision <checkout>", created on first use, and its own DerivedData, `/tmp/system-dd-<checkout>`, so it never takes over a simulator or build another session is driving. `Scripts/build.sh simulator [ipad|vision]` prints the UDID and `Scripts/build.sh products [mac]` where the .app files land. `unit` and `ui` take the device after the app: `ipad`, `vision`, or `mac` (unit tests hosted in the Mac app, signed ad hoc so no account is needed). `SIMULATOR=<udid>` and `DERIVED_DATA=<path>` override them. Never target `booted`.
 
 The first `unit`/`ui` run in a checkout builds the app and its packages (a few minutes); later runs are incremental. Results land in `<DerivedData>-results/*.xcresult` (open in Xcode for UI test screenshots).
 

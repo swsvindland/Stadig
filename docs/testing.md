@@ -6,8 +6,8 @@ The logic is the product, so most tests live with the logic in the packages. The
 |---|---|---|---|---|
 | Unit: engines and models | `Packages/<Package>/Tests` | Swift Testing | `Scripts/build.sh test` or `swift test` in the package | GitHub on every push; Xcode Cloud before each app's tests |
 | Simulation: simulated lifters, eaters, students, readers and writers through the real engines | the same | Swift Testing | the same | the same |
-| Integration: an app's model over an in-memory store, everything it publishes to the shared container, cross-app contracts | `Apps/<App>/Tests` | Swift Testing, hosted in the app | `Scripts/build.sh unit lift\|macro\|mind` | Xcode Cloud (the `<App>` test plan) |
-| End to end: the app on a simulator, launched with seeded data | `Apps/<App>/UITests` | XCTest (XCUITest) | `Scripts/build.sh ui lift\|macro\|mind` | Xcode Cloud Main and Release (the `<App>UI` test plan) |
+| Integration: an app's model over an in-memory store, everything it publishes to the shared container, cross-app contracts | `Apps/<App>/Tests` | Swift Testing, hosted in the app | `Scripts/build.sh unit lift\|macro\|mind`, on the Mac with `… mac` | Xcode Cloud (the `<App>` test plan) |
+| End to end: the app on a simulator, launched with seeded data | `Apps/<App>/UITests` | XCTest (XCUITest) | `Scripts/build.sh ui lift\|macro\|mind`, the iPad layout with `… ipad` | Xcode Cloud Main and Release (the `<App>UI` test plan) |
 | Sanitizers: the package tests under TSan and ASan | | | `SANITIZE=thread Scripts/build.sh test` | GitHub, Mondays |
 | Leaks: `leaks` on each app's seeded screens, counting only leaks whose allocation runs through the app's own code | `Scripts/leaks.sh`, `Scripts/classify-leaks.py` | | `Scripts/leaks.sh lift\|macro\|mind` after `Scripts/build.sh ios\|macro\|mind` | by hand, before a release |
 
@@ -20,11 +20,13 @@ Scripts/build.sh test                     # every package
 Scripts/build.sh test LiftEngine          # one package
 cd Packages/LiftEngine && swift test --filter StepAim   # one suite or test
 Scripts/build.sh unit lift                # Lift Track's app tests (lift, macro or mind)
+Scripts/build.sh unit lift mac            # the same tests, hosted in the Mac app
 Scripts/build.sh ui macro                 # Macro Track's UI tests
+Scripts/build.sh ui macro ipad            # on the iPad, where the desktop layout runs
 SANITIZE=thread Scripts/build.sh test SystemStore
 ```
 
-App tests run on a simulator of the checkout's own, "Stadig Tests <checkout>" (an iPhone Pro, created the first time; `Scripts/build.sh simulator` prints its UDID), with a DerivedData folder of its own, so they never take over a simulator or build another session is using. `SIMULATOR=<udid>` and `DERIVED_DATA=<path>` override them. Failures print the path of the full log and leave an `.xcresult` next to it (open it in Xcode for screenshots of UI test failures).
+App tests run on a simulator of the checkout's own, "Stadig Tests <checkout>" (an iPhone Pro, created the first time; `Scripts/build.sh simulator` prints its UDID), with a DerivedData folder of its own, so they never take over a simulator or build another session is using. A device after the app picks another of the checkout's own: `ipad` ("Stadig iPad", a 13-inch iPad Pro, for the regular-width layouts), `vision` ("Stadig Vision") or `mac` (this Mac, with the app signed ad hoc; see [ci-cd.md](ci-cd.md)). `SIMULATOR=<udid>` and `DERIVED_DATA=<path>` override them. UI tests that only make sense in regular width skip themselves on iPhone (`XCTSkipUnless` on the idiom), and the iPhone ones stay as they are. Failures print the path of the full log and leave an `.xcresult` next to it (open it in Xcode for screenshots of UI test failures).
 
 Opt-in reports: `SIM_DEBUG=1 swift test --filter simulationReport` (SystemCore), `PRINT_PROGRAMS=1 swift test` (LiftEngine), `PRINT_PLAN=1 swift test --filter SampleWeek` (MealPlanner), `MEAL_AI_EVAL=1 swift test --filter Evaluation` (FoodIntelligence, runs the real models on this Mac).
 

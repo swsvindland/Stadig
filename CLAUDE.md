@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Stadig ("The System"): three iOS apps (Lift Track, Macro Track, Mind Track) as thin SwiftUI shells over eleven local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+Stadig ("The System"): three apps (Lift Track, Macro Track, Mind Track), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (Lift Track and Macro Track also have Watch apps), as thin shells over eleven local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
 
 ## Commands
 
@@ -9,19 +9,21 @@ Scripts/build.sh lint                  # swift-format --strict, as CI runs it
 Scripts/build.sh format                # fix formatting in place
 Scripts/build.sh test [Package]        # package tests (all, or one); STRICT=1 makes warnings errors
 cd Packages/X && swift test --filter Y # one suite or test
-Scripts/build.sh unit lift|macro|mind  # an app's unit and integration tests (on this checkout's own simulator)
-Scripts/build.sh ui lift|macro|mind    # an app's UI tests
-Scripts/build.sh ios|watch|macro|mind  # build an app
+Scripts/build.sh unit lift|macro|mind [ipad|vision|mac]  # an app's unit and integration tests (this checkout's own simulator; iPhone by default)
+Scripts/build.sh ui lift|macro|mind [ipad|vision]        # an app's UI tests
+Scripts/build.sh ios|watch|macro|macro-watch|mind        # build an app for the iOS simulator (or a Watch app)
+Scripts/build.sh mac|vision lift|macro|mind              # build an app for the Mac (runs on this Mac) or Vision Pro
 Scripts/leaks.sh lift|macro|mind       # after a build: `leaks` on the app's seeded screens
 python3 Scripts/generate-project.py    # after changing targets, settings, Info.plist keys or packages
 ```
 
-Before calling a change done: lint clean, zero warnings, and the tests for what you touched pass (the package's tests for engine changes; `unit` and `ui` for the app you changed when its screens or model changed). Say which you ran and which you didn't.
+Before calling a change done: lint clean, zero warnings, and the tests for what you touched pass (the package's tests for engine changes; `unit` and `ui` for the app you changed when its screens or model changed). A change to an app's screens builds for every platform it runs on (`mac` and `vision` too), and one that touches the iPad or desktop layout runs `ui <app> ipad`. Say which you ran and which you didn't.
 
 ## Where code goes
 
+- **One target per app, every platform.** Screens choose layouts by size class (compact keeps the iPhone design; regular, on iPad, the Mac and Vision Pro, gets the desktop one) and spell platform differences through `Platform/Adaptive.swift`, not scattered `#if`. Hardware a platform lacks (camera, Pencil, Health on the Mac) gets that platform's substitute, never a dead control.
 - **Logic lives in a package, with tests.** Rules, calculations, planning, parsing, anything with a right answer: the engine package for that app (`LiftEngine`, `NutritionEngine`, `MindEngine`, …), or `SystemCore` when two apps or the hub must agree. Apps hold views, the app model, platform glue (Health, notifications, camera, widgets) and DEBUG seeding.
-- **Shared contracts** between apps go through `SystemCore` models and `SystemStore`'s shared container. Changing a published payload means a schema version bump and a migration test.
+- **Shared contracts** between apps go through `SystemCore` models and `SystemStore`'s shared container, which `FamilySync` carries to the person's other devices through the family CloudKit container. Changing a published payload means a schema version bump and a migration test.
 - **No third-party dependencies**, in apps or packages. Apple frameworks only.
 - **Never edit `*.xcodeproj`, schemes or `*.xctestplan` by hand.** `Scripts/generate-project.py` writes them (CI fails if they drift). New files in an app's folders need nothing: targets use synchronized folders.
 
@@ -55,7 +57,7 @@ Several Claude Code sessions often work in this repo at once, sharing one checko
 
 - Don't stage in the shared index and never `git add -A` or `git commit -a`: build commits from a private index (the `commit` skill has the steps), and commit only your own files.
 - Prefer a worktree for multi-file work (`.claude/worktrees/`).
-- Drive simulators by UDID, never `booted`. `Scripts/build.sh` gives each checkout its own DerivedData and its own "Stadig Tests <checkout>" simulator (`Scripts/build.sh simulator` prints its UDID), so sessions in different worktrees never collide.
+- Drive simulators by UDID, never `booted`. `Scripts/build.sh` gives each checkout its own DerivedData and its own simulators ("Stadig Tests", "Stadig iPad" and "Stadig Vision <checkout>"; `Scripts/build.sh simulator [ipad|vision]` prints the UDID), so sessions in different worktrees never collide. The Mac app launched for a check is yours to quit when done; `swift Scripts/window-shot.swift "<App>" out.png` captures just its window.
 - Don't reset, amend or rebase another session's commits.
 
 ## CI/CD
