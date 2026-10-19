@@ -339,6 +339,30 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         updatedAt = now
     }
 
+    /// Moves exercises in the order the way a list's drag does: `destination` is a place in the order
+    /// as it was before the move. A superset moves whole, its partners coming along in their order,
+    /// and a move never lands between two partners of another superset. The rest running carries on:
+    /// reordering what's next isn't starting it.
+    public mutating func move(items source: IndexSet, to destination: Int, now: Date = Date()) {
+        var moving = IndexSet(source.filter(items.indices.contains))
+        guard !moving.isEmpty else { return }
+        for index in Array(moving) {
+            guard let group = items[index].plan.supersetGroup else { continue }
+            for partner in items.indices where items[partner].plan.supersetGroup == group { moving.insert(partner) }
+        }
+        let moved = moving.map { items[$0] }
+        var others = items.indices.filter { !moving.contains($0) }.map { items[$0] }
+        var target = min(others.count, max(0, destination - moving.count(in: 0..<max(0, destination))))
+        // Not between two halves of a superset: after the pair instead.
+        while target > 0, target < others.count, let group = others[target].plan.supersetGroup, others[target - 1].plan.supersetGroup == group {
+            target += 1
+        }
+        others.insert(contentsOf: moved, at: target)
+        guard others.map(\.id) != items.map(\.id) else { return }
+        items = others
+        updatedAt = now
+    }
+
     public mutating func skipSet(item index: Int, set setIndex: Int, now: Date = Date()) {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return }
         items[index].sets[setIndex].skipped = true
