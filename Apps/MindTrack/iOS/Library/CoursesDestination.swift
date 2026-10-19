@@ -139,7 +139,8 @@ private struct LanguageWords: View {
                 }
             }
         }
-        .task(id: model.cardsRevision) {
+        // Again when the cards change, and at midnight, when what's due moves on.
+        .task(id: CoursesRefresh(revision: model.cardsRevision, today: model.today)) {
             let cards = model.state?.cards ?? [:]
             guard let deck = model.catalogs.deck(language) else { return }
             rows = await Self.rows(language, cards: cards, deck: deck, today: model.today, now: model.now())
@@ -197,6 +198,13 @@ private struct LanguageWords: View {
     {
         CourseWord.rows(language, cards: cards, deck: deck, today: today, now: now)
     }
+}
+
+/// What the words table is built from: the cards as last read, and the day their Due and Known
+/// are judged on.
+private struct CoursesRefresh: Equatable {
+    var revision: Int
+    var today: Day
 }
 
 /// Where a word's memory stands, in a colour.
