@@ -115,9 +115,12 @@ struct TrainingSections: View {
         } footer: {
             Text("\(proportionTargets.detail) Focus areas come first, and nothing asks for fat loss once you're lean.")
         }
-        if HealthBridge.shared.isAvailable {
+        // Every device but the Mac has Health; there it can still be unavailable (switched off
+        // under tests), which leaves the rows in place with Connect off, as before.
+        if !Platform.isMac {
             Section("Apple Health") {
                 Button("Connect Apple Health") { Task { await model.connectHealth() } }
+                    .disabled(!HealthBridge.shared.isAvailable)
                 toggle("Save sessions to Health", \.saveToHealth)
             }
         } else {
