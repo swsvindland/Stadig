@@ -2,11 +2,11 @@
 
 **The System** is a small family of fast, offline-first apps (Lift Track, Macro Track and Mind Track) with an optional hub on top. The apps don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
 
-- **Lift Track** is the training app: every session prescribed, and every set adjusted to how it went. iPhone, iPad and Apple Watch.
-- **Macro Track** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading.
-- **Mind Track** is the doc's Knowledge app, "Lift Track for the mind": focused 25-minute sessions in Japanese, maths, writing and reading. Two weeks find a level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before they'd be forgotten, and something new comes only once the last thing has stuck. Intelligence and Wisdom move only on check-in tests and finished books. iPhone and iPad (and the Mac, as the iPad app).
+- **Lift Track** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
+- **Macro Track** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
+- **Mind Track** is the doc's Knowledge app, "Lift Track for the mind": focused 25-minute sessions in Japanese, maths, writing and reading. Two weeks find a level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before they'd be forgotten, and something new comes only once the last thing has stuck. Intelligence and Wisdom move only on check-in tests and finished books. It's at its best at a desk: on the Mac and an iPad with a keyboard, sessions run full-width and entirely from the keyboard. iPhone, iPad, Mac and Apple Vision Pro, with widgets.
 
-This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. One-time purchases, no subscriptions, and no third-party dependencies.
+This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. One-time purchases, no subscriptions, and no third-party dependencies.
 
 ## Layout
 
@@ -14,7 +14,8 @@ This repo is built from the System hub design doc ("The System — Hub Design", 
 Packages/             Local Swift packages: all the logic, each with its own tests
   SystemCore/         Shared models and every rule that must give the same answer everywhere
   ExerciseLibrary/    332 tagged exercises, substitutions, injury filtering, drills
-  SystemStore/        Each app's CloudKit-synced database, the shared App Group container, backups, CSV
+  SystemStore/        Each app's CloudKit-synced database, the shared App Group container (and FamilySync, which
+                      carries it to the person's other devices), backups, CSV
   HealthBridge/       HealthKit read/write, and the Watch's live workout session
   LiftEngine/         Lift Track's engine: gyms, generator, assessment, session planner, live session, analysis
   NutritionEngine/    Macro Track's engine: weight trend, maintenance, assessment, phase planner, check-ins, targets
@@ -27,13 +28,15 @@ Packages/             Local Swift packages: all the logic, each with its own tes
   SystemAI/           The one interface to a language model: Apple's on-device model first, Private Cloud Compute
                       for heavier jobs when allowed, a plain reason when neither can answer
 Apps/<App>/           LiftTrack, MacroTrack, MindTrack: thin SwiftUI shells over the packages
-  iOS/                The iPhone/iPad app, one folder per feature
+  iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
+                      per feature; Platform/Adaptive.swift spells what differs between platforms
   Tests/              The app's unit and integration tests (Swift Testing, hosted in the app)
   UITests/            The app's end-to-end UI tests
   Widgets/, Shared/   Widgets and Live Activities, and the snapshot they share with the app
-  Watch/, WatchWidgets/   Lift Track's Watch app and its complication
+  Watch/, WatchWidgets/   Lift Track's and Macro Track's Watch apps and their complications
+  Records/            Macro Track's records that its iPhone and Watch apps both compile
   Catalogs/           Macro Track's and Mind Track's bundled catalogs (not in git; see the README there)
-  Config/             Info plists and entitlements
+  Config/             Info plists and entitlements (the Mac's in <App>-macOS.entitlements)
   ci_scripts/         What Xcode Cloud runs around each build (one line each, calling Scripts/xcode-cloud.sh)
   <App>.xcodeproj, <App>.xctestplan, <App>UI.xctestplan   Written by Scripts/generate-project.py: don't edit
 Scripts/              build.sh (build, lint, test), generate-project.py, xcode-cloud.sh, the catalog builders
@@ -43,7 +46,7 @@ Site/                 stadig.dev, the marketing site (Astro; its own README)
 .github/workflows/    GitHub Actions: lint and package tests on every push, the site build
 ```
 
-The **hub** doesn't exist yet. The apps already publish everything the hub needs and read what it would write. Lift Track and Macro Track talk to each other today through the shared container: Macro Track publishes the nutrition phase and day-by-day logging, and Lift Track publishes its training calendar, measurements and strength. Mind Track reads that calendar (Lift Track's deloads are its review weeks) and the shared life modes, and publishes its Intelligence and Wisdom readings, study sessions, Discipline and the study the hub could fit into a free evening.
+The **hub** doesn't exist yet. The apps already publish everything the hub needs and read what it would write. Lift Track and Macro Track talk to each other today through the shared container, which reaches the person's other devices through the family iCloud container (so Mind Track on the Mac sees what Lift Track wrote on the iPhone): Macro Track publishes the nutrition phase and day-by-day logging, and Lift Track publishes its training calendar, measurements and strength. Mind Track reads that calendar (Lift Track's deloads are its review weeks) and the shared life modes, and publishes its Intelligence and Wisdom readings, study sessions, Discipline and the study the hub could fit into a free evening.
 
 ## Getting started
 
@@ -55,7 +58,7 @@ Scripts/build.sh test               # every package's tests
 open Apps/LiftTrack/LiftTrack.xcodeproj
 ```
 
-Each app's scheme builds and runs it; `LiftTrack` also builds the widgets and the embedded Watch app, and `LiftTrackWatch` builds the Watch app alone. In Xcode, ⌘U runs the scheme's default test plan (unit and integration); pick the `…UI` plan for the UI tests.
+Each app's scheme builds and runs it on whichever device you pick (an iPhone or iPad, My Mac, Apple Vision Pro); `LiftTrack` and `MacroTrack` also build their widgets and the embedded Watch app, and `LiftTrackWatch` and `MacroTrackWatch` build the Watch apps alone. In Xcode, ⌘U runs the scheme's default test plan (unit and integration); pick the `…UI` plan for the UI tests.
 
 ## Everyday commands
 
@@ -63,9 +66,10 @@ Each app's scheme builds and runs it; `LiftTrack` also builds the widgets and th
 Scripts/build.sh lint               # swift-format, strict: what CI checks
 Scripts/build.sh format             # fix formatting in place
 Scripts/build.sh test [Package]     # package tests (all, or one)
-Scripts/build.sh unit lift          # an app's unit and integration tests (lift, macro, mind)
-Scripts/build.sh ui lift            # an app's UI tests
-Scripts/build.sh ios|watch|macro|mind   # build one app
+Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift, macro, mind)
+Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
+Scripts/build.sh ios|watch|macro|macro-watch|mind   # build one app for the iOS simulator (or a Watch app)
+Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build
 Scripts/leaks.sh lift               # after building an app: run `leaks` on its seeded screens
 python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
@@ -100,10 +104,10 @@ Building the catalogs from source instead of downloading them: `Apps/MacroTrack/
 
 | | Lift Track | Macro Track |
 |---|---|---|
-| Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`) |
-| iCloud container | `iCloud.dev.svindland.stadig.lift` | `iCloud.dev.svindland.stadig.macro` |
+| Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) |
+| iCloud containers | `iCloud.dev.svindland.stadig.lift`, and the family's `iCloud.dev.svindland.stadig` | `iCloud.dev.svindland.stadig.macro`, and the family's |
 | App Group | `group.dev.svindland.stadig`, shared by the whole family | same |
 | In-app purchase | `dev.svindland.stadig.lift.unlock` (non-consumable) | `dev.svindland.stadig.macro.unlock` (non-consumable) |
 | URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
 
-Mind Track is `dev.svindland.stadig.mind`, with `iCloud.dev.svindland.stadig.mind` and `dev.svindland.stadig.mind.unlock`. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
+Mind Track is `dev.svindland.stadig.mind` (`.widgets`), with `iCloud.dev.svindland.stadig.mind` (and the family's) and `dev.svindland.stadig.mind.unlock`. Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).

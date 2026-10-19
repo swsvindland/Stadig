@@ -1,6 +1,6 @@
 # Decisions to check
 
-- **iPhone, iPad and Watch only.** The doc says "iOS first", so the first pass's Mac and Vision Pro targets are gone. iPad runs the iPhone app with readable widths.
+- **Every device.** On 2026-10-18 you asked for every app on iPhone, iPad, the Mac and Vision Pro (and the Watch where it fits), all syncing over CloudKit, with the desktop doing more than the phone. Each app is now one multiplatform target, and the calls made building it are under "Calls made for every device" below. (The first pass had dropped the Mac and Vision Pro as "iOS first".)
 - **Purchases are switched off for testing.** Neither app is in App Store Connect yet, so `Purchases.enabled` is `false` in both: everything is unlocked, StoreKit is never asked, and the Unlock rows are hidden. Set it to `true` in each app's `Purchase/Purchases.swift` before release; the gates below then apply as written.
 - **What the unlock covers.** The assessment, logging, history, export and backup are free, because the data is yours. Generating real training blocks after the assessment needs the one-time unlock. That's a product call; it lives in `NextBlockView.accept` and `Purchases`.
 - **Strength standards** are approximate public tables, scored at beginner 20, novice 40, intermediate 60, advanced 80 and elite 100. Age adjustment isn't modelled yet.
@@ -18,14 +18,56 @@
   - **Maths:** "weak numeracy" is below level 5; target times from 5 to 26 seconds a problem, and a test answer passes within 1.5× its target; up after four quick right answers in five, down after three misses; placement of 6, 6 and 5 problems; the first-choice strand two maths sessions in three; a measured strand stays in the score.
   - **Writing:** grammar lessons one writing session in three while skills are left; Franklin once in each kind's four-step cycle; the first benchmark lengthens one early session by about 12 minutes; blind pairs five weeks apart; craft starts at 50 and moves 5 points a comparison, your pick and the AI's weighted equally; the benchmark always uses the first kind chosen; whether the public-domain passages JSON belongs in the repo.
 - **Not built yet:**
-  - Macro Track: a Watch app, saved meals and your own recipes (the meal planner uses its own building blocks), and better amount estimates for bowls and plates (the model often says 100 g for a bowl of oatmeal or a fillet of salmon)
+  - Macro Track: saved meals and your own recipes (the meal planner uses its own building blocks), and better amount estimates for bowls and plates (the model often says 100 g for a bowl of oatmeal or a fillet of salmon)
   - Foundation Models help with free-text injury descriptions
   - camera-based mobility tests
   - velocity-based training
   - lifting-history import
   - the hub
-  - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, widgets, reminders, and the iPad on a piano stand
+  - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for every device (2026-10-18)
+
+Made without sign-off while bringing the apps to the iPad, the Mac, Vision Pro and the Watch. Each says what the code does now, then what's open.
+
+### Shared
+
+- **Native everywhere, one app id.** Each app is one target that builds natively for iOS, macOS and visionOS (not Mac Catalyst or "Designed for iPad"), so one bundle id, one App Store record and one purchase cover every device (universal purchase). Mind Track's "Designed for iPad" Mac build is gone. Open: separate Mac pricing, which universal purchase rules out.
+- **Desktop by width, not by device.** A regular-width window (iPad full screen or a wide split, the Mac, Vision Pro) gets the desktop layout; compact (iPhone, a narrow iPad split) keeps the iPhone design exactly. The desktop destinations (Lift Track's Program, Library and History; Macro Track's Foods, Meal Plan, Supplements and History; Mind Track's Shelf, Writing and Courses) live only in the sidebar, and a narrow window falls back to the iPhone path to the same things.
+- **Sharing between devices.** The apps' shared files (profile, life modes, calendar, summaries) go through a family iCloud container, `iCloud.dev.svindland.stadig`, as well as the App Group (`FamilySync`): the newest file by when it was written wins, a file at a newer schema is never replaced, and any app may upload any file. Deleting a whole shared file isn't carried (no key does that today). A device set up fresh before iCloud has delivered the family's files writes its own profile, which then wins as the newest. Open: whether setup should wait for iCloud, as Lift Track's own records already do.
+- **The Mac.** Sandboxed, without HealthKit (Health isn't on the Mac): Health rows say where Health lives and the connect buttons are hidden. One main window per app (File ▸ New Window is removed), Settings only through ⌘, (no gear in the toolbar), and the menu bar's name is the app's name (`CFBundleName`). Local builds from `Scripts/build.sh mac` run without iCloud or the App Group.
+- **No camera on the Mac or Vision Pro.** Photos come from Photos, a file or a drop on the window; barcodes and ISBNs are typed; Continuity Camera ("Import from iPhone or iPad") is offered for progress photos and handwritten pages. Vision Pro shows the iPad layout in a glass window, with no immersive space or volume.
+- **Watch apps.** Lift Track's and Macro Track's; Mind Track has none, since a 25-minute session of reading, writing and typed answers needs a screen. Mind Track got widgets instead (today's session or done, rest or paused, and the week's count; Lock Screen sizes on iPhone and iPad, desktop widgets on the Mac).
+
+### Lift Track
+
+- **Destinations.** The sidebar groups Today; Training (Plan, Program, Library); Records (History, Progress, Body).
+- **Program.** Refitting a day to 30, 45, 60 or 90 minutes in Program is a preview; only Today's "Short on time?" changes the session. A next block that's offered (not accepted) is previewed beside the current one without being saved.
+- **Library.** "Set Aside" and "Allow Back" edit the exercises you avoid (`settings.avoid`, which the generator and session planner already honour); "Allow It Anyway" and "Rule It Out" save an override on the injury period itself.
+- **History deletes.** One row from the context menu deletes at once, like the iPhone's swipe; the Delete key, and several rows at once, ask first.
+- **Sessions.** On the Mac a session runs in a window of its own, with Resume in the main window's toolbar (and on Vision Pro). Keys: 1, 2 and 3 rate a set (Easy, Just right, Missed), Return logs, ↑/↓ change the weight, − and + the reps, Space ends a rest, ⌘. minimises. ⌘N starts today's session. The exercise list reorders by drag, keeping supersets together. A session records the device it ran on ("iPad", "Mac") instead of always "iPhone".
+
+### Macro Track
+
+- **Destinations.** The sidebar groups Today; Food (Foods, Meal Plan, Supplements); Review (Plan, Progress, History).
+- **Logging with a sidebar.** Log Food (⌘L), the widget's link and a search with no time set open Foods rather than the logger sheet; Supplements is a destination, not a sheet; Today's toolbar replaces the quick-log bar. Any image dropped on the window is logged as a meal photo. File ▸ Open a Meal Photo… (⌘O) replaces File ▸ New.
+- **Tables.** Protein figures are plain rather than pink; History colours "vs Target" only on complete days. The Mac's Control Center gets the Log Food and Weigh In controls only.
+- **No menu bar extra** yet: a "what's left today" item with a quick search was left out until it can be checked properly.
+
+### Macro Track's Watch app
+
+- **What it does.** Today (calories and protein left as rings, carbs and fat, Weigh In, Mark Day Complete), Log Again (the phone's ranking, one tap with Undo), Water when drinks are on, supplements due now, and a weigh-in on the Digital Crown; it returns to Today after two minutes away. Complications: calories and protein left, and a Today widget for the Smart Stack. Only a Complete toggle, not partial or fasting.
+- **Sync.** The Watch opens Macro Track's own CloudKit store and the family container directly, so it logs without the phone and gets the same targets (it never applies a weekly check-in itself; it shows the due one's targets, as the phone would).
+- **Health.** The Watch writes nothing to Health (it would be a second source next to the phone). The iPhone, iPad or Vision Pro writes what the Watch and the Mac logged once it syncs in, over the last 30 days, matched by sync identifier, and takes a Health copy out when the entry is deleted on another device or a dose is unmarked; a record that's only missing or unreadable keeps its copy. Setup's weigh-in is never copied, and an ignored weigh-in is neither written nor removed. Open: the 30-day window, and whether a delete on the Mac should remove a phone-logged entry's Health copy (it does now).
+
+### Mind Track
+
+- **Destinations.** Shelf, Writing and Courses in a Library section of the sidebar. Courses covers the languages and maths, not writing skills. In a narrow window Shelf falls back to Today's sheet, Writing to Progress and Courses to Plan.
+- **Sessions on the Mac.** Their own window; closing it ends the session as End does (rather than pausing), and minimising keeps it running. Reading and writing type is a size up on the Mac.
+- **Keys.** 1–9 choose, Return checks or continues (or toggles the microphone), ⌘Return hands writing in, Space or R replays audio and ⌥R slower, ? or ⌘D is "Don't know", A and B pick in a comparison, Esc ends. While a text field has focus only ⌘ keys act. Key hints show on the Mac always, and on iPad and Vision Pro with a keyboard attached. ⌘N starts today's session.
+- **Reading tests.** A test passage stays hidden while its questions are on screen, even in a wide window, so the test stays a test.
+- **Handwritten pages** can come in as a photo, a file (up to 12 pages of a PDF) or a drop on the iPad, the Mac and Vision Pro; the iPhone keeps the camera and Photos.
 
 ## Calls made in the quality pass (2026-10-18)
 
