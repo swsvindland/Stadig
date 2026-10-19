@@ -118,7 +118,7 @@ mac_signing() {
   cp Apps/$app/Config/$app-macOS.entitlements $local_entitlements
   for key in com.apple.developer.aps-environment com.apple.developer.icloud-container-identifiers \
     com.apple.developer.icloud-services com.apple.security.application-groups; do
-    plutil -remove $key $local_entitlements > /dev/null 2>&1
+    plutil -remove ${key//./\\.} $local_entitlements > /dev/null 2>&1
   done
   MAC_SIGNING=(CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
     CODE_SIGN_ENTITLEMENTS=$local_entitlements)
