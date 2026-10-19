@@ -662,9 +662,12 @@ struct NutrientSummary: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading) {
+                // One line, whatever the room: a narrow inspector broke "1,155" over two.
                 Text(Format.whole(nutrients.kcal)).font(.title.weight(.bold).monospacedDigit())
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 Text("kcal").font(.caption).foregroundStyle(.secondary)
             }
+            .layoutPriority(1)
             Spacer()
             macro("Protein", nutrients.protein, .protein)
             macro("Carbs", nutrients.carbs, .carbs)

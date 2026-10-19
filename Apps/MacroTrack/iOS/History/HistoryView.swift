@@ -15,6 +15,8 @@ struct HistoryView: View {
     @State private var selection: Day?
     @State private var sortOrder = [HistoryOrder(.day, order: .reverse)]
     @State private var inspecting = true
+    /// The table's width, for which columns fit (`allColumns`); 0 until it's laid out.
+    @State private var tableWidth: CGFloat = 0
 
     var body: some View {
         NavigationStack {
@@ -56,33 +58,37 @@ struct HistoryView: View {
             TableColumn("Date", sortUsing: HistoryOrder(.day, order: .reverse)) { row in
                 Text(Format.historyDay(row.day, today: model.today)).monospacedDigit().lineLimit(1)
             }
-            .width(min: 84, ideal: 96)
-            TableColumn("Calories", sortUsing: HistoryOrder(.kcal, order: .reverse)) { row in KcalCell(row: row) }
-                .width(min: 76, ideal: 92)
+            .width(min: width(84, 100), ideal: 96)
+            // "1,800 / 2,400" where there's room; the target alone gives way in a narrow table, as
+            // vs Target says how far over or under.
+            TableColumn("Calories", sortUsing: HistoryOrder(.kcal, order: .reverse)) { row in KcalCell(row: row, target: allColumns) }
+                .width(min: 72, ideal: 92, max: cap(allColumns ? 120 : 72))
             TableColumn("vs Target", sortUsing: HistoryOrder(.overTarget, order: .reverse)) { row in OverTargetCell(row: row) }
-                .width(min: 48, ideal: 56)
+                .width(min: 48, ideal: 56, max: cap(76))
             TableColumn("Protein", sortUsing: HistoryOrder(.protein, order: .reverse)) { row in NumberCell(row.intake?.protein, unit: "g") }
-                .width(min: 44, ideal: 50)
-            TableColumn("Carbs", sortUsing: HistoryOrder(.carbs, order: .reverse)) { row in NumberCell(row.intake?.carbs, unit: "g") }
-                .width(min: 44, ideal: 48)
-            TableColumn("Fat", sortUsing: HistoryOrder(.fat, order: .reverse)) { row in NumberCell(row.intake?.fat, unit: "g") }
-                .width(min: 40, ideal: 46)
-            TableColumn("Fiber", sortUsing: HistoryOrder(.fiber, order: .reverse)) { row in NumberCell(row.intake?.fiber, unit: "g") }
-                .width(min: 40, ideal: 46)
+                .width(min: 44, ideal: 50, max: cap(64))
+            if allColumns {
+                TableColumn("Carbs", sortUsing: HistoryOrder(.carbs, order: .reverse)) { row in NumberCell(row.intake?.carbs, unit: "g") }
+                    .width(min: 44, ideal: 48, max: cap(64))
+                TableColumn("Fat", sortUsing: HistoryOrder(.fat, order: .reverse)) { row in NumberCell(row.intake?.fat, unit: "g") }
+                    .width(min: 40, ideal: 46, max: cap(64))
+                TableColumn("Fiber", sortUsing: HistoryOrder(.fiber, order: .reverse)) { row in NumberCell(row.intake?.fiber, unit: "g") }
+                    .width(min: 40, ideal: 46, max: cap(64))
+            }
             TableColumn("Status", sortUsing: HistoryOrder(.status)) { row in StatusCell(row: row) }
-                .width(min: 84, ideal: 100)
+                .width(min: width(84, 108), ideal: 100)
             TableColumn("Weigh-in", sortUsing: HistoryOrder(.weighIn, order: .reverse)) { row in
                 Text(row.weighIn.map { Format.weight($0, unit: unit) } ?? "—").monospacedDigit()
                     .foregroundStyle(row.weighIn == nil ? .tertiary : .primary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 60, ideal: 66)
+            .width(min: 60, ideal: 66, max: cap(72))
             TableColumn("Trend", sortUsing: HistoryOrder(.trend, order: .reverse)) { row in
                 Text(row.trend.map { Format.weight($0, unit: unit) } ?? "—").monospacedDigit()
                     .foregroundStyle(row.trend == nil ? .tertiary : .secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 60, ideal: 66)
+            .width(min: 60, ideal: 66, max: cap(72))
         }
         #if os(macOS)
         // A double-click shows the day in Today.
@@ -96,7 +102,25 @@ struct HistoryView: View {
         .contextMenu(forSelectionType: Day.self) { days in dayMenu(days) }
         #endif
         .accessibilityIdentifier("history.table")
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            tableWidth = $0
+        }
     }
+
+    /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
+    /// for text at 17.
+    func width(_ mac: CGFloat, _ touch: CGFloat) -> CGFloat { Platform.isMac ? mac : touch }
+
+    /// The most a number's column takes on iPad and Vision Pro, whose tables share the room out
+    /// evenly rather than by ideal width: what's left goes to the date and the status.
+    func cap(_ touch: CGFloat) -> CGFloat? { Platform.isMac ? nil : touch }
+
+    /// Room for every column. An iPad in portrait with the day beside the table has room for seven
+    /// readable ones, not ten clipped ones: carbs, fat and fiber give way, as the day's log beside
+    /// it has them.
+    var allColumns: Bool { Platform.isMac || tableWidth == 0 || tableWidth >= 940 }
 
     @ViewBuilder
     func dayMenu(_ days: Set<Day>) -> some View {
@@ -139,11 +163,13 @@ struct HistoryView: View {
 /// "2,140 / 2,300": the day's calories against its target, or the calories alone.
 private struct KcalCell: View {
     let row: HistoryDay
+    /// Whether the day's target follows the calories.
+    let target: Bool
 
     var body: some View {
         HStack(spacing: 3) {
             Text(row.kcal.map(Format.whole) ?? "—").foregroundStyle(row.kcal == nil ? .tertiary : .primary)
-            if let target = row.targets.kcal {
+            if target, let target = row.targets.kcal {
                 Text("/ \(Format.whole(target))").foregroundStyle(.secondary)
             }
         }

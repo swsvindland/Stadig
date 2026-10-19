@@ -96,8 +96,8 @@ struct TodayBoard: View {
         let sorted = byTime ? [] : entries.sorted(using: sortOrder)
         return Table(of: FoodEntry.self, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Time", value: \.date) { entry in Text(Format.time(entry.date)).monospacedDigit().foregroundStyle(.secondary) }
-                // Room for the header's sort arrow beside "Time", which is how the log starts out sorted.
-                .width(min: 72, ideal: 76)
+                // Room for "12:30 PM", and for the header's sort arrow: the log starts out sorted by time.
+                .width(min: 84, ideal: 92)
             TableColumn("Food", value: \.name) { entry in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.name).lineLimit(1)
@@ -116,7 +116,8 @@ struct TodayBoard: View {
             TableColumn("Protein", value: \.nutrients.protein) { entry in
                 NumberCell(entry.nutrients.protein, unit: "g")
             }
-            .width(min: 46, ideal: 52)
+            // Room for its header, the longest of the numbers'.
+            .width(min: 64, ideal: 72)
             TableColumn("Carbs", value: \.nutrients.carbs) { entry in NumberCell(entry.nutrients.carbs, unit: "g") }
                 .width(min: 44, ideal: 50)
             TableColumn("Fat", value: \.nutrients.fat) { entry in NumberCell(entry.nutrients.fat, unit: "g") }
