@@ -64,7 +64,7 @@ test_simulator() {
   case $device in
     iphone) name="Stadig Tests $CHECKOUT" platform=iOS family=iPhone pattern='Pro$' ;;
     ipad) name="Stadig iPad $CHECKOUT" platform=iOS family=iPad pattern='^iPad Pro 13-inch' ;;
-    vision) name="Stadig Vision $CHECKOUT" platform=visionOS family='Apple Vision' pattern='Vision Pro' ;;
+    vision) name="Stadig Vision $CHECKOUT" platform=xrOS family='Apple Vision' pattern='Vision Pro' ;;
     *) print -u2 "Unknown device '$device': choose iphone, ipad or vision"; exit 2 ;;
   esac
   udid=$(xcrun simctl list devices available -j | jq -r --arg n $name '[.devices[][] | select(.name == $n)][0].udid // empty')
@@ -118,7 +118,8 @@ mac_signing() {
   cp Apps/$app/Config/$app-macOS.entitlements $local_entitlements
   for key in com.apple.developer.aps-environment com.apple.developer.icloud-container-identifiers \
     com.apple.developer.icloud-services com.apple.security.application-groups; do
-    plutil -remove $key $local_entitlements > /dev/null 2>&1
+    # Escaped dots: plutil reads a bare dot as a key path.
+    plutil -remove ${key//./\\.} $local_entitlements > /dev/null 2>&1
   done
   MAC_SIGNING=(CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
     CODE_SIGN_ENTITLEMENTS=$local_entitlements)
