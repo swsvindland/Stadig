@@ -6,6 +6,7 @@ import SystemCore
 /// The block: its weeks and deload, its days, why it looks the way it does, and life around it.
 struct PlanView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var planning = false
     @State private var lifeMode: LifeModeKindChoice?
     @State private var editing: LifeModePeriod?
@@ -13,27 +14,14 @@ struct PlanView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
-                        header(mesocycle, block: block, analysis: analysis)
-                        WeekStrip(block: block, today: model.today, vacations: vacations)
-                        nextBlockPrompt(analysis, block: block)
-                        if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorities(mesocycle) }
-                        SectionHeader(title: "Days", detail: "\(mesocycle.days.count) a week")
-                        ForEach(Array(mesocycle.days.enumerated()), id: \.element.id) { index, day in
-                            NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: day.id)) {
-                                DayCard(day: day, isNext: analysis.next?.dayIndex == index)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("plan.day")
-                        }
+                Group {
+                    if sizeClass.isWide {
+                        wide
                     } else {
-                        EmptyCard(symbol: "calendar", title: "No block yet", detail: "Finish setup to start your assessment.")
+                        column
                     }
-                    lifeModes
                 }
                 .padding()
-                .readableWidth()
             }
             .accessibilityIdentifier("plan.screen")
             .background(.pageBackground)
@@ -43,15 +31,73 @@ struct PlanView: View {
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Button {
-                        model.showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }.accessibilityLabel("Settings")
-                        .accessibilityIdentifier("plan.settings")
-                }
+                SettingsToolbarItem(identifier: "plan.settings")
             }
+            .sessionResumeToolbar()
+        }
+    }
+
+    /// The phone's single column, unchanged.
+    private var column: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
+                header(mesocycle, block: block, analysis: analysis)
+                WeekStrip(block: block, today: model.today, vacations: vacations)
+                nextBlockPrompt(analysis, block: block)
+                if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorities(mesocycle) }
+                SectionHeader(title: "Days", detail: "\(mesocycle.days.count) a week")
+                days(mesocycle, analysis: analysis)
+            } else {
+                EmptyCard(symbol: "calendar", title: "No block yet", detail: "Finish setup to start your assessment.")
+            }
+            lifeModes
+        }
+        .readableWidth()
+    }
+
+    /// The block and life beside its days, which sit in a grid.
+    private var wide: some View {
+        HStack(alignment: .top, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
+                    header(mesocycle, block: block, analysis: analysis)
+                    WeekStrip(block: block, today: model.today, vacations: vacations)
+                    nextBlockPrompt(analysis, block: block)
+                    if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorities(mesocycle) }
+                } else {
+                    EmptyCard(symbol: "calendar", title: "No block yet", detail: "Finish setup to start your assessment.")
+                }
+                lifeModes
+            }
+            .frame(minWidth: 320, maxWidth: 420)
+            if let analysis = model.analysis, let mesocycle = analysis.mesocycle {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline) {
+                        SectionHeader(title: "Days", detail: "\(mesocycle.days.count) a week")
+                        Button("Open Program", systemImage: "list.bullet.rectangle") { model.tab = .program }
+                            .buttonStyle(.borderless)
+                            .help("Every slot, week by week, with swaps")
+                            .accessibilityIdentifier("plan.openProgram")
+                    }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16, alignment: .top)], spacing: 16) {
+                        days(mesocycle, analysis: analysis)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+        .frame(maxWidth: 1400)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func days(_ mesocycle: Mesocycle, analysis: LiftAnalysis) -> some View {
+        ForEach(Array(mesocycle.days.enumerated()), id: \.element.id) { index, day in
+            NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: day.id)) {
+                DayCard(day: day, isNext: analysis.next?.dayIndex == index)
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            .accessibilityIdentifier("plan.day")
         }
     }
 
@@ -83,8 +129,6 @@ struct PlanView: View {
 
     @ViewBuilder
     private func nextBlockPrompt(_ analysis: LiftAnalysis, block: TrainingBlock) -> some View {
-        let assessmentDone = analysis.assessment.map { $0.complete || $0.canFinishEarly } ?? false
-        let ended = model.today > block.end || block.week(of: model.today) == .deload && model.today.days(until: block.end) <= 2
         if let upcoming = analysis.upcoming {
             // Already planned: it waits for its start, so this block keeps its deload and check-in.
             VStack(alignment: .leading, spacing: 6) {
@@ -93,7 +137,7 @@ struct PlanView: View {
                 Text(upcoming.rationale.headline).font(.subheadline).foregroundStyle(.secondary)
             }
             .card()
-        } else if assessmentDone || ended {
+        } else if model.nextBlockOffered {
             VStack(alignment: .leading, spacing: 10) {
                 Text(
                     analysis.assessment.map { $0.complete ? "Assessment done" : "Ready to finish the assessment early" }
@@ -108,6 +152,7 @@ struct PlanView: View {
                     Label("Plan the next block", systemImage: "sparkles").frame(maxWidth: .infinity)
                 }
                 .primaryAction()
+                .keyboardShortcut("p", modifiers: [.command, .shift])
                 .accessibilityIdentifier("plan.nextBlock")
             }
             .card()
@@ -143,6 +188,7 @@ struct PlanView: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             Toggle("Prioritise automatically", isOn: model.setting(\.autoPrioritise))
                 .font(.subheadline)
             Text("Takes effect at the next block.").font(.caption).foregroundStyle(.secondary)
@@ -171,6 +217,14 @@ struct PlanView: View {
                     .card(padding: 12)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
+                .contextMenu {
+                    Button("Edit…", systemImage: "pencil") { editing = period }
+                    if model.canEnd(period) {
+                        Button("End It Now", systemImage: "stop.circle") { model.end(lifeMode: period) }
+                    }
+                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(lifeMode: period.id) }
+                }
                 .accessibilityIdentifier("plan.lifeMode")
             }
             HStack {
@@ -312,6 +366,12 @@ struct DayDetail: View {
                                     Button("Swap") { swapping = slot }.tint(.blue)
                                 }
                             }
+                            .contextMenu {
+                                if slot.role == .main || slot.role == .accessory {
+                                    Button("Swap for the Rest of the Block…", systemImage: "arrow.triangle.2.circlepath") { swapping = slot }
+                                }
+                                Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: slot.exerciseID) }
+                            }
                         }
                     } header: {
                         Label("\(block.kind.label) · \(block.minutes) min", systemImage: block.kind.symbol)
@@ -323,8 +383,12 @@ struct DayDetail: View {
                     }
                 }
                 Section {
-                    Text("Sets listed per week of the block. Swipe an exercise to swap it for the rest of the block.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        Platform.isPhoneOrPad
+                            ? "Sets listed per week of the block. Swipe an exercise, or touch and hold it, to swap it for the rest of the block."
+                            : "Sets listed per week of the block. Control-click an exercise to swap it for the rest of the block."
+                    )
+                    .font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle(day.name)
@@ -346,23 +410,9 @@ struct ProgramSwapSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                let current = model.catalog.resolve(slot.exerciseID)
-                ForEach(
-                    Substitutions.candidates(
-                        for: current, in: model.catalog.all, availability: model.gym.availability,
-                        injuries: model.analysis?.life.injuries ?? [], avoid: model.settings.avoid, limit: 20)
-                ) { exercise in
+                ForEach(model.swapCandidates(for: slot.exerciseID)) { exercise in
                     Button {
-                        var m = mesocycle
-                        if let d = m.days.firstIndex(where: { $0.id == dayID }) {
-                            for b in m.days[d].blocks.indices {
-                                if let s = m.days[d].blocks[b].slots.firstIndex(where: { $0.id == slot.id }) {
-                                    m.days[d].blocks[b].slots[s].exerciseID = exercise.id
-                                    m.days[d].blocks[b].slots[s].reason = "You swapped this in for \(current.name)."
-                                }
-                            }
-                        }
-                        model.save(m)
+                        model.swap(slot: slot.id, day: dayID, of: mesocycle.id, to: exercise.id)
                         dismiss()
                     } label: {
                         VStack(alignment: .leading) {
@@ -370,11 +420,13 @@ struct ProgramSwapSheet: View {
                             Text(exercise.equipment.label).font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                    .accessibilityIdentifier("programSwap.option")
                 }
             }
             .navigationTitle("Swap \(model.catalog.resolve(slot.exerciseID).name)")
             .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
+        .sheetFrame(minHeight: 480)
     }
 }

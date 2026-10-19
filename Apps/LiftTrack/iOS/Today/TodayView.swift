@@ -9,6 +9,7 @@ import SystemCore
 /// ends in an action.
 struct TodayView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var minutes: Int?
     @State private var logActivity: ActivityLogSheetItem?
     @State private var showCheckIn = false
@@ -17,30 +18,34 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let analysis = model.analysis {
-                        ForEach(analysis.life.active) { period in LifeModeBanner(period: period) }
-                        if analysis.life.reentry { reentryBanner }
-                        if let status = analysis.assessment { AssessmentCard(status: status) }
-                        sessionCard(analysis)
-                        if !analysis.actions.isEmpty {
-                            SectionHeader(title: "Do this next")
-                            ForEach(analysis.actions.prefix(3)) { action in ActionCard(action: action) { perform(action) } }
+                if let analysis = model.analysis {
+                    if sizeClass.isWide {
+                        HStack(alignment: .top, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                banners(analysis)
+                                sessionCard(analysis)
+                            }
+                            .frame(minWidth: 360, maxWidth: 640)
+                            VStack(alignment: .leading, spacing: 16) {
+                                if let status = analysis.assessment { AssessmentCard(status: status) }
+                                around(analysis)
+                            }
+                            .frame(minWidth: 300, maxWidth: 520)
                         }
-                        if !analysis.quests.isEmpty {
-                            SectionHeader(title: "Later today")
-                            ForEach(analysis.quests) { quest in QuestRow(quest: quest) }
+                        .padding()
+                        .frame(maxWidth: 1200)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(alignment: .leading, spacing: 16) {
+                            banners(analysis)
+                            if let status = analysis.assessment { AssessmentCard(status: status) }
+                            sessionCard(analysis)
+                            around(analysis)
                         }
-                        if let steps = analysis.steps {
-                            StepsCard(steps: steps)
-                        } else if HealthBridge.shared.isAvailable {
-                            StepsWaitingCard(connected: !model.steps.isEmpty) { Task { await model.connectHealth() } }
-                        }
-                        outside(analysis)
+                        .padding()
+                        .readableWidth()
                     }
                 }
-                .padding()
-                .readableWidth()
             }
             .accessibilityIdentifier("today.screen")
             .background(.pageBackground)
@@ -68,21 +73,39 @@ struct TodayView: View {
                     .accessibilityLabel("Add")
                     .accessibilityIdentifier("today.add")
                 }
-                ToolbarItem(placement: .barTrailing) {
-                    Button {
-                        model.showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                    .accessibilityIdentifier("today.settings")
-                }
+                SettingsToolbarItem(identifier: "today.settings")
             }
             .refreshable { await model.refreshHealth() }
+            .sessionResumeToolbar()
             .sheet(item: $logActivity) { item in ActivityLogSheet(declared: item.declared) }
             .sheet(isPresented: $showCheckIn) { CheckInView() }
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
         }
+    }
+
+    @ViewBuilder
+    private func banners(_ analysis: LiftAnalysis) -> some View {
+        ForEach(analysis.life.active) { period in LifeModeBanner(period: period) }
+        if analysis.life.reentry { reentryBanner }
+    }
+
+    /// What ends in an action around the session: next steps, quests, steps and outside training.
+    @ViewBuilder
+    private func around(_ analysis: LiftAnalysis) -> some View {
+        if !analysis.actions.isEmpty {
+            SectionHeader(title: "Do this next")
+            ForEach(analysis.actions.prefix(3)) { action in ActionCard(action: action) { perform(action) } }
+        }
+        if !analysis.quests.isEmpty {
+            SectionHeader(title: "Later today")
+            ForEach(analysis.quests) { quest in QuestRow(quest: quest) }
+        }
+        if let steps = analysis.steps {
+            StepsCard(steps: steps)
+        } else if HealthBridge.shared.isAvailable {
+            StepsWaitingCard(connected: !model.steps.isEmpty) { Task { await model.connectHealth() } }
+        }
+        outside(analysis)
     }
 
     private var reentryBanner: some View {
@@ -242,6 +265,7 @@ struct SessionCard: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .help("Start today's session (⌘N)")
             .accessibilityIdentifier("today.startSession")
         }
         .card()

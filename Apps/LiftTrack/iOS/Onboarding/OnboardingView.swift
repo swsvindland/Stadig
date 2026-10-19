@@ -320,22 +320,28 @@ struct OnboardingView: View {
                 "Apple Health",
                 "Sleep, HRV and resting heart rate shape your recovery budget. Runs and classes other apps record are counted automatically. Sessions are saved as workouts."
             )
-            Button {
-                Task {
-                    await model.connectHealth()
-                    healthAsked = true
+            if HealthBridge.shared.isAvailable {
+                Button {
+                    Task {
+                        await model.connectHealth()
+                        healthAsked = true
+                    }
+                } label: {
+                    Label(healthAsked ? "Connected" : "Connect Apple Health", systemImage: healthAsked ? "checkmark.circle.fill" : "heart.fill")
+                        .frame(maxWidth: .infinity)
                 }
-            } label: {
-                Label(healthAsked ? "Connected" : "Connect Apple Health", systemImage: healthAsked ? "checkmark.circle.fill" : "heart.fill")
-                    .frame(maxWidth: .infinity)
+                .primaryAction()
+                .disabled(healthAsked)
             }
-            .primaryAction()
-            .disabled(healthAsked || !HealthBridge.shared.isAvailable)
             if !HealthBridge.shared.isAvailable {
-                Text("Health isn't available on this device.").font(.footnote).foregroundStyle(.secondary)
+                Text(
+                    "Apple Health lives on your iPhone, iPad, Apple Watch and Vision Pro, not this \(Platform.deviceName). Connect it from Lift Track on one of those; what it brings in reaches this \(Platform.deviceName) through iCloud."
+                )
+                .font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Toggle("Save sessions to Health", isOn: $settings.saveToHealth).card()
+                    .accessibilityIdentifier("onboarding.saveToHealth")
             }
-            Toggle("Save sessions to Health", isOn: $settings.saveToHealth).card()
-                .accessibilityIdentifier("onboarding.saveToHealth")
         }
     }
 
@@ -405,6 +411,7 @@ struct ChoiceCard: View {
             .card()
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier(identifier)
     }
@@ -467,6 +474,7 @@ struct WeekdayPicker: View {
                         .foregroundStyle(on ? .white : .primary)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
                 .accessibilityLabel(day.name)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }

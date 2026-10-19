@@ -8,8 +8,24 @@ import SystemCore
 
 extension ShapeStyle where Self == Color {
     static var pageBackground: Color { .groupedBackground }
-    static var cardBackground: Color { .secondaryGroupedBackground }
-    static var insetBackground: Color { .tertiaryGroupedBackground }
+
+    /// On the Mac a card is a fill over the window, as a grouped form's sections are: a control
+    /// background would vanish into the window in dark mode.
+    static var cardBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .quaternarySystemFill)
+        #else
+        .secondaryGroupedBackground
+        #endif
+    }
+
+    static var insetBackground: Color {
+        #if os(macOS)
+        Color(nsColor: .quaternarySystemFill)
+        #else
+        .tertiaryGroupedBackground
+        #endif
+    }
 }
 
 extension SetRating {
@@ -109,6 +125,7 @@ struct SectionHeader: View {
 
 /// The three-tap rating. Colour, symbol and words together: never colour alone.
 struct RatingButtons: View {
+    @Environment(\.sessionScale) private var scale
     var compact = false
     /// Where it is, for UI tests: each button is "<screen>.ratingGreen" and so on.
     var screen = "logger"
@@ -116,7 +133,7 @@ struct RatingButtons: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            ForEach(SetRating.allCases) { rating in
+            ForEach(Array(SetRating.allCases.enumerated()), id: \.element) { index, rating in
                 Button {
                     action(rating)
                 } label: {
@@ -128,11 +145,14 @@ struct RatingButtons: View {
                         }
                     }
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: compact ? 56 : 84)
+                    .frame(maxWidth: .infinity, minHeight: compact ? 56 : scale.ratingHeight)
                     .background(rating.color.gradient, in: .rect(cornerRadius: 18))
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
+                // Easy, Just right, Missed: 1, 2, 3, left to right as they're drawn.
+                .keyboardShortcut(scale.shortcut(KeyEquivalent(Character("\(index + 1)"))))
                 .accessibilityLabel("\(rating.label): \(rating.detail)")
                 .accessibilityIdentifier("\(screen).rating\(rating.rawValue.identifierSuffix)")
             }

@@ -8,51 +8,179 @@ import SystemCore
 /// and how far your ratings can be believed. No overall level, no streaks.
 struct ProgressTab: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let analysis = model.analysis {
-                        StrengthCard(analysis: analysis)
-                        LiftTrendCard(analysis: analysis)
-                        DisciplineCard(score: analysis.discipline)
-                        EnduranceCard(analysis: analysis.endurance)
-                        AgilityCard(analysis: analysis.agility)
-                        RatingsCard(trust: analysis.trust)
-                        NavigationLink {
-                            HistoryView()
-                        } label: {
-                            HStack {
-                                Label("History", systemImage: "clock.arrow.circlepath").font(.headline)
-                                Spacer()
-                                Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(
-                                    .secondary)
-                                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-                            }
-                            .card()
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("progress.history")
+                if let analysis = model.analysis {
+                    if sizeClass.isWide {
+                        wide(analysis)
+                    } else {
+                        column(analysis)
                     }
                 }
-                .padding()
-                .readableWidth()
             }
             .accessibilityIdentifier("progress.screen")
             .background(.pageBackground)
             .navigationTitle("Progress")
             .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Button {
-                        model.showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }.accessibilityLabel("Settings")
-                        .accessibilityIdentifier("progress.settings")
+                SettingsToolbarItem(identifier: "progress.settings")
+            }
+            .sessionResumeToolbar()
+        }
+    }
+
+    /// The phone's single column, unchanged.
+    private func column(_ analysis: LiftAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            StrengthCard(analysis: analysis)
+            LiftTrendCard(analysis: analysis)
+            DisciplineCard(score: analysis.discipline)
+            EnduranceCard(analysis: analysis.endurance)
+            AgilityCard(analysis: analysis.agility)
+            RatingsCard(trust: analysis.trust)
+            NavigationLink {
+                HistoryView()
+            } label: {
+                historyLink
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            .accessibilityIdentifier("progress.history")
+        }
+        .padding()
+        .readableWidth()
+    }
+
+    /// The stats in a grid, and each lift's trend as a list beside a large chart.
+    private func wide(_ analysis: LiftAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 16, alignment: .top)], spacing: 16) {
+                StrengthCard(analysis: analysis)
+                DisciplineCard(score: analysis.discipline)
+                EnduranceCard(analysis: analysis.endurance)
+                AgilityCard(analysis: analysis.agility)
+                RatingsCard(trust: analysis.trust)
+                Button {
+                    model.tab = .history
+                } label: {
+                    historyLink
+                }
+                .buttonStyle(.plain)
+                .hoverHighlight()
+                .accessibilityIdentifier("progress.history")
+            }
+            LiftTrendsPanel(analysis: analysis)
+        }
+        .padding()
+        .frame(maxWidth: 1400)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var historyLink: some View {
+        HStack {
+            Label("History", systemImage: "clock.arrow.circlepath").font(.headline)
+            Spacer()
+            Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(
+                .secondary)
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+        }
+        .card()
+    }
+}
+
+/// Every lift with a trend, beside the chosen one's estimated one-rep max over time: large, with
+/// its current estimate, the change and any stall.
+struct LiftTrendsPanel: View {
+    @Environment(AppModel.self) private var model
+    let analysis: LiftAnalysis
+    @State private var selection: String?
+    @State private var lifts: [LiftTrendsPanel.Lift] = []
+
+    struct Lift: Identifiable, Hashable {
+        var id: String
+        var name: String
+        var points: [ExerciseRecord.Point]
+        var current: Double?
+        var change: Double?
+        var scored: Bool
+    }
+
+    var body: some View {
+        let unit = model.gym.unit
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Estimated 1RM").font(.headline)
+            if lifts.isEmpty {
+                Text("Trends appear after a couple of sessions.").font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .top, spacing: 16) {
+                    List(lifts, selection: $selection) { lift in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(lift.name).lineLimit(1)
+                                if let current = lift.current {
+                                    Text(Format.weight(current, unit: unit)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if let change = lift.change {
+                                Text("\(change >= 0 ? "+" : "")\(Format.percent(change))").font(.caption.monospacedDigit())
+                                    .foregroundStyle(change > 0 ? .green : .secondary)
+                            }
+                        }
+                        .tag(lift.id)
+                        .accessibilityIdentifier("progress.trendLift")
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .frame(width: 280, height: 360)
+                    if let lift = lifts.first(where: { $0.id == selection }) ?? lifts.first {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(lift.name).font(.title3.bold())
+                                Spacer()
+                                Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: lift.id) }
+                                    .buttonStyle(.borderless)
+                            }
+                            Chart(lift.points, id: \.day) { point in
+                                LineMark(x: .value("Day", point.day.date()), y: .value("e1RM", unit.fromKilograms(point.e1rm)))
+                                    .interpolationMethod(.monotone)
+                                PointMark(x: .value("Day", point.day.date()), y: .value("e1RM", unit.fromKilograms(point.e1rm))).symbolSize(30)
+                            }
+                            .chartYScale(domain: .automatic(includesZero: false))
+                            .chartYAxisLabel(unit.symbol)
+                            .frame(minHeight: 300)
+                            .accessibilityLabel("\(lift.name) estimated one-rep max over time")
+                            if let stall = analysis.stalls.first(where: { $0.exerciseID == lift.id }) {
+                                Text(
+                                    stall.reading == .expectedInDeficit
+                                        ? "Flat for \(stall.weeks) weeks: expected in a cut." : "No new best for \(stall.weeks) weeks."
+                                )
+                                .font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
         }
+        .card()
+        .task(id: analysis.history.count + model.sessions.count) { lifts = Self.lifts(analysis, catalog: model.catalog) }
+    }
+
+    /// Strength lifts done at least twice: the scored lifts first, then by name.
+    static func lifts(_ analysis: LiftAnalysis, catalog: ExerciseCatalog) -> [Lift] {
+        analysis.history.keys.map { catalog.resolve($0) }
+            .filter { $0.kind == .strength }
+            .compactMap { exercise -> Lift? in
+                let record = ExerciseRecord.of(analysis.history[exercise.id] ?? [], exercise: exercise, trust: analysis.trust)
+                guard record.trend.count >= 2 else { return nil }
+                return Lift(
+                    id: exercise.id, name: exercise.name, points: record.trend, current: record.current, change: record.change,
+                    scored: exercise.strength != nil)
+            }
+            .sorted { ($0.scored ? 0 : 1, $0.name) < ($1.scored ? 0 : 1, $1.name) }
     }
 }
 
@@ -318,12 +446,13 @@ struct HistoryView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(session.title).font(.headline)
                             Text(
-                                "\(session.start.formatted(date: .abbreviated, time: .shortened)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == "Watch" ? " · Watch" : "")"
+                                "\(session.start.formatted(date: .abbreviated, time: .shortened)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
                             )
                             .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
+                    .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
                     .accessibilityIdentifier("history.session")
                 case .activity(let log):
                     HStack {
@@ -337,6 +466,7 @@ struct HistoryView: View {
                         }
                     }
                     .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
+                    .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
                     .accessibilityIdentifier("history.activity")
                 }
             }
@@ -352,11 +482,32 @@ struct HistoryView: View {
 }
 
 struct SessionDetail: View {
-    @Environment(AppModel.self) private var model
     let record: SessionRecord
 
     var body: some View {
+        SessionSetsList(record: record, header: false)
+            .navigationTitle(record.title)
+    }
+}
+
+/// A finished session's feedback, sets, conditioning and heat.
+struct SessionSetsList: View {
+    @Environment(AppModel.self) private var model
+    let record: SessionRecord
+    /// Its title and when, at the top: for the inspector, where there's no navigation title.
+    let header: Bool
+
+    var body: some View {
         List {
+            if header {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(record.title).font(.title3.bold())
+                        Text("\(record.start.formatted(date: .abbreviated, time: .shortened)) · \(record.minutes) min · \(record.device)")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+            }
             if let feedback = record.feedback {
                 Section("Feedback") {
                     Text(
@@ -383,7 +534,17 @@ struct SessionDetail: View {
                     Text("\(c.minutes) min\(c.averageHeartRate.map { " · avg \(Int($0)) bpm" } ?? "")")
                 }
             }
+            ForEach(Array((record.heat ?? []).enumerated()), id: \.offset) { _, heat in
+                Section(model.catalog.resolve(heat.exerciseID).name) {
+                    HStack {
+                        Text(
+                            "\(Format.number(heat.minutes)) min\(heat.temperatureC.map { " at \(Format.temperature($0, fahrenheit: model.fahrenheit))" } ?? "")"
+                        )
+                        Spacer()
+                        RatingMark(rating: heat.rating)
+                    }
+                }
+            }
         }
-        .navigationTitle(record.title)
     }
 }

@@ -66,6 +66,7 @@ struct SessionSummaryView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("summary.done") }
             }
         }
+        .sheetFrame()
     }
 
     private func stat(_ value: String, _ label: String) -> some View {

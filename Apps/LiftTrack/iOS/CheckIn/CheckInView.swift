@@ -129,6 +129,7 @@ struct CheckInView: View {
             }
             .sheet(isPresented: $measuring) { MeasurementEditor(measurements: BodyMeasurements(day: .today)) }
         }
+        .sheetFrame()
     }
 
     @State private var recordTime = false

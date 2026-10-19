@@ -41,6 +41,7 @@ struct LifeModeBanner: View {
             .card()
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityIdentifier("today.lifeMode")
         .sheet(isPresented: $editing) { LifeModeEditor(period: period) }
     }
@@ -130,6 +131,7 @@ struct LifeModeEditor: View {
                 }
             }
         }
+        .sheetFrame()
     }
 
     private var endTitle: String {
@@ -309,6 +311,7 @@ struct InjuryOverrides: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .hoverHighlight()
                 }
             }
             .searchable(text: $query)
@@ -316,5 +319,6 @@ struct InjuryOverrides: View {
             .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .sheetFrame()
     }
 }

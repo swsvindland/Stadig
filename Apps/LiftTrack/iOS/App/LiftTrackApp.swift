@@ -18,18 +18,12 @@ struct LiftTrackApp: App {
         if launch.isUITesting { Platform.disableAnimations() }
         let model = AppModel.shared
         #if DEBUG
-        // -seedSampleData fills an empty store; -tab plan|progress|body opens a tab; -startSession
-        // starts today's session. For checking screens quickly.
+        // -seedSampleData fills an empty store; -tab plan|program|library|history|progress|body opens
+        // a destination; -startSession starts today's session. For checking screens quickly.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
-        if let tab = launch.value(after: "-tab") {
-            model.tab =
-                switch tab {
-                case "plan": .plan
-                case "progress": .progress
-                case "body": .body
-                default: .today
-                }
-        }
+        if let tab = launch.value(after: "-tab") { model.tab = AppTab(rawValue: tab) ?? .today }
+        // -exercise <id> opens Library on that exercise.
+        if let exercise = launch.value(after: "-exercise") { model.show(inLibrary: exercise) }
         // -gymSauna gives the gym a sauna, for the recovery screen.
         if launch.has("-gymSauna") {
             var gym = model.gym
@@ -49,12 +43,46 @@ struct LiftTrackApp: App {
         _model = State(initialValue: model)
     }
 
+    static let mainWindow = "main"
+
     var body: some Scene {
+        #if os(macOS)
+        // One main window, sized for the program beside the sidebar; the session gets its own window
+        // and Settings the app menu's (⌘,).
+        Window("Lift Track", id: Self.mainWindow) {
+            if let model {
+                AppRoot(model: model)
+                    .frame(minWidth: 820, minHeight: 560)
+            }
+        }
+        .defaultSize(width: 1240, height: 820)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified)
+        .commands {
+            LiftCommands(model: model)
+            // File ▸ Import from iPhone or iPad: a progress photo taken with the phone (Body).
+            ImportFromDevicesCommands()
+        }
+        Window("Session", id: SessionWindow.id) {
+            if let model {
+                SessionWindow(model: model)
+            }
+        }
+        .defaultSize(width: 1080, height: 760)
+        .windowResizability(.contentMinSize)
+        Settings {
+            if let model {
+                MacSettings(model: model)
+            }
+        }
+        #else
         WindowGroup {
             if let model {
                 AppRoot(model: model)
             }
         }
+        .commands { LiftCommands(model: model) }
+        #endif
     }
 }
 
@@ -69,6 +97,8 @@ private struct AppRoot: View {
             .environment(model)
             .environment(model.purchases)
             .onOpenURL { url in model.open(url) }
+            // The Mac's forms look as they do on the other platforms, in sheets and panes alike.
+            .formStyle(.grouped)
             .task {
                 // Tests and UI tests ask StoreKit and Health nothing.
                 guard !LaunchOptions.current.isQuiet else { return }

@@ -49,6 +49,7 @@ struct NextBlockView: View {
             }
             .sheet(isPresented: $showPaywall) { PaywallView() }
         }
+        .sheetFrame()
     }
 
     private var phaseQuestion: some View {
@@ -65,6 +66,7 @@ struct NextBlockView: View {
                     Text(option.label).font(.headline).frame(maxWidth: .infinity, alignment: .leading).card()
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
         }
     }
@@ -147,5 +149,6 @@ struct PaywallView: View {
             .padding(24)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
         }
+        .sheetFrame()
     }
 }

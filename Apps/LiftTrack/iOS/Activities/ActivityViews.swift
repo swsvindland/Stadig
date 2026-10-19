@@ -32,6 +32,7 @@ struct OutsideActivitiesEditor: View {
                     .card()
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
             Button {
                 editing = RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 60)
@@ -89,6 +90,7 @@ struct RecurringEditor: View {
                 }
             }
         }
+        .sheetFrame()
     }
 }
 
@@ -168,5 +170,6 @@ struct ActivityLogSheet: View {
                 }
             }
         }
+        .sheetFrame()
     }
 }

@@ -9,8 +9,46 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.lift", category: "app")
 
-enum AppTab: Hashable {
-    case today, plan, progress, body
+/// The app's destinations. The iPhone's tab bar has Today, Plan, Progress and Body; the sidebar on
+/// the iPad, the Mac and Vision Pro adds Program, Library and History.
+enum AppTab: String, Hashable, CaseIterable {
+    case today, plan, program, library, history, progress, body
+
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .plan: "Plan"
+        case .program: "Program"
+        case .library: "Library"
+        case .history: "History"
+        case .progress: "Progress"
+        case .body: "Body"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .today: "figure.strengthtraining.traditional"
+        case .plan: "calendar"
+        case .program: "list.bullet.rectangle"
+        case .library: "books.vertical"
+        case .history: "clock.arrow.circlepath"
+        case .progress: "chart.line.uptrend.xyaxis"
+        case .body: "figure.arms.open"
+        }
+    }
+}
+
+/// What the menu bar asks of the session on screen.
+enum SessionRequest: Hashable {
+    case finish, discard
+}
+
+/// A sheet the menu bar (or a shortcut) asks for, shown over whichever destination is open.
+enum AppSheet: String, Identifiable {
+    case logActivity, checkIn, measurements, nextBlock
+
+    var id: String { rawValue }
 }
 
 /// The app's state: records from Lift Track's own synced store, what other apps published to the
@@ -88,6 +126,14 @@ final class AppModel {
     var finished: SessionRecord?
     var tab: AppTab = .today
     var showSettings = false
+    var sheet: AppSheet?
+    /// Finish… or Discard… from the menu bar, for the session screen to ask about.
+    var sessionRequest: SessionRequest?
+    /// The exercise Library shows next, when another screen sent the person there.
+    var libraryFocus: String?
+    /// Sessions and outside activities as the History table shows them, newest first: rebuilt when
+    /// either changes, not on every redraw.
+    private(set) var historyRows: [HistoryRow] = []
     var today: Day = .today
 
     /// The shared container mirrored to the person's other devices through the family's CloudKit
@@ -186,8 +232,10 @@ final class AppModel {
             let gyms = store.all(Gym.self)
             gym = gyms.first { $0.id == settings.gymID } ?? gyms.first ?? Gym.preset(profile?.equipment ?? .fullGym, unit: units.weight)
         }
-        if needsReading(SessionRecord.self) { sessions = store.all(SessionRecord.self).sorted { $0.start < $1.start } }
-        if needsReading(ActivityRecord.self) { activities = store.all(ActivityRecord.self).map(\.log).sorted { $0.start < $1.start } }
+        let sessionsChanged = needsReading(SessionRecord.self)
+        if sessionsChanged { sessions = store.all(SessionRecord.self).sorted { $0.start < $1.start } }
+        let activitiesChanged = needsReading(ActivityRecord.self)
+        if activitiesChanged { activities = store.all(ActivityRecord.self).map(\.log).sorted { $0.start < $1.start } }
         if needsReading(MeasurementRecord.self) {
             measurements = store.all(MeasurementRecord.self).map(\.measurements).sorted { $0.day < $1.day }
         }
@@ -197,6 +245,11 @@ final class AppModel {
         if needsReading(Mesocycle.self) { mesocycles = store.all(Mesocycle.self).sorted { $0.block.start < $1.block.start } }
         readShared(recompute: false)
         recompute()
+        // After the analysis: the top sets are read with the trust it rebuilt from these sessions.
+        if sessionsChanged || activitiesChanged {
+            historyRows = HistoryRow.rows(
+                sessions: sessions, activities: activities, catalog: catalog, trust: analysis?.trust ?? TrustState(prior: 0.5))
+        }
         lastRevision = store.revision
     }
 
@@ -309,11 +362,7 @@ final class AppModel {
         guard url.scheme == "lifttrack" else { return }
         switch url.host() {
         case "start":
-            if live != nil {
-                showSession = true
-            } else if let plan = plan() {
-                start(plan)
-            }
+            startToday()
         case "session":
             if live != nil { showSession = true }
         default:
@@ -454,6 +503,11 @@ final class AppModel {
         }
     }
 
+    /// Deletes what a History row stands for: the session (and its workout in Health) or the activity.
+    func delete(historyRow row: HistoryRow) {
+        if row.isSession { delete(session: row.id) } else { delete(activity: row.id) }
+    }
+
     func delete(session id: UUID) {
         store.delete(SessionRecord.self, id: id)
         reload()
@@ -542,6 +596,91 @@ final class AppModel {
         return block.end >= today && block.kind != .assessment ? max(today, block.end.adding(days: 1)) : today
     }
 
+    /// Whether "Plan the next block" is offered now: the assessment is done (or can finish early), or
+    /// the block is over or in the last days of its deload, and no next block is waiting already.
+    var nextBlockOffered: Bool {
+        guard let analysis, let block = analysis.block, analysis.upcoming == nil else { return false }
+        let assessmentDone = analysis.assessment.map { $0.complete || $0.canFinishEarly } ?? false
+        let ending = today > block.end || block.week(of: today) == .deload && today.days(until: block.end) <= 2
+        return assessmentDone || ending
+    }
+
+    /// Replacements for a slot's exercise for the rest of the block: the same movement first,
+    /// filtered by the gym, any injury and the exercises set aside.
+    func swapCandidates(for exerciseID: String, limit: Int = 20) -> [Exercise] {
+        Substitutions.candidates(
+            for: catalog.resolve(exerciseID), in: catalog.all, availability: gym.availability,
+            injuries: analysis?.life.injuries ?? [], avoid: settings.avoid, limit: limit)
+    }
+
+    /// Swaps one slot of one day for another exercise for the rest of the block, saying why on the
+    /// slot. False when the block, day or slot isn't there, or it's the exercise already.
+    @discardableResult
+    func swap(slot slotID: UUID, day dayID: UUID, of mesocycleID: UUID, to exerciseID: String) -> Bool {
+        guard var m = mesocycles.first(where: { $0.id == mesocycleID }), let d = m.days.firstIndex(where: { $0.id == dayID }) else { return false }
+        for b in m.days[d].blocks.indices {
+            guard let s = m.days[d].blocks[b].slots.firstIndex(where: { $0.id == slotID }) else { continue }
+            let current = catalog.resolve(m.days[d].blocks[b].slots[s].exerciseID)
+            guard current.id != exerciseID else { return false }
+            m.days[d].blocks[b].slots[s].exerciseID = exerciseID
+            m.days[d].blocks[b].slots[s].reason = "You swapped this in for \(current.name)."
+            save(m)
+            return true
+        }
+        return false
+    }
+
+    /// A day of a block fitted to other minutes, for a look at it before the day comes: the same
+    /// fatigue, priorities and recommendations a new block weighs, in the person's usual gym.
+    /// Nothing is saved; Today's "Short on time?" is what refits a session.
+    func refitted(_ day: PlannedDay, of mesocycle: Mesocycle, minutes: Int) -> PlannedDay? {
+        guard let profile, let analysis else { return nil }
+        var input = generatorInput(
+            profile: profile, gym: gym, kind: mesocycle.block.kind, start: mesocycle.block.start, loadingWeeks: mesocycle.block.loadingWeeks,
+            phase: analysis.phase)
+        input.profile.schedule.minutesPerSession = minutes
+        return ProgramGenerator.refit(day, minutes: minutes, input: input)
+    }
+
+    // MARK: Library
+
+    /// Sets an exercise aside, or allows it back. One set aside is never programmed in a new block,
+    /// and today's session swaps it out of the block it's in.
+    func setAside(_ exerciseID: String, _ aside: Bool) {
+        var s = settings
+        if aside { s.avoid.insert(exerciseID) } else { s.avoid.remove(exerciseID) }
+        guard s.avoid != settings.avoid else { return }
+        save(settings: s)
+    }
+
+    /// The injuries in force today, as their periods, so an override can be saved on the right one.
+    var activeInjuries: [LifeModePeriod] {
+        lifeModes.filter { period in
+            guard case .injury = period.kind else { return false }
+            return canEnd(period)
+        }
+    }
+
+    /// Allows an exercise an injury rules out, or sets one it allows aside again: the same override
+    /// the injury's own list makes, saved on that period so every app and device sees it.
+    func toggleInjuryOverride(for exercise: Exercise, in periodID: UUID) {
+        guard var period = lifeModes.first(where: { $0.id == periodID }), case .injury(var injury) = period.kind else { return }
+        injury.toggleOverride(for: exercise)
+        period.kind = .injury(injury)
+        save(lifeMode: period)
+    }
+
+    /// Opens Library on an exercise.
+    func show(inLibrary exerciseID: String) {
+        libraryFocus = exerciseID
+        tab = .library
+    }
+
+    /// The person's own history with an exercise.
+    func record(for exercise: Exercise) -> ExerciseRecord {
+        ExerciseRecord.of(analysis?.history[exercise.id] ?? [], exercise: exercise, trust: analysis?.trust ?? TrustState(prior: 0.5))
+    }
+
     /// Saves the next block. An assessment finished early ends the day before it starts.
     func accept(nextBlock m: Mesocycle) {
         if var current = currentMesocycle, current.block.kind == .assessment, current.block.end >= m.block.start {
@@ -596,6 +735,23 @@ final class AppModel {
             sessionIndexInWeek: next.doneThisWeek)
         context.heat = analysis.heat
         return SessionPlanner.plan(day, of: next.mesocycle, on: today, context: context)
+    }
+
+    /// Whether the menu's "Start Today's Session" can: no session running and a block to plan from.
+    var canStartToday: Bool { live == nil && analysis?.next != nil }
+
+    /// Today's session as Today plans it, or the one running brought back.
+    func startToday() {
+        if live != nil {
+            showSession = true
+        } else if let plan = plan() {
+            start(plan)
+        }
+    }
+
+    /// The session's exercises reordered by a drag; supersets move whole.
+    func moveLive(items: IndexSet, to destination: Int) {
+        update { $0.move(items: items, to: destination) }
     }
 
     func start(_ plan: SessionPlan) {
