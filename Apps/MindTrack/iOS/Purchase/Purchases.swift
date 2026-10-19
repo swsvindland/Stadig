@@ -111,6 +111,9 @@ final class Purchases {
 }
 
 struct PaywallView: View {
+    /// The Mac's window for it (a sheet elsewhere).
+    static let windowID = "unlock"
+
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
     @Environment(\.purchase) private var purchase

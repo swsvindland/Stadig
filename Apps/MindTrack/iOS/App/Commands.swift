@@ -91,10 +91,14 @@ struct MindCommands: Commands {
     }
 
     /// On the Mac a session started from the menu bar opens its window here, since the main window
-    /// (which opens it otherwise) may be closed.
+    /// (which opens it otherwise) may be closed; so does the unlock, when the session waits for it.
     func showSession() {
         #if os(macOS)
         if model.sessionOpen { openWindow(id: SessionWindow.id) }
+        if model.showPaywall {
+            model.showPaywall = false
+            openWindow(id: PaywallView.windowID)
+        }
         #endif
     }
 }

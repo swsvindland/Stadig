@@ -387,6 +387,9 @@ struct SourceSettings: View {
 struct PurchaseSettings: View {
     @Environment(AppModel.self) private var model
     @Environment(Purchases.self) private var purchases
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     var body: some View {
         if Purchases.enabled {
@@ -394,7 +397,7 @@ struct PurchaseSettings: View {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Mind Track", systemImage: "lock.open") { model.showPaywall = true }
+                    Button("Unlock Mind Track", systemImage: "lock.open") { unlock() }
                         .accessibilityIdentifier("settings.unlock")
                     Button("Restore purchase") { Task { await purchases.restore() } }
                         .accessibilityIdentifier("settings.restorePurchase")
@@ -405,6 +408,16 @@ struct PurchaseSettings: View {
         Section("Debug") {
             Button("Erase everything", role: .destructive) { model.eraseEverything() }
         }
+        #endif
+    }
+
+    /// On the Mac the unlock opens over the Settings window, where it was asked for, rather than as
+    /// a sheet on a main window that may be behind it or closed.
+    func unlock() {
+        #if os(macOS)
+        openWindow(id: PaywallView.windowID)
+        #else
+        model.showPaywall = true
         #endif
     }
 }

@@ -56,6 +56,16 @@ struct MindTrackApp: App {
         .restorationBehavior(.disabled)
         .commandsRemoved()
 
+        // The unlock in a window of its own: asked for from the menu bar or Settings, the main
+        // window may be closed or behind, and a sheet on it would go unseen.
+        Window("Unlock Mind Track", id: PaywallView.windowID) {
+            PaywallView()
+                .environment(model.purchases)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .commandsRemoved()
+
         Settings {
             MacSettings()
                 .environment(model)

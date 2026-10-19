@@ -47,6 +47,12 @@ struct RootView: View {
             model.showSettings = false
             openSettings()
         }
+        // So is the unlock (`PaywallView.windowID`).
+        .onChange(of: model.showPaywall, initial: true) { _, show in
+            guard show else { return }
+            model.showPaywall = false
+            openWindow(id: PaywallView.windowID)
+        }
         #else
         .cover(isPresented: Binding(get: { model.sessionOpen }, set: { if !$0 { model.endSession() } })) {
             SessionView()
@@ -55,10 +61,10 @@ struct RootView: View {
         .sheet(isPresented: $model.showSettings) {
             NavigationStack { SettingsView() }
         }
-        #endif
         .sheet(isPresented: $model.showPaywall) {
             PaywallView()
         }
+        #endif
         .sheet(item: $model.episodeLanguage) { language in
             EpisodeSheet(language: language)
         }
