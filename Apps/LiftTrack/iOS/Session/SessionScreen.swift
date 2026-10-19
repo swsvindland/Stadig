@@ -185,6 +185,9 @@ struct SessionWorkspace: View {
                     .padding(.bottom, 8)
             }
         }
+        // A container of its own: an identifier on a bare stack is given to every element in it,
+        // over the logger's and the rest timer's own.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.screen")
         // Logging moves on to the next exercise: show it.
         .onChange(of: live.current?.item) { picked = nil }

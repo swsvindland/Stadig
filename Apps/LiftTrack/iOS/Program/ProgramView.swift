@@ -28,6 +28,9 @@ struct ProgramView: View {
                         "No block yet", systemImage: "list.bullet.rectangle", description: Text("Finish setup to start your assessment."))
                 }
             }
+            // A container of its own, so the next block's column keeps its identifiers rather than
+            // taking the screen's.
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("program.screen")
             .navigationTitle("Program")
             .sideInspector(isPresented: $inspecting) {
