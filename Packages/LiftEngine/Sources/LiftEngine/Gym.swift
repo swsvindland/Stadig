@@ -94,6 +94,51 @@ public struct Gym: Codable, Hashable, Sendable, Identifiable {
         gym.included = included
         return gym
     }
+
+    /// What a settings screen changed, from `original` (the copy it opened with) to `edited`, made on
+    /// this gym, the latest copy: whatever the screen left alone keeps what synced in meanwhile.
+    /// Equipment, fixtures and the exercise exceptions merge item by item, so a sauna added on another
+    /// device survives a dumbbell rack added here. The unit and the loads go as one, since the loads
+    /// are in the unit: half of a kg gym's steps under lb would be nonsense.
+    public func applying(_ edited: Gym, from original: Gym) -> Gym {
+        var gym = self
+        if edited.name != original.name { gym.name = edited.name }
+        if edited.access != original.access { gym.access = edited.access }
+        if edited.loads != original.loads { gym.loads = edited.loads }
+        gym.equipment = Self.merge(gym.equipment, edited.equipment, from: original.equipment)
+        gym.apparatus = Self.merge(gym.apparatus, edited.apparatus, from: original.apparatus)
+        gym.excluded = Self.merge(gym.excluded, edited.excluded, from: original.excluded)
+        gym.included = Self.merge(gym.included, edited.included, from: original.included)
+        return gym
+    }
+
+    private static func merge<T>(_ latest: Set<T>, _ edited: Set<T>, from original: Set<T>) -> Set<T> {
+        latest.subtracting(original.subtracting(edited)).union(edited.subtracting(original))
+    }
+
+    /// The unit and everything weighed in it.
+    private struct Loads: Equatable {
+        var unit: WeightUnit
+        var barWeight: Double
+        var plates: [Double]
+        var dumbbellStep: Double
+        var dumbbellMax: Double
+        var machineStep: Double
+    }
+
+    private var loads: Loads {
+        get {
+            Loads(unit: unit, barWeight: barWeight, plates: plates, dumbbellStep: dumbbellStep, dumbbellMax: dumbbellMax, machineStep: machineStep)
+        }
+        set {
+            unit = newValue.unit
+            barWeight = newValue.barWeight
+            plates = newValue.plates
+            dumbbellStep = newValue.dumbbellStep
+            dumbbellMax = newValue.dumbbellMax
+            machineStep = newValue.machineStep
+        }
+    }
 }
 
 /// A gym's makeable loads for one kind of equipment, in kg, for the core's progression maths.
