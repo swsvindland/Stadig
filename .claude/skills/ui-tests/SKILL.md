@@ -20,7 +20,9 @@ Every app's DEBUG launch arguments are in `docs/<app>.md`. Start a test as close
 ## Finding things
 
 - By accessibility identifier, always: `app.buttons["today.startSession"]`. Identifiers are `screen.element` in lowerCamelCase (`plan.nextBlock`, `logger.search`, `session.answer`). Add them in the view with `.accessibilityIdentifier(...)`; they don't change what VoiceOver says.
-- Tabs can use their labels (`app.tabBars.buttons["Plan"]`): the plan pins English and the US region.
+- Tabs by their labels, through `app.openTab("Plan")` in `UITests/Support` (the plan pins English and the US region): it taps the iPhone's tab bar, or on an iPad the sidebar, since the iPad's tab bar along the top shows a section's name in place of its tabs. `-tab` starts on any destination.
+- Every test runs on the iPhone and the iPad (`Scripts/build.sh ui <app> ipad`): a regular-width suite `XCTSkipUnless`es the iPad idiom, and an iPhone-only flow `XCTSkipIf`s it, naming the iPad test that covers it. [docs/testing.md](../../../docs/testing.md) has the iPad's patterns.
+- An identifier on a bare stack is given to every element inside it, over their own: give an identified stack `.accessibilityElement(children: .contain)` first. A `Table` or `List` may not expose its own identifier: wait for a row.
 - Never by index or coordinates, never by copy that's likely to change.
 
 ## Waiting
