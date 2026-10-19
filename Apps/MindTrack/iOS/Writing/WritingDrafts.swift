@@ -45,6 +45,17 @@ actor WritingDrafts {
         }
     }
 
+    /// Locked with the device on iPhone, iPad and Vision Pro. The Mac has no per-file protection
+    /// class (FileVault covers the disk), and asking for one there fails the write outright, so a
+    /// draft written on the Mac would never be kept.
+    private static var writing: Data.WritingOptions {
+        #if os(macOS)
+        return [.atomic]
+        #else
+        return [.atomic, .completeFileProtection]
+        #endif
+    }
+
     /// Keeps what's written so far; nothing written, nothing kept.
     func save(text: String, handwritten: Bool, drawing: PKDrawing, ownPage: String?, for key: String) {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !drawing.strokes.isEmpty || ownPage != nil else {
@@ -56,7 +67,7 @@ actor WritingDrafts {
             ownPage: ownPage)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try JSONEncoder().encode(draft).write(to: file(key), options: [.atomic, .completeFileProtection])
+            try JSONEncoder().encode(draft).write(to: file(key), options: Self.writing)
         } catch {
             Self.log.error("Couldn't keep a writing draft: \(error.localizedDescription)")
         }
