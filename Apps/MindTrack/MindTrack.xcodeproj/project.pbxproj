@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		4E3F0266A2E47EC91D557B25 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F916CF44D5BAA829C0F56 /* SystemCore */; };
 		4E3F0D71B889B5A062FD7C4F /* SystemAI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F3C3E176BD4363C48D6B9 /* SystemAI */; };
+		4E3F749F6853156086920694 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F8003CF536D69AED3EF12 /* SystemCore */; };
 		4E3F795B6990C2D3391783D4 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F3D49BBDDDD73B590632D /* SystemStore */; };
+		4E3FD06152EAF22916A01108 /* MindTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E3FB37F44E435D00DEE9BD5 /* MindTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4E3FFDB243C0BC13E093CA2A /* MindEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3FA3B761C1075B2B17E233 /* MindEngine */; };
 /* End PBXBuildFile section */
 
@@ -21,6 +23,13 @@
 			remoteGlobalIDString = 4E3F2E575251B519DCEDE83D;
 			remoteInfo = MindTrack;
 		};
+		4E3FE09EC3E214E6578CA4F8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4E3F2CBE4EDCE92C47644985 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E3F84B2C891E3A19BD18079;
+			remoteInfo = MindTrackWidgets;
+		};
 		4E3FF75089F9B34A26DF3245 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4E3F2CBE4EDCE92C47644985 /* Project object */;
@@ -30,13 +39,31 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4E3F9EC4DCEA6496067EAF7F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4E3FD06152EAF22916A01108 /* MindTrackWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		4E3F0651FF7C928E2372879D /* MindTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MindTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E3F0B2EB0B54706169589B8 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
 		4E3F1A95A317A26DD4DE4533 /* MindTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MindTrack.storekit; sourceTree = "<group>"; };
 		4E3F23F521CF876E82174E2A /* MindTrack-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "MindTrack-macOS.entitlements"; sourceTree = "<group>"; };
+		4E3F2E9979B270616334CE26 /* Widgets-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Widgets-macOS.entitlements"; sourceTree = "<group>"; };
 		4E3F3EDD57C99DB6BF9B6B6F /* MindTrack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MindTrack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E3F98EFF33BB57D70D080F9 /* MindTrack.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MindTrack.xctestplan; sourceTree = "<group>"; };
 		4E3FA9BFF8311DE77F954529 /* MindTrackUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MindTrackUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E3FB37F44E435D00DEE9BD5 /* MindTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MindTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E3FB49CABA08E40D980901F /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
 		4E3FC4FD57644D586C8FA3EE /* MindTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MindTrack.entitlements; sourceTree = "<group>"; };
 		4E3FEDA99953AF840AAD2F59 /* MindTrackUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MindTrackUI.xctestplan; sourceTree = "<group>"; };
 		4E3FEDE27781BD290300F0B3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -67,9 +94,19 @@
 			path = Tests;
 			sourceTree = "<group>";
 		};
+		4E3F2DEFCEDDD03BFBFE0C68 /* Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Widgets;
+			sourceTree = "<group>";
+		};
 		4E3FB7E25152A1CA1745BDA0 /* iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		4E3FB963A8E8899E75CDE4A7 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		4E3FD141A190EF1D136BECE6 /* UITests */ = {
@@ -105,6 +142,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4E3FC7BBCCD148CBBF565C42 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E3F749F6853156086920694 /* SystemCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -112,6 +157,7 @@
 			isa = PBXGroup;
 			children = (
 				4E3F3EDD57C99DB6BF9B6B6F /* MindTrack.app */,
+				4E3FB37F44E435D00DEE9BD5 /* MindTrackWidgets.appex */,
 				4E3F0651FF7C928E2372879D /* MindTrackTests.xctest */,
 				4E3FA9BFF8311DE77F954529 /* MindTrackUITests.xctest */,
 			);
@@ -122,6 +168,8 @@
 			isa = PBXGroup;
 			children = (
 				4E3FB7E25152A1CA1745BDA0 /* iOS */,
+				4E3FB963A8E8899E75CDE4A7 /* Shared */,
+				4E3F2DEFCEDDD03BFBFE0C68 /* Widgets */,
 				4E3F1F7077E30D158E4F3F70 /* Catalogs */,
 				4E3F2DCA35A2C88A3BE19067 /* Tests */,
 				4E3FD141A190EF1D136BECE6 /* UITests */,
@@ -137,8 +185,11 @@
 			isa = PBXGroup;
 			children = (
 				4E3FEDE27781BD290300F0B3 /* Info.plist */,
+				4E3FB49CABA08E40D980901F /* Widgets-Info.plist */,
 				4E3FC4FD57644D586C8FA3EE /* MindTrack.entitlements */,
 				4E3F23F521CF876E82174E2A /* MindTrack-macOS.entitlements */,
+				4E3F0B2EB0B54706169589B8 /* Widgets.entitlements */,
+				4E3F2E9979B270616334CE26 /* Widgets-macOS.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -153,14 +204,17 @@
 				4E3F405F2CCE3EBB7ACF51DE /* Sources */,
 				4E3F609021C79E8147425601 /* Frameworks */,
 				4E3FB45EA33725C15B9A2B65 /* Resources */,
+				4E3F9EC4DCEA6496067EAF7F /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4E3F24D1A0F4B72191E9B214 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4E3F1F7077E30D158E4F3F70 /* Catalogs */,
 				4E3FB7E25152A1CA1745BDA0 /* iOS */,
+				4E3FB963A8E8899E75CDE4A7 /* Shared */,
 			);
 			name = MindTrack;
 			packageProductDependencies = (
@@ -219,6 +273,30 @@
 			productReference = 4E3F0651FF7C928E2372879D /* MindTrackTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		4E3F84B2C891E3A19BD18079 /* MindTrackWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E3FE49D0D08216AA819B5CF /* Build configuration list for PBXNativeTarget "MindTrackWidgets" */;
+			buildPhases = (
+				4E3FB5F2C8E461BB81E41F9C /* Sources */,
+				4E3FC7BBCCD148CBBF565C42 /* Frameworks */,
+				4E3F29127C54564C80BEFE0E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4E3F2DEFCEDDD03BFBFE0C68 /* Widgets */,
+				4E3FB963A8E8899E75CDE4A7 /* Shared */,
+			);
+			name = MindTrackWidgets;
+			packageProductDependencies = (
+				4E3F8003CF536D69AED3EF12 /* SystemCore */,
+			);
+			productName = MindTrackWidgets;
+			productReference = 4E3FB37F44E435D00DEE9BD5 /* MindTrackWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -239,6 +317,9 @@
 					4E3F6905ABA4A442048F8528 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 4E3F2E575251B519DCEDE83D;
+					};
+					4E3F84B2C891E3A19BD18079 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -263,6 +344,7 @@
 			projectRoot = "";
 			targets = (
 				4E3F2E575251B519DCEDE83D /* MindTrack */,
+				4E3F84B2C891E3A19BD18079 /* MindTrackWidgets */,
 				4E3F6905ABA4A442048F8528 /* MindTrackTests */,
 				4E3F36737F4F4CE99A25AD5B /* MindTrackUITests */,
 			);
@@ -270,6 +352,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4E3F29127C54564C80BEFE0E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4E3F5ED1D1A7BD301CA1C9D8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -315,9 +404,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4E3FB5F2C8E461BB81E41F9C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4E3F24D1A0F4B72191E9B214 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E3F84B2C891E3A19BD18079 /* MindTrackWidgets */;
+			targetProxy = 4E3FE09EC3E214E6578CA4F8 /* PBXContainerItemProxy */;
+		};
 		4E3F814A52BB25F7434D1CD9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4E3F2E575251B519DCEDE83D /* MindTrack */;
@@ -393,6 +494,51 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = MindTrack;
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		4E3F6D11AFBDC4D4522903C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Config/Widgets-macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mind Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.mind.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.1;
 			};
 			name = Debug;
@@ -548,6 +694,51 @@
 			};
 			name = Release;
 		};
+		4E3FC795459510A1554D4AB2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Config/Widgets-macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mind Track";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.mind.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
 		4E3FCFA10E060E9685DC5E19 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -655,6 +846,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		4E3FE49D0D08216AA819B5CF /* Build configuration list for PBXNativeTarget "MindTrackWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E3F6D11AFBDC4D4522903C6 /* Debug */,
+				4E3FC795459510A1554D4AB2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4E3FE8DC5DE09CC21988FABA /* Build configuration list for PBXNativeTarget "MindTrack" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -695,6 +895,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4E3F7BBD2DFCC17BF79AF4CD /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
 			productName = SystemStore;
+		};
+		4E3F8003CF536D69AED3EF12 /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E3FA6CECBB692880F4AA8A1 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
 		};
 		4E3F916CF44D5BAA829C0F56 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -245,6 +245,7 @@ final class AppModel {
     func recompute() {
         today = Day(now())
         state = makeState()
+        defer { WidgetBridge.update(self) }
         guard let state, onboarded else {
             analysis = nil
             series = [:]

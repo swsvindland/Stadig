@@ -333,6 +333,11 @@ mind_app = {**swift_common, **ios_app_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
 }}
 
+mind_widgets = dict(swift_common, **ios_widgets_common, **{
+    "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind.widgets",
+})
+
 MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemAI", "MindEngine"]
 
 MIND = {
@@ -341,11 +346,14 @@ MIND = {
     "packages": MIND_PACKAGES,
     "targets": [
         ("MindTrack", "MindTrack.app", "com.apple.product-type.application", "wrapper.application", mind_app,
-         ["iOS", "Catalogs"], MIND_PACKAGES),
+         ["iOS", "Shared", "Catalogs"], MIND_PACKAGES),
+        ("MindTrackWidgets", "MindTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
+         mind_widgets, ["Widgets", "Shared"], ["SystemCore"]),
     ] + test_targets("MindTrack", "dev.svindland.stadig.mind"),
-    "embeds": [],
-    "config_files": ["Info.plist", "MindTrack.entitlements", "MindTrack-macOS.entitlements"],
-    "groups": ["iOS", "Catalogs", "Tests", "UITests"],
+    "embeds": [("MindTrack", "MindTrackWidgets", "Embed Foundation Extensions", 13, "", None)],
+    "config_files": ["Info.plist", "Widgets-Info.plist", "MindTrack.entitlements", "MindTrack-macOS.entitlements",
+                     "Widgets.entitlements", "Widgets-macOS.entitlements"],
+    "groups": ["iOS", "Shared", "Widgets", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds japanese.db (built by Scripts/build-japanese-catalog.py, not in git) and its README.
     "exceptions": [("Catalogs", "MindTrack", [".gitignore", "README.md"])],
     "extra_files": ["MindTrack.storekit", "MindTrack.xctestplan", "MindTrackUI.xctestplan"],
