@@ -23,7 +23,7 @@ final class MealAIService {
     /// and when the setting changes.
     func configure(catalog: FoodCatalog, allowCloud: Bool) {
         self.allowCloud = allowCloud
-        guard #available(iOS 27.0, *) else {
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else {
             availability = MealAIAvailability(
                 onDevice: false, onDeviceVision: false, privateCloud: false,
                 reason: "Photo and description logging needs iOS 27.")
@@ -38,17 +38,21 @@ final class MealAIService {
 
     /// Loads the model ahead of a likely request (the logger opening), so the answer comes faster.
     func prewarm() {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else { return }
         Task { await ai.prewarm() }
     }
 
     func recognize(photo: CGImage, note: String?, personal: [PersonalFood]) async throws -> MealGuess {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { throw MealAIError.unavailable(availability.reason ?? "Unavailable") }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else {
+            throw MealAIError.unavailable(availability.reason ?? "Unavailable")
+        }
         return try await ai.recognize(photo: photo, note: note, personal: personal)
     }
 
     func recognize(description: String, personal: [PersonalFood]) async throws -> MealGuess {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { throw MealAIError.unavailable(availability.reason ?? "Unavailable") }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else {
+            throw MealAIError.unavailable(availability.reason ?? "Unavailable")
+        }
         return try await ai.recognize(description: description, personal: personal)
     }
 
@@ -56,7 +60,7 @@ final class MealAIService {
     /// do the reading; the model only helps with a name.
     /// A Supplement Facts photo: OCR and the parser, with the model naming the product when it can.
     func readSupplementLabel(photo: CGImage) async throws -> SupplementLabelResult {
-        if #available(iOS 27.0, *), let ai = engine as? MealAI {
+        if #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI {
             return try await ai.readSupplementLabel(photo: photo)
         }
         let lines = try await LabelOCR.lines(in: photo)
@@ -66,23 +70,23 @@ final class MealAIService {
     /// A live scan's text checked by the model: values copied from the panel and the product's name.
     /// Nil without a model (on the device alone when `onDeviceOnly`).
     func checkLabel(panel: [String], other: [String], onDeviceOnly: Bool) async throws -> LabelCheck? {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return nil }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else { return nil }
         return try await ai.checkLabel(panel: panel, other: other, onDeviceOnly: onDeviceOnly)
     }
 
     func checkSupplement(panel: [String], other: [String], onDeviceOnly: Bool) async throws -> SupplementCheck? {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return nil }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else { return nil }
         return try await ai.checkSupplement(panel: panel, other: other, onDeviceOnly: onDeviceOnly)
     }
 
     /// Loads the on-device model for a scan's checks as the scanner opens.
     func prewarmCheck(supplement: Bool) {
-        guard #available(iOS 27.0, *), let ai = engine as? MealAI else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else { return }
         Task { await ai.prewarmCheck(supplement: supplement) }
     }
 
     func readLabel(photo: CGImage) async throws -> LabelResult {
-        if #available(iOS 27.0, *), let ai = engine as? MealAI {
+        if #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI {
             return try await ai.readLabel(photo: photo)
         }
         // One Vision pass gives both the positions (for two-column panels) and the lines.

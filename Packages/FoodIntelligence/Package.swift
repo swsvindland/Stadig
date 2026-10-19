@@ -5,7 +5,7 @@ import PackageDescription
 /// Compute when allowed. The model names foods and amounts; nutrients always come from the catalog.
 let package = Package(
     name: "FoodIntelligence",
-    platforms: [.iOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "FoodIntelligence", targets: ["FoodIntelligence"])],
     dependencies: [.package(path: "../SystemCore"), .package(path: "../FoodDatabase")],
     targets: [

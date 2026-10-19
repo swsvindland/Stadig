@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import SystemCore
 
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 @Generable(description: "What a person wants changed in next week's meal plan")
 struct PlanRequestOutput {
     @Guide(
@@ -47,7 +47,7 @@ public struct PlanAssistant: Sendable {
 
     public func read(_ request: String, allowCloud: Bool) async -> PlanChange {
         let words = PlanRequests.read(request)
-        guard #available(iOS 27.0, macOS 27.0, *) else { return words }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return words }
         let model: (any LanguageModel)?
         switch Self.reader(deviceAvailable: SystemLanguageModel.default.availability == .available, allowCloud: allowCloud) {
         case .device:

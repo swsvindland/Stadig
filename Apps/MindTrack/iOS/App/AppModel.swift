@@ -78,6 +78,9 @@ final class AppModel {
     /// step looks like the last one's.
     var stepScreen: StepScreen? { run.map { StepScreen(session: $0.session.id, step: $0.stepNumber) } }
 
+    /// The shared container mirrored to the person's other devices through the family's CloudKit
+    /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
+    @ObservationIgnored private(set) var family: FamilySync?
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var dayObservers: [NotificationToken] = []
@@ -114,7 +117,9 @@ final class AppModel {
             self.init(
                 store: store, shared: shared, drafts: WritingDrafts(folder: scratch.appending(path: "Writing drafts", directoryHint: .isDirectory)))
         } else {
-            self.init(store: store, shared: SharedContainer(), drafts: WritingDrafts(folder: WritingDrafts.defaultFolder))
+            let shared = SharedContainer()
+            self.init(store: store, shared: shared, drafts: WritingDrafts(folder: WritingDrafts.defaultFolder))
+            family = FamilySync(shared: shared)
         }
     }
 

@@ -6,7 +6,7 @@ import PackageDescription
 /// label parser. Pure Swift over the system's SQLite.
 let package = Package(
     name: "FoodDatabase",
-    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "FoodDatabase", targets: ["FoodDatabase"])],
     dependencies: [.package(path: "../SystemCore")],
     targets: [

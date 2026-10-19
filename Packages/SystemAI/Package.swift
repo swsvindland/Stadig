@@ -6,7 +6,7 @@ import PackageDescription
 /// never depends on it. Another provider could sit behind the same interface later.
 let package = Package(
     name: "SystemAI",
-    platforms: [.iOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "SystemAI", targets: ["SystemAI"])],
     dependencies: [.package(path: "../SystemCore")],
     targets: [

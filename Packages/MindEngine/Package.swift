@@ -8,7 +8,7 @@ import PackageDescription
 /// resources. Pure Swift over SystemCore (plus SQLite for the catalog), so `swift test` runs it on a Mac.
 let package = Package(
     name: "MindEngine",
-    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "MindEngine", targets: ["MindEngine"])],
     dependencies: [.package(path: "../SystemCore")],
     targets: [

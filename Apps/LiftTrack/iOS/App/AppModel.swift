@@ -90,6 +90,9 @@ final class AppModel {
     var showSettings = false
     var today: Day = .today
 
+    /// The shared container mirrored to the person's other devices through the family's CloudKit
+    /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
+    @ObservationIgnored private(set) var family: FamilySync?
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
@@ -114,6 +117,7 @@ final class AppModel {
         }
         #endif
         self.init(store: store, shared: files.shared, liveURL: files.liveURL, widgetURL: files.widgetURL)
+        if !memory { family = FamilySync(shared: files.shared) }
     }
 
     /// Everything outside the store the model reads or writes: tests pass a store in memory and a

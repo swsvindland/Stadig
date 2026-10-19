@@ -112,7 +112,7 @@ public actor SystemAI {
     /// also needs the setting on and the entitlement.
     public static func availability(allowCloud: Bool) -> AIAvailability {
         #if canImport(FoundationModels)
-        if #available(iOS 27.0, macOS 27.0, *) { return FoundationBackend.availability(allowCloud: allowCloud) }
+        if #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) { return FoundationBackend.availability(allowCloud: allowCloud) }
         #endif
         return AIAvailability(onDevice: false, privateCloud: false, reason: "This needs Apple Intelligence on iOS 27.")
     }
@@ -142,7 +142,7 @@ public actor SystemAI {
 
     static func run(_ engine: AIEngine, instructions: String, prompt: String, maxTokens: Int) async throws -> String {
         #if canImport(FoundationModels)
-        if #available(iOS 27.0, macOS 27.0, *) {
+        if #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) {
             return try await FoundationBackend.respond(engine, instructions: instructions, prompt: prompt, maxTokens: maxTokens)
         }
         #endif
@@ -153,7 +153,7 @@ public actor SystemAI {
 #if canImport(FoundationModels)
 /// Apple's Foundation Models behind the interface: the system model on device, Private Cloud
 /// Compute through the same session API.
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 enum FoundationBackend {
     /// `entitled` and `cloud` are there for tests; Private Cloud Compute isn't even asked without the
     /// entitlement, since a request to it would stop the app.

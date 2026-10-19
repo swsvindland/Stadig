@@ -88,9 +88,28 @@ swift_common = {
     "DEAD_CODE_STRIPPING": "YES",
 }
 
-ios_app_common = {
+# Every app is one target that builds natively for iPhone, iPad, the Mac and Apple Vision Pro: the
+# destination picks the SDK (SDKROOT auto). One bundle id across them means one App Store record,
+# one purchase that unlocks every device (universal purchase) and one CloudKit container.
+multiplatform = {
+    "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
+    "MACOSX_DEPLOYMENT_TARGET": "26.1",
+    "SDKROOT": "auto",
+    "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator macosx xros xrsimulator",
+    "SUPPORTS_MACCATALYST": "NO",
+    "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "NO",
+    "SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD": "NO",
+    "TARGETED_DEVICE_FAMILY": "1,2,7",
+    "XROS_DEPLOYMENT_TARGET": "26.1",
+}
+
+ios_app_common = dict(multiplatform, **{
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    # Vision Pro's icon is a stack of layers, an asset of its own.
+    "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xr*]": "AppIconVision",
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+    # The Mac app runs in the App Sandbox (its own entitlements file) with the hardened runtime.
+    "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
     "INFOPLIST_FILE": "Config/Info.plist",
     "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.healthcare-fitness",
     "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES",
@@ -98,41 +117,30 @@ ios_app_common = {
     "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",
     "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight",
     "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone": "UIInterfaceOrientationPortrait",
-    "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
     "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks",
-    "SDKROOT": "iphoneos",
-    "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
-    "SUPPORTS_MACCATALYST": "NO",
-    "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "NO",
-    "SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD": "NO",
+    "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": "@executable_path/../Frameworks",
     "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MAIN_APP",
-    "TARGETED_DEVICE_FAMILY": "1,2",
-}
+})
 
-ios_widgets_common = {
+ios_widgets_common = dict(multiplatform, **{
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
     "CODE_SIGN_ENTITLEMENTS": "Config/Widgets.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/Widgets-macOS.entitlements",
+    "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
     "INFOPLIST_FILE": "Config/Widgets-Info.plist",
-    "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
     "LD_RUNPATH_SEARCH_PATHS": ["@executable_path/Frameworks", "@executable_path/../../Frameworks"],
-    "SDKROOT": "iphoneos",
+    "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": ["@executable_path/../Frameworks", "@executable_path/../../../../Frameworks"],
     "SKIP_INSTALL": "YES",
-    "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
-    "TARGETED_DEVICE_FAMILY": "1,2",
-}
-
+})
 
 
 def unit_tests(host, bundle_id):
-    """A unit test bundle hosted in the app, so tests can `@testable import` it."""
-    settings = dict(swift_common, **{
+    """A unit test bundle hosted in the app, so tests can `@testable import` it, on any of its platforms."""
+    settings = dict(swift_common, **multiplatform, **{
         "BUNDLE_LOADER": "$(TEST_HOST)",
-        "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": ["@executable_path/../Frameworks", "@loader_path/../Frameworks"],
         "PRODUCT_BUNDLE_IDENTIFIER": f"{bundle_id}.tests",
-        "SDKROOT": "iphoneos",
-        "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
         "SWIFT_EMIT_LOC_STRINGS": "NO",
-        "TARGETED_DEVICE_FAMILY": "1,2",
         "TEST_HOST": f"$(BUILT_PRODUCTS_DIR)/{host}.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/{host}",
     })
     del settings["ENABLE_PREVIEWS"]
@@ -141,17 +149,52 @@ def unit_tests(host, bundle_id):
 
 def ui_tests(host, bundle_id):
     """A UI test bundle that drives the app from outside, as a person would."""
-    settings = dict(swift_common, **{
-        "IPHONEOS_DEPLOYMENT_TARGET": "26.1",
+    settings = dict(swift_common, **multiplatform, **{
         "PRODUCT_BUNDLE_IDENTIFIER": f"{bundle_id}.uitests",
-        "SDKROOT": "iphoneos",
-        "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
         "SWIFT_EMIT_LOC_STRINGS": "NO",
-        "TARGETED_DEVICE_FAMILY": "1,2",
         "TEST_TARGET_NAME": host,
     })
     del settings["ENABLE_PREVIEWS"]
     return settings
+
+
+def watch_app(name, bundle_id, companion, extra):
+    """A watchOS app embedded in its iPhone app, that also runs (and syncs) without the phone."""
+    return dict(swift_common, **{
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+        "CODE_SIGN_ENTITLEMENTS": "Config/Watch.entitlements",
+        "INFOPLIST_FILE": "Config/Watch-Info.plist",
+        "INFOPLIST_KEY_CFBundleDisplayName": name,
+        "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
+        "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": companion,
+        "INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp": "YES",
+        "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks",
+        "PRODUCT_BUNDLE_IDENTIFIER": bundle_id,
+        "SDKROOT": "watchos",
+        "SKIP_INSTALL": "YES",
+        "SUPPORTED_PLATFORMS": "watchos watchsimulator",
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) WATCH_APP",
+        "TARGETED_DEVICE_FAMILY": "4",
+        "WATCHOS_DEPLOYMENT_TARGET": "26.1",
+    }, **extra)
+
+
+def watch_widgets(name, bundle_id):
+    """The Watch app's complications, a WidgetKit extension inside it."""
+    return dict(swift_common, **{
+        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+        "CODE_SIGN_ENTITLEMENTS": "Config/WatchWidgets.entitlements",
+        "INFOPLIST_FILE": "Config/Widgets-Info.plist",
+        "INFOPLIST_KEY_CFBundleDisplayName": name,
+        "LD_RUNPATH_SEARCH_PATHS": ["@executable_path/Frameworks", "@executable_path/../../Frameworks"],
+        "PRODUCT_BUNDLE_IDENTIFIER": bundle_id,
+        "SDKROOT": "watchos",
+        "SKIP_INSTALL": "YES",
+        "SUPPORTED_PLATFORMS": "watchos watchsimulator",
+        "TARGETED_DEVICE_FAMILY": "4",
+        "WATCHOS_DEPLOYMENT_TARGET": "26.1",
+    })
 
 
 def test_targets(app, bundle_id):
@@ -168,6 +211,7 @@ def test_targets(app, bundle_id):
 
 lift_app = dict(swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/LiftTrack.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/LiftTrack-macOS.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
     "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.",
@@ -185,47 +229,20 @@ lift_widgets = dict(swift_common, **ios_widgets_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.widgets",
 })
 
-lift_watch = dict(swift_common, **{
-    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-    "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
-    "CODE_SIGN_ENTITLEMENTS": "Config/Watch.entitlements",
-    "INFOPLIST_FILE": "Config/Watch-Info.plist",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
+lift_watch = watch_app("Lift Track", "dev.svindland.stadig.lift.watchkitapp", "dev.svindland.stadig.lift", {
     "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track shows your heart rate during a session and uses it to time rests.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves sessions you run on your Watch to Apple Health.",
-    "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
-    "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": "dev.svindland.stadig.lift",
-    "INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp": "YES",
-    "LD_RUNPATH_SEARCH_PATHS": "@executable_path/Frameworks",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.watchkitapp",
-    "SDKROOT": "watchos",
-    "SKIP_INSTALL": "YES",
-    "SUPPORTED_PLATFORMS": "watchos watchsimulator",
-    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) WATCH_APP",
-    "TARGETED_DEVICE_FAMILY": "4",
-    "WATCHOS_DEPLOYMENT_TARGET": "26.1",
 })
 
-lift_watch_widgets = dict(swift_common, **{
-    "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
-    "CODE_SIGN_ENTITLEMENTS": "Config/WatchWidgets.entitlements",
-    "INFOPLIST_FILE": "Config/Widgets-Info.plist",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
-    "LD_RUNPATH_SEARCH_PATHS": ["@executable_path/Frameworks", "@executable_path/../../Frameworks"],
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.watchkitapp.widgets",
-    "SDKROOT": "watchos",
-    "SKIP_INSTALL": "YES",
-    "SUPPORTED_PLATFORMS": "watchos watchsimulator",
-    "TARGETED_DEVICE_FAMILY": "4",
-    "WATCHOS_DEPLOYMENT_TARGET": "26.1",
-})
+lift_watch_widgets = watch_widgets("Lift Track", "dev.svindland.stadig.lift.watchkitapp.widgets")
 
 LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "HealthBridge", "LiftEngine"]
 lift_embeds = [
-    # (host, embedded, phase name, dstSubfolderSpec, dstPath)
-    ("LiftTrack", "LiftTrackWidgets", "Embed Foundation Extensions", 13, ""),
-    ("LiftTrack", "LiftTrackWatch", "Embed Watch Content", 16, "$(CONTENTS_FOLDER_PATH)/Watch"),
-    ("LiftTrackWatch", "LiftTrackWatchWidgets", "Embed Foundation Extensions", 13, ""),
+    # (host, embedded, phase name, dstSubfolderSpec, dstPath, platform filter or None for every platform)
+    ("LiftTrack", "LiftTrackWidgets", "Embed Foundation Extensions", 13, "", None),
+    # Only the iPhone app carries the Watch app; the Mac and Vision Pro builds leave it out.
+    ("LiftTrack", "LiftTrackWatch", "Embed Watch Content", 16, "$(CONTENTS_FOLDER_PATH)/Watch", "ios"),
+    ("LiftTrackWatch", "LiftTrackWatchWidgets", "Embed Foundation Extensions", 13, "", None),
 ]
 # LIFT_NO_WATCH_EMBED=1 builds the iPhone app without the Watch app inside (handy while the Watch
 # target doesn't build). Never commit a project generated this way.
@@ -248,8 +265,8 @@ LIFT = {
          "wrapper.app-extension", lift_watch_widgets, ["WatchWidgets", "Shared"], ["SystemCore"]),
     ] + test_targets("LiftTrack", "dev.svindland.stadig.lift"),
     "embeds": lift_embeds,
-    "config_files": ["Info.plist", "Watch-Info.plist", "Widgets-Info.plist", "LiftTrack.entitlements", "Widgets.entitlements",
-                     "Watch.entitlements", "WatchWidgets.entitlements"],
+    "config_files": ["Info.plist", "Watch-Info.plist", "Widgets-Info.plist", "LiftTrack.entitlements", "LiftTrack-macOS.entitlements",
+                     "Widgets.entitlements", "Widgets-macOS.entitlements", "Watch.entitlements", "WatchWidgets.entitlements"],
     "groups": ["iOS", "Shared", "Widgets", "Watch", "WatchWidgets", "Tests", "UITests"],
     "exceptions": [],
     "extra_files": ["LiftTrack.storekit", "LiftTrack.xctestplan", "LiftTrackUI.xctestplan"],
@@ -263,6 +280,7 @@ LIFT = {
 
 macro_app = dict(swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MacroTrack.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/MacroTrack-macOS.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Macro Track",
     "INFOPLIST_KEY_NSHealthShareUsageDescription": "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.",
@@ -288,8 +306,9 @@ MACRO = {
         ("MacroTrackWidgets", "MacroTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
          macro_widgets, ["Widgets", "Shared"], ["SystemCore"]),
     ] + test_targets("MacroTrack", "dev.svindland.stadig.macro"),
-    "embeds": [("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "")],
-    "config_files": ["Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "Widgets.entitlements"],
+    "embeds": [("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "", None)],
+    "config_files": ["Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "MacroTrack-macOS.entitlements",
+                     "Widgets.entitlements", "Widgets-macOS.entitlements"],
     "groups": ["iOS", "Shared", "Widgets", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds off.db (installed by Scripts/install-food-catalogs.sh, not in git) and its README.
     "exceptions": [("Catalogs", "MacroTrack", [".gitignore", "README.md"])],
@@ -302,6 +321,7 @@ MACRO = {
 
 mind_app = {**swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/MindTrack-macOS.entitlements",
     "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
     "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
     # Xcode moved this out of Config/Info.plist into build settings.
@@ -311,8 +331,6 @@ mind_app = {**swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_NSSpeechRecognitionUsageDescription": "Speaking exercises are checked by on-device speech recognition. What you say stays on this device.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Mind Track uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand.",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
-    # The doc puts this one on the Mac too (sheet music and study at a desk): the iPad app runs there as is.
-    "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "YES",
 }}
 
 MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemAI", "MindEngine"]
@@ -326,7 +344,7 @@ MIND = {
          ["iOS", "Catalogs"], MIND_PACKAGES),
     ] + test_targets("MindTrack", "dev.svindland.stadig.mind"),
     "embeds": [],
-    "config_files": ["Info.plist", "MindTrack.entitlements"],
+    "config_files": ["Info.plist", "MindTrack.entitlements", "MindTrack-macOS.entitlements"],
     "groups": ["iOS", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds japanese.db (built by Scripts/build-japanese-catalog.py, not in git) and its README.
     "exceptions": [("Catalogs", "MindTrack", [".gitignore", "README.md"])],
@@ -404,9 +422,10 @@ def generate(spec):
     w("// !$*UTF8*$!\n{\n\tarchiveVersion = 1;\n\tclasses = {\n\t};\n\tobjectVersion = 77;\n\tobjects = {\n")
 
     w("/* Begin PBXBuildFile section */")
-    for host, emb, phase_name, *_ in embeds:
+    for host, emb, phase_name, *_rest in embeds:
         prod = [t for t in targets if t[0] == emb][0][1]
-        w(f"\t\t{gid('bf-' + emb)} /* {prod} in {phase_name} */ = {{isa = PBXBuildFile; fileRef = {gid('prod-' + emb)} /* {prod} */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
+        only = f"platformFilter = {_rest[-1]}; " if _rest[-1] else ""
+        w(f"\t\t{gid('bf-' + emb)} /* {prod} in {phase_name} */ = {{isa = PBXBuildFile; fileRef = {gid('prod-' + emb)} /* {prod} */; {only}settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};")
     for name, *_rest in targets:
         for pkg in _rest[-1]:
             w(f"\t\t{gid('pbf-' + name + pkg)} /* {pkg} in Frameworks */ = {{isa = PBXBuildFile; productRef = {gid('pdep-' + name + pkg)} /* {pkg} */; }};")
@@ -420,7 +439,7 @@ def generate(spec):
     w("/* End PBXContainerItemProxy section */\n")
 
     w("/* Begin PBXCopyFilesBuildPhase section */")
-    for host, emb, name, spec_, path in embeds:
+    for host, emb, name, spec_, path, _only in embeds:
         prod = [t for t in targets if t[0] == emb][0][1]
         w(f"\t\t{gid('copy-' + emb)} /* {name} */ = {{\n\t\t\tisa = PBXCopyFilesBuildPhase;\n\t\t\tbuildActionMask = 2147483647;\n\t\t\tdstPath = {q(path)};\n\t\t\tdstSubfolderSpec = {spec_};\n\t\t\tfiles = (\n\t\t\t\t{gid('bf-' + emb)} /* {prod} in {name} */,\n\t\t\t);\n\t\t\tname = {q(name)};\n\t\t\trunOnlyForDeploymentPostprocessing = 0;\n\t\t}};")
     w("/* End PBXCopyFilesBuildPhase section */\n")
@@ -504,8 +523,9 @@ def generate(spec):
         w(f"/* End {section} section */\n")
 
     w("/* Begin PBXTargetDependency section */")
-    for host, emb, *_ in embeds:
-        w(f"\t\t{gid('dep-' + emb)} /* PBXTargetDependency */ = {{\n\t\t\tisa = PBXTargetDependency;\n\t\t\ttarget = {gid('target-' + emb)} /* {emb} */;\n\t\t\ttargetProxy = {gid('proxy-' + emb)} /* PBXContainerItemProxy */;\n\t\t}};")
+    for host, emb, *_rest in embeds:
+        only = f"\t\t\tplatformFilter = {_rest[-1]};\n" if _rest[-1] else ""
+        w(f"\t\t{gid('dep-' + emb)} /* PBXTargetDependency */ = {{\n\t\t\tisa = PBXTargetDependency;\n{only}\t\t\ttarget = {gid('target-' + emb)} /* {emb} */;\n\t\t\ttargetProxy = {gid('proxy-' + emb)} /* PBXContainerItemProxy */;\n\t\t}};")
     for test, host in tests:
         w(f"\t\t{gid('dep-' + test)} /* PBXTargetDependency */ = {{\n\t\t\tisa = PBXTargetDependency;\n\t\t\ttarget = {gid('target-' + host)} /* {host} */;\n\t\t\ttargetProxy = {gid('proxy-' + test)} /* PBXContainerItemProxy */;\n\t\t}};")
     w("/* End PBXTargetDependency section */\n")

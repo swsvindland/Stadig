@@ -40,7 +40,7 @@ public struct MealAIAvailability: Sendable, Equatable {
 
     /// Safe to call on any OS version: before iOS 27 nothing is available.
     public static func current(allowCloud: Bool) -> MealAIAvailability {
-        if #available(iOS 27.0, macOS 27.0, *) { return MealEngines.availability(allowCloud: allowCloud) }
+        if #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) { return MealEngines.availability(allowCloud: allowCloud) }
         return MealAIAvailability(
             onDevice: false, onDeviceVision: false, privateCloud: false,
             reason: "Meal recognition needs iOS 27 with Apple Intelligence.")
@@ -84,7 +84,7 @@ enum MealEngines {
         }
     }
 
-    @available(iOS 27.0, macOS 27.0, *)
+    @available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
     static func availability(
         allowCloud: Bool, entitled: Bool = PrivateCloud.isEntitled, cloud probe: () -> (available: Bool, vision: Bool) = probeCloud
     ) -> MealAIAvailability {
@@ -118,7 +118,7 @@ enum MealEngines {
     }
 
     /// Whether Private Cloud Compute can answer now, and read photos.
-    @available(iOS 27.0, macOS 27.0, *)
+    @available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
     static func probeCloud() -> (available: Bool, vision: Bool) {
         let pcc = PrivateCloudComputeLanguageModel()
         let available = pcc.isAvailable && !pcc.quotaUsage.isLimitReached

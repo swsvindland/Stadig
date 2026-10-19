@@ -11,7 +11,7 @@ import SystemCore
 ///
 /// Call `prewarm()` when logging becomes likely (the app comes to the front, the log sheet opens);
 /// it loads the model and caches the instructions at most every ten minutes.
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 public actor MealAI {
     private let catalog: any MealCatalog
     private let allowCloud: Bool

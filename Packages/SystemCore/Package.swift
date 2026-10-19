@@ -7,7 +7,7 @@ import PackageDescription
 /// Foundation only, so `swift test` runs it on a Mac.
 let package = Package(
     name: "SystemCore",
-    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "SystemCore", targets: ["SystemCore"])],
     targets: [
         .target(name: "SystemCore"),

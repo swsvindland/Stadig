@@ -4,7 +4,7 @@ import FoundationModels
 
 /// Sessions created and prewarmed ahead of a request, by instructions. Each is used once:
 /// a session keeps its transcript, and every meal starts fresh.
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 actor SessionPool {
     private var warm: [String: LanguageModelSession] = [:]
 
@@ -20,7 +20,7 @@ actor SessionPool {
 }
 
 /// One of Apple's models answering the meal requests with guided generation.
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 struct FoundationMealModel: MealModel {
     let engine: MealEngine
     let model: any LanguageModel
@@ -199,7 +199,7 @@ enum Retry {
     }
 }
 
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 extension LabelGuess {
     init(_ output: LabelOutput) {
         self.init(

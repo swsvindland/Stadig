@@ -6,7 +6,7 @@ import PackageDescription
 /// only reads requests like "no fish this week".
 let package = Package(
     name: "MealPlanner",
-    platforms: [.iOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "MealPlanner", targets: ["MealPlanner"])],
     dependencies: [.package(path: "../SystemCore"), .package(path: "../NutritionEngine"), .package(path: "../FoodDatabase")],
     targets: [

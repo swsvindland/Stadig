@@ -6,7 +6,7 @@ import PackageDescription
 /// Fatigue Budget's choices.
 let package = Package(
     name: "ExerciseLibrary",
-    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "ExerciseLibrary", targets: ["ExerciseLibrary"])],
     dependencies: [.package(path: "../SystemCore")],
     targets: [

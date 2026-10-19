@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 
-@available(iOS 27.0, macOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 enum ModelErrors {
     /// The person-facing reason a request failed, so the app can offer a retry or an explanation.
     /// Cancellation is not an error here and is passed through by callers.

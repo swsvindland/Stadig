@@ -112,6 +112,9 @@ final class AppModel {
         didSet { if selectedDay != oldValue { loggerTime = nil } }
     }
 
+    /// The shared container mirrored to the person's other devices through the family's CloudKit
+    /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
+    @ObservationIgnored private(set) var family: FamilySync?
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
@@ -147,6 +150,7 @@ final class AppModel {
         if launch.has("-resetData") { store.eraseAll() }
         #endif
         self.init(store: store, shared: shared, widgetURL: widgetURL, defaults: memory ? nil : .standard, usesSystemServices: !launch.isQuiet)
+        if !memory { family = FamilySync(shared: shared) }
     }
 
     /// Where the shared files and the widgets' snapshot go: the App Group, or a fresh folder of the

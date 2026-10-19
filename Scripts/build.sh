@@ -6,16 +6,22 @@
 #   ios            Lift Track for iPhone/iPad with its widgets and Watch app
 #   watch          Lift Track's Watch app and its complications (generic watchOS simulator)
 #   macro          Macro Track for iPhone/iPad with its widgets
+#   macro-watch    Macro Track's Watch app and its complications (generic watchOS simulator)
 #   mind           Mind Track for iPhone/iPad
-#   unit <app>     an app's unit and integration tests, and its packages' tests (its default test plan)
-#   ui <app>       an app's UI tests, end to end (its UI test plan)
+#   mac <app>      the app for the Mac, signed to run on this Mac (see mac_build below)
+#   vision <app>   the app for Apple Vision Pro (generic visionOS simulator)
+#   unit <app> [device]  an app's unit and integration tests (its default test plan); device is
+#                  iphone (the default), ipad, vision or mac
+#   ui <app> [device]    an app's UI tests, end to end (its UI test plan), on the same devices
 #   all            lint, every package's tests and every build above
-#   simulator      print this checkout's test simulator's UDID (creating it if needed)
-#   products       print where this checkout's simulator builds land (the .app files)
+#   simulator [device]   print this checkout's test simulator's UDID (creating it if needed):
+#                  iphone (the default), ipad or vision
+#   products [mac] print where this checkout's simulator (or Mac) builds land (the .app files)
 # <app> is lift, macro or mind. Builds print only errors and warnings, into a DerivedData folder of
 # this checkout's own (/tmp/system-dd-<checkout>; DERIVED_DATA overrides it). Simulator work runs on
-# this checkout's own simulator ("Stadig Tests <checkout>", created when missing), so sessions in other
-# checkouts and worktrees never collide with it. SIMULATOR=<udid> uses another.
+# this checkout's own simulators ("Stadig Tests <checkout>", "Stadig iPad <checkout>" and "Stadig
+# Vision <checkout>", created when missing), so sessions in other checkouts and worktrees never
+# collide with them. SIMULATOR=<udid> uses another.
 # STRICT=1 (as CI sets it) treats every warning as an error. SANITIZE=thread or address runs the
 # package tests under that sanitizer.
 set -u
@@ -50,16 +56,23 @@ run_tests() {
   done
 }
 
-# A simulator of our own: the newest "Pro" iPhone on the newest iOS runtime that has one.
+# A simulator of our own: the newest "Pro" iPhone, the newest 13-inch iPad Pro or the Vision Pro, on
+# the newest runtime that has one.
 test_simulator() {
   if [[ -n ${SIMULATOR:-} ]]; then print $SIMULATOR; return; fi
-  local name="Stadig Tests $CHECKOUT" udid runtime type
+  local device=${1:-iphone} name platform family pattern udid runtime type
+  case $device in
+    iphone) name="Stadig Tests $CHECKOUT" platform=iOS family=iPhone pattern='Pro$' ;;
+    ipad) name="Stadig iPad $CHECKOUT" platform=iOS family=iPad pattern='^iPad Pro 13-inch' ;;
+    vision) name="Stadig Vision $CHECKOUT" platform=visionOS family='Apple Vision' pattern='Vision Pro' ;;
+    *) print -u2 "Unknown device '$device': choose iphone, ipad or vision"; exit 2 ;;
+  esac
   udid=$(xcrun simctl list devices available -j | jq -r --arg n $name '[.devices[][] | select(.name == $n)][0].udid // empty')
   if [[ -z $udid ]]; then
-    read -r runtime type < <(xcrun simctl list runtimes available -j | jq -r '
-      [.runtimes[] | select(.platform == "iOS") | {id: .identifier, types: [.supportedDeviceTypes[] | select(.productFamily == "iPhone")]}]
-      | reverse | map(select(any(.types[]; .name | test("Pro$")))) | first
-      | "\(.id) \([.types[] | select(.name | test("Pro$"))][0].identifier)"')
+    read -r runtime type < <(xcrun simctl list runtimes available -j | jq -r --arg p $platform --arg f $family --arg r $pattern '
+      [.runtimes[] | select(.platform == $p) | {id: .identifier, types: [.supportedDeviceTypes[] | select(.productFamily == $f)]}]
+      | reverse | map(select(any(.types[]; .name | test($r)))) | first
+      | "\(.id) \([.types[] | select(.name | test($r))][0].identifier)"')
     udid=$(xcrun simctl create $name $type $runtime)
   fi
   print $udid
@@ -94,12 +107,39 @@ use_app() {
   esac
 }
 
+# The Mac build signs to run on this Mac alone (ad hoc), which needs no developer account, so it keeps
+# only the entitlements that need no provisioning profile: the sandbox and its file, network and
+# microphone access. iCloud, push and the App Group need the team's profile: without them the app keeps
+# its data on this Mac (Settings says "This device only") and shares through a folder of its own.
+# Archives and Xcode's own Mac builds sign with the team and the full entitlements.
+MAC_SIGNING=()
+mac_signing() {
+  local app=$1 local_entitlements=$DD-$1-local-macOS.entitlements key
+  cp Apps/$app/Config/$app-macOS.entitlements $local_entitlements
+  for key in com.apple.developer.aps-environment com.apple.developer.icloud-container-identifiers \
+    com.apple.developer.icloud-services com.apple.security.application-groups; do
+    plutil -remove $key $local_entitlements > /dev/null 2>&1
+  done
+  MAC_SIGNING=(CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
+    CODE_SIGN_ENTITLEMENTS=$local_entitlements)
+}
+
+# Where an app's tests run: a simulator of this checkout's, or this Mac.
+destination() {
+  case ${1:-iphone} in
+    mac) print 'platform=macOS,arch=arm64' ;;
+    *) print "id=$(test_simulator $1)" ;;
+  esac
+}
+
 app_tests() {
-  local kind=$1
+  local kind=$1 device=${3:-iphone}
   use_app ${2:-}
   local plan=$APP_SCHEME
   [[ $kind == ui ]] && plan=${APP_SCHEME}UI
-  xcode test $APP_PROJECT $APP_SCHEME "id=$(test_simulator)" -testPlan $plan
+  MAC_SIGNING=()
+  [[ $device == mac ]] && mac_signing ${APP_PROJECT:h:t}
+  xcode test $APP_PROJECT $APP_SCHEME "$(destination $device)" -testPlan $plan $MAC_SIGNING
 }
 
 build_app() {
@@ -107,8 +147,23 @@ build_app() {
   xcode build $APP_PROJECT $APP_SCHEME "id=$(test_simulator)"
 }
 
+build_mac() {
+  use_app ${1:-}
+  mac_signing ${APP_PROJECT:h:t}
+  xcode build $APP_PROJECT $APP_SCHEME 'platform=macOS,arch=arm64' $MAC_SIGNING
+}
+
+build_vision() {
+  use_app ${1:-}
+  xcode build $APP_PROJECT $APP_SCHEME 'generic/platform=visionOS Simulator'
+}
+
 build_watch() {
   xcode build Apps/LiftTrack/LiftTrack.xcodeproj LiftTrackWatch 'generic/platform=watchOS Simulator'
+}
+
+build_macro_watch() {
+  xcode build Apps/MacroTrack/MacroTrack.xcodeproj MacroTrackWatch 'generic/platform=watchOS Simulator'
 }
 
 case $WHAT in
@@ -118,11 +173,18 @@ case $WHAT in
   ios) build_app lift ;;
   watch) build_watch ;;
   macro) build_app macro ;;
+  macro-watch) build_macro_watch ;;
   mind) build_app mind ;;
-  unit|ui) app_tests $WHAT ${2:-} ;;
-  all) lint; run_tests; build_app lift; build_watch; build_app macro; build_app mind ;;
-  simulator) test_simulator ;;
-  products) print $DD/Build/Products/Debug-iphonesimulator ;;
+  mac) build_mac ${2:-} ;;
+  vision) build_vision ${2:-} ;;
+  unit|ui) app_tests $WHAT ${2:-} ${3:-} ;;
+  all)
+    lint; run_tests
+    build_app lift; build_watch; build_app macro; build_macro_watch; build_app mind
+    for app in lift macro mind; do build_mac $app; build_vision $app; done
+    ;;
+  simulator) test_simulator ${2:-} ;;
+  products) [[ ${2:-} == mac ]] && print $DD/Build/Products/Debug || print $DD/Build/Products/Debug-iphonesimulator ;;
   *) print -u2 "Unknown command '$WHAT' (see the top of Scripts/build.sh)"; exit 2 ;;
 esac
 exit $STATUS

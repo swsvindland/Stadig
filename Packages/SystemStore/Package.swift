@@ -6,7 +6,7 @@ import PackageDescription
 /// portable exports: a full backup file and CSV. Depends only on SystemCore and Apple frameworks.
 let package = Package(
     name: "SystemStore",
-    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
     products: [.library(name: "SystemStore", targets: ["SystemStore"])],
     dependencies: [.package(path: "../SystemCore")],
     targets: [
