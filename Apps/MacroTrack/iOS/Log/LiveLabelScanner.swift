@@ -239,6 +239,30 @@ final class LiveScan {
     }
 }
 
+/// What a barcode field says where there's no live scanner.
+enum ScanWords {
+    static var typeTheBarcode: String {
+        Platform.isPhoneOrPad
+            ? "The camera scanner isn't available here, so type the digits under the barcode."
+            : "Type the digits under the barcode."
+    }
+}
+
+/// Waits at most `seconds` for an answer; nil when it takes longer.
+func withTimeout<T: Sendable>(seconds: Double, _ work: @escaping @Sendable () async -> T?) async -> T? {
+    await withTaskGroup(of: T?.self) { group in
+        group.addTask { await work() }
+        group.addTask {
+            try? await Task.sleep(for: .seconds(seconds))
+            return nil
+        }
+        let first = await group.next() ?? nil
+        group.cancelAll()
+        return first
+    }
+}
+
+#if os(iOS)
 /// Live scanning, like filming the package: the barcode, the front and the panel in one go, with
 /// each value filling in as it's read. A tall label is read a slice at a time; a value is trusted
 /// once two frames agree on it.
@@ -472,21 +496,19 @@ struct LiveLabelScanner: View {
         }
     }
 }
+#else
+/// The live scanner needs a camera the app can drive: iPhone and iPad. The Mac and Vision Pro type
+/// the barcode and read a label from a photo instead, so this is never shown there.
+struct LiveLabelScanner: View {
+    init(kind: LiveScan.Kind, lookup: @escaping (String, Barcode.Symbology?) -> LiveScanOutcome?, finish: @escaping (LiveScanOutcome) -> Void) {}
 
-/// Waits at most `seconds` for an answer; nil when it takes longer.
-func withTimeout<T: Sendable>(seconds: Double, _ work: @escaping @Sendable () async -> T?) async -> T? {
-    await withTaskGroup(of: T?.self) { group in
-        group.addTask { await work() }
-        group.addTask {
-            try? await Task.sleep(for: .seconds(seconds))
-            return nil
-        }
-        let first = await group.next() ?? nil
-        group.cancelAll()
-        return first
-    }
+    static var isAvailable: Bool { false }
+
+    var body: some View { EmptyView() }
 }
+#endif
 
+#if os(iOS)
 /// One of the four core values: read, trusted, or not yet seen.
 private struct FieldCell: View {
     let title: String
@@ -535,3 +557,4 @@ private struct ReadingOverlay: View {
         .animation(.easeOut(duration: 0.2), value: regions)
     }
 }
+#endif

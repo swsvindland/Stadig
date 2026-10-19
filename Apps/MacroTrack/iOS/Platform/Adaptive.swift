@@ -42,6 +42,9 @@ enum Platform {
         #endif
     }
 
+    /// An iPhone: the one device that keeps to the phone's ways (no file browser, a camera to hand).
+    static var isPhone: Bool { isPhoneOrPad && !isPad }
+
     static var isPad: Bool {
         #if os(iOS)
         return UIDevice.current.userInterfaceIdiom == .pad
@@ -161,6 +164,105 @@ extension View {
         return buttonStyle(.bordered)
         #else
         return buttonStyle(.glass)
+        #endif
+    }
+
+    /// A list of grouped sections on a quiet page: inset grouped on iPhone, iPad and Vision Pro,
+    /// the Mac's inset list.
+    func insetGroupedList() -> some View {
+        #if os(macOS)
+        return listStyle(.inset)
+        #else
+        return listStyle(.insetGrouped)
+        #endif
+    }
+
+    /// Food names and search words aren't sentences: no capital forced on the first letter. The
+    /// Mac never forces one.
+    func noAutocapitalization() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return textInputAutocapitalization(.never)
+        #endif
+    }
+
+    /// Details beside the content: an inspector on iPhone, iPad and the Mac (a sheet in a compact
+    /// width), and on Vision Pro, which has no inspector, a pane of the window beside it.
+    func sideInspector<Content: View>(
+        isPresented: Binding<Bool>, min: CGFloat, ideal: CGFloat, max: CGFloat, @ViewBuilder content: () -> Content
+    ) -> some View {
+        #if os(visionOS)
+        return HStack(spacing: 0) {
+            self
+            if isPresented.wrappedValue {
+                Divider()
+                content().frame(width: ideal)
+            }
+        }
+        #else
+        return inspector(isPresented: isPresented) { content().inspectorColumnWidth(min: min, ideal: ideal, max: max) }
+        #endif
+    }
+
+    /// Fields in a row without their names beside them on the Mac, where a form shows them; on iPhone,
+    /// iPad and Vision Pro a field's name is its placeholder already.
+    func macLabelsHidden() -> some View {
+        #if os(macOS)
+        return labelsHidden()
+        #else
+        return self
+        #endif
+    }
+
+    /// The system's hover highlight for a custom tappable view: the pointer on iPad, the eyes on
+    /// Vision Pro. The Mac's pointer needs none.
+    func hoverHighlight() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return hoverEffect()
+        #endif
+    }
+
+    /// A sheet's size on the Mac, where a sheet is as big as its content asks (a form can ask for
+    /// very little). Elsewhere the system sizes sheets.
+    func macSheetSize(width: CGFloat, height: CGFloat) -> some View {
+        #if os(macOS)
+        // A sheet doesn't take the window's form style: grouped, as on iPhone and iPad.
+        return formStyle(.grouped).frame(minWidth: width, idealWidth: width, minHeight: height, idealHeight: height)
+        #else
+        return self
+        #endif
+    }
+
+    /// The gap between a list's sections on iPhone, iPad and Vision Pro; the Mac's lists keep their own.
+    func sectionSpacing(_ spacing: CGFloat) -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return listSectionSpacing(spacing)
+        #endif
+    }
+
+    /// Picking a time of day: the wheel on iPhone, iPad and Vision Pro, the Mac's clock and field.
+    func timeOfDayPickerStyle() -> some View {
+        #if os(macOS)
+        return datePickerStyle(.graphical)
+        #else
+        return datePickerStyle(.wheel)
+        #endif
+    }
+}
+
+extension SearchFieldPlacement {
+    /// A search field that stays in view under the title on iPhone, iPad and Vision Pro, and sits
+    /// in the window's toolbar on the Mac.
+    static var alwaysShown: SearchFieldPlacement {
+        #if os(macOS)
+        return .toolbar
+        #else
+        return .navigationBarDrawer(displayMode: .always)
         #endif
     }
 }

@@ -45,6 +45,12 @@ enum Format {
         }
     }
 
+    /// "Sat, Oct 17", with the year once it isn't this one's: a row of a history table.
+    static func historyDay(_ day: Day, today: Day) -> String {
+        let style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        return Format.day(day, style: day.components.year == today.components.year ? style : style.year())
+    }
+
     static func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
 
     /// "P 32 · C 40 · F 12"

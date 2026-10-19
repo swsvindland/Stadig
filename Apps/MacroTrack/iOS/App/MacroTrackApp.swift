@@ -4,7 +4,10 @@ import HealthBridge
 import NutritionEngine
 import SwiftUI
 import SystemCore
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 @main
 struct MacroTrackApp: App {
@@ -18,25 +21,22 @@ struct MacroTrackApp: App {
         // The tests' models never reach Health either.
         if launch.isQuiet { HealthBridge.shared.disable() }
         guard !launch.isHostingTests else { return }
-        if launch.isUITesting { UIView.setAnimationsEnabled(false) }
+        if launch.isUITesting { Platform.disableAnimations() }
         let model = AppModel.shared
         _model = State(initialValue: model)
         model.ai.configure(catalog: model.catalog, allowCloud: model.settings.allowCloudAI)
         #if DEBUG
-        // -seedSampleData fills an empty store; -tab plan|progress opens a tab; -log search|describe|quickAdd
+        // -seedSampleData fills an empty store; -tab plan|progress (or foods|mealplan|supplements|history,
+        // the sidebar's) opens a tab; -daysAgo 1 opens Today on an earlier day; -log search|describe|quickAdd
         // opens a logger. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
         if let tab = launch.value(after: "-tab") {
-            model.tab =
-                switch tab {
-                case "plan": .plan
-                case "progress": .progress
-                default: .today
-                }
+            model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
+        if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.selectedDay = model.today.adding(days: -days) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
         #endif
         MacroShortcuts.updateAppShortcutParameters()
@@ -44,14 +44,35 @@ struct MacroTrackApp: App {
         if !launch.isQuiet { SupplementReminders.register() }
     }
 
+    /// The Mac's one window: the model holds what's on screen (the tab, the logger, the day), so a
+    /// second window would only mirror it.
+    static let mainWindow = "main"
+
     var body: some Scene {
+        #if os(macOS)
+        Window("Macro Track", id: Self.mainWindow) {
+            if let model { root(model).frame(minWidth: 900, minHeight: 580) }
+        }
+        .defaultSize(width: 1280, height: 820)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified)
+        .commands { MacroCommands(model: model) }
+        Settings {
+            if let model { MacSettingsView().environment(model).environment(model.purchases) }
+        }
+        #else
         WindowGroup {
             if let model { root(model) }
         }
+        .commands { MacroCommands(model: model) }
+        #endif
     }
 
     private func root(_ model: AppModel) -> some View {
         RootView()
+            // The grouped forms of iPhone and iPad everywhere: the Mac's default puts labels in a
+            // column of their own, which reads badly in a sheet.
+            .formStyle(.grouped)
             .environment(model)
             .environment(model.purchases)
             .onOpenURL { url in DeepLink.open(url, model: model) }
@@ -76,9 +97,11 @@ struct MacroTrackApp: App {
                     break
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
-                releaseCatalogMemory(model)
-            }
+            #if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+            releaseCatalogMemory(model)
+        }
+            #endif
     }
 
     /// What searches keep around, freed off the main thread; the next search is as quick as after launch.

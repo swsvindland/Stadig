@@ -54,7 +54,7 @@ struct SupplementEditor: View {
                     Text("Serving")
                     Spacer()
                     TextField("1", value: $supplement.facts.servingCount, format: .number)
-                        .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 60)
+                        .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 60)
                     Picker("Unit", selection: $supplement.facts.unit) {
                         ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) {
                             Text($0).tag($0)
@@ -93,7 +93,7 @@ struct SupplementEditor: View {
             }
         }
         .navigationTitle(isNew ? "Add supplement" : supplement.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(isNew ? "Add" : "Save") {
@@ -209,7 +209,7 @@ private struct DoseEditor: View {
             }
         }
         .padding(.vertical, 2)
-        .sheet(isPresented: $choosingDays) { WeekdayPicker(days: $dose.days) }
+        .sheet(isPresented: $choosingDays) { WeekdayPicker(days: $dose.days).macSheetSize(width: 380, height: 440) }
     }
 
     /// Half a scoop or teaspoon; whole pills.
@@ -236,7 +236,7 @@ private struct WeekdayPicker: View {
                 .foregroundStyle(.primary)
             }
             .navigationTitle("Days")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -264,15 +264,17 @@ private struct LineEditor: View {
         let read = ingredient.amount.flatMap { SupplementIngredients.read(name: ingredient.name, amount: $0, unit: ingredient.unit) }
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                TextField("Name", text: $ingredient.name).font(.subheadline)
-                TextField("0", value: $ingredient.amount, format: .number)
-                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 70).font(.subheadline.monospacedDigit())
+                TextField("Name", text: $ingredient.name, prompt: Text("Name")).font(.subheadline)
+                TextField("Amount", value: $ingredient.amount, format: .number, prompt: Text("0"))
+                    .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 70).font(.subheadline.monospacedDigit())
                 Picker("Unit", selection: $ingredient.unit) {
                     ForEach(units + (units.contains(ingredient.unit) ? [] : [ingredient.unit]), id: \.self) { Text($0).tag($0) }
                 }
                 .labelsHidden()
                 .fixedSize()
             }
+            // The Mac's form would put each field's name beside it; the line reads as one row.
+            .macLabelsHidden()
             if let read {
                 if let note = note(read) { Text(note).font(.caption2).foregroundStyle(.secondary) }
             } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {

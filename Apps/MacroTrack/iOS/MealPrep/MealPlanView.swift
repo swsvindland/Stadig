@@ -70,6 +70,7 @@ struct MealPlanView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// The plan shown: the one opened, or the one made from here with "New plan…".
     @State private var planID: UUID
     @State private var page: Page
@@ -86,27 +87,14 @@ struct MealPlanView: View {
 
     var body: some View {
         if let plan = model.mealPlans.first(where: { $0.id == planID }) {
-            List {
-                Section {
-                    Picker("Show", selection: $page) {
-                        ForEach(Page.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("mealPlan.page")
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                }
-                switch page {
-                case .week: week(plan)
-                case .groceries: GroceryPage(plan: plan)
-                case .prep: PrepPage(plan: plan)
-                }
+            Group {
+                // With room, the week, the groceries and prep day side by side; on a phone, one at a time.
+                if sizeClass == .compact { pages(plan) } else { MealPlanBoard(plan: plan, request: requestField(plan)) }
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Menu {
                         Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }
                             .disabled(model.swappableRecipes(in: plan).isEmpty)
@@ -124,7 +112,7 @@ struct MealPlanView: View {
                     .disabled(working)
                 }
             }
-            .sheet(isPresented: $showSetup) { MealPlanSetup { planID = $0.id } }
+            .sheet(isPresented: $showSetup) { MealPlanSetup { planID = $0.id }.macSheetSize(width: 560, height: 680) }
             .confirmationDialog("Delete this week's plan?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete plan", role: .destructive) {
                     model.deleteMealPlan(plan)
@@ -140,25 +128,52 @@ struct MealPlanView: View {
         }
     }
 
+    /// Week, groceries or prep, behind the segmented picker.
+    func pages(_ plan: MealPlan) -> some View {
+        List {
+            Section {
+                Picker("Show", selection: $page) {
+                    ForEach(Page.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("mealPlan.page")
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            }
+            switch page {
+            case .week: week(plan)
+            case .groceries: GroceryPage(plan: plan)
+            case .prep: PrepPage(plan: plan)
+            }
+        }
+        .insetGroupedList()
+    }
+
+    /// "No fish, more spicy": read by Apple's model and applied to the dishes still to come.
+    @ViewBuilder
+    func requestField(_ plan: MealPlan) -> some View {
+        HStack(spacing: 8) {
+            TextField("Change something: no fish, more spicy, cheaper…", text: $request)
+                .submitLabel(.go)
+                .onSubmit { change(plan) }
+                .disabled(working)
+                .accessibilityIdentifier("mealPlan.request")
+            if working {
+                ProgressView()
+            } else if !request.isEmpty {
+                Button("Change") { change(plan) }.buttonStyle(.borderless).fontWeight(.semibold)
+                    .accessibilityIdentifier("mealPlan.change")
+            }
+        }
+        if let changed {
+            Label(changed, systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
     @ViewBuilder
     func week(_ plan: MealPlan) -> some View {
         Section {
-            HStack(spacing: 8) {
-                TextField("Change something: no fish, more spicy, cheaper…", text: $request)
-                    .submitLabel(.go)
-                    .onSubmit { change(plan) }
-                    .disabled(working)
-                    .accessibilityIdentifier("mealPlan.request")
-                if working {
-                    ProgressView()
-                } else if !request.isEmpty {
-                    Button("Change") { change(plan) }.buttonStyle(.borderless).fontWeight(.semibold)
-                        .accessibilityIdentifier("mealPlan.change")
-                }
-            }
-            if let changed {
-                Label(changed, systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
-            }
+            requestField(plan)
         } footer: {
             Text("Swap any dish below with one tap, or say what you'd like in your own words.")
         }
@@ -333,6 +348,7 @@ struct GroceryPage: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel("\(item.name), \(Self.amount(item, unit: unit))")
         .accessibilityValue(checked ? "Got it" : "")
     }

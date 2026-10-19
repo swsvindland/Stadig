@@ -50,11 +50,11 @@ struct SupplementsList: View {
             }
         }
         .navigationTitle("Supplements")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar {
             if inSheet { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("supplements.done") } }
             if !model.supplements.isEmpty {
-                ToolbarItem(placement: inSheet ? .topBarLeading : .topBarTrailing) {
+                ToolbarItem(placement: inSheet ? .barLeading : .barTrailing) {
                     Menu {
                         menuItems
                     } label: {
@@ -74,7 +74,7 @@ struct SupplementsList: View {
 
     @ViewBuilder
     var menuItems: some View {
-        Button("Scan the bottle", systemImage: "barcode.viewfinder") { adding = .scan }
+        Button(LiveLabelScanner.isAvailable ? "Scan the bottle" : "Type the barcode", systemImage: "barcode.viewfinder") { adding = .scan }
             .accessibilityIdentifier("supplements.menu.scan")
         Button("Search", systemImage: "magnifyingglass") { adding = .search }
             .accessibilityIdentifier("supplements.menu.search")
@@ -89,7 +89,7 @@ struct SupplementsList: View {
         Button {
             adding = .scan
         } label: {
-            Label("Scan the bottle: barcode or label", systemImage: "barcode.viewfinder")
+            Label(LiveLabelScanner.isAvailable ? "Scan the bottle: barcode or label" : "Type the bottle's barcode", systemImage: "barcode.viewfinder")
         }
         .accessibilityIdentifier("supplements.addScan")
         Button {
@@ -129,7 +129,7 @@ struct SupplementsList: View {
 }
 
 /// When each part of the day is, and whether to be reminded then.
-private struct RemindersSection: View {
+struct RemindersSection: View {
     @Environment(AppModel.self) private var model
     @State private var denied = false
 
@@ -167,14 +167,19 @@ private struct RemindersSection: View {
                     Label(time.label, systemImage: time.symbol)
                 }
             }
+            if Platform.isMac { Text(note).font(.caption).foregroundStyle(.secondary) }
         } header: {
             Text("Times")
         } footer: {
-            Text(
-                denied
-                    ? "Notifications are off for Macro Track in Settings."
-                    : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app.")
+            // The Mac's list footers are one line: there the note is a row of the section.
+            if !Platform.isMac { Text(note) }
         }
+    }
+
+    var note: String {
+        denied
+            ? "Notifications are off for Macro Track in Settings."
+            : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app."
     }
 }
 
@@ -196,7 +201,6 @@ struct AddSupplementView: View {
     @State private var searching = false
     @State private var results: [SupplementFacts] = []
     @State private var capturing = false
-    @State private var picked: PhotosPickerItem?
     @State private var reading = false
     @State private var error: String?
     @State private var scanID = UUID()
@@ -215,21 +219,8 @@ struct AddSupplementView: View {
         }
         // Back from the editor without adding: scan again.
         .onChange(of: found) { _, now in if now == nil { scanID = UUID() } }
-        .fullScreenCover(isPresented: $capturing) {
-            CameraPicker { image in
-                capturing = false
-                if let image { read { await PhotoInput.prepare(image, maxDimension: 2000) } }
-            }
-            .ignoresSafeArea()
-        }
-        .onChange(of: picked) { _, item in
-            guard let item else { return }
-            // Cleared, so choosing the same photo again after a failure is a change.
-            picked = nil
-            read {
-                guard let data = try await item.loadTransferable(type: Data.self) else { return nil }
-                return await PhotoInput.prepare(data, maxDimension: 2000)
-            }
+        .cameraCapture(isPresented: $capturing) { photo in
+            if let photo { read { await photo.prepared(maxDimension: 2000) } }
         }
     }
 
@@ -247,11 +238,13 @@ struct AddSupplementView: View {
             ContentUnavailableView {
                 Label("Not in the label database", systemImage: "barcode")
             } description: {
-                Text("Photograph the Supplement Facts panel and it's kept with this barcode for next time.")
+                Text(
+                    "\(Camera.isAvailable ? "Photograph" : "Choose a photo of") the Supplement Facts panel and it's kept with this barcode for next time."
+                )
             } actions: {
                 photoButtons
                 Button("Type it in") { found = Supplement(facts: blank(barcode: missing)) }
-                Button("Scan again") {
+                Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
                     self.missing = nil
                     scanning = true
                 }
@@ -268,7 +261,7 @@ struct AddSupplementView: View {
             }
             .id(scanID)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Menu {
                         Button("Type the barcode", systemImage: "keyboard") { scanning = false }
                         Button("Choose a photo of the label", systemImage: "photo") { mode = .label }
@@ -282,12 +275,12 @@ struct AddSupplementView: View {
             Form {
                 Section {
                     TextField("Barcode number", text: $manual)
-                        .keyboardType(.numberPad)
+                        .fieldKeyboard(.number)
                         .font(.title3.monospacedDigit())
                         .onSubmit { handle(manual) }
                     Button("Look up") { handle(manual) }.disabled(manual.count < 6)
                 } footer: {
-                    if !LiveCamera.isAvailable { Text("The camera scanner isn't available here, so type the digits under the barcode.") }
+                    if !LiveLabelScanner.isAvailable { Text(ScanWords.typeTheBarcode) }
                 }
             }
             .navigationTitle("Scan")
@@ -329,8 +322,11 @@ struct AddSupplementView: View {
             }
             if results.isEmpty, query.count >= 2 {
                 Section {
-                    Text("No labels match. Photograph the Supplement Facts, or type it in.").font(.subheadline).foregroundStyle(.secondary)
-                    Button("Photograph the label") { mode = .label }
+                    Text("No labels match. \(Camera.isAvailable ? "Photograph" : "Choose a photo of") the Supplement Facts, or type it in.").font(
+                        .subheadline
+                    )
+                    .foregroundStyle(.secondary)
+                    Button(Camera.isAvailable ? "Photograph the label" : "Choose a photo of the label") { mode = .label }
                     Button("Type it in") {
                         found = Supplement(
                             facts: {
@@ -343,7 +339,7 @@ struct AddSupplementView: View {
             }
         }
         .searchable(
-            text: $query, isPresented: $searching, placement: .navigationBarDrawer(displayMode: .always),
+            text: $query, isPresented: $searching, placement: .alwaysShown,
             prompt: "Fish oil, Nature Made, magnesium…"
         )
         .onAppear { searching = true }
@@ -361,7 +357,7 @@ struct AddSupplementView: View {
             if model.supplementCatalog == nil {
                 ContentUnavailableView(
                     "The label database isn't in this build", systemImage: "externaldrive.badge.xmark",
-                    description: Text("Photograph the label or type it in instead."))
+                    description: Text("\(Camera.isAvailable ? "Photograph" : "Choose a photo of") the label or type it in instead."))
             }
         }
     }
@@ -382,7 +378,7 @@ struct AddSupplementView: View {
 
     var label: some View {
         ContentUnavailableView {
-            Label("Photograph the Supplement Facts", systemImage: "doc.text.viewfinder")
+            Label(Camera.isAvailable ? "Photograph the Supplement Facts" : "A photo of the Supplement Facts", systemImage: "doc.text.viewfinder")
         } description: {
             Text("Flat, in good light, with the whole panel in frame. Every line is read for you to check.")
         } actions: {
@@ -395,10 +391,15 @@ struct AddSupplementView: View {
 
     @ViewBuilder
     var photoButtons: some View {
-        if CameraPicker.isAvailable {
+        if Camera.isAvailable {
             Button("Take a photo") { capturing = true }.primaryAction()
         }
-        PhotosPicker(selection: $picked, matching: .images) { Text("Choose a photo") }
+        PhotoChoices { load in
+            read {
+                guard let data = try await load() else { return nil }
+                return await PhotoInput.prepare(data, maxDimension: 2000)
+            }
+        }
     }
 
     /// Reads a photo of the panel: loaded and downsampled off the main thread, then parsed.

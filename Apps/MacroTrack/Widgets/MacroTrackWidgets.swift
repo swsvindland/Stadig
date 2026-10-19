@@ -7,12 +7,20 @@ import WidgetKit
 struct MacroTrackWidgets: WidgetBundle {
     var body: some Widget {
         RemainingWidget()
+        #if os(iOS)
         SnapMealControl()
         ScanBarcodeControl()
+        #endif
+        #if os(iOS) || os(macOS)
+        // The Mac's Control Center and menu bar take controls too; it has no camera to snap or scan
+        // with, so it gets the two that need none. Vision Pro has no controls.
         LogFoodControl()
         WeighInControl()
+        #endif
     }
 }
+
+#if os(iOS) || os(macOS)
 
 /// Control Center and Lock Screen buttons straight into one way of logging.
 struct SnapMealControl: ControlWidget {
@@ -55,6 +63,8 @@ func logControl(kind: String, entry: LoggerEntryPoint, title: LocalizedStringRes
     .description("Opens Macro Track ready to log.")
 }
 
+#endif
+
 struct MacroEntry: TimelineEntry {
     let date: Date
     let snapshot: MacroSnapshot
@@ -92,7 +102,17 @@ struct RemainingWidget: Widget {
         }
         .configurationDisplayName("Left today")
         .description("Calories and protein left, with buttons to log.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies(Self.families)
+    }
+
+    /// The Home Screen and Lock Screen on iPhone and iPad; the desktop and Notification Center on the
+    /// Mac; and Vision Pro's walls and tables.
+    static var families: [WidgetFamily] {
+        #if os(iOS)
+        return [.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #else
+        return [.systemSmall, .systemMedium]
+        #endif
     }
 }
 
@@ -102,6 +122,7 @@ struct RemainingView: View {
 
     var body: some View {
         switch family {
+        #if os(iOS)
         case .accessoryCircular:
             Gauge(value: min(snapshot.kcal, snapshot.kcalTarget ?? snapshot.kcal), in: 0...max(1, snapshot.kcalTarget ?? max(1, snapshot.kcal))) {
                 Text("kcal")
@@ -119,6 +140,7 @@ struct RemainingView: View {
             .widgetURL(URL(string: "macrotrack://log"))
         case .accessoryInline:
             Text(kcalLine)
+        #endif
         case .systemMedium:
             HStack(spacing: 16) {
                 ring.frame(width: 108, height: 108)
@@ -126,8 +148,9 @@ struct RemainingView: View {
                     bars
                     HStack(spacing: 8) {
                         button("magnifyingglass", "macrotrack://log")
-                        button("camera", "macrotrack://camera")
-                        button("barcode.viewfinder", "macrotrack://scan")
+                        // A camera only where there's one; elsewhere the same links choose a photo and type a barcode.
+                        button(Self.hasCamera ? "camera" : "photo.on.rectangle", "macrotrack://camera")
+                        button(Self.hasCamera ? "barcode.viewfinder" : "barcode", "macrotrack://scan")
                         if !snapshot.weighedToday { button("scalemass", "macrotrack://weigh") }
                     }
                 }
@@ -141,6 +164,14 @@ struct RemainingView: View {
             }
             .widgetURL(URL(string: "macrotrack://log"))
         }
+    }
+
+    static var hasCamera: Bool {
+        #if os(iOS)
+        return true
+        #else
+        return false
+        #endif
     }
 
     var shortKcal: String {

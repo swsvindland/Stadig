@@ -32,7 +32,7 @@ struct DrinksSection: View {
                     }
                     .accessibilityIdentifier("drinks.cutBack")
                 }
-                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet() }
+                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet().macSheetSize(width: 460, height: 480) }
             }
         }
     }
@@ -153,6 +153,7 @@ struct DrinksSection: View {
             .background(.insetBackground, in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel("Log \(title)\(detail.map { ", \($0)" } ?? "")")
     }
 }
@@ -234,7 +235,7 @@ struct CaffeineCutBackSheet: View {
                 }
             }
             .navigationTitle("Caffeine")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
                 if let average {

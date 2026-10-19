@@ -122,7 +122,7 @@ struct OnboardingView: View {
                 HStack {
                     Text("Height")
                     Spacer()
-                    TextField("0", text: $heightText).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 80)
+                    TextField("0", text: $heightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
                         .accessibilityIdentifier("onboarding.height")
                     Text(profile.units.length.symbol).foregroundStyle(.secondary)
                 }
@@ -172,7 +172,7 @@ struct OnboardingView: View {
                 HStack {
                     Text("Weight today")
                     Spacer()
-                    TextField("Optional", text: $weightText).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    TextField("Optional", text: $weightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
                         .accessibilityIdentifier("onboarding.weight")
                     Text(profile.units.weight.symbol).foregroundStyle(.secondary)
                 }
@@ -190,7 +190,12 @@ struct OnboardingView: View {
         }
     }
 
+    @ViewBuilder
     var health: some View {
+        if Platform.isMac { healthElsewhere } else { connectHealth }
+    }
+
+    var connectHealth: some View {
         VStack(alignment: .leading, spacing: 20) {
             Spacer()
             Image(systemName: "heart.text.square.fill").font(.system(size: 56)).foregroundStyle(.pink)
@@ -214,6 +219,25 @@ struct OnboardingView: View {
             .accessibilityIdentifier("onboarding.connectHealth")
             Button("Not now") { finish() }.frame(maxWidth: .infinity)
                 .accessibilityIdentifier("onboarding.notNow")
+        }
+        .padding(24)
+        .readableWidth(560)
+    }
+
+    /// The Mac has no Health: what reaches it instead, and a way on.
+    var healthElsewhere: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Spacer()
+            Image(systemName: "heart.text.square.fill").font(.system(size: 56)).foregroundStyle(.pink)
+            Text("Apple Health").font(.title.weight(.bold))
+            Text(HealthWords.notOnThisDevice).foregroundStyle(.secondary)
+            Spacer()
+            Button(action: finish) {
+                Text("Start").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+            .primaryAction()
+            .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("onboarding.notNow")
         }
         .padding(24)
         .readableWidth(560)

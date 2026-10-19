@@ -1,31 +1,23 @@
+import Foundation
 import ImageIO
+
+#if os(iOS)
 import UIKit
+#endif
 
 /// Photos made ready for the models and OCR: upright and at most a size on their long side, made
 /// off the main thread. A 12–48 MP photo decoded and redrawn there stalls the screen for a moment
 /// right as the camera or picker closes.
 nonisolated enum PhotoInput {
-    /// A picked photo, straight from its bytes, never decoded at full size.
+    /// A picked, imported or dropped photo, straight from its bytes, never decoded at full size.
     static func prepare(_ data: Data, maxDimension: Int) async -> CGImage? {
-        await Task.detached(priority: .userInitiated) { image(from: data, maxDimension: maxDimension) }.value
+        await Task.detached(priority: .userInitiated) { ImageData.downsampled(data, maxPixels: maxDimension) }.value
     }
 
+    #if os(iOS)
     /// A photo from the camera, redrawn upright at the size.
     static func prepare(_ photo: UIImage, maxDimension: CGFloat) async -> CGImage? {
         await Task.detached(priority: .userInitiated) { image(from: photo, maxDimension: maxDimension) }.value
-    }
-
-    static func image(from data: Data, maxDimension: Int) -> CGImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            // Upright: without it the photo's EXIF orientation is ignored and a portrait label
-            // reaches OCR sideways.
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxDimension,
-        ]
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
     static func image(from photo: UIImage, maxDimension: CGFloat) -> CGImage? {
@@ -39,4 +31,5 @@ nonisolated enum PhotoInput {
         // UIImage draws itself upright; the renderer is safe off the main thread.
         return UIGraphicsImageRenderer(size: target, format: format).image { _ in photo.draw(in: CGRect(origin: .zero, size: target)) }.cgImage
     }
+    #endif
 }

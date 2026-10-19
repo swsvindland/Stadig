@@ -34,6 +34,7 @@ struct SupplementsSection: View {
                         summary(doses)
                     }
                     .buttonStyle(.plain)
+                    .hoverHighlight()
                     .accessibilityIdentifier("supplements.summary")
                 } else {
                     let times = DoseTime.allCases.filter { time in doses.contains { $0.dose.time == time } }
@@ -60,6 +61,9 @@ struct SupplementsSection: View {
                     .swipeActions {
                         Button("Delete", systemImage: "trash", role: .destructive) { model.delete(doses: [log.id]) }
                     }
+                    .contextMenu {
+                        Button("Delete", systemImage: "trash", role: .destructive) { model.delete(doses: [log.id]) }
+                    }
                 }
             } header: {
                 HStack {
@@ -82,7 +86,7 @@ struct SupplementsSection: View {
                     .accessibilityIdentifier("supplements.edit")
                 }
                 .sheet(item: $editing) { supplement in
-                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }
+                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }.macSheetSize(width: 520, height: 640)
                 }
             }
         }
@@ -156,6 +160,7 @@ private struct DoseRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityIdentifier("supplements.dose")
         .sensoryFeedback(.success, trigger: dose.taken) { _, taken in taken }
         .swipeActions(edge: .trailing) {
@@ -199,7 +204,7 @@ struct SupplementsCard: View {
             }
             if model.activeSupplements.isEmpty {
                 Text(
-                    "Scan the bottle, say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged."
+                    "\(LiveLabelScanner.isAvailable ? "Scan the bottle" : "Add a bottle by its barcode or a photo of the label"), say when you take it, and tick it off on Today. What you take counts toward your vitamins and minerals, and anything over a safe upper limit is flagged."
                 )
                 .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Add supplements") { model.showSupplements = true }.primaryAction()

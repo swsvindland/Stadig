@@ -284,7 +284,7 @@ macro_app = dict(swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_CFBundleDisplayName": "Macro Track",
     "INFOPLIST_KEY_NSHealthShareUsageDescription": "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.",
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.",
-    "INFOPLIST_KEY_NSCameraUsageDescription": "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your iPhone or with Private Cloud Compute and never stored.",
+    "INFOPLIST_KEY_NSCameraUsageDescription": "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.",
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Macro Track can log a meal from a photo you choose.",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro",
 })

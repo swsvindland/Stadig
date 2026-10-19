@@ -59,7 +59,7 @@ struct QuickAddView: View {
         HStack {
             Text(title)
             Spacer()
-            TextField("0", text: text).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 100)
+            TextField("0", text: text).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 100)
                 .focused($focus, equals: field)
                 .accessibilityIdentifier("quickAdd.\(field)")
             Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
@@ -78,84 +78,112 @@ struct EntryEditor: View {
     @State private var food: Food?
     /// The amount as it reopened, so a change of time alone saves the entry's own numbers.
     @State private var original: (unitID: String?, count: Double)?
+    /// Set where the editor sits beside the log (an inspector) rather than in a sheet: what closes it.
+    var close: (() -> Void)?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.name).font(.headline)
-                        if let brand = entry.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary) }
-                    }
-                }
-                Section("Amount") {
+        if let close {
+            form
+                .formStyle(.grouped)
+                .safeAreaInset(edge: .bottom) {
                     HStack {
-                        TextField("Amount", text: $countText)
-                            .keyboardType(.decimalPad)
-                            .font(.title3.weight(.semibold).monospacedDigit())
-                            .accessibilityIdentifier("entryEditor.amount")
-                            .onChange(of: countText) { _, text in
-                                // Text this view wrote already says the count; reading it back would round it.
-                                guard text != self.text(for: count), let v = Format.parse(text), v > 0 else { return }
-                                count = v
+                        Button("Done", action: close)
+                            .keyboardShortcut(.cancelAction)
+                            .accessibilityIdentifier("entryEditor.cancel")
+                        Spacer()
+                        Button("Save") {
+                            save()
+                            close()
+                        }
+                        .keyboardShortcut("s")
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("entryEditor.save")
+                    }
+                    .padding()
+                }
+                .onAppear(perform: load)
+        } else {
+            NavigationStack {
+                form
+                    .navigationTitle("Edit")
+                    .inlineTitle()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }.accessibilityIdentifier("entryEditor.cancel")
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Save") {
+                                save()
+                                dismiss()
                             }
-                        if let food {
-                            let units = FoodUnits.units(for: food)
-                            Picker(
-                                "Unit",
-                                selection: Binding(
-                                    get: { unit?.id ?? units.first?.id ?? "" },
-                                    set: { id in
-                                        guard let next = units.first(where: { $0.id == id }) else { return }
-                                        // Keep the amount: 150 g becomes 5.3 oz, not 150 oz.
-                                        if let old = unit, old.id != next.id {
-                                            let converted = FoodUnits.convert(count, from: old, to: next)
-                                            if converted.isFinite { count = converted }
-                                        }
-                                        unit = next
-                                        countText = text(for: count)
-                                    })
-                            ) {
-                                ForEach(units) { Text($0.label).tag($0.id) }
-                            }
-                            .labelsHidden()
-                            .accessibilityIdentifier("entryEditor.unit")
-                        } else {
-                            Text("× \(entry.amountLabel)").foregroundStyle(.secondary)
+                            .accessibilityIdentifier("entryEditor.save")
                         }
                     }
-                }
-                Section {
-                    NutrientSummary(nutrients: nutrients)
-                }
-                Section {
-                    DatePicker("Eaten", selection: $entry.date).accessibilityIdentifier("entryEditor.eaten")
-                }
-                Section {
-                    Button("Delete", role: .destructive) {
-                        model.delete(entries: [entry.id])
-                        dismiss()
-                    }
-                    .accessibilityIdentifier("entryEditor.delete")
-                }
+                    .onAppear(perform: load)
             }
-            .navigationTitle("Edit")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("entryEditor.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        save()
-                        dismiss()
-                    }
-                    .accessibilityIdentifier("entryEditor.save")
-                }
-            }
-            .onAppear(perform: load)
+            .presentationDetents([.medium, .large])
         }
-        .presentationDetents([.medium, .large])
+    }
+
+    var form: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.name).font(.headline)
+                    if let brand = entry.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary) }
+                }
+            }
+            Section("Amount") {
+                HStack {
+                    TextField("Amount", text: $countText)
+                        .fieldKeyboard(.decimal)
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .accessibilityIdentifier("entryEditor.amount")
+                        .onChange(of: countText) { _, text in
+                            // Text this view wrote already says the count; reading it back would round it.
+                            guard text != self.text(for: count), let v = Format.parse(text), v > 0 else { return }
+                            count = v
+                        }
+                    if let food {
+                        let units = FoodUnits.units(for: food)
+                        Picker(
+                            "Unit",
+                            selection: Binding(
+                                get: { unit?.id ?? units.first?.id ?? "" },
+                                set: { id in
+                                    guard let next = units.first(where: { $0.id == id }) else { return }
+                                    // Keep the amount: 150 g becomes 5.3 oz, not 150 oz.
+                                    if let old = unit, old.id != next.id {
+                                        let converted = FoodUnits.convert(count, from: old, to: next)
+                                        if converted.isFinite { count = converted }
+                                    }
+                                    unit = next
+                                    countText = text(for: count)
+                                })
+                        ) {
+                            ForEach(units) { Text($0.label).tag($0.id) }
+                        }
+                        .labelsHidden()
+                        .accessibilityIdentifier("entryEditor.unit")
+                    } else {
+                        Text("× \(entry.amountLabel)").foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Section {
+                NutrientSummary(nutrients: nutrients)
+            }
+            Section {
+                DatePicker("Eaten", selection: $entry.date).accessibilityIdentifier("entryEditor.eaten")
+            }
+            Section {
+                Button("Delete", role: .destructive) {
+                    model.delete(entries: [entry.id])
+                    if let close { close() } else { dismiss() }
+                }
+                .accessibilityIdentifier("entryEditor.delete")
+            }
+        }
     }
 
     var nutrients: Nutrients {
@@ -236,7 +264,7 @@ struct WeighInSheet: View {
                         nudge(-1)
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             TextField("0.0", text: $value)
-                                .keyboardType(.decimalPad)
+                                .fieldKeyboard(.decimal)
                                 .multilineTextAlignment(.center)
                                 .font(.largeTitle.weight(.semibold).monospacedDigit())
                                 .focused($focused)
@@ -270,12 +298,21 @@ struct WeighInSheet: View {
                                     Button("Delete", role: .destructive) { model.delete(weighIn: w) }
                                 }
                             }
+                            // A pointer has no swipe.
+                            .contextMenu {
+                                Button(w.excluded ? "Use" : "Ignore", systemImage: w.excluded ? "checkmark.circle" : "eye.slash") {
+                                    model.setExcluded(!w.excluded, weighIn: w)
+                                }
+                                if case .manual = w.source {
+                                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(weighIn: w) }
+                                }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Weigh in")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("weighIn.cancel")
@@ -308,6 +345,7 @@ struct WeighInSheet: View {
                 .background(Color.accentColor.opacity(0.14), in: .circle)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel(direction < 0 ? "Lighter" : "Heavier")
         .accessibilityIdentifier(direction < 0 ? "weighIn.lighter" : "weighIn.heavier")
     }

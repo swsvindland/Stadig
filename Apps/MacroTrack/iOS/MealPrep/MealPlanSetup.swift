@@ -75,7 +75,7 @@ struct MealPlanSetup: View {
                 } header: {
                     Text("Anything else?")
                 } footer: {
-                    Text("Read on this iPhone with Apple Intelligence when it can.")
+                    Text("Read on this \(Platform.deviceName) with Apple Intelligence when it can.")
                 }
 
                 Section("Start") {
@@ -91,7 +91,7 @@ struct MealPlanSetup: View {
                 }
             }
             .navigationTitle("Plan a week")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -189,7 +189,7 @@ struct MealPrepCard: View {
             }
         }
         .card()
-        .sheet(isPresented: $showSetup) { MealPlanSetup() }
+        .sheet(isPresented: $showSetup) { MealPlanSetup().macSheetSize(width: 560, height: 680) }
     }
 
     func link(_ title: String, _ page: MealPlanView.Page, _ plan: MealPlan) -> some View {

@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 import FoodDatabase
 import SwiftUI
@@ -140,3 +141,4 @@ struct CameraPreview: UIViewRepresentable {
         var preview: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
 }
+#endif

@@ -10,8 +10,31 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
-enum AppTab: Hashable {
-    case today, plan, progress
+/// Where the app is. The iPhone's tab bar has Today, Plan and Progress; the sidebar on iPad, the
+/// Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
+enum AppTab: String, Hashable, CaseIterable {
+    case today, foods, mealPlan, supplements, plan, progress, history
+
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .foods: "Foods"
+        case .mealPlan: "Meal Plan"
+        case .supplements: "Supplements"
+        case .plan: "Plan"
+        case .progress: "Progress"
+        case .history: "History"
+        }
+    }
+
+    /// Only in the sidebar: in a compact width (an iPhone, a narrow iPad window) they're reached
+    /// another way (the logger, the Plan tab, the supplements sheet).
+    var isSidebarOnly: Bool {
+        switch self {
+        case .foods, .mealPlan, .supplements, .history: true
+        case .today, .plan, .progress: false
+        }
+    }
 }
 
 /// The ways into logging. Each opens straight to its first step.
@@ -58,7 +81,11 @@ final class AppModel {
     // Records.
     private(set) var profile: SharedProfile?
     private(set) var settings = MacroSettings()
-    private(set) var entries: [FoodEntry] = []
+    private(set) var entries: [FoodEntry] = [] {
+        didSet { entriesByDay = Dictionary(grouping: entries, by: \.day) }
+    }
+    /// The same entries by day, oldest first within each: a day's log without walking years of them.
+    private var entriesByDay: [Day: [FoodEntry]] = [:]
     private(set) var weighIns: [WeighIn] = []
     private(set) var dayStatus: [DayStatus] = []
     private(set) var plan: PhasePlan?
@@ -80,10 +107,19 @@ final class AppModel {
     private(set) var sharedProfile: SharedProfile?
 
     // Derived.
-    private(set) var analysis: MacroAnalysis?
+    private(set) var analysis: MacroAnalysis? {
+        didSet { analysisVersion &+= 1 }
+    }
+    /// Bumped whenever the analysis is recomputed, for screens that derive something heavy from it
+    /// off the main thread (the history) and need to know when to again.
+    private(set) var analysisVersion = 0
     private(set) var logAgain: [LogAgainItem] = []
     /// Foods this person logs, for search ranking and last-used portions.
-    private(set) var personal: [PersonalFood] = []
+    private(set) var personal: [PersonalFood] = [] {
+        didSet { personalVersion &+= 1 }
+    }
+    /// Bumped when the personal foods are rebuilt, for lists made from them off the main thread.
+    private(set) var personalVersion = 0
     /// The one food that best fixes this week's shortest nutrient, ready to log.
     private(set) var microFix: MicroFix?
     /// A fermented food to log, while the week has had too few.
@@ -104,8 +140,28 @@ final class AppModel {
     var showSettings = false
     var showPaywall = false
     var showWeighIn = false
-    var showSupplements = false
+    /// The supplements screen: a sheet, or where the sidebar has it, that destination.
+    var showSupplements: Bool {
+        get { supplementsSheet }
+        set {
+            if newValue && usesSidebar {
+                supplementsSheet = false
+                tab = .supplements
+            } else {
+                supplementsSheet = newValue
+            }
+        }
+    }
+    private var supplementsSheet = false
+    /// Whether the window has the sidebar's destinations (regular width: iPad, the Mac, Vision Pro),
+    /// so finding a food or the supplements opens their screens rather than a sheet. The root view
+    /// keeps it current; it's false for a model no screen shows (tests).
+    var usesSidebar = false
+    /// Asks the Foods screen to put the cursor in its search field (⌘F, Log Food, a widget's search).
+    private(set) var foodSearchRequest = 0
     var toast: Toast?
+    /// A photo dropped on the window, waiting for the photo logger to read it.
+    @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
     /// The day Today shows and logs to: today, or a day being caught up.
     var selectedDay: Day = .today {
@@ -485,7 +541,8 @@ final class AppModel {
                 result.append(
                     PersonalFood(
                         food: food, score: (usage?.score ?? 0) + (favorites.contains(id) ? 2 : 0), favorite: favorites.contains(id),
-                        lastCount: usage?.last.count, lastUnitID: usage?.last.unitID, lastAmount: usage?.last.grams))
+                        lastCount: usage?.last.count, lastUnitID: usage?.last.unitID, lastAmount: usage?.last.grams,
+                        lastLogged: usage?.last.date))
             }
             let found = foods
             await MainActor.run {
@@ -536,9 +593,50 @@ final class AppModel {
     // MARK: Logging
 
     /// Opens a logger, its foods eaten at `time` (nil is now). The time lasts while the logger is open.
+    /// Where the sidebar has the Foods screen, a search at no particular time opens that instead.
     func openLogger(_ mode: LogMode, at time: Date? = nil) {
+        if mode == .search, time == nil, usesSidebar {
+            showFoods()
+            return
+        }
         loggerTime = time
         logger = mode
+    }
+
+    /// A destination by name (the Go menu, ⌘1…⌘7). One only the sidebar has, asked for without one
+    /// (an iPhone with a keyboard), opens its nearest equivalent instead.
+    func go(to destination: AppTab) {
+        guard destination.isSidebarOnly, !usesSidebar else {
+            if destination == .foods { showFoods() } else { tab = destination }
+            return
+        }
+        switch destination {
+        case .foods: openLogger(.search)
+        case .supplements: showSupplements = true
+        case .mealPlan: tab = .plan
+        default: tab = .progress
+        }
+    }
+
+    /// The Foods screen with the cursor in its search.
+    func showFoods() {
+        logger = nil
+        tab = .foods
+        foodSearchRequest &+= 1
+    }
+
+    /// A photo dropped on the window: the photo logger opens and reads it, as if it were chosen there.
+    func logDroppedPhoto(_ data: Data) {
+        dismissSheets()
+        selectedDay = today
+        droppedPhoto = data
+        openLogger(.photoLibrary)
+    }
+
+    /// The dropped photo, once: the logger that reads it takes it.
+    func takeDroppedPhoto() -> Data? {
+        defer { droppedPhoto = nil }
+        return droppedPhoto
     }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
@@ -684,7 +782,7 @@ final class AppModel {
             version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
     }
 
-    func entries(on day: Day) -> [FoodEntry] { entries.filter { $0.day == day } }
+    func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
 
     func state(of day: Day) -> DayState? { dayStatus.first { $0.day == day }?.state }
 
