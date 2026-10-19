@@ -155,6 +155,8 @@ struct WeekGrid: View {
                 }
             }
         }
+        // A container of its own, so each meal keeps its identifier rather than taking the grid's.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("mealPlan.week")
     }
 }
