@@ -52,6 +52,15 @@ extension XCUIApplication {
         if row.exists && row.isHittable && toggle.exists && toggle.label == "Hide Sidebar" { toggle.tap() }
     }
 
+    /// Closes an iPad's number pad, which iPadOS shows in a popover beside a number field: a tap
+    /// anywhere else only closes the popover, so the tap meant for the next button would do
+    /// nothing. The tap lands on the frontmost navigation bar's middle, where there's nothing else.
+    @MainActor
+    func closeNumberPad() {
+        guard Self.isPad, keyboards.firstMatch.exists else { return }
+        navigationBars.allElementsBoundByIndex.last?.tap()
+    }
+
     /// An iPad, where the regular-width layout runs: the tab bar along the top, the sidebar and the
     /// desktop destinations.
     @MainActor

@@ -55,6 +55,7 @@ nonisolated final class ScreensUITests: XCTestCase {
         waist.tap()
         waist.typeText("84")
         XCTAssertTrue(save.isEnabled)
+        app.closeNumberPad()
         save.tap()
 
         save.waitToDisappear()
