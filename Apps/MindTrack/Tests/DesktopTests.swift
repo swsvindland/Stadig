@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import MindEngine
 import PencilKit
@@ -25,11 +26,17 @@ struct DesktopTests {
     }
 
     @Test func draftsAreListedNewestFirstWithTheirExercise() async throws {
-        let drafts = WritingDrafts(folder: TestApp.folder().appending(path: "Drafts", directoryHint: .isDirectory))
+        let folder = TestApp.folder().appending(path: "Drafts", directoryHint: .isDirectory)
+        let drafts = WritingDrafts(folder: folder)
         #expect(await drafts.all().isEmpty, "no folder yet, no drafts")
         await drafts.save(text: "First go", handwritten: false, drawing: PKDrawing(), ownPage: nil, for: "prompt.creative-the-last-shift")
-        try await Task.sleep(for: .milliseconds(1100))
         await drafts.save(text: "Notes so far", handwritten: true, drawing: PKDrawing(), ownPage: nil, for: "franklinNotes.austen-1")
+        // Saved an hour apart, said outright rather than waited for: two saves in one second can
+        // share a modification date.
+        for (key, date) in [("prompt.creative-the-last-shift", TestApp.wednesday), ("franklinNotes.austen-1", TestApp.wednesday + 3600)] {
+            try FileManager.default.setAttributes(
+                [.modificationDate: date], ofItemAtPath: folder.appending(path: key + ".json").path(percentEncoded: false))
+        }
         let all = await drafts.all()
         #expect(all.map(\.key) == ["franklinNotes.austen-1", "prompt.creative-the-last-shift"])
         #expect(all.map(\.exercise) == [.franklinNotes, .prompt])
@@ -37,6 +44,40 @@ struct DesktopTests {
 
         await drafts.remove("franklinNotes.austen-1")
         #expect(await drafts.all().map(\.key) == ["prompt.creative-the-last-shift"], "handed in, it leaves the list")
+    }
+
+    @Test func importedPagesAreCappedAcrossFilesAndLoadedInTurn() async throws {
+        // Three ten-page scans chosen at once: twelve pages in all, and the third never loaded.
+        final class Loads { var files: [Int] = [] }
+        let loads = Loads()
+        let files: [ImageImport.File] = (0..<3).map { index in
+            {
+                loads.files.append(index)
+                return Self.pdf(pages: 10)
+            }
+        }
+        var read = 0
+        let drawn = try await ImageImport.forEachPage(of: files) { _ in read += 1 }
+        #expect(drawn == ImageImport.maxPages && read == ImageImport.maxPages)
+        #expect(loads.files == [0, 1])
+
+        // A file that won't load is passed over, and counts for nothing.
+        let after = try await ImageImport.forEachPage(of: [{ nil }, { Self.pdf(pages: 2) }]) { _ in }
+        #expect(after == 2)
+    }
+
+    /// A PDF of blank pages, as a scan saved from Files would come in.
+    static func pdf(pages: Int) -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 60, height: 80)
+        guard let consumer = CGDataConsumer(data: data as CFMutableData), let context = CGContext(consumer: consumer, mediaBox: &box, nil)
+        else { return Data() }
+        for _ in 0..<pages {
+            context.beginPDFPage(nil)
+            context.endPDFPage()
+        }
+        context.closePDF()
+        return data as Data
     }
 
     @Test func theCardsRevisionMovesWhenCardsAreReadAgain() {

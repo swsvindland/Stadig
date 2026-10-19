@@ -43,6 +43,7 @@ struct PickBookView: View {
             guard case .choose(let index) = key, options.indices.contains(index) else { return }
             model.act { $0.pickBook(options[index], now: Date()) }
         }
+        .presentingOverStep(addingOwn)
     }
 
     func intro(_ reading: ReadingSummary) -> String {
@@ -149,6 +150,7 @@ struct ReadingTimerView: View {
             }
         }
         .sessionKeys(keys) { key in if key == .submit { logging = true } }
+        .presentingOverStep(logging)
         .sheet(isPresented: $logging) {
             PageSheet(book: book, asksFocus: (book.format ?? .print).countsForStamina) { page, finished, feel, focus in
                 let minutes = Date().timeIntervalSince(started) / 60

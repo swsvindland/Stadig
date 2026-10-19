@@ -313,7 +313,8 @@ struct DataSettings: View {
                     .accessibilityIdentifier("settings.shareBackup")
             }
             Button(Platform.isMac ? "Restore from a Backup…" : "Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
-                .disabled(working != nil)
+                // The session's next answer would save its copies over what came back.
+                .disabled(working != nil || model.sessionOpen)
                 .accessibilityIdentifier("settings.restore")
                 .fileImporter(isPresented: $importing, allowedContentTypes: [BackupExport.type, .json]) { result in
                     switch result {
@@ -337,6 +338,10 @@ struct DataSettings: View {
                     ProgressView()
                     Text(working).foregroundStyle(.secondary)
                 }
+            }
+            if model.sessionOpen {
+                Text("A restore waits until the session ends.").font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.restoreWaits")
             }
             LabeledContent("Sync", value: model.store.syncStatus)
             if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
@@ -382,6 +387,9 @@ struct SourceSettings: View {
 struct PurchaseSettings: View {
     @Environment(AppModel.self) private var model
     @Environment(Purchases.self) private var purchases
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     var body: some View {
         if Purchases.enabled {
@@ -389,7 +397,7 @@ struct PurchaseSettings: View {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Mind Track", systemImage: "lock.open") { model.showPaywall = true }
+                    Button("Unlock Mind Track", systemImage: "lock.open") { unlock() }
                         .accessibilityIdentifier("settings.unlock")
                     Button("Restore purchase") { Task { await purchases.restore() } }
                         .accessibilityIdentifier("settings.restorePurchase")
@@ -400,6 +408,16 @@ struct PurchaseSettings: View {
         Section("Debug") {
             Button("Erase everything", role: .destructive) { model.eraseEverything() }
         }
+        #endif
+    }
+
+    /// On the Mac the unlock opens over the Settings window, where it was asked for, rather than as
+    /// a sheet on a main window that may be behind it or closed.
+    func unlock() {
+        #if os(macOS)
+        openWindow(id: PaywallView.windowID)
+        #else
+        model.showPaywall = true
         #endif
     }
 }

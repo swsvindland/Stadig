@@ -113,10 +113,12 @@ final class AppModel {
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var dayObservers: [NotificationToken] = []
+    @ObservationIgnored private var quitObserver: NotificationToken?
     @ObservationIgnored private var lastRevision = -1
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
     @ObservationIgnored private var readRevisions: [String: Int] = [:]
     @ObservationIgnored private var savedCards: [CardKey: MemoryCard] = [:]
+    @ObservationIgnored private var savedBooks: [UUID: Book] = [:]
     @ObservationIgnored private var lastPublished: AppSummary?
 
     /// The app's model as launched. Tests, UI tests and `-inMemoryStore` get a store in memory and a
@@ -153,8 +155,12 @@ final class AppModel {
     }
 
     /// Everything that touches disk or the system comes in, so a test builds one over an in-memory
-    /// store and a temporary shared container. `now` is the clock every date the model makes reads.
-    init(store: RecordStore, shared: SharedContainer, drafts: WritingDrafts, now: @escaping () -> Date = Date.init) {
+    /// store and a temporary shared container. `now` is the clock every date the model makes reads;
+    /// `quit` is what's posted as the app quits (a test posts one of its own).
+    init(
+        store: RecordStore, shared: SharedContainer, drafts: WritingDrafts, now: @escaping () -> Date = Date.init,
+        quit: Notification.Name? = Platform.willQuit
+    ) {
         self.store = store
         self.shared = shared
         self.drafts = drafts
@@ -169,6 +175,12 @@ final class AppModel {
         // Midnight, or a new time zone, with the app open: plan for the new day.
         dayObservers = [.NSCalendarDayChanged, .NSSystemTimeZoneDidChange].map { name in
             NotificationToken.observe(name) { [weak self] in self?.refreshDay() }
+        }
+        // ⌘Q with a session open on the Mac ends it as closing its window does: the window's
+        // onDisappear needn't run at quit, and the part's finish and the minutes since the last
+        // answer would go with it.
+        if let quit {
+            quitObserver = NotificationToken.observe(quit) { [weak self] in self?.endSession() }
         }
     }
 
@@ -362,7 +374,14 @@ final class AppModel {
         start(plan)
     }
 
+    /// Nothing starts over a session that's running: on the Mac, Today and the menus stay usable
+    /// beside the session's window, and a second run built from the cards as they were at the first
+    /// one's start would save its reviews over the first one's.
     private func start(_ plan: SessionPlan) {
+        guard run == nil else {
+            appLog.notice("Not starting a session over the one that's open")
+            return
+        }
         guard let state = makeState() else { return }
         // The assessment and check-ins are free; sessions after the assessment need the unlock.
         if !purchases.unlocked, !state.phase.isAssessment, plan.kind != .checkIn {
@@ -370,6 +389,7 @@ final class AppModel {
             return
         }
         savedCards = Dictionary(cards.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
+        savedBooks = Dictionary(books.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: now())
     }
 
@@ -381,6 +401,8 @@ final class AppModel {
         persist(current, finished: false)
     }
 
+    /// Ends the running session, once: End, closing the Mac's session window and quitting can all
+    /// ask, one after another, and only the first finds a run to finish.
     func endSession() {
         guard var current = run else { return }
         current.finish(now: now())
@@ -401,8 +423,11 @@ final class AppModel {
             for card in changed { savedCards[card.key] = card }
         }
         saveChanged(run.newTests, into: &tests)
-        let books = run.books.filter { run.changedBooks.contains($0.id) }
-        if !books.isEmpty { store.save(books) }
+        let books = run.books.filter { run.changedBooks.contains($0.id) && savedBooks[$0.id] != $0 }
+        if !books.isEmpty {
+            store.save(books)
+            for book in books { savedBooks[book.id] = book }
+        }
         saveChanged(run.newReflections, into: &reflections)
         saveChanged(run.newPieces, into: &pieces)
         saveChanged(run.newComparisons, into: &comparisons)
@@ -425,8 +450,18 @@ final class AppModel {
 
     func save(book: Book) { save(books: [book]) }
 
-    /// Saves books together, each stamped now, then reloads once.
+    /// Books can't be changed while a session is open: its reading block saves the book it began
+    /// with, so a change made beside it (on the Mac's shelf, or another reader started) would be
+    /// written over, or leave two books on the go. The shelf says so and waits.
+    var booksLocked: Bool { sessionOpen }
+
+    /// Saves books together, each stamped now, then reloads once. Not while a session is open
+    /// (`booksLocked`).
     func save(books: [Book]) {
+        guard !booksLocked else {
+            appLog.notice("Not changing books while a session is open")
+            return
+        }
         let now = self.now()
         store.save(
             books.map { book in
@@ -535,8 +570,15 @@ final class AppModel {
         return url
     }
 
+    /// A restore waits until the session ends: the session's next answer would save its own copies
+    /// of the cards and books over what was restored, and carry on from a history that's gone.
+    struct SessionOpenError: LocalizedError {
+        var errorDescription: String? { "End the session first: a restore made during one would be saved over by its answers." }
+    }
+
     @discardableResult
     func restore(from url: URL) async throws -> BackupSummary {
+        guard !sessionOpen else { throw SessionOpenError() }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let data = try Data(contentsOf: url)

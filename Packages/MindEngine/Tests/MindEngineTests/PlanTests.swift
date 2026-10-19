@@ -67,6 +67,25 @@ struct PlanTests {
         #expect(!phase(31, modes: [injury]).isPaused)
     }
 
+    @Test("how long a phase holds: the assessment's day, a week of the block, the review week, a pause to its end or open-ended")
+    func phaseLastDay() {
+        func last(_ offset: Int, calendar: SystemCalendar? = nil, modes: [LifeModePeriod] = []) -> Day? {
+            StudyCalendar.lastDay(ofPhaseOn: monday.adding(days: offset), start: monday, calendar: calendar, lifeModes: modes)
+        }
+        #expect(last(3) == monday.adding(days: 3), "the assessment counts its days")
+        #expect(last(15) == monday.adding(days: 20), "a week of the block, to its last day")
+        #expect(last(13) == monday.adding(days: 13), "the assessment's last day hands on to the block")
+        #expect(last(50) == monday.adding(days: 55), "the review week")
+
+        let vacation = LifeModePeriod(kind: .vacation, start: monday.adding(days: 30), end: monday.adding(days: 36), createdBy: .liftTrack)
+        #expect(last(31, modes: [vacation]) == monday.adding(days: 36))
+        // Illness straight after: still paused, but it reads as illness, not vacation.
+        let ill = LifeModePeriod(kind: .illness(.systemic), start: monday.adding(days: 37), end: monday.adding(days: 40), createdBy: .macroTrack)
+        #expect(last(31, modes: [vacation, ill]) == monday.adding(days: 36))
+        let open = LifeModePeriod(kind: .illness(.aboveNeck), start: monday.adding(days: 30), createdBy: .liftTrack)
+        #expect(last(31, modes: [open]) == nil, "no end set: nobody knows")
+    }
+
     @Test("crunch mode: nothing planned, a five-minute review offered, and the days left out of Discipline")
     func crunch() {
         var store = Store(settings: Fixtures.settings())

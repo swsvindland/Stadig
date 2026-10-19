@@ -7,6 +7,8 @@ import SystemCore
 struct SessionView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmingEnd = false
+    /// The step has a sheet, picker or scanner up: Esc belongs to that, not to End.
+    @State private var stepPresenting = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +18,7 @@ struct SessionView: View {
                         // A screen per step: answering keeps it (with what was typed, and its
                         // haptic), the next step replaces it.
                         StepView(step: step, run: run)
+                            .environment(\.sessionStep, run.stepNumber)
                             .id(model.stepScreen)
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                     } else {
@@ -24,13 +27,14 @@ struct SessionView: View {
                 }
             }
             .environment(\.sessionKeysPaused, confirmingEnd)
+            .onPreferenceChange(StepPresentingKey.self) { stepPresenting = $0 }
             .animation(.snappy, value: model.stepScreen)
             .animation(.snappy, value: model.run?.feedback == nil)
             .background(.pageBackground)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("End", systemImage: "xmark", action: end)
-                        .keyboardShortcut(.cancelAction)
+                        .keyboardShortcut(stepPresenting ? nil : .cancelAction)
                         .help("End the session (Esc)")
                         .accessibilityIdentifier("session.end")
                 }

@@ -46,6 +46,7 @@ struct ShelfDestination: View {
                                     .tag(ShelfSelection.suggestion(book.id))
                                     .contextMenu {
                                         Button("Start Reading", systemImage: "book") { start(book) }
+                                            .disabled(model.booksLocked)
                                     }
                                     .accessibilityIdentifier("shelfList.suggestion.\(book.id)")
                             }
@@ -68,7 +69,8 @@ struct ShelfDestination: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Add a Book", systemImage: "plus") { model.addingBook = true }
-                        .help("Add a book you're reading now (⇧⌘B)")
+                        .disabled(model.booksLocked)
+                        .help(model.booksLocked ? "Books can be added once the session ends" : "Add a book you're reading now (⇧⌘B)")
                         .accessibilityIdentifier("shelfList.addBook")
                 }
             }
@@ -103,15 +105,19 @@ struct ShelfDestination: View {
         }
     }
 
-    /// What can be done with a book, in its context menu and its detail.
+    /// What can be done with a book, in its context menu and its detail: nothing while a session
+    /// is open (`booksLocked`).
     @ViewBuilder func actions(for book: Book) -> some View {
-        if book.status == .reading {
-            Button("Finished It…", systemImage: "checkmark") { finishing = book }
-            Button("Edit…", systemImage: "pencil") { editing = book }
-            Button("Set It Aside…", systemImage: "xmark.bin", role: .destructive) { settingAside = book }
-        } else {
-            Button("Edit…", systemImage: "pencil") { editing = book }
+        Group {
+            if book.status == .reading {
+                Button("Finished It…", systemImage: "checkmark") { finishing = book }
+                Button("Edit…", systemImage: "pencil") { editing = book }
+                Button("Set It Aside…", systemImage: "xmark.bin", role: .destructive) { settingAside = book }
+            } else {
+                Button("Edit…", systemImage: "pencil") { editing = book }
+            }
         }
+        .disabled(model.booksLocked)
     }
 
     func start(_ book: LadderBook) {
@@ -126,13 +132,13 @@ struct ShelfDestination: View {
             if let book = model.books.first(where: { $0.id == id }) {
                 BookDetail(
                     book: book, reflections: model.reflections.filter { $0.bookID == id }.reversed(), level: model.analysis?.reading.level,
-                    finish: { finishing = book }, edit: { editing = book }, setAside: { settingAside = book })
+                    locked: model.booksLocked, finish: { finishing = book }, edit: { editing = book }, setAside: { settingAside = book })
             } else {
                 noSelection
             }
         case .suggestion(let id):
             if let book = model.catalogs.ladder.books(in: nil).first(where: { $0.id == id }) {
-                SuggestionDetail(book: book, current: shelf.current) { start(book) }
+                SuggestionDetail(book: book, current: shelf.current, locked: model.booksLocked) { start(book) }
             } else {
                 noSelection
             }
@@ -178,6 +184,8 @@ private struct BookDetail: View {
     let book: Book
     let reflections: [Reflection]
     let level: Double?
+    /// A session is open: the buttons wait for it to end.
+    let locked: Bool
     let finish: () -> Void
     let edit: () -> Void
     let setAside: () -> Void
@@ -207,7 +215,9 @@ private struct BookDetail: View {
                             Button("Set It Aside…", systemImage: "xmark.bin", role: .destructive, action: setAside).secondaryAction()
                                 .accessibilityIdentifier("bookDetail.setAside")
                         }
+                        .disabled(locked)
                         .padding(.top, 4)
+                        BooksLockedNote()
                     }
                     .card()
                 } else {
@@ -221,7 +231,9 @@ private struct BookDetail: View {
                             LabeledContent("Your feedback puts it near", value: "tier \(ReadingPlan.format(refined))")
                         }
                         Button("Edit…", systemImage: "pencil", action: edit).secondaryAction().padding(.top, 4)
+                            .disabled(locked)
                             .accessibilityIdentifier("bookDetail.edit")
+                        BooksLockedNote()
                     }
                     .card()
                 }
@@ -266,6 +278,7 @@ private struct BookDetail: View {
 private struct SuggestionDetail: View {
     let book: LadderBook
     let current: Book?
+    let locked: Bool
     let start: () -> Void
 
     var body: some View {
@@ -286,7 +299,9 @@ private struct SuggestionDetail: View {
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Start Reading", systemImage: "book", action: start).primaryAction().controlSize(.large)
+                        .disabled(locked)
                         .accessibilityIdentifier("suggestion.start")
+                    BooksLockedNote()
                     if let current {
                         Text("\(current.title) is set aside: one English book at a time.").font(.footnote).foregroundStyle(.secondary)
                     }

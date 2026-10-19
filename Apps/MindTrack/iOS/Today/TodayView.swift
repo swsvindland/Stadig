@@ -69,7 +69,11 @@ struct TodayView: View {
         } else {
             RestCard()
         }
-        ForEach(analysis.actions) { ActionCard(action: $0) }
+        // What's worth doing next waits on the Mac while a session is open beside it: each starts
+        // another session or opens the shelf, and neither runs beside one.
+        if !model.sessionOpen {
+            ForEach(analysis.actions) { ActionCard(action: $0) }
+        }
     }
 
     @ViewBuilder func side(_ analysis: MindAnalysis) -> some View {

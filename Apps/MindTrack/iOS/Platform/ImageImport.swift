@@ -13,9 +13,35 @@ enum ImageImport {
     /// What the importers and drops accept: pictures, and scans saved as PDFs.
     static let pageTypes: [UTType] = [.image, .pdf]
 
-    /// More pages than a piece of handwriting runs to are left out: a whole book scanned by mistake
-    /// shouldn't take minutes and a gigabyte to read.
+    /// More pages than a piece of handwriting runs to are left out, counted across every file brought
+    /// in together: a whole book scanned by mistake, or a folder of photos, shouldn't take minutes
+    /// and a gigabyte to read.
     nonisolated static let maxPages = 12
+
+    /// A file brought in, loaded only when its turn comes: several chosen at once are read one by
+    /// one, never all held in memory first.
+    typealias File = () async throws -> Data?
+
+    /// Each page of `files` in order, at most `limit` across all of them, handed to `read` one at a
+    /// time: a file is loaded only once the pages before it are read, and none after the limit is
+    /// loaded at all. Returns how many pages could be drawn.
+    @discardableResult
+    static func forEachPage(of files: [File], limit: Int = maxPages, _ read: (CGImage) async throws -> Void) async throws -> Int {
+        var left = limit
+        var drawn = 0
+        for load in files {
+            guard left > 0 else { break }
+            guard let file = try await load() else { continue }
+            let count = min(left, await pageCount(file))
+            left -= count
+            for index in 0..<count {
+                guard let page = await page(file, at: index) else { continue }
+                drawn += 1
+                try await read(page)
+            }
+        }
+        return drawn
+    }
 
     /// How many pages a file's bytes hold: a PDF's pages (up to `maxPages`), or one picture.
     @concurrent nonisolated static func pageCount(_ data: Data) async -> Int {

@@ -36,8 +36,10 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     var plannedThisWeek = 0
     /// Cards due for review today.
     var dueReviews = 0
-    /// The next study day, when today has none left.
+    /// The next study day this week, when today has none left.
     var nextDay: Day?
+    /// The last day `phase` (and a pause) holds; nil for a pause with no end set.
+    var phaseLastDay: Day?
     /// The day the snapshot was written for, so a widget drawn days later can say it's stale.
     var day: Day?
     var updated = Date()
@@ -81,20 +83,37 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
         return true
     }
 
-    /// The snapshot as it reads on `today`, which can be days after the app wrote it: once its day
-    /// has gone by, a nudge to open the app for the new day's plan, and a new week counts from zero.
+    /// The snapshot as it reads on `today`, which can be days after the app wrote it. Once its day
+    /// has gone by it says only what it still knows: a pause that hasn't ended (or has no end set)
+    /// is still a pause, a day before the next study day is a rest day, the next study day nudges
+    /// to open the app, and past that it just asks. The day's parts and courses go, the phase goes
+    /// once it's over, and a new week counts from zero.
     func reading(on today: Day) -> MindSnapshot {
         guard let day, day < today, status != .setUp else { return self }
         var snapshot = self
-        if let nextDay, nextDay == today {
-            snapshot.headline = "Study day: open Mind Track"
-        } else {
-            snapshot.headline = "Open Mind Track for today's plan"
-        }
-        snapshot.status = .today
         snapshot.parts = []
+        snapshot.symbols = []
         snapshot.dueReviews = 0
         if today >= day.startOfWeek.adding(days: 7) { snapshot.doneThisWeek = 0 }
+        // A pause with no end set holds until the app says otherwise; any other phase without a
+        // last day (a snapshot from before it was kept) isn't trusted.
+        let phaseHolds = phaseLastDay.map { today <= $0 } ?? (status == .paused)
+        if !phaseHolds { snapshot.phase = Self.empty.phase }
+        if status == .paused, phaseHolds { return snapshot }
+        if let nextDay, nextDay > today {
+            snapshot.status = .rest
+            snapshot.headline = "Rest day"
+        } else if nextDay == today {
+            snapshot.status = .today
+            snapshot.headline = "Study day: open Mind Track"
+        } else {
+            snapshot.status = .today
+            snapshot.headline = "Open Mind Track for today's plan"
+        }
         return snapshot
     }
+
+    /// Where tapping the widget goes: straight into the session when one waits, else Today. Read
+    /// from the snapshot as it reads on the day drawn, not as written.
+    var link: URL? { URL(string: status == .today ? "mindtrack://start" : "mindtrack://today") }
 }

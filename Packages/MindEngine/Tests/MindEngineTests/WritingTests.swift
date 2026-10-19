@@ -596,3 +596,81 @@ extension WritingScheduleTests {
         #expect(opening.id == first.id)
     }
 }
+
+extension WritingSessionTests {
+    @Test("Done under a piece's notes, pressed twice as the step changes, doesn't skip the blind comparison after it")
+    func reviewDoneOnce() throws {
+        let old = WritingFixtures.piece(.benchmark, on: Fixtures.monday, taskID: "benchmark-creative")
+        let state = WritingFixtures.state(WritingFixtures.settings(), pieces: [old], tests: placed, on: Fixtures.monday.adding(days: 84))
+        var run = StudyRun(
+            plan: SessionPlanner.plan(.checkIn, domains: [.writing], state: state, catalogs: catalogs), state: state, catalogs: catalogs,
+            now: state.now)
+        var now = state.now
+        var steps = 0
+        // To the benchmark's notes.
+        while let step = run.step, steps < 100 {
+            steps += 1
+            now += 20
+            if case .compose(let task) = step, task.reviewing != nil { break }
+            switch step {
+            case .question(let question):
+                run.choose(question.correctChoice ?? 0, now: now)
+                run.next(now: now)
+            case .compose: run.submitWriting(WritingFixtures.words(150, from: "new"), source: .typed, misspelled: [], now: now)
+            default: run.skipPart(now: now)
+            }
+        }
+        guard case .compose(let review) = run.step, review.reviewing != nil else {
+            Issue.record("no notes to read: \(String(describing: run.step))")
+            return
+        }
+        let shown = run.stepNumber
+
+        // Unguarded, the second press would leave the pair unjudged.
+        var unguarded = run
+        unguarded.respond(.skip, now: now + 1)
+        unguarded.respond(.skip, now: now + 2)
+        if case .compare = unguarded.step { Issue.record("the second Done was expected to skip the comparison") }
+
+        run.respond(.skip, onStep: shown, now: now + 1)
+        guard case .compare = run.step else {
+            Issue.record("no comparison after the notes: \(String(describing: run.step))")
+            return
+        }
+        let compare = run.stepNumber
+        run.respond(.skip, onStep: shown, now: now + 2)
+        #expect(run.stepNumber == compare, "the second press was for the notes, which have gone")
+        guard case .compare = run.step else {
+            Issue.record("the comparison was skipped")
+            return
+        }
+    }
+
+    @Test("Return on a lesson, arriving after the next question was answered, doesn't skip that answer's feedback")
+    func lessonReturnOnce() throws {
+        let state = StudyState(settings: WritingFixtures.settings(), today: day, now: day.date())
+        let plan = SessionPlan(
+            day: day, kind: .regular, minutes: 5, domains: [.writing],
+            parts: [PlanPart(kind: .learn, domain: .writing, minutes: 5, title: "Grammar", detail: "")], headline: "", notes: [],
+            planned: true)
+        var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
+        guard case .lesson = run.step else {
+            Issue.record("no lesson: \(String(describing: run.step))")
+            return
+        }
+        let lesson = run.stepNumber
+        run.next(fromStep: lesson, now: state.now + 20)
+        guard case .question(let question) = run.step else {
+            Issue.record("no question after the lesson: \(String(describing: run.step))")
+            return
+        }
+        #expect(run.stepNumber == lesson + 1)
+        run.choose(question.correctChoice ?? 0, now: state.now + 25)
+        #expect(run.feedback != nil)
+
+        run.next(fromStep: lesson, now: state.now + 26)
+        #expect(run.stepNumber == lesson + 1 && run.feedback != nil, "the answer's feedback stays on screen")
+        run.next(fromStep: run.stepNumber, now: state.now + 30)
+        #expect(run.stepNumber == lesson + 2, "a press on the step shown moves on")
+    }
+}

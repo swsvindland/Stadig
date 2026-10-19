@@ -56,6 +56,16 @@ struct MindTrackApp: App {
         .restorationBehavior(.disabled)
         .commandsRemoved()
 
+        // The unlock in a window of its own: asked for from the menu bar or Settings, the main
+        // window may be closed or behind, and a sheet on it would go unseen.
+        Window("Unlock Mind Track", id: PaywallView.windowID) {
+            PaywallView()
+                .environment(model.purchases)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .commandsRemoved()
+
         Settings {
             MacSettings()
                 .environment(model)
@@ -109,7 +119,12 @@ enum DebugLaunch {
         // -showShelf opens the reading shelf (-findBook <title or ISBN> then searches for a book).
         if launch.has("-showShelf") || launch.has("-findBook") { model.showShelf = true }
         if launch.has("-findBook") { model.addingBook = true }
-        if launch.has("-startSession") { model.startToday() }
+        // A session never starts over another: -startSession and -study replace the first one
+        // -onboarded started, of which nothing was answered or saved.
+        if launch.has("-startSession") {
+            model.run = nil
+            model.startToday()
+        }
         if let courses, var settings = model.settings, settings.courses != courses {
             settings.courses = courses
             model.save(settings: settings)
@@ -124,6 +139,7 @@ enum DebugLaunch {
         // -skipParts N moves past N parts (maths' timed numeracy block, say). The two run in the
         // order given.
         if let domain = launch.value(after: "-study").flatMap(Domain.init(rawValue:)) {
+            model.run = nil
             model.startSession([domain])
         }
         // -checkIn writing starts a check-in of that subject now, whatever the calendar says.

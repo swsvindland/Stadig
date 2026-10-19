@@ -153,6 +153,22 @@ public struct StudyRun: Sendable {
         next(now: now)
     }
 
+    /// On from the step numbered `number` (its `stepNumber` when it was shown), and only from it.
+    /// A key bound to moving on (Return on a lesson, or on a spoken answer's feedback) can arrive
+    /// twice for one step: pressed again as the step changes, or heard by the step on its way out.
+    /// The second press finds another step and leaves it alone.
+    public mutating func next(fromStep number: Int, now: Date) {
+        guard stepNumber == number else { return }
+        next(now: now)
+    }
+
+    /// `respond` to the step numbered `number`, and only to it: "Don't know" on a speaking test, or
+    /// Done under a piece's notes, pressed as the step changes doesn't answer the next one.
+    public mutating func respond(_ response: StepResponse, onStep number: Int, now: Date) {
+        guard stepNumber == number else { return }
+        respond(response, now: now)
+    }
+
     /// Anything other than answering a question: a passage read, something said or written, a
     /// pick, a book. The current part handles it; the run moves on unless the part set feedback
     /// to show first.

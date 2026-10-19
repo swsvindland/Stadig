@@ -40,12 +40,29 @@ extension View {
     func sessionKeys(_ bindings: [SessionKeyBinding], perform: @escaping (SessionKey) -> Void) -> some View {
         modifier(SessionKeysModifier(bindings: bindings, perform: perform))
     }
+
+    /// The step has something up over it (a sheet, a photo or file picker, the scanner): on iPad a
+    /// presented sheet still hears the keys of what presented it, so the session's own Esc for End
+    /// is put away until it's gone, as the step's keys are.
+    func presentingOverStep(_ presenting: Bool) -> some View {
+        preference(key: StepPresentingKey.self, value: presenting)
+    }
 }
 
 extension EnvironmentValues {
     /// Something is up over the step (the End dialog): on iPad a presented dialog still hears the
     /// keys of what presented it, so the step's are put away until it's gone.
     @Entry var sessionKeysPaused = false
+    /// The `stepNumber` of the step this screen shows. A key that moves on passes it to the run,
+    /// which acts only while that step is still the current one: a press arriving as the step
+    /// changes, or heard by the step on its way out, leaves the next step alone.
+    @Entry var sessionStep = 0
+}
+
+/// Whether a step is presenting something over itself (`presentingOverStep`).
+struct StepPresentingKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
 private struct SessionKeysModifier: ViewModifier {
@@ -57,8 +74,13 @@ private struct SessionKeysModifier: ViewModifier {
         content.background {
             ZStack {
                 ForEach(paused ? [] : bindings) { binding in
-                    Button(binding.action.title) { perform(binding.action) }
-                        .keyboardShortcut(binding.key.equivalent, modifiers: binding.modifiers.eventModifiers)
+                    Button(binding.action.title) {
+                        // A key held down acts once: its repeats would answer, or move past, the
+                        // steps after it.
+                        guard !Platform.isKeyRepeat else { return }
+                        perform(binding.action)
+                    }
+                    .keyboardShortcut(binding.key.equivalent, modifiers: binding.modifiers.eventModifiers)
                 }
             }
             .frame(width: 0, height: 0)

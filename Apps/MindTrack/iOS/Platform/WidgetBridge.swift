@@ -30,6 +30,7 @@ enum WidgetBridge {
         snapshot.plannedThisWeek = studyDays.count
         snapshot.doneThisWeek = studyDays.filter { $0.status == .done }.count
         snapshot.nextDay = analysis.week.first { $0.day > today && $0.status == .planned }?.day
+        snapshot.phaseLastDay = model.state?.phaseLastDay
         if case .paused(let kind) = analysis.phase {
             snapshot.status = .paused
             snapshot.headline = kind.label

@@ -44,6 +44,10 @@ public struct StudyState: Sendable {
 
     public var phase: StudyPhase { StudyCalendar.phase(on: today, start: start, calendar: calendar, lifeModes: lifeModes) }
 
+    /// The last day today's phase holds (`StudyCalendar.lastDay(ofPhaseOn:)`); nil for a pause
+    /// with no end set.
+    public var phaseLastDay: Day? { StudyCalendar.lastDay(ofPhaseOn: today, start: start, calendar: calendar, lifeModes: lifeModes) }
+
     public func latest(_ kind: TestKind) -> TestResult? { tests.last { $0.test == kind } }
 
     /// The latest result of a test in a course (a language's own vocabulary test, say).

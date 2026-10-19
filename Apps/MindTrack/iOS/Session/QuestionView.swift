@@ -5,6 +5,7 @@ import SwiftUI
 struct LessonView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.sessionStep) private var shownStep
     let lesson: Lesson
 
     /// A maths lesson in a wide window: the lesson beside its worked example.
@@ -27,7 +28,7 @@ struct LessonView: View {
             }
             BottomBar {
                 Button {
-                    model.act { $0.next(now: Date()) }
+                    model.act { $0.next(fromStep: shownStep, now: Date()) }
                 } label: {
                     Text(continueLabel).font(.headline).frame(maxWidth: .infinity)
                 }
@@ -40,7 +41,7 @@ struct LessonView: View {
         .onAppear { speakIfLanguage() }
         .sessionKeys(keys) { key in
             switch key {
-            case .submit: model.act { $0.next(now: Date()) }
+            case .submit: model.act { $0.next(fromStep: shownStep, now: Date()) }
             case .replay: speakIfLanguage()
             case .replaySlowly: speakIfLanguage(slow: true)
             default: break

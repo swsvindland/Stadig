@@ -173,8 +173,7 @@ private struct ComposeEditor: View {
             photo = nil
             let target = photoTarget
             read(into: target) {
-                guard let data = try await item.loadTransferable(type: Data.self) else { return "" }
-                return try await Self.text(in: [data], handwriting: target == .writing)
+                try await Self.text(in: [{ try await item.loadTransferable(type: Data.self) }], handwriting: target == .writing)
             }
         }
         .fileImporter(isPresented: $importingFile, allowedContentTypes: ImageImport.pageTypes, allowsMultipleSelection: true) { result in
@@ -182,9 +181,7 @@ private struct ComposeEditor: View {
             case .success(let urls):
                 let target = photoTarget
                 read(into: target) {
-                    var files: [Data] = []
-                    for url in urls { files.append(try await ImageImport.data(at: url)) }
-                    return try await Self.text(in: files, handwriting: target == .writing)
+                    try await Self.text(in: urls.map { url in { try await ImageImport.data(at: url) } }, handwriting: target == .writing)
                 }
             case .failure(let error):
                 problem = "The file couldn't be opened. \(error.localizedDescription)"
@@ -192,6 +189,7 @@ private struct ComposeEditor: View {
         }
         .focusedSceneValue(\.handwrittenPageImport, HandwrittenPageImport { openFiles(for: .writing) })
         .sessionKeys(keys) { key in if key == .handIn { handIn() } }
+        .presentingOverStep(choosingPhoto || importingFile || scanning != nil)
         #if DEBUG
         .task {
             let launch = LaunchOptions.current
@@ -200,7 +198,7 @@ private struct ComposeEditor: View {
             if let name = launch.value(after: "-readImage") {
                 do {
                     let data = try Data(contentsOf: URL.documentsDirectory.appending(path: name))
-                    read(into: .writing) { try await Self.text(in: [data], handwriting: true) }
+                    read(into: .writing) { try await Self.text(in: [{ data }], handwriting: true) }
                 } catch {
                     appLog.error("No picture to read at \(name, privacy: .public): \(error.localizedDescription)")
                 }
@@ -339,7 +337,7 @@ private struct ComposeEditor: View {
             // A photo or scan of a written page dropped on the editor is read into it.
             .dropDestination(for: Data.self) { files, _ in
                 guard !files.isEmpty else { return false }
-                read(into: .writing) { try await Self.text(in: files, handwriting: true) }
+                read(into: .writing) { try await Self.text(in: files.map { file in { file } }, handwriting: true) }
                 return true
             } isTargeted: {
                 dropping = $0
@@ -349,11 +347,7 @@ private struct ComposeEditor: View {
             .importsItemProviders(ImageImport.pageTypes) { providers in
                 guard !providers.isEmpty else { return false }
                 read(into: .writing) {
-                    var files: [Data] = []
-                    for provider in providers {
-                        if let data = await ImageImport.data(from: provider) { files.append(data) }
-                    }
-                    return try await Self.text(in: files, handwriting: true)
+                    try await Self.text(in: providers.map { provider in { await ImageImport.data(from: provider) } }, handwriting: true)
                 }
                 return true
             }
@@ -454,21 +448,16 @@ private struct ComposeEditor: View {
         importingFile = true
     }
 
-    /// The text on pages brought in as files' bytes (pictures, or scans saved as PDFs), in order:
-    /// each page decoded and read before the next, so a long scan never sits in memory whole.
-    static func text(in files: [Data], handwriting: Bool) async throws -> String {
+    /// The text on pages brought in (pictures, or scans saved as PDFs), in order, up to
+    /// `ImageImport.maxPages` across every file: each file loaded and each page decoded and read
+    /// before the next, so a long scan or a pile of photos never sits in memory whole.
+    static func text(in files: [ImageImport.File], handwriting: Bool) async throws -> String {
         var texts: [String] = []
-        var opened = false
-        for file in files {
-            let count = await ImageImport.pageCount(file)
-            for index in 0..<count {
-                guard let page = await ImageImport.page(file, at: index) else { continue }
-                opened = true
-                let text = try await TextRecognizer.read([page], handwriting: handwriting)
-                if !text.isEmpty { texts.append(text) }
-            }
+        let opened = try await ImageImport.forEachPage(of: files) { page in
+            let text = try await TextRecognizer.read([page], handwriting: handwriting)
+            if !text.isEmpty { texts.append(text) }
         }
-        guard opened else { throw TextRecognizer.RecognitionError.unreadableImage }
+        guard opened > 0 else { throw TextRecognizer.RecognitionError.unreadableImage }
         return texts.joined(separator: "\n\n")
     }
 
@@ -546,6 +535,7 @@ private struct ComposeEditor: View {
 private struct PieceReview: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.sessionStep) private var shownStep
     let task: WritingTask
     let pieceID: UUID
     @State private var slips: [WritingSlip] = []
@@ -583,9 +573,7 @@ private struct PieceReview: View {
                 .readableWidth(sizeClass == .regular && task.exercise == .franklinRewrite ? 980 : 680)
             }
             BottomBar {
-                Button {
-                    model.act { $0.respond(.skip, now: Date()) }
-                } label: {
+                Button(action: done) {
                     Text("Done").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
@@ -594,13 +582,17 @@ private struct PieceReview: View {
                 KeyLegend(bindings: keys, titles: [.submit: "Done"])
             }
         }
-        .sessionKeys(keys) { key in if key == .submit { model.act { $0.respond(.skip, now: Date()) } } }
+        .sessionKeys(keys) { key in if key == .submit { done() } }
         .task(id: pieceID) {
             guard let piece = model.run?.piece(pieceID) else { return }
             slips = WritingAssistant.slips(piece.text)
             WritingAssistant.shared.requestNotes(for: piece, source: task.source, model: model)
         }
     }
+
+    /// On from the notes, once: a second press as the step changes would skip what comes next (a
+    /// check-in's blind comparison).
+    func done() { model.act { $0.respond(.skip, onStep: shownStep, now: Date()) } }
 }
 
 /// A piece with its slips marked.

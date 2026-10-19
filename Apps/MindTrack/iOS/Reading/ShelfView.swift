@@ -26,18 +26,25 @@ struct ShelfView: View {
                 }
             }
             if let current = shelf.current {
-                Section("Reading now") {
+                Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(current.title).font(.headline)
                             .accessibilityIdentifier("shelf.current")
                         Text(Shelf.detail(current)).font(.subheadline).foregroundStyle(.secondary)
                     }
-                    Button("Finished it", systemImage: "checkmark") { finishing = current }
-                        .accessibilityIdentifier("shelf.finished")
-                    Button("Edit", systemImage: "pencil") { editing = current }
-                        .accessibilityIdentifier("shelf.edit")
-                    Button("Set it aside", systemImage: "xmark.bin", role: .destructive) { settingAside = current }
-                        .accessibilityIdentifier("shelf.setAside")
+                    Group {
+                        Button("Finished it", systemImage: "checkmark") { finishing = current }
+                            .accessibilityIdentifier("shelf.finished")
+                        Button("Edit", systemImage: "pencil") { editing = current }
+                            .accessibilityIdentifier("shelf.edit")
+                        Button("Set it aside", systemImage: "xmark.bin", role: .destructive) { settingAside = current }
+                            .accessibilityIdentifier("shelf.setAside")
+                    }
+                    .disabled(model.booksLocked)
+                } header: {
+                    Text("Reading now")
+                } footer: {
+                    BooksLockedNote()
                 }
             }
             Section {
@@ -56,9 +63,11 @@ struct ShelfView: View {
                         }
                     }
                     .foregroundStyle(.primary)
+                    .disabled(model.booksLocked)
                     .accessibilityIdentifier("shelf.suggestion.\(book.id)")
                 }
                 Button("Add a book", systemImage: "plus") { model.addingBook = true }
+                    .disabled(model.booksLocked)
                     .accessibilityIdentifier("shelf.addBook")
             } header: {
                 Text("Suggested next")
@@ -114,6 +123,20 @@ enum Shelf {
         if let query = LaunchOptions.current.value(after: "-findBook") { return query }
         #endif
         return ""
+    }
+}
+
+/// Why the shelf's buttons wait while a session is open: on the Mac the shelf stays in reach beside
+/// the session's window.
+struct BooksLockedNote: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.booksLocked {
+            Label("A session is open. Books can be changed once it ends, so its reading block doesn't save over the change.", systemImage: "lock")
+                .font(.footnote).foregroundStyle(.secondary)
+                .accessibilityIdentifier("shelf.booksLocked")
+        }
     }
 }
 
