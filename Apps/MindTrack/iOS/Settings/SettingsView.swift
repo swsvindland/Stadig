@@ -524,7 +524,9 @@ struct LifeModeEditor: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        // Half a phone's height; on an iPad the form sheet's own, since half of that leaves End Today
+        // and Delete below the fold.
+        .presentationDetents(Platform.isPhone ? [.medium] : [.large])
         .sheetForm(height: 360)
     }
 
