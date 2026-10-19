@@ -45,7 +45,7 @@ xcrun simctl launch --terminate-running-process $UDID dev.svindland.stadig.lift 
 Scripts/build.sh mac lift     # signed ad hoc: runs on this Mac, keeps its data here ("This device only")
 open -g -n "$(Scripts/build.sh products mac)/LiftTrack.app" --args -inMemoryStore -seedSampleData
 swift Scripts/window-shot.swift "Lift Track" /tmp/mac.png    # just the app's window
-osascript -e 'quit app "Lift Track"'
+osascript -e 'quit app id "dev.svindland.stadig.lift"'   # by bundle id: the app's name doesn't reach a debug build
 ```
 
 The same launch arguments work. The Mac app is on the person's screen while it runs: launch it in the background (`-g`), capture only its window, and quit it when done.

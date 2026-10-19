@@ -68,7 +68,8 @@ Made without sign-off while bringing the apps to the iPad, the Mac, Vision Pro a
 - **Sessions on the Mac.** Their own window; closing it ends the session as End does (rather than pausing), and minimising keeps it running. Reading and writing type is a size up on the Mac.
 - **Keys.** 1–9 choose, Return checks or continues (or toggles the microphone), ⌘Return hands writing in, Space or R replays audio and ⌥R slower, ? or ⌘D is "Don't know", A and B pick in a comparison, Esc ends. While a text field has focus only ⌘ keys act. Key hints show on the Mac always, and on iPad and Vision Pro with a keyboard attached. ⌘N starts today's session.
 - **Reading tests.** A test passage stays hidden while its questions are on screen, even in a wide window, so the test stays a test.
-- **Handwritten pages** can come in as a photo, a file (up to 12 pages of a PDF) or a drop on the iPad, the Mac and Vision Pro; the iPhone keeps the camera and Photos.
+- **Handwritten pages** can come in as a photo, files (up to 12 pages in all) or a drop on the iPad, the Mac and Vision Pro; the iPhone keeps the camera and Photos.
+- **While a session is open** (on the Mac it runs beside the main window): another session can't start, and the shelf, graded readers and Restore are locked with a note saying why, so nothing the session holds is written back over them. Quitting the Mac app mid-session ends the session as End does. The Mac's unlock is a window of its own, so it can open from the menu bar or Settings with the main window closed.
 
 ## Calls made in the quality pass (2026-10-18)
 
