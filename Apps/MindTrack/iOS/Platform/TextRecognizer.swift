@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import UIKit
 import Vision
 
 /// On-device text recognition with Vision: a page written by hand (on paper and scanned or
@@ -21,11 +20,21 @@ enum TextRecognizer {
         return out.joined(separator: "\n\n")
     }
 
-    static func read(_ image: UIImage, languages: [Locale.Language] = english, handwriting: Bool = true) async throws -> String {
-        guard let cgImage = image.cgImage else { return "" }
-        return try await read(
-            cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), languages: languages,
-            handwriting: handwriting)
+    /// The text in a photo or scan as a file's bytes (a photo picked, a file imported, an image
+    /// dropped on the window, a picture from Continuity Camera): decoded upright and no bigger than
+    /// recognition needs, off the main actor.
+    static func read(_ data: Data, languages: [Locale.Language] = english, handwriting: Bool = true) async throws -> String {
+        guard let image = await page(from: data) else { throw RecognitionError.unreadableImage }
+        return try await read(image, orientation: .up, languages: languages, handwriting: handwriting)
+    }
+
+    @concurrent nonisolated private static func page(from data: Data) async -> CGImage? {
+        ImageData.downsampled(data, maxPixels: 3000)
+    }
+
+    enum RecognitionError: LocalizedError {
+        case unreadableImage
+        var errorDescription: String? { "The picture couldn't be opened." }
     }
 
     static func read(
@@ -77,21 +86,5 @@ enum TextRecognizer {
             }
         }
         return out
-    }
-}
-
-extension CGImagePropertyOrientation {
-    init(_ orientation: UIImage.Orientation) {
-        switch orientation {
-        case .up: self = .up
-        case .upMirrored: self = .upMirrored
-        case .down: self = .down
-        case .downMirrored: self = .downMirrored
-        case .left: self = .left
-        case .leftMirrored: self = .leftMirrored
-        case .right: self = .right
-        case .rightMirrored: self = .rightMirrored
-        @unknown default: self = .up
-        }
     }
 }

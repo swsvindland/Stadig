@@ -10,7 +10,7 @@ struct MindTrackApp: App {
     init() {
         let launch = LaunchOptions.current
         // UI tests tap through screens faster without animations to wait for.
-        if launch.isUITesting { UIView.setAnimationsEnabled(false) }
+        if launch.isUITesting { Platform.disableAnimations() }
         // The unit tests build models of their own: the app only needs to come up, empty.
         guard !launch.isHostingTests else { return }
         #if DEBUG
@@ -36,20 +36,46 @@ struct MindTrackApp: App {
                     }
                 }
         }
+        .commands { MindCommands(model: model) }
+        #if os(macOS)
+        .defaultSize(width: 1180, height: 800)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified)
+        #endif
+
+        #if os(macOS)
+        // A session in a window of its own, at a size for reading and writing: the main window
+        // stays behind it for the plan and progress.
+        Window("Session", id: SessionWindow.id) {
+            SessionWindow()
+                .environment(model)
+                .environment(model.purchases)
+        }
+        .defaultSize(width: 940, height: 800)
+        .windowResizability(.contentMinSize)
+        .restorationBehavior(.disabled)
+        .commandsRemoved()
+
+        Settings {
+            MacSettings()
+                .environment(model)
+                .environment(model.purchases)
+        }
+        #endif
     }
 }
 
-/// mindtrack://start opens today's session; mindtrack://plan and progress open those tabs.
+/// mindtrack://start opens today's session; mindtrack://plan and progress open those tabs, and
+/// shelf, writing and courses those destinations (or, on an iPhone, the tab that reaches them).
 enum DeepLink {
     @MainActor
     static func open(_ url: URL, model: AppModel) {
         guard model.onboarded else { return }
-        switch url.host() {
-        case "start": if model.run == nil { model.startToday() }
-        case "plan": model.tab = .plan
-        case "progress": model.tab = .progress
-        default: model.tab = .today
+        if url.host() == "start" {
+            if model.run == nil { model.startToday() }
+            return
         }
+        model.tab = url.host().flatMap(AppTab.init(rawValue:)) ?? .today
     }
 }
 
@@ -74,17 +100,12 @@ enum DebugLaunch {
             if let courses { settings.courses = courses }
             model.completeOnboarding(settings, booksRead: [])
         }
-        if let tab = launch.value(after: "-tab") {
-            model.tab =
-                switch tab {
-                case "plan": .plan
-                case "progress": .progress
-                default: .today
-                }
-        }
+        // -tab plan|progress|shelf|writing|courses opens a tab or, in a wide window, a destination.
+        if let tab = launch.value(after: "-tab") { model.tab = AppTab(rawValue: tab) ?? .today }
         if launch.has("-showSettings") { model.showSettings = true }
         // -showShelf opens the reading shelf (-findBook <title or ISBN> then searches for a book).
         if launch.has("-showShelf") || launch.has("-findBook") { model.showShelf = true }
+        if launch.has("-findBook") { model.addingBook = true }
         if launch.has("-startSession") { model.startToday() }
         if let courses, var settings = model.settings, settings.courses != courses {
             settings.courses = courses

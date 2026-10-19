@@ -1,8 +1,11 @@
 import MindEngine
 import SwiftUI
 import SystemAI
-import UIKit
 import Vision
+
+#if os(iOS)
+import UIKit
+#endif
 
 /// A book from a photo of its cover: Vision reads the text on the device, Apple's model picks the
 /// title and author out of it (a light job), and without the model the largest words and a
@@ -42,16 +45,33 @@ enum CoverReader {
         return modelGuess ?? CoverText.guess(lines)
     }
 
-    static func read(_ image: UIImage, ai: SystemAI) async -> CoverText.Guess? {
-        guard let picture = await coverPicture(image), let lines = try? await lines(in: picture) else { return nil }
+    /// A cover from a photo picked or imported, or an image dropped on the window, as its file's bytes.
+    static func read(_ data: Data, ai: SystemAI) async -> CoverText.Guess? {
+        guard let picture = await coverPicture(data) else { return nil }
+        return await read(picture, ai: ai)
+    }
+
+    static func read(_ picture: CGImage, ai: SystemAI) async -> CoverText.Guess? {
+        guard let lines = try? await lines(in: picture) else { return nil }
         return await guess(lines, ai: ai)
     }
 
-    /// Decoding a camera photo and scaling it down takes a few hundred milliseconds: off the main
-    /// actor, so the "Reading the cover…" spinner keeps turning.
+    /// Decoding a photo and scaling it down takes a few hundred milliseconds: off the main actor, so
+    /// the "Reading the cover…" spinner keeps turning. Upright and at most 2000 pixels on its long
+    /// side, as text recognition wants it.
+    @concurrent nonisolated private static func coverPicture(_ data: Data) async -> CGImage? { ImageData.downsampled(data, maxPixels: 2000) }
+
+    #if os(iOS)
+    static func read(_ image: UIImage, ai: SystemAI) async -> CoverText.Guess? {
+        guard let picture = await coverPicture(image) else { return nil }
+        return await read(picture, ai: ai)
+    }
+
     @concurrent nonisolated private static func coverPicture(_ image: UIImage) async -> CGImage? { image.bookCoverImage() }
+    #endif
 }
 
+#if os(iOS)
 /// The camera, for a photo of the cover.
 struct CoverCamera: UIViewControllerRepresentable {
     let picked: (UIImage?) -> Void
@@ -94,3 +114,4 @@ extension UIImage {
         return UIGraphicsImageRenderer(size: target, format: format).image { _ in draw(in: CGRect(origin: .zero, size: target)) }.cgImage
     }
 }
+#endif

@@ -42,6 +42,9 @@ enum Platform {
         #endif
     }
 
+    /// An iPhone, whose tab bar holds three tabs and no sidebar.
+    static var isPhone: Bool { isPhoneOrPad && !isPad }
+
     static var isPad: Bool {
         #if os(iOS)
         return UIDevice.current.userInterfaceIdiom == .pad
@@ -77,6 +80,11 @@ enum Platform {
         UIView.setAnimationsEnabled(false)
         #endif
     }
+}
+
+/// Whether scrolling puts the on-screen keyboard away.
+enum KeyboardDismissal {
+    case never, interactively
 }
 
 /// The keyboard a field asks for on iPhone, iPad and Vision Pro. The Mac's keyboard is the one on the desk.
@@ -163,6 +171,50 @@ extension View {
         return buttonStyle(.glass)
         #endif
     }
+
+    /// How a scroll view lets the on-screen keyboard go. Vision Pro's keyboard floats apart from the
+    /// window and the Mac's is on the desk, so there it's left alone.
+    func dismissesKeyboard(_ mode: KeyboardDismissal) -> some View {
+        #if os(iOS)
+        return scrollDismissesKeyboard(mode == .never ? .never : .interactively)
+        #else
+        return self
+        #endif
+    }
+
+    /// A column of details beside the content (an inspector) on iPad and the Mac; Vision Pro has
+    /// none, so there the details come up as a sheet.
+    func detailsInspector<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+        #if os(visionOS)
+        return sheet(isPresented: isPresented) {
+            NavigationStack {
+                content().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { isPresented.wrappedValue = false } } }
+            }
+        }
+        #else
+        return inspector(isPresented: isPresented) { content().inspectorColumnWidth(min: 280, ideal: 340, max: 420) }
+        #endif
+    }
+
+    /// A search field that's always showing: under the navigation bar's title on iPhone and iPad,
+    /// in the toolbar on the Mac and Vision Pro.
+    func alwaysSearchable(text: Binding<String>, prompt: String) -> some View {
+        #if os(iOS)
+        return searchable(text: text, placement: .navigationBarDrawer(displayMode: .always), prompt: Text(prompt))
+        #else
+        return searchable(text: text, prompt: Text(prompt))
+        #endif
+    }
+
+    /// The system's highlight under the pointer on iPad and where the eyes rest on Vision Pro, for a
+    /// custom tappable view, in the view's own shape. The Mac's pointer needs none.
+    func hoverable(in shape: some Shape = Rectangle()) -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return contentShape(.hoverEffect, shape).hoverEffect()
+        #endif
+    }
 }
 
 extension ToolbarItemPlacement {
@@ -198,10 +250,12 @@ extension Color {
         #endif
     }
 
-    /// A card or grouped row on that page.
+    /// A card or grouped row on that page. On the Mac, as its grouped forms draw them: white on the
+    /// light window, a shade lighter than the dark one (the control background matches the dark
+    /// window exactly, so a card would vanish).
     static var secondaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
+        return Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor.white.withAlphaComponent(0.07) : .controlBackgroundColor })
         #elseif os(visionOS)
         return Color.white.opacity(0.08)
         #else
@@ -212,7 +266,7 @@ extension Color {
     /// Something set into a card.
     static var tertiaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
+        return Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor.white.withAlphaComponent(0.06) : NSColor.black.withAlphaComponent(0.04) })
         #elseif os(visionOS)
         return Color.white.opacity(0.05)
         #else
@@ -220,6 +274,12 @@ extension Color {
         #endif
     }
 }
+
+#if os(macOS)
+extension NSAppearance {
+    var isDark: Bool { bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
+}
+#endif
 
 #if canImport(UIKit)
 typealias PlatformImage = UIImage

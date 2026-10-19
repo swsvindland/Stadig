@@ -79,7 +79,8 @@ final class SpeechRecognizer {
         let authorised = await authorise()
         guard attempt == mine else { return }
         guard authorised else {
-            status = .unavailable("Allow the microphone and speech recognition for Mind Track in Settings to answer out loud.")
+            let settings = Platform.isMac ? "System Settings, under Privacy & Security" : "Settings"
+            status = .unavailable("Allow the microphone and speech recognition for Mind Track in \(settings) to answer out loud.")
             return
         }
         let name = language.pack.name

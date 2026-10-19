@@ -6,9 +6,9 @@ import SystemCore
 // surfaces, as in Lift Track and Macro Track.
 
 extension ShapeStyle where Self == Color {
-    static var pageBackground: Color { Color(uiColor: .systemGroupedBackground) }
-    static var cardBackground: Color { Color(uiColor: .secondarySystemGroupedBackground) }
-    static var insetBackground: Color { Color(uiColor: .tertiarySystemGroupedBackground) }
+    static var pageBackground: Color { .groupedBackground }
+    static var cardBackground: Color { .secondaryGroupedBackground }
+    static var insetBackground: Color { .tertiaryGroupedBackground }
 }
 
 extension Domain {
@@ -33,12 +33,49 @@ extension View {
     }
 
     /// The one action that matters on a screen.
-    func primaryAction() -> some View { self.buttonStyle(.glassProminent).buttonBorderShape(.capsule) }
+    func primaryAction() -> some View { self.prominentGlassButtonStyle().buttonBorderShape(.capsule) }
 
-    func secondaryAction() -> some View { self.buttonStyle(.glass).buttonBorderShape(.capsule) }
+    func secondaryAction() -> some View { self.glassButtonStyle().buttonBorderShape(.capsule) }
 
-    /// Readable line length on iPad.
+    /// Readable line length in a wide window.
     func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }
+}
+
+// Reading and writing at a desk: the Mac's text is 13 points, small for a passage or a page of
+// your own, so there they're set a size or two up. iPhone, iPad and Vision Pro keep Dynamic Type's
+// sizes, which already suit them.
+extension Font {
+    /// A piece being written, a reflection, a piece read back.
+    static var writing: Font { Platform.isMac ? .title3 : .body }
+    /// A passage read in a session: serif, a size up from body.
+    static var passage: Font { Platform.isMac ? .system(.title2, design: .serif) : .system(.title3, design: .serif) }
+}
+
+enum LineSpacing {
+    static var writing: CGFloat { Platform.isMac ? 5 : 3 }
+    static var passage: CGFloat { Platform.isMac ? 7 : 6 }
+}
+
+/// Cards one under another in a narrow window, and in columns in a wide one, so a dashboard fills
+/// a Mac or iPad window rather than running down one long column.
+struct CardColumns<Content: View>: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if sizeClass == .regular {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: 14, alignment: .top)], alignment: .leading, spacing: 14) {
+                content
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 14) { content }
+        }
+    }
+}
+
+extension View {
+    /// The width a tab's page reads at: a column on iPhone, most of a wide window elsewhere.
+    func pageWidth(_ sizeClass: UserInterfaceSizeClass?) -> some View { readableWidth(sizeClass == .regular ? 1180 : 720) }
 }
 
 /// A small rounded label.

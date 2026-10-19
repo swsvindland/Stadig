@@ -9,6 +9,9 @@ struct CompareView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     let pair: BlindPair
+    @State private var keyboard = HardwareKeyboard.shared
+
+    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: .compare(pair), feedback: nil) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,7 +39,11 @@ struct CompareView: View {
                         Button {
                             pick(index)
                         } label: {
-                            Text("\(index == 0 ? "A" : "B") is stronger").font(.headline).frame(maxWidth: .infinity)
+                            HStack(spacing: 8) {
+                                Text("\(index == 0 ? "A" : "B") is stronger").font(.headline)
+                                if keyboard.connected { KeyHint(label: index == 0 ? "A" : "B") }
+                            }
+                            .frame(maxWidth: .infinity)
                         }
                         .primaryAction()
                         .controlSize(.large)
@@ -45,6 +52,7 @@ struct CompareView: View {
                 }
             }
         }
+        .sessionKeys(keys) { key in if case .pick(let index) = key { pick(index) } }
         .task(id: pair.id) { WritingAssistant.shared.requestOpinion(on: pair, model: model) }
         #if DEBUG
         .task {
@@ -57,7 +65,7 @@ struct CompareView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(letter).font(.title2.bold()).foregroundStyle(Domain.writing.color)
             Text(piece.prompt).font(.caption).foregroundStyle(.secondary).lineLimit(4)
-            Text(piece.text).font(.body).lineSpacing(3)
+            Text(piece.text).font(.writing).lineSpacing(LineSpacing.writing)
         }
         .card()
         .accessibilityElement(children: .combine)

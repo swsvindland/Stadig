@@ -4,7 +4,12 @@ import OSLog
 import Observation
 import SystemAI
 import SystemStore
+
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 /// The writing jobs that use the platform: spelling from the system dictionary, notes on a piece
 /// and a blind second opinion from Apple Intelligence through SystemAI. Notes are a heavy job
@@ -34,29 +39,48 @@ final class WritingAssistant {
     // MARK: Spelling
 
     /// Words the system dictionary doesn't know under British or American English. A word fine in
-    /// either counts as spelt right, so "colour" and "color" are both fine.
+    /// either counts as spelt right, so "colour" and "color" are both fine. iPhone, iPad and Vision Pro
+    /// ask UIKit's checker; the Mac asks its own spelling checker, the one its text views use.
     static func misspelled(_ text: String) -> [String] {
-        let checker = UITextChecker()
-        let languages = ["en_GB", "en_US"].filter(UITextChecker.availableLanguages.contains)
+        let languages = spellingLanguages
         guard let first = languages.first else { return [] }
         let whole = NSRange(location: 0, length: (text as NSString).length)
         var found: Set<String> = []
         var location = 0
         while location < whole.length {
-            let range = checker.rangeOfMisspelledWord(in: text, range: whole, startingAt: location, wrap: false, language: first)
+            let range = misspelling(in: text, from: location, language: first)
             guard range.location != NSNotFound, range.length > 0 else { break }
             let word = (text as NSString).substring(with: range)
-            let known = languages.dropFirst().contains { language in
-                checker.rangeOfMisspelledWord(
-                    in: word, range: NSRange(location: 0, length: (word as NSString).length), startingAt: 0,
-                    wrap: false, language: language
-                ).location == NSNotFound
-            }
+            let known = languages.dropFirst().contains { misspelling(in: word, from: 0, language: $0).location == NSNotFound }
             if !known { found.insert(word) }
             location = range.location + range.length
         }
         return found.sorted()
     }
+
+    #if os(macOS)
+    /// The Mac names its English dictionaries "en_GB" and "en" (American), or "en_US" on some setups.
+    private static var spellingLanguages: [String] {
+        let available = Set(NSSpellChecker.shared.availableLanguages)
+        var languages = ["en_GB"].filter(available.contains)
+        if let american = ["en_US", "en"].first(where: available.contains) { languages.append(american) }
+        return languages
+    }
+
+    private static func misspelling(in text: String, from location: Int, language: String) -> NSRange {
+        NSSpellChecker.shared.checkSpelling(
+            of: text, startingAt: location, language: language, wrap: false, inSpellDocumentWithTag: 0, wordCount: nil)
+    }
+    #else
+    private static var spellingLanguages: [String] { ["en_GB", "en_US"].filter(UITextChecker.availableLanguages.contains) }
+    private static let checker = UITextChecker()
+
+    private static func misspelling(in text: String, from location: Int, language: String) -> NSRange {
+        checker.rangeOfMisspelledWord(
+            in: text, range: NSRange(location: 0, length: (text as NSString).length), startingAt: location, wrap: false,
+            language: language)
+    }
+    #endif
 
     static func slips(_ text: String) -> [WritingSlip] { WritingCheck.slips(text, misspelled: misspelled(text)) }
 

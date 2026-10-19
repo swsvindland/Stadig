@@ -203,42 +203,64 @@ struct PiecesList: View {
     }
 }
 
-/// One piece: the task, what it worked from, the text with its slips marked, and the notes on it,
-/// or a way to ask for them if they never came.
+/// One piece, on a screen of its own (from Progress, on an iPhone).
 struct PieceDetail: View {
     @Environment(AppModel.self) private var model
+    let id: UUID
+
+    var body: some View {
+        PieceView(id: id)
+            .navigationTitle(model.pieces.last { $0.id == id }?.date.formatted(date: .abbreviated, time: .omitted) ?? "Piece")
+            .inlineTitle()
+    }
+}
+
+/// One piece: the task, what it worked from, the text with its slips marked, and the notes on it,
+/// or a way to ask for them if they never came. In a wide window what it worked from sits beside it.
+struct PieceView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let id: UUID
     @State private var slips: [WritingSlip] = []
 
     var body: some View {
         ScrollView {
             if let piece = model.pieces.last(where: { $0.id == id }) {
+                let source = model.source(of: piece)
+                let wide = sizeClass == .regular && (source != nil || piece.notes != nil) && !piece.text.isEmpty
                 VStack(alignment: .leading, spacing: 14) {
                     Label(piece.exercise.label, systemImage: piece.exercise.symbol).font(.subheadline.weight(.semibold))
                         .foregroundStyle(Domain.writing.color)
                     Text(piece.prompt).font(.callout)
-                    if let source = model.source(of: piece) {
-                        TextCard(title: piece.exercise == .practical ? "The original" : "The passage", detail: nil, text: Text(source))
-                    }
-                    if let notes = piece.notes {
-                        TextCard(title: "Notes", detail: nil, text: Text(notes))
+                    let layout = wide ? AnyLayout(HStackLayout(alignment: .top, spacing: 16)) : AnyLayout(VStackLayout(spacing: 14))
+                    layout {
+                        if source != nil || piece.notes != nil {
+                            VStack(spacing: 14) {
+                                if let source {
+                                    TextCard(title: piece.exercise == .practical ? "The original" : "The passage", detail: nil, text: Text(source))
+                                }
+                                if let notes = piece.notes {
+                                    TextCard(title: "Notes", detail: nil, text: Text(notes))
+                                }
+                            }
+                        }
+                        if !piece.text.isEmpty {
+                            TextCard(
+                                title: piece.source == .handwritten ? "Written by hand" : "Typed", detail: "\(piece.words) words",
+                                text: MarkedText.text(piece.text, slips: slips))
+                        }
                     }
                     if !piece.text.isEmpty {
-                        TextCard(
-                            title: piece.source == .handwritten ? "Written by hand" : "Typed", detail: "\(piece.words) words",
-                            text: MarkedText.text(piece.text, slips: slips))
                         NotesCard(state: WritingAssistant.shared.state(for: piece), asked: false) {
                             WritingAssistant.shared.requestNotes(for: piece, source: model.source(of: piece), model: model, again: true)
                         }
                     }
                 }
                 .padding(20)
-                .readableWidth(680)
+                .readableWidth(wide ? 1080 : 680)
                 .task(id: piece.text) { slips = WritingAssistant.slips(piece.text) }
             }
         }
         .background(.pageBackground)
-        .navigationTitle(model.pieces.last { $0.id == id }?.date.formatted(date: .abbreviated, time: .omitted) ?? "Piece")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

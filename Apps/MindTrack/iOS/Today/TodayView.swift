@@ -6,46 +6,73 @@ import SystemCore
 /// tap on Start.
 struct TodayView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    if let analysis = model.analysis {
-                        Pill(text: analysis.phase.label, symbol: phaseSymbol(analysis.phase), color: analysis.phase.isReview ? .teal : .accentColor)
-                        if case .paused(let kind) = analysis.phase {
-                            PausedCard(kind: kind)
-                        } else if let plan = analysis.today {
-                            SessionCard(plan: plan)
-                        } else if let done = analysis.doneToday.last(where: \.planned) ?? analysis.doneToday.last {
-                            DoneCard(session: done)
-                        } else {
-                            RestCard()
+                if let analysis = model.analysis {
+                    if sizeClass == .regular {
+                        // The session and what to do beside what's been learned and the two stats.
+                        HStack(alignment: .top, spacing: 18) {
+                            VStack(alignment: .leading, spacing: 14) { main(analysis) }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 14) { side(analysis) }
+                                .frame(width: 380)
                         }
-                        ForEach(analysis.actions) { ActionCard(action: $0) }
-                        if !analysis.learned.isEmpty {
-                            SectionHeader(title: "What we've learned")
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(analysis.learned, id: \.self) { Text($0).font(.subheadline) }
-                            }
-                            .card()
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .pageWidth(sizeClass)
+                    } else {
+                        VStack(alignment: .leading, spacing: 14) {
+                            main(analysis)
+                            side(analysis)
                         }
-                        Glance(analysis: analysis)
+                        .padding(.horizontal)
+                        .padding(.bottom, 24)
+                        .readableWidth()
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-                .readableWidth()
             }
             .background(.pageBackground)
             .navigationTitle("Today")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Settings", systemImage: "gearshape") { model.showSettings = true }
-                        .accessibilityIdentifier("today.settings")
+                // The Mac's settings are in the menu bar (⌘,), as a Mac app's are.
+                if !Platform.isMac {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Settings", systemImage: "gearshape") { model.showSettings = true }
+                            .accessibilityIdentifier("today.settings")
+                    }
                 }
             }
         }
+    }
+
+    @ViewBuilder func main(_ analysis: MindAnalysis) -> some View {
+        Pill(text: analysis.phase.label, symbol: phaseSymbol(analysis.phase), color: analysis.phase.isReview ? .teal : .accentColor)
+        if Platform.isMac, model.run != nil {
+            OpenSessionCard()
+        } else if case .paused(let kind) = analysis.phase {
+            PausedCard(kind: kind)
+        } else if let plan = analysis.today {
+            SessionCard(plan: plan)
+        } else if let done = analysis.doneToday.last(where: \.planned) ?? analysis.doneToday.last {
+            DoneCard(session: done)
+        } else {
+            RestCard()
+        }
+        ForEach(analysis.actions) { ActionCard(action: $0) }
+    }
+
+    @ViewBuilder func side(_ analysis: MindAnalysis) -> some View {
+        if !analysis.learned.isEmpty {
+            SectionHeader(title: "What we've learned")
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(analysis.learned, id: \.self) { Text($0).font(.subheadline) }
+            }
+            .card()
+        }
+        Glance(analysis: analysis)
     }
 
     func phaseSymbol(_ phase: StudyPhase) -> String {
@@ -96,7 +123,35 @@ private struct SessionCard: View {
             }
             .primaryAction()
             .controlSize(.large)
+            .help(Platform.isMac ? "Opens the session in its own window (⌘N)" : "")
             .accessibilityIdentifier("today.start")
+        }
+        .card(padding: 18)
+    }
+}
+
+/// On the Mac a session runs in its own window: this brings it forward.
+private struct OpenSessionCard: View {
+    @Environment(AppModel.self) private var model
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("A session is open", systemImage: "rectangle.on.rectangle").font(.title3.bold())
+                .accessibilityIdentifier("today.sessionOpen")
+            if let run = model.run, let part = run.currentPart {
+                Text("\(part.title), part \(run.partIndex + 1) of \(run.planParts.count). \(Format.minutes(max(0, run.minutesLeft))) left.")
+                    .foregroundStyle(.secondary)
+            }
+            Button("Go to the Session", systemImage: "arrow.up.forward.app") {
+                #if os(macOS)
+                openWindow(id: SessionWindow.id)
+                #endif
+            }
+            .secondaryAction()
+            .accessibilityIdentifier("today.showSession")
         }
         .card(padding: 18)
     }
@@ -163,7 +218,7 @@ private struct StudyMoreMenu: View {
             Menu {
                 ForEach(settings.domains) { domain in
                     Button(domain.label, systemImage: domain.symbol) {
-                        model.startSession(domain == .maths && settings.has(.writing) ? [.maths, .writing] : [domain])
+                        model.startSession(MindCommands.session(of: domain, settings: settings))
                     }
                     .accessibilityIdentifier("today.studyAnyway.\(domain.rawValue)")
                 }
@@ -295,7 +350,7 @@ struct EpisodeSheet: View {
                 }
             }
             .navigationTitle(language.domain.label)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("episode.cancel") }
                 ToolbarItem(placement: .confirmationAction) {

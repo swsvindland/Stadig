@@ -7,6 +7,7 @@ import SystemCore
 /// show up here as progress.
 struct ProgressTab: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationStack {
@@ -14,18 +15,20 @@ struct ProgressTab: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if let analysis = model.analysis, let state = model.state {
                         StatCards(stats: analysis.stats)
-                        ForEach(analysis.languages, id: \.domain) { LanguageProgress(summary: $0, state: state) }
-                        if state.settings.has(.maths) { MathsProgress(analysis: analysis, state: state) }
-                        if state.settings.has(.writing) { WritingProgressCard(analysis: analysis, state: state) }
-                        if state.settings.has(.reading) { ReadingProgress(analysis: analysis, state: state) }
+                        CardColumns {
+                            ForEach(analysis.languages, id: \.domain) { LanguageProgress(summary: $0, state: state) }
+                            if state.settings.has(.maths) { MathsProgress(analysis: analysis, state: state) }
+                            if state.settings.has(.writing) { WritingProgressCard(analysis: analysis, state: state) }
+                            if state.settings.has(.reading) { ReadingProgress(analysis: analysis, state: state) }
+                        }
                         SectionHeader(title: "Discipline")
                             .accessibilityIdentifier("progress.discipline")
                         DisciplineGauge(score: analysis.discipline).card()
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, sizeClass == .regular ? 24 : 16)
                 .padding(.bottom, 24)
-                .readableWidth()
+                .pageWidth(sizeClass)
             }
             .background(.pageBackground)
             .navigationTitle("Progress")
@@ -34,26 +37,30 @@ struct ProgressTab: View {
 }
 
 private struct StatCards: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let stats: [StatReading]
 
     var body: some View {
-        VStack(spacing: 10) {
-            ForEach(stats, id: \.stat) { reading in
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: reading.stat.symbol).font(.title2).foregroundStyle(.tint).frame(width: 32)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(reading.stat.label).font(.headline)
-                                .accessibilityIdentifier("progress.stat.\(reading.stat.rawValue)")
-                            Spacer()
-                            Label(reading.trend.label, systemImage: reading.trend.symbol).font(.caption.weight(.semibold))
-                                .foregroundStyle(reading.trend.color)
+        VStack(alignment: .leading, spacing: 10) {
+            let layout = sizeClass == .regular ? AnyLayout(HStackLayout(alignment: .top, spacing: 14)) : AnyLayout(VStackLayout(spacing: 10))
+            layout {
+                ForEach(stats, id: \.stat) { reading in
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: reading.stat.symbol).font(.title2).foregroundStyle(.tint).frame(width: 32)
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(reading.stat.label).font(.headline)
+                                    .accessibilityIdentifier("progress.stat.\(reading.stat.rawValue)")
+                                Spacer()
+                                Label(reading.trend.label, systemImage: reading.trend.symbol).font(.caption.weight(.semibold))
+                                    .foregroundStyle(reading.trend.color)
+                            }
+                            Text(reading.score.map { "\(Int($0.rounded()))" } ?? "—").font(.largeTitle.bold().monospacedDigit())
+                            Text(reading.label).font(.subheadline).foregroundStyle(.secondary)
                         }
-                        Text(reading.score.map { "\(Int($0.rounded()))" } ?? "—").font(.largeTitle.bold().monospacedDigit())
-                        Text(reading.label).font(.subheadline).foregroundStyle(.secondary)
                     }
+                    .card()
                 }
-                .card()
             }
             Text(
                 "Intelligence moves only on the check-in tests; Wisdom only on the reading test and finished books. Reviewing or reading for longer doesn't raise either."

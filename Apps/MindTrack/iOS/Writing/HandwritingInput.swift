@@ -1,6 +1,10 @@
 import OSLog
 import PencilKit
 import SwiftUI
+
+// Apple Pencil's page and VisionKit's document camera are the iPad's and iPhone's. The Mac and
+// Vision Pro write with the keyboard and bring a page in as a photo or a file instead.
+#if os(iOS)
 import VisionKit
 
 /// A page to write on with Apple Pencil (or a finger, unless the system is set to draw only with
@@ -124,3 +128,4 @@ struct DocumentScanner: UIViewControllerRepresentable {
         }
     }
 }
+#endif

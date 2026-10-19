@@ -21,6 +21,8 @@ struct SpeakView: View {
     @State private var shown = Date()
     @FocusState private var typing: Bool
 
+    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: .speak(task), feedback: feedback, typing: typing) }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -62,13 +64,17 @@ struct SpeakView: View {
                 .padding(20)
                 .readableWidth(640)
             }
-            .scrollDismissesKeyboard(.never)
-            BottomBar { bottom }
+            .dismissesKeyboard(.never)
+            BottomBar {
+                bottom
+                KeyLegend(bindings: keys, titles: [.submit: submitTitle])
+            }
         }
         .sensoryFeedback(trigger: feedback?.correct) { _, correct in
             guard let correct, task.kind != .test else { return nil }
             return correct ? .success : .error
         }
+        .sessionKeys(keys, perform: press)
         .onAppear {
             shown = Date()
             if task.mode == .say && SpeakingPause.active && feedback == nil {
@@ -118,13 +124,13 @@ struct SpeakView: View {
                     .frame(width: 96, height: 96)
                     .symbolEffect(.pulse, isActive: recognizer.isListening)
             }
-            .buttonStyle(.glassProminent)
+            .prominentGlassButtonStyle()
             .buttonBorderShape(.circle)
             .disabled(recognizer.isBusy)
             .accessibilityLabel(recognizer.isListening ? "Stop listening" : "Start speaking")
             .accessibilityIdentifier("speak.mic")
             switch recognizer.status {
-            case .idle: Text("Tap, then say it in \(task.language.pack.name)").font(.subheadline).foregroundStyle(.secondary)
+            case .idle: Text(idleHint).font(.subheadline).foregroundStyle(.secondary)
             case .preparing(let message): ProgressView(message).font(.subheadline)
             case .listening:
                 Text(recognizer.heard.isEmpty ? "Listening…" : recognizer.heard).font(.title3).multilineTextAlignment(.center)
@@ -189,6 +195,43 @@ struct SpeakView: View {
                 .accessibilityIdentifier("speak.check")
                 .disabled(written.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+        }
+    }
+
+    /// What to do before speaking: tap the microphone, or click it (or press Return) at a desk.
+    var idleHint: String {
+        let language = task.language.pack.name
+        if Platform.isMac { return "Click the microphone or press Return, then say it in \(language)" }
+        return HardwareKeyboard.shared.connected ? "Tap or press Return, then say it in \(language)" : "Tap, then say it in \(language)"
+    }
+
+    var submitTitle: String {
+        if feedback != nil { return "Continue" }
+        if task.mode == .write { return "Check" }
+        return recognizer.isListening ? "Stop" : "Speak"
+    }
+
+    /// A key pressed on this step (`SessionKeys` says which are live).
+    func press(_ key: SessionKey) {
+        switch key {
+        case .submit:
+            if feedback != nil {
+                model.act { $0.next(now: Date()) }
+            } else if task.mode == .say {
+                guard !recognizer.isBusy else { return }
+                Task {
+                    if recognizer.isListening { await submitSpeech() } else { await recognizer.start(task.language) }
+                }
+            } else {
+                check()
+            }
+        case .dontKnow:
+            guard feedback == nil, task.kind == .test else { return }
+            Task { await recognizer.cancel() }
+            model.act { $0.respond(task.mode == .say ? .spoken(transcript: "", seconds: 0) : .skip, now: Date()) }
+        case .replay, .replaySlowly:
+            if case .audio(let text, let language) = task.prompt { model.speech.speak(text, language: language, slow: key == .replaySlowly) }
+        case .choose, .handIn, .pick: break
         }
     }
 

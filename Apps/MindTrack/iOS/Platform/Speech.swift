@@ -4,8 +4,7 @@ import MindEngine
 import Observation
 
 /// The language being learned, read aloud on the device with the best voice installed for it.
-/// Enhanced and premium voices (Settings → Accessibility → Spoken Content → Voices) sound far more
-/// natural.
+/// Enhanced and premium voices (`voicesSettings` says where to get them) sound far more natural.
 @MainActor @Observable
 final class Speech: NSObject, AVSpeechSynthesizerDelegate {
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
@@ -41,6 +40,13 @@ final class Speech: NSObject, AVSpeechSynthesizerDelegate {
             ?? AVSpeechSynthesisVoice(language: locale)
         voices[language] = .some(voice)
         return voice
+    }
+
+    /// Where the system keeps its downloadable voices, on this device.
+    static var voicesSettings: String {
+        Platform.isMac
+            ? "System Settings → Accessibility → Spoken Content → System voice → Manage Voices"
+            : "Settings → Accessibility → Spoken Content → Voices"
     }
 
     func hasNaturalVoice(_ language: Language) -> Bool { (voice(language)?.quality ?? .default) != .default }

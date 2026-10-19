@@ -104,7 +104,7 @@ struct ReaderSheet: View {
                 }
             }
             .navigationTitle("\(language.pack.name) readers")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("readers.done") } }
         }
     }
