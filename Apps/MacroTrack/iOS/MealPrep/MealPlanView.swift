@@ -348,6 +348,7 @@ struct GroceryPage: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel("\(item.name), \(Self.amount(item, unit: unit))")
         .accessibilityValue(checked ? "Got it" : "")
     }

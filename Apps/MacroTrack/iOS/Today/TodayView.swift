@@ -287,6 +287,7 @@ struct WeightSection: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .hoverHighlight()
                     .accessibilityLabel("Weight \(Format.weight(reading.kg, unit: unit)). Edit weigh-ins")
                     .accessibilityIdentifier("today.weight")
                 } else {
@@ -456,6 +457,7 @@ struct LogAgainSection: View {
             .background(highlight ? AnyShapeStyle(Color.accentColor.opacity(0.14)) : AnyShapeStyle(.insetBackground), in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
     }
 }
 
@@ -499,6 +501,7 @@ struct MomentSection: View {
                     EntryRow(entry: entry)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
                 .accessibilityIdentifier("today.entry")
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }

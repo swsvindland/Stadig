@@ -299,6 +299,7 @@ struct PhaseChooser: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
                 .accessibilityIdentifier("phaseChooser.\(kind.rawValue)")
             }
             .navigationTitle("Choose a phase")

@@ -34,6 +34,7 @@ struct SupplementsSection: View {
                         summary(doses)
                     }
                     .buttonStyle(.plain)
+                    .hoverHighlight()
                     .accessibilityIdentifier("supplements.summary")
                 } else {
                     let times = DoseTime.allCases.filter { time in doses.contains { $0.dose.time == time } }
@@ -58,6 +59,9 @@ struct SupplementsSection: View {
                         }
                     }
                     .swipeActions {
+                        Button("Delete", systemImage: "trash", role: .destructive) { model.delete(doses: [log.id]) }
+                    }
+                    .contextMenu {
                         Button("Delete", systemImage: "trash", role: .destructive) { model.delete(doses: [log.id]) }
                     }
                 }
@@ -156,6 +160,7 @@ private struct DoseRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityIdentifier("supplements.dose")
         .sensoryFeedback(.success, trigger: dose.taken) { _, taken in taken }
         .swipeActions(edge: .trailing) {

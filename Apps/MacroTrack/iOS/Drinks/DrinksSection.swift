@@ -153,6 +153,7 @@ struct DrinksSection: View {
             .background(.insetBackground, in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel("Log \(title)\(detail.map { ", \($0)" } ?? "")")
     }
 }

@@ -144,6 +144,7 @@ struct QuickLogBar: View {
             .padding(.trailing, 6)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .font(.body.weight(.medium))
     }
 

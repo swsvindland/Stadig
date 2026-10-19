@@ -175,6 +175,7 @@ struct LogTimeBar: View {
                 .background(custom != nil ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             .accessibilityLabel("Pick a time")
             .accessibilityIdentifier("logger.pickTime")
         }
@@ -201,6 +202,7 @@ struct LogTimeBar: View {
                 .background(selected ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
     }
 }
 
@@ -379,6 +381,7 @@ struct ModeShortcuts: View {
             .background(.insetBackground, in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityIdentifier("logger.mode.\(target.rawValue)")
     }
 }
@@ -414,11 +417,13 @@ struct FoodRow: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             .accessibilityIdentifier("logger.food")
             Button(action: add) {
                 Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             .accessibilityLabel("Add \(FoodUnits.label(count: suggestion.count, unit: suggestion.unit)) of \(food.name)")
             .accessibilityIdentifier("logger.addFood")
         }
@@ -446,12 +451,14 @@ struct RecentRow: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             Button {
                 model.logAgain(item)
             } label: {
                 Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             .accessibilityLabel("Log \(item.template.name) again")
             .accessibilityIdentifier("logger.logAgain")
         }

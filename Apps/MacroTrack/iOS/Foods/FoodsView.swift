@@ -114,11 +114,14 @@ struct FoodsView: View {
             guard Platform.isMac, let id = ids.first, let row = shown.first(where: { $0.id == id }) else { return }
             if id == selection { logSelected() } else { quickLog(row) }
         }
+        #if !os(macOS)
+        // The Mac's Return is the primary action; an iPad's keyboard needs telling.
         .onKeyPress(.return) {
             guard selection != nil else { return .ignored }
             logSelected()
             return .handled
         }
+        #endif
         .accessibilityIdentifier("foods.table")
     }
 

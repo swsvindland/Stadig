@@ -298,6 +298,15 @@ struct WeighInSheet: View {
                                     Button("Delete", role: .destructive) { model.delete(weighIn: w) }
                                 }
                             }
+                            // A pointer has no swipe.
+                            .contextMenu {
+                                Button(w.excluded ? "Use" : "Ignore", systemImage: w.excluded ? "checkmark.circle" : "eye.slash") {
+                                    model.setExcluded(!w.excluded, weighIn: w)
+                                }
+                                if case .manual = w.source {
+                                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(weighIn: w) }
+                                }
+                            }
                         }
                     }
                 }
@@ -336,6 +345,7 @@ struct WeighInSheet: View {
                 .background(Color.accentColor.opacity(0.14), in: .circle)
         }
         .buttonStyle(.plain)
+        .hoverHighlight()
         .accessibilityLabel(direction < 0 ? "Lighter" : "Heavier")
         .accessibilityIdentifier(direction < 0 ? "weighIn.lighter" : "weighIn.heavier")
     }

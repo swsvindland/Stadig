@@ -334,6 +334,7 @@ private struct ReviewRow: View {
                     .foregroundStyle(item.included ? Color.accentColor : .secondary)
             }
             .buttonStyle(.plain)
+            .hoverHighlight()
             .disabled(item.food == nil)
             .accessibilityLabel(item.included ? "Included" : "Left out")
 
