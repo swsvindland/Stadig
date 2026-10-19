@@ -132,10 +132,47 @@ struct HealthBackfillTests {
         #expect(Set(health.deleted) == [breakfast.id, glasses[0].id])
         #expect(backfill.ledger[breakfast.id] == nil)
 
-        // A store with no water at all (emptied while iCloud changes accounts) deletes none of it.
+        // The last glass deleted is a deletion too, though no water is left.
         store.delete(WaterLog.self, id: glasses[1].id)
         await backfill.pass(now: now)
-        #expect(!health.deleted.contains(glasses[1].id))
+        #expect(health.deleted.contains(glasses[1].id))
+    }
+
+    @Test("what's only missing, without a deletion, keeps its copy in Health")
+    func missingIsNotDeleted() async throws {
+        let suite = "BackfillTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let lunch = entry("Lunch")
+        let glass = WaterLog(date: today.at(hour: 9, minute: 0), ml: 250)
+        store.save(lunch)
+        store.save(glass)
+        await HealthBackfill(store: store, health: health, defaults: defaults).pass(now: now)
+        #expect(health.savedFoods.count == 2)
+
+        // The same device after an iCloud account change: the store starts empty, with no deletions
+        // in it (rows written by a newer app version, which this one can't read, look the same).
+        let emptied = RecordStore(name: "BackfillTests-\(UUID().uuidString)", cloudKitContainer: nil, inMemory: true)
+        emptied.save(MacroSettings(id: MacroSettings.singletonID, onboardedAt: today.adding(days: -20).at(hour: 9, minute: 0)))
+        let backfill = HealthBackfill(store: emptied, health: health, defaults: defaults)
+        #expect(backfill.ledger.count == 2)
+        await backfill.pass(now: now)
+        #expect(health.deleted.isEmpty)
+        #expect(health.held[lunch.id] != nil && health.held[glass.id] != nil)
+    }
+
+    @Test("a dose unmarked elsewhere takes its copy out")
+    func unmarkedDose() async {
+        var taken = dose(taken: true, hour: 8)
+        store.save(taken)
+        let backfill = backfill()
+        await backfill.pass(now: now)
+        #expect(health.savedFoods.map(\.id) == [taken.id])
+        taken.taken = false
+        taken.updatedAt = taken.updatedAt.addingTimeInterval(60)
+        store.save(taken)
+        await backfill.pass(now: now)
+        #expect(health.deleted == [taken.id])
     }
 
     @Test("a locked phone waits; someone who doesn't write to Health gets nothing, now or later")

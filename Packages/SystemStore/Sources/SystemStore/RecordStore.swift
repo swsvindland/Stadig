@@ -193,6 +193,22 @@ public final class RecordStore {
         return decoded
     }
 
+    /// The ids of the records of a type whose newest copy is a deletion, made on this device or
+    /// synced from another. A record that's only missing (not synced yet, or left behind with an
+    /// iCloud account this device signed out of) or that this app version can't read isn't among
+    /// them, so whatever acts on deletions (taking a copy out of Health, say) never mistakes those
+    /// for one.
+    public func deletedIDs<T: StoredRecord>(_ type: T.Type) -> Set<UUID> {
+        _ = revision
+        var newest: [UUID: RecordVersion] = [:]
+        for row in fetchRows(kind: T.kind) {
+            let version = RecordVersion(row)
+            if let current = newest[row.uuid], !current.precedes(version) { continue }
+            newest[row.uuid] = version
+        }
+        return Set(newest.values.filter(\.deleted).map(\.uuid))
+    }
+
     /// One record, or nil if it doesn't exist, was deleted, or can't be read by this app version.
     public func get<T: StoredRecord>(_ type: T.Type, id: UUID) -> T? {
         _ = revision

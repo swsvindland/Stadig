@@ -169,6 +169,34 @@ struct RecordStoreTests {
         #expect(row.payload == future)
     }
 
+    @Test func deletedIDsAreOnlyTheDeletions() throws {
+        let store = memoryStore()
+        let keep = Lift(name: "Bench", updatedAt: t0)
+        let drop = Lift(name: "Dip", updatedAt: t0)
+        store.save([keep, drop])
+        store.delete(Lift.self, id: drop.id)
+        // A newer app version's row can't be read here, but it isn't a deletion either.
+        let future = UUID()
+        store.insertRawRow(
+            kind: Lift.kind, uuid: future, updatedAt: t0, schemaVersion: 3,
+            payload: Data(#"{"id":"\#(future.uuidString)","name":"Clean","reps":2,"notes":"","updatedAt":1760000000000}"#.utf8))
+        // Two rows for one record: the newer, a deletion, speaks for it.
+        let twice = UUID()
+        store.insertRawRow(
+            kind: Lift.kind, uuid: twice, updatedAt: t0, schemaVersion: 2, payload: try payload(Lift(id: twice, name: "Row", updatedAt: t0)))
+        store.insertRawRow(kind: Lift.kind, uuid: twice, updatedAt: t0 + 1, schemaVersion: 2, payload: Data(), deleted: true)
+
+        #expect(store.deletedIDs(Lift.self) == [drop.id, twice])
+        #expect(!store.deletedIDs(Lift.self).contains(future))
+        #expect(!store.deletedIDs(Lift.self).contains(UUID()), "a record that was never here isn't a deletion")
+
+        // Saved again later, it's live once more.
+        var restored = drop
+        restored.updatedAt = Date().addingTimeInterval(60)
+        store.save(restored)
+        #expect(store.deletedIDs(Lift.self) == [twice])
+    }
+
     @Test func eraseAllRemovesEveryRow() {
         let store = memoryStore()
         store.save([Lift(name: "A", updatedAt: t0), Lift(name: "B", updatedAt: t0)])

@@ -23,7 +23,9 @@ import UIKit
 /// rest is written. A ledger kept on this device remembers what's been handled, so each version is
 /// looked up once and a sample the person deletes in Health isn't put back. When something handled
 /// here is deleted on another device (an Undo on the Watch, a delete on the Mac), its copy in Health
-/// goes too.
+/// goes too, but only on a deletion the store holds: a record that's merely missing (not synced
+/// yet, an iCloud account change) or written by a newer app version this one can't read is left
+/// alone in Health.
 @MainActor
 final class HealthBackfill {
     /// How far back things are checked: Health matters for the recent past, and the ledger stays small.
@@ -80,11 +82,16 @@ final class HealthBackfill {
     func pass(now: Date = Date()) async {
         let since = Day(now).adding(days: -Self.window)
         let settings = MacroSettings.inForce(store.all(MacroSettings.self))
-        let items = Self.items(
-            entries: store.all(FoodEntry.self), water: store.all(WaterLog.self), doses: store.all(SupplementLog.self),
-            weighIns: store.all(WeighIn.self), since: since, setUp: settings?.onboardedAt)
+        let entries = store.all(FoodEntry.self)
+        let water = store.all(WaterLog.self)
+        let doses = store.all(SupplementLog.self)
+        let weighIns = store.all(WeighIn.self)
+        let items = Self.items(entries: entries, water: water, doses: doses, weighIns: weighIns, since: since, setUp: settings?.onboardedAt)
         let pending = items.filter { ledger[$0.id]?.version != $0.version }
-        let gone = Self.gone(ledger: ledger, items: items, since: since, kinds: kindsPresent())
+        let live = Set(entries.map(\.id)).union(water.map(\.id)).union(doses.map(\.id)).union(weighIns.map(\.id))
+        let deleted = store.deletedIDs(FoodEntry.self).union(store.deletedIDs(WaterLog.self))
+            .union(store.deletedIDs(SupplementLog.self)).union(store.deletedIDs(WeighIn.self))
+        let gone = Self.gone(ledger: ledger, items: items, live: live, deleted: deleted, since: since)
         defer { keep(since: since) }
         guard !pending.isEmpty || !gone.isEmpty else { return }
 
@@ -123,17 +130,6 @@ final class HealthBackfill {
             ledger[item.id] = HealthLedgerEntry(item, written: true)
         }
         appLog.info("Health: wrote \(plan.write.count) things logged on other devices")
-    }
-
-    /// Which kinds the store holds anything of. A kind with nothing at all (the store emptied while
-    /// iCloud changes accounts, say) deletes nothing from Health.
-    private func kindsPresent() -> Set<HealthCopy.Source> {
-        var kinds: Set<HealthCopy.Source> = []
-        if !store.all(FoodEntry.self).isEmpty { kinds.insert(.entry) }
-        if !store.all(WaterLog.self).isEmpty { kinds.insert(.water) }
-        if !store.all(SupplementLog.self).isEmpty { kinds.insert(.dose) }
-        if !store.all(WeighIn.self).isEmpty { kinds.insert(.weighIn) }
-        return kinds
     }
 
     /// Drops what's left the window, and keeps the ledger on the device when it changed.
@@ -214,13 +210,19 @@ final class HealthBackfill {
         return (handled, write)
     }
 
-    /// What the ledger handled that the store no longer has (deleted on some device, or a dose
-    /// unmarked), within the window and of a kind the store still holds: its Health copy goes.
-    static func gone(ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], since: Day, kinds: Set<HealthCopy.Source>) -> [HealthGone] {
-        let live = Set(items.map(\.id))
-        return ledger.filter { id, entry in entry.day >= since && !live.contains(id) && kinds.contains(entry.source) }
-            .map { HealthGone(id: $0.key, source: $0.value.source) }
-            .sorted { $0.id.uuidString < $1.id.uuidString }
+    /// What the ledger handled, within the window, whose Health copy should go: deleted on some
+    /// device (the store holds the deletion, `deleted`), or still there but no longer something for
+    /// Health (a dose unmarked). A record that's only missing from `live` without a deletion, or
+    /// that this app version can't read, keeps its copy.
+    static func gone(
+        ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], live: Set<UUID>, deleted: Set<UUID>, since: Day
+    ) -> [HealthGone] {
+        let wanted = Set(items.map(\.id))
+        return ledger.filter { id, entry in
+            entry.day >= since && !wanted.contains(id) && (deleted.contains(id) || live.contains(id))
+        }
+        .map { HealthGone(id: $0.key, source: $0.value.source) }
+        .sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
     /// A record's version in Health: its `updatedAt` in whole milliseconds, as every write here uses.
