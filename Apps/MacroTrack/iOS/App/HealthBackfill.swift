@@ -26,6 +26,10 @@ import UIKit
 /// goes too, but only on a deletion the store holds: a record that's merely missing (not synced
 /// yet, an iCloud account change) or written by a newer app version this one can't read is left
 /// alone in Health.
+///
+/// A pass runs at launch, when another device's changes arrive, each time the app comes to the
+/// front, when the phone is unlocked and when Health is connected: a pass that found the phone
+/// locked or Health not connected yet (`.later`) is tried again then, not left for the next import.
 @MainActor
 final class HealthBackfill {
     /// How far back things are checked: Health matters for the recent past, and the ledger stays small.
@@ -40,6 +44,7 @@ final class HealthBackfill {
     private var running: Task<Void, Never>?
     private var runAgain = false
     private var storeObserver: AnyObject?
+    private var unlockObserver: NotificationToken?
 
     /// The live one, over the app's store and this device's Health, with a first pass now; nil where
     /// there's no Health (the Mac).
@@ -58,9 +63,13 @@ final class HealthBackfill {
         ledger = defaults.flatMap(Self.loadLedger) ?? [:]
     }
 
-    /// A pass whenever another device's changes arrive. The store holds the observer weakly.
+    /// A pass whenever another device's changes arrive (the store holds the observer weakly), and
+    /// when the phone is unlocked, since Health can't be written while it's locked.
     func observe() {
         storeObserver = store.observeChanges { [weak self] in self?.run() }
+        #if canImport(UIKit)
+        unlockObserver = NotificationToken.observe(UIApplication.protectedDataDidBecomeAvailableNotification) { [weak self] in self?.run() }
+        #endif
     }
 
     /// A pass now, or straight after the one running, so a burst of imports makes at most two.
@@ -87,11 +96,9 @@ final class HealthBackfill {
         let doses = store.all(SupplementLog.self)
         let weighIns = store.all(WeighIn.self)
         let items = Self.items(entries: entries, water: water, doses: doses, weighIns: weighIns, since: since, setUp: settings?.onboardedAt)
-        let pending = items.filter { ledger[$0.id]?.version != $0.version }
-        let live = Set(entries.map(\.id)).union(water.map(\.id)).union(doses.map(\.id)).union(weighIns.map(\.id))
-        let deleted = store.deletedIDs(FoodEntry.self).union(store.deletedIDs(WaterLog.self))
-            .union(store.deletedIDs(SupplementLog.self)).union(store.deletedIDs(WeighIn.self))
-        let gone = Self.gone(ledger: ledger, items: items, live: live, deleted: deleted, since: since)
+        let pending = items.filter { item in ledger[item.id].map { !Self.isCurrent($0.version, item.version) } ?? true }
+        let gone = Self.gone(
+            ledger: ledger, items: items, since: since, live: { ids(of: $0, deleted: false) }, deleted: { ids(of: $0, deleted: true) })
         defer { keep(since: since) }
         guard !pending.isEmpty || !gone.isEmpty else { return }
 
@@ -132,6 +139,21 @@ final class HealthBackfill {
         appLog.info("Health: wrote \(plan.write.count) things logged on other devices")
     }
 
+    /// A kind's records in the store, live or deleted. A kind's deletions are read from its whole
+    /// history every time, so they're asked for only when something handled has gone missing.
+    private func ids(of source: HealthCopy.Source, deleted: Bool) -> Set<UUID> {
+        switch source {
+        case .entry: ids(FoodEntry.self, deleted: deleted)
+        case .water: ids(WaterLog.self, deleted: deleted)
+        case .dose: ids(SupplementLog.self, deleted: deleted)
+        case .weighIn: ids(WeighIn.self, deleted: deleted)
+        }
+    }
+
+    private func ids<T: StoredRecord>(_ type: T.Type, deleted: Bool) -> Set<UUID> {
+        deleted ? store.deletedIDs(type) : Set(store.all(type).map(\.id))
+    }
+
     /// Drops what's left the window, and keeps the ledger on the device when it changed.
     private func keep(since: Day) {
         ledger = ledger.filter { $0.value.day >= since }
@@ -168,26 +190,24 @@ final class HealthBackfill {
         entries: [FoodEntry], water: [WaterLog], doses: [SupplementLog], weighIns: [WeighIn], since: Day, setUp: Date?
     ) -> [HealthCopy] {
         var items: [HealthCopy] = []
+        // The same samples, at the same versions, as the device that logged them would have written.
         for entry in entries where entry.day >= since {
             let food = AppModel.healthFood(entry)
             items.append(HealthCopy(id: entry.id, version: food.version, day: entry.day, source: .entry, kind: .food(food)))
         }
         for glass in water where glass.day >= since {
-            let food = HealthFood(
-                id: glass.id, date: glass.date, name: "Water", nutrients: .zero, micros: ["water": glass.ml], version: version(glass.updatedAt))
+            let food = AppModel.healthFood(glass)
             items.append(HealthCopy(id: glass.id, version: food.version, day: glass.day, source: .water, kind: .food(food)))
         }
         for dose in doses where dose.day >= since && dose.taken {
-            let food = HealthFood(
-                id: dose.id, date: dose.date, name: dose.name, nutrients: dose.nutrients ?? .zero, micros: dose.amounts,
-                version: version(dose.updatedAt))
+            let food = AppModel.healthFood(dose)
             items.append(HealthCopy(id: dose.id, version: food.version, day: dose.day, source: .dose, kind: .food(food)))
         }
         for weighIn in weighIns where weighIn.day >= since && weighIn.source == .manual {
             if let setUp, abs(weighIn.date.timeIntervalSince(setUp)) < 5 * 60 { continue }
             items.append(
                 HealthCopy(
-                    id: weighIn.id, version: version(weighIn.updatedAt), day: weighIn.day, source: .weighIn,
+                    id: weighIn.id, version: weighIn.updatedAt.healthVersion, day: weighIn.day, source: .weighIn,
                     kind: .weight(kg: weighIn.kg, date: weighIn.date), writable: !weighIn.excluded))
         }
         return items
@@ -199,7 +219,7 @@ final class HealthBackfill {
         var handled: [HealthCopy] = []
         var write: [HealthCopy] = []
         for item in pending {
-            if let version = held[item.id], version >= item.version {
+            if let version = held[item.id], isCurrent(version, item.version) {
                 handled.append(item)
             } else if item.writable {
                 write.append(item)
@@ -210,23 +230,41 @@ final class HealthBackfill {
         return (handled, write)
     }
 
-    /// What the ledger handled, within the window, whose Health copy should go: deleted on some
-    /// device (the store holds the deletion, `deleted`), or still there but no longer something for
-    /// Health (a dose unmarked). A record that's only missing from `live` without a deletion, or
-    /// that this app version can't read, keeps its copy.
+    /// What the ledger handled, within the window, whose Health copy should go: still in the store
+    /// but no longer something for Health (a dose unmarked), or deleted on some device (the store
+    /// holds the deletion). A record that's only missing without a deletion, or that this app
+    /// version can't read, keeps its copy.
+    ///
+    /// `live` and `deleted` give a kind's records in the store. They're asked only about the kinds
+    /// of what the ledger handled and isn't wanted any more, and `deleted` only about those that
+    /// aren't live either, so a pass with nothing gone reads no history.
     static func gone(
-        ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], live: Set<UUID>, deleted: Set<UUID>, since: Day
+        ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], since: Day, live: (HealthCopy.Source) -> Set<UUID>,
+        deleted: (HealthCopy.Source) -> Set<UUID>
     ) -> [HealthGone] {
         let wanted = Set(items.map(\.id))
-        return ledger.filter { id, entry in
-            entry.day >= since && !wanted.contains(id) && (deleted.contains(id) || live.contains(id))
-        }
-        .map { HealthGone(id: $0.key, source: $0.value.source) }
-        .sorted { $0.id.uuidString < $1.id.uuidString }
+        let unwanted = ledger.filter { id, entry in entry.day >= since && !wanted.contains(id) }
+        guard !unwanted.isEmpty else { return [] }
+        let present = Set(unwanted.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(live($1)) }
+        let missing = unwanted.filter { !present.contains($0.key) }
+        let deletions = Set(missing.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(deleted($1)) }
+        return unwanted.filter { present.contains($0.key) || deletions.contains($0.key) }
+            .map { HealthGone(id: $0.key, source: $0.value.source) }
+            .sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
-    /// A record's version in Health: its `updatedAt` in whole milliseconds, as every write here uses.
-    static func version(_ date: Date) -> Int { Int(date.timeIntervalSince1970 * 1000) }
+    /// Whether a version held for something, in Health or in the ledger, is this version or later.
+    /// Before versions were rounded as the store rounds them (`Date.healthVersion`), this app
+    /// truncated them, so a sample written then as something was logged can be a millisecond below
+    /// the version worked out from the stored record. It's the same edit, and isn't written again.
+    static func isCurrent(_ held: Int, _ version: Int) -> Bool { held >= version - 1 }
+}
+
+extension Date {
+    /// This date as a sample's version in Health: whole milliseconds since 1970, rounded as the
+    /// store rounds `updatedAt` when it saves a record. So the version written as something is
+    /// logged and the one the backfill works out from the stored record are the same.
+    var healthVersion: Int { Int((timeIntervalSince1970 * 1000).rounded()) }
 }
 
 /// One thing that belongs in Health, from the record it came from.

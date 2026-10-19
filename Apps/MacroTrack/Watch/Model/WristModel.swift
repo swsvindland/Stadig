@@ -216,6 +216,27 @@ final class WristModel {
         }
     }
 
+    /// Waits until the analysis running now, and any a newer change started meanwhile, has shown
+    /// today and written the complications' snapshot, or until `limit` has passed.
+    func analysisFinished(within limit: Duration) async {
+        await withCheckedContinuation { (finished: CheckedContinuation<Void, Never>) in
+            let once = ResumeOnce(finished)
+            let timeout = Task {
+                try? await Task.sleep(for: limit)
+                once.resume()
+            }
+            Task { [weak self] in
+                var waited: Task<Void, Never>?
+                while let task = self?.analysisTask, task != waited {
+                    await task.value
+                    waited = task
+                }
+                timeout.cancel()
+                once.resume()
+            }
+        }
+    }
+
     private func show(_ wrist: WristToday, generation: Int) {
         guard generation == self.generation else { return }
         today = wrist
@@ -330,4 +351,16 @@ final class WristModel {
         state(now: Date()).map(MacroAnalyst.analyse)
     }
     #endif
+}
+
+/// A continuation resumed by whichever of two waits ends first, and only once.
+private final class ResumeOnce {
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(_ continuation: CheckedContinuation<Void, Never>) { self.continuation = continuation }
+
+    func resume() {
+        continuation?.resume()
+        continuation = nil
+    }
 }

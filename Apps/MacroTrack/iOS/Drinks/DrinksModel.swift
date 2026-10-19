@@ -39,15 +39,7 @@ extension AppModel {
         store.save(log)
         reload()
         toast = Toast(message: "Water · \(Format.volume(ml, ounces: fluidOunces))", undoWater: [log.id])
-        if settings.saveToHealth {
-            Task {
-                await HealthBridge.shared.saveFoods([
-                    HealthFood(
-                        id: log.id, date: log.date, name: "Water", nutrients: .zero, micros: ["water": ml],
-                        version: Int(log.updatedAt.timeIntervalSince1970 * 1000))
-                ])
-            }
-        }
+        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods([Self.healthFood(log)]) } }
     }
 
     func delete(water ids: [UUID]) {

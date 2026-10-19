@@ -258,7 +258,9 @@ final class AppModel {
     /// in proportion to the history.
     func reload() {
         if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
-        if needsReading(MacroSettings.self) { settings = Self.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID) }
+        if needsReading(MacroSettings.self) {
+            settings = MacroSettings.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID)
+        }
         let entriesChanged = needsReading(FoodEntry.self)
         if entriesChanged { entries = store.all(FoodEntry.self).sorted { $0.date < $1.date } }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
@@ -293,20 +295,6 @@ final class AppModel {
     func reloadMealPlans() {
         readRevisions[MealPlan.kind] = store.revision(of: MealPlan.self)
         mealPlans = store.all(MealPlan.self).sorted { $0.start < $1.start }
-    }
-
-    /// The settings record in force. There's normally one; a second appears when setup was finished
-    /// on a new device before the first device's settings had synced in. The one set up first wins,
-    /// so the person's settings aren't shadowed by the new device's defaults.
-    static func inForce(_ all: [MacroSettings]) -> MacroSettings? {
-        all.min { a, b in
-            switch (a.onboardedAt, b.onboardedAt) {
-            case (let x?, let y?): x != y ? x < y : a.updatedAt > b.updatedAt
-            case (.some, nil): true
-            case (nil, .some): false
-            case (nil, nil): a.updatedAt > b.updatedAt
-            }
-        }
     }
 
     /// Check-ins by day, and within a day oldest first, as the analysis orders them: the last of a
@@ -780,12 +768,25 @@ final class AppModel {
         ])
     }
 
+    // What goes to Health for each kind of thing logged, here as it's logged and by the backfill for
+    // what other devices logged (HealthBackfill.swift): one shape and one version, so the backfill
+    // knows this device's own samples and leaves them alone.
+
     static func healthFood(_ e: FoodEntry) -> HealthFood {
         var micros = e.micros ?? [:]
         if let fluid = e.fluid { micros["water"] = fluid }
-        return HealthFood(
-            id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros,
-            version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
+        return HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros, version: e.updatedAt.healthVersion)
+    }
+
+    static func healthFood(_ glass: WaterLog) -> HealthFood {
+        HealthFood(
+            id: glass.id, date: glass.date, name: "Water", nutrients: .zero, micros: ["water": glass.ml], version: glass.updatedAt.healthVersion)
+    }
+
+    static func healthFood(_ dose: SupplementLog) -> HealthFood {
+        HealthFood(
+            id: dose.id, date: dose.date, name: dose.name, nutrients: dose.nutrients ?? .zero, micros: dose.amounts,
+            version: dose.updatedAt.healthVersion)
     }
 
     func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
@@ -832,7 +833,7 @@ final class AppModel {
         reload()
         toast = Toast(message: "Weighed in · \(Format.weight(kg, unit: units.weight))")
         if settings.saveToHealth {
-            Task { await HealthBridge.shared.saveWeight(id: w.id, date: date, kg: kg, version: Int(Date().timeIntervalSince1970 * 1000)) }
+            Task { await HealthBridge.shared.saveWeight(id: w.id, date: date, kg: kg, version: w.updatedAt.healthVersion) }
         }
     }
 
@@ -875,7 +876,7 @@ final class AppModel {
     }
 
     /// The settings as the store has them now.
-    private var storedSettings: MacroSettings { Self.inForce(store.all(MacroSettings.self)) ?? settings }
+    private var storedSettings: MacroSettings { MacroSettings.inForce(store.all(MacroSettings.self)) ?? settings }
 
     func save(profile: SharedProfile) {
         var profile = profile
@@ -897,7 +898,7 @@ final class AppModel {
     /// the store, not the copies in memory: when setup was already done on another device and has
     /// just synced in, it's kept as it is (its profile, settings and assessment), not started again.
     func completeOnboarding(profile: SharedProfile, history: DietHistory, weightKg: Double?) {
-        let synced = Self.inForce(store.all(MacroSettings.self))
+        let synced = MacroSettings.inForce(store.all(MacroSettings.self))
         if synced?.onboardedAt == nil || store.all(ProfileRecord.self).isEmpty {
             var profile = profile
             profile.updatedAt = Date()
@@ -980,6 +981,8 @@ final class AppModel {
 
     func connectHealth() async {
         _ = await HealthBridge.shared.requestAuthorization(.nutrition)
+        // What the Watch and the Mac logged before Health was connected waited for this.
+        healthBackfill?.run()
         healthReads.permissionAsked()
         await refreshHealth()
         startHealthObserving()

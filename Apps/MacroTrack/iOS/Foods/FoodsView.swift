@@ -5,8 +5,9 @@ import SystemCore
 
 /// Finding and comparing foods where there's room (iPad, the Mac, Vision Pro): a search over every
 /// food into a table, sorted by any column at the portion it would log, with that portion and its
-/// nutrients in an inspector. Return logs the selected food, and the search field has the cursor
-/// on arrival (⌘F puts it back).
+/// nutrients in an inspector. Return logs the selected food (or, straight after typing, the best
+/// match once the rows for what was typed arrive), and the search field has the cursor on arrival
+/// (⌘F puts it back).
 struct FoodsView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
@@ -16,6 +17,8 @@ struct FoodsView: View {
     @State private var shown: [FoodListing] = []
     @State private var searching = false
     @State private var selection: FoodListing.ID?
+    /// Which query the rows shown were found for, and a Return waiting for the current one's.
+    @State private var searchReturn = FoodSearchReturn()
     @State private var sortOrder = [FoodListingOrder(.relevance)]
     @State private var inspecting = true
     /// The selected food's amount and when it was eaten, as the inspector sets them.
@@ -41,6 +44,7 @@ struct FoodsView: View {
         }
         .task(id: SearchKey(query: query, scope: scope, personal: model.personalVersion)) { await search() }
         .onChange(of: sortOrder) { _, order in shown = listings.sorted(using: order) }
+        .onChange(of: currentQuery) { _, query in searchReturn.typed(query) }
         .onChange(of: selection) { _, _ in resetAmount() }
         .onAppear { searchFocused = true }
         .onChange(of: model.foodSearchRequest) { _, _ in searchFocused = true }
@@ -217,11 +221,14 @@ struct FoodsView: View {
 
     var selected: FoodListing? { selection.flatMap { id in shown.first { $0.id == id } } }
 
+    var currentQuery: FoodSearchReturn.Query { FoodSearchReturn.Query(text: query.trimmingCharacters(in: .whitespaces), scope: scope) }
+
     // MARK: Actions
 
     func search() async {
-        let text = query.trimmingCharacters(in: .whitespaces)
-        let scope = scope
+        let asked = currentQuery
+        let text = asked.text
+        let scope = asked.scope
         searching = true
         // A short pause so fast typing doesn't queue a search per keystroke.
         if !text.isEmpty {
@@ -241,9 +248,11 @@ struct FoodsView: View {
         listings = found
         shown = found.sorted(using: sortOrder)
         searching = false
-        // The best match is ready for Return; a selection still in the list stays.
-        if !found.contains(where: { $0.id == selection }) { selection = shown.first?.id }
+        // The best match is ready for Return, and a Return pressed while these were on their way logs it.
+        let next = searchReturn.arrived(asked, rows: shown.map(\.id), selection: selection)
+        selection = next.selection
         resetAmount()
+        if next.log { logSelected() }
     }
 
     /// The selected food's usual portion, eaten now, each time the selection moves to another food.
@@ -254,12 +263,13 @@ struct FoodsView: View {
         amountFor = row.id
     }
 
-    /// Return in the search field: log the selected food, or pick the first match to log next.
+    /// Return in the search field: log the selected food, or pick the first match to log next. Rows
+    /// still from an earlier query aren't what was typed, so then it waits for the new ones.
     func returnPressed() {
-        if selected != nil {
-            logSelected()
-        } else {
-            selection = shown.first?.id
+        switch searchReturn.pressed(currentQuery, hasSelection: selected != nil) {
+        case .log: logSelected()
+        case .select: selection = shown.first?.id
+        case .wait: break
         }
     }
 
