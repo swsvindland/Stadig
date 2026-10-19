@@ -26,11 +26,17 @@ struct DesktopTests {
     }
 
     @Test func draftsAreListedNewestFirstWithTheirExercise() async throws {
-        let drafts = WritingDrafts(folder: TestApp.folder().appending(path: "Drafts", directoryHint: .isDirectory))
+        let folder = TestApp.folder().appending(path: "Drafts", directoryHint: .isDirectory)
+        let drafts = WritingDrafts(folder: folder)
         #expect(await drafts.all().isEmpty, "no folder yet, no drafts")
         await drafts.save(text: "First go", handwritten: false, drawing: PKDrawing(), ownPage: nil, for: "prompt.creative-the-last-shift")
-        try await Task.sleep(for: .milliseconds(1100))
         await drafts.save(text: "Notes so far", handwritten: true, drawing: PKDrawing(), ownPage: nil, for: "franklinNotes.austen-1")
+        // Saved an hour apart, said outright rather than waited for: two saves in one second can
+        // share a modification date.
+        for (key, date) in [("prompt.creative-the-last-shift", TestApp.wednesday), ("franklinNotes.austen-1", TestApp.wednesday + 3600)] {
+            try FileManager.default.setAttributes(
+                [.modificationDate: date], ofItemAtPath: folder.appending(path: key + ".json").path(percentEncoded: false))
+        }
         let all = await drafts.all()
         #expect(all.map(\.key) == ["franklinNotes.austen-1", "prompt.creative-the-last-shift"])
         #expect(all.map(\.exercise) == [.franklinNotes, .prompt])
