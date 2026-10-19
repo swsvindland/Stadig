@@ -8,7 +8,8 @@ export function getStaticPaths() {
 }
 const { app } = Astro.props;
 const others = apps.filter((a) => a.slug !== app.slug);
-const os = app.platforms.map((p) => (p === "Apple Watch" ? "watchOS" : p === "Mac" ? "macOS" : "iOS")).filter((v, i, a) => a.indexOf(v) === i).join(", ");
+const systems: Record<string, string> = { "Apple Watch": "watchOS", Mac: "macOS", "Apple Vision Pro": "visionOS" };
+const os = app.platforms.map((p) => systems[p] ?? "iOS").filter((v, i, a) => a.indexOf(v) === i).join(", ");
 const jsonLd = [
   {
     "@context": "https://schema.org",

@@ -6,7 +6,7 @@ export const brand = {
   domain: "https://stadig.dev",
   tagline: "Apps that tell you what to do next.",
   description:
-    "Stadig makes Lift Track, Macro Track and Mind Track: fast, offline-first iPhone apps for training, nutrition and study that prescribe your next session, meal target and lesson from your own data. No subscriptions, no streaks, no account.",
+    "Stadig makes Lift Track, Macro Track and Mind Track: fast, offline-first apps for iPhone, iPad, Mac and Apple Vision Pro, for training, nutrition and study, that prescribe your next session, meal target and lesson from your own data. No subscriptions, no streaks, no account.",
   pronunciation: "STAH-dig",
   meaning: "Norwegian for steady.",
   publisher: "Sam Svindland",
@@ -38,8 +38,8 @@ export const apps: App[] = [
     short: "Training",
     oneLiner: "Every session prescribed. Every set adjusted to how it went.",
     description:
-      "Lift Track is a strength training app for iPhone, iPad and Apple Watch that writes your program, adjusts every set to how the last one felt, and tells you when to push, hold or deload. It learns how honest your effort ratings are, budgets fatigue across lifting and everything else you do, and moves your stats only on real tests.",
-    platforms: ["iPhone", "iPad", "Apple Watch"],
+      "Lift Track is a strength training app for iPhone, iPad, Mac, Apple Vision Pro and Apple Watch that writes your program, adjusts every set to how the last one felt, and tells you when to push, hold or deload. It learns how honest your effort ratings are, budgets fatigue across lifting and everything else you do, and moves your stats only on real tests.",
+    platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
     category: "HealthApplication",
     accent: "lift",
     appStoreUrl: null,
@@ -89,8 +89,8 @@ export const apps: App[] = [
     short: "Nutrition",
     oneLiner: "Learns your real maintenance. Picks the phase. Adjusts weekly.",
     description:
-      "Macro Track is a nutrition app for iPhone and iPad that works out your actual maintenance calories from logging and weigh-ins, recommends one phase (cut, bulk or maintenance) with its reasons, and adapts your targets every week. Logging is a glance and a tap: search, barcode, live label scan, a photo or a sentence, read by Apple's on-device models. Offline food, supplement and drink catalogs.",
-    platforms: ["iPhone", "iPad"],
+      "Macro Track is a nutrition app for iPhone, iPad, Mac, Apple Vision Pro and Apple Watch that works out your actual maintenance calories from logging and weigh-ins, recommends one phase (cut, bulk or maintenance) with its reasons, and adapts your targets every week. Logging is a glance and a tap: search, barcode, live label scan, a photo or a sentence, read by Apple's on-device models. Offline food, supplement and drink catalogs.",
+    platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro", "Apple Watch"],
     category: "HealthApplication",
     accent: "macro",
     appStoreUrl: null,
@@ -140,8 +140,8 @@ export const apps: App[] = [
     short: "Study",
     oneLiner: "Lift Track for the mind. 25 minutes a day, prescribed.",
     description:
-      "Mind Track is a study app for iPhone and iPad that runs focused 25-minute sessions in Japanese, maths, writing and reading. A two-week assessment finds your level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before you'd forget them, and new material comes only once the last thing has stuck.",
-    platforms: ["iPhone", "iPad", "Mac"],
+      "Mind Track is a study app for iPhone, iPad, Mac and Apple Vision Pro that runs focused 25-minute sessions in Japanese, maths, writing and reading. A two-week assessment finds your level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before you'd forget them, and new material comes only once the last thing has stuck.",
+    platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro"],
     category: "EducationalApplication",
     accent: "mind",
     appStoreUrl: null,
@@ -251,7 +251,7 @@ export const together = [
 export const faq = [
   {
     q: "What is Stadig?",
-    a: "Stadig is the maker of Lift Track, Macro Track and Mind Track, three iPhone apps for training, nutrition and study that share one idea: use your own data to prescribe the next thing to do, instead of charting what you did. The name is Norwegian for steady.",
+    a: "Stadig is the maker of Lift Track, Macro Track and Mind Track, three apps for training, nutrition and study, on iPhone, iPad, Mac and Apple Vision Pro, that share one idea: use your own data to prescribe the next thing to do, instead of charting what you did. The name is Norwegian for steady.",
   },
   {
     q: "Do I need all three apps?",
@@ -279,7 +279,7 @@ export const faq = [
   },
   {
     q: "What devices are supported?",
-    a: "Lift Track runs on iPhone, iPad and Apple Watch. Macro Track runs on iPhone and iPad with Home Screen and Lock Screen widgets. Mind Track runs on iPhone and iPad, and on the Mac as the iPad app.",
+    a: "All three run on iPhone, iPad, Mac and Apple Vision Pro, and one purchase covers every device. Lift Track and Macro Track also have Apple Watch apps. On the iPad and the Mac each does more than on the phone: Lift Track lays out your program and exercise library, Macro Track compares foods and plans the week, and Mind Track runs sessions from the keyboard. Your data syncs between your devices through iCloud.",
   },
   {
     q: "Which AI models do the apps use?",
