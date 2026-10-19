@@ -37,6 +37,17 @@ enum AppTab: String, Hashable, CaseIterable {
         case .body: "figure.arms.open"
         }
     }
+
+    /// The tab that reaches a sidebar destination where there's no sidebar (an iPhone, an iPad in a
+    /// narrow split): the block's days on Plan for the program and the library, and History behind
+    /// Progress, as on the iPhone.
+    var tabBarFallback: AppTab {
+        switch self {
+        case .program, .library: .plan
+        case .history: .progress
+        case .today, .plan, .progress, .body: self
+        }
+    }
 }
 
 /// What the menu bar asks of the session on screen.
@@ -705,7 +716,8 @@ final class AppModel {
         save(lifeMode: period)
     }
 
-    /// Opens Library on an exercise.
+    /// Opens Library on an exercise. Only where there's a sidebar: a narrow window has no Library
+    /// tab, so its screens push the exercise in place instead.
     func show(inLibrary exerciseID: String) {
         libraryFocus = exerciseID
         tab = .library

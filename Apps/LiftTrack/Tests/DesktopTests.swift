@@ -174,4 +174,14 @@ struct DesktopTests {
         model.show(inLibrary: "barbell-bench-press")
         #expect(model.tab == .library && model.libraryFocus == "barbell-bench-press")
     }
+
+    @Test("Without a sidebar, its destinations show the tab that reaches them, as on the iPhone")
+    func tabBarFallbacks() {
+        #expect(AppTab.program.tabBarFallback == .plan)
+        #expect(AppTab.library.tabBarFallback == .plan)
+        #expect(AppTab.history.tabBarFallback == .progress)
+        for tab in [AppTab.today, .plan, .progress, .body] { #expect(tab.tabBarFallback == tab) }
+        // Always one of the iPhone's four tabs.
+        #expect(Set(AppTab.allCases.map(\.tabBarFallback)) == [.today, .plan, .progress, .body])
+    }
 }

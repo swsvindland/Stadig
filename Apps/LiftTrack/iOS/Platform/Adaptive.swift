@@ -43,7 +43,9 @@ enum Platform {
     }
 
     /// An iPhone: the one device a Watch pairs with, streaming heart rate into a session led from it.
-    static var canPairWatch: Bool { isPhoneOrPad && !isPad }
+    static var canPairWatch: Bool { isPhone }
+
+    static var isPhone: Bool { isPhoneOrPad && !isPad }
 
     static var isPad: Bool {
         #if os(iOS)
@@ -83,13 +85,15 @@ enum Platform {
 }
 
 extension Optional where Wrapped == UserInterfaceSizeClass {
-    /// Room for the desktop layout: a regular width (iPad full screen or a wide split, Vision Pro),
-    /// and always the Mac, whose windows have a minimum size and may report no size class at all.
+    /// Room for the desktop layout, and the sidebar with Program, Library and History: a regular
+    /// width (iPad full screen or a wide split, Vision Pro), and always the Mac, whose windows have a
+    /// minimum size and may report no size class at all. Never an iPhone, even the largest turned on
+    /// its side (a regular width): its tab bar has no sidebar destinations, and it keeps its own design.
     var isWide: Bool {
         #if os(macOS)
         return true
         #else
-        return self == .regular
+        return self == .regular && !Platform.isPhone
         #endif
     }
 }

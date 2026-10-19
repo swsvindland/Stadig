@@ -7,6 +7,7 @@ import SystemCore
 /// iPad, the Mac and Vision Pro adds the planning desk: Program, Library and History.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -47,9 +48,16 @@ struct RootView: View {
         }
     }
 
+    /// The tab shown: the destination itself where there's a sidebar, or in a narrow window the tab
+    /// that reaches it (`AppTab.tabBarFallback`), since the tab bar has no Program, Library or
+    /// History. A narrow window never writes the fallback back, so an iPad with a wide and a narrow
+    /// window open on the one model can't undo the other's choice.
+    private var selection: Binding<AppTab> {
+        Binding(get: { sizeClass.isWide ? model.tab : model.tab.tabBarFallback }, set: { model.tab = $0 })
+    }
+
     private var tabs: some View {
-        @Bindable var model = model
-        return TabView(selection: $model.tab) {
+        TabView(selection: selection) {
             Tab(AppTab.today.title, systemImage: AppTab.today.symbol, value: AppTab.today) { TodayView() }
             TabSection("Training") {
                 Tab(AppTab.plan.title, systemImage: AppTab.plan.symbol, value: AppTab.plan) { PlanView() }
