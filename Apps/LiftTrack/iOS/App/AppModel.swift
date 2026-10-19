@@ -154,6 +154,9 @@ final class AppModel {
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
     @ObservationIgnored private var lastRevision = -1
+    /// How many times the records have been read and the analysis run: a batch of changes should
+    /// cost one, however many records it touches.
+    @ObservationIgnored private(set) var reloads = 0
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
     @ObservationIgnored private var readRevisions: [String: Int] = [:]
 
@@ -230,6 +233,7 @@ final class AppModel {
     /// kinds (the photos in particular) aren't read or sorted again, but the analysis still runs over
     /// everything.
     func reload() {
+        reloads += 1
         let profileChanged = needsReading(ProfileRecord.self)
         if profileChanged { profile = store.all(ProfileRecord.self).first?.profile }
         let settingsChanged = needsReading(LiftSettings.self)
@@ -551,7 +555,22 @@ final class AppModel {
 
     /// Deletes what a History row stands for: the session (and its workout in Health) or the activity.
     func delete(historyRow row: HistoryRow) {
-        if row.isSession { delete(session: row.id) } else { delete(activity: row.id) }
+        delete(historyRows: [row])
+    }
+
+    /// Deletes what several History rows stand for, then reads the records once: the analysis runs
+    /// over everything, so a reload per row would make a long selection slow to delete.
+    func delete(historyRows rows: [HistoryRow]) {
+        guard !rows.isEmpty else { return }
+        for row in rows {
+            if row.isSession { store.delete(SessionRecord.self, id: row.id) } else { store.delete(ActivityRecord.self, id: row.id) }
+        }
+        reload()
+        let workouts = rows.filter(\.isSession).map(\.id)
+        guard !workouts.isEmpty else { return }
+        Task {
+            for id in workouts { await HealthBridge.shared.deleteWorkout(id: id) }
+        }
     }
 
     func delete(session id: UUID) {

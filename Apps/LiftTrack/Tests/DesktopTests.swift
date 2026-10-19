@@ -9,7 +9,8 @@ import Testing
 
 /// The model behind the iPad and Mac screens: swaps for the rest of a block, exercises set aside
 /// and allowed back, injury overrides from Library, the next block offered, refits to look at,
-/// History's rows and a session reordered.
+/// History's rows and their deletes, a session reordered, and where a narrow window sends the
+/// sidebar's destinations.
 @MainActor
 @Suite("Program, Library and History")
 struct DesktopTests {
@@ -46,6 +47,37 @@ struct DesktopTests {
         #expect(!model.swap(slot: slot.id, day: day.id, of: mesocycle.id, to: replacement.id))
         #expect(!model.swap(slot: UUID(), day: day.id, of: mesocycle.id, to: before.id))
         #expect(!model.swap(slot: slot.id, day: day.id, of: UUID(), to: before.id))
+    }
+
+    @Test("A swap stamps the block as edited, so it beats older copies, and keeps the slot in its superset")
+    func swapKeepsTheSuperset() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let (current, day, slot) = try mainSlot(model)
+        let partner = try #require(day.strengthSlots.first { $0.id != slot.id })
+        // The block as another device saved it an hour ago, the main lift paired with the next exercise.
+        var paired = current
+        paired.id = UUID()
+        paired.updatedAt = Date().addingTimeInterval(-3_600)
+        let d = try #require(paired.days.firstIndex { $0.id == day.id })
+        for b in paired.days[d].blocks.indices {
+            for s in paired.days[d].blocks[b].slots.indices where [slot.id, partner.id].contains(paired.days[d].blocks[b].slots[s].id) {
+                paired.days[d].blocks[b].slots[s].supersetGroup = 1
+            }
+        }
+        for old in model.mesocycles { app.store.delete(Mesocycle.self, id: old.id) }
+        app.store.save(paired)
+        model.reload()
+        #expect(model.currentMesocycle?.id == paired.id)
+
+        let replacement = try #require(model.swapCandidates(for: slot.exerciseID).first)
+        #expect(model.swap(slot: slot.id, day: day.id, of: paired.id, to: replacement.id))
+        let saved = try #require(model.mesocycles.first { $0.id == paired.id })
+        #expect(saved.updatedAt > paired.updatedAt)
+        let savedDay = try #require(saved.days.first { $0.id == day.id })
+        let swapped = try #require(savedDay.slots.first { $0.id == slot.id })
+        #expect(swapped.exerciseID == replacement.id && swapped.supersetGroup == 1)
+        #expect(savedDay.slots.first { $0.id == partner.id }?.supersetGroup == 1)
     }
 
     @Test("An exercise set aside isn't offered as a swap, leaves today's session, and can be allowed back")
@@ -138,6 +170,29 @@ struct DesktopTests {
         model.delete(historyRow: session)
         #expect(model.sessions.isEmpty)
         #expect(model.historyRows.isEmpty)
+    }
+
+    @Test("Deleting several History rows takes every record and reads the records once")
+    func deleteSeveralRows() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        model.start(try #require(model.plan()))
+        model.logUntilAWorkSet()
+        model.finish(feedback: nil)
+        for hours in 1...3 {
+            model.save(activity: ActivityLog(type: .bjj, start: Date().addingTimeInterval(-3_600 * Double(hours) - 7_200), minutes: 60))
+        }
+        #expect(model.historyRows.count == 4)
+
+        let reloads = model.reloads
+        model.delete(historyRows: model.historyRows)
+        #expect(model.reloads == reloads + 1)
+        #expect(model.historyRows.isEmpty && model.sessions.isEmpty && model.activities.isEmpty)
+        // Gone for good, not only from this model.
+        #expect(app.model().historyRows.isEmpty)
+        // Nothing to delete reads nothing.
+        model.delete(historyRows: [])
+        #expect(model.reloads == reloads + 1)
     }
 
     @Test("Dragging an exercise in the session reorders it and keeps what's logged")
