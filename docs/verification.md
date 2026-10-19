@@ -10,6 +10,7 @@
   - No UI test needed a retry in the final runs. Lift Track's UI run left the simulator's App Group untouched.
 - **Leaks.** No leaks in the apps' own code on seeded screens: Lift Track's launch, Plan, Progress, Body and a running session; Macro Track's launch, Plan, Progress, search, Supplements and Settings; Mind Track's launch, Plan, Progress, a session, the shelf and Settings. The leaks found were the system's, with no frame in the apps' code: allocations in SwiftUI, UIKit, dyld and Foundation Models, or ones made before logging started. At the time `Scripts/leaks.sh` took a run with a single leak for one it couldn't read, and ran lines of the leaks report as shell commands, so Macro Track's screens were checked with a corrected copy of it and Mind Track's Settings with `leaks` by hand. Lift Track's screens and Mind Track's others came from the script as it was. The script has been fixed since. Each app model also has a test that it deallocates.
 - **Builds.** With warnings as errors (`STRICT=1`), the `LiftTrack` scheme (iPhone/iPad app, widgets, Live Activity, embedded Watch app), the `LiftTrackWatch` scheme (the Watch app and its complications), the `MacroTrack` scheme (app, widgets, controls) and the `MindTrack` scheme build with zero errors and warnings.
+- **GitHub Actions.** The first push of `ci.yml` and `site.yml` to main (8dae263, 2026-10-19) passed: lint in 10 s and every package's tests in 3 minutes on the `xcode-27` runner, with the apps job skipped as designed, and the site built in 16 s.
 - **iPhone 18 Pro Max simulator**
   - Onboarding on the persistent store creates the assessment block. The first session prescribes "find weight" sets.
   - `-seedSampleData` runs three weeks of real engine sessions. Today shows "What we've learned", including the overhead-press imbalance and "you can finish early".
@@ -64,7 +65,7 @@
 - iPad layouts. They use the iPhone layout with readable widths.
 - VoiceOver.
 - Xcode Cloud: nothing has run there. Its workflows still have to be created in App Store Connect ([ci-cd.md](ci-cd.md)).
-- GitHub Actions: `ci.yml` and `site.yml` haven't run on GitHub yet, so neither have the Monday thread and address sanitizer runs.
+- GitHub Actions: the Monday sanitizer job hasn't run on GitHub yet. The thread and address sanitizers have only run locally.
 
 **Known gaps**
 
