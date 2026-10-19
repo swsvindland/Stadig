@@ -19,11 +19,14 @@ final class WristDelegate: NSObject, WKApplicationDelegate {
 
     func didReceiveRemoteNotification(_ userInfo: [AnyHashable: Any]) async -> WKBackgroundFetchResult {
         // The import runs on its own once the push lands, and the model hears it (`observeChanges`)
-        // and rewrites the complications' snapshot; this keeps the app awake while it does.
+        // and analyses again; this keeps the app awake while it does, and then until the analysis
+        // has written the complications' snapshot and reloaded them, which watchOS could otherwise
+        // suspend halfway. Both waits together stay well inside the time a push is given.
         let model = WristModel.shared
         let before = model.store.revision
         try? await Task.sleep(for: .seconds(8))
         model.reloadIfChanged()
+        await model.analysisFinished(within: .seconds(12))
         return model.store.revision == before ? .noData : .newData
     }
 }
