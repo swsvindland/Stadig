@@ -130,12 +130,13 @@ struct ReadingSettings: View {
                 dismiss()
                 model.showShelf = true
             }
+            .rowButton()
             .accessibilityIdentifier("settings.shelf")
         } header: {
             Text("Reading")
         } footer: {
             Text(
-                "Reading-test passages are public-domain excerpts from Project Gutenberg, and a few written for Mind Track. Book details come from Open Library, with Google Books as a backup; covers are read on your iPhone."
+                "Reading-test passages are public-domain excerpts from Project Gutenberg, and a few written for Mind Track. Book details come from Open Library, with Google Books as a backup; covers are read on your \(Platform.deviceName)."
             )
         }
     }

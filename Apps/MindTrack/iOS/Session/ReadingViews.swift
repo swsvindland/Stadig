@@ -7,6 +7,7 @@ struct PickBookView: View {
     @Environment(AppModel.self) private var model
     let options: [LadderBook]
     @State private var addingOwn = false
+    @State private var keyboard = HardwareKeyboard.shared
 
     var body: some View {
         let reading = model.analysis?.reading
@@ -14,13 +15,14 @@ struct PickBookView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Your next book").font(.title.bold())
                 Text(reading.map(intro) ?? "Near your level, in the genres you like.").foregroundStyle(.secondary)
-                ForEach(options) { book in
+                ForEach(Array(options.enumerated()), id: \.element.id) { index, book in
                     Button {
                         model.act { $0.pickBook(book, now: Date()) }
                     } label: {
-                        LadderBookRow(book: book)
+                        LadderBookRow(book: book, keyHint: keyboard.connected ? SessionKeys.label(choice: index) : nil)
                     }
                     .buttonStyle(.plain)
+                    .hoverable(in: .rect(cornerRadius: 22))
                     .accessibilityIdentifier("pickBook.book.\(book.id)")
                 }
                 Button("Add a book of your own", systemImage: "plus") { addingOwn = true }
@@ -36,6 +38,11 @@ struct PickBookView: View {
         .sheet(isPresented: $addingOwn) {
             BookFinder { book in model.act { $0.addBook(book, now: Date()) } }
         }
+        // Not while the finder is up over it: a presented sheet still hears these on iPad.
+        .sessionKeys(addingOwn ? [] : SessionKeys.bindings(step: .pickBook(options), feedback: nil)) { key in
+            guard case .choose(let index) = key, options.indices.contains(index) else { return }
+            model.act { $0.pickBook(options[index], now: Date()) }
+        }
     }
 
     func intro(_ reading: ReadingSummary) -> String {
@@ -50,10 +57,13 @@ struct PickBookView: View {
 
 struct LadderBookRow: View {
     let book: LadderBook
+    /// The key that picks it, while a keyboard is there.
+    var keyHint: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
+                if let keyHint { KeyHint(label: keyHint) }
                 Text(book.title).font(.headline)
                 Spacer()
                 Pill(text: "Tier \(book.tier)", color: .teal)
@@ -75,6 +85,14 @@ struct ReadingTimerView: View {
     @State private var logging = false
 
     var listening: Bool { book.format == .audiobook }
+    var keys: [SessionKeyBinding] { logging ? [] : SessionKeys.bindings(step: .read(book, minutes: minutes), feedback: nil) }
+
+    /// What can be put aside while the timer runs: the phone or iPad face down; on the Mac and
+    /// Vision Pro the window just keeps time.
+    static var putDown: String {
+        if Platform.isPhoneOrPad { return Platform.isPad ? "The iPad can go face down." : "The phone can go face down." }
+        return "This window keeps the time."
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -97,7 +115,7 @@ struct ReadingTimerView: View {
                             .frame(width: 220, height: 220)
                             Text(
                                 left > 0
-                                    ? (listening ? "Listen. The phone can go face down." : "Read. The phone can go face down.")
+                                    ? (listening ? "Listen. " : "Read. ") + Self.putDown
                                     : "That's the block. Finish the page, or keep going if focus holds."
                             )
                             .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -127,8 +145,10 @@ struct ReadingTimerView: View {
                 .primaryAction()
                 .controlSize(.large)
                 .accessibilityIdentifier("reading.done")
+                KeyLegend(bindings: keys, titles: [.submit: listening ? "Done listening" : "Done reading"])
             }
         }
+        .sessionKeys(keys) { key in if key == .submit { logging = true } }
         .sheet(isPresented: $logging) {
             PageSheet(book: book, asksFocus: (book.format ?? .print).countsForStamina) { page, finished, feel, focus in
                 let minutes = Date().timeIntervalSince(started) / 60
@@ -170,6 +190,7 @@ struct ColourRating<Value: Hashable>: View {
                     .opacity(selection == nil || chosen ? 1 : 0.4)
                 }
                 .buttonStyle(.plain)
+                .hoverable(in: .rect(cornerRadius: 16))
                 .accessibilityLabel("\(option.label): \(option.detail)")
                 .accessibilityAddTraits(chosen ? .isSelected : [])
             }
@@ -243,7 +264,7 @@ struct PageSheet: View {
                             LabeledContent("Now on page", value: "\(page)")
                         }
                         .accessibilityIdentifier("pageSheet.stepper")
-                        TextField("Page", value: $page, format: .number).keyboardType(.numberPad)
+                        TextField("Page", value: $page, format: .number).fieldKeyboard(.number)
                             .accessibilityIdentifier("pageSheet.page")
                     }
                 } footer: {
@@ -275,7 +296,7 @@ struct PageSheet: View {
                 }
             }
             .navigationTitle(book.title)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -289,16 +310,24 @@ struct PageSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationSizing(.form)
+        .sheetForm(width: 500, height: 460)
     }
 }
 
 /// A few sentences after reading.
 struct ReflectView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let book: Book
     let finished: Bool
     @State private var text = ""
     @FocusState private var focused: Bool
+
+    var canSave: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var keys: [SessionKeyBinding] {
+        SessionKeys.bindings(step: .reflect(book, finished: finished), feedback: nil, typing: focused, canHandIn: canSave)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -310,15 +339,22 @@ struct ReflectView: View {
                             ? "A few sentences about \(book.title) as a whole." : "Two or three sentences are plenty. Next time starts with them."
                     )
                     .foregroundStyle(.secondary)
+                    if sizeClass == .regular {
+                        Label("\(book.title) · page \(book.page) of \(book.pages)", systemImage: Domain.reading.symbol)
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
                     TextEditor(text: $text)
-                        .frame(minHeight: 160)
+                        .font(.writing)
+                        .lineSpacing(sizeClass == .regular ? LineSpacing.writing : 0)
+                        .frame(minHeight: sizeClass == .regular ? 280 : 160)
                         .padding(10)
                         .scrollContentBackground(.hidden)
                         .background(.cardBackground, in: .rect(cornerRadius: 16))
                         .focused($focused)
+                        .accessibilityIdentifier("reflect.text")
                 }
                 .padding(20)
-                .readableWidth(640)
+                .readableWidth(sizeClass == .regular ? 720 : 640)
             }
             BottomBar {
                 HStack(spacing: 12) {
@@ -338,12 +374,18 @@ struct ReflectView: View {
                     }
                     .primaryAction()
                     .controlSize(.large)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSave)
                     .accessibilityIdentifier("reflect.save")
                 }
+                KeyLegend(bindings: keys, titles: [.handIn: "Save"])
             }
         }
         .onAppear { focused = true }
+        .sessionKeys(keys) { key in
+            guard key == .handIn, canSave else { return }
+            let note = text
+            model.act { $0.reflect(note, now: Date()) }
+        }
     }
 }
 
@@ -415,7 +457,7 @@ struct BookEditor: View {
                 }
             }
             .navigationTitle(book == nil ? "Add a book" : "Edit book")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookEditor.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -429,6 +471,7 @@ struct BookEditor: View {
             }
             .onAppear(perform: fill)
         }
+        .sheetForm(width: 480, height: 560)
     }
 
     /// Where the tier comes from, and how much it counts.

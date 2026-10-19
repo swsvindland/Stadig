@@ -74,12 +74,14 @@ final class Purchases {
         unlocked = owned
     }
 
-    func buy() async {
+    /// Buys the unlock through the view's purchase action (`@Environment(\.purchase)`), which shows
+    /// the App Store's sheet over the right window or scene on every platform.
+    func buy(with purchase: PurchaseAction) async {
         guard let product else { return }
         purchasing = true
         defer { purchasing = false }
         do {
-            switch try await product.purchase() {
+            switch try await purchase(product) {
             case .success(.verified(let transaction)):
                 await transaction.finish()
             case .success(.unverified(_, let failure)):
@@ -111,6 +113,7 @@ final class Purchases {
 struct PaywallView: View {
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
 
     var body: some View {
         NavigationStack {
@@ -126,7 +129,7 @@ struct PaywallView: View {
                 Spacer()
                 Button {
                     Task {
-                        await purchases.buy()
+                        await purchases.buy(with: purchase)
                         if purchases.unlocked { dismiss() }
                     }
                 } label: {
@@ -143,6 +146,9 @@ struct PaywallView: View {
             .padding(24)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
         }
+        #if os(macOS)
+        .frame(width: 460, height: 520)
+        #endif
         // A purchase confirmed late (StoreKit answering at launch, Ask to Buy approved) closes it.
         .onChange(of: purchases.unlocked) { _, unlocked in if unlocked { dismiss() } }
     }

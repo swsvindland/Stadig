@@ -2,7 +2,8 @@ import MindEngine
 import SwiftUI
 import SystemCore
 
-/// A focused session, full screen: one step at a time, the clock in the corner.
+/// A focused session: one step at a time, the clock in the corner. Full screen on iPhone, iPad and
+/// Vision Pro; a window of its own on the Mac.
 struct SessionView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmingEnd = false
@@ -22,15 +23,16 @@ struct SessionView: View {
                     }
                 }
             }
+            .environment(\.sessionKeysPaused, confirmingEnd)
             .animation(.snappy, value: model.stepScreen)
             .animation(.snappy, value: model.run?.feedback == nil)
             .background(.pageBackground)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("End", systemImage: "xmark") {
-                        if model.run?.isComplete == true { model.endSession() } else { confirmingEnd = true }
-                    }
-                    .accessibilityIdentifier("session.end")
+                    Button("End", systemImage: "xmark", action: end)
+                        .keyboardShortcut(.cancelAction)
+                        .help("End the session (Esc)")
+                        .accessibilityIdentifier("session.end")
                 }
                 ToolbarItem(placement: .principal) { SessionHeader() }
                 ToolbarItem(placement: .primaryAction) { Clock() }
@@ -39,7 +41,7 @@ struct SessionView: View {
                 Button("End session", role: .destructive) { model.endSession() }
                     .accessibilityIdentifier("session.endConfirm")
                 if let part = model.run?.currentPart, model.run.map({ $0.partIndex < $0.planParts.count - 1 }) ?? false {
-                    Button("Skip \(part.title.lowercased())") { model.act { $0.skipPart(now: Date()) } }
+                    Button("Skip \(part.title.lowercased())") { model.act { $0.skipPart(now: model.now()) } }
                         .accessibilityIdentifier("session.skipPart")
                 }
                 Button("Keep going", role: .cancel) {}
@@ -47,6 +49,12 @@ struct SessionView: View {
             } message: {
                 Text(endMessage)
             }
+        }
+        // Study ▸ End Session… in the menu bar asks the same way the End button does.
+        .onChange(of: model.endRequested, initial: true) { _, requested in
+            guard requested else { return }
+            model.endRequested = false
+            end()
         }
         .task {
             // The session clock: counted while the screen is up, long gaps left out.
@@ -58,10 +66,18 @@ struct SessionView: View {
         }
     }
 
+    /// Done: straight out. Otherwise, ask first.
+    func end() {
+        if model.run?.isComplete == true { model.endSession() } else { confirmingEnd = true }
+    }
+
     var endMessage: String {
-        let kept = "Everything answered so far is kept, and anything half-learned comes back tomorrow."
-        guard case .compose(let task)? = model.run?.step, task.reviewing == nil else { return kept }
-        return kept + " The piece you're writing stays on this device and comes back with its task."
+        var kept = "Everything answered so far is kept, and anything half-learned comes back tomorrow."
+        if case .compose(let task)? = model.run?.step, task.reviewing == nil {
+            kept += " The piece you're writing stays on this \(Platform.deviceName) and comes back with its task."
+        }
+        if Platform.isMac { kept += " Closing the window ends it the same way." }
+        return kept
     }
 }
 
@@ -84,6 +100,9 @@ private struct SessionHeader: View {
                 Text("Part \(run.partIndex + 1) of \(run.planParts.count)").font(.caption2).foregroundStyle(.secondary)
                     .accessibilityIdentifier("session.part")
             }
+            // The Mac's toolbar puts it in a glass capsule that clips it without its own size.
+            .macFixedSize()
+            .padding(.horizontal, Platform.isMac ? 10 : 0)
         }
     }
 }
@@ -147,6 +166,8 @@ private struct SessionSummary: View {
     /// Set on appearing, so the success haptic plays once the summary is up.
     @State private var shown = false
 
+    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: nil, feedback: nil) }
+
     var body: some View {
         let attempts = run.session.attempts.filter { $0.kind != .test }
         let right = attempts.filter(\.correct).count
@@ -202,12 +223,14 @@ private struct SessionSummary: View {
                 .controlSize(.large)
                 .accessibilityIdentifier("summary.done")
                 .padding(.top, 8)
+                KeyLegend(bindings: keys, titles: [.submit: "Done"])
             }
             .padding(24)
             .readableWidth(560)
         }
         .onAppear { shown = true }
         .sensoryFeedback(.success, trigger: shown)
+        .sessionKeys(keys) { key in if key == .submit { model.endSession() } }
     }
 }
 

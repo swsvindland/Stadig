@@ -42,6 +42,9 @@ enum Platform {
         #endif
     }
 
+    /// An iPhone, whose tab bar holds three tabs and no sidebar.
+    static var isPhone: Bool { isPhoneOrPad && !isPad }
+
     static var isPad: Bool {
         #if os(iOS)
         return UIDevice.current.userInterfaceIdiom == .pad
@@ -77,6 +80,11 @@ enum Platform {
         UIView.setAnimationsEnabled(false)
         #endif
     }
+}
+
+/// Whether scrolling puts the on-screen keyboard away.
+enum KeyboardDismissal {
+    case never, interactively
 }
 
 /// The keyboard a field asks for on iPhone, iPad and Vision Pro. The Mac's keyboard is the one on the desk.
@@ -163,6 +171,84 @@ extension View {
         return buttonStyle(.glass)
         #endif
     }
+
+    /// How a scroll view lets the on-screen keyboard go. Vision Pro's keyboard floats apart from the
+    /// window and the Mac's is on the desk, so there it's left alone.
+    func dismissesKeyboard(_ mode: KeyboardDismissal) -> some View {
+        #if os(iOS)
+        return scrollDismissesKeyboard(mode == .never ? .never : .interactively)
+        #else
+        return self
+        #endif
+    }
+
+    /// A column of details beside the content (an inspector) on iPad and the Mac; Vision Pro has
+    /// none, so there the details come up as a sheet.
+    func detailsInspector<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+        #if os(visionOS)
+        return sheet(isPresented: isPresented) {
+            NavigationStack {
+                content().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { isPresented.wrappedValue = false } } }
+            }
+        }
+        #else
+        return inspector(isPresented: isPresented) { content().inspectorColumnWidth(min: 280, ideal: 340, max: 420) }
+        #endif
+    }
+
+    /// A sheet's form at a size it can be read at on the Mac, grouped as on iPhone and iPad: a Mac
+    /// sheet sizes itself to its content, and a form has no size of its own.
+    func sheetForm(width: CGFloat = 460, height: CGFloat = 420) -> some View {
+        #if os(macOS)
+        return formStyle(.grouped).frame(minWidth: width, idealWidth: width, minHeight: height, idealHeight: height)
+        #else
+        return self
+        #endif
+    }
+
+    /// Its own size on the Mac, where a toolbar's glass or a pull-down menu would otherwise clip or
+    /// stretch it; elsewhere it lays out as it always has.
+    func macFixedSize() -> some View {
+        #if os(macOS)
+        return fixedSize()
+        #else
+        return self
+        #endif
+    }
+
+    /// A button that's a whole row of a list. iPhone and iPad draw it as the row; the Mac would draw
+    /// a push button inside the row, so there it's a plain row, in the accent colour when it's an
+    /// action rather than an item.
+    func rowButton(tinted: Bool = true) -> some View {
+        #if os(macOS)
+        return buttonStyle(.plain)
+            .foregroundStyle(tinted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        #else
+        return self
+        #endif
+    }
+
+    /// A search field that's always showing: under the navigation bar's title on iPhone and iPad,
+    /// in the toolbar on the Mac and Vision Pro.
+    func alwaysSearchable(text: Binding<String>, prompt: String) -> some View {
+        #if os(iOS)
+        return searchable(text: text, placement: .navigationBarDrawer(displayMode: .always), prompt: Text(prompt))
+        #else
+        return searchable(text: text, prompt: Text(prompt))
+        #endif
+    }
+
+    /// The system's highlight under the pointer on iPad and where the eyes rest on Vision Pro, for a
+    /// custom tappable view, in the view's own shape. The Mac's pointer needs none.
+    func hoverable(in shape: some Shape = Rectangle()) -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return contentShape(.hoverEffect, shape).hoverEffect()
+        #endif
+    }
 }
 
 extension ToolbarItemPlacement {
@@ -198,10 +284,12 @@ extension Color {
         #endif
     }
 
-    /// A card or grouped row on that page.
+    /// A card or grouped row on that page. On the Mac, as its grouped forms draw them: white on the
+    /// light window, a shade lighter than the dark one (the control background matches the dark
+    /// window exactly, so a card would vanish).
     static var secondaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
+        return Color(nsColor: .dynamic(dark: NSColor.white.withAlphaComponent(0.07), light: .controlBackgroundColor))
         #elseif os(visionOS)
         return Color.white.opacity(0.08)
         #else
@@ -212,7 +300,7 @@ extension Color {
     /// Something set into a card.
     static var tertiaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
+        return Color(nsColor: .dynamic(dark: NSColor.white.withAlphaComponent(0.06), light: NSColor.black.withAlphaComponent(0.04)))
         #elseif os(visionOS)
         return Color.white.opacity(0.05)
         #else
@@ -220,6 +308,18 @@ extension Color {
         #endif
     }
 }
+
+#if os(macOS)
+extension NSColor {
+    /// One colour for dark appearances and another for light. AppKit may resolve it on any thread,
+    /// so it's made outside the main actor and captures only what's sendable.
+    nonisolated static func dynamic(dark: NSColor, light: NSColor) -> NSColor {
+        NSColor(name: nil) { @Sendable appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        }
+    }
+}
+#endif
 
 #if canImport(UIKit)
 typealias PlatformImage = UIImage

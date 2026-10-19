@@ -104,9 +104,10 @@ struct ReaderSheet: View {
                 }
             }
             .navigationTitle("\(language.pack.name) readers")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("readers.done") } }
         }
+        .sheetForm(width: 520, height: 600)
     }
 
     func save(_ book: Book, page: Int) {

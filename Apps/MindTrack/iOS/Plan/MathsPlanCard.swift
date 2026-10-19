@@ -105,8 +105,18 @@ struct LevelMeter: View {
     }
 }
 
-/// Every topic in a strand by level, and where each stands.
+/// Every topic in a strand by level, and where each stands, on a screen of its own.
 struct TopicMap: View {
+    let state: StudyState
+
+    var body: some View {
+        TopicMapList(state: state)
+            .navigationTitle("Maths topics")
+    }
+}
+
+/// The topics of a strand by level: known, started, ready or locked behind what they build on.
+struct TopicMapList: View {
     let state: StudyState
     @State private var strand: MathsStrand = .classic
 
@@ -146,7 +156,6 @@ struct TopicMap: View {
                 }
             }
         }
-        .navigationTitle("Maths topics")
         .onAppear { if let main = MathsPlan.mainStrand(state) { strand = main } }
     }
 }

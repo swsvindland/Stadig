@@ -173,7 +173,7 @@ struct WritingDebugScreen: ViewModifier {
                 Self.opened = true
                 screen = LaunchOptions.current.value(after: "-writingScreen")
             }
-            .fullScreenCover(item: Binding(get: { screen.map(Screen.init) }, set: { screen = $0?.id })) { screen in
+            .cover(item: Binding(get: { screen.map(Screen.init) }, set: { screen = $0?.id })) { screen in
                 NavigationStack {
                     Group {
                         switch screen.id {

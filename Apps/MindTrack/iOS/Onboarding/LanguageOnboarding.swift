@@ -55,7 +55,7 @@ struct LanguageOnboarding: View {
                 .accessibilityIdentifier("onboarding.speaking")
                 .onChange(of: settings.speaking) { _, on in if on { ask() } }
                 Text(
-                    "You answer out loud and on-device speech recognition checks you. Nothing leaves the phone. Off skips speaking without leaving a gap; turn it on again in Settings."
+                    "You answer out loud and on-device speech recognition checks you. Nothing leaves your \(Platform.deviceName). Off skips speaking without leaving a gap; turn it on again in Settings."
                 )
                 .font(.footnote).foregroundStyle(.secondary)
                 if settings.speaking {
@@ -126,6 +126,7 @@ private struct TwoLanguages: View {
 /// Settings for the language courses: script, speaking, recognition and the voice each one is read in.
 struct LanguageSettings: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openURL) private var openURL
     let settings: MindSettings
     @State private var recognizer = SpeechRecognizer.shared
     @State private var recognises: [Language: Bool] = [:]
@@ -158,8 +159,8 @@ struct LanguageSettings: View {
             )
             .accessibilityIdentifier("settings.speaking")
             if settings.speaking, recognizer.permissionDenied {
-                Button("Allow the microphone in Settings", systemImage: "mic.slash") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                Button(Platform.isMac ? "Allow the microphone in System Settings" : "Allow the microphone in Settings", systemImage: "mic.slash") {
+                    if let url = Platform.settingsURL { openURL(url) }
                 }
                 .accessibilityIdentifier("settings.allowMicrophone")
             }
@@ -174,7 +175,7 @@ struct LanguageSettings: View {
                 }
             }
             if settings.languages.contains(where: { $0.language.map { !model.speech.hasNaturalVoice($0) } ?? false }) {
-                Text("For a more natural voice, download an enhanced voice for the language in Settings → Accessibility → Spoken Content → Voices.")
+                Text("For a more natural voice, download an enhanced voice for the language in \(Speech.voicesSettings).")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         } header: {

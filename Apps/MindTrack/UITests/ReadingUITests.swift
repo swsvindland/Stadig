@@ -14,10 +14,16 @@ nonisolated final class ReadingUITests: XCTestCase {
         XCTAssertEqual((app.textFields["bookEditor.title"].value as? String), "Dune")
         save.tap()
 
-        let current = app.element("shelf.current").waitToAppear(timeout: 10)
-        XCTAssertEqual(current.label, "Dune", "the book found is the one being read now")
-        app.buttons["shelf.done"].tap()
-        app.element("today.settings").waitToAppear(timeout: 10)
+        // An iPhone's shelf is a sheet; an iPad's is in the sidebar, the book in a list beside its details.
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            let current = app.element("shelfList.current").waitToAppear(timeout: 10)
+            XCTAssertTrue(current.label.hasPrefix("Dune"), "the book found is the one being read now: \(current.label)")
+        } else {
+            let current = app.element("shelf.current").waitToAppear(timeout: 10)
+            XCTAssertEqual(current.label, "Dune", "the book found is the one being read now")
+            app.buttons["shelf.done"].tap()
+            app.element("today.settings").waitToAppear(timeout: 10)
+        }
     }
 
     @MainActor

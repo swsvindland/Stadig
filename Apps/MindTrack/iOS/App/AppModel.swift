@@ -8,8 +8,25 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.mind", category: "app")
 
-enum AppTab: Hashable {
-    case today, plan, progress
+/// Where the app is. Today, Plan and Progress are the tabs everywhere; the shelf, your writing and
+/// the courses are destinations of their own in the sidebar on iPad, the Mac and Vision Pro (on an
+/// iPhone they're reached from the tabs).
+enum AppTab: String, Hashable, CaseIterable {
+    case today, plan, progress, shelf, writing, courses
+
+    /// In the iPhone's tab bar as well as the sidebar.
+    var inTabBar: Bool { self == .today || self == .plan || self == .progress }
+
+    /// The tab that reaches a sidebar destination where there's no sidebar: the shelf from Today,
+    /// your writing from Progress, the topic map from Plan.
+    var tabBarFallback: AppTab {
+        switch self {
+        case .shelf: .today
+        case .writing: .progress
+        case .courses: .plan
+        case .today, .plan, .progress: self
+        }
+    }
 }
 
 /// Which session and which of its steps a screen shows.
@@ -39,6 +56,9 @@ final class AppModel {
     // Records.
     private(set) var settings: MindSettings?
     private(set) var cards: [MemoryCard] = []
+    /// Moves each time the cards are read again, so a screen built from them (a course's words)
+    /// knows to rebuild without comparing thousands of cards.
+    private(set) var cardsRevision = 0
     private(set) var sessions: [StudySession] = []
     private(set) var tests: [TestResult] = []
     private(set) var books: [Book] = []
@@ -64,12 +84,21 @@ final class AppModel {
     // Presentation.
     var tab: AppTab = .today
     /// The session on screen, if one is running.
-    var run: StudyRun?
+    var run: StudyRun? {
+        didSet { if (run != nil) != sessionOpen { sessionOpen = run != nil } }
+    }
+    /// Whether a session is running, for the screens and menus that care only about that: reading
+    /// `run` itself would redraw them every time the session clock ticks.
+    private(set) var sessionOpen = false
     var showSettings = false
     var showPaywall = false
     /// The language an episode (or conversation) is being logged for.
     var episodeLanguage: Language?
     var showShelf = false
+    /// Study ▸ End Session… was chosen: the session asks, as its End button does.
+    var endRequested = false
+    /// Shelf ▸ Add a Book…, or an action that opens the book finder on the shelf.
+    var addingBook = false
     var today: Day
 
     /// The running session's screen: a new one for each step the run hands out (its `stepNumber`),
@@ -160,7 +189,10 @@ final class AppModel {
     /// Re-reads the kinds of record that changed since the last read, then recomputes.
     func reload() {
         if needsReading(MindSettings.self) { settings = store.all(MindSettings.self).first }
-        if needsReading(MemoryCard.self) { cards = store.all(MemoryCard.self) }
+        if needsReading(MemoryCard.self) {
+            cards = store.all(MemoryCard.self)
+            cardsRevision += 1
+        }
         if needsReading(StudySession.self) { sessions = store.all(StudySession.self).sorted { $0.start < $1.start } }
         if needsReading(TestResult.self) { tests = store.all(TestResult.self).sorted { $0.date < $1.date } }
         if needsReading(Book.self) { books = store.all(Book.self) }

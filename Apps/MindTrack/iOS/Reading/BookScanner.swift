@@ -3,6 +3,9 @@ import MindEngine
 import SwiftUI
 import Synchronization
 import SystemCore
+
+// The barcode camera is the iPhone's and iPad's. The Mac and Vision Pro type (or paste) the ISBN.
+#if os(iOS)
 import UIKit
 
 /// The back camera watching for a book's barcode: its ISBN, an EAN-13 starting 978 or 979. The
@@ -111,20 +114,34 @@ struct ISBNCameraPreview: UIViewRepresentable {
     }
 }
 
+#endif
+
 /// Point at the barcode on the back of a book. Other barcodes (a price label, a grocery code) are
 /// ignored; the first ISBN ends the scan.
 struct BookScannerView: View {
     @Environment(\.dismiss) private var dismiss
     let found: (String) -> Void
+    #if os(iOS)
     @State private var camera = ISBNCamera()
     @State private var torch = false
+    #endif
     @State private var denied = false
     @State private var typed = ""
     @State private var done = false
 
+    /// A camera that can read the barcode; without one, the digits are typed.
+    static var hasCamera: Bool {
+        #if os(iOS)
+        return ISBNCamera.isAvailable
+        #else
+        return false
+        #endif
+    }
+
     var body: some View {
         NavigationStack {
             Group {
+                #if os(iOS)
                 if ISBNCamera.isAvailable && !denied {
                     ZStack {
                         ISBNCameraPreview(session: camera.session).ignoresSafeArea()
@@ -136,7 +153,7 @@ struct BookScannerView: View {
                                 .font(.subheadline.weight(.medium))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .glassEffect(.regular, in: .capsule)
+                                .adaptiveGlass(interactive: false)
                             Spacer()
                         }
                         .padding()
@@ -156,11 +173,15 @@ struct BookScannerView: View {
                 } else {
                     manual
                 }
+                #else
+                manual
+                #endif
             }
-            .navigationTitle("Scan the barcode")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(Self.hasCamera ? "Scan the barcode" : "Type the ISBN")
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookScanner.cancel") } }
         }
+        #if os(iOS)
         .task {
             guard ISBNCamera.isAvailable else { return }
             let started = await camera.start { isbn in
@@ -169,6 +190,10 @@ struct BookScannerView: View {
             denied = !started
         }
         .onDisappear { camera.stop() }
+        #else
+        .formStyle(.grouped)
+        .frame(minWidth: 400, minHeight: 220)
+        #endif
     }
 
     /// Without a camera (or with it turned off), the digits under the barcode do the same job.
@@ -176,7 +201,7 @@ struct BookScannerView: View {
         Form {
             Section {
                 TextField("ISBN", text: $typed)
-                    .keyboardType(.numberPad)
+                    .fieldKeyboard(.number)
                     .font(.title3.monospacedDigit())
                     .onSubmit { if let isbn = ISBN.normalize(typed) { finish(isbn) } }
                     .accessibilityIdentifier("bookScanner.isbn")
@@ -187,7 +212,7 @@ struct BookScannerView: View {
                 Text(
                     denied
                         ? "Camera access is off for Mind Track. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
-                        : "Type the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
+                        : "Type or paste the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
             }
         }
     }
@@ -195,7 +220,9 @@ struct BookScannerView: View {
     func finish(_ isbn: String) {
         guard !done else { return }
         done = true
+        #if os(iOS)
         camera.stop()
+        #endif
         found(isbn)
         dismiss()
     }

@@ -5,6 +5,7 @@ import SystemCore
 /// The week, the block, and what comes next in each subject.
 struct PlanView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationStack {
@@ -13,22 +14,27 @@ struct PlanView: View {
                     if let analysis = model.analysis, let state = model.state {
                         BlockCard(analysis: analysis, state: state)
                         WeekStrip(days: analysis.week, today: model.today)
-                        ForEach(analysis.languages, id: \.domain) { LanguagePlanCard(summary: $0, state: state) }
-                        if state.settings.has(.maths) { MathsPlanCard(state: state) }
-                        if state.settings.has(.writing) { WritingPlanCard(analysis: analysis, state: state) }
-                        if state.settings.has(.reading) { ReadingPlanCard(analysis: analysis) }
+                        // Each course's card, in columns in a wide window.
+                        CardColumns {
+                            ForEach(analysis.languages, id: \.domain) { LanguagePlanCard(summary: $0, state: state) }
+                            if state.settings.has(.maths) { MathsPlanCard(state: state) }
+                            if state.settings.has(.writing) { WritingPlanCard(analysis: analysis, state: state) }
+                            if state.settings.has(.reading) { ReadingPlanCard(analysis: analysis) }
+                        }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, sizeClass == .regular ? 24 : 16)
                 .padding(.bottom, 24)
-                .readableWidth()
+                .pageWidth(sizeClass)
             }
             .background(.pageBackground)
             .navigationTitle("Plan")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Settings", systemImage: "gearshape") { model.showSettings = true }
-                        .accessibilityIdentifier("plan.settings")
+                if !Platform.isMac {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Settings", systemImage: "gearshape") { model.showSettings = true }
+                            .accessibilityIdentifier("plan.settings")
+                    }
                 }
             }
         }

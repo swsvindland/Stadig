@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import UIKit
 import Vision
 
 /// On-device text recognition with Vision: a page written by hand (on paper and scanned or
@@ -21,11 +20,10 @@ enum TextRecognizer {
         return out.joined(separator: "\n\n")
     }
 
-    static func read(_ image: UIImage, languages: [Locale.Language] = english, handwriting: Bool = true) async throws -> String {
-        guard let cgImage = image.cgImage else { return "" }
-        return try await read(
-            cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), languages: languages,
-            handwriting: handwriting)
+    /// A page brought in that isn't a picture or a PDF that can be drawn.
+    enum RecognitionError: LocalizedError {
+        case unreadableImage
+        var errorDescription: String? { "The picture couldn't be opened." }
     }
 
     static func read(
@@ -77,21 +75,5 @@ enum TextRecognizer {
             }
         }
         return out
-    }
-}
-
-extension CGImagePropertyOrientation {
-    init(_ orientation: UIImage.Orientation) {
-        switch orientation {
-        case .up: self = .up
-        case .upMirrored: self = .upMirrored
-        case .down: self = .down
-        case .downMirrored: self = .downMirrored
-        case .left: self = .left
-        case .leftMirrored: self = .leftMirrored
-        case .right: self = .right
-        case .rightMirrored: self = .rightMirrored
-        @unknown default: self = .up
-        }
     }
 }

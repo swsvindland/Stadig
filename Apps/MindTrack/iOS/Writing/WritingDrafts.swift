@@ -62,6 +62,35 @@ actor WritingDrafts {
         }
     }
 
+    /// A draft kept on the device, with when it was last saved, for the Writing destination's list.
+    nonisolated struct Entry: Identifiable, Sendable {
+        var key: String
+        var draft: WritingDraft
+        var saved: Date
+        var id: String { key }
+        /// The exercise it's for, from its key ("prompt.creative-the-last-shift").
+        var exercise: WritingExercise? { WritingExercise(rawValue: String(key.prefix { $0 != "." })) }
+    }
+
+    /// Every draft waiting for its task, most recently saved first.
+    func all() -> [Entry] {
+        let files: [URL]
+        do {
+            guard FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) else { return [] }
+            files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])
+        } catch {
+            Self.log.error("Couldn't list the writing drafts: \(error.localizedDescription)")
+            return []
+        }
+        return files.filter { $0.pathExtension == "json" }.compactMap { url -> Entry? in
+            let key = url.deletingPathExtension().lastPathComponent
+            guard let draft = draft(key) else { return nil }
+            let saved = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return Entry(key: key, draft: draft, saved: saved)
+        }
+        .sorted { ($0.saved, $0.key) > ($1.saved, $1.key) }
+    }
+
     /// Handed in: the piece is kept with the session now.
     func remove(_ key: String) {
         let url = file(key)

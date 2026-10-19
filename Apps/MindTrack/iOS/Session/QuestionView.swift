@@ -4,7 +4,16 @@ import SwiftUI
 /// Something new, shown before it's asked.
 struct LessonView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let lesson: Lesson
+
+    /// A maths lesson in a wide window: the lesson beside its worked example.
+    var wide: Bool {
+        guard sizeClass == .regular, case .topic = lesson else { return false }
+        return true
+    }
+
+    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: .lesson(lesson), feedback: nil) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,7 +23,7 @@ struct LessonView: View {
                     content
                 }
                 .padding(20)
-                .readableWidth(640)
+                .readableWidth(wide ? 1080 : 640)
             }
             BottomBar {
                 Button {
@@ -25,9 +34,18 @@ struct LessonView: View {
                 .primaryAction()
                 .controlSize(.large)
                 .accessibilityIdentifier("lesson.continue")
+                KeyLegend(bindings: keys, titles: [.submit: continueLabel])
             }
         }
-        .onAppear(perform: speakIfLanguage)
+        .onAppear { speakIfLanguage() }
+        .sessionKeys(keys) { key in
+            switch key {
+            case .submit: model.act { $0.next(now: Date()) }
+            case .replay: speakIfLanguage()
+            case .replaySlowly: speakIfLanguage(slow: true)
+            default: break
+            }
+        }
     }
 
     var continueLabel: String {
@@ -37,12 +55,29 @@ struct LessonView: View {
         }
     }
 
-    func speakIfLanguage() {
+    func speakIfLanguage(slow: Bool = false) {
         switch lesson {
-        case .word(let word, _, _): model.speech.speak(word.reading, language: word.language)
-        case .kana(let kana): model.speech.speak(kana.kana, language: .japanese)
+        case .word(let word, _, _): model.speech.speak(word.reading, language: word.language, slow: slow)
+        case .kana(let kana): model.speech.speak(kana.kana, language: .japanese, slow: slow)
         default: break
         }
+    }
+
+    func workedExample(_ example: Problem) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Worked example").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let figure = example.figure { DataFigureView(figure: figure) }
+            MathText(source: example.prompt, size: 18, weight: .medium)
+            Divider()
+            ForEach(Array(example.steps.enumerated()), id: \.offset) { _, step in MathText(source: step, size: 17) }
+            switch example.answer {
+            case .choice(let i): MathText(source: "Answer: " + example.choices[i], size: 17, weight: .semibold)
+            case .number(let value, let tolerance):
+                MathText(source: "Answer: $\(tolerance > 0 ? String(format: "%.2f", value.double) : value.tex)$", size: 17, weight: .semibold)
+            }
+        }
+        .card()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder var content: some View {
@@ -66,21 +101,15 @@ struct LessonView: View {
             .frame(maxWidth: .infinity)
             .card(padding: 28)
         case .topic(let info, let example):
-            Text(info.title).font(.title.bold())
-            MathText(source: info.lesson, size: 18)
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Worked example").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                if let figure = example.figure { DataFigureView(figure: figure) }
-                MathText(source: example.prompt, size: 18, weight: .medium)
-                Divider()
-                ForEach(Array(example.steps.enumerated()), id: \.offset) { _, step in MathText(source: step, size: 17) }
-                switch example.answer {
-                case .choice(let i): MathText(source: "Answer: " + example.choices[i], size: 17, weight: .semibold)
-                case .number(let value, let tolerance):
-                    MathText(source: "Answer: $\(tolerance > 0 ? String(format: "%.2f", value.double) : value.tex)$", size: 17, weight: .semibold)
+            let layout = wide ? AnyLayout(HStackLayout(alignment: .top, spacing: 28)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 18))
+            layout {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(info.title).font(.title.bold())
+                    MathText(source: info.lesson, size: 18)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                workedExample(example)
             }
-            .card()
         case .skill(let skill):
             Text(skill.title).font(.title.bold())
             Text(skill.lesson).font(.body)
@@ -153,35 +182,56 @@ struct SpeakButton: View {
     }
 }
 
-/// One question: the prompt, the answers, and after answering, what was right and why.
+/// One question: the prompt, the answers, and after answering, what was right and why. In a wide
+/// window a long prompt or a chart sits beside the answers.
 struct QuestionView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let question: Question
     let feedback: StudyRun.Feedback?
     @State private var typed = ""
     @FocusState private var typing: Bool
+    @State private var keyboard = HardwareKeyboard.shared
+
+    var wide: Bool { sizeClass == .regular && SessionLayout.sideBySide(question) }
+    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: .question(question), feedback: feedback, typing: typing) }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        Text(question.instruction).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                        Spacer()
-                        if question.kind == .test { Pill(text: "Test", symbol: "gauge.with.dots.needle.50percent") }
-                        if question.kind == .probe { Pill(text: "Quick check", symbol: "bolt") }
-                        if question.timed && question.kind != .test { Pill(text: "Timed", symbol: "stopwatch") }
+                Group {
+                    if wide {
+                        HStack(alignment: .top, spacing: 32) {
+                            VStack(alignment: .leading, spacing: 20) {
+                                header
+                                prompt
+                                if let figure = question.figure { DataFigureView(figure: figure) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 20) {
+                                answers
+                                if let feedback { FeedbackPanel(question: question, feedback: feedback) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 20) {
+                            header
+                            prompt
+                            if let figure = question.figure { DataFigureView(figure: figure) }
+                            answers
+                            if let feedback { FeedbackPanel(question: question, feedback: feedback) }
+                        }
                     }
-                    prompt
-                    if let figure = question.figure { DataFigureView(figure: figure) }
-                    answers
-                    if let feedback { FeedbackPanel(question: question, feedback: feedback) }
                 }
                 .padding(20)
-                .readableWidth(640)
+                .readableWidth(wide ? 1080 : 640)
             }
-            .scrollDismissesKeyboard(.never)
-            BottomBar { bottom }
+            .dismissesKeyboard(.never)
+            BottomBar {
+                bottom
+                KeyLegend(bindings: keys, titles: [.submit: feedback == nil ? "Check" : "Continue", .dontKnow: dontKnowTitle])
+            }
         }
         .sensoryFeedback(trigger: feedback?.correct) { _, correct in
             guard let correct, question.kind != .test else { return nil }
@@ -204,6 +254,36 @@ struct QuestionView: View {
             // whatever came next (a topic's lesson, say). Only this answered question moves on.
             model.act { $0.next(after: question.id, now: Date()) }
         }
+        .sessionKeys(keys, perform: press)
+    }
+
+    var header: some View {
+        HStack {
+            Text(question.instruction).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            Spacer()
+            if question.kind == .test { Pill(text: "Test", symbol: "gauge.with.dots.needle.50percent") }
+            if question.kind == .probe { Pill(text: "Quick check", symbol: "bolt") }
+            if question.timed && question.kind != .test { Pill(text: "Timed", symbol: "stopwatch") }
+        }
+    }
+
+    var dontKnowTitle: String { question.test == .mathsPlacement ? "Haven't learned this" : "Don't know" }
+
+    /// A key pressed on this question (`SessionKeys` says which are live).
+    func press(_ key: SessionKey) {
+        switch key {
+        case .choose(let index):
+            guard feedback == nil, question.choices.indices.contains(index) else { return }
+            model.act { $0.choose(index, now: Date()) }
+        case .submit:
+            if feedback != nil { model.act { $0.next(after: question.id, now: Date()) } } else { check() }
+        case .dontKnow:
+            guard feedback == nil, question.allowsDontKnow else { return }
+            model.act { $0.dontKnow(now: Date()) }
+        case .replay, .replaySlowly:
+            if case .audio(let text, let language) = question.prompt { model.speech.speak(text, language: language, slow: key == .replaySlowly) }
+        case .handIn, .pick: break
+        }
     }
 
     var prompt: some View { PromptView(prompt: question.prompt, revealed: feedback != nil) }
@@ -213,7 +293,10 @@ struct QuestionView: View {
         case .choice(let right):
             VStack(spacing: 10) {
                 ForEach(Array(question.choices.enumerated()), id: \.offset) { index, choice in
-                    ChoiceButton(text: choice, style: question.choiceStyle, state: state(index, right: right)) {
+                    ChoiceButton(
+                        text: choice, style: question.choiceStyle, state: state(index, right: right),
+                        keyHint: keyboard.connected && feedback == nil ? SessionKeys.label(choice: index) : nil
+                    ) {
                         model.act { $0.choose(index, now: Date()) }
                     }
                     .disabled(feedback != nil)
@@ -223,7 +306,8 @@ struct QuestionView: View {
         case .number(_, let tolerance):
             VStack(alignment: .leading, spacing: 8) {
                 TextField("Your answer", text: $typed)
-                    .keyboardType(.numbersAndPunctuation)
+                    .textFieldStyle(.plain)
+                    .fieldKeyboard(.numbersAndPunctuation)
                     .font(.title2.monospacedDigit())
                     .padding(14)
                     .background(.cardBackground, in: .rect(cornerRadius: 14))
@@ -274,7 +358,7 @@ struct QuestionView: View {
                     Button {
                         model.act { $0.dontKnow(now: Date()) }
                     } label: {
-                        Text(question.test == .mathsPlacement ? "Haven't learned this" : "Don't know").frame(maxWidth: .infinity)
+                        Text(dontKnowTitle).frame(maxWidth: .infinity)
                     }
                     .secondaryAction()
                     .controlSize(.large)
@@ -325,7 +409,7 @@ struct PromptView: View {
                 } label: {
                     Image(systemName: "speaker.wave.3.fill").font(.system(size: 40)).frame(width: 96, height: 96)
                 }
-                .buttonStyle(.glass)
+                .glassButtonStyle()
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Play again")
                 .accessibilityIdentifier("prompt.play")
@@ -346,11 +430,14 @@ struct ChoiceButton: View {
     let text: String
     let style: ChoiceStyle
     let state: State
+    /// The key that picks it, while a keyboard is there.
+    var keyHint: String?
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
+                if let keyHint { KeyHint(label: keyHint) }
                 Group {
                     switch style {
                     case .math: MathText(source: text, size: 19)
@@ -372,6 +459,7 @@ struct ChoiceButton: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverable(in: .rect(cornerRadius: 16))
         .opacity(state == .dimmed ? 0.5 : 1)
         .accessibilityLabel(style == .math ? MathSource.spoken(text) : style == .picture ? text.replacingOccurrences(of: ".", with: " ") : text)
         .accessibilityValue(state == .right ? "Right answer" : state == .wrong ? "Your answer, wrong" : "")
@@ -434,12 +522,13 @@ struct FeedbackPanel: View {
     }
 }
 
-/// The action bar along the bottom of a step.
+/// The action bar along the bottom of a step, with the step's keys under its buttons while a
+/// keyboard is there.
 struct BottomBar<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        content
+        VStack(spacing: 8) { content }
             .padding(.horizontal, 20)
             .padding(.top, 10)
             .padding(.bottom, 8)

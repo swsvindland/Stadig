@@ -1,6 +1,8 @@
 import MindEngine
+import OSLog
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Adding a book: search by title, author or ISBN, scan the barcode, or photograph the cover, then
 /// confirm the details and level. The ladder and earlier lookups answer at once, offline; Open
@@ -19,6 +21,7 @@ struct BookFinder: View {
     @State private var searching = false
     @State private var scanning = false
     @State private var photographing = false
+    @State private var importingFile = false
     @State private var photo: PhotosPickerItem?
     @State private var readingCover = false
     @State private var message: String?
@@ -32,20 +35,32 @@ struct BookFinder: View {
         NavigationStack {
             List {
                 Section {
-                    Button(ISBNCamera.isAvailable ? "Scan the barcode" : "Type the ISBN", systemImage: "barcode.viewfinder") { scanning = true }
+                    Button(BookScannerView.hasCamera ? "Scan the barcode" : "Type the ISBN", systemImage: "barcode.viewfinder") { scanning = true }
+                        .rowButton()
                         .accessibilityIdentifier("bookFinder.scan")
+                    #if os(iOS)
                     if CoverCamera.isAvailable {
                         Button("Photograph the cover", systemImage: "camera") { photographing = true }
                             .accessibilityIdentifier("bookFinder.photograph")
                     }
+                    #endif
                     PhotosPicker(selection: $photo, matching: .images) {
                         Label("Choose a photo of the cover", systemImage: "photo.on.rectangle")
                     }
+                    .rowButton()
                     .accessibilityIdentifier("bookFinder.photo")
+                    if !Platform.isPhoneOrPad {
+                        Button("Open a picture of the cover…", systemImage: "folder") { importingFile = true }
+                            .rowButton()
+                            .accessibilityIdentifier("bookFinder.openFile")
+                    }
                     Button("Enter it yourself", systemImage: "square.and.pencil") { draft = BookDraft(title: query) }
+                        .rowButton()
                         .accessibilityIdentifier("bookFinder.enter")
+                    // A Mac list's footer is a single line: there the note is a row of its own.
+                    if Platform.isMac { Text(footer).font(.footnote).foregroundStyle(.secondary) }
                 } footer: {
-                    Text("Covers are read on your iPhone. Lookups go to Open Library, then Google Books, and are kept for next time.")
+                    if !Platform.isMac { Text(footer) }
                 }
                 if readingCover || searching {
                     Section {
@@ -69,6 +84,7 @@ struct BookFinder: View {
                                     detail: "Tier \(book.tier)\(book.levelledFromText ? " · levelled from its text" : "")")
                             }
                             .foregroundStyle(.primary)
+                            .rowButton(tinted: false)
                             .accessibilityIdentifier("bookFinder.ladder.\(book.id)")
                         }
                     }
@@ -84,33 +100,64 @@ struct BookFinder: View {
                                     detail: [meta.year.map(String.init), meta.pages.map { "\($0) pages" }].compactMap { $0 }.joined(separator: " · "))
                             }
                             .foregroundStyle(.primary)
+                            .rowButton(tinted: false)
                         }
                     }
                 }
             }
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, author or ISBN")
+            .alwaysSearchable(text: $query, prompt: "Title, author or ISBN")
             .onSubmit(of: .search) { runSearch(now: true) }
             .onChange(of: query) { runSearch(now: false) }
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("bookFinder.cancel") } }
             .sheet(isPresented: $scanning) {
                 BookScannerView { isbn in lookUp(isbn) }
             }
+            #if os(iOS)
             .fullScreenCover(isPresented: $photographing) {
                 CoverCamera { image in
                     photographing = false
-                    if let image { readCover(image) }
+                    if let image { readCover { await CoverReader.read(image, ai: model.ai) } }
                 }
                 .ignoresSafeArea()
             }
+            #endif
             .onChange(of: photo) { _, item in
                 guard let item else { return }
+                photo = nil
                 Task {
-                    if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) { readCover(image) }
-                    photo = nil
+                    do {
+                        if let data = try await item.loadTransferable(type: Data.self) { readCover(data) }
+                    } catch {
+                        appLog.error("Couldn't load the cover photo: \(error.localizedDescription)")
+                        message = "That photo couldn't be opened. Try another, or search by title."
+                    }
                 }
             }
+            .fileImporter(isPresented: $importingFile, allowedContentTypes: [.image]) { result in
+                switch result {
+                case .success(let url): readCover(url)
+                case .failure(let error): message = error.localizedDescription
+                }
+            }
+            // A cover dragged in from Finder or Photos, or taken with an iPhone through the Mac's
+            // Continuity Camera (File ▸ Import from iPhone or iPad).
+            .dropDestination(for: Data.self) { items, _ in
+                guard let data = items.first else { return false }
+                readCover(data)
+                return true
+            }
+            #if os(macOS)
+            .importsItemProviders([.image]) { providers in
+                guard let provider = providers.first else { return false }
+                Task {
+                    if let data = await ImageImport.data(from: provider) { readCover(data) }
+                }
+                return true
+            }
+            .frame(minWidth: 460, idealWidth: 520, minHeight: 520, idealHeight: 640)
+            #endif
             .sheet(item: $draft, onDismiss: finish) { draft in
                 BookEditor(draft: draft, status: status) { book in
                     if let meta = draft.lookup { BookLookup.keep(meta, estimate: draft.estimate, model: model) }
@@ -170,11 +217,30 @@ struct BookFinder: View {
         }
     }
 
-    func readCover(_ image: UIImage) {
+    var footer: String {
+        "Covers are read on your \(Platform.deviceName). Lookups go to Open Library, then Google Books, and are kept for next time."
+    }
+
+    func readCover(_ data: Data) { readCover { await CoverReader.read(data, ai: model.ai) } }
+
+    /// A picture file chosen in the file importer, read off the main actor.
+    func readCover(_ url: URL) {
+        let ai = model.ai
+        readCover {
+            do {
+                return await CoverReader.read(try await ImageImport.data(at: url), ai: ai)
+            } catch {
+                appLog.error("Couldn't open the cover file: \(error.localizedDescription)")
+                return nil
+            }
+        }
+    }
+
+    func readCover(_ work: @escaping () async -> CoverText.Guess?) {
         readingCover = true
         message = nil
         Task {
-            let guess = await CoverReader.read(image, ai: model.ai)
+            let guess = await work()
             readingCover = false
             guard let guess else {
                 message = "Couldn't read the cover. Try again straight on and in good light, or search by title."

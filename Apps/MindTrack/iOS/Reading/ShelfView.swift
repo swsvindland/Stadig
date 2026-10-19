@@ -2,17 +2,18 @@ import MindEngine
 import SwiftUI
 import SystemCore
 
-/// Books: where you are, the one on the go, what the ladder suggests next, and what's been read.
+/// Books: where you are, the one on the go, what the ladder suggests next, and what's been read. A
+/// sheet over the tabs on an iPhone; in a wide window the shelf is a destination of its own
+/// (`ShelfDestination`).
 struct ShelfView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var editing: Book?
-    @State private var adding = false
     @State private var finishing: Book?
     @State private var settingAside: Book?
 
     var body: some View {
-        let shelf = model.books.filter { $0.language == nil }
+        let shelf = ShelfSections(books: model.books, today: model.today)
         let reading = model.analysis?.reading
         List {
             if let reading {
@@ -24,15 +25,12 @@ struct ShelfView: View {
                     )
                 }
             }
-            if let current = shelf.first(where: { $0.status == .reading }) {
+            if let current = shelf.current {
                 Section("Reading now") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(current.title).font(.headline)
                             .accessibilityIdentifier("shelf.current")
-                        Text(
-                            [current.author, tierText(current), "page \(current.page) of \(current.pages)", current.format?.label.lowercased()]
-                                .compactMap { $0 }.joined(separator: " · ")
-                        ).font(.subheadline).foregroundStyle(.secondary)
+                        Text(Shelf.detail(current)).font(.subheadline).foregroundStyle(.secondary)
                     }
                     Button("Finished it", systemImage: "checkmark") { finishing = current }
                         .accessibilityIdentifier("shelf.finished")
@@ -43,11 +41,7 @@ struct ShelfView: View {
                 }
             }
             Section {
-                ForEach(
-                    ReadingPlan.suggestions(
-                        shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today,
-                        ladder: model.catalogs.ladder)
-                ) { book in
+                ForEach(Shelf.suggestions(model)) { book in
                     Button {
                         model.start(book: book)
                     } label: {
@@ -64,82 +58,115 @@ struct ShelfView: View {
                     .foregroundStyle(.primary)
                     .accessibilityIdentifier("shelf.suggestion.\(book.id)")
                 }
-                Button("Add a book", systemImage: "plus") { adding = true }
+                Button("Add a book", systemImage: "plus") { model.addingBook = true }
                     .accessibilityIdentifier("shelf.addBook")
             } header: {
                 Text("Suggested next")
             } footer: {
                 Text("At the tier your reading is ready for. Starting one sets aside the book you're on.")
             }
-            let finished = shelf.filter { $0.status == .finished }.sorted { ($0.finished ?? .today) > ($1.finished ?? .today) }
-            if !finished.isEmpty {
+            if !shelf.finished.isEmpty {
                 Section("Finished") {
-                    ForEach(finished) { book in FinishedRow(book: book, level: reading?.level) }
+                    ForEach(shelf.finished) { book in FinishedRow(book: book, level: reading?.level) }
                 }
             }
-            let aside = shelf.filter { $0.status == .abandoned }.sorted { ($0.finished ?? .today) > ($1.finished ?? .today) }
-            if !aside.isEmpty {
+            if !shelf.setAside.isEmpty {
                 Section("Set aside") {
-                    ForEach(aside) { book in LabeledContent(book.title, value: tierText(book)) }
+                    ForEach(shelf.setAside) { book in LabeledContent(book.title, value: Shelf.tierText(book)) }
                 }
             }
-            let before = shelf.filter { $0.status == .readBefore }
-            if !before.isEmpty {
+            if !shelf.readBefore.isEmpty {
                 Section("Read in the year before Mind Track") {
-                    ForEach(before) { book in FinishedRow(book: book, level: nil) }
+                    ForEach(shelf.readBefore) { book in FinishedRow(book: book, level: nil) }
                 }
             }
         }
         .navigationTitle("Your shelf")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("shelf.done") } }
-        .sheet(item: $editing) { book in BookEditor(book: book) { model.save(book: $0) } }
-        .sheet(isPresented: $adding) {
-            BookFinder(initialQuery: debugQuery) { book in
+        .modifier(BookSheets(editing: $editing, finishing: $finishing, settingAside: $settingAside))
+        .modifier(AddBookSheet(isPresented: Binding(get: { model.addingBook }, set: { model.addingBook = $0 })))
+    }
+}
+
+/// What the shelf says about a book, and what it suggests next: shared by the iPhone's sheet and
+/// the wide destination.
+enum Shelf {
+    static func tierText(_ book: Book) -> String {
+        let estimated = book.ladderID == nil || (book.tierConfidence ?? 1) < 1
+        return "tier \(book.tier)\(estimated ? " (estimated)" : "")"
+    }
+
+    /// "Frank Herbert · tier 4 · page 120 of 600 · print"
+    static func detail(_ book: Book) -> String {
+        [book.author, tierText(book), "page \(book.page) of \(book.pages)", book.format?.label.lowercased()]
+            .compactMap { $0 }.joined(separator: " · ")
+    }
+
+    @MainActor
+    static func suggestions(_ model: AppModel) -> [LadderBook] {
+        ReadingPlan.suggestions(
+            shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today, ladder: model.catalogs.ladder)
+    }
+
+    /// `-findBook <title, author or ISBN>` opens the finder already searching for it.
+    static var debugQuery: String {
+        #if DEBUG
+        if let query = LaunchOptions.current.value(after: "-findBook") { return query }
+        #endif
+        return ""
+    }
+}
+
+/// Finishing, editing or setting aside a book.
+struct BookSheets: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var editing: Book?
+    @Binding var finishing: Book?
+    @Binding var settingAside: Book?
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(item: $editing) { book in BookEditor(book: book) { model.save(book: $0) } }
+            .sheet(item: $finishing) { book in
+                // Switching "I finished it" off logs the page instead: the book carries on.
+                PageSheet(book: book, finished: true) { page, finished, feel, _ in
+                    var done = book
+                    if finished {
+                        done.status = .finished
+                        done.page = book.pages
+                        done.finished = model.today
+                        done.feel = feel ?? .right
+                    } else {
+                        done.page = page
+                    }
+                    model.save(book: done)
+                }
+            }
+            .sheet(item: $settingAside) { book in
+                SetAsideSheet(book: book) { feel in
+                    var aside = book
+                    aside.status = .abandoned
+                    aside.finished = model.today
+                    aside.feel = feel
+                    model.save(book: aside)
+                }
+            }
+    }
+}
+
+/// The book finder, for a book to read now: it goes on the shelf as the one on the go.
+struct AddBookSheet: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented) {
+            BookFinder(initialQuery: Shelf.debugQuery) { book in
                 var book = book
                 book.started = model.today
                 model.startReading(book)
             }
         }
-        .sheet(item: $finishing) { book in
-            // Switching "I finished it" off logs the page instead: the book carries on.
-            PageSheet(book: book, finished: true) { page, finished, feel, _ in
-                var done = book
-                if finished {
-                    done.status = .finished
-                    done.page = book.pages
-                    done.finished = model.today
-                    done.feel = feel ?? .right
-                } else {
-                    done.page = page
-                }
-                model.save(book: done)
-            }
-        }
-        .sheet(item: $settingAside) { book in
-            SetAsideSheet(book: book) { feel in
-                var aside = book
-                aside.status = .abandoned
-                aside.finished = model.today
-                aside.feel = feel
-                model.save(book: aside)
-            }
-        }
-        #if DEBUG
-        // -findBook <title, author or ISBN> opens the finder searching for it.
-        .onAppear { if !debugQuery.isEmpty { adding = true } }
-        #endif
-    }
-
-    func tierText(_ book: Book) -> String {
-        let estimated = book.ladderID == nil || (book.tierConfidence ?? 1) < 1
-        return "tier \(book.tier)\(estimated ? " (estimated)" : "")"
-    }
-
-    var debugQuery: String {
-        #if DEBUG
-        if let query = LaunchOptions.current.value(after: "-findBook") { return query }
-        #endif
-        return ""
     }
 }
 
@@ -164,7 +191,7 @@ struct LevelRows: View {
     }
 }
 
-private struct FinishedRow: View {
+struct FinishedRow: View {
     let book: Book
     let level: Double?
 
@@ -223,7 +250,7 @@ struct SetAsideSheet: View {
                 }
             }
             .navigationTitle("Set it aside")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("setAside.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -236,5 +263,6 @@ struct SetAsideSheet: View {
             }
         }
         .presentationDetents([.medium])
+        .sheetForm(height: 320)
     }
 }
