@@ -37,7 +37,8 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         XCTAssertTrue(app.element("today.datePicker").exists)
         XCTAssertTrue(app.element("toolbar.logFood").exists, "every way to log is in the toolbar")
 
-        log.cells.element(boundBy: 1).waitToAppear().tap()
+        // An entry's amount ("147 g"): a moment's header reads "302 kcal · P 18 …", never ending in grams.
+        log.staticTexts.matching(NSPredicate(format: "label ENDSWITH ' g'")).firstMatch.waitToAppear().tap()
         app.element("entryEditor.save").waitToAppear()
         app.element("entryEditor.cancel").tap()
         app.element("entryEditor.save").waitToDisappear()
