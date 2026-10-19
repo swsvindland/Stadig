@@ -138,6 +138,7 @@ struct WristTests {
         let lunch = wrist(state(hour: 13, supplements: stack, logs: [taken]))
         #expect(lunch.doses.map(\.supplement.name) == ["Multivitamin", "Magnesium"])
         #expect(lunch.laterDoses == 2, "the pre-workout on a training day, and the evening multi")
+        #expect(lunch.dosesToday == 5 && wrist(state()).dosesToday == 0)
         // First thing, only the morning's.
         let morning = wrist(state(hour: 7, supplements: stack))
         #expect(morning.doses.map(\.supplement.name) == ["Fish oil", "Multivitamin"] && morning.laterDoses == 3)

@@ -7,10 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4D2E09A10C36ADD28CD15F6A /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E5CE4FFFBD05C11053D6C /* SystemCore */; };
 		4D2E13E4859256E882D4008A /* FoodDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2ED4A06E193F96A0389D8C /* FoodDatabase */; };
 		4D2E1525EA15F9491EA57C77 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */; };
+		4D2E1ED9378130DDB303097C /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EFA86AE2AEC56B6ADB3E5 /* SystemStore */; };
+		4D2E22AA17019F2869123254 /* MacroTrackWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E2A5EE8DEE5CA4E17BDC2 /* MacroTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E6E52F11BBD748D232B06 /* NutritionEngine */; };
+		4D2E4D1A1867C53AAE0D6790 /* MacroTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E7143E63B462A1161303B /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E536DEE702E24FA5C993E /* NutritionEngine */; };
 		4D2E716C1F226D4FE0343661 /* MacroTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E8524BBC9DF9BF8197D5D /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E18F2A7E91C90026C203F /* NutritionEngine */; };
+		4D2E8F6743C6E0E3D2CBFAEF /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E8E2F6EFCE75BC9F349FA /* SystemCore */; };
 		4D2EB6DD5B16FE37CE25BED1 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EEC29F2C791444BB6AEBD /* HealthBridge */; };
 		4D2EBE8EC3D2486AF8652BDD /* MealPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EF05702E4CD97E846AA31 /* MealPlanner */; };
 		4D2ECA034642BD1F60F09266 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E94BBBA06C1531E526B29 /* SystemCore */; };
@@ -26,12 +33,26 @@
 			remoteGlobalIDString = 4D2E69A7A02B68F88C8FB648;
 			remoteInfo = MacroTrack;
 		};
+		4D2E1E1A00C12A621739369E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D2E7A8923F963CA5846C6F5;
+			remoteInfo = MacroTrackWatch;
+		};
 		4D2E5D7BF606123017360D1F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 4D2E69A7A02B68F88C8FB648;
 			remoteInfo = MacroTrack;
+		};
+		4D2E621E356B3E0ED6FF9B66 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D2E3EF59559A8B068CB6610 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D2E2CB02EC47B0BD6578E38;
+			remoteInfo = MacroTrackWatchWidgets;
 		};
 		4D2E84C10E089031E81068CC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -54,6 +75,28 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4D2E1E1CD79CC81C2F231E8C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4D2E22AA17019F2869123254 /* MacroTrackWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E82E9533309B6A45C1D71 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				4D2E4D1A1867C53AAE0D6790 /* MacroTrackWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -61,12 +104,17 @@
 		4D2E130BC256F94EEB45F10B /* MacroTrackUI.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrackUI.xctestplan; sourceTree = "<group>"; };
 		4D2E1505F9C153A9B800C7E0 /* MacroTrack.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.xctestplan; sourceTree = "<group>"; };
 		4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2E2A5EE8DEE5CA4E17BDC2 /* MacroTrackWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacroTrackWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacroTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacroTrackUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D2E6F490B9D1E08B81AA99D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4D2E73411D003ED6FBD6F8BE /* WatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchWidgets.entitlements; sourceTree = "<group>"; };
 		4D2E7442BF41C7414F8D1E14 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
 		4D2E9FAF660FB19AA0C76F33 /* MacroTrack.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacroTrack.entitlements; sourceTree = "<group>"; };
 		4D2EAE5DB26C5CC2E44E7AF2 /* MacroTrack.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = MacroTrack.storekit; sourceTree = "<group>"; };
+		4D2EBA109E4E3B3A7A040F89 /* Watch-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Watch-Info.plist"; sourceTree = "<group>"; };
+		4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacroTrackWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D2ED2D711A610E8E7687F7A /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
 		4D2EE5427AB0BBD55A1848C0 /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
 		4D2EE620D9D1EE66DA7CCBBD /* Widgets-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Widgets-macOS.entitlements"; sourceTree = "<group>"; };
 		4D2EECEF831DFE98D1C1A1DD /* MacroTrack-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "MacroTrack-macOS.entitlements"; sourceTree = "<group>"; };
@@ -84,9 +132,24 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		4D2E05FD73D299F11CB482D4 /* Watch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Watch;
+			sourceTree = "<group>";
+		};
+		4D2E1116C1A9AE5211306804 /* WatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchWidgets;
+			sourceTree = "<group>";
+		};
 		4D2E41625F3B0595DEC92B9E /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		4D2E7C8F201585F1DC3E9A4A /* WatchShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchShared;
 			sourceTree = "<group>";
 		};
 		4D2E7D49058673643D9D0E77 /* UITests */ = {
@@ -154,6 +217,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4D2EA1040F602F621E586D57 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D2E8F6743C6E0E3D2CBFAEF /* SystemCore in Frameworks */,
+				4D2E1ED9378130DDB303097C /* SystemStore in Frameworks */,
+				4D2E8524BBC9DF9BF8197D5D /* NutritionEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2EA5F654F00801274A44E9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D2E09A10C36ADD28CD15F6A /* SystemCore in Frameworks */,
+				4D2E7143E63B462A1161303B /* NutritionEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4D2EC97F3751B7458922F4AB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -169,6 +251,8 @@
 			children = (
 				4D2E0B78FB0B51F8F3B160A0 /* MacroTrack.app */,
 				4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */,
+				4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */,
+				4D2E2A5EE8DEE5CA4E17BDC2 /* MacroTrackWatchWidgets.appex */,
 				4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */,
 				4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */,
 			);
@@ -179,11 +263,14 @@
 			isa = PBXGroup;
 			children = (
 				4D2E6F490B9D1E08B81AA99D /* Info.plist */,
+				4D2EBA109E4E3B3A7A040F89 /* Watch-Info.plist */,
 				4D2EE5427AB0BBD55A1848C0 /* Widgets-Info.plist */,
 				4D2E9FAF660FB19AA0C76F33 /* MacroTrack.entitlements */,
 				4D2EECEF831DFE98D1C1A1DD /* MacroTrack-macOS.entitlements */,
 				4D2E7442BF41C7414F8D1E14 /* Widgets.entitlements */,
 				4D2EE620D9D1EE66DA7CCBBD /* Widgets-macOS.entitlements */,
+				4D2ED2D711A610E8E7687F7A /* Watch.entitlements */,
+				4D2E73411D003ED6FBD6F8BE /* WatchWidgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -195,6 +282,9 @@
 				4D2E41625F3B0595DEC92B9E /* Shared */,
 				4D2EFC6EF2F8C1C0A35A3F27 /* Records */,
 				4D2EAC60423EF8D6DDB414C2 /* Widgets */,
+				4D2E05FD73D299F11CB482D4 /* Watch */,
+				4D2E7C8F201585F1DC3E9A4A /* WatchShared */,
+				4D2E1116C1A9AE5211306804 /* WatchWidgets */,
 				4D2EE759AA381145436E7D57 /* Catalogs */,
 				4D2E9E76452C0D63D776E3B1 /* Tests */,
 				4D2E7D49058673643D9D0E77 /* UITests */,
@@ -232,6 +322,31 @@
 			productReference = 4D2E5F91A32D95B98D533286 /* MacroTrackUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		4D2E2CB02EC47B0BD6578E38 /* MacroTrackWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E55182E44C9069169CC2F /* Build configuration list for PBXNativeTarget "MacroTrackWatchWidgets" */;
+			buildPhases = (
+				4D2E1303DBB4F351B159B442 /* Sources */,
+				4D2EA5F654F00801274A44E9 /* Frameworks */,
+				4D2E9B1D1E65C54EED4113E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E1116C1A9AE5211306804 /* WatchWidgets */,
+				4D2E7C8F201585F1DC3E9A4A /* WatchShared */,
+			);
+			name = MacroTrackWatchWidgets;
+			packageProductDependencies = (
+				4D2E5CE4FFFBD05C11053D6C /* SystemCore */,
+				4D2E536DEE702E24FA5C993E /* NutritionEngine */,
+			);
+			productName = MacroTrackWatchWidgets;
+			productReference = 4D2E2A5EE8DEE5CA4E17BDC2 /* MacroTrackWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		4D2E69A7A02B68F88C8FB648 /* MacroTrack */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4D2E197C855580E497CB2834 /* Build configuration list for PBXNativeTarget "MacroTrack" */;
@@ -240,11 +355,13 @@
 				4D2E661B125A6F5B6F095914 /* Frameworks */,
 				4D2E006ACEEC3128DF949870 /* Resources */,
 				4D2E0E51DE7B20B6F70D4771 /* Embed Foundation Extensions */,
+				4D2E82E9533309B6A45C1D71 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				4D2E170BD795AC7309B3C484 /* PBXTargetDependency */,
+				4D2ED5EE132C98714765990A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4D2E41625F3B0595DEC92B9E /* Shared */,
@@ -313,6 +430,35 @@
 			productReference = 4D2E55F37AD9D18563AD9747 /* MacroTrackTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		4D2E7A8923F963CA5846C6F5 /* MacroTrackWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D2E3CF01A4471134C7021F8 /* Build configuration list for PBXNativeTarget "MacroTrackWatch" */;
+			buildPhases = (
+				4D2E0C33AEC0211171621F51 /* Sources */,
+				4D2EA1040F602F621E586D57 /* Frameworks */,
+				4D2E65E52BF87723B7D7C444 /* Resources */,
+				4D2E1E1CD79CC81C2F231E8C /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D2E26C07976EBCC46BBD07E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D2E05FD73D299F11CB482D4 /* Watch */,
+				4D2E7C8F201585F1DC3E9A4A /* WatchShared */,
+				4D2EFC6EF2F8C1C0A35A3F27 /* Records */,
+			);
+			name = MacroTrackWatch;
+			packageProductDependencies = (
+				4D2E8E2F6EFCE75BC9F349FA /* SystemCore */,
+				4D2EFA86AE2AEC56B6ADB3E5 /* SystemStore */,
+				4D2E18F2A7E91C90026C203F /* NutritionEngine */,
+			);
+			productName = MacroTrackWatch;
+			productReference = 4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -327,6 +473,9 @@
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 4D2E69A7A02B68F88C8FB648;
 					};
+					4D2E2CB02EC47B0BD6578E38 = {
+						CreatedOnToolsVersion = 27.0;
+					};
 					4D2E69A7A02B68F88C8FB648 = {
 						CreatedOnToolsVersion = 27.0;
 					};
@@ -336,6 +485,9 @@
 					4D2E755E6ADE3050A7463B68 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 4D2E69A7A02B68F88C8FB648;
+					};
+					4D2E7A8923F963CA5846C6F5 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -364,6 +516,8 @@
 			targets = (
 				4D2E69A7A02B68F88C8FB648 /* MacroTrack */,
 				4D2E6F486D557E08E6A1A850 /* MacroTrackWidgets */,
+				4D2E7A8923F963CA5846C6F5 /* MacroTrackWatch */,
+				4D2E2CB02EC47B0BD6578E38 /* MacroTrackWatchWidgets */,
 				4D2E755E6ADE3050A7463B68 /* MacroTrackTests */,
 				4D2E256FEEAE6F335E6AC454 /* MacroTrackUITests */,
 			);
@@ -385,7 +539,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4D2E65E52BF87723B7D7C444 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4D2E8D5CAEAD53804F9B28B1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E9B1D1E65C54EED4113E0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -402,6 +570,20 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4D2E0C33AEC0211171621F51 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D2E1303DBB4F351B159B442 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4D2E73473987B4DAADB779CC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -438,6 +620,11 @@
 			target = 4D2E6F486D557E08E6A1A850 /* MacroTrackWidgets */;
 			targetProxy = 4D2E84C10E089031E81068CC /* PBXContainerItemProxy */;
 		};
+		4D2E26C07976EBCC46BBD07E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D2E2CB02EC47B0BD6578E38 /* MacroTrackWatchWidgets */;
+			targetProxy = 4D2E621E356B3E0ED6FF9B66 /* PBXContainerItemProxy */;
+		};
 		4D2ECF5F19D54CE10EC2E045 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4D2E69A7A02B68F88C8FB648 /* MacroTrack */;
@@ -448,9 +635,51 @@
 			target = 4D2E69A7A02B68F88C8FB648 /* MacroTrack */;
 			targetProxy = 4D2E5D7BF606123017360D1F /* PBXContainerItemProxy */;
 		};
+		4D2ED5EE132C98714765990A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = 4D2E7A8923F963CA5846C6F5 /* MacroTrackWatch */;
+			targetProxy = 4D2E1E1A00C12A621739369E /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		4D2E1AE81A3F888E142324F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Watch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.macro;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
 		4D2E1F14871B84662ECCF223 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -510,6 +739,40 @@
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = "$(WARNINGS_AS_ERRORS_ON_CI_$(CI))";
 				WARNINGS_AS_ERRORS_ON_CI_TRUE = YES;
 				WARNINGS_AS_ERRORS_ON_CI_true = YES;
+			};
+			name = Debug;
+		};
+		4D2E478D62D8D35180D7FE98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
 			};
 			name = Debug;
 		};
@@ -740,6 +1003,76 @@
 			};
 			name = Release;
 		};
+		4D2E849D90110F8161972F34 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Watch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Watch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.macro;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_APP";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
+		4D2EB171F89C24AD2CB08645 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/WatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 9HAG9PT8LJ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Widgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.svindland.stadig.macro.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
 		4D2EDBEA6890A4C576CC769A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -847,6 +1180,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		4D2E3CF01A4471134C7021F8 /* Build configuration list for PBXNativeTarget "MacroTrackWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E1AE81A3F888E142324F7 /* Debug */,
+				4D2E849D90110F8161972F34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4D2E3F961B1BB4026064B79D /* Build configuration list for PBXNativeTarget "MacroTrackTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -861,6 +1203,15 @@
 			buildConfigurations = (
 				4D2E3786567C410F3895B3C9 /* Debug */,
 				4D2E1F14871B84662ECCF223 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D2E55182E44C9069169CC2F /* Build configuration list for PBXNativeTarget "MacroTrackWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D2E478D62D8D35180D7FE98 /* Debug */,
+				4D2EB171F89C24AD2CB08645 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -917,6 +1268,21 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4D2E18F2A7E91C90026C203F /* NutritionEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			productName = NutritionEngine;
+		};
+		4D2E536DEE702E24FA5C993E /* NutritionEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			productName = NutritionEngine;
+		};
+		4D2E5CE4FFFBD05C11053D6C /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
+		};
 		4D2E6E52F11BBD748D232B06 /* NutritionEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
@@ -926,6 +1292,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
 			productName = SystemStore;
+		};
+		4D2E8E2F6EFCE75BC9F349FA /* SystemCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
+			productName = SystemCore;
 		};
 		4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -956,6 +1327,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */;
 			productName = MealPlanner;
+		};
+		4D2EFA86AE2AEC56B6ADB3E5 /* SystemStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
+			productName = SystemStore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

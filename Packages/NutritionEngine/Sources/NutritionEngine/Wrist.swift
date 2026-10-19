@@ -118,6 +118,8 @@ public struct WristToday: Hashable, Sendable {
     /// Open doses whose time has come, earliest first, and how many more are due later today.
     public var doses: [DueDose]
     public var laterDoses: Int
+    /// Every dose planned today, marked or not: whether the day has supplements at all.
+    public var dosesToday: Int
     public var dial: WeighInDial
     public var weighedToday: Bool
     public var dayState: DayState?
@@ -149,6 +151,7 @@ public struct WristToday: Hashable, Sendable {
         let now = SupplementPlan.dueNow(due, minutes: (clock.hour ?? 0) * 60 + (clock.minute ?? 0), times: state.settings.doseTimes ?? [:])
         doses = now.now
         laterDoses = now.later
+        dosesToday = due.count
         let latest = state.weighIns.filter(Weight.counts).max { $0.date < $1.date }
         dial = WeighInDial(unit: state.profile.units.weight, latestKg: latest?.kg, sex: state.profile.sex)
         weighedToday = state.weighIns.contains { $0.day == today }

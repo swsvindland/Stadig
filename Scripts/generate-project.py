@@ -296,6 +296,21 @@ macro_widgets = dict(swift_common, **ios_widgets_common, **{
 
 MACRO_PACKAGES = ["SystemCore", "SystemStore", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner"]
 
+# The Watch app reads and writes the same CloudKit records as the phone (Records/), with no food
+# catalog: an entry carries its own numbers, and FoodIntelligence and MealPlanner don't build for
+# watchOS. It writes nothing to Health (the iPhone does, once), so it needs no HealthKit.
+macro_watch = watch_app("Macro Track", "dev.svindland.stadig.macro.watchkitapp", "dev.svindland.stadig.macro", {})
+
+macro_watch_widgets = watch_widgets("Macro Track", "dev.svindland.stadig.macro.watchkitapp.widgets")
+
+macro_embeds = [
+    # (host, embedded, phase name, dstSubfolderSpec, dstPath, platform filter or None for every platform)
+    ("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "", None),
+    # Only the iPhone app carries the Watch app; the Mac and Vision Pro builds leave it out.
+    ("MacroTrack", "MacroTrackWatch", "Embed Watch Content", 16, "$(CONTENTS_FOLDER_PATH)/Watch", "ios"),
+    ("MacroTrackWatch", "MacroTrackWatchWidgets", "Embed Foundation Extensions", 13, "", None),
+]
+
 MACRO = {
     "name": "MacroTrack",
     "id_prefix": "4D2E",
@@ -305,16 +320,20 @@ MACRO = {
          ["iOS", "Shared", "Catalogs", "Records"], MACRO_PACKAGES),
         ("MacroTrackWidgets", "MacroTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
          macro_widgets, ["Widgets", "Shared"], ["SystemCore"]),
+        ("MacroTrackWatch", "MacroTrackWatch.app", "com.apple.product-type.application", "wrapper.application", macro_watch,
+         ["Watch", "WatchShared", "Records"], ["SystemCore", "SystemStore", "NutritionEngine"]),
+        ("MacroTrackWatchWidgets", "MacroTrackWatchWidgets.appex", "com.apple.product-type.app-extension",
+         "wrapper.app-extension", macro_watch_widgets, ["WatchWidgets", "WatchShared"], ["SystemCore", "NutritionEngine"]),
     ] + test_targets("MacroTrack", "dev.svindland.stadig.macro"),
-    "embeds": [("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "", None)],
-    "config_files": ["Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "MacroTrack-macOS.entitlements",
-                     "Widgets.entitlements", "Widgets-macOS.entitlements"],
-    "groups": ["iOS", "Shared", "Records", "Widgets", "Catalogs", "Tests", "UITests"],
+    "embeds": macro_embeds,
+    "config_files": ["Info.plist", "Watch-Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "MacroTrack-macOS.entitlements",
+                     "Widgets.entitlements", "Widgets-macOS.entitlements", "Watch.entitlements", "WatchWidgets.entitlements"],
+    "groups": ["iOS", "Shared", "Records", "Widgets", "Watch", "WatchShared", "WatchWidgets", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds off.db (installed by Scripts/install-food-catalogs.sh, not in git) and its README.
     "exceptions": [("Catalogs", "MacroTrack", [".gitignore", "README.md"])],
     "extra_files": ["MacroTrack.storekit", "MacroTrack.xctestplan", "MacroTrackUI.xctestplan"],
     "test_plans": [("MacroTrack", ["MacroTrackTests"]), ("MacroTrackUI", ["MacroTrackUITests"])],
-    "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True)],
+    "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True), ("MacroTrackWatch", "MacroTrackWatch", "MacroTrackWatch.app", False)],
 }
 
 # MARK: - Mind Track
