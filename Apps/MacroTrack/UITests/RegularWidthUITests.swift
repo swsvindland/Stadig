@@ -14,7 +14,7 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData", "-tab", "foods"])
 
         app.element("foods.table").waitToAppear()
-        let search = app.searchFields.firstMatch.waitToAppear()
+        let search = app.foodSearchField()
         search.tap()
         search.typeText("banana raw")
         // The best match is selected, with its portion and nutrients beside the table.
@@ -51,7 +51,9 @@ nonisolated final class RegularWidthUITests: XCTestCase {
 
         let table = app.element("history.table").waitToAppear()
         XCTAssertGreaterThan(table.cells.count, 20, "three and a half weeks of days")
-        app.element("history.day").waitToAppear()
+        // Show in Today ends the day's log, at the foot of the pane: up from the screen's edge.
+        let day = app.element("history.day").waitToAppear()
+        day.swipeUp(velocity: .slow)
         app.element("history.showInToday").waitToAppear().tap()
         app.element("today.log").waitToAppear()
     }

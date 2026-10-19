@@ -17,6 +17,41 @@ extension XCUIApplication {
     func openLink(_ link: String, file: StaticString = #filePath, line: UInt = #line) throws {
         XCUIDevice.shared.system.open(try XCTUnwrap(URL(string: link), file: file, line: line))
     }
+
+    /// An iPad, where the regular-width layout runs: the tab bar along the top, the sidebar's
+    /// destinations, Today's log as a table and every way to log in its toolbar.
+    @MainActor
+    static var isPad: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
+    }
+
+    /// Opens a tab or a sidebar destination by its label (the test plan pins English): from the tab
+    /// bar on an iPhone, and on an iPad from the sidebar, since the tab bar along its top shows a
+    /// section's name ("Food", "Review") in place of the tabs in it.
+    @MainActor
+    func openTab(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        if Self.isPad {
+            openInSidebar(name, file: file, line: line)
+        } else {
+            tabBars.buttons[name].waitToAppear(file: file, line: line).tap()
+        }
+    }
+
+    /// Opens a destination from an iPad's sidebar: shown with the toggle at the start of the tab bar,
+    /// a row tapped, then hidden again if it still covers the screen (in portrait it slides over).
+    @MainActor
+    func openInSidebar(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        // The toggle is "ToggleSideBar" in the tab bar and "ToggleSidebar" on the sidebar itself.
+        let toggle = buttons.matching(NSPredicate(format: "identifier ==[c] 'ToggleSidebar'")).firstMatch
+        let row = collectionViews.cells.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        if !(row.exists && row.isHittable) { toggle.waitToAppear(file: file, line: line).tap() }
+        row.waitToAppear(file: file, line: line).tap()
+        if row.exists && row.isHittable && toggle.exists && toggle.label == "Hide Sidebar" { toggle.tap() }
+    }
 }
 
 extension XCUIElement {

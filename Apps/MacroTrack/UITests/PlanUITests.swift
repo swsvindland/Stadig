@@ -19,10 +19,11 @@ nonisolated final class PlanUITests: XCTestCase {
     func testTickingOffASupplementOnToday() {
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
-        app.element("today.calories").waitToAppear()
+        let summary = app.element("today.calories").waitToAppear()
 
+        // An iPad's supplements are in the column beside the log, with the summary.
         let open = app.element("supplements.dose", labelContaining: "not taken yet")
-        app.scrollTo(open).waitToAppear().tap()
+        app.scrollTo(open, beside: XCUIApplication.isPad ? summary : nil).waitToAppear().tap()
         // Its label says so: one fewer left to take.
         let taken = app.element("supplements.dose", labelContaining: ", taken")
         XCTAssertTrue(taken.waitToAppear().exists)

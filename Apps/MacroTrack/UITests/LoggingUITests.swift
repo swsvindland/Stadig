@@ -1,8 +1,36 @@
 import XCTest
 
 /// Logging, end to end: a food from search, Undo, a quick add, a weigh-in, and the links the
-/// widgets and controls open.
+/// widgets and controls open. On an iPad the ways to log are in Today's toolbar rather than the
+/// bar above the tabs, and a search is the Foods destination.
 nonisolated final class LoggingUITests: XCTestCase {
+    /// Searches for a banana and logs it: on an iPhone from the logger's results, on an iPad from
+    /// Foods, where Return in the search field logs the best match.
+    @MainActor
+    func logABanana(_ app: XCUIApplication) {
+        app.logButton("search").tap()
+        let search = app.foodSearchField()
+        search.tap()
+        if XCUIApplication.isPad {
+            search.typeText("banana\n")
+        } else {
+            search.typeText("banana")
+            app.element("logger.addFood").waitToAppear().tap()
+        }
+    }
+
+    /// Back to Today once the food is logged: the iPhone's search stays up for the next food until
+    /// Done; an iPad's Foods is a destination of its own, whose search, open, takes the place of
+    /// the tab bar, so Go ▸ Today (⌘1) from the keyboard.
+    @MainActor
+    func leaveSearch(_ app: XCUIApplication) {
+        if XCUIApplication.isPad {
+            app.typeKey("1", modifierFlags: .command)
+        } else {
+            app.element("logger.done").waitToAppear().tap()
+        }
+    }
+
     @MainActor
     func testLoggingAFoodFromSearchUpdatesToday() {
         continueAfterFailure = false
@@ -10,19 +38,13 @@ nonisolated final class LoggingUITests: XCTestCase {
         let calories = app.element("today.calories").waitToAppear()
         let before = calories.label
 
-        app.element("quickLog.search").tap()
-        let search = app.searchFields.firstMatch.waitToAppear()
-        search.tap()
-        search.typeText("banana")
-        app.element("logger.addFood").waitToAppear().tap()
-
+        logABanana(app)
         let toast = app.element("toast.message").waitToAppear()
         XCTAssertTrue(toast.label.hasPrefix("Logged "), toast.label)
-        // The search stays up for the next food, and Done with it.
-        app.element("logger.done").waitToAppear().tap()
+        leaveSearch(app)
 
         calories.waitForLabel(toChangeFrom: before)
-        XCTAssertTrue(app.scrollTo(app.element("today.entry", labelContaining: "banana")).waitToAppear().exists)
+        XCTAssertTrue(app.scrollTo(app.todayEntry(containing: "banana")).waitToAppear().exists)
     }
 
     @MainActor
@@ -32,14 +54,10 @@ nonisolated final class LoggingUITests: XCTestCase {
         let calories = app.element("today.calories").waitToAppear()
         let before = calories.label
 
-        app.element("quickLog.search").tap()
-        let search = app.searchFields.firstMatch.waitToAppear()
-        search.tap()
-        search.typeText("banana")
-        app.element("logger.addFood").waitToAppear().tap()
+        logABanana(app)
         app.element("toast.undo").waitToAppear().tap()
         app.element("toast.message").waitToDisappear()
-        app.element("logger.done").waitToAppear().tap()
+        leaveSearch(app)
 
         calories.waitToAppear()
         XCTAssertEqual(calories.label, before)
@@ -53,13 +71,15 @@ nonisolated final class LoggingUITests: XCTestCase {
 
         app.element("quickAdd.kcal").waitToAppear().type("500")
         app.element("quickAdd.protein").type("30")
+        app.closeNumberPad()
         let add = app.element("quickAdd.add")
         XCTAssertTrue(add.label.contains("500 kcal"), add.label)
         add.tap()
 
         add.waitToDisappear()
-        let entry = app.scrollTo(app.element("today.entry", labelContaining: "Quick add")).waitToAppear()
-        XCTAssertTrue(entry.label.contains("500"), entry.label)
+        let entry = app.scrollTo(app.todayEntry(containing: "Quick add")).waitToAppear()
+        // An iPad's table has the calories in a column of their own.
+        XCTAssertTrue(XCUIApplication.isPad ? entry.staticTexts["500"].exists : entry.label.contains("500"), entry.debugDescription)
     }
 
     @MainActor
@@ -68,7 +88,7 @@ nonisolated final class LoggingUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData"])
         app.element("today.calories").waitToAppear()
 
-        app.element("quickLog.weighIn").tap()
+        app.logButton("weighIn").tap()
         let field = app.textFields["weighIn.value"].waitToAppear()
         // Ready with the last weight: a nudge and Save.
         let last = field.value as? String ?? ""
@@ -99,6 +119,9 @@ nonisolated final class LoggingUITests: XCTestCase {
 
     @MainActor
     func testAWidgetLinkClosesASheetTodayOpened() throws {
+        try XCTSkipIf(
+            XCUIApplication.isPad,
+            "An iPad's Today edits an entry in its inspector, not a sheet (RegularWidthUITests.testTodaysLogIsATableEditedBesideIt)")
         continueAfterFailure = false
         // The supplement sample logs this morning's coffee, so Today has an entry to open.
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])

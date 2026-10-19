@@ -8,18 +8,18 @@ nonisolated final class AppUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData"])
 
         app.element("today.calories").waitToAppear()
-        XCTAssertTrue(app.element("quickLog.search").exists, "logging is one tap away on Today")
+        XCTAssertTrue(app.logButton("search").exists, "logging is one tap away on Today")
         XCTAssertTrue(app.element("today.nothingLogged").exists, "the sample weeks end yesterday")
 
-        app.tabBars.buttons["Plan"].tap()
+        app.openTab("Plan")
         // Three and a half weeks: the assessment is done and a phase is recommended.
         app.element("plan.start").waitToAppear()
 
-        app.tabBars.buttons["Progress"].tap()
+        app.openTab("Progress")
         app.element("progress.trendWeight").waitToAppear()
         XCTAssertTrue(app.element("progress.range").exists, "weeks of weigh-ins draw a chart")
 
-        app.tabBars.buttons["Today"].tap()
+        app.openTab("Today")
         app.element("today.calories").waitToAppear()
     }
 
@@ -32,10 +32,12 @@ nonisolated final class AppUITests: XCTestCase {
         app.element("onboarding.goal.leaner").waitToAppear().tap()
         // The region is the US, so the units start as pounds and inches.
         app.element("onboarding.height").type("71")
+        app.closeNumberPad()
         app.element("onboarding.continue").tap()
 
         app.element("onboarding.history.none").waitToAppear().tap()
         app.element("onboarding.weight").type("181.4")
+        app.closeNumberPad()
         app.element("onboarding.continue").tap()
 
         // No Health under UI tests: only "Not now".
@@ -44,7 +46,7 @@ nonisolated final class AppUITests: XCTestCase {
         app.element("onboarding.notNow").tap()
 
         app.element("today.calories").waitToAppear()
-        XCTAssertTrue(app.element("quickLog.search").exists)
+        XCTAssertTrue(app.logButton("search").exists)
         let weight = app.element("today.weight").waitToAppear()
         XCTAssertTrue(weight.label.contains("181.4 lb"), "the first weigh-in is today's: \(weight.label)")
     }
@@ -70,9 +72,10 @@ nonisolated final class AppUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData", "-showSettings"])
 
         app.element("settings.done").waitToAppear()
-        // A tap anywhere on the row opens the menu, not only on its words: here, near its far end.
+        // A tap anywhere on the row opens the menu, not only on its words: here, near its far end
+        // (the sheet's, which on an iPad is narrower than the screen).
         let start = app.scrollTo(app.element("settings.startLifeMode")).waitToAppear()
-        let farEnd = CGVector(dx: app.windows.firstMatch.frame.maxX - 48, dy: start.frame.midY)
+        let farEnd = CGVector(dx: app.navigationBars["Settings"].frame.maxX - 48, dy: start.frame.midY)
         app.coordinate(withNormalizedOffset: .zero).withOffset(farEnd).tap()
         app.buttons["settings.lifeMode.ill"].waitToAppear().tap()
 
