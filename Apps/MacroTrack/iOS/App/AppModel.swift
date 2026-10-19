@@ -780,12 +780,25 @@ final class AppModel {
         ])
     }
 
+    // What goes to Health for each kind of thing logged, here as it's logged and by the backfill for
+    // what other devices logged (HealthBackfill.swift): one shape and one version, so the backfill
+    // knows this device's own samples and leaves them alone.
+
     static func healthFood(_ e: FoodEntry) -> HealthFood {
         var micros = e.micros ?? [:]
         if let fluid = e.fluid { micros["water"] = fluid }
-        return HealthFood(
-            id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros,
-            version: Int(e.updatedAt.timeIntervalSince1970 * 1000))
+        return HealthFood(id: e.id, date: e.date, name: e.name, nutrients: e.nutrients, micros: micros, version: e.updatedAt.healthVersion)
+    }
+
+    static func healthFood(_ glass: WaterLog) -> HealthFood {
+        HealthFood(
+            id: glass.id, date: glass.date, name: "Water", nutrients: .zero, micros: ["water": glass.ml], version: glass.updatedAt.healthVersion)
+    }
+
+    static func healthFood(_ dose: SupplementLog) -> HealthFood {
+        HealthFood(
+            id: dose.id, date: dose.date, name: dose.name, nutrients: dose.nutrients ?? .zero, micros: dose.amounts,
+            version: dose.updatedAt.healthVersion)
     }
 
     func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
@@ -832,7 +845,7 @@ final class AppModel {
         reload()
         toast = Toast(message: "Weighed in · \(Format.weight(kg, unit: units.weight))")
         if settings.saveToHealth {
-            Task { await HealthBridge.shared.saveWeight(id: w.id, date: date, kg: kg, version: Int(Date().timeIntervalSince1970 * 1000)) }
+            Task { await HealthBridge.shared.saveWeight(id: w.id, date: date, kg: kg, version: w.updatedAt.healthVersion) }
         }
     }
 
@@ -980,6 +993,8 @@ final class AppModel {
 
     func connectHealth() async {
         _ = await HealthBridge.shared.requestAuthorization(.nutrition)
+        // What the Watch and the Mac logged before Health was connected waited for this.
+        healthBackfill?.run()
         healthReads.permissionAsked()
         await refreshHealth()
         startHealthObserving()

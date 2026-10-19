@@ -91,6 +91,9 @@ struct MacroTrackApp: App {
                     // Apple Intelligence may have been turned on, or finished downloading, meanwhile.
                     model.ai.configure(catalog: model.catalog, allowCloud: model.settings.allowCloudAI)
                     Task { await model.refreshHealthIfStale() }
+                    // What another device logged while Health couldn't be written (the phone locked,
+                    // Health not connected yet) goes in now, not at the next import.
+                    model.healthBackfill?.run()
                 case .background:
                     releaseCatalogMemory(model)
                 default:

@@ -67,12 +67,38 @@ struct HealthBackfillTests {
             updatedAt: date)
     }
 
-    func dose(taken: Bool, hour: Int) -> SupplementLog {
+    func dose(taken: Bool, hour: Int, updatedAt: Date? = nil) -> SupplementLog {
         let facts = SupplementFacts(
             id: "custom:Multi", name: "Multivitamin", unit: "tablet", ingredients: [SupplementIngredient(name: "Zinc", amount: 11, unit: "mg")],
             source: .custom)
         let date = today.at(hour: hour, minute: 0)
-        return SupplementLog(supplement: Supplement(facts: facts), doseID: UUID(), date: date, count: 1, taken: taken, updatedAt: date)
+        return SupplementLog(supplement: Supplement(facts: facts), doseID: UUID(), date: date, count: 1, taken: taken, updatedAt: updatedAt ?? date)
+    }
+
+    /// Times within one second, at fractions of a millisecond either side of a half, as `Date()`
+    /// gives them when something is logged.
+    var oddTimes: [Date] {
+        let second = today.at(hour: 11, minute: 0).timeIntervalSince1970
+        return [0.000_1, 0.000_49, 0.000_5, 0.000_51, 0.000_9, 0.123_456_7, 0.999_6].map { Date(timeIntervalSince1970: second + $0) }
+    }
+
+    /// One of each kind logged on this phone at `time`, and the versions the phone wrote to Health as
+    /// it logged them, from the records in memory (the store rounds `updatedAt` as it saves).
+    func loggedHere(at time: Date, version: (Date) -> Int) -> [UUID: Int] {
+        let food = FoodEntry(
+            date: time, name: "Lunch", amountLabel: "1", nutrients: Nutrients(kcal: 300, protein: 20, carbs: 30, fat: 10), source: .recent,
+            updatedAt: time)
+        let glass = WaterLog(date: time, ml: 250, updatedAt: time)
+        let taken = dose(taken: true, hour: 11, updatedAt: time)
+        let typed = WeighIn(date: time, kg: 82.4, updatedAt: time)
+        store.save(food)
+        store.save(glass)
+        store.save(taken)
+        store.save(typed)
+        return [
+            food.id: version(food.updatedAt), glass.id: version(glass.updatedAt), taken.id: version(taken.updatedAt),
+            typed.id: version(typed.updatedAt),
+        ]
     }
 
     func backfill() -> HealthBackfill { HealthBackfill(store: store, health: health, defaults: nil) }
@@ -92,7 +118,7 @@ struct HealthBackfillTests {
         store.save([taken, skipped])
         store.save([typed, scale])
         // This phone wrote its own entry as it logged it.
-        health.held[here.id] = HealthBackfill.version(here.updatedAt)
+        health.held[here.id] = AppModel.healthFood(here).version
 
         let backfill = backfill()
         await backfill.pass(now: now)
@@ -101,7 +127,7 @@ struct HealthBackfillTests {
         let water = try #require(health.savedFoods.first { $0.id == glass.id })
         #expect(water.micros["water"] == 250 && water.name == "Water")
         let food = try #require(health.savedFoods.first { $0.id == fromWatch.id })
-        #expect(food.nutrients.kcal == 300 && food.version == HealthBackfill.version(fromWatch.updatedAt))
+        #expect(food.nutrients.kcal == 300 && food.version == fromWatch.updatedAt.healthVersion)
         #expect(backfill.ledger[here.id]?.written == false && backfill.ledger[fromWatch.id]?.written == true)
 
         // Again: nothing new, and Health isn't even asked.
@@ -136,6 +162,101 @@ struct HealthBackfillTests {
         store.delete(WaterLog.self, id: glasses[1].id)
         await backfill.pass(now: now)
         #expect(health.deleted.contains(glasses[1].id))
+    }
+
+    @Test("the phone's own samples, logged at any fraction of a millisecond, aren't written again")
+    func ownSamplesAtAnyTime() async throws {
+        for time in oddTimes {
+            let written = loggedHere(at: time) { $0.healthVersion }
+            health.held.merge(written) { $1 }
+        }
+        // What the store reads back, rounded, has the version the phone wrote from the record in memory.
+        for food in store.all(FoodEntry.self) { #expect(AppModel.healthFood(food).version == health.held[food.id]) }
+        for glass in store.all(WaterLog.self) { #expect(AppModel.healthFood(glass).version == health.held[glass.id]) }
+        let backfill = backfill()
+        await backfill.pass(now: now)
+        #expect(health.savedFoods.isEmpty && health.savedWeights.isEmpty)
+        #expect(backfill.ledger.count == oddTimes.count * 4 && backfill.ledger.values.allSatisfy { !$0.written })
+    }
+
+    @Test("samples an earlier version wrote with a truncated version aren't written again")
+    func truncatedVersionsAreCurrent() async {
+        for time in oddTimes {
+            // As every writer did before versions were rounded like the store's.
+            let written = loggedHere(at: time) { Int($0.timeIntervalSince1970 * 1000) }
+            health.held.merge(written) { $1 }
+        }
+        await backfill().pass(now: now)
+        #expect(health.savedFoods.isEmpty && health.savedWeights.isEmpty)
+    }
+
+    @Test("a ledger an earlier version kept, a millisecond lower, isn't looked up again")
+    func earlierLedgerIsCurrent() async throws {
+        let suite = "BackfillTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let watch = entry("From the Watch")
+        store.save(watch)
+        await HealthBackfill(store: store, health: health, defaults: defaults).pass(now: now)
+        #expect(health.savedFoods.map(\.id) == [watch.id])
+
+        // The ledger as an earlier version kept it, its versions truncated from the stored date.
+        let kept = try JSONDecoder().decode([String: HealthLedgerEntry].self, from: try #require(defaults.data(forKey: HealthBackfill.ledgerKey)))
+        let earlier = kept.mapValues { entry in
+            var entry = entry
+            entry.version -= 1
+            return entry
+        }
+        defaults.set(try JSONEncoder().encode(earlier), forKey: HealthBackfill.ledgerKey)
+        // The person deletes the sample in Health; it stays deleted.
+        health.held[watch.id] = nil
+        let reads = health.reads
+        await HealthBackfill(store: store, health: health, defaults: defaults).pass(now: now)
+        #expect(health.reads == reads && health.savedFoods.count == 1)
+    }
+
+    @Test("the store's deletions are read only for the kinds of what's gone missing")
+    func deletionsReadOnlyWhenNeeded() {
+        let since = today.adding(days: -HealthBackfill.window)
+        let lunch = entry("Lunch")
+        let glass = WaterLog(date: today.at(hour: 9, minute: 0), ml: 250)
+        let taken = dose(taken: true, hour: 8)
+        let items = HealthBackfill.items(entries: [lunch], water: [glass], doses: [taken], weighIns: [], since: since, setUp: nil)
+        let ledger = Dictionary(uniqueKeysWithValues: items.map { ($0.id, HealthLedgerEntry($0, written: true)) })
+        var liveAsked: [HealthCopy.Source] = []
+        var deletedAsked: [HealthCopy.Source] = []
+
+        // Everything handled is still wanted: no history is read.
+        let none = HealthBackfill.gone(
+            ledger: ledger, items: items, since: since,
+            live: { source in
+                liveAsked.append(source)
+                return []
+            },
+            deleted: { source in
+                deletedAsked.append(source)
+                return []
+            })
+        #expect(none.isEmpty && liveAsked.isEmpty && deletedAsked.isEmpty)
+
+        // The dose unmarked (still in the store) and the glass gone: only water's deletions are read.
+        let lunchOnly = items.filter { $0.id == lunch.id }
+        let gone = HealthBackfill.gone(
+            ledger: ledger, items: lunchOnly, since: since,
+            live: { source in
+                liveAsked.append(source)
+                return source == .dose ? [taken.id] : []
+            },
+            deleted: { source in
+                deletedAsked.append(source)
+                return source == .water ? [glass.id] : []
+            })
+        #expect(Set(gone.map(\.id)) == [taken.id, glass.id])
+        #expect(Set(liveAsked) == [.dose, .water] && deletedAsked == [.water])
+
+        // The glass only missing, with no deletion: it keeps its copy.
+        let kept = HealthBackfill.gone(ledger: ledger, items: lunchOnly, since: since, live: { $0 == .dose ? [taken.id] : [] }, deleted: { _ in [] })
+        #expect(kept.map(\.id) == [taken.id])
     }
 
     @Test("what's only missing, without a deletion, keeps its copy in Health")

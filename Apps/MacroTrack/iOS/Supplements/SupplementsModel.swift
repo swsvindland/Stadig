@@ -126,11 +126,7 @@ extension AppModel {
 
     private func saveToHealth(_ logs: [SupplementLog]) {
         guard settings.saveToHealth else { return }
-        let foods = logs.filter(\.taken).map { log in
-            HealthFood(
-                id: log.id, date: log.date, name: log.name, nutrients: log.nutrients ?? .zero, micros: log.amounts,
-                version: Int(log.updatedAt.timeIntervalSince1970 * 1000))
-        }
+        let foods = logs.filter(\.taken).map(Self.healthFood)
         Task { await HealthBridge.shared.saveFoods(foods) }
     }
 
