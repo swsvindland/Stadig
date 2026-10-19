@@ -10,7 +10,6 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
     #endif
 
     var body: some View {
@@ -23,9 +22,11 @@ struct RootView: View {
             }
         }
         #if os(macOS)
-        // The session runs in a window of its own, so the program stays in view beside it.
+        // The session runs in a window of its own, so the program stays in view beside it. That
+        // window closes itself when the session is minimized or ends (`SessionWindow`), so it does
+        // with this one closed too.
         .onChange(of: model.showSession, initial: true) { _, show in
-            if show { openWindow(id: SessionWindow.id) } else { dismissWindow(id: SessionWindow.id) }
+            if show { openWindow(id: SessionWindow.id) }
         }
         #else
         .cover(isPresented: $model.showSession) {

@@ -70,6 +70,9 @@ struct LiftTrackApp: App {
         }
         .defaultSize(width: 1080, height: 760)
         .windowResizability(.contentMinSize)
+        // Opened from the Session menu and the toolbar's Resume, which know whether there's a
+        // session; an item of its own in the Window menu would open it without one.
+        .commandsRemoved()
         Settings {
             if let model {
                 MacSettings(model: model)

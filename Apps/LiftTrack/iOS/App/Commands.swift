@@ -120,11 +120,16 @@ struct LiftCommands: Commands {
 #if os(macOS)
 /// The session in a window of its own on the Mac, so the program and the library stay in view
 /// beside it. Closing it minimizes the session (Resume is in the main window's toolbar and the
-/// Session menu); finishing or discarding closes it.
+/// Session menu); finishing or discarding closes it. It looks after itself rather than leaving it to
+/// the main window, which may be closed: it closes when the session is minimized or ends, and when
+/// it opens without being asked for (restored at launch) it shows the session, or closes if
+/// there's none.
 struct SessionWindow: View {
     static let id = "session"
     let model: AppModel
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
+    @State private var closing: Task<Void, Never>?
 
     var body: some View {
         SessionScreen()
@@ -132,10 +137,32 @@ struct SessionWindow: View {
             .environment(model)
             .environment(model.purchases)
             .frame(minWidth: 820, minHeight: 600)
-            .onDisappear { model.showSession = false }
-            .onChange(of: model.live == nil) { _, ended in
-                if ended { dismissWindow(id: Self.id) }
+            .onAppear {
+                if model.live == nil { dismissWindow(id: Self.id) } else { model.showSession = true }
             }
+            .onDisappear {
+                closing?.cancel()
+                model.showSession = false
+            }
+            // Minimized, finished or discarded.
+            .onChange(of: model.showSession && model.live != nil) { _, shown in
+                closing?.cancel()
+                guard !shown else { return }
+                // A finished session's summary is a sheet on the main window: bring that back (or
+                // forward) to show it.
+                if model.finished != nil { openWindow(id: LiftTrackApp.mainWindow) }
+                closing = Task { await close() }
+            }
+    }
+
+    /// Closes the window once nothing holds it open. It can't close while a sheet is still leaving
+    /// it (the feedback sheet that finished the session, the discard confirmation), and asking then
+    /// does nothing, so it asks again until the window goes, for a few seconds at most.
+    private func close() async {
+        for _ in 0..<30 where !Task.isCancelled {
+            dismissWindow(id: Self.id)
+            try? await Task.sleep(for: .milliseconds(100))
+        }
     }
 }
 
