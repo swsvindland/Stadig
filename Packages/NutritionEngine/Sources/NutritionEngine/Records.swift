@@ -195,3 +195,20 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     /// Minutes after midnight for a time of day.
     public func minutes(_ time: DoseTime) -> Int { doseTimes?[time] ?? time.defaultMinutes }
 }
+
+extension MacroSettings {
+    /// The settings record in force. There's normally one; a second appears when setup was finished
+    /// on a new device before the first device's settings had synced in. The one set up first wins,
+    /// so the person's settings aren't shadowed by the new device's defaults; between two never set
+    /// up, the newer edit.
+    public static func inForce(_ all: [MacroSettings]) -> MacroSettings? {
+        all.min { a, b in
+            switch (a.onboardedAt, b.onboardedAt) {
+            case (let x?, let y?): x != y ? x < y : a.updatedAt > b.updatedAt
+            case (.some, nil): true
+            case (nil, .some): false
+            case (nil, nil): a.updatedAt > b.updatedAt
+            }
+        }
+    }
+}

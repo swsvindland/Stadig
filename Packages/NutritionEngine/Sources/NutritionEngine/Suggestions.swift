@@ -66,6 +66,14 @@ public enum LogAgain {
         return nil
     }
 
+    /// "Same as yesterday" for right now: what was eaten around this time on a recent day, while
+    /// nothing logged today ended within 90 minutes of `now`.
+    public static func usualNow(entries: [FoodEntry], now: Date, calendar: Calendar = .current) -> Moment? {
+        let today = Day(now, calendar: calendar)
+        let nearby = Timeline.moments(entries.filter { $0.day == today }).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
+        return nearby ? nil : usualMoment(near: now, entries: entries, calendar: calendar)
+    }
+
     /// Copies of a moment's entries at `date`, a second apart so they keep their order.
     public static func copy(_ moment: Moment, to date: Date, source: EntrySource = .copied) -> [FoodEntry] {
         moment.entries.enumerated().map { i, e in copy(e, to: date.addingTimeInterval(Double(i)), source: source) }
