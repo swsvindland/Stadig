@@ -202,6 +202,7 @@ struct LifeSettings: View {
                     }
                 }
                 .foregroundStyle(.primary)
+                .rowButton(tinted: false)
                 // The id too: two periods of one kind (an illness now, another booked) are two rows.
                 .accessibilityIdentifier("settings.lifeMode.\(period.kind.identifier).\(period.id)")
                 .contextMenu {
@@ -510,6 +511,7 @@ struct LifeModeEditor: View {
             }
         }
         .presentationDetents([.medium])
+        .sheetForm(height: 360)
     }
 
     /// What End today writes, or nil for a period that hasn't started: it has nothing to end (delete

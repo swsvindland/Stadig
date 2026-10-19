@@ -46,6 +46,7 @@ struct SpeakView: View {
                         listening
                     } else {
                         TextField("Write it here", text: $written, axis: .vertical)
+                            .textFieldStyle(.plain)
                             .accessibilityIdentifier("speak.written")
                             .font(.title2)
                             .padding(14)

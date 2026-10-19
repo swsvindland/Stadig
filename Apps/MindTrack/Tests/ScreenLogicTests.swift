@@ -108,6 +108,14 @@ struct DeepLinkTests {
         #expect(model.tab == .today)
     }
 
+    @Test func theLibraryDestinationsOpenByLink() {
+        let model = TestApp.onboardedModel()
+        for tab in [AppTab.shelf, .writing, .courses, .today] {
+            DeepLink.open(URL(string: "mindtrack://\(tab.rawValue)")!, model: model)
+            #expect(model.tab == tab)
+        }
+    }
+
     @Test func startOpensTodaysSession() throws {
         let model = TestApp.onboardedModel()
         let plan = try #require(model.analysis?.today)

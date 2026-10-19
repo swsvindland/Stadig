@@ -62,6 +62,8 @@ private struct LanguageWords: View {
     @State private var filter: CourseWord.State?
     @State private var selection: CourseWord.ID?
     @State private var inspecting = false
+    /// The selected word's example sentences, looked up in the catalog when it's selected.
+    @State private var sentences: [Sentence] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -124,7 +126,7 @@ private struct LanguageWords: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
                             WordCard(word: word, kanji: model.catalogs.deck(language)?.kanji(in: word) ?? [])
-                            ForEach(model.catalogs.deck(language)?.sentences(with: word.id, maxLevel: .max, limit: 3) ?? []) { sentence in
+                            ForEach(sentences) { sentence in
                                 SentenceLine(sentence: sentence, language: language).card()
                             }
                         }
@@ -141,6 +143,10 @@ private struct LanguageWords: View {
             rows = await Self.rows(language, cards: cards, deck: deck, today: model.today, now: model.now())
             refilter()
             loaded = true
+        }
+        .task(id: selection) {
+            guard let id = selection, let deck = model.catalogs.deck(language) else { return }
+            sentences = await Self.sentences(id, deck: deck)
         }
         .onChange(of: query) { refilter() }
         .onChange(of: filter) { refilter() }
@@ -177,6 +183,11 @@ private struct LanguageWords: View {
     func word(_ id: Int) -> Word? { model.catalogs.deck(language)?.word(id) }
 
     func refilter() { shown = CourseWord.filter(rows, query: query, state: filter).sorted(using: sortOrder) }
+
+    /// A catalog query: off the main actor.
+    @concurrent nonisolated static func sentences(_ id: Int, deck: LanguageDeck) async -> [Sentence] {
+        deck.sentences(with: id, maxLevel: .max, limit: 3)
+    }
 
     /// Thousands of cards matched to their words: off the main actor.
     @concurrent nonisolated static func rows(_ language: Language, cards: [CardKey: MemoryCard], deck: LanguageDeck, today: Day, now: Date) async

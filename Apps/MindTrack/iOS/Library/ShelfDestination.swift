@@ -156,6 +156,7 @@ private struct ShelfRow: View {
             Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

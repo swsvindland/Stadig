@@ -189,6 +189,7 @@ struct ColourRating<Value: Hashable>: View {
                     .opacity(selection == nil || chosen ? 1 : 0.4)
                 }
                 .buttonStyle(.plain)
+                .hoverable(in: .rect(cornerRadius: 16))
                 .accessibilityLabel("\(option.label): \(option.detail)")
                 .accessibilityAddTraits(chosen ? .isSelected : [])
             }
@@ -293,7 +294,6 @@ struct PageSheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
             .navigationTitle(book.title)
             .inlineTitle()
             .toolbar {
@@ -310,9 +310,7 @@ struct PageSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationSizing(.form)
-        #if os(macOS)
-        .frame(minWidth: 460, idealWidth: 520, minHeight: 440)
-        #endif
+        .sheetForm(width: 500, height: 460)
     }
 }
 
@@ -472,6 +470,7 @@ struct BookEditor: View {
             }
             .onAppear(perform: fill)
         }
+        .sheetForm(width: 480, height: 560)
     }
 
     /// Where the tier comes from, and how much it counts.

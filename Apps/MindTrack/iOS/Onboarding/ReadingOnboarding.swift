@@ -130,6 +130,7 @@ struct ReadingSettings: View {
                 dismiss()
                 model.showShelf = true
             }
+            .rowButton()
             .accessibilityIdentifier("settings.shelf")
         } header: {
             Text("Reading")

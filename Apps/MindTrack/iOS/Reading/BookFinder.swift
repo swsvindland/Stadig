@@ -36,6 +36,7 @@ struct BookFinder: View {
             List {
                 Section {
                     Button(BookScannerView.hasCamera ? "Scan the barcode" : "Type the ISBN", systemImage: "barcode.viewfinder") { scanning = true }
+                        .rowButton()
                         .accessibilityIdentifier("bookFinder.scan")
                     #if os(iOS)
                     if CoverCamera.isAvailable {
@@ -46,15 +47,18 @@ struct BookFinder: View {
                     PhotosPicker(selection: $photo, matching: .images) {
                         Label("Choose a photo of the cover", systemImage: "photo.on.rectangle")
                     }
+                    .rowButton()
                     .accessibilityIdentifier("bookFinder.photo")
                     if !Platform.isPhoneOrPad {
                         Button("Open a picture of the cover…", systemImage: "folder") { importingFile = true }
+                            .rowButton()
                             .accessibilityIdentifier("bookFinder.openFile")
                     }
                     Button("Enter it yourself", systemImage: "square.and.pencil") { draft = BookDraft(title: query) }
+                        .rowButton()
                         .accessibilityIdentifier("bookFinder.enter")
                 } footer: {
-                    Text(footer)
+                    Text(footer).fixedSize(horizontal: false, vertical: true)
                 }
                 if readingCover || searching {
                     Section {
@@ -78,6 +82,7 @@ struct BookFinder: View {
                                     detail: "Tier \(book.tier)\(book.levelledFromText ? " · levelled from its text" : "")")
                             }
                             .foregroundStyle(.primary)
+                            .rowButton(tinted: false)
                             .accessibilityIdentifier("bookFinder.ladder.\(book.id)")
                         }
                     }
@@ -93,6 +98,7 @@ struct BookFinder: View {
                                     detail: [meta.year.map(String.init), meta.pages.map { "\($0) pages" }].compactMap { $0 }.joined(separator: " · "))
                             }
                             .foregroundStyle(.primary)
+                            .rowButton(tinted: false)
                         }
                     }
                 }

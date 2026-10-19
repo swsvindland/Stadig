@@ -196,6 +196,30 @@ extension View {
         #endif
     }
 
+    /// A sheet's form at a size it can be read at on the Mac, grouped as on iPhone and iPad: a Mac
+    /// sheet sizes itself to its content, and a form has no size of its own.
+    func sheetForm(width: CGFloat = 460, height: CGFloat = 420) -> some View {
+        #if os(macOS)
+        return formStyle(.grouped).frame(minWidth: width, idealWidth: width, minHeight: height, idealHeight: height)
+        #else
+        return self
+        #endif
+    }
+
+    /// A button that's a whole row of a list. iPhone and iPad draw it as the row; the Mac would draw
+    /// a push button inside the row, so there it's a plain row, in the accent colour when it's an
+    /// action rather than an item.
+    func rowButton(tinted: Bool = true) -> some View {
+        #if os(macOS)
+        return buttonStyle(.plain)
+            .foregroundStyle(tinted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        #else
+        return self
+        #endif
+    }
+
     /// A search field that's always showing: under the navigation bar's title on iPhone and iPad,
     /// in the toolbar on the Mac and Vision Pro.
     func alwaysSearchable(text: Binding<String>, prompt: String) -> some View {

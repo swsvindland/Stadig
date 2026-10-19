@@ -363,5 +363,6 @@ struct EpisodeSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .sheetForm(height: 460)
     }
 }

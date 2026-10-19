@@ -17,11 +17,13 @@ struct WritingDestination: View {
     @State private var selection: WritingSelection?
     @State private var query = ""
     @State private var drafts: [WritingDrafts.Entry] = []
+    /// What the list shows, searched and sorted when the search or the records change rather than
+    /// on every redraw: years of pieces add up.
+    @State private var pieces: [WritingPiece] = []
+    @State private var reflections: [Reflection] = []
 
     var body: some View {
-        let pieces = PieceSearch.matching(model.pieces, query: query)
         let shownDrafts = drafts.filter { LibrarySearch.matches(query, $0.draft.text, $0.draft.ownPage ?? "") }
-        let reflections = model.reflections.reversed().filter { LibrarySearch.matches(query, $0.text, title(of: $0)) }
         NavigationStack {
             HStack(spacing: 0) {
                 List(selection: $selection) {
@@ -54,7 +56,7 @@ struct WritingDestination: View {
                             ForEach(reflections) { reflection in
                                 WritingRow(
                                     symbol: "text.quote", title: title(of: reflection), date: reflection.date, text: reflection.text,
-                                    handwritten: false
+                                    handwritten: false, color: Domain.reading.color
                                 )
                                 .tag(WritingSelection.reflection(reflection.id))
                             }
@@ -93,9 +95,17 @@ struct WritingDestination: View {
         }
         // Again after a session, which may have handed one in or left one.
         .task(id: model.run == nil) { drafts = await model.drafts.all() }
+        .onChange(of: query, initial: true) { refilter() }
+        .onChange(of: model.pieces) { refilter() }
+        .onChange(of: model.reflections) { refilter() }
         .onAppear {
             if selection == nil, let newest = PieceSearch.matching(model.pieces, query: "").first { selection = .piece(newest.id) }
         }
+    }
+
+    func refilter() {
+        pieces = PieceSearch.matching(model.pieces, query: query)
+        reflections = model.reflections.reversed().filter { LibrarySearch.matches(query, $0.text, title(of: $0)) }
     }
 
     func title(of reflection: Reflection) -> String { model.books.first { $0.id == reflection.bookID }?.title ?? "Reading" }
@@ -139,11 +149,12 @@ private struct WritingRow: View {
     let date: Date
     let text: String
     let handwritten: Bool
+    var color: Color = Domain.writing.color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Label(title, systemImage: symbol).font(.caption.weight(.semibold)).foregroundStyle(Domain.writing.color)
+                Label(title, systemImage: symbol).font(.caption.weight(.semibold)).foregroundStyle(color)
                 Spacer()
                 Text(date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
             }
@@ -153,6 +164,7 @@ private struct WritingRow: View {
             }
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

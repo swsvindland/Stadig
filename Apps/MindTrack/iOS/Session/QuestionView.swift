@@ -306,6 +306,7 @@ struct QuestionView: View {
         case .number(_, let tolerance):
             VStack(alignment: .leading, spacing: 8) {
                 TextField("Your answer", text: $typed)
+                    .textFieldStyle(.plain)
                     .fieldKeyboard(.numbersAndPunctuation)
                     .font(.title2.monospacedDigit())
                     .padding(14)

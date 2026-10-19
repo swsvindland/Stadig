@@ -107,6 +107,7 @@ struct ReaderSheet: View {
             .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("readers.done") } }
         }
+        .sheetForm(width: 520, height: 600)
     }
 
     func save(_ book: Book, page: Int) {

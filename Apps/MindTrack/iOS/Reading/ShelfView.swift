@@ -263,5 +263,6 @@ struct SetAsideSheet: View {
             }
         }
         .presentationDetents([.medium])
+        .sheetForm(height: 320)
     }
 }
