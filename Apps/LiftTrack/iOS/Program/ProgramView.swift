@@ -206,6 +206,8 @@ private struct BlockPane: View {
     let title: String?
     let editable: Bool
     @State private var swapping: ProgramRow?
+    /// The table's width, for which columns fit (`allColumns`); 0 until it's laid out.
+    @State private var tableWidth: CGFloat = 0
 
     var body: some View {
         let days = ProgramRows.days(
@@ -215,15 +217,17 @@ private struct BlockPane: View {
                 .padding()
             Table(of: ProgramRow.self, selection: $selection) {
                 TableColumn("Exercise") { row in ExerciseCell(row: row, wide: sizeClass.isWide) }
-                    .width(min: 170, ideal: 230)
-                TableColumn("Block", value: \.role).width(min: 84, ideal: 92)
-                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: 84, ideal: 100)
-                TableColumn("Reps", value: \.reps).width(min: 48, ideal: 64)
-                TableColumn("Rest", value: \.rest).width(min: 40, ideal: 52)
-                TableColumn("Why") { row in
-                    Text(row.why).foregroundStyle(.secondary).lineLimit(2).help(row.why)
+                    .width(min: width(170, 200), ideal: 230)
+                TableColumn("Block", value: \.role).width(min: width(84, 112), ideal: 92)
+                TableColumn("Sets by week") { row in Text(row.sets).monospacedDigit() }.width(min: width(84, 112), ideal: 100)
+                TableColumn("Reps", value: \.reps).width(min: 48, ideal: 64, max: cap(72))
+                TableColumn("Rest", value: \.rest).width(min: 40, ideal: 52, max: cap(64))
+                if allColumns {
+                    TableColumn("Why") { row in
+                        Text(row.why).foregroundStyle(.secondary).lineLimit(2).help(row.why)
+                    }
+                    .width(min: 120, ideal: 200)
                 }
-                .width(min: 120, ideal: 200)
             } rows: {
                 ForEach(days) { day in
                     Section {
@@ -247,6 +251,11 @@ private struct BlockPane: View {
                 }
             }
             .accessibilityIdentifier("program.table")
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: {
+                tableWidth = $0
+            }
         }
         .sheet(item: $swapping) { row in
             if let day = mesocycle.days.first(where: { $0.id == row.dayID }), let slot = day.slots.first(where: { $0.id == row.id }) {
@@ -254,6 +263,19 @@ private struct BlockPane: View {
             }
         }
     }
+
+    /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
+    /// for text at 17.
+    private func width(_ mac: CGFloat, _ touch: CGFloat) -> CGFloat { Platform.isMac ? mac : touch }
+
+    /// The most a short column takes on iPad and Vision Pro, whose tables share the room out evenly
+    /// rather than by ideal width.
+    private func cap(_ touch: CGFloat) -> CGFloat? { Platform.isMac ? nil : touch }
+
+    /// Room for every column. An iPad in portrait with the inspector beside the table has room for
+    /// five readable ones: why each slot is there gives way to the inspector, which explains the
+    /// one selected.
+    private var allColumns: Bool { Platform.isMac || tableWidth == 0 || tableWidth >= 900 }
 
     private var header: some View {
         let weeks = ProgramLayout.calendar(

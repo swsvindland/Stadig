@@ -31,6 +31,8 @@ struct HistoryTable: View {
     @State private var query = ""
     @State private var rows: [HistoryRow] = []
     @State private var inspecting = true
+    /// The table's width, for which columns fit (`allColumns`); 0 until it's laid out.
+    @State private var tableWidth: CGFloat = 0
     /// Rows waiting on "Delete?": a key press or several at once is easy to make by accident.
     @State private var confirming: [HistoryRow] = []
 
@@ -46,22 +48,31 @@ struct HistoryTable: View {
                 Text(row.date, format: .dateTime.day().month(.abbreviated).year().hour().minute())
                     .monospacedDigit()
             }
-            .width(min: 150, ideal: 190)
+            .width(min: width(150, 200), ideal: 190)
             TableColumn("Name", value: \.name) { row in
                 Label(row.name, systemImage: symbol(row)).labelStyle(.titleAndIcon)
             }
-            .width(min: 140, ideal: 220)
+            .width(min: width(140, 130), ideal: 220)
             TableColumn("Minutes", value: \.minutes) { row in Text("\(row.minutes)").monospacedDigit() }
-                .width(min: 54, ideal: 70)
-            TableColumn("Work sets", value: \.workSets) { row in
-                Text(row.isSession ? "\(row.workSets)" : "—").monospacedDigit()
+                .width(min: 54, ideal: 70, max: cap(80))
+            if allColumns {
+                TableColumn("Work sets", value: \.workSets) { row in
+                    Text(row.isSession ? "\(row.workSets)" : "—").monospacedDigit()
+                }
+                .width(min: 64, ideal: 80, max: cap(96))
             }
-            .width(min: 64, ideal: 80)
             TableColumn("Top set or effort", value: \.topSetE1RM) { row in
                 Text(topSet(row)).lineLimit(1).help(topSet(row))
             }
             .width(min: 140, ideal: 240)
-            TableColumn("Recorded on", value: \.source).width(min: 110, ideal: 130)
+            if allColumns {
+                TableColumn("Recorded on", value: \.source).width(min: 110, ideal: 130)
+            }
+        }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            tableWidth = $0
         }
         .contextMenu(forSelectionType: HistoryRow.ID.self) { ids in
             if !ids.isEmpty {
@@ -128,6 +139,19 @@ struct HistoryTable: View {
         }
         .accessibilityIdentifier("history.table")
     }
+
+    /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
+    /// for text at 17.
+    private func width(_ mac: CGFloat, _ touch: CGFloat) -> CGFloat { Platform.isMac ? mac : touch }
+
+    /// The most a number's column takes on iPad and Vision Pro, whose tables share the room out
+    /// evenly rather than by ideal width: what's left goes to the date, the name and the top set.
+    private func cap(_ touch: CGFloat) -> CGFloat? { Platform.isMac ? nil : touch }
+
+    /// Room for every column. An iPad in portrait with the inspector beside the table has room for
+    /// four readable ones, not six that run off the screen: work sets (the inspector lists a
+    /// selected session's sets) and where it was recorded give way.
+    private var allColumns: Bool { Platform.isMac || tableWidth == 0 || tableWidth >= 880 }
 
     /// A single row from the context menu goes at once, as a swipe does on the phone; the Delete key
     /// and several rows at once ask first.
