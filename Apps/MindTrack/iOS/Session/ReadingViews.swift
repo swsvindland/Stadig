@@ -38,7 +38,8 @@ struct PickBookView: View {
         .sheet(isPresented: $addingOwn) {
             BookFinder { book in model.act { $0.addBook(book, now: Date()) } }
         }
-        .sessionKeys(SessionKeys.bindings(step: .pickBook(options), feedback: nil)) { key in
+        // Not while the finder is up over it: a presented sheet still hears these on iPad.
+        .sessionKeys(addingOwn ? [] : SessionKeys.bindings(step: .pickBook(options), feedback: nil)) { key in
             guard case .choose(let index) = key, options.indices.contains(index) else { return }
             model.act { $0.pickBook(options[index], now: Date()) }
         }

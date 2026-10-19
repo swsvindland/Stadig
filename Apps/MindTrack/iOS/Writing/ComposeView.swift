@@ -91,7 +91,11 @@ private struct ComposeEditor: View {
     var wide: Bool { sizeClass == .regular && !pencil }
     var sideBySide: Bool { wide && SessionLayout.sideBySide(task) }
     var canHandIn: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !reading }
-    var keys: [SessionKeyBinding] { SessionKeys.bindings(step: .compose(task), feedback: nil, typing: writing, canHandIn: canHandIn) }
+    var keys: [SessionKeyBinding] {
+        // Not while a picker or the scanner is up over the editor: a presented sheet still hears these on iPad.
+        guard !choosingPhoto, !importingFile, scanning == nil else { return [] }
+        return SessionKeys.bindings(step: .compose(task), feedback: nil, typing: writing, canHandIn: canHandIn)
+    }
     var handInTitle: String { notesOnly ? "Keep these notes" : "Hand it in" }
 
     /// VisionKit's document camera, on an iPhone or iPad that has one.

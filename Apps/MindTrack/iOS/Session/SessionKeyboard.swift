@@ -38,9 +38,25 @@ extension View {
     /// so it works whether or not anything has focus, stops with its step, and shows in iPad's list
     /// of shortcuts when ⌘ is held.
     func sessionKeys(_ bindings: [SessionKeyBinding], perform: @escaping (SessionKey) -> Void) -> some View {
-        background {
+        modifier(SessionKeysModifier(bindings: bindings, perform: perform))
+    }
+}
+
+extension EnvironmentValues {
+    /// Something is up over the step (the End dialog): on iPad a presented dialog still hears the
+    /// keys of what presented it, so the step's are put away until it's gone.
+    @Entry var sessionKeysPaused = false
+}
+
+private struct SessionKeysModifier: ViewModifier {
+    @Environment(\.sessionKeysPaused) private var paused
+    let bindings: [SessionKeyBinding]
+    let perform: (SessionKey) -> Void
+
+    func body(content: Content) -> some View {
+        content.background {
             ZStack {
-                ForEach(bindings) { binding in
+                ForEach(paused ? [] : bindings) { binding in
                     Button(binding.action.title) { perform(binding.action) }
                         .keyboardShortcut(binding.key.equivalent, modifiers: binding.modifiers.eventModifiers)
                 }

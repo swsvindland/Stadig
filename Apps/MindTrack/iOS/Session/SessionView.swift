@@ -23,6 +23,7 @@ struct SessionView: View {
                     }
                 }
             }
+            .environment(\.sessionKeysPaused, confirmingEnd)
             .animation(.snappy, value: model.stepScreen)
             .animation(.snappy, value: model.run?.feedback == nil)
             .background(.pageBackground)
