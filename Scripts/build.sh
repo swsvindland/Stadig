@@ -64,7 +64,7 @@ test_simulator() {
   case $device in
     iphone) name="Stadig Tests $CHECKOUT" platform=iOS family=iPhone pattern='Pro$' ;;
     ipad) name="Stadig iPad $CHECKOUT" platform=iOS family=iPad pattern='^iPad Pro 13-inch' ;;
-    vision) name="Stadig Vision $CHECKOUT" platform=visionOS family='Apple Vision' pattern='Vision Pro' ;;
+    vision) name="Stadig Vision $CHECKOUT" platform=xrOS family='Apple Vision' pattern='Vision Pro' ;;
     *) print -u2 "Unknown device '$device': choose iphone, ipad or vision"; exit 2 ;;
   esac
   udid=$(xcrun simctl list devices available -j | jq -r --arg n $name '[.devices[][] | select(.name == $n)][0].udid // empty')
