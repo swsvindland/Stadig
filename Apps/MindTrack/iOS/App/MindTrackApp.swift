@@ -41,6 +41,9 @@ struct MindTrackApp: App {
         .defaultSize(width: 1180, height: 800)
         .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unified)
+        #elseif os(visionOS)
+        // Room for the Library's own sidebar beside the iPad's layout, as visionOS's 1280 leaves little.
+        .defaultSize(width: 1440, height: 900)
         #endif
 
         #if os(macOS)

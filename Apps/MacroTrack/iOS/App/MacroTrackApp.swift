@@ -65,6 +65,11 @@ struct MacroTrackApp: App {
             if let model { root(model) }
         }
         .commands { MacroCommands(model: model) }
+        #if os(visionOS)
+        // Room for a section's own sidebar beside the iPad's layout: at visionOS's 1280 the
+        // tables beside their inspectors clip.
+        .defaultSize(width: 1440, height: 900)
+        #endif
         #endif
     }
 
