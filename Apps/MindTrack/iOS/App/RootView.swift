@@ -17,7 +17,7 @@ struct RootView: View {
         @Bindable var model = model
         Group {
             if model.onboarded {
-                TabView(selection: $model.tab) {
+                TabView(selection: selection) {
                     Tab("Today", systemImage: "sun.max", value: AppTab.today) { TodayView() }
                     Tab("Plan", systemImage: "calendar", value: AppTab.plan) { PlanView() }
                     Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) { ProgressTab() }
@@ -38,7 +38,7 @@ struct RootView: View {
         #if os(macOS)
         // The session's own window: opened when one starts (here, from the menu bar or a link), and
         // brought forward if it's behind.
-        .onChange(of: model.run != nil, initial: true) { _, running in
+        .onChange(of: model.sessionOpen, initial: true) { _, running in
             if running { openWindow(id: SessionWindow.id) }
         }
         // Settings is a window of its own on the Mac (⌘,): anything asking for it opens that.
@@ -48,7 +48,7 @@ struct RootView: View {
             openSettings()
         }
         #else
-        .cover(isPresented: Binding(get: { model.run != nil }, set: { if !$0 { model.endSession() } })) {
+        .cover(isPresented: Binding(get: { model.sessionOpen }, set: { if !$0 { model.endSession() } })) {
             SessionView()
             .environment(model)
         }
@@ -65,10 +65,14 @@ struct RootView: View {
         .sheet(isPresented: shelfSheet) {
             NavigationStack { ShelfView() }
         }
-        .onChange(of: model.tab, initial: true) { fitDestination() }
-        .onChange(of: model.showShelf, initial: true) { fitDestination() }
-        .onChange(of: model.addingBook) { fitDestination() }
-        .onChange(of: sizeClass) { fitDestination() }
+        // In a wide window the shelf is in the sidebar: a request for it (an action on Today, Add a
+        // Book…) goes there. A narrow window changes nothing in the model, so two windows of
+        // different widths never undo each other.
+        .onChange(of: model.showShelf, initial: true) { openShelfInSidebar() }
+        .onChange(of: model.addingBook) { openShelfInSidebar() }
+        .onChange(of: sizeClass) { openShelfInSidebar() }
+        // Another app or Shortcuts opening a link: this window handles it rather than a new one.
+        .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         #if os(macOS)
         .frame(minWidth: 760, minHeight: 540)
         #endif
@@ -78,31 +82,27 @@ struct RootView: View {
     /// has no room for the destinations past its three.
     var wide: Bool { sizeClass != .compact && !Platform.isPhone }
 
-    /// The shelf opens as a sheet over the tabs on an iPhone; in a wide window it's in the sidebar.
-    var shelfSheet: Binding<Bool> {
-        Binding(get: { model.showShelf && !wide }, set: { model.showShelf = $0 })
+    /// The tab shown: the destination itself in a wide window, or in a narrow one the tab that
+    /// reaches it (an iPhone, an iPad in a narrow split).
+    var selection: Binding<AppTab> {
+        Binding(get: { wide ? model.tab : model.tab.tabBarFallback }, set: { model.tab = $0 })
     }
 
-    /// Puts what was asked for where this width keeps it: the shelf's sheet becomes its sidebar
-    /// destination in a wide window, and a sidebar destination falls back to the tab that reaches it
-    /// when the window narrows (an iPad in Split View, say) or on an iPhone.
-    func fitDestination() {
-        if wide {
-            if model.showShelf || model.addingBook {
+    /// The shelf as a sheet over the tabs, in a narrow window: asked for, or chosen as a destination.
+    var shelfSheet: Binding<Bool> {
+        Binding(
+            get: { !wide && (model.showShelf || model.addingBook || model.tab == .shelf) },
+            set: { shown in
+                guard !shown else { return }
                 model.showShelf = false
-                model.tab = .shelf
-            }
-        } else {
-            if model.addingBook { model.showShelf = true }
-            guard !model.tab.inTabBar else { return }
-            switch model.tab {
-            case .shelf:
-                model.tab = .today
-                model.showShelf = true
-            case .writing: model.tab = .progress
-            case .courses: model.tab = .plan
-            case .today, .plan, .progress: break
-            }
-        }
+                model.addingBook = false
+                if model.tab == .shelf { model.tab = .today }
+            })
+    }
+
+    func openShelfInSidebar() {
+        guard wide, model.showShelf || model.addingBook else { return }
+        model.showShelf = false
+        model.tab = .shelf
     }
 }

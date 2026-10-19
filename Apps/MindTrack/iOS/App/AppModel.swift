@@ -16,6 +16,17 @@ enum AppTab: String, Hashable, CaseIterable {
 
     /// In the iPhone's tab bar as well as the sidebar.
     var inTabBar: Bool { self == .today || self == .plan || self == .progress }
+
+    /// The tab that reaches a sidebar destination where there's no sidebar: the shelf from Today,
+    /// your writing from Progress, the topic map from Plan.
+    var tabBarFallback: AppTab {
+        switch self {
+        case .shelf: .today
+        case .writing: .progress
+        case .courses: .plan
+        case .today, .plan, .progress: self
+        }
+    }
 }
 
 /// Which session and which of its steps a screen shows.
@@ -73,7 +84,12 @@ final class AppModel {
     // Presentation.
     var tab: AppTab = .today
     /// The session on screen, if one is running.
-    var run: StudyRun?
+    var run: StudyRun? {
+        didSet { if (run != nil) != sessionOpen { sessionOpen = run != nil } }
+    }
+    /// Whether a session is running, for the screens and menus that care only about that: reading
+    /// `run` itself would redraw them every time the session clock ticks.
+    private(set) var sessionOpen = false
     var showSettings = false
     var showPaywall = false
     /// The language an episode (or conversation) is being logged for.

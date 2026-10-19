@@ -29,18 +29,20 @@ struct LibraryTests {
             book("Dune", author: "Frank Herbert", status: .reading),
             book("Ulysses", status: .abandoned, finished: today.adding(days: -9)),
             book("Middlemarch", status: .readBefore),
+            book("Anna Karenina", status: .readBefore),
+            book("An older record", status: .finished),
             book("Kiki's Delivery Service", status: .reading, language: .japanese),
         ]
-        let shelf = ShelfSections(books: books)
+        let shelf = ShelfSections(books: books, today: today)
         #expect(shelf.current?.title == "Dune", "a graded reader in Japanese lives with Japanese")
-        #expect(shelf.finished.map(\.title) == ["Emma", "Persuasion"])
+        #expect(shelf.finished.map(\.title) == ["An older record", "Emma", "Persuasion"], "no date counts as today")
         #expect(shelf.setAside.map(\.title) == ["Ulysses"])
-        #expect(shelf.readBefore.map(\.title) == ["Middlemarch"])
+        #expect(shelf.readBefore.map(\.title) == ["Middlemarch", "Anna Karenina"], "in the order they were entered")
 
-        let herbert = ShelfSections(books: books, query: "herbert")
+        let herbert = ShelfSections(books: books, query: "herbert", today: today)
         #expect(herbert.current?.title == "Dune")
         #expect(herbert.finished.isEmpty && herbert.setAside.isEmpty && herbert.readBefore.isEmpty)
-        #expect(ShelfSections(books: books, query: "nothing like it").isEmpty)
+        #expect(ShelfSections(books: books, query: "nothing like it", today: today).isEmpty)
     }
 
     @Test func writingIsNewestFirstAndSearchable() {

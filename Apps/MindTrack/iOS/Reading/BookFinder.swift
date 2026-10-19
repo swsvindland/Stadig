@@ -223,13 +223,16 @@ struct BookFinder: View {
 
     func readCover(_ data: Data) { readCover { await CoverReader.read(data, ai: model.ai) } }
 
-    /// A picture file chosen in the file importer.
+    /// A picture file chosen in the file importer, read off the main actor.
     func readCover(_ url: URL) {
-        do {
-            readCover(try ImageImport.data(at: url))
-        } catch {
-            appLog.error("Couldn't open the cover file: \(error.localizedDescription)")
-            message = "That file couldn't be opened. Try another, or search by title."
+        let ai = model.ai
+        readCover {
+            do {
+                return await CoverReader.read(try await ImageImport.data(at: url), ai: ai)
+            } catch {
+                appLog.error("Couldn't open the cover file: \(error.localizedDescription)")
+                return nil
+            }
         }
     }
 

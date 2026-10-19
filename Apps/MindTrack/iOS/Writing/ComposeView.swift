@@ -182,7 +182,8 @@ private struct ComposeEditor: View {
             case .success(let urls):
                 let target = photoTarget
                 read(into: target) {
-                    let files = try urls.map(ImageImport.data(at:))
+                    var files: [Data] = []
+                    for url in urls { files.append(try await ImageImport.data(at: url)) }
                     return try await Self.text(in: files, handwriting: target == .writing)
                 }
             case .failure(let error):
@@ -287,7 +288,7 @@ private struct ComposeEditor: View {
                         Label("Use a page of \(book.title) instead", systemImage: "book")
                     }
                     .font(.subheadline)
-                    .fixedSize()
+                    .macFixedSize()
                     .accessibilityIdentifier("compose.ownPage")
                 }
             }
@@ -390,7 +391,7 @@ private struct ComposeEditor: View {
         } label: {
             Label("Written on paper", systemImage: "doc.text.viewfinder").font(.subheadline)
         }
-        .fixedSize()
+        .macFixedSize()
         .help("Bring in a page you wrote by hand: it's read into text on this \(Platform.deviceName) for you to check.")
         .accessibilityIdentifier("compose.paper")
     }
@@ -453,12 +454,22 @@ private struct ComposeEditor: View {
         importingFile = true
     }
 
-    /// The text on pages brought in as files' bytes (pictures, or scans saved as PDFs), in order.
+    /// The text on pages brought in as files' bytes (pictures, or scans saved as PDFs), in order:
+    /// each page decoded and read before the next, so a long scan never sits in memory whole.
     static func text(in files: [Data], handwriting: Bool) async throws -> String {
-        var pages: [CGImage] = []
-        for file in files { pages += await ImageImport.pages(file) }
-        guard !pages.isEmpty else { throw TextRecognizer.RecognitionError.unreadableImage }
-        return try await TextRecognizer.read(pages, handwriting: handwriting)
+        var texts: [String] = []
+        var opened = false
+        for file in files {
+            let count = await ImageImport.pageCount(file)
+            for index in 0..<count {
+                guard let page = await ImageImport.page(file, at: index) else { continue }
+                opened = true
+                let text = try await TextRecognizer.read([page], handwriting: handwriting)
+                if !text.isEmpty { texts.append(text) }
+            }
+        }
+        guard opened else { throw TextRecognizer.RecognitionError.unreadableImage }
+        return texts.joined(separator: "\n\n")
     }
 
     /// Reads a page into text: handwriting into the piece (for checking before it's handed in),

@@ -205,10 +205,6 @@ struct LifeSettings: View {
                 .rowButton(tinted: false)
                 // The id too: two periods of one kind (an illness now, another booked) are two rows.
                 .accessibilityIdentifier("settings.lifeMode.\(period.kind.identifier).\(period.id)")
-                .contextMenu {
-                    Button("Edit…", systemImage: "pencil") { editingLifeMode = period }
-                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(lifeMode: period.id) }
-                }
             }
             // No end yet: the editor offers the one every app's editor does (a week, or open for an
             // illness) and saves what it shows.

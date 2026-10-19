@@ -13,7 +13,7 @@ struct ShelfView: View {
     @State private var settingAside: Book?
 
     var body: some View {
-        let shelf = ShelfSections(books: model.books)
+        let shelf = ShelfSections(books: model.books, today: model.today)
         let reading = model.analysis?.reading
         List {
             if let reading {
@@ -84,7 +84,7 @@ struct ShelfView: View {
         .navigationTitle("Your shelf")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("shelf.done") } }
         .modifier(BookSheets(editing: $editing, finishing: $finishing, settingAside: $settingAside))
-        .modifier(AddBookSheet(isPresented: Binding(get: { model.addingBook && model.showShelf }, set: { model.addingBook = $0 })))
+        .modifier(AddBookSheet(isPresented: Binding(get: { model.addingBook }, set: { model.addingBook = $0 })))
     }
 }
 

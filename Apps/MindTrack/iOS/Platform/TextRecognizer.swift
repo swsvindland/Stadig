@@ -20,18 +20,7 @@ enum TextRecognizer {
         return out.joined(separator: "\n\n")
     }
 
-    /// The text in a photo or scan as a file's bytes (a photo picked, a file imported, an image
-    /// dropped on the window, a picture from Continuity Camera): decoded upright and no bigger than
-    /// recognition needs, off the main actor.
-    static func read(_ data: Data, languages: [Locale.Language] = english, handwriting: Bool = true) async throws -> String {
-        guard let image = await page(from: data) else { throw RecognitionError.unreadableImage }
-        return try await read(image, orientation: .up, languages: languages, handwriting: handwriting)
-    }
-
-    @concurrent nonisolated private static func page(from data: Data) async -> CGImage? {
-        ImageData.downsampled(data, maxPixels: 3000)
-    }
-
+    /// A page brought in that isn't a picture or a PDF that can be drawn.
     enum RecognitionError: LocalizedError {
         case unreadableImage
         var errorDescription: String? { "The picture couldn't be opened." }

@@ -36,6 +36,7 @@ struct WritingDestination: View {
                                     handwritten: entry.draft.handwritten
                                 )
                                 .tag(WritingSelection.draft(entry.key))
+                                .accessibilityIdentifier("writingList.draft")
                             }
                         } header: {
                             Text("In progress")
@@ -59,6 +60,7 @@ struct WritingDestination: View {
                                     handwritten: false, color: Domain.reading.color
                                 )
                                 .tag(WritingSelection.reflection(reflection.id))
+                                .accessibilityIdentifier("writingList.reflection")
                             }
                         }
                     }
@@ -85,7 +87,7 @@ struct WritingDestination: View {
                 if model.settings?.has(.writing) == true {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Write Now", systemImage: "square.and.pencil") { model.startSession([.writing]) }
-                            .disabled(model.run != nil)
+                            .disabled(model.sessionOpen)
                             .help("Start a writing session")
                             .accessibilityIdentifier("writingList.writeNow")
                     }
@@ -94,7 +96,7 @@ struct WritingDestination: View {
             .background(.pageBackground)
         }
         // Again after a session, which may have handed one in or left one.
-        .task(id: model.run == nil) { drafts = await model.drafts.all() }
+        .task(id: model.sessionOpen) { drafts = await model.drafts.all() }
         .onChange(of: query, initial: true) { refilter() }
         .onChange(of: model.pieces) { refilter() }
         .onChange(of: model.reflections) { refilter() }

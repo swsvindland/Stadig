@@ -51,7 +51,7 @@ struct SessionView: View {
             }
         }
         // Study ▸ End Session… in the menu bar asks the same way the End button does.
-        .onChange(of: model.endRequested) { _, requested in
+        .onChange(of: model.endRequested, initial: true) { _, requested in
             guard requested else { return }
             model.endRequested = false
             end()
@@ -100,9 +100,9 @@ private struct SessionHeader: View {
                 Text("Part \(run.partIndex + 1) of \(run.planParts.count)").font(.caption2).foregroundStyle(.secondary)
                     .accessibilityIdentifier("session.part")
             }
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, 10)
+            // The Mac's toolbar puts it in a glass capsule that clips it without its own size.
+            .macFixedSize()
+            .padding(.horizontal, Platform.isMac ? 10 : 0)
         }
     }
 }

@@ -19,26 +19,24 @@ public enum LibrarySearch {
     }
 }
 
-/// The English shelf by where each book stands: the one on the go, finished (newest first), set
-/// aside, and read in the year before Mind Track. Graded readers in other languages live with
-/// their language.
+/// The English shelf by where each book stands: the one on the go, finished (newest first; a book
+/// with no date counts as today's), set aside the same way, and read in the year before Mind Track
+/// (in the order they were entered). Graded readers in other languages live with their language.
 public struct ShelfSections: Equatable, Sendable {
     public var current: Book?
     public var finished: [Book]
     public var setAside: [Book]
     public var readBefore: [Book]
 
-    public init(books: [Book], query: String = "") {
+    public init(books: [Book], query: String = "", today: Day) {
         let shelf = books.filter { $0.language == nil && LibrarySearch.matches(query, $0.title, $0.author) }
-        // Days as ordinals, with none (an older record) sorting first.
-        func ordinal(_ day: Day?) -> Int { day?.ordinal ?? .min }
-        current = shelf.filter { $0.status == .reading }.max { (ordinal($0.started), $0.updatedAt) < (ordinal($1.started), $1.updatedAt) }
+        current = shelf.first { $0.status == .reading }
         func newestFirst(_ status: BookStatus) -> [Book] {
-            shelf.filter { $0.status == status }.sorted { (ordinal($0.finished), $1.title) > (ordinal($1.finished), $0.title) }
+            shelf.filter { $0.status == status }.sorted { ($0.finished ?? today, $1.title) > ($1.finished ?? today, $0.title) }
         }
         finished = newestFirst(.finished)
         setAside = newestFirst(.abandoned)
-        readBefore = shelf.filter { $0.status == .readBefore }.sorted { $0.title < $1.title }
+        readBefore = shelf.filter { $0.status == .readBefore }
     }
 
     public var isEmpty: Bool { current == nil && finished.isEmpty && setAside.isEmpty && readBefore.isEmpty }

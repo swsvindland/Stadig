@@ -75,6 +75,9 @@ enum DeepLink {
             if model.run == nil { model.startToday() }
             return
         }
+        // A session covers the screen on iPhone, iPad and Vision Pro: a tab changed behind it would
+        // open unseen. The Mac's main window is beside the session's.
+        guard model.run == nil || Platform.isMac else { return }
         model.tab = url.host().flatMap(AppTab.init(rawValue:)) ?? .today
     }
 }

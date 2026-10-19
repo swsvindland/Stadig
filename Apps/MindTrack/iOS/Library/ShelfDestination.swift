@@ -18,10 +18,12 @@ struct ShelfDestination: View {
     @State private var editing: Book?
     @State private var finishing: Book?
     @State private var settingAside: Book?
+    /// What the list shows, worked out when the books, the tests or the search change rather than
+    /// each time a row is selected.
+    @State private var shelf = ShelfSections(books: [], today: .today)
+    @State private var suggestions: [LadderBook] = []
 
     var body: some View {
-        let shelf = ShelfSections(books: model.books, query: query)
-        let suggestions = query.isEmpty ? Shelf.suggestions(model) : []
         let reading = model.analysis?.reading
         NavigationStack {
             HStack(spacing: 0) {
@@ -74,9 +76,18 @@ struct ShelfDestination: View {
         }
         .modifier(BookSheets(editing: $editing, finishing: $finishing, settingAside: $settingAside))
         .modifier(AddBookSheet(isPresented: Binding(get: { model.addingBook && model.tab == .shelf }, set: { model.addingBook = $0 })))
+        .onChange(of: model.books, initial: true) { refresh() }
+        .onChange(of: model.tests) { refresh() }
+        .onChange(of: model.today) { refresh() }
+        .onChange(of: query) { refresh() }
         .onAppear {
-            if selection == nil, let current = ShelfSections(books: model.books).current { selection = .book(current.id) }
+            if selection == nil, let current = ShelfSections(books: model.books, today: model.today).current { selection = .book(current.id) }
         }
+    }
+
+    func refresh() {
+        shelf = ShelfSections(books: model.books, query: query, today: model.today)
+        suggestions = query.isEmpty ? Shelf.suggestions(model) : []
     }
 
     @ViewBuilder func section(_ title: String, _ books: [Book], level: Double?) -> some View {
@@ -86,6 +97,7 @@ struct ShelfDestination: View {
                     FinishedRow(book: book, level: level)
                         .tag(ShelfSelection.book(book.id))
                         .contextMenu { actions(for: book) }
+                        .accessibilityIdentifier("shelfList.book")
                 }
             }
         }
@@ -105,7 +117,7 @@ struct ShelfDestination: View {
     func start(_ book: LadderBook) {
         model.start(book: book)
         // The book started is the one on the go now: select it.
-        if let current = ShelfSections(books: model.books).current { selection = .book(current.id) }
+        if let current = ShelfSections(books: model.books, today: model.today).current { selection = .book(current.id) }
     }
 
     @ViewBuilder func detail(shelf: ShelfSections, suggestions: [LadderBook]) -> some View {

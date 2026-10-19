@@ -56,6 +56,7 @@ private struct LanguageWords: View {
     let language: Language
     @State private var rows: [CourseWord] = []
     @State private var shown: [CourseWord] = []
+    @State private var counts: [CourseWord.State: Int] = [:]
     @State private var loaded = false
     @State private var sortOrder = [KeyPathComparator(\CourseWord.rank)]
     @State private var query = ""
@@ -118,6 +119,7 @@ private struct LanguageWords: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Details", systemImage: "info.circle") { inspecting.toggle() }
                     .help("Show the selected word's details")
+                    .accessibilityIdentifier("courses.details")
             }
         }
         .detailsInspector(isPresented: $inspecting) {
@@ -141,6 +143,7 @@ private struct LanguageWords: View {
             let cards = model.state?.cards ?? [:]
             guard let deck = model.catalogs.deck(language) else { return }
             rows = await Self.rows(language, cards: cards, deck: deck, today: model.today, now: model.now())
+            counts = CourseWord.counts(rows)
             refilter()
             loaded = true
         }
@@ -155,8 +158,7 @@ private struct LanguageWords: View {
 
     /// Counts by state, each a filter: click Due to see what's due.
     var summary: some View {
-        let counts = CourseWord.counts(rows)
-        return HStack(spacing: 10) {
+        HStack(spacing: 10) {
             Text("\(rows.count.formatted()) words").font(.headline)
             Spacer()
             ForEach(CourseWord.State.allCases, id: \.self) { state in

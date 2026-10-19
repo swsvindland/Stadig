@@ -13,12 +13,20 @@ struct TodayView: View {
             ScrollView {
                 if let analysis = model.analysis {
                     if sizeClass == .regular {
-                        // The session and what to do beside what's been learned and the two stats.
-                        HStack(alignment: .top, spacing: 18) {
-                            VStack(alignment: .leading, spacing: 14) { main(analysis) }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            VStack(alignment: .leading, spacing: 14) { side(analysis) }
-                                .frame(width: 380)
+                        // The session and what to do beside what's been learned and the two stats,
+                        // when there's room for both; one column in a narrow window (the Mac's at its
+                        // smallest beside the sidebar, an iPad in a two-thirds split).
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .top, spacing: 18) {
+                                VStack(alignment: .leading, spacing: 14) { main(analysis) }
+                                    .frame(minWidth: 420, idealWidth: 480, maxWidth: .infinity, alignment: .leading)
+                                VStack(alignment: .leading, spacing: 14) { side(analysis) }
+                                    .frame(width: 340)
+                            }
+                            VStack(alignment: .leading, spacing: 14) {
+                                main(analysis)
+                                side(analysis)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
@@ -50,7 +58,7 @@ struct TodayView: View {
 
     @ViewBuilder func main(_ analysis: MindAnalysis) -> some View {
         Pill(text: analysis.phase.label, symbol: phaseSymbol(analysis.phase), color: analysis.phase.isReview ? .teal : .accentColor)
-        if Platform.isMac, model.run != nil {
+        if Platform.isMac, model.sessionOpen {
             OpenSessionCard()
         } else if case .paused(let kind) = analysis.phase {
             PausedCard(kind: kind)

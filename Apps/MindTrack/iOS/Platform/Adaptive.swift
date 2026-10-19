@@ -206,6 +206,16 @@ extension View {
         #endif
     }
 
+    /// Its own size on the Mac, where a toolbar's glass or a pull-down menu would otherwise clip or
+    /// stretch it; elsewhere it lays out as it always has.
+    func macFixedSize() -> some View {
+        #if os(macOS)
+        return fixedSize()
+        #else
+        return self
+        #endif
+    }
+
     /// A button that's a whole row of a list. iPhone and iPad draw it as the row; the Mac would draw
     /// a push button inside the row, so there it's a plain row, in the accent colour when it's an
     /// action rather than an item.
@@ -279,7 +289,7 @@ extension Color {
     /// window exactly, so a card would vanish).
     static var secondaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor.white.withAlphaComponent(0.07) : .controlBackgroundColor })
+        return Color(nsColor: .dynamic(dark: NSColor.white.withAlphaComponent(0.07), light: .controlBackgroundColor))
         #elseif os(visionOS)
         return Color.white.opacity(0.08)
         #else
@@ -290,7 +300,7 @@ extension Color {
     /// Something set into a card.
     static var tertiaryGroupedBackground: Color {
         #if os(macOS)
-        return Color(nsColor: NSColor(name: nil) { $0.isDark ? NSColor.white.withAlphaComponent(0.06) : NSColor.black.withAlphaComponent(0.04) })
+        return Color(nsColor: .dynamic(dark: NSColor.white.withAlphaComponent(0.06), light: NSColor.black.withAlphaComponent(0.04)))
         #elseif os(visionOS)
         return Color.white.opacity(0.05)
         #else
@@ -300,8 +310,14 @@ extension Color {
 }
 
 #if os(macOS)
-extension NSAppearance {
-    var isDark: Bool { bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
+extension NSColor {
+    /// One colour for dark appearances and another for light. AppKit may resolve it on any thread,
+    /// so it's made outside the main actor and captures only what's sendable.
+    nonisolated static func dynamic(dark: NSColor, light: NSColor) -> NSColor {
+        NSColor(name: nil) { @Sendable appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        }
+    }
 }
 #endif
 

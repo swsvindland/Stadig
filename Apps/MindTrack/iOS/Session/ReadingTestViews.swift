@@ -5,6 +5,7 @@ import SwiftUI
 /// The time it took is kept quietly; there's no clock on screen to hurry anyone.
 struct PassageView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let passage: Passage
     @State private var shown = Date()
 
@@ -24,7 +25,7 @@ struct PassageView: View {
                     Text(credit).font(.footnote).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 28)
+                .padding(.vertical, sizeClass == .regular ? 28 : 20)
                 .readableWidth(Platform.isMac ? 620 : 640)
             }
             BottomBar {
