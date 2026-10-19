@@ -98,7 +98,7 @@ final class HealthBackfill {
         let items = Self.items(entries: entries, water: water, doses: doses, weighIns: weighIns, since: since, setUp: settings?.onboardedAt)
         let pending = items.filter { item in ledger[item.id].map { !Self.isCurrent($0.version, item.version) } ?? true }
         let gone = Self.gone(
-            ledger: ledger, items: items, since: since, live: { ids(of: $0, deleted: false) }, deleted: { ids(of: $0, deleted: true) })
+            ledger: ledger, items: items, since: since, unmarked: { unmarked(of: $0) }, deleted: { deletions(of: $0) })
         defer { keep(since: since) }
         guard !pending.isEmpty || !gone.isEmpty else { return }
 
@@ -139,19 +139,22 @@ final class HealthBackfill {
         appLog.info("Health: wrote \(plan.write.count) things logged on other devices")
     }
 
-    /// A kind's records in the store, live or deleted. A kind's deletions are read from its whole
-    /// history every time, so they're asked for only when something handled has gone missing.
-    private func ids(of source: HealthCopy.Source, deleted: Bool) -> Set<UUID> {
-        switch source {
-        case .entry: ids(FoodEntry.self, deleted: deleted)
-        case .water: ids(WaterLog.self, deleted: deleted)
-        case .dose: ids(SupplementLog.self, deleted: deleted)
-        case .weighIn: ids(WeighIn.self, deleted: deleted)
-        }
+    /// The records of a kind still in the store whose Health copy should go anyway: a dose marked
+    /// not taken. Nothing else qualifies: an entry dated back out of the window, say, keeps its copy.
+    private func unmarked(of source: HealthCopy.Source) -> Set<UUID> {
+        guard source == .dose else { return [] }
+        return Set(store.all(SupplementLog.self).filter { !$0.taken }.map(\.id))
     }
 
-    private func ids<T: StoredRecord>(_ type: T.Type, deleted: Bool) -> Set<UUID> {
-        deleted ? store.deletedIDs(type) : Set(store.all(type).map(\.id))
+    /// A kind's deletions, read from its whole history, so they're asked for only when something
+    /// handled has gone missing.
+    private func deletions(of source: HealthCopy.Source) -> Set<UUID> {
+        switch source {
+        case .entry: store.deletedIDs(FoodEntry.self)
+        case .water: store.deletedIDs(WaterLog.self)
+        case .dose: store.deletedIDs(SupplementLog.self)
+        case .weighIn: store.deletedIDs(WeighIn.self)
+        }
     }
 
     /// Drops what's left the window, and keeps the ledger on the device when it changed.
@@ -231,24 +234,25 @@ final class HealthBackfill {
     }
 
     /// What the ledger handled, within the window, whose Health copy should go: still in the store
-    /// but no longer something for Health (a dose unmarked), or deleted on some device (the store
-    /// holds the deletion). A record that's only missing without a deletion, or that this app
-    /// version can't read, keeps its copy.
+    /// but no longer something for Health (`unmarked`: a dose marked not taken), or deleted on some
+    /// device (`deleted`: the store holds the deletion). Anything else no longer wanted keeps its
+    /// copy: a record that's only missing, one this app version can't read, or one dated back out
+    /// of the window.
     ///
-    /// `live` and `deleted` give a kind's records in the store. They're asked only about the kinds
-    /// of what the ledger handled and isn't wanted any more, and `deleted` only about those that
-    /// aren't live either, so a pass with nothing gone reads no history.
+    /// `unmarked` and `deleted` are asked only about the kinds of what the ledger handled and isn't
+    /// wanted any more, and `deleted` only about those not unmarked, so a pass with nothing gone
+    /// reads no history.
     static func gone(
-        ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], since: Day, live: (HealthCopy.Source) -> Set<UUID>,
+        ledger: [UUID: HealthLedgerEntry], items: [HealthCopy], since: Day, unmarked: (HealthCopy.Source) -> Set<UUID>,
         deleted: (HealthCopy.Source) -> Set<UUID>
     ) -> [HealthGone] {
         let wanted = Set(items.map(\.id))
         let unwanted = ledger.filter { id, entry in entry.day >= since && !wanted.contains(id) }
         guard !unwanted.isEmpty else { return [] }
-        let present = Set(unwanted.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(live($1)) }
-        let missing = unwanted.filter { !present.contains($0.key) }
-        let deletions = Set(missing.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(deleted($1)) }
-        return unwanted.filter { present.contains($0.key) || deletions.contains($0.key) }
+        let off = Set(unwanted.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(unmarked($1)) }
+        let rest = unwanted.filter { !off.contains($0.key) }
+        let deletions = Set(rest.values.map(\.source)).reduce(into: Set<UUID>()) { $0.formUnion(deleted($1)) }
+        return unwanted.filter { off.contains($0.key) || deletions.contains($0.key) }
             .map { HealthGone(id: $0.key, source: $0.value.source) }
             .sorted { $0.id.uuidString < $1.id.uuidString }
     }

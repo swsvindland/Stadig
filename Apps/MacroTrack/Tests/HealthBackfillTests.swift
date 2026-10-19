@@ -223,28 +223,28 @@ struct HealthBackfillTests {
         let taken = dose(taken: true, hour: 8)
         let items = HealthBackfill.items(entries: [lunch], water: [glass], doses: [taken], weighIns: [], since: since, setUp: nil)
         let ledger = Dictionary(uniqueKeysWithValues: items.map { ($0.id, HealthLedgerEntry($0, written: true)) })
-        var liveAsked: [HealthCopy.Source] = []
+        var unmarkedAsked: [HealthCopy.Source] = []
         var deletedAsked: [HealthCopy.Source] = []
 
         // Everything handled is still wanted: no history is read.
         let none = HealthBackfill.gone(
             ledger: ledger, items: items, since: since,
-            live: { source in
-                liveAsked.append(source)
+            unmarked: { source in
+                unmarkedAsked.append(source)
                 return []
             },
             deleted: { source in
                 deletedAsked.append(source)
                 return []
             })
-        #expect(none.isEmpty && liveAsked.isEmpty && deletedAsked.isEmpty)
+        #expect(none.isEmpty && unmarkedAsked.isEmpty && deletedAsked.isEmpty)
 
         // The dose unmarked (still in the store) and the glass gone: only water's deletions are read.
         let lunchOnly = items.filter { $0.id == lunch.id }
         let gone = HealthBackfill.gone(
             ledger: ledger, items: lunchOnly, since: since,
-            live: { source in
-                liveAsked.append(source)
+            unmarked: { source in
+                unmarkedAsked.append(source)
                 return source == .dose ? [taken.id] : []
             },
             deleted: { source in
@@ -252,11 +252,27 @@ struct HealthBackfillTests {
                 return source == .water ? [glass.id] : []
             })
         #expect(Set(gone.map(\.id)) == [taken.id, glass.id])
-        #expect(Set(liveAsked) == [.dose, .water] && deletedAsked == [.water])
+        #expect(Set(unmarkedAsked) == [.dose, .water] && deletedAsked == [.water])
 
         // The glass only missing, with no deletion: it keeps its copy.
-        let kept = HealthBackfill.gone(ledger: ledger, items: lunchOnly, since: since, live: { $0 == .dose ? [taken.id] : [] }, deleted: { _ in [] })
+        let kept = HealthBackfill.gone(
+            ledger: ledger, items: lunchOnly, since: since, unmarked: { $0 == .dose ? [taken.id] : [] }, deleted: { _ in [] })
         #expect(kept.map(\.id) == [taken.id])
+    }
+
+    @Test("an entry dated back out of the window keeps its copy in Health")
+    func datedBack() async {
+        var lunch = entry("Lunch")
+        store.save(lunch)
+        let backfill = backfill()
+        await backfill.pass(now: now)
+        #expect(health.savedFoods.map(\.id) == [lunch.id])
+        lunch.date = today.adding(days: -45).at(hour: 12, minute: 0)
+        lunch.day = Day(lunch.date)
+        lunch.updatedAt = now
+        store.save(lunch)
+        await backfill.pass(now: now)
+        #expect(health.deleted.isEmpty)
     }
 
     @Test("what's only missing, without a deletion, keeps its copy in Health")
