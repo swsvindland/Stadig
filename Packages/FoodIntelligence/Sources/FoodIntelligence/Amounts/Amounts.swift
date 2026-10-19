@@ -28,10 +28,12 @@ enum Amounts {
     /// No single food in a meal plausibly weighs more than 2 kg.
     static let most = 2000.0
 
-    static func resolve(_ seen: SeenFood, food: Food) -> ResolvedAmount {
+    /// `stated` says the person gave the amount ("2 slices", "a loaf"); otherwise it is the model's.
+    static func resolve(_ seen: SeenFood, food: Food, stated: Bool = false) -> ResolvedAmount {
         let quantity = seen.quantity
         let unit = Measures.unitKey(seen.unit)
         let serving = food.basis == .serving
+        let portions = Measures.portions(of: food)
 
         func done(_ amount: Double, _ counted: CountUnit = .basis, count: Double? = nil, exact: Bool) -> ResolvedAmount {
             let floor = serving ? 0.1 : 1
@@ -43,10 +45,27 @@ enum Amounts {
             return ResolvedAmount(amount: value, unit: counted, count: rounded(shown), exact: exact && abs(capped - amount) < 1e-9)
         }
 
+        // "1 cup, dry, yields" is what a cup of the dry food makes, not a cup of this one.
+        func pick(_ list: [Measures.ParsedPortion]) -> Measures.ParsedPortion? {
+            list.first { mediumOrRegular.matches(food.portions[$0.index].label) } ?? list.first { !yields.matches(food.portions[$0.index].label) }
+                ?? list.first
+        }
+        // A food sold in slices or pieces of a mouthful or more is eaten a few at a time. A guessed
+        // weight of four or more of them is the model sizing up the whole (a loaf for its slices, a
+        // whole cake), so the pieces it counted, at least one, are the nearer guess. The person's
+        // own amount is never second-guessed.
+        func helping(instead grams: Double, pieces: Double) -> ResolvedAmount? {
+            guard !stated, food.basis == .g, let piece = pick(portions.filter { cuts.contains($0.noun) && $0.perUnit >= 20 }),
+                grams >= 4 * pieces * piece.perUnit
+            else { return nil }
+            return done(pieces * piece.perUnit, portionUnit(piece), count: pieces, exact: false)
+        }
+
+        // A weight the model gives as the amount ("450 g" of bread) is as much a guess, and counts one piece.
+        if let grams = Measures.weights[unit], let pieces = helping(instead: quantity * grams, pieces: 1) { return pieces }
         // Grams, cups or kcal the food converts itself.
         if let perUnit = directUnits(food)[unit] { return done(quantity * perUnit, .measure(unit, perUnit: perUnit), count: quantity, exact: true) }
         let measured = Measures.weights[unit] ?? Measures.volumes[unit]
-        let portions = Measures.portions(of: food)
         if serving {
             let first = portions.first { $0.index == 0 }.map(portionUnit)
             guard let measured else {
@@ -74,11 +93,6 @@ enum Amounts {
         if food.basis == .g, let grams = Measures.weights[unit] { return done(quantity * grams, exact: true) }
         if food.basis == .ml, let ml = Measures.volumes[unit] { return done(quantity * ml, exact: true) }
 
-        // "1 cup, dry, yields" is what a cup of the dry food makes, not a cup of this one.
-        func pick(_ list: [Measures.ParsedPortion]) -> Measures.ParsedPortion? {
-            list.first { mediumOrRegular.matches(food.portions[$0.index].label) } ?? list.first { !yields.matches(food.portions[$0.index].label) }
-                ?? list.first
-        }
         let forms = FoodText.forms(unit)
         if let portion = pick(portions.filter({ p in forms.contains { p.noun == FoodText.stem($0) } })) {
             return done(quantity * portion.perUnit, portionUnit(portion), count: quantity, exact: true)
@@ -112,7 +126,10 @@ enum Amounts {
                 }
             }
         }
-        if let grams = seen.grams { return done(quantity >= 3 ? min(grams, quantity * 75) : grams, exact: false) }
+        if let grams = seen.grams {
+            if let pieces = helping(instead: grams, pieces: max(quantity, 1)) { return pieces }
+            return done(quantity >= 3 ? min(grams, quantity * 75) : grams, exact: false)
+        }
         if let first = portions.first { return done(quantity * first.perUnit, portionUnit(first), count: quantity, exact: false) }
         return done(100 * quantity, exact: false)
     }
@@ -175,6 +192,8 @@ enum Amounts {
         return (count * 100).rounded() / 100
     }
 
+    /// The nouns of portions that are a cut of the food, not a measure or a whole one.
+    private static let cuts: Set<String> = ["slice", "piece"]
     private static let mediumOrRegular = Pattern(#"\b(?:medium|regular)\b"#)
     private static let yields = Pattern(#"\byields?\b"#)
 }

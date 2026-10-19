@@ -5,7 +5,7 @@ import Testing
 
 @Suite("Amounts")
 struct AmountTests {
-    func resolve(_ seen: SeenFood, _ food: Food) -> ResolvedAmount { Amounts.resolve(seen, food: food) }
+    func resolve(_ seen: SeenFood, _ food: Food, stated: Bool = false) -> ResolvedAmount { Amounts.resolve(seen, food: food, stated: stated) }
 
     @Test func cataloguePortionsAreCheckedAgainstTheModelsWeight() {
         let egg = food(portions: [("1 cup", 243), ("1 large", 46)])
@@ -44,6 +44,35 @@ struct AmountTests {
         #expect(resolve(seen("almonds", unit: "handful", grams: 30), almonds).amount == 30)
         // Without a portion named for it, a serving is the model's weight.
         #expect(resolve(seen("pasta salad", unit: "serving", grams: 150), food(portions: [("1 large", 300)])).amount == 150)
+    }
+
+    @Test func aGuessedWeightOfManySlicesIsTheSlicesCounted() {
+        // A photo's toast read as "1 loaf, 450 g": the catalog sells the bread by the slice, and
+        // nobody eats a loaf with their eggs.
+        let bread = food("Bread, wheat", kcal: 274, portions: [("1 slice", 29)])
+        let slice = CountUnit.portion(index: 0, label: "slice", perUnit: 29)
+        #expect(resolve(seen("Bread", unit: "loaf", grams: 450), bread) == ResolvedAmount(amount: 29, unit: slice, count: 1, exact: false))
+        #expect(resolve(seen("Bread", unit: "serving", grams: 500), bread) == ResolvedAmount(amount: 29, unit: slice, count: 1, exact: false))
+        #expect(resolve(seen("Bread", quantity: 2, grams: 500), bread) == ResolvedAmount(amount: 58, unit: slice, count: 2, exact: false))
+        // A weight given as the amount is as much a guess.
+        #expect(resolve(seen("Bread", quantity: 500, unit: "g"), bread) == ResolvedAmount(amount: 29, unit: slice, count: 1, exact: false))
+        #expect(resolve(seen("Bread", unit: "lb"), bread).amount == 29)
+        // Less than four slices' weight stands.
+        #expect(resolve(seen("Bread", unit: "serving", grams: 60), bread).amount == 60)
+        #expect(resolve(seen("Bread", quantity: 100, unit: "g"), bread).amount == 100)
+        // The person's own amount is theirs: they said a loaf, or 450 g.
+        #expect(resolve(seen("Bread", unit: "loaf", grams: 450), bread, stated: true).amount == 450)
+        #expect(
+            resolve(seen("Bread", quantity: 450, unit: "g"), bread, stated: true)
+                == ResolvedAmount(amount: 450, unit: .measure("g", perUnit: 1), count: 450, exact: true))
+        // A whole cake sold by the piece is a piece.
+        let cake = food("Cake, chocolate", kcal: 371, portions: [("1 piece", 95)])
+        #expect(resolve(seen("Chocolate cake", unit: "cake", grams: 900), cake).amount == 95)
+        // Sweets of a gram are eaten by the handful, and grapes aren't sold in slices or pieces.
+        let sweets = food("Candies, jellybeans", kcal: 375, portions: [("10 pieces", 11)])
+        #expect(resolve(seen("Jelly beans", unit: "handful", grams: 40), sweets).amount == 40)
+        let grapes = food("Grapes", portions: [("1 cup", 151), ("1 grape", 5)])
+        #expect(resolve(seen("Grapes", unit: "bunch", grams: 300), grapes).amount == 300)
     }
 
     @Test func weightsAndVolumesConvertDirectly() {
