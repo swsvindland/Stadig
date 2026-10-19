@@ -55,6 +55,8 @@ struct MindCommands: Commands {
                         model.startSession(Self.session(of: domain, settings: model.settings))
                         showSession()
                     }
+                    // The Mac's menu bar keeps a submenu open to its items whatever the menu says.
+                    .disabled(!canStart)
                 }
             }
             .disabled(!canStart)

@@ -54,21 +54,26 @@ struct ReaderSheet: View {
                             Text(current.title).font(.headline)
                             Text("\(current.author) · level \(current.tier)").font(.subheadline).foregroundStyle(.secondary)
                         }
-                        Stepper("Page \(page) of \(current.pages)", value: $page, in: 0...current.pages, step: 5)
-                            .accessibilityIdentifier("readers.page")
-                        Button("Save the page") { save(current, page: page) }.disabled(page == current.page)
-                            .accessibilityIdentifier("readers.savePage")
-                        Button("I've finished it") { finishing = true }
-                            .accessibilityIdentifier("readers.finished")
-                        Button("Put it down", role: .destructive) {
-                            var book = current
-                            book.status = .abandoned
-                            book.finished = model.today
-                            model.save(book: book)
+                        Group {
+                            Stepper("Page \(page) of \(current.pages)", value: $page, in: 0...current.pages, step: 5)
+                                .accessibilityIdentifier("readers.page")
+                            Button("Save the page") { save(current, page: page) }.disabled(page == current.page)
+                                .accessibilityIdentifier("readers.savePage")
+                            Button("I've finished it") { finishing = true }
+                                .accessibilityIdentifier("readers.finished")
+                            Button("Put it down", role: .destructive) {
+                                var book = current
+                                book.status = .abandoned
+                                book.finished = model.today
+                                model.save(book: book)
+                            }
+                            .accessibilityIdentifier("readers.putDown")
                         }
-                        .accessibilityIdentifier("readers.putDown")
+                        .disabled(model.booksLocked)
                     } header: {
                         Text("Reading now")
+                    } footer: {
+                        BooksLockedNote()
                     }
                     // Starting another reader from the list below keeps this section on screen.
                     .onChange(of: current.id, initial: true) { page = current.page }
@@ -146,6 +151,7 @@ private struct ReaderRow: View {
                         .foregroundStyle(.secondary)
                 } else {
                     Button("Start reading") { model.start(reader: reader) }.font(.caption.weight(.semibold))
+                        .disabled(model.booksLocked)
                         .accessibilityIdentifier("readers.start.\(reader.id)")
                 }
                 if let free = reader.free { Link("Read it free", destination: free).font(.caption.weight(.semibold)) }

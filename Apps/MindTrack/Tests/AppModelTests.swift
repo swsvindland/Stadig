@@ -247,6 +247,60 @@ struct AppModelTests {
         #expect(model.stepScreen != shown, "the check-in's first step doesn't inherit the session's screen")
     }
 
+    @Test func startingASessionWhileOneIsOpenLeavesItAlone() throws {
+        // On the Mac, Today's actions, Study Anyway and the menu bar stay in reach beside the
+        // session's window: none of them replaces the session that's running.
+        let clock = TestClock()
+        let model = TestApp.onboardedModel([.maths, .writing], clock: clock)
+        model.startToday()
+        Student.answer(model, steps: 6, clock: clock)
+        let run = try #require(model.run)
+        let screen = model.stepScreen
+        let saved = model.store.revision
+
+        model.startSession([.writing])
+        model.startExtraReview(minutes: 10)
+        model.startToday()
+        #expect(model.run?.session.id == run.session.id)
+        #expect(model.run?.stepNumber == run.stepNumber)
+        #expect(model.run?.answered.count == run.answered.count)
+        #expect(model.run?.changedCards == run.changedCards)
+        #expect(model.stepScreen == screen)
+        #expect(model.store.revision == saved, "nothing was saved for a second session")
+        #expect(!model.showPaywall)
+
+        model.endSession()
+        #expect(model.sessions.map(\.id) == [run.session.id])
+    }
+
+    @Test func booksAndRestoresWaitWhileASessionIsOpen() async throws {
+        // The session's reading block saves the book it began with: a change made beside it (the
+        // Mac's shelf, a reader started on Progress) would be written over. So would a restore.
+        let clock = TestClock()
+        let model = TestApp.onboardedModel([.reading], clock: clock)
+        let book = Book(title: "Persuasion", author: "Jane Austen", tier: 6, pages: 250, genres: [.classics], status: .reading)
+        model.save(book: book)
+        model.startToday()
+        #expect(model.sessionOpen && model.booksLocked)
+
+        var finished = try #require(model.books.first)
+        finished.status = .finished
+        finished.finished = model.today
+        model.save(book: finished)
+        model.startReading(Book(title: "Emma", author: "Jane Austen", tier: 6, pages: 470, genres: [.classics], status: .reading))
+        #expect(model.books.map(\.title) == ["Persuasion"])
+        #expect(model.books.first?.status == .reading, "not finished behind the session's back")
+        #expect(model.store.all(Book.self).map(\.status) == [.reading])
+        // Refused before the file is read: any backup would be.
+        let backup = TestApp.folder().appending(path: "Mind Track.mindbackup")
+        await #expect(throws: AppModel.SessionOpenError.self) { try await model.restore(from: backup) }
+
+        model.endSession()
+        #expect(!model.booksLocked)
+        model.save(book: finished)
+        #expect(model.books.first?.status == .finished, "once it's over, the shelf works as before")
+    }
+
     @Test func aBookmarkStaysWithinTheBook() throws {
         let model = TestApp.onboardedModel([.reading])
         let book = Book(title: "Persuasion", author: "Jane Austen", tier: 6, pages: 250, genres: [.classics], status: .reading, page: 240)

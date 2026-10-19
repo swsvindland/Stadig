@@ -313,7 +313,8 @@ struct DataSettings: View {
                     .accessibilityIdentifier("settings.shareBackup")
             }
             Button(Platform.isMac ? "Restore from a Backup…" : "Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
-                .disabled(working != nil)
+                // The session's next answer would save its copies over what came back.
+                .disabled(working != nil || model.sessionOpen)
                 .accessibilityIdentifier("settings.restore")
                 .fileImporter(isPresented: $importing, allowedContentTypes: [BackupExport.type, .json]) { result in
                     switch result {
@@ -337,6 +338,10 @@ struct DataSettings: View {
                     ProgressView()
                     Text(working).foregroundStyle(.secondary)
                 }
+            }
+            if model.sessionOpen {
+                Text("A restore waits until the session ends.").font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.restoreWaits")
             }
             LabeledContent("Sync", value: model.store.syncStatus)
             if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
