@@ -101,21 +101,17 @@ struct FoodsView: View {
                 .defaultVisibility(.hidden)
             }
         }
+        #if os(macOS)
+        // A double-click, or Return, logs it.
         .contextMenu(forSelectionType: FoodListing.ID.self) { ids in
-            if let id = ids.first, let row = shown.first(where: { $0.id == id }) {
-                Button("Log \(row.portion)", systemImage: "plus.circle") { quickLog(row) }
-                Button(model.isFavorite(id) ? "Remove from Favorites" : "Add to Favorites", systemImage: model.isFavorite(id) ? "star.slash" : "star")
-                {
-                    model.toggleFavorite(id)
-                }
-            }
+            rowMenu(ids)
         } primaryAction: { ids in
-            // A double-click (or Return on the Mac) logs it. On iPad a tap selects, and Return logs.
-            guard Platform.isMac, let id = ids.first, let row = shown.first(where: { $0.id == id }) else { return }
+            guard let id = ids.first, let row = shown.first(where: { $0.id == id }) else { return }
             if id == selection { logSelected() } else { quickLog(row) }
         }
-        #if !os(macOS)
-        // The Mac's Return is the primary action; an iPad's keyboard needs telling.
+        #else
+        // A tap selects (a primary action would take the tap instead), and a keyboard's Return logs.
+        .contextMenu(forSelectionType: FoodListing.ID.self) { ids in rowMenu(ids) }
         .onKeyPress(.return) {
             guard selection != nil else { return .ignored }
             logSelected()
@@ -123,6 +119,16 @@ struct FoodsView: View {
         }
         #endif
         .accessibilityIdentifier("foods.table")
+    }
+
+    @ViewBuilder
+    func rowMenu(_ ids: Set<FoodListing.ID>) -> some View {
+        if let id = ids.first, let row = shown.first(where: { $0.id == id }) {
+            Button("Log \(row.portion)", systemImage: "plus.circle") { quickLog(row) }
+            Button(model.isFavorite(id) ? "Remove from Favorites" : "Add to Favorites", systemImage: model.isFavorite(id) ? "star.slash" : "star") {
+                model.toggleFavorite(id)
+            }
+        }
     }
 
     @ViewBuilder

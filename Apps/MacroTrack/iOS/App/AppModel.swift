@@ -15,8 +15,6 @@ let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 enum AppTab: String, Hashable, CaseIterable {
     case today, foods, mealPlan, supplements, plan, progress, history
 
-    /// Only in the sidebar: in a compact width (an iPhone, a narrow iPad window) they're reached
-    /// another way (the logger, the Plan tab, the supplements sheet).
     var title: String {
         switch self {
         case .today: "Today"
@@ -29,6 +27,8 @@ enum AppTab: String, Hashable, CaseIterable {
         }
     }
 
+    /// Only in the sidebar: in a compact width (an iPhone, a narrow iPad window) they're reached
+    /// another way (the logger, the Plan tab, the supplements sheet).
     var isSidebarOnly: Bool {
         switch self {
         case .foods, .mealPlan, .supplements, .history: true

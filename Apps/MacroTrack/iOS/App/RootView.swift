@@ -43,8 +43,7 @@ struct RootView: View {
         .sheet(isPresented: $model.showPaywall) {
             PaywallView().macSheetSize(width: 480, height: 560)
         }
-        .onAppear { model.usesSidebar = wide }
-        .onChange(of: wide) { _, wide in
+        .onChange(of: wide, initial: true) { _, wide in
             model.usesSidebar = wide
             // Narrowed (an iPad window in Split View) on a screen only the sidebar has: the nearest
             // one the tab bar has.
