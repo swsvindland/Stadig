@@ -52,6 +52,21 @@ public enum StudyCalendar {
         return .loading(week: week, of: loadingWeeks)
     }
 
+    /// The last day from `day` on that the phase reads as it does on `day` (its label: this week of a
+    /// block, the review week, a pause), looking up to `horizon` days ahead; nil when it still does
+    /// at the horizon, as a pause with no end set does. A widget drawn days after the app last ran
+    /// keeps the phase it was given until then.
+    public static func lastDay(
+        ofPhaseOn day: Day, start: Day, calendar: SystemCalendar?, lifeModes: [LifeModePeriod], horizon: Int = 60
+    ) -> Day? {
+        let label = phase(on: day, start: start, calendar: calendar, lifeModes: lifeModes).label
+        for offset in 1...max(1, horizon) {
+            let next = day.adding(days: offset)
+            if phase(on: next, start: start, calendar: calendar, lifeModes: lifeModes).label != label { return next.adding(days: -1) }
+        }
+        return nil
+    }
+
     /// The next review week from `day` on (this one, if it's under way), within ten weeks.
     public static func nextReview(from day: Day, start: Day, calendar: SystemCalendar?) -> DayRange? {
         var first: Day?

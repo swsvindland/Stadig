@@ -39,8 +39,9 @@ struct SnapshotProvider: TimelineProvider {
 struct TodayStudyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "today-study", provider: SnapshotProvider()) { entry in
-            TodayStudyView(snapshot: entry.snapshot.reading(on: Day(entry.date)))
-                .widgetURL(URL(string: entry.snapshot.status == .today ? "mindtrack://start" : "mindtrack://today"))
+            let snapshot = entry.snapshot.reading(on: Day(entry.date))
+            TodayStudyView(snapshot: snapshot)
+                .widgetURL(snapshot.link)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Today's Study")
