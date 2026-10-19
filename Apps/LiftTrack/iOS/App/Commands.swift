@@ -12,11 +12,10 @@ struct LiftCommands: Commands {
     #endif
 
     var body: some Commands {
-        #if os(macOS)
         // One main window: its tab and sheets live in the shared model, so a second would mirror the
-        // first. "New" is the session instead, in the Session menu.
+        // first. ⌘N starts today's session instead, in the Session menu.
         CommandGroup(replacing: .newItem) {}
-        #else
+        #if !os(macOS)
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { model?.showSettings = true }
                 .keyboardShortcut(",")
@@ -25,24 +24,29 @@ struct LiftCommands: Commands {
         #endif
         CommandMenu("Session") {
             Button("Start Today's Session") {
-                showMain()
                 model?.startToday()
+                showSession()
             }
             .keyboardShortcut("n")
             .disabled(model?.onboarded != true || model?.canStartToday != true)
-            Button("Resume Session") { model?.showSession = true }
-                .keyboardShortcut("r")
-                .disabled(model?.live == nil || model?.showSession == true)
+            Button("Resume Session") {
+                model?.showSession = true
+                showSession()
+            }
+            .keyboardShortcut("r")
+            .disabled(model?.live == nil || model?.showSession == true)
             Divider()
             Button("Finish Session…") {
                 model?.showSession = true
                 model?.sessionRequest = .finish
+                showSession()
             }
             .keyboardShortcut(.return, modifiers: [.command, .shift])
             .disabled(model?.live == nil)
             Button("Discard Session…") {
                 model?.showSession = true
                 model?.sessionRequest = .discard
+                showSession()
             }
             .disabled(model?.live == nil)
         }
@@ -80,6 +84,13 @@ struct LiftCommands: Commands {
         guard let model, model.onboarded else { return }
         showMain()
         model.tab = tab
+    }
+
+    /// On the Mac, the session's window, whether or not the main window is open to open it.
+    private func showSession() {
+        #if os(macOS)
+        if model?.showSession == true { openWindow(id: SessionWindow.id) }
+        #endif
     }
 
     /// Brings the main window back if it was closed: the sheets and destinations are in it.

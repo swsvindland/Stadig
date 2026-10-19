@@ -48,21 +48,22 @@ struct ProgramView: View {
         return nil
     }
 
-    private var sideBySide: Bool { next != nil && sizeClass.isWide && width >= 1000 }
+    /// Room for the next block as a column beside this block's table.
+    private var sideBySide: Bool { next != nil && sizeClass.isWide && width >= 1100 }
 
     @ViewBuilder
     private func content(current: Mesocycle, block: TrainingBlock, analysis: LiftAnalysis) -> some View {
         Group {
-            if sideBySide, let next {
+            if pane == .next, let next {
+                BlockPane(
+                    mesocycle: next.mesocycle, block: next.mesocycle.block, selection: $selection, title: nextTitle(next), editable: next.planned)
+            } else if sideBySide, let next {
                 HStack(spacing: 0) {
                     BlockPane(mesocycle: current, block: block, selection: $selection, title: nil, editable: true)
                     Divider()
-                    BlockPane(
-                        mesocycle: next.mesocycle, block: next.mesocycle.block, selection: $selection, title: nextTitle(next), editable: next.planned)
+                    NextBlockColumn(mesocycle: next.mesocycle, title: nextTitle(next), planned: next.planned) { pane = .next }
+                        .frame(width: 380)
                 }
-            } else if pane == .next, let next {
-                BlockPane(
-                    mesocycle: next.mesocycle, block: next.mesocycle.block, selection: $selection, title: nextTitle(next), editable: next.planned)
             } else {
                 BlockPane(mesocycle: current, block: block, selection: $selection, title: nil, editable: true)
             }
@@ -80,7 +81,7 @@ struct ProgramView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if next != nil && !sideBySide {
+        if next != nil && (!sideBySide || pane == .next) {
             ToolbarItem(placement: .principal) {
                 Picker("Block", selection: $pane) {
                     Text("This block").tag(Pane.current)
@@ -149,6 +150,45 @@ struct ProgramView: View {
         }
         let decision = Assessment.nextBlock(nutrition: model.nutrition, selfReported: model.settings.selfReportedPhase)
         offered = decision.askPhase ? nil : model.generate(kind: decision.kind, start: model.nextBlockStart, phase: decision.phase)
+    }
+}
+
+/// The next block beside this one: what it is and its days, to compare. Opening it shows it in full,
+/// with its slots to select.
+private struct NextBlockColumn: View {
+    @Environment(AppModel.self) private var model
+    let mesocycle: Mesocycle
+    let title: String
+    let planned: Bool
+    let open: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.tint)
+                Text(mesocycle.block.kind.label).font(.title3.bold())
+                Text(mesocycle.rationale.headline).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Pill(text: mesocycle.split.label, color: .secondary)
+                    Pill(
+                        text: mesocycle.block.deloadRange == nil
+                            ? "\(mesocycle.block.loadingWeeks) weeks" : "\(mesocycle.block.loadingWeeks) weeks + deload",
+                        color: .secondary)
+                }
+                WhyDisclosure(rationale: mesocycle.rationale)
+                ForEach(mesocycle.days) { day in DayCard(day: day, isNext: false) }
+                HStack {
+                    Button("Show in Full", systemImage: "list.bullet.rectangle", action: open)
+                    if !planned && model.nextBlockOffered {
+                        Button("Plan It…", systemImage: "sparkles") { model.sheet = .nextBlock }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+        }
+        .background(.pageBackground)
+        .accessibilityIdentifier("program.nextBlockColumn")
     }
 }
 
