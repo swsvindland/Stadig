@@ -302,14 +302,14 @@ MACRO = {
     "packages": MACRO_PACKAGES,
     "targets": [
         ("MacroTrack", "MacroTrack.app", "com.apple.product-type.application", "wrapper.application", macro_app,
-         ["iOS", "Shared", "Catalogs"], MACRO_PACKAGES),
+         ["iOS", "Shared", "Catalogs", "Records"], MACRO_PACKAGES),
         ("MacroTrackWidgets", "MacroTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
          macro_widgets, ["Widgets", "Shared"], ["SystemCore"]),
     ] + test_targets("MacroTrack", "dev.svindland.stadig.macro"),
     "embeds": [("MacroTrack", "MacroTrackWidgets", "Embed Foundation Extensions", 13, "", None)],
     "config_files": ["Info.plist", "Widgets-Info.plist", "MacroTrack.entitlements", "MacroTrack-macOS.entitlements",
                      "Widgets.entitlements", "Widgets-macOS.entitlements"],
-    "groups": ["iOS", "Shared", "Widgets", "Catalogs", "Tests", "UITests"],
+    "groups": ["iOS", "Shared", "Records", "Widgets", "Catalogs", "Tests", "UITests"],
     # The catalog folder holds off.db (installed by Scripts/install-food-catalogs.sh, not in git) and its README.
     "exceptions": [("Catalogs", "MacroTrack", [".gitignore", "README.md"])],
     "extra_files": ["MacroTrack.storekit", "MacroTrack.xctestplan", "MacroTrackUI.xctestplan"],

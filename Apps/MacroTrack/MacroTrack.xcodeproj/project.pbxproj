@@ -117,6 +117,11 @@
 			path = Catalogs;
 			sourceTree = "<group>";
 		};
+		4D2EFC6EF2F8C1C0A35A3F27 /* Records */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Records;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -188,6 +193,7 @@
 			children = (
 				4D2EB5CA610FD775F740DF09 /* iOS */,
 				4D2E41625F3B0595DEC92B9E /* Shared */,
+				4D2EFC6EF2F8C1C0A35A3F27 /* Records */,
 				4D2EAC60423EF8D6DDB414C2 /* Widgets */,
 				4D2EE759AA381145436E7D57 /* Catalogs */,
 				4D2E9E76452C0D63D776E3B1 /* Tests */,
@@ -244,6 +250,7 @@
 				4D2E41625F3B0595DEC92B9E /* Shared */,
 				4D2EB5CA610FD775F740DF09 /* iOS */,
 				4D2EE759AA381145436E7D57 /* Catalogs */,
+				4D2EFC6EF2F8C1C0A35A3F27 /* Records */,
 			);
 			name = MacroTrack;
 			packageProductDependencies = (
