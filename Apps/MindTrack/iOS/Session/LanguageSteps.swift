@@ -14,6 +14,7 @@ enum SpeakingPause {
 /// or written beside the answer.
 struct SpeakView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.sessionStep) private var shownStep
     let task: SpeakingTask
     let feedback: StudyRun.Feedback?
     @State private var recognizer = SpeechRecognizer.shared
@@ -147,7 +148,7 @@ struct SpeakView: View {
     @ViewBuilder var bottom: some View {
         if feedback != nil {
             Button {
-                model.act { $0.next(now: Date()) }
+                model.act { $0.next(fromStep: shownStep, now: Date()) }
             } label: {
                 Text("Continue").font(.headline).frame(maxWidth: .infinity)
             }
@@ -217,7 +218,7 @@ struct SpeakView: View {
         switch key {
         case .submit:
             if feedback != nil {
-                model.act { $0.next(now: Date()) }
+                model.act { $0.next(fromStep: shownStep, now: Date()) }
             } else if task.mode == .say {
                 guard !recognizer.isBusy else { return }
                 Task {
@@ -229,7 +230,7 @@ struct SpeakView: View {
         case .dontKnow:
             guard feedback == nil, task.kind == .test else { return }
             Task { await recognizer.cancel() }
-            model.act { $0.respond(task.mode == .say ? .spoken(transcript: "", seconds: 0) : .skip, now: Date()) }
+            model.act { $0.respond(task.mode == .say ? .spoken(transcript: "", seconds: 0) : .skip, onStep: shownStep, now: Date()) }
         case .replay, .replaySlowly:
             if case .audio(let text, let language) = task.prompt { model.speech.speak(text, language: language, slow: key == .replaySlowly) }
         case .choose, .handIn, .pick: break

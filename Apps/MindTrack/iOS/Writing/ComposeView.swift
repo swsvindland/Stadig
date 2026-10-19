@@ -192,6 +192,7 @@ private struct ComposeEditor: View {
         }
         .focusedSceneValue(\.handwrittenPageImport, HandwrittenPageImport { openFiles(for: .writing) })
         .sessionKeys(keys) { key in if key == .handIn { handIn() } }
+        .presentingOverStep(choosingPhoto || importingFile || scanning != nil)
         #if DEBUG
         .task {
             let launch = LaunchOptions.current
@@ -546,6 +547,7 @@ private struct ComposeEditor: View {
 private struct PieceReview: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.sessionStep) private var shownStep
     let task: WritingTask
     let pieceID: UUID
     @State private var slips: [WritingSlip] = []
@@ -583,9 +585,7 @@ private struct PieceReview: View {
                 .readableWidth(sizeClass == .regular && task.exercise == .franklinRewrite ? 980 : 680)
             }
             BottomBar {
-                Button {
-                    model.act { $0.respond(.skip, now: Date()) }
-                } label: {
+                Button(action: done) {
                     Text("Done").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction()
@@ -594,13 +594,17 @@ private struct PieceReview: View {
                 KeyLegend(bindings: keys, titles: [.submit: "Done"])
             }
         }
-        .sessionKeys(keys) { key in if key == .submit { model.act { $0.respond(.skip, now: Date()) } } }
+        .sessionKeys(keys) { key in if key == .submit { done() } }
         .task(id: pieceID) {
             guard let piece = model.run?.piece(pieceID) else { return }
             slips = WritingAssistant.slips(piece.text)
             WritingAssistant.shared.requestNotes(for: piece, source: task.source, model: model)
         }
     }
+
+    /// On from the notes, once: a second press as the step changes would skip what comes next (a
+    /// check-in's blind comparison).
+    func done() { model.act { $0.respond(.skip, onStep: shownStep, now: Date()) } }
 }
 
 /// A piece with its slips marked.

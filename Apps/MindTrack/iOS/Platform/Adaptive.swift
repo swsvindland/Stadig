@@ -74,6 +74,17 @@ enum Platform {
         #endif
     }
 
+    /// Whether the key press being handled is the keyboard repeating a key held down. Only the Mac
+    /// says (its current event); elsewhere every press counts.
+    static var isKeyRepeat: Bool {
+        #if os(macOS)
+        guard let event = NSApp.currentEvent, event.type == .keyDown else { return false }
+        return event.isARepeat
+        #else
+        return false
+        #endif
+    }
+
     /// UI tests tap faster than animations finish; nothing to wait on is steadier.
     static func disableAnimations() {
         #if canImport(UIKit)
