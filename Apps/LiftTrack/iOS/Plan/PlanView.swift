@@ -329,8 +329,11 @@ struct DayCard: View {
 /// A day in full: every block, every slot and why it's there, with swaps for the rest of the block.
 struct DayDetail: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let route: DayRoute
     @State private var swapping: SlotPlan?
+    /// An exercise shown in place, in a narrow window, which has no Library to send it to.
+    @State private var shownExercise: String?
 
     var body: some View {
         if let mesocycle = model.mesocycles.first(where: { $0.id == route.mesocycleID }),
@@ -366,12 +369,7 @@ struct DayDetail: View {
                                     Button("Swap") { swapping = slot }.tint(.blue)
                                 }
                             }
-                            .contextMenu {
-                                if slot.role == .main || slot.role == .accessory {
-                                    Button("Swap for the Rest of the Block…", systemImage: "arrow.triangle.2.circlepath") { swapping = slot }
-                                }
-                                Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: slot.exerciseID) }
-                            }
+                            .contextMenu { menu(slot) }
                         }
                     } header: {
                         Label("\(block.kind.label) · \(block.minutes) min", systemImage: block.kind.symbol)
@@ -392,9 +390,23 @@ struct DayDetail: View {
                 }
             }
             .navigationTitle(day.name)
+            .navigationDestination(item: $shownExercise) { id in PushedExerciseDetail(exerciseID: id) }
             .sheet(item: $swapping) { slot in
                 ProgramSwapSheet(mesocycle: mesocycle, dayID: day.id, slot: slot)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func menu(_ slot: SlotPlan) -> some View {
+        if slot.role == .main || slot.role == .accessory {
+            Button("Swap for the Rest of the Block…", systemImage: "arrow.triangle.2.circlepath") { swapping = slot }
+        }
+        // There's no Library in a narrow window: the exercise opens here instead.
+        if sizeClass.isWide {
+            Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: slot.exerciseID) }
+        } else {
+            Button("Show Exercise", systemImage: "info.circle") { shownExercise = slot.exerciseID }
         }
     }
 }

@@ -646,4 +646,34 @@ struct GymTests {
         #expect(home.excluded == ["barbell-back-squat"] && home.included == ["nordic-curl"])
         #expect(gym.switched(to: .fullGym) == gym, "the same kind changes nothing")
     }
+
+    @Test("a settings screen's edits land on the latest gym, and only what it changed")
+    func editsOnTheLatestCopy() {
+        let original = Gym.preset(.fullGym, unit: .kg)
+        // Synced in from another device while the screen was open: a sauna, a new name, heavier dumbbells.
+        var latest = original
+        latest.name = "Downtown"
+        latest.apparatus.insert(.sauna)
+        latest.dumbbellMax = 60
+        latest.updatedAt = original.updatedAt.addingTimeInterval(60)
+
+        #expect(latest.applying(original, from: original) == latest, "a visit that changes nothing keeps everything")
+
+        // Here: the cables and the landmine off. The rest is the latest copy's.
+        #expect(original.equipment.contains(.cable) && original.apparatus.contains(.landmine))
+        var edited = original
+        edited.equipment.remove(.cable)
+        edited.apparatus.remove(.landmine)
+        let merged = latest.applying(edited, from: original)
+        #expect(merged.name == "Downtown" && merged.dumbbellMax == 60 && merged.updatedAt == latest.updatedAt)
+        #expect(merged.equipment == original.equipment.subtracting([.cable]))
+        #expect(merged.apparatus == original.apparatus.subtracting([.landmine]).union([.sauna]))
+
+        // The unit changed here: the loads come with it, all in pounds, over the other device's dumbbells.
+        let pounds = original.converted(to: .lb)
+        let converted = latest.applying(pounds, from: original)
+        #expect(converted.unit == .lb && converted.barWeight == pounds.barWeight && converted.plates == pounds.plates)
+        #expect(converted.dumbbellMax == pounds.dumbbellMax && converted.dumbbellStep == pounds.dumbbellStep)
+        #expect(converted.name == "Downtown" && converted.apparatus.contains(.sauna))
+    }
 }

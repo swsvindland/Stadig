@@ -208,6 +208,19 @@ private struct LibraryRow: View {
     }
 }
 
+/// An exercise pushed onto a narrow window's stack, which has no Library tab to send it to. A
+/// substitute picked in it is pushed after it, as rows with a chevron are on the iPhone.
+struct PushedExerciseDetail: View {
+    @Environment(AppModel.self) private var model
+    let exerciseID: String
+    @State private var next: String?
+
+    var body: some View {
+        ExerciseDetailView(exercise: model.catalog.resolve(exerciseID)) { next = $0 }
+            .navigationDestination(item: $next) { id in PushedExerciseDetail(exerciseID: id) }
+    }
+}
+
 /// One exercise in full.
 struct ExerciseDetailView: View {
     @Environment(AppModel.self) private var model

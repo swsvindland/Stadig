@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var prompts = DataPrompts()
 
     var body: some View {
         Form {
@@ -35,8 +36,9 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.gym")
             }
             TrainingSections()
-            DataSections()
+            DataSections(prompts: $prompts)
         }
+        .dataPrompts($prompts)
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
         .inlineTitle()
@@ -53,8 +55,11 @@ struct TrainingSettings: View {
 
 /// The Mac's Data pane.
 struct DataSettings: View {
+    @State private var prompts = DataPrompts()
+
     var body: some View {
-        Form { DataSections() }
+        Form { DataSections(prompts: $prompts) }
+            .dataPrompts($prompts)
     }
 }
 
@@ -137,23 +142,75 @@ struct TrainingSections: View {
     }
 }
 
-/// Export, backup and restore, the purchase, and what Lift Track is part of.
+/// What the data sections ask to show over the whole form: the file picker for a restore, the
+/// paywall, and the message a backup or restore ends with. The form presents them, not a section:
+/// on a section of a lazy form a presentation is attached to each row, and goes when the rows
+/// scroll away.
+struct DataPrompts {
+    var importing = false
+    /// From the form: Settings is a sheet already, and a second sheet from the root can't show over it.
+    var paywall = false
+    var message: String?
+    /// A backup or restore is running: it covers every record, photos included.
+    var working = false
+}
+
+extension View {
+    /// Presents the data sections' prompts (`DataPrompts`), and runs the restore a picked file starts.
+    func dataPrompts(_ prompts: Binding<DataPrompts>) -> some View {
+        modifier(DataPromptsPresenter(prompts: prompts))
+    }
+}
+
+private struct DataPromptsPresenter: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var prompts: DataPrompts
+
+    func body(content: Content) -> some View {
+        content
+            .fileImporter(isPresented: $prompts.importing, allowedContentTypes: DataSections.backupTypes) { result in
+                switch result {
+                case .success(let url):
+                    Task { await restore(from: url) }
+                case .failure(let error):
+                    prompts.message = error.localizedDescription
+                }
+            }
+            .sheet(isPresented: $prompts.paywall) { PaywallView() }
+            .alert("Data", isPresented: Binding(get: { prompts.message != nil }, set: { if !$0 { prompts.message = nil } })) {
+                Button("OK") { prompts.message = nil }.accessibilityIdentifier("settings.messageOK")
+            } message: {
+                Text(prompts.message ?? "")
+            }
+    }
+
+    private func restore(from url: URL) async {
+        prompts.working = true
+        defer { prompts.working = false }
+        do {
+            let summary = try await model.importBackup(from: url)
+            prompts.message = "Restored \(summary.records) records."
+        } catch {
+            prompts.message = error.localizedDescription
+        }
+    }
+}
+
+/// Export, backup and restore, the purchase, and what Lift Track is part of. What they show over
+/// the form is in `prompts`, which the form presents.
 struct DataSections: View {
     @Environment(AppModel.self) private var model
     @Environment(Purchases.self) private var purchases
+    @Binding var prompts: DataPrompts
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
-    @State private var importing = false
-    /// A backup or restore is running: it covers every record, photos included.
-    @State private var working = false
-    @State private var message: String?
-    /// Presented from here: Settings is a sheet already, and a second sheet from the root can't show over it.
-    @State private var showPaywall = false
+
+    private var working: Bool { prompts.working }
 
     var body: some View {
         Section {
             Button("Export CSV", systemImage: "tablecells") {
-                do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
+                do { exportURLs = try model.exportCSV() } catch { prompts.message = error.localizedDescription }
             }
             .disabled(working)
             .accessibilityIdentifier("settings.exportCSV")
@@ -168,7 +225,7 @@ struct DataSections: View {
                 ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("settings.shareBackup")
             }
-            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { prompts.importing = true }
                 .disabled(working)
                 .accessibilityIdentifier("settings.restore")
             if working {
@@ -185,26 +242,12 @@ struct DataSections: View {
                 "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
             )
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: Self.backupTypes) { result in
-            switch result {
-            case .success(let url):
-                Task { await restore(from: url) }
-            case .failure(let error):
-                message = error.localizedDescription
-            }
-        }
-        .sheet(isPresented: $showPaywall) { PaywallView() }
-        .alert("Data", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK") { message = nil }.accessibilityIdentifier("settings.messageOK")
-        } message: {
-            Text(message ?? "")
-        }
         if Purchases.enabled {
             Section("Lift Track") {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Lift Track") { showPaywall = true }
+                    Button("Unlock Lift Track") { prompts.paywall = true }
                     Button("Restore purchase") { Task { await purchases.restore() } }
                 }
             }
@@ -224,23 +267,12 @@ struct DataSections: View {
 
     /// Lift Track's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
     /// Another app's backup is refused when it's read.
-    private static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
+    static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
 
     private func makeBackup() async {
-        working = true
-        defer { working = false }
-        do { backupURL = try await model.exportBackup() } catch { message = error.localizedDescription }
-    }
-
-    private func restore(from url: URL) async {
-        working = true
-        defer { working = false }
-        do {
-            let summary = try await model.importBackup(from: url)
-            message = "Restored \(summary.records) records."
-        } catch {
-            message = error.localizedDescription
-        }
+        prompts.working = true
+        defer { prompts.working = false }
+        do { backupURL = try await model.exportBackup() } catch { prompts.message = error.localizedDescription }
     }
 }
 
@@ -261,12 +293,10 @@ extension AppModel {
 /// changes nothing, or a field left alone, never overwrites a newer edit synced from another device.
 struct ProfileEditor: View {
     @Environment(AppModel.self) private var model
-    @State private var profile: SharedProfile
-    @State private var original: SharedProfile
+    @State private var edit: EditedCopy<SharedProfile>
 
     init(profile: SharedProfile) {
-        _profile = State(initialValue: profile)
-        _original = State(initialValue: profile)
+        _edit = State(initialValue: EditedCopy(profile))
     }
 
     var body: some View {
@@ -276,35 +306,35 @@ struct ProfileEditor: View {
                     Toggle(
                         goal.label,
                         isOn: Binding(
-                            get: { profile.goals.contains(goal) },
+                            get: { edit.value.goals.contains(goal) },
                             set: { on in
-                                if on { profile.goals.append(goal) } else { profile.goals.removeAll { $0 == goal } }
+                                if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
                             }))
                 }
             }
             Section("Schedule") {
-                Stepper("\(profile.schedule.daysPerWeek) days a week", value: $profile.schedule.daysPerWeek, in: 1...6)
-                Picker("Minutes per session", selection: $profile.schedule.minutesPerSession) {
+                Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
+                Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
                     ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
                 }
-                WeekdayPicker(selection: $profile.schedule.preferredDays)
+                WeekdayPicker(selection: $edit.value.schedule.preferredDays)
             }
             Section("Experience") {
-                Picker("Lifting for", selection: $profile.experience) {
+                Picker("Lifting for", selection: $edit.value.experience) {
                     ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
                 }
             }
             Section("Basics") {
-                Picker("Standards for", selection: $profile.sex) {
+                Picker("Standards for", selection: $edit.value.sex) {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                 }
-                BirthYearField(year: $profile.birthYear)
-                MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)
-                Picker("Weight unit", selection: $profile.units.weight) {
+                BirthYearField(year: $edit.value.birthYear)
+                MeasureField(label: "Height", value: $edit.value.heightCm, unit: edit.value.units.length)
+                Picker("Weight unit", selection: $edit.value.units.weight) {
                     Text("kg").tag(WeightUnit.kg)
                     Text("lb").tag(WeightUnit.lb)
                 }
-                Picker("Length unit", selection: $profile.units.length) {
+                Picker("Length unit", selection: $edit.value.units.length) {
                     Text("cm").tag(LengthUnit.cm)
                     Text("in").tag(LengthUnit.inch)
                 }
@@ -315,23 +345,7 @@ struct ProfileEditor: View {
             }
         }
         .navigationTitle("About you")
-        .onDisappear { saveChanges() }
-    }
-
-    private func saveChanges() {
-        guard profile != original else { return }
-        var latest = model.profile ?? original
-        func take<T: Equatable>(_ field: WritableKeyPath<SharedProfile, T>) {
-            if profile[keyPath: field] != original[keyPath: field] { latest[keyPath: field] = profile[keyPath: field] }
-        }
-        take(\.goals)
-        take(\.schedule)
-        take(\.experience)
-        take(\.sex)
-        take(\.birthYear)
-        take(\.heightCm)
-        take(\.units)
-        model.save(profile: latest)
+        .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
 
@@ -397,46 +411,45 @@ extension PhysiqueRegion {
 /// Saves on the way out only when something changed, onto the latest profile (see ProfileEditor).
 struct RecurringScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var recurring: [RecurringActivity]
-    @State private var original: [RecurringActivity]
+    @State private var edit: EditedCopy<SharedProfile>
 
     init(profile: SharedProfile) {
-        _recurring = State(initialValue: profile.recurring)
-        _original = State(initialValue: profile.recurring)
+        _edit = State(initialValue: EditedCopy(profile))
     }
 
     var body: some View {
         ScrollView {
             OutsideActivitiesEditor(
-                recurring: $recurring, title: "Outside the gym",
+                recurring: $edit.value.recurring, title: "Outside the gym",
                 detail: "Lift Track plans around these; they spend the same recovery."
             )
             .padding()
         }
         .background(.pageBackground)
-        .onDisappear {
-            guard recurring != original, var latest = model.profile else { return }
-            latest.recurring = recurring
-            model.save(profile: latest)
-        }
+        .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
 
-/// Saves on the way out only when something changed, so a visit never re-stamps an older copy as newest.
+/// Saves on the way out only when something changed, and only that, onto the gym as it is then:
+/// a visit never re-stamps an older copy as newest.
 struct GymEditor: View {
     @Environment(AppModel.self) private var model
-    @State private var gym: Gym
-    @State private var original: Gym
+    @State private var edit: EditedCopy<Gym>
 
     init(gym: Gym) {
-        _gym = State(initialValue: gym)
-        _original = State(initialValue: gym)
+        _edit = State(initialValue: EditedCopy(gym))
+    }
+
+    /// The copy being edited.
+    private var gym: Gym {
+        get { edit.value }
+        nonmutating set { edit.value = newValue }
     }
 
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $gym.name)
+                TextField("Name", text: $edit.value.name)
                 Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
                     ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
                 }
@@ -493,13 +506,65 @@ struct GymEditor: View {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
                 LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
                 Stepper(
-                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $gym.dumbbellMax, in: gym.dumbbellStep...200,
+                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $edit.value.dumbbellMax,
+                    in: gym.dumbbellStep...200,
                     step: gym.dumbbellStep)
-                Stepper("Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $gym.dumbbellStep, in: 0.5...10, step: 0.5)
-                Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $gym.machineStep, in: 1...20, step: 0.5)
+                Stepper(
+                    "Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $edit.value.dumbbellStep, in: 0.5...10,
+                    step: 0.5)
+                Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
             }
         }
         .navigationTitle("Gym")
-        .onDisappear { if gym != original { model.save(gym: gym) } }
+        .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
+    }
+}
+
+/// A settings screen's copy of a stored record (the profile, the gym), with the record it started
+/// from, so leaving saves only what changed in this visit (`AppModel.save(profileEdits:from:)`).
+/// It catches up with the stored record whenever nothing here is waiting to be saved: a pane of the
+/// Mac's Settings window stays alive between visits, and would otherwise go on editing, and write
+/// back, the copy it first opened with.
+struct EditedCopy<Record: Equatable>: Equatable {
+    var value: Record
+    private(set) var original: Record
+
+    init(_ record: Record) {
+        value = record
+        original = record
+    }
+
+    /// Something changed here that isn't saved yet.
+    var isPending: Bool { value != original }
+
+    /// The stored record as it is now, synced in or saved elsewhere: taken unless something here is
+    /// waiting to be saved, which the save then puts onto it field by field.
+    mutating func catchUp(to latest: Record?) {
+        guard !isPending, let latest else { return }
+        value = latest
+        original = latest
+    }
+
+    /// The record as just saved from here: the starting point for whatever changes next.
+    mutating func saved(_ record: Record) {
+        value = record
+        original = record
+    }
+}
+
+extension View {
+    /// Keeps a settings screen's copy current (`EditedCopy`): caught up with the stored record when
+    /// the screen appears and whenever the record changes, and saved on the way out with `save`,
+    /// which is given the edited copy and the original and returns the record as saved (nil when
+    /// nothing was).
+    func editing<Record: Equatable>(
+        _ copy: Binding<EditedCopy<Record>>, of latest: Record?, save: @escaping (Record, Record) -> Record?
+    ) -> some View {
+        onAppear { copy.wrappedValue.catchUp(to: latest) }
+            .onChange(of: latest) { _, latest in copy.wrappedValue.catchUp(to: latest) }
+            .onDisappear {
+                guard copy.wrappedValue.isPending, let saved = save(copy.wrappedValue.value, copy.wrappedValue.original) else { return }
+                copy.wrappedValue.saved(saved)
+            }
     }
 }

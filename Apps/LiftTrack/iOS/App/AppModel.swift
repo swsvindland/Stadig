@@ -37,6 +37,17 @@ enum AppTab: String, Hashable, CaseIterable {
         case .body: "figure.arms.open"
         }
     }
+
+    /// The tab that reaches a sidebar destination where there's no sidebar (an iPhone, an iPad in a
+    /// narrow split): the block's days on Plan for the program and the library, and History behind
+    /// Progress, as on the iPhone.
+    var tabBarFallback: AppTab {
+        switch self {
+        case .program, .library: .plan
+        case .history: .progress
+        case .today, .plan, .progress, .body: self
+        }
+    }
 }
 
 /// What the menu bar asks of the session on screen.
@@ -143,6 +154,9 @@ final class AppModel {
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
     @ObservationIgnored private var lastRevision = -1
+    /// How many times the records have been read and the analysis run: a batch of changes should
+    /// cost one, however many records it touches.
+    @ObservationIgnored private(set) var reloads = 0
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
     @ObservationIgnored private var readRevisions: [String: Int] = [:]
 
@@ -219,6 +233,7 @@ final class AppModel {
     /// kinds (the photos in particular) aren't read or sorted again, but the analysis still runs over
     /// everything.
     func reload() {
+        reloads += 1
         let profileChanged = needsReading(ProfileRecord.self)
         if profileChanged { profile = store.all(ProfileRecord.self).first?.profile }
         let settingsChanged = needsReading(LiftSettings.self)
@@ -380,6 +395,41 @@ final class AppModel {
         reload()
     }
 
+    /// Saves what a settings screen changed, from `original` (the copy it opened with) to `edited`,
+    /// field by field onto the latest profile: a field left alone there keeps whatever synced in
+    /// meanwhile, here or from another app. Nothing is saved when nothing changed. Returns the
+    /// profile as saved, for the screen to carry on from.
+    @discardableResult
+    func save(profileEdits edited: SharedProfile, from original: SharedProfile) -> SharedProfile? {
+        guard edited != original else { return nil }
+        var latest = profile ?? original
+        func take<T: Equatable>(_ field: WritableKeyPath<SharedProfile, T>) {
+            if edited[keyPath: field] != original[keyPath: field] { latest[keyPath: field] = edited[keyPath: field] }
+        }
+        take(\.goals)
+        take(\.schedule.daysPerWeek)
+        take(\.schedule.minutesPerSession)
+        take(\.schedule.preferredDays)
+        take(\.experience)
+        take(\.recurring)
+        take(\.sex)
+        take(\.birthYear)
+        take(\.heightCm)
+        take(\.units.weight)
+        take(\.units.length)
+        save(profile: latest)
+        return profile
+    }
+
+    /// The gym's counterpart of `save(profileEdits:from:)`: only what the screen changed, onto the
+    /// gym as it is now (`Gym.applying(_:from:)`).
+    @discardableResult
+    func save(gymEdits edited: Gym, from original: Gym) -> Gym? {
+        guard edited != original else { return nil }
+        save(gym: gym.applying(edited, from: original))
+        return gym
+    }
+
     func save(settings: LiftSettings) {
         var settings = settings
         if settings.selfReportedPhase != self.settings.selfReportedPhase { settings.selfReportedPhaseSince = .today }
@@ -505,7 +555,22 @@ final class AppModel {
 
     /// Deletes what a History row stands for: the session (and its workout in Health) or the activity.
     func delete(historyRow row: HistoryRow) {
-        if row.isSession { delete(session: row.id) } else { delete(activity: row.id) }
+        delete(historyRows: [row])
+    }
+
+    /// Deletes what several History rows stand for, then reads the records once: the analysis runs
+    /// over everything, so a reload per row would make a long selection slow to delete.
+    func delete(historyRows rows: [HistoryRow]) {
+        guard !rows.isEmpty else { return }
+        for row in rows {
+            if row.isSession { store.delete(SessionRecord.self, id: row.id) } else { store.delete(ActivityRecord.self, id: row.id) }
+        }
+        reload()
+        let workouts = rows.filter(\.isSession).map(\.id)
+        guard !workouts.isEmpty else { return }
+        Task {
+            for id in workouts { await HealthBridge.shared.deleteWorkout(id: id) }
+        }
     }
 
     func delete(session id: UUID) {
@@ -670,7 +735,8 @@ final class AppModel {
         save(lifeMode: period)
     }
 
-    /// Opens Library on an exercise.
+    /// Opens Library on an exercise. Only where there's a sidebar: a narrow window has no Library
+    /// tab, so its screens push the exercise in place instead.
     func show(inLibrary exerciseID: String) {
         libraryFocus = exerciseID
         tab = .library

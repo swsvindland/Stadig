@@ -448,6 +448,11 @@ struct BirthYearField: View {
             }
         }
         .onChange(of: typed) { _, value in year = value.flatMap { range.contains($0) ? $0 : nil } }
+        // A year that changed under the field (Settings catching up with one synced in) shows; a
+        // typo still being typed, which leaves the year unknown, stays.
+        .onChange(of: year) { _, year in
+            if year != typed.flatMap({ range.contains($0) ? $0 : nil }) { typed = year }
+        }
     }
 }
 

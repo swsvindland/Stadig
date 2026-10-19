@@ -115,7 +115,7 @@ struct HistoryTable: View {
             isPresented: Binding(get: { !confirming.isEmpty }, set: { if !$0 { confirming = [] } }), titleVisibility: .visible
         ) {
             Button("Delete", role: .destructive) {
-                for row in confirming { model.delete(historyRow: row) }
+                model.delete(historyRows: confirming)
                 selection.subtract(confirming.map(\.id))
                 confirming = []
             }
@@ -137,7 +137,7 @@ struct HistoryTable: View {
         if confirm {
             confirming = doomed
         } else {
-            for row in doomed { model.delete(historyRow: row) }
+            model.delete(historyRows: doomed)
             selection.subtract(ids)
         }
     }
