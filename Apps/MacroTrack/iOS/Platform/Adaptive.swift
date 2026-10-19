@@ -187,6 +187,45 @@ extension View {
         #endif
     }
 
+    /// Details beside the content: an inspector on iPhone, iPad and the Mac (a sheet in a compact
+    /// width), and on Vision Pro, which has no inspector, a pane of the window beside it.
+    func sideInspector<Content: View>(
+        isPresented: Binding<Bool>, min: CGFloat, ideal: CGFloat, max: CGFloat, @ViewBuilder content: () -> Content
+    ) -> some View {
+        #if os(visionOS)
+        return HStack(spacing: 0) {
+            self
+            if isPresented.wrappedValue {
+                Divider()
+                content().frame(width: ideal)
+            }
+        }
+        #else
+        return inspector(isPresented: isPresented) { content().inspectorColumnWidth(min: min, ideal: ideal, max: max) }
+        #endif
+    }
+
+    /// The system's hover highlight for a custom tappable view: the pointer on iPad, the eyes on
+    /// Vision Pro. The Mac's pointer needs none.
+    func hoverHighlight() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return hoverEffect()
+        #endif
+    }
+
+    /// A sheet's size on the Mac, where a sheet is as big as its content asks (a form can ask for
+    /// very little). Elsewhere the system sizes sheets.
+    func macSheetSize(width: CGFloat, height: CGFloat) -> some View {
+        #if os(macOS)
+        // A sheet doesn't take the window's form style: grouped, as on iPhone and iPad.
+        return formStyle(.grouped).frame(minWidth: width, idealWidth: width, minHeight: height, idealHeight: height)
+        #else
+        return self
+        #endif
+    }
+
     /// The gap between a list's sections on iPhone, iPad and Vision Pro; the Mac's lists keep their own.
     func sectionSpacing(_ spacing: CGFloat) -> some View {
         #if os(macOS)

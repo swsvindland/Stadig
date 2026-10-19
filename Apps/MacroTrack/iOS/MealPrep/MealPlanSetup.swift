@@ -189,7 +189,7 @@ struct MealPrepCard: View {
             }
         }
         .card()
-        .sheet(isPresented: $showSetup) { MealPlanSetup() }
+        .sheet(isPresented: $showSetup) { MealPlanSetup().macSheetSize(width: 560, height: 680) }
     }
 
     func link(_ title: String, _ page: MealPlanView.Page, _ plan: MealPlan) -> some View {

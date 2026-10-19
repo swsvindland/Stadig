@@ -82,7 +82,7 @@ struct SupplementsSection: View {
                     .accessibilityIdentifier("supplements.edit")
                 }
                 .sheet(item: $editing) { supplement in
-                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }
+                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }.macSheetSize(width: 520, height: 640)
                 }
             }
         }

@@ -26,8 +26,21 @@ struct LoggerSheet: View {
         NavigationStack {
             content
                 .inlineTitle()
+                #if os(macOS)
+            // A Mac sheet shows only its confirmation buttons in the toolbar: the time goes above.
+            .safeAreaInset(edge: .top) {
+                if mode != .search {
+                    HStack {
+                        TimeMenu().menuIndicator(.hidden).fixedSize()
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                }
+            }
+                #endif
                 .toolbar {
-                    if mode != .search { ToolbarItem(placement: .principal) { TimeMenu() } }
+                    if mode != .search, !Platform.isMac { ToolbarItem(placement: .principal) { TimeMenu() } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }.accessibilityIdentifier("logger.done")
                     }
@@ -122,7 +135,7 @@ struct TimeMenu: View {
         }
         .accessibilityLabel("Eaten: \(LogTime.label(model))")
         .accessibilityIdentifier("logger.time")
-        .sheet(isPresented: $picking) { TimePickerSheet() }
+        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
     }
 }
 
@@ -167,7 +180,7 @@ struct LogTimeBar: View {
         }
         .padding(6)
         .floatingGlass(in: Capsule(), interactive: false)
-        .sheet(isPresented: $picking) { TimePickerSheet() }
+        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
     }
 
     /// A time picked on the wheel rather than with a chip.
@@ -450,85 +463,28 @@ struct PortionView: View {
     @Environment(AppModel.self) private var model
     let request: PortionRequest
     let done: (_ closeLogger: Bool) -> Void
-    @State private var count: Double = 1
-    @State private var countText = "1"
-    @State private var unit: PortionUnit?
-    /// The usual amount, which the quick choices are halves and multiples of.
-    @State private var base: Double = 1
-    @FocusState private var countFocused: Bool
+    @State private var amount = PortionAmount()
 
     var body: some View {
         let food = request.food
-        let units = FoodUnits.units(for: food)
-        let current = unit ?? units.first
-        let n = current.map { FoodUnits.nutrients(food, count: count, unit: $0) } ?? .zero
+        let current = amount.unit(for: food)
+        let n = amount.nutrients(food)
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(food.name).font(.title3.weight(.semibold))
-                    if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
-                        Text(brand).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    Text(sourceLabel(food)).font(.caption).foregroundStyle(.tertiary)
-                    FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
-                }
+                FoodHeader(food: food)
             }
             Section("Amount") {
-                HStack {
-                    TextField("Amount", text: $countText)
-                        .fieldKeyboard(.decimal)
-                        .font(.title2.weight(.semibold).monospacedDigit())
-                        .focused($countFocused)
-                        .accessibilityIdentifier("portion.amount")
-                        .onChange(of: countText) { _, text in
-                            // Text this view wrote already says the count; reading it back would round it.
-                            guard current.map({ text != FoodUnits.format(count, $0) }) ?? true, let v = Format.parse(text), v > 0 else { return }
-                            count = v
-                        }
-                    Picker(
-                        "Unit",
-                        selection: Binding(
-                            get: { current?.id ?? "" },
-                            set: { id in
-                                guard let next = units.first(where: { $0.id == id }), let old = current, next.id != old.id else { return }
-                                // Keep the amount: 1 cup becomes 240 g, not 1 g, rounded for the new unit.
-                                let converted = FoodUnits.convert(count, from: old, to: next)
-                                unit = next
-                                if converted.isFinite { count = converted }
-                                base = count
-                                countText = FoodUnits.format(count, next)
-                            })
-                    ) {
-                        ForEach(units) { Text($0.label).tag($0.id) }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .accessibilityIdentifier("portion.unit")
-                }
-                if let current {
-                    HStack(spacing: 8) {
-                        ForEach(quickChoices(current), id: \.self) { value in
-                            Button(Self.quickChoiceLabel(value, unit: current)) {
-                                count = value
-                                countText = FoodUnits.format(value, current)
-                            }
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.capsule)
-                            .tint(abs(count - value) < 0.001 ? .accentColor : .secondary)
-                            .accessibilityIdentifier("portion.quick")
-                        }
-                    }
-                }
+                AmountFields(food: food, amount: $amount)
             }
             Section {
                 NutrientSummary(nutrients: n)
-                if let current { PortionNutrients(food: food, count: count, unit: current) }
+                if let current { PortionNutrients(food: food, count: amount.count, unit: current) }
             }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
                 guard let current else { return }
-                model.log([model.entry(for: food, count: count, unit: current, source: request.source)])
+                model.log([model.entry(for: food, count: amount.count, unit: current, source: request.source)])
                 done(false)
             } label: {
                 Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))") · \(Format.kcal(n.kcal))")
@@ -537,31 +493,16 @@ struct PortionView: View {
             .primaryAction()
             .accessibilityIdentifier("portion.add")
             .padding()
-            .disabled(current == nil || count <= 0)
+            .disabled(current == nil || amount.count <= 0)
         }
         .navigationTitle("Amount")
         .toolbar {
             ToolbarItem(placement: .barTrailing) {
-                Button {
-                    model.toggleFavorite(food.id)
-                } label: {
-                    Image(systemName: model.isFavorite(food.id) ? "star.fill" : "star")
-                }
-                .accessibilityLabel(model.isFavorite(food.id) ? "Remove from favorites" : "Add to favorites")
-                .accessibilityIdentifier("portion.favorite")
+                FavoriteButton(foodID: food.id)
             }
         }
-        .onAppear {
-            let p = model.personalFood(food.id)
-            let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
-            unit = suggestion.unit
-            count = suggestion.count
-            base = suggestion.count
-            countText = FoodUnits.format(suggestion.count, suggestion.unit)
-        }
+        .onAppear { amount = PortionAmount(suggestedFor: food, personal: model.personalFood(food.id)) }
     }
-
-    func quickChoices(_ unit: PortionUnit) -> [Double] { Self.quickChoices(base: base, unit: unit) }
 
     /// Half, one, one and a half and two of the usual amount, each rounded the way that unit is
     /// measured (quarters of a cup or a portion, tenths of an ounce or a pound, whole grams),
@@ -576,7 +517,7 @@ struct PortionView: View {
         unit.kind == .mass || unit.kind == .volume ? FoodUnits.label(count: value, unit: unit) : Format.number(value, digits: 2)
     }
 
-    func sourceLabel(_ food: Food) -> String {
+    static func sourceLabel(_ food: Food) -> String {
         switch food.source {
         case .usda: "USDA FoodData Central"
         case .off: "Open Food Facts"
@@ -584,6 +525,126 @@ struct PortionView: View {
         case .recipe: "Recipe"
         case .label: "From its label"
         }
+    }
+}
+
+/// An amount being chosen: the count, its unit, the text being typed and the usual amount the quick
+/// choices are halves and multiples of.
+struct PortionAmount: Equatable {
+    var count: Double = 1
+    var text = "1"
+    var unit: PortionUnit?
+    var base: Double = 1
+
+    init() {}
+
+    init(count: Double, unit: PortionUnit) {
+        self.count = count
+        self.unit = unit
+        base = count
+        text = FoodUnits.format(count, unit)
+    }
+
+    /// The person's last portion of the food, else its natural one.
+    init(suggestedFor food: Food, personal: PersonalFood?) {
+        let suggestion = FoodUnits.suggested(
+            for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
+        unit = suggestion.unit
+        count = suggestion.count
+        base = suggestion.count
+        text = FoodUnits.format(suggestion.count, suggestion.unit)
+    }
+
+    func unit(for food: Food) -> PortionUnit? { unit ?? FoodUnits.units(for: food).first }
+
+    func nutrients(_ food: Food) -> Nutrients { unit(for: food).map { FoodUnits.nutrients(food, count: count, unit: $0) } ?? .zero }
+}
+
+/// The amount field, its unit and the quick choices.
+struct AmountFields: View {
+    let food: Food
+    @Binding var amount: PortionAmount
+
+    var body: some View {
+        let units = FoodUnits.units(for: food)
+        let current = amount.unit(for: food)
+        HStack {
+            TextField("Amount", text: $amount.text)
+                .fieldKeyboard(.decimal)
+                .font(.title2.weight(.semibold).monospacedDigit())
+                .accessibilityIdentifier("portion.amount")
+                .onChange(of: amount.text) { _, text in
+                    // Text this view wrote already says the count; reading it back would round it.
+                    guard current.map({ text != FoodUnits.format(amount.count, $0) }) ?? true, let v = Format.parse(text), v > 0 else { return }
+                    amount.count = v
+                }
+            Picker(
+                "Unit",
+                selection: Binding(
+                    get: { current?.id ?? "" },
+                    set: { id in
+                        guard let next = units.first(where: { $0.id == id }), let old = current, next.id != old.id else { return }
+                        // Keep the amount: 1 cup becomes 240 g, not 1 g, rounded for the new unit.
+                        let converted = FoodUnits.convert(amount.count, from: old, to: next)
+                        amount.unit = next
+                        if converted.isFinite { amount.count = converted }
+                        amount.base = amount.count
+                        amount.text = FoodUnits.format(amount.count, next)
+                    })
+            ) {
+                ForEach(units) { Text($0.label).tag($0.id) }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .accessibilityIdentifier("portion.unit")
+        }
+        if let current {
+            HStack(spacing: 8) {
+                ForEach(PortionView.quickChoices(base: amount.base, unit: current), id: \.self) { value in
+                    Button(PortionView.quickChoiceLabel(value, unit: current)) {
+                        amount.count = value
+                        amount.text = FoodUnits.format(value, current)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(abs(amount.count - value) < 0.001 ? .accentColor : .secondary)
+                    .accessibilityIdentifier("portion.quick")
+                }
+            }
+        }
+    }
+}
+
+/// A food's name, brand, where its numbers come from and how processed it is.
+struct FoodHeader: View {
+    let food: Food
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(food.name).font(.title3.weight(.semibold))
+            if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
+                Text(brand).font(.subheadline).foregroundStyle(.secondary)
+            }
+            Text(PortionView.sourceLabel(food)).font(.caption).foregroundStyle(.tertiary)
+            FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
+        }
+    }
+}
+
+/// A star that keeps a food among the favourites.
+struct FavoriteButton: View {
+    @Environment(AppModel.self) private var model
+    let foodID: String
+
+    var body: some View {
+        Button {
+            model.toggleFavorite(foodID)
+        } label: {
+            Image(systemName: model.isFavorite(foodID) ? "star.fill" : "star")
+        }
+        .accessibilityLabel(model.isFavorite(foodID) ? "Remove from favorites" : "Add to favorites")
+        .accessibilityIdentifier("portion.favorite")
+        .help(model.isFavorite(foodID) ? "Remove from favorites" : "Add to favorites")
     }
 }
 

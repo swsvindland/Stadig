@@ -209,7 +209,7 @@ private struct DoseEditor: View {
             }
         }
         .padding(.vertical, 2)
-        .sheet(isPresented: $choosingDays) { WeekdayPicker(days: $dose.days) }
+        .sheet(isPresented: $choosingDays) { WeekdayPicker(days: $dose.days).macSheetSize(width: 380, height: 440) }
     }
 
     /// Half a scoop or teaspoon; whole pills.

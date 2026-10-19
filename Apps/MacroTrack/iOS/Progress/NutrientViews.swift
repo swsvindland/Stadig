@@ -114,6 +114,103 @@ struct NutrientsCard: View {
     }
 }
 
+/// The week's vitamins and minerals as a table, where there's room: each nutrient's daily amount
+/// against its target, how sure that is, and what supplements add.
+struct NutrientTableCard: View {
+    let report: MicroReport
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Vitamins and minerals").font(.headline)
+                Spacer()
+                if !report.days.isEmpty {
+                    Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(
+                        .secondary)
+                }
+            }
+            if report.days.count < MicroAnalyst.minimumDays {
+                Text("After three complete days of logging, this shows which nutrients are running short, with a food that fixes each.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                    GridRow {
+                        Text("Nutrient")
+                        Text("A day").gridColumnAlignment(.trailing)
+                        Text("Target").gridColumnAlignment(.trailing)
+                        Text("Of target")
+                        Text("Supplements").gridColumnAlignment(.trailing)
+                        Text("Listed for").gridColumnAlignment(.trailing)
+                        Text("Mostly from")
+                    }
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Divider()
+                    ForEach(report.readings) { reading in
+                        NutrientTableRow(reading: reading)
+                    }
+                }
+                Text("Packaged foods often list only what the label must, so a nutrient they skip is shown as unknown rather than low.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .card()
+        .accessibilityIdentifier("progress.nutrients")
+    }
+}
+
+private struct NutrientTableRow: View {
+    let reading: NutrientReading
+
+    var body: some View {
+        let unit = reading.nutrient.unit
+        GridRow {
+            Text(reading.nutrient.label).help(reading.nutrient.why)
+            Text(reading.status == .unknown ? "—" : Format.nutrient(reading.daily ?? reading.measured, unit)).monospacedDigit()
+            Text(reading.target.map { "\(reading.nutrient.goal == .atLeast ? "" : "≤ ")\(Format.nutrient($0, unit))" } ?? "—")
+                .monospacedDigit().foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                NutrientFill(reading: reading).frame(width: 90)
+                Text(status).font(.caption).foregroundStyle(reading.status.color)
+            }
+            Text(reading.supplemented > 0 ? Format.nutrient(reading.supplemented, unit) : "—").monospacedDigit()
+                .foregroundStyle(reading.supplemented > 0 ? .primary : .tertiary)
+            Text(reading.coverage > 0 ? Format.percent(reading.coverage) : "—").monospacedDigit().foregroundStyle(.secondary)
+            Text(reading.sources.prefix(2).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .font(.subheadline)
+        .accessibilityElement(children: .combine)
+    }
+
+    var status: String {
+        switch reading.status {
+        case .low: "Low"
+        case .high: reading.overUpper ? "Over the limit" : "High"
+        case .ok: "Fine"
+        case .unknown: "Unknown"
+        }
+    }
+}
+
+/// A nutrient's share of its target as a small bar, the target two-thirds along.
+private struct NutrientFill: View {
+    let reading: NutrientReading
+
+    var body: some View {
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.14))
+                if let f = reading.fraction {
+                    Capsule().fill(reading.status.color.gradient).frame(width: max(4, w * min(1, f / 1.5)))
+                }
+                Rectangle().fill(Color.primary.opacity(0.35)).frame(width: 1.5).offset(x: w / 1.5)
+            }
+        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Every nutrient followed, with why it matters and how much of what was eaten lists it.
 struct AllNutrientsView: View {
     let report: MicroReport
@@ -221,6 +318,8 @@ struct PortionNutrients: View {
     let food: Food
     let count: Double
     let unit: PortionUnit
+    /// Every row in view, as a panel of its own (the Foods inspector), rather than folded away.
+    var open = false
     @State private var expanded = false
 
     var body: some View {
@@ -237,25 +336,36 @@ struct PortionNutrients: View {
             guard let value else { return nil }
             return (info, value, target(info.key).map { $0 > 0 ? value / $0 : 0 })
         }
-        if !rows.isEmpty {
+        if open {
+            list(rows, sugar: n.sugar)
+        } else if !rows.isEmpty {
             DisclosureGroup(isExpanded: $expanded) {
-                ForEach(rows, id: \.0.key) { info, value, share in
-                    HStack {
-                        Text(info.label).font(.subheadline)
-                        Spacer()
-                        Text(Format.nutrient(value, info.unit)).font(.subheadline.monospacedDigit())
-                        if let share {
-                            Text(Format.percent(share)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(
-                                width: 44, alignment: .trailing)
-                        }
-                    }
-                }
-                if let sugar = n.sugar {
-                    LabeledContent("Sugar", value: Format.nutrient(sugar, .g)).font(.subheadline)
-                }
+                list(rows, sugar: n.sugar)
             } label: {
                 Text("Vitamins and minerals").font(.subheadline.weight(.medium))
             }
+        }
+    }
+
+    /// Each nutrient the food lists, with its share of the day's target.
+    @ViewBuilder
+    func list(_ rows: [(NutrientInfo, Double, Double?)], sugar: Double?) -> some View {
+        ForEach(rows, id: \.0.key) { info, value, share in
+            HStack {
+                Text(info.label).font(.subheadline)
+                Spacer()
+                Text(Format.nutrient(value, info.unit)).font(.subheadline.monospacedDigit())
+                if let share {
+                    Text(Format.percent(share)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(
+                        width: 44, alignment: .trailing)
+                }
+            }
+        }
+        if let sugar {
+            LabeledContent("Sugar", value: Format.nutrient(sugar, .g)).font(.subheadline)
+        }
+        if open, rows.isEmpty, sugar == nil {
+            Text("This food lists no vitamins or minerals.").font(.subheadline).foregroundStyle(.secondary)
         }
     }
 

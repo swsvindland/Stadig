@@ -6,48 +6,86 @@ import SystemCore
 /// with its weekly check-ins.
 struct PlanView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let analysis = model.analysis {
-                        if let plan = model.plan {
-                            if let review = model.planReview { ReviewCard(plan: review) }
-                            CurrentPhaseCard(plan: plan, analysis: analysis)
-                            TimelineCard(plan: plan, today: model.today)
-                            MealPrepCard()
-                            SupplementsCard()
-                            MaintenanceCard(estimate: analysis.maintenance)
-                            CheckInHistory(checkIns: model.checkIns)
-                        } else {
-                            if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
-                            MaintenanceCard(estimate: analysis.maintenance)
-                            if let recommendation = model.recommendation {
-                                RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
-                            }
-                            MealPrepCard()
-                            SupplementsCard()
+                if let analysis = model.analysis {
+                    if sizeClass == .compact {
+                        VStack(alignment: .leading, spacing: 16) { cards(analysis) }
+                            .padding()
+                            .readableWidth()
+                    } else {
+                        // With room: the phase and its reasons, and beside them what feeds and follows it.
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 16) { phase(analysis) }
+                                .frame(maxWidth: .infinity)
+                            VStack(alignment: .leading, spacing: 16) { side(analysis) }
+                                .frame(minWidth: 300, idealWidth: 380, maxWidth: 420)
                         }
+                        .padding(20)
+                        .frame(maxWidth: 1180)
+                        .frame(maxWidth: .infinity)
                     }
                 }
-                .padding()
-                .readableWidth()
             }
             .background(.pageBackground)
             .navigationTitle("Plan")
             .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Button {
-                        model.showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-                    .accessibilityIdentifier("plan.settings")
+                if !Platform.isMac {
+                    ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "plan.settings") }
                 }
             }
         }
+    }
+}
+
+extension PlanView {
+    /// The phone's one column: the phase, then what feeds and follows it.
+    @ViewBuilder
+    func cards(_ analysis: MacroAnalysis) -> some View {
+        if let plan = model.plan {
+            if let review = model.planReview { ReviewCard(plan: review) }
+            CurrentPhaseCard(plan: plan, analysis: analysis)
+            TimelineCard(plan: plan, today: model.today)
+            MealPrepCard()
+            SupplementsCard()
+            MaintenanceCard(estimate: analysis.maintenance)
+            CheckInHistory(checkIns: model.checkIns)
+        } else {
+            if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
+            MaintenanceCard(estimate: analysis.maintenance)
+            if let recommendation = model.recommendation {
+                RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
+            }
+            MealPrepCard()
+            SupplementsCard()
+        }
+    }
+
+    /// With room, the phase and its history on the left.
+    @ViewBuilder
+    func phase(_ analysis: MacroAnalysis) -> some View {
+        if let plan = model.plan {
+            if let review = model.planReview { ReviewCard(plan: review) }
+            CurrentPhaseCard(plan: plan, analysis: analysis)
+            TimelineCard(plan: plan, today: model.today)
+            CheckInHistory(checkIns: model.checkIns)
+        } else {
+            if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
+            if let recommendation = model.recommendation {
+                RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
+            }
+        }
+    }
+
+    /// And maintenance, meal prep and supplements beside it.
+    @ViewBuilder
+    func side(_ analysis: MacroAnalysis) -> some View {
+        MaintenanceCard(estimate: analysis.maintenance)
+        MealPrepCard()
+        SupplementsCard()
     }
 }
 
@@ -170,7 +208,7 @@ struct RecommendationCard: View {
         }
         .card()
         .sheet(isPresented: $choosing) {
-            PhaseChooser(recommended: plan)
+            PhaseChooser(recommended: plan).macSheetSize(width: 460, height: 560)
         }
     }
 }

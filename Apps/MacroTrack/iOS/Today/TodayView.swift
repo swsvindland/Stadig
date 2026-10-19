@@ -4,8 +4,18 @@ import SwiftUI
 import SystemCore
 
 /// What's left today, the one or two things worth doing, and the day's log. Built so a visit can
-/// be a glance and a tap.
+/// be a glance and a tap. With room (iPad, the Mac, Vision Pro) the log is a table beside the
+/// summary, edited in an inspector.
 struct TodayView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        if sizeClass == .compact { TodayList() } else { TodayBoard() }
+    }
+}
+
+/// Today as one list: the phone's, and a narrow iPad window's.
+struct TodayList: View {
     @Environment(AppModel.self) private var model
     @State private var editing: FoodEntry?
 
@@ -77,13 +87,26 @@ struct TodayView: View {
                 Button("Today") { model.selectedDay = model.today }
                     .accessibilityIdentifier("today.backToToday")
             }
+            SettingsButton(identifier: "today.settings")
+        }
+    }
+}
+
+/// Settings, from a screen's toolbar: a sheet on iPhone, iPad and Vision Pro. The Mac has its
+/// Settings window in the app menu (⌘,), so the button isn't there.
+struct SettingsButton: View {
+    @Environment(AppModel.self) private var model
+    let identifier: String
+
+    var body: some View {
+        if !Platform.isMac {
             Button {
                 model.showSettings = true
             } label: {
                 Image(systemName: "gearshape")
             }
             .accessibilityLabel("Settings")
-            .accessibilityIdentifier("today.settings")
+            .accessibilityIdentifier(identifier)
         }
     }
 }
@@ -561,6 +584,8 @@ struct DayStateSection: View {
                 Text(day == model.today ? "Done logging today?" : "How complete is this day?")
             } footer: {
                 Text("Complete days teach your maintenance estimate. Partly logged days are left out, never counted as eating less.")
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

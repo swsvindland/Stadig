@@ -57,7 +57,7 @@ struct BarcodeLogView: View {
                 manualEntry
             }
         }
-        .navigationTitle("Scan")
+        .navigationTitle(LiveLabelScanner.isAvailable ? "Scan" : "Barcode")
         // Back from the portion: scan the next thing.
         .onChange(of: portion) { _, now in if now == nil { scanID = UUID() } }
         // Wherever the read was started from (the scanner's menu has no message of its own).
@@ -341,7 +341,7 @@ struct SupplementFoundView: View {
         }
         .navigationTitle("Supplement")
         .sheet(isPresented: $adding) {
-            NavigationStack { SupplementEditor(supplement: supplement, isNew: !own) }
+            NavigationStack { SupplementEditor(supplement: supplement, isNew: !own) }.macSheetSize(width: 520, height: 640)
         }
     }
 }

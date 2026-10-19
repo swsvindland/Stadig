@@ -109,6 +109,14 @@ extension AppModel {
         return entries.reversed().contains { ids.contains($0.id) }
     }
 
+    /// The plan's meals logged and still in the log, by meal id: `isLogged` for a whole week at once,
+    /// looking only at the plan's own days, where a meal from it is logged.
+    func loggedMeals(in plan: MealPlan) -> Set<String> {
+        guard !plan.logged.isEmpty else { return [] }
+        let present = Set(plan.days.flatMap { entries(on: $0) }.map(\.id))
+        return Set(plan.logged.filter { !present.isDisjoint(with: $0.value) }.keys)
+    }
+
     /// One tap: the container (and what goes with it) as one entry, at the time it's logged.
     func logPlanned(_ meal: PlannedMeal, in plan: MealPlan) {
         guard let recipe = plan.recipe(meal.recipeID) else { return }

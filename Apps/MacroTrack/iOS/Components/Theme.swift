@@ -7,7 +7,15 @@ import SystemCore
 
 extension ShapeStyle where Self == Color {
     static var pageBackground: Color { .groupedBackground }
-    static var cardBackground: Color { .secondaryGroupedBackground }
+    /// On the Mac the window's and the controls' backgrounds are nearly the same, so a card is a
+    /// faint fill over the page instead.
+    static var cardBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .quaternarySystemFill)
+        #else
+        return .secondaryGroupedBackground
+        #endif
+    }
     static var insetBackground: Color { .tertiaryGroupedBackground }
 }
 

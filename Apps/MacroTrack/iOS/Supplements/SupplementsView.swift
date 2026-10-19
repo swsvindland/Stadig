@@ -129,7 +129,7 @@ struct SupplementsList: View {
 }
 
 /// When each part of the day is, and whether to be reminded then.
-private struct RemindersSection: View {
+struct RemindersSection: View {
     @Environment(AppModel.self) private var model
     @State private var denied = false
 
@@ -173,7 +173,9 @@ private struct RemindersSection: View {
             Text(
                 denied
                     ? "Notifications are off for Macro Track in Settings."
-                    : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app.")
+                    : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app."
+            )
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

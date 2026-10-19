@@ -7,10 +7,21 @@ import SystemCore
 import SystemStore
 import UniformTypeIdentifiers
 
+/// The Mac's Settings window has the settings in panes; the iPhone and iPad sheet has them all.
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case general, intelligence, health, data
+    var id: String { rawValue }
+}
+
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+    /// One pane of the Mac's Settings window; nil is every section, in the sheet.
+    var pane: SettingsPane?
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
     @State private var importing = false
@@ -21,240 +32,27 @@ struct SettingsView: View {
     /// The paywall, from here: the root's sheets can't show while Settings is up.
     @State private var unlocking = false
 
+    private func shows(_ section: SettingsPane) -> Bool { pane == nil || pane == section }
+
     var body: some View {
         Form {
-            Section("Logging") {
-                Toggle("Show carbs and fat", isOn: setting(\.showAllMacros))
-                    .accessibilityIdentifier("settings.showAllMacros")
-                Picker("Lately", selection: setting(\.dietHistory)) {
-                    ForEach(DietHistory.allCases) { Text($0.label).tag($0) }
-                }
-                .accessibilityIdentifier("settings.dietHistory")
-            }
-
-            Section {
-                NavigationLink {
-                    SupplementsList()
-                } label: {
-                    LabeledContent("Supplements", value: model.activeSupplements.isEmpty ? "None" : "\(model.activeSupplements.count)")
-                }
-                .accessibilityIdentifier("settings.supplements")
-                Toggle("Drinks and caffeine", isOn: Binding(get: { model.tracksDrinks }, set: { model.setTracksDrinks($0) }))
-                    .accessibilityIdentifier("settings.drinks")
-                if model.tracksDrinks {
-                    let ounces = model.fluidOunces
-                    let target = model.settings.waterTarget ?? model.profile.map { Hydration.target(sex: $0.sex) } ?? 2600
-                    Stepper(
-                        value: Binding(
-                            get: { target },
-                            set: { value in
-                                model.updateSettings { $0.waterTarget = value }
-                            }), in: 1000...6000, step: ounces ? 236.6 : 250
-                    ) {
-                        LabeledContent("Water a day", value: Format.volume(target, ounces: ounces))
-                    }
-                    .accessibilityIdentifier("settings.waterTarget")
-                    if model.settings.caffeineCutBack == nil {
-                        let limit = model.settings.caffeineLimit ?? Caffeine.defaultLimit
-                        Stepper(
-                            value: Binding(
-                                get: { limit },
-                                set: { value in
-                                    model.updateSettings { $0.caffeineLimit = value }
-                                }), in: 0...600, step: 25
-                        ) {
-                            LabeledContent("Caffeine limit", value: Format.mg(limit))
-                        }
-                        .accessibilityIdentifier("settings.caffeineLimit")
-                    }
-                }
-            } header: {
-                Text("Tracking")
-            } footer: {
-                Text(
-                    "Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest."
-                )
-            }
-
-            Section {
-                LabeledContent(
-                    "On this \(Platform.deviceName)",
-                    value: model.ai.availability.onDevice
-                        ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
-                // Only with Apple's managed entitlement; without it everything runs on the device, since a
-                // request to Private Cloud Compute would stop the app. The reload after the save
-                // reconfigures the AI engine for the new setting.
-                if MealAIAvailability.privateCloudEntitled {
-                    Toggle(
-                        "Use Private Cloud Compute",
-                        isOn: Binding(
-                            get: { model.settings.allowCloudAI },
-                            set: { on in
-                                model.updateSettings { $0.allowCloudAI = on }
-                            })
-                    )
-                    .accessibilityIdentifier("settings.allowCloudAI")
-                }
-                if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
-            } header: {
-                Text("Photo and description logging")
-            } footer: {
-                Text(
-                    MealAIAvailability.privateCloudEntitled
-                        ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this \(Platform.deviceName) can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
-                        : "Everything is read by Apple's on-device model, on this \(Platform.deviceName). The model only names foods and amounts; nutrients come from the food database."
-                )
-            }
-
-            Section {
-                if Platform.isMac {
-                    Label("Apple Health isn't on the Mac", systemImage: "heart.slash")
-                        .accessibilityIdentifier("settings.healthElsewhere")
-                } else {
-                    Button("Connect Apple Health", systemImage: "heart.fill") { Task { await model.connectHealth() } }
-                        .disabled(!HealthBridge.shared.isAvailable)
-                        .accessibilityIdentifier("settings.connectHealth")
-                    Toggle("Save food and weigh-ins to Health", isOn: setting(\.saveToHealth))
-                        .accessibilityIdentifier("settings.saveToHealth")
-                }
-            } header: {
-                Text("Health")
-            } footer: {
-                if Platform.isMac { Text(HealthWords.notOnThisDevice) }
-            }
-
-            Section {
-                let modes = model.lifeModes.filter { ($0.end ?? model.today) >= model.today }
-                ForEach(modes) { period in
-                    Button {
-                        editingLifeMode = period
-                    } label: {
-                        LabeledContent {
-                            Text(period.end.map { "until \(Format.day($0))" } ?? "ongoing")
-                        } label: {
-                            Label(period.kind.label, systemImage: period.kind.symbol)
-                        }
-                    }
-                    .foregroundStyle(.primary)
-                    .accessibilityIdentifier("settings.lifeMode")
-                }
-                Menu {
-                    Button("Vacation", systemImage: "airplane") {
-                        editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, createdBy: .macroTrack).edited(openEnded: false)
-                    }
-                    .accessibilityIdentifier("settings.lifeMode.vacation")
-                    Button("Ill", systemImage: "thermometer.medium") {
-                        editingLifeMode = LifeModePeriod(kind: .illness(.systemic), start: model.today, createdBy: .macroTrack)
-                    }
-                    .accessibilityIdentifier("settings.lifeMode.ill")
-                    Button("Crunch", systemImage: "briefcase.fill") {
-                        editingLifeMode = LifeModePeriod(kind: .crunch(CrunchDials()), start: model.today, createdBy: .macroTrack)
-                            .edited(openEnded: false)
-                    }
-                    .accessibilityIdentifier("settings.lifeMode.crunch")
-                } label: {
-                    // The whole row opens the menu, not only its words.
-                    Label("Start a life mode", systemImage: "plus")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(.rect)
-                }
-                .accessibilityIdentifier("settings.startLifeMode")
-            } header: {
-                Text("Life")
-            } footer: {
-                Text(
-                    "Shared with Lift Track. Vacation and illness expect no logging and don't count against you; the first days back aren't read as fat gain. Crunch asks only for protein and maintenance calories."
-                )
-            }
-
-            Section("Your data") {
-                Button("Export CSV files", systemImage: "tablecells") {
-                    do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
-                }
-                .accessibilityIdentifier("settings.exportCSV")
-                if !exportURLs.isEmpty {
-                    ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
-                        .accessibilityIdentifier("settings.shareCSV")
-                }
-                Button("Make a backup file", systemImage: "externaldrive") {
-                    busy = "Making the backup…"
-                    Task {
-                        defer { busy = nil }
-                        do { backupURL = try await model.backupFile() } catch { message = error.localizedDescription }
-                    }
-                }
-                .disabled(busy != nil)
-                .accessibilityIdentifier("settings.makeBackup")
-                if let backupURL {
-                    ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
-                        .accessibilityIdentifier("settings.shareBackup")
-                }
-                Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
-                    .disabled(busy != nil)
-                    .accessibilityIdentifier("settings.restoreBackup")
-                if let busy {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text(busy).foregroundStyle(.secondary)
-                    }
-                }
-                LabeledContent("Sync", value: model.store.syncStatus)
-            }
-
-            Section {
-                ForEach(model.catalog.sources, id: \.name) { source in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(source.name).font(.subheadline.weight(.medium))
-                        Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(.secondary)
-                        Text(source.attribution).font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                if let supplements = model.supplementCatalog {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("NIH Dietary Supplement Label Database").font(.subheadline.weight(.medium))
-                        Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(.secondary)
-                        Text(supplements.attribution).font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                if !model.catalog.hasPackagedFoods {
-                    Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Food data")
-            } footer: {
-                Text(
-                    "Open Food Facts data is available under the Open Database License (opendatacommons.org/licenses/odbl). USDA FoodData Central is in the public domain."
-                )
-            }
-
-            if Purchases.enabled {
-                Section("Macro Track") {
-                    if purchases.unlocked {
-                        Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                    } else {
-                        Button("Unlock Macro Track", systemImage: "lock.open") { unlocking = true }
-                            .accessibilityIdentifier("settings.unlock")
-                        Button("Restore purchase") { Task { await purchases.restore() } }
-                            .accessibilityIdentifier("settings.restorePurchase")
-                    }
-                }
-            }
-
-            #if DEBUG
-            Section("Debug") {
-                Button("Erase everything", role: .destructive) { model.eraseEverything() }
-                    .accessibilityIdentifier("settings.eraseEverything")
-            }
-            #endif
+            if shows(.general) { general }
+            if shows(.intelligence) { intelligence }
+            if shows(.health) { health }
+            if shows(.data) { data }
         }
         .navigationTitle("Settings")
         .inlineTitle()
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
+        .toolbar {
+            if pane == nil {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") }
+            }
+        }
         .sheet(item: $editingLifeMode) { period in
-            LifeModeEditor(period: period)
+            LifeModeEditor(period: period).macSheetSize(width: 440, height: 380)
         }
         .sheet(isPresented: $unlocking) {
-            PaywallView()
+            PaywallView().macSheetSize(width: 480, height: 560)
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "macrobackup") ?? .json, .json]) { result in
             switch result {
@@ -279,6 +77,262 @@ struct SettingsView: View {
         } message: {
             Text(message ?? "")
         }
+    }
+
+    @ViewBuilder
+    var general: some View {
+        Section("Logging") {
+            Toggle("Show carbs and fat", isOn: setting(\.showAllMacros))
+                .accessibilityIdentifier("settings.showAllMacros")
+            Picker("Lately", selection: setting(\.dietHistory)) {
+                ForEach(DietHistory.allCases) { Text($0.label).tag($0) }
+            }
+            .accessibilityIdentifier("settings.dietHistory")
+        }
+
+        Section {
+            supplementsRow
+            Toggle("Drinks and caffeine", isOn: Binding(get: { model.tracksDrinks }, set: { model.setTracksDrinks($0) }))
+                .accessibilityIdentifier("settings.drinks")
+            if model.tracksDrinks {
+                let ounces = model.fluidOunces
+                let target = model.settings.waterTarget ?? model.profile.map { Hydration.target(sex: $0.sex) } ?? 2600
+                Stepper(
+                    value: Binding(
+                        get: { target },
+                        set: { value in
+                            model.updateSettings { $0.waterTarget = value }
+                        }), in: 1000...6000, step: ounces ? 236.6 : 250
+                ) {
+                    LabeledContent("Water a day", value: Format.volume(target, ounces: ounces))
+                }
+                .accessibilityIdentifier("settings.waterTarget")
+                if model.settings.caffeineCutBack == nil {
+                    let limit = model.settings.caffeineLimit ?? Caffeine.defaultLimit
+                    Stepper(
+                        value: Binding(
+                            get: { limit },
+                            set: { value in
+                                model.updateSettings { $0.caffeineLimit = value }
+                            }), in: 0...600, step: 25
+                    ) {
+                        LabeledContent("Caffeine limit", value: Format.mg(limit))
+                    }
+                    .accessibilityIdentifier("settings.caffeineLimit")
+                }
+            }
+        } header: {
+            Text("Tracking")
+        } footer: {
+            Text(
+                "Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest."
+            )
+        }
+
+    }
+
+    /// The stack: pushed in the sheet; in the Mac's Settings window, the main window's Supplements.
+    @ViewBuilder
+    var supplementsRow: some View {
+        let count = model.activeSupplements.isEmpty ? "None" : "\(model.activeSupplements.count)"
+        #if os(macOS)
+        LabeledContent("Supplements") {
+            Button("Show \(count == "None" ? "Supplements" : "\(count) Supplements")") {
+                model.tab = .supplements
+                openWindow(id: MacroTrackApp.mainWindow)
+            }
+        }
+        .accessibilityIdentifier("settings.supplements")
+        #else
+        NavigationLink {
+            SupplementsList()
+        } label: {
+            LabeledContent("Supplements", value: count)
+        }
+        .accessibilityIdentifier("settings.supplements")
+        #endif
+    }
+
+    @ViewBuilder
+    var intelligence: some View {
+        Section {
+            LabeledContent(
+                "On this \(Platform.deviceName)",
+                value: model.ai.availability.onDevice
+                    ? (model.ai.availability.onDeviceVision ? "Photos and descriptions" : "Descriptions") : "Not available")
+            // Only with Apple's managed entitlement; without it everything runs on the device, since a
+            // request to Private Cloud Compute would stop the app. The reload after the save
+            // reconfigures the AI engine for the new setting.
+            if MealAIAvailability.privateCloudEntitled {
+                Toggle(
+                    "Use Private Cloud Compute",
+                    isOn: Binding(
+                        get: { model.settings.allowCloudAI },
+                        set: { on in
+                            model.updateSettings { $0.allowCloudAI = on }
+                        })
+                )
+                .accessibilityIdentifier("settings.allowCloudAI")
+            }
+            if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
+        } header: {
+            Text("Photo and description logging")
+        } footer: {
+            Text(
+                MealAIAvailability.privateCloudEntitled
+                    ? "Apple's on-device model is used first. Private Cloud Compute steps in for photos when this \(Platform.deviceName) can't read them; Apple can't see or keep what's sent. The models only name foods and amounts; nutrients come from the food database."
+                    : "Everything is read by Apple's on-device model, on this \(Platform.deviceName). The model only names foods and amounts; nutrients come from the food database."
+            )
+        }
+
+    }
+
+    @ViewBuilder
+    var health: some View {
+        Section {
+            if Platform.isMac {
+                Label("Apple Health isn't on the Mac", systemImage: "heart.slash")
+                    .accessibilityIdentifier("settings.healthElsewhere")
+            } else {
+                Button("Connect Apple Health", systemImage: "heart.fill") { Task { await model.connectHealth() } }
+                    .disabled(!HealthBridge.shared.isAvailable)
+                    .accessibilityIdentifier("settings.connectHealth")
+                Toggle("Save food and weigh-ins to Health", isOn: setting(\.saveToHealth))
+                    .accessibilityIdentifier("settings.saveToHealth")
+            }
+        } header: {
+            Text("Health")
+        } footer: {
+            if Platform.isMac { Text(HealthWords.notOnThisDevice) }
+        }
+
+        Section {
+            let modes = model.lifeModes.filter { ($0.end ?? model.today) >= model.today }
+            ForEach(modes) { period in
+                Button {
+                    editingLifeMode = period
+                } label: {
+                    LabeledContent {
+                        Text(period.end.map { "until \(Format.day($0))" } ?? "ongoing")
+                    } label: {
+                        Label(period.kind.label, systemImage: period.kind.symbol)
+                    }
+                }
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("settings.lifeMode")
+            }
+            Menu {
+                Button("Vacation", systemImage: "airplane") {
+                    editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, createdBy: .macroTrack).edited(openEnded: false)
+                }
+                .accessibilityIdentifier("settings.lifeMode.vacation")
+                Button("Ill", systemImage: "thermometer.medium") {
+                    editingLifeMode = LifeModePeriod(kind: .illness(.systemic), start: model.today, createdBy: .macroTrack)
+                }
+                .accessibilityIdentifier("settings.lifeMode.ill")
+                Button("Crunch", systemImage: "briefcase.fill") {
+                    editingLifeMode = LifeModePeriod(kind: .crunch(CrunchDials()), start: model.today, createdBy: .macroTrack)
+                        .edited(openEnded: false)
+                }
+                .accessibilityIdentifier("settings.lifeMode.crunch")
+            } label: {
+                // The whole row opens the menu, not only its words.
+                Label("Start a life mode", systemImage: "plus")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
+            }
+            .accessibilityIdentifier("settings.startLifeMode")
+        } header: {
+            Text("Life")
+        } footer: {
+            Text(
+                "Shared with Lift Track. Vacation and illness expect no logging and don't count against you; the first days back aren't read as fat gain. Crunch asks only for protein and maintenance calories."
+            )
+        }
+
+    }
+
+    @ViewBuilder
+    var data: some View {
+        Section("Your data") {
+            Button("Export CSV files", systemImage: "tablecells") {
+                do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
+            }
+            .accessibilityIdentifier("settings.exportCSV")
+            if !exportURLs.isEmpty {
+                ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
+                    .accessibilityIdentifier("settings.shareCSV")
+            }
+            Button("Make a backup file", systemImage: "externaldrive") {
+                busy = "Making the backup…"
+                Task {
+                    defer { busy = nil }
+                    do { backupURL = try await model.backupFile() } catch { message = error.localizedDescription }
+                }
+            }
+            .disabled(busy != nil)
+            .accessibilityIdentifier("settings.makeBackup")
+            if let backupURL {
+                ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
+                    .accessibilityIdentifier("settings.shareBackup")
+            }
+            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+                .disabled(busy != nil)
+                .accessibilityIdentifier("settings.restoreBackup")
+            if let busy {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(busy).foregroundStyle(.secondary)
+                }
+            }
+            LabeledContent("Sync", value: model.store.syncStatus)
+        }
+
+        Section {
+            ForEach(model.catalog.sources, id: \.name) { source in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(source.name).font(.subheadline.weight(.medium))
+                    Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(.secondary)
+                    Text(source.attribution).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            if let supplements = model.supplementCatalog {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("NIH Dietary Supplement Label Database").font(.subheadline.weight(.medium))
+                    Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(.secondary)
+                    Text(supplements.attribution).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            if !model.catalog.hasPackagedFoods {
+                Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Food data")
+        } footer: {
+            Text(
+                "Open Food Facts data is available under the Open Database License (opendatacommons.org/licenses/odbl). USDA FoodData Central is in the public domain."
+            )
+        }
+
+        if Purchases.enabled {
+            Section("Macro Track") {
+                if purchases.unlocked {
+                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
+                } else {
+                    Button("Unlock Macro Track", systemImage: "lock.open") { unlocking = true }
+                        .accessibilityIdentifier("settings.unlock")
+                    Button("Restore purchase") { Task { await purchases.restore() } }
+                        .accessibilityIdentifier("settings.restorePurchase")
+                }
+            }
+        }
+
+        #if DEBUG
+        Section("Debug") {
+            Button("Erase everything", role: .destructive) { model.eraseEverything() }
+                .accessibilityIdentifier("settings.eraseEverything")
+        }
+        #endif
     }
 
     private func setting<T>(_ keyPath: WritableKeyPath<MacroSettings, T>) -> Binding<T> {
