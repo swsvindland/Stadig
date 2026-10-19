@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var prompts = DataPrompts()
 
     var body: some View {
         Form {
@@ -35,8 +36,9 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.gym")
             }
             TrainingSections()
-            DataSections()
+            DataSections(prompts: $prompts)
         }
+        .dataPrompts($prompts)
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
         .inlineTitle()
@@ -53,8 +55,11 @@ struct TrainingSettings: View {
 
 /// The Mac's Data pane.
 struct DataSettings: View {
+    @State private var prompts = DataPrompts()
+
     var body: some View {
-        Form { DataSections() }
+        Form { DataSections(prompts: $prompts) }
+            .dataPrompts($prompts)
     }
 }
 
@@ -137,23 +142,75 @@ struct TrainingSections: View {
     }
 }
 
-/// Export, backup and restore, the purchase, and what Lift Track is part of.
+/// What the data sections ask to show over the whole form: the file picker for a restore, the
+/// paywall, and the message a backup or restore ends with. The form presents them, not a section:
+/// on a section of a lazy form a presentation is attached to each row, and goes when the rows
+/// scroll away.
+struct DataPrompts {
+    var importing = false
+    /// From the form: Settings is a sheet already, and a second sheet from the root can't show over it.
+    var paywall = false
+    var message: String?
+    /// A backup or restore is running: it covers every record, photos included.
+    var working = false
+}
+
+extension View {
+    /// Presents the data sections' prompts (`DataPrompts`), and runs the restore a picked file starts.
+    func dataPrompts(_ prompts: Binding<DataPrompts>) -> some View {
+        modifier(DataPromptsPresenter(prompts: prompts))
+    }
+}
+
+private struct DataPromptsPresenter: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var prompts: DataPrompts
+
+    func body(content: Content) -> some View {
+        content
+            .fileImporter(isPresented: $prompts.importing, allowedContentTypes: DataSections.backupTypes) { result in
+                switch result {
+                case .success(let url):
+                    Task { await restore(from: url) }
+                case .failure(let error):
+                    prompts.message = error.localizedDescription
+                }
+            }
+            .sheet(isPresented: $prompts.paywall) { PaywallView() }
+            .alert("Data", isPresented: Binding(get: { prompts.message != nil }, set: { if !$0 { prompts.message = nil } })) {
+                Button("OK") { prompts.message = nil }.accessibilityIdentifier("settings.messageOK")
+            } message: {
+                Text(prompts.message ?? "")
+            }
+    }
+
+    private func restore(from url: URL) async {
+        prompts.working = true
+        defer { prompts.working = false }
+        do {
+            let summary = try await model.importBackup(from: url)
+            prompts.message = "Restored \(summary.records) records."
+        } catch {
+            prompts.message = error.localizedDescription
+        }
+    }
+}
+
+/// Export, backup and restore, the purchase, and what Lift Track is part of. What they show over
+/// the form is in `prompts`, which the form presents.
 struct DataSections: View {
     @Environment(AppModel.self) private var model
     @Environment(Purchases.self) private var purchases
+    @Binding var prompts: DataPrompts
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
-    @State private var importing = false
-    /// A backup or restore is running: it covers every record, photos included.
-    @State private var working = false
-    @State private var message: String?
-    /// Presented from here: Settings is a sheet already, and a second sheet from the root can't show over it.
-    @State private var showPaywall = false
+
+    private var working: Bool { prompts.working }
 
     var body: some View {
         Section {
             Button("Export CSV", systemImage: "tablecells") {
-                do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
+                do { exportURLs = try model.exportCSV() } catch { prompts.message = error.localizedDescription }
             }
             .disabled(working)
             .accessibilityIdentifier("settings.exportCSV")
@@ -168,7 +225,7 @@ struct DataSections: View {
                 ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("settings.shareBackup")
             }
-            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { importing = true }
+            Button("Restore from a backup", systemImage: "arrow.counterclockwise") { prompts.importing = true }
                 .disabled(working)
                 .accessibilityIdentifier("settings.restore")
             if working {
@@ -185,26 +242,12 @@ struct DataSections: View {
                 "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
             )
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: Self.backupTypes) { result in
-            switch result {
-            case .success(let url):
-                Task { await restore(from: url) }
-            case .failure(let error):
-                message = error.localizedDescription
-            }
-        }
-        .sheet(isPresented: $showPaywall) { PaywallView() }
-        .alert("Data", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
-            Button("OK") { message = nil }.accessibilityIdentifier("settings.messageOK")
-        } message: {
-            Text(message ?? "")
-        }
         if Purchases.enabled {
             Section("Lift Track") {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Lift Track") { showPaywall = true }
+                    Button("Unlock Lift Track") { prompts.paywall = true }
                     Button("Restore purchase") { Task { await purchases.restore() } }
                 }
             }
@@ -224,23 +267,12 @@ struct DataSections: View {
 
     /// Lift Track's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
     /// Another app's backup is refused when it's read.
-    private static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
+    static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
 
     private func makeBackup() async {
-        working = true
-        defer { working = false }
-        do { backupURL = try await model.exportBackup() } catch { message = error.localizedDescription }
-    }
-
-    private func restore(from url: URL) async {
-        working = true
-        defer { working = false }
-        do {
-            let summary = try await model.importBackup(from: url)
-            message = "Restored \(summary.records) records."
-        } catch {
-            message = error.localizedDescription
-        }
+        prompts.working = true
+        defer { prompts.working = false }
+        do { backupURL = try await model.exportBackup() } catch { prompts.message = error.localizedDescription }
     }
 }
 
