@@ -42,7 +42,8 @@ Made without sign-off while bringing the apps to the iPad, the Mac, Vision Pro a
 
 ### Lift Track
 
-- **Destinations.** The sidebar groups Today; Training (Plan, Program, Library); Records (History, Progress, Body).
+- **Destinations.** The sidebar groups Today; Training (Plan, Program, Library); Records (History, Progress, Body). An iPhone never takes the wide layouts, even a Pro Max on its side (which reports a regular width); in a narrow window Program and Library show Plan, History shows Progress, and a day's exercise offers "Show Exercise" in place of "Show in Library".
+- **Mac settings panes** save only the fields changed in that visit, onto the newest copy of the profile or gym, so an edit synced in from another device while a pane is open isn't written back over.
 - **Program.** Refitting a day to 30, 45, 60 or 90 minutes in Program is a preview; only Today's "Short on time?" changes the session. A next block that's offered (not accepted) is previewed beside the current one without being saved.
 - **Library.** "Set Aside" and "Allow Back" edit the exercises you avoid (`settings.avoid`, which the generator and session planner already honour); "Allow It Anyway" and "Rule It Out" save an override on the injury period itself.
 - **History deletes.** One row from the context menu deletes at once, like the iPhone's swipe; the Delete key, and several rows at once, ask first.
