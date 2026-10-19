@@ -140,13 +140,15 @@ struct AppModelTests {
         #expect(AppModel.ordered([newer, weekBefore, older]).map(\.kcal) == [2300, 2200, 2400])
     }
 
+    /// The rule is `MacroSettings.inForce` (NutritionEngine's tests), shared with the Watch and the
+    /// Health backfill; this is the model reading by it.
     @Test func theSettingsSetUpFirstWin() {
+        let environment = TestEnvironment()
         let first = MacroSettings(id: UUID(), onboardedAt: date(2027, 1, 1), dietHistory: .longCut, updatedAt: date(2027, 1, 1))
         let second = MacroSettings(id: MacroSettings.singletonID, onboardedAt: date(2027, 2, 1), dietHistory: .none, updatedAt: date(2027, 2, 2))
         let unfinished = MacroSettings(id: UUID(), updatedAt: date(2027, 3, 1))
-        #expect(AppModel.inForce([second, unfinished, first])?.dietHistory == .longCut)
-        #expect(AppModel.inForce([unfinished])?.id == unfinished.id)
-        #expect(AppModel.inForce([]) == nil)
+        environment.store.save([second, unfinished, first])
+        #expect(environment.model().settings.dietHistory == .longCut)
     }
 
     @Test func loggingAFoodChangesTodayAndSurvivesARelaunch() throws {

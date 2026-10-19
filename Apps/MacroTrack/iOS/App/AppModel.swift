@@ -258,7 +258,9 @@ final class AppModel {
     /// in proportion to the history.
     func reload() {
         if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
-        if needsReading(MacroSettings.self) { settings = Self.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID) }
+        if needsReading(MacroSettings.self) {
+            settings = MacroSettings.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID)
+        }
         let entriesChanged = needsReading(FoodEntry.self)
         if entriesChanged { entries = store.all(FoodEntry.self).sorted { $0.date < $1.date } }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
@@ -293,20 +295,6 @@ final class AppModel {
     func reloadMealPlans() {
         readRevisions[MealPlan.kind] = store.revision(of: MealPlan.self)
         mealPlans = store.all(MealPlan.self).sorted { $0.start < $1.start }
-    }
-
-    /// The settings record in force. There's normally one; a second appears when setup was finished
-    /// on a new device before the first device's settings had synced in. The one set up first wins,
-    /// so the person's settings aren't shadowed by the new device's defaults.
-    static func inForce(_ all: [MacroSettings]) -> MacroSettings? {
-        all.min { a, b in
-            switch (a.onboardedAt, b.onboardedAt) {
-            case (let x?, let y?): x != y ? x < y : a.updatedAt > b.updatedAt
-            case (.some, nil): true
-            case (nil, .some): false
-            case (nil, nil): a.updatedAt > b.updatedAt
-            }
-        }
     }
 
     /// Check-ins by day, and within a day oldest first, as the analysis orders them: the last of a
@@ -888,7 +876,7 @@ final class AppModel {
     }
 
     /// The settings as the store has them now.
-    private var storedSettings: MacroSettings { Self.inForce(store.all(MacroSettings.self)) ?? settings }
+    private var storedSettings: MacroSettings { MacroSettings.inForce(store.all(MacroSettings.self)) ?? settings }
 
     func save(profile: SharedProfile) {
         var profile = profile
@@ -910,7 +898,7 @@ final class AppModel {
     /// the store, not the copies in memory: when setup was already done on another device and has
     /// just synced in, it's kept as it is (its profile, settings and assessment), not started again.
     func completeOnboarding(profile: SharedProfile, history: DietHistory, weightKg: Double?) {
-        let synced = Self.inForce(store.all(MacroSettings.self))
+        let synced = MacroSettings.inForce(store.all(MacroSettings.self))
         if synced?.onboardedAt == nil || store.all(ProfileRecord.self).isEmpty {
             var profile = profile
             profile.updatedAt = Date()
