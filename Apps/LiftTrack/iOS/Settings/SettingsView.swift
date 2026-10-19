@@ -261,12 +261,10 @@ extension AppModel {
 /// changes nothing, or a field left alone, never overwrites a newer edit synced from another device.
 struct ProfileEditor: View {
     @Environment(AppModel.self) private var model
-    @State private var profile: SharedProfile
-    @State private var original: SharedProfile
+    @State private var edit: EditedCopy<SharedProfile>
 
     init(profile: SharedProfile) {
-        _profile = State(initialValue: profile)
-        _original = State(initialValue: profile)
+        _edit = State(initialValue: EditedCopy(profile))
     }
 
     var body: some View {
@@ -276,35 +274,35 @@ struct ProfileEditor: View {
                     Toggle(
                         goal.label,
                         isOn: Binding(
-                            get: { profile.goals.contains(goal) },
+                            get: { edit.value.goals.contains(goal) },
                             set: { on in
-                                if on { profile.goals.append(goal) } else { profile.goals.removeAll { $0 == goal } }
+                                if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
                             }))
                 }
             }
             Section("Schedule") {
-                Stepper("\(profile.schedule.daysPerWeek) days a week", value: $profile.schedule.daysPerWeek, in: 1...6)
-                Picker("Minutes per session", selection: $profile.schedule.minutesPerSession) {
+                Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
+                Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
                     ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
                 }
-                WeekdayPicker(selection: $profile.schedule.preferredDays)
+                WeekdayPicker(selection: $edit.value.schedule.preferredDays)
             }
             Section("Experience") {
-                Picker("Lifting for", selection: $profile.experience) {
+                Picker("Lifting for", selection: $edit.value.experience) {
                     ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
                 }
             }
             Section("Basics") {
-                Picker("Standards for", selection: $profile.sex) {
+                Picker("Standards for", selection: $edit.value.sex) {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                 }
-                BirthYearField(year: $profile.birthYear)
-                MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)
-                Picker("Weight unit", selection: $profile.units.weight) {
+                BirthYearField(year: $edit.value.birthYear)
+                MeasureField(label: "Height", value: $edit.value.heightCm, unit: edit.value.units.length)
+                Picker("Weight unit", selection: $edit.value.units.weight) {
                     Text("kg").tag(WeightUnit.kg)
                     Text("lb").tag(WeightUnit.lb)
                 }
-                Picker("Length unit", selection: $profile.units.length) {
+                Picker("Length unit", selection: $edit.value.units.length) {
                     Text("cm").tag(LengthUnit.cm)
                     Text("in").tag(LengthUnit.inch)
                 }
@@ -315,23 +313,7 @@ struct ProfileEditor: View {
             }
         }
         .navigationTitle("About you")
-        .onDisappear { saveChanges() }
-    }
-
-    private func saveChanges() {
-        guard profile != original else { return }
-        var latest = model.profile ?? original
-        func take<T: Equatable>(_ field: WritableKeyPath<SharedProfile, T>) {
-            if profile[keyPath: field] != original[keyPath: field] { latest[keyPath: field] = profile[keyPath: field] }
-        }
-        take(\.goals)
-        take(\.schedule)
-        take(\.experience)
-        take(\.sex)
-        take(\.birthYear)
-        take(\.heightCm)
-        take(\.units)
-        model.save(profile: latest)
+        .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
 
@@ -397,46 +379,45 @@ extension PhysiqueRegion {
 /// Saves on the way out only when something changed, onto the latest profile (see ProfileEditor).
 struct RecurringScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var recurring: [RecurringActivity]
-    @State private var original: [RecurringActivity]
+    @State private var edit: EditedCopy<SharedProfile>
 
     init(profile: SharedProfile) {
-        _recurring = State(initialValue: profile.recurring)
-        _original = State(initialValue: profile.recurring)
+        _edit = State(initialValue: EditedCopy(profile))
     }
 
     var body: some View {
         ScrollView {
             OutsideActivitiesEditor(
-                recurring: $recurring, title: "Outside the gym",
+                recurring: $edit.value.recurring, title: "Outside the gym",
                 detail: "Lift Track plans around these; they spend the same recovery."
             )
             .padding()
         }
         .background(.pageBackground)
-        .onDisappear {
-            guard recurring != original, var latest = model.profile else { return }
-            latest.recurring = recurring
-            model.save(profile: latest)
-        }
+        .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
 
-/// Saves on the way out only when something changed, so a visit never re-stamps an older copy as newest.
+/// Saves on the way out only when something changed, and only that, onto the gym as it is then:
+/// a visit never re-stamps an older copy as newest.
 struct GymEditor: View {
     @Environment(AppModel.self) private var model
-    @State private var gym: Gym
-    @State private var original: Gym
+    @State private var edit: EditedCopy<Gym>
 
     init(gym: Gym) {
-        _gym = State(initialValue: gym)
-        _original = State(initialValue: gym)
+        _edit = State(initialValue: EditedCopy(gym))
+    }
+
+    /// The copy being edited.
+    private var gym: Gym {
+        get { edit.value }
+        nonmutating set { edit.value = newValue }
     }
 
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $gym.name)
+                TextField("Name", text: $edit.value.name)
                 Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
                     ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
                 }
@@ -493,13 +474,65 @@ struct GymEditor: View {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
                 LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
                 Stepper(
-                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $gym.dumbbellMax, in: gym.dumbbellStep...200,
+                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $edit.value.dumbbellMax,
+                    in: gym.dumbbellStep...200,
                     step: gym.dumbbellStep)
-                Stepper("Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $gym.dumbbellStep, in: 0.5...10, step: 0.5)
-                Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $gym.machineStep, in: 1...20, step: 0.5)
+                Stepper(
+                    "Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $edit.value.dumbbellStep, in: 0.5...10,
+                    step: 0.5)
+                Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
             }
         }
         .navigationTitle("Gym")
-        .onDisappear { if gym != original { model.save(gym: gym) } }
+        .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
+    }
+}
+
+/// A settings screen's copy of a stored record (the profile, the gym), with the record it started
+/// from, so leaving saves only what changed in this visit (`AppModel.save(profileEdits:from:)`).
+/// It catches up with the stored record whenever nothing here is waiting to be saved: a pane of the
+/// Mac's Settings window stays alive between visits, and would otherwise go on editing, and write
+/// back, the copy it first opened with.
+struct EditedCopy<Record: Equatable>: Equatable {
+    var value: Record
+    private(set) var original: Record
+
+    init(_ record: Record) {
+        value = record
+        original = record
+    }
+
+    /// Something changed here that isn't saved yet.
+    var isPending: Bool { value != original }
+
+    /// The stored record as it is now, synced in or saved elsewhere: taken unless something here is
+    /// waiting to be saved, which the save then puts onto it field by field.
+    mutating func catchUp(to latest: Record?) {
+        guard !isPending, let latest else { return }
+        value = latest
+        original = latest
+    }
+
+    /// The record as just saved from here: the starting point for whatever changes next.
+    mutating func saved(_ record: Record) {
+        value = record
+        original = record
+    }
+}
+
+extension View {
+    /// Keeps a settings screen's copy current (`EditedCopy`): caught up with the stored record when
+    /// the screen appears and whenever the record changes, and saved on the way out with `save`,
+    /// which is given the edited copy and the original and returns the record as saved (nil when
+    /// nothing was).
+    func editing<Record: Equatable>(
+        _ copy: Binding<EditedCopy<Record>>, of latest: Record?, save: @escaping (Record, Record) -> Record?
+    ) -> some View {
+        onAppear { copy.wrappedValue.catchUp(to: latest) }
+            .onChange(of: latest) { _, latest in copy.wrappedValue.catchUp(to: latest) }
+            .onDisappear {
+                guard copy.wrappedValue.isPending, let saved = save(copy.wrappedValue.value, copy.wrappedValue.original) else { return }
+                copy.wrappedValue.saved(saved)
+            }
     }
 }

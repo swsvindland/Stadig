@@ -380,6 +380,41 @@ final class AppModel {
         reload()
     }
 
+    /// Saves what a settings screen changed, from `original` (the copy it opened with) to `edited`,
+    /// field by field onto the latest profile: a field left alone there keeps whatever synced in
+    /// meanwhile, here or from another app. Nothing is saved when nothing changed. Returns the
+    /// profile as saved, for the screen to carry on from.
+    @discardableResult
+    func save(profileEdits edited: SharedProfile, from original: SharedProfile) -> SharedProfile? {
+        guard edited != original else { return nil }
+        var latest = profile ?? original
+        func take<T: Equatable>(_ field: WritableKeyPath<SharedProfile, T>) {
+            if edited[keyPath: field] != original[keyPath: field] { latest[keyPath: field] = edited[keyPath: field] }
+        }
+        take(\.goals)
+        take(\.schedule.daysPerWeek)
+        take(\.schedule.minutesPerSession)
+        take(\.schedule.preferredDays)
+        take(\.experience)
+        take(\.recurring)
+        take(\.sex)
+        take(\.birthYear)
+        take(\.heightCm)
+        take(\.units.weight)
+        take(\.units.length)
+        save(profile: latest)
+        return profile
+    }
+
+    /// The gym's counterpart of `save(profileEdits:from:)`: only what the screen changed, onto the
+    /// gym as it is now (`Gym.applying(_:from:)`).
+    @discardableResult
+    func save(gymEdits edited: Gym, from original: Gym) -> Gym? {
+        guard edited != original else { return nil }
+        save(gym: gym.applying(edited, from: original))
+        return gym
+    }
+
     func save(settings: LiftSettings) {
         var settings = settings
         if settings.selfReportedPhase != self.settings.selfReportedPhase { settings.selfReportedPhaseSince = .today }
