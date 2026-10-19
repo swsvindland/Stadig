@@ -15,7 +15,7 @@ struct LiftTrackApp: App {
         // Tests and UI tests: no Health prompts, reads or writes, from before anything asks.
         if launch.isQuiet { HealthBridge.shared.disable() }
         guard !launch.isHostingTests else { return }
-        if launch.isUITesting { UIView.setAnimationsEnabled(false) }
+        if launch.isUITesting { Platform.disableAnimations() }
         let model = AppModel.shared
         #if DEBUG
         // -seedSampleData fills an empty store; -tab plan|progress|body opens a tab; -startSession
@@ -38,12 +38,14 @@ struct LiftTrackApp: App {
         }
         if launch.has("-startSession"), model.live == nil, let plan = model.plan() { model.start(plan) }
         #endif
+        #if os(iOS)
         // No Watch under tests: nothing to activate, and nothing to wait on.
         if !launch.isQuiet {
             WatchLink.shared.activate()
             WorkoutMirror.shared.onData = { data in AppModel.shared.fromWatch(data) }
             WorkoutMirror.shared.activate()
         }
+        #endif
         _model = State(initialValue: model)
     }
 

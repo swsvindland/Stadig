@@ -151,7 +151,7 @@ struct SettingsView: View {
         }
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
         .fileImporter(isPresented: $importing, allowedContentTypes: Self.backupTypes) { result in
             switch result {
@@ -324,7 +324,7 @@ struct FocusScreen: View {
             }
         }
         .navigationTitle("Focus")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
     }
 }
 

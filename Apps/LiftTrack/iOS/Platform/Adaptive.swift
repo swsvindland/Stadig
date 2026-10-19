@@ -136,6 +136,16 @@ extension View {
         #endif
     }
 
+    /// The line under a screen's title (today's date on Today). Vision Pro's window titles have none,
+    /// so there it's left out; a screen that needs the line there shows it itself.
+    func navigationSubtitleIfAvailable(_ subtitle: String) -> some View {
+        #if os(visionOS)
+        return self
+        #else
+        return navigationSubtitle(subtitle)
+        #endif
+    }
+
     /// Liquid Glass behind a floating control. Vision Pro's windows are glass already and its SDK
     /// has no `glassEffect`: a material reads the same there.
     func adaptiveGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {

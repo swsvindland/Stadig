@@ -52,9 +52,9 @@ struct SessionScreen: View {
                     BottomPanel(finish: { showFeedback = true })
                 }
                 .navigationTitle(live.plan.title)
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineTitle()
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .barLeading) {
                         Button {
                             model.showSession = false
                         } label: {
@@ -77,7 +77,7 @@ struct SessionScreen: View {
                             }
                         }
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItem(placement: .barTrailing) {
                         Menu {
                             Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
                                 .accessibilityIdentifier("session.finishNow")

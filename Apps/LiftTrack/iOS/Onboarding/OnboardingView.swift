@@ -432,7 +432,7 @@ struct BirthYearField: View {
                 Text("Birth year")
                 Spacer()
                 TextField(placeholder, value: $typed, format: .number.grouping(.never))
-                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    .fieldKeyboard(.number).multilineTextAlignment(.trailing).frame(width: 90)
                     .foregroundStyle(invalid ? Color.red : Color.primary)
                     .accessibilityLabel("Birth year")
             }
@@ -492,7 +492,7 @@ struct MeasureField: View {
                     set: { value = $0.map(unit.toCentimetres) }),
                 format: .number.precision(.fractionLength(0...1))
             )
-            .keyboardType(.decimalPad)
+            .fieldKeyboard(.decimal)
             .multilineTextAlignment(.trailing)
             .frame(width: 80)
             .accessibilityIdentifier(identifier ?? "")
@@ -518,7 +518,7 @@ struct WeightField: View {
                     set: { kg = $0.map(unit.toKilograms) }),
                 format: .number.precision(.fractionLength(0...1))
             )
-            .keyboardType(.decimalPad)
+            .fieldKeyboard(.decimal)
             .multilineTextAlignment(.trailing)
             .frame(width: 80)
             Text(unit.symbol).foregroundStyle(.secondary)

@@ -81,7 +81,7 @@ struct RecurringEditor: View {
                 }
             }
             .navigationTitle(isNew ? "New activity" : item.activity.label)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -150,7 +150,7 @@ struct ActivityLogSheet: View {
                 }
             }
             .navigationTitle("Log activity")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("logActivity.cancel") }
                 ToolbarItem(placement: .confirmationAction) {

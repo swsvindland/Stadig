@@ -1,3 +1,4 @@
+#if os(iOS)
 import ActivityKit
 import SwiftUI
 import WidgetKit
@@ -75,3 +76,4 @@ private struct LockScreenView: View {
         .foregroundStyle(.white)
     }
 }
+#endif

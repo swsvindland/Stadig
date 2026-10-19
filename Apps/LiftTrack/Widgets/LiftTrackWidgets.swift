@@ -6,7 +6,9 @@ import WidgetKit
 struct LiftTrackWidgets: WidgetBundle {
     var body: some Widget {
         NextSessionWidget()
+        #if os(iOS)
         SessionLiveActivity()
+        #endif
     }
 }
 
@@ -46,7 +48,17 @@ struct NextSessionWidget: Widget {
         }
         .configurationDisplayName("Next Session")
         .description("Your next session, one tap from starting.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular])
+        .supportedFamilies(Self.families)
+    }
+
+    /// The Lock Screen's accessory families are the iPhone's and iPad's; the Mac's desktop and Vision
+    /// Pro's walls take the small and medium ones.
+    static var families: [WidgetFamily] {
+        #if os(iOS)
+        [.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular]
+        #else
+        [.systemSmall, .systemMedium]
+        #endif
     }
 }
 
@@ -56,6 +68,7 @@ struct NextSessionView: View {
 
     var body: some View {
         switch family {
+        #if os(iOS)
         case .accessoryInline:
             Text("\(snapshot.title) · \(snapshot.detail)")
         case .accessoryCircular:
@@ -71,6 +84,7 @@ struct NextSessionView: View {
                 Text(snapshot.badge ?? snapshot.detail).font(.caption)
                 Text(snapshot.exercises.prefix(2).joined(separator: ", ")).font(.caption2).foregroundStyle(.secondary)
             }
+        #endif
         case .systemMedium:
             HStack(alignment: .top, spacing: 14) {
                 summary

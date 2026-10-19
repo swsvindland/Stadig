@@ -2,9 +2,12 @@ import ExerciseLibrary
 import Foundation
 import LiftEngine
 import SystemCore
-import UIKit
 import UserNotifications
 import WidgetKit
+
+#if os(iOS)
+import UIKit
+#endif
 
 /// Keeps the widgets' snapshot current.
 enum WidgetBridge {
@@ -87,7 +90,9 @@ final class RestAlerts {
     /// Heart rate came back down before the timer: rest's over now, with a tap to say so.
     func heartRateRecovered() {
         guard !LaunchOptions.current.isQuiet else { return }
+        #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
         let content = UNMutableNotificationContent()
         content.title = "Heart rate's back down"
         content.body = "Ready for the next set."

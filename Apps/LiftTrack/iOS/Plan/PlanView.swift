@@ -43,7 +43,7 @@ struct PlanView: View {
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         model.showSettings = true
                     } label: {
@@ -373,7 +373,7 @@ struct ProgramSwapSheet: View {
                 }
             }
             .navigationTitle("Swap \(model.catalog.resolve(slot.exerciseID).name)")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }

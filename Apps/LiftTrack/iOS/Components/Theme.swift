@@ -7,9 +7,9 @@ import SystemCore
 // logger). Content sits on quiet grouped surfaces so the glass has something to refract.
 
 extension ShapeStyle where Self == Color {
-    static var pageBackground: Color { Color(uiColor: .systemGroupedBackground) }
-    static var cardBackground: Color { Color(uiColor: .secondarySystemGroupedBackground) }
-    static var insetBackground: Color { Color(uiColor: .tertiarySystemGroupedBackground) }
+    static var pageBackground: Color { .groupedBackground }
+    static var cardBackground: Color { .secondaryGroupedBackground }
+    static var insetBackground: Color { .tertiaryGroupedBackground }
 }
 
 extension SetRating {
@@ -60,13 +60,13 @@ extension View {
     }
 
     func floatingGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {
-        self.glassEffect(Glass.regular.tint(tint).interactive(interactive), in: shape)
+        adaptiveGlass(in: shape, tint: tint, interactive: interactive)
     }
 
     /// The one action that matters on a screen.
-    func primaryAction() -> some View { self.buttonStyle(.glassProminent).buttonBorderShape(.capsule) }
+    func primaryAction() -> some View { prominentGlassButtonStyle().buttonBorderShape(.capsule) }
 
-    func secondaryAction() -> some View { self.buttonStyle(.glass).buttonBorderShape(.capsule) }
+    func secondaryAction() -> some View { glassButtonStyle().buttonBorderShape(.capsule) }
 
     /// Readable line length on iPad.
     func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }

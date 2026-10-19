@@ -1,3 +1,4 @@
+#if os(iOS)
 import ExerciseLibrary
 import Foundation
 import LiftEngine
@@ -115,3 +116,4 @@ extension WatchLink: WCSessionDelegate {
         }
     }
 }
+#endif

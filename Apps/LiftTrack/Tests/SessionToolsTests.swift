@@ -1,9 +1,9 @@
 import ExerciseLibrary
 import Foundation
+import ImageIO
 import LiftEngine
 import SystemCore
 import Testing
-import UIKit
 
 @testable import LiftTrack
 
@@ -52,6 +52,7 @@ struct SessionToolsTests {
         #expect(increments.round(load, down: true) == load)
     }
 
+    #if os(iOS)
     @Test("The Lock Screen names the exercise and the set, warm-ups apart from work sets")
     func liveActivityContent() throws {
         let model = TestApp().onboarded()
@@ -86,24 +87,32 @@ struct SessionToolsTests {
         #expect(done.exercise == "Finish session")
         #expect(done.detail.isEmpty)
     }
+    #endif
 
     // MARK: Photos
 
+    /// A flat-coloured JPEG of the given size, drawn with Core Graphics so it's the same on every platform.
     private func jpeg(width: Int, height: Int) throws -> Data {
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        let image = UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in
-            UIColor.systemTeal.setFill()
-            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        }
-        return try #require(image.jpegData(compressionQuality: 0.9))
+        let context = try #require(
+            CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        context.setFillColor(red: 0.2, green: 0.7, blue: 0.8, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let image = try #require(context.makeImage())
+        return try #require(ImageData.jpeg(image, quality: 0.9))
+    }
+
+    private func decoded(_ data: Data) throws -> CGImage {
+        let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+        return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
     }
 
     @Test("A progress photo is kept at most 1400 pixels on its long side, whichever way up")
     func photoDownscale() async throws {
         for (width, height) in [(4000, 3000), (3000, 4000)] {
             let stored = try #require(await ProgressPhotos.jpeg(from: jpeg(width: width, height: height)))
-            let image = try #require(UIImage(data: stored)?.cgImage)
+            let image = try decoded(stored)
             #expect(max(image.width, image.height) == 1400)
             #expect((image.width > image.height) == (width > height))
             // A 12 MP original stored at full size would be megabytes; this syncs light.
@@ -114,7 +123,7 @@ struct SessionToolsTests {
     @Test("A small photo isn't enlarged, and data that isn't an image is refused")
     func photoEdges() async throws {
         let small = try #require(await ProgressPhotos.jpeg(from: jpeg(width: 800, height: 600)))
-        let image = try #require(UIImage(data: small)?.cgImage)
+        let image = try decoded(small)
         #expect(image.width == 800)
         #expect(await ProgressPhotos.jpeg(from: Data("not an image".utf8)) == nil)
     }

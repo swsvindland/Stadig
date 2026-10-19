@@ -17,15 +17,17 @@ struct RootView: View {
                     Tab("Body", systemImage: "figure.arms.open", value: AppTab.body) { BodyView() }
                 }
                 .tabViewStyle(.sidebarAdaptable)
+                #if os(iOS)
                 .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory(isEnabled: model.live != nil && !model.showSession) {
                     SessionAccessory()
                 }
+                #endif
             } else {
                 OnboardingView()
             }
         }
-        .fullScreenCover(isPresented: $model.showSession) {
+        .cover(isPresented: $model.showSession) {
             SessionScreen()
         }
         .sheet(item: $model.finished) { record in

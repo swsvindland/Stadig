@@ -1,5 +1,4 @@
 import Charts
-import ImageIO
 import LiftEngine
 import OSLog
 import PhotosUI
@@ -37,7 +36,7 @@ struct BodyView: View {
             .background(.pageBackground)
             .navigationTitle("Body")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         measuring = true
                     } label: {
@@ -309,41 +308,29 @@ struct BodyView: View {
 }
 
 /// Progress photo pixels, off the main actor. ImageIO decodes straight to the size asked for, so
-/// a 24 MP original is never held in full.
+/// a 24 MP original is never held in full; the same on every platform (`ImageData`).
 enum ProgressPhotos {
     /// What's stored: at most 1400 pixels on the long side, enough to compare and light to sync.
     @concurrent nonisolated static func jpeg(from data: Data) async -> Data? {
-        downsampled(data, maxPixel: 1400)?.jpegData(compressionQuality: 0.7)
+        ImageData.resizedJPEG(data, maxPixels: 1400, quality: 0.7)
     }
 
     /// For the screen, at about the pixels it's shown at.
-    @concurrent nonisolated static func image(from data: Data, maxPixel: Int) async -> UIImage? {
-        downsampled(data, maxPixel: maxPixel)
+    @concurrent nonisolated static func image(from data: Data, maxPixel: Int) async -> CGImage? {
+        ImageData.downsampled(data, maxPixels: maxPixel)
     }
 
     /// Decoded once per photo and size: the Body tab re-renders on every reload.
-    static let cache = NSCache<NSString, UIImage>()
+    static let cache = NSCache<NSString, CGImage>()
 
     static func key(_ photo: ProgressPhoto, maxPixel: Int) -> NSString { "\(photo.id.uuidString)-\(maxPixel)" as NSString }
-
-    nonisolated private static func downsampled(_ data: Data, maxPixel: Int) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
-        let options =
-            [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceShouldCacheImmediately: true,
-                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
-            ] as CFDictionary
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options).map { UIImage(cgImage: $0) }
-    }
 }
 
 /// One progress photo, decoded off the main actor at the size it's shown and kept in the cache.
-private struct ProgressPhotoImage: View {
+struct ProgressPhotoImage: View {
     let photo: ProgressPhoto
     let maxPixel: Int
-    @State private var image: UIImage?
+    @State private var image: CGImage?
 
     init(photo: ProgressPhoto, maxPixel: Int) {
         self.photo = photo
@@ -354,7 +341,7 @@ private struct ProgressPhotoImage: View {
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(decorative: image, scale: 1).resizable().scaledToFill()
             } else {
                 Rectangle().fill(.secondary.opacity(0.12))
             }
@@ -423,7 +410,7 @@ struct MeasurementEditor: View {
                         Text("Body fat")
                         Spacer()
                         TextField("—", value: $measurements.bodyFatPercent, format: .number.precision(.fractionLength(0...1)))
-                            .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 80)
+                            .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
                         Text("%").foregroundStyle(.secondary)
                     }
                 } footer: {
@@ -438,7 +425,7 @@ struct MeasurementEditor: View {
                 }
             }
             .navigationTitle("Measurements")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("measurements.cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -481,7 +468,7 @@ struct SidesField: View {
                     set: { value.wrappedValue = $0.map(unit.toCentimetres) }),
                 format: .number.precision(.fractionLength(0...1))
             )
-            .keyboardType(.decimalPad)
+            .fieldKeyboard(.decimal)
             // Next to its letter, so each value reads as that side's.
             .multilineTextAlignment(.leading)
             .frame(width: 52)
@@ -522,7 +509,7 @@ struct MeasuringGuide: View {
             }
         }
         .navigationTitle("Where the tape goes")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineTitle()
     }
 
     private func site(_ name: String, _ how: String) -> some View {

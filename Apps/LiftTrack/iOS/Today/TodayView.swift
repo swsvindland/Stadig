@@ -45,9 +45,9 @@ struct TodayView: View {
             .accessibilityIdentifier("today.screen")
             .background(.pageBackground)
             .navigationTitle("Today")
-            .navigationSubtitle(Format.day(model.today, style: .dateTime.weekday(.wide).month(.wide).day()))
+            .navigationSubtitleIfAvailable(Format.day(model.today, style: .dateTime.weekday(.wide).month(.wide).day()))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Menu {
                         Button("Log a class or activity", systemImage: "plus") { logActivity = ActivityLogSheetItem(declared: nil) }
                             .accessibilityIdentifier("today.logActivity")
@@ -68,7 +68,7 @@ struct TodayView: View {
                     .accessibilityLabel("Add")
                     .accessibilityIdentifier("today.add")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .barTrailing) {
                     Button {
                         model.showSettings = true
                     } label: {

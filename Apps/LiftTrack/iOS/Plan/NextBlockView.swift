@@ -36,7 +36,7 @@ struct NextBlockView: View {
             }
             .background(.pageBackground)
             .navigationTitle("Next block")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("nextBlock.cancel")
@@ -114,6 +114,7 @@ struct NextBlockView: View {
 struct PaywallView: View {
     @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchase
 
     var body: some View {
         NavigationStack {
@@ -129,7 +130,7 @@ struct PaywallView: View {
                 Spacer()
                 Button {
                     Task {
-                        await purchases.buy()
+                        await purchases.buy { try await purchase($0) }
                         if purchases.unlocked { dismiss() }
                     }
                 } label: {

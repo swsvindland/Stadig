@@ -114,7 +114,7 @@ struct LifeModeEditor: View {
                 }
             }
             .navigationTitle(period.kind.label)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel")
@@ -313,7 +313,7 @@ struct InjuryOverrides: View {
             }
             .searchable(text: $query)
             .navigationTitle("Exercises")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }

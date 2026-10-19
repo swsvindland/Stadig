@@ -238,7 +238,7 @@ struct SetLogger: View {
                 item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load, rating: rating,
                 heartRatePeak: peak, environment: environment, now: Date())
         }
-        UIAccessibility.post(notification: .announcement, argument: model.live?.message ?? "Logged")
+        AccessibilityNotification.Announcement(model.live?.message ?? "Logged").post()
     }
 }
 
@@ -338,7 +338,7 @@ struct Stepperish: View {
         }
         .alert(title, isPresented: $typing) {
             TextField(entry?.unit ?? "", text: $typed)
-                .keyboardType(entry?.decimal == true ? .decimalPad : .numberPad)
+                .fieldKeyboard(entry?.decimal == true ? .decimal : .number)
                 .accessibilityIdentifier(identifier.map { "\($0)Field" } ?? "")
             Button("Set") { entry?.apply(typed) }
                 .accessibilityIdentifier(identifier.map { "\($0)Set" } ?? "")
@@ -410,7 +410,7 @@ struct FeedbackSheet: View {
                 }
             }
             .navigationTitle("How was it?")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() }.accessibilityIdentifier("feedback.back") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -467,7 +467,7 @@ struct SwapSheet: View {
             }
             .searchable(text: $query, prompt: "Search exercises")
             .navigationTitle("Swap exercise")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("swap.cancel") } }
         }
     }
@@ -522,7 +522,7 @@ struct EditSetSheet: View {
                     }
                 }
                 .navigationTitle(exercise.name)
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineTitle()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("editSet.cancel") }
                     ToolbarItem(placement: .confirmationAction) {
@@ -734,7 +734,7 @@ struct Thermometer: View {
         .accessibilityLabel("Thermometer")
         .accessibilityValue(Format.temperature(celsius, fahrenheit: fahrenheit))
         .alert("Thermometer", isPresented: $typing) {
-            TextField(fahrenheit ? "°F" : "°C", text: $typed).keyboardType(.numberPad)
+            TextField(fahrenheit ? "°F" : "°C", text: $typed).fieldKeyboard(.number)
             Button("Set") {
                 guard let value = Double(typed) else { return }
                 set(min(120, max(30, fahrenheit ? (value - 32) * 5 / 9 : value)))

@@ -61,7 +61,7 @@ struct SessionSummaryView: View {
             }
             .background(.pageBackground)
             .navigationTitle(record.title)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("summary.done") }
             }

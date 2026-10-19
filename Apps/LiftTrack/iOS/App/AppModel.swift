@@ -296,7 +296,9 @@ final class AppModel {
             }
         }
         WidgetBridge.update(self)
+        #if os(iOS)
         WatchLink.shared.publish(self)
+        #endif
     }
 
     // MARK: Links
@@ -597,13 +599,16 @@ final class AppModel {
     }
 
     func start(_ plan: SessionPlan) {
-        live = LiveSession(plan: plan, device: "iPhone")
+        // The device it ran on, as History shows it: "iPhone", "iPad", "Mac", "Apple Vision Pro".
+        live = LiveSession(plan: plan, device: Platform.deviceName)
         showSession = true
         RestAlerts.shared.requestPermission()
         LiveActivityBridge.update(live, catalog: catalog, unit: gym.unit)
         heartRate = nil
+        #if os(iOS)
         // A workout on the Watch, mirrored here, for heart rate: warm-up, rests and conditioning.
         if WatchLink.shared.watchAppInstalled { Task { await WorkoutMirror.shared.startWatchWorkout() } }
+        #endif
     }
 
     /// Readings from the Watch's mirrored workout.
@@ -667,8 +672,21 @@ final class AppModel {
         var saveToHealth: @MainActor (SessionRecord) async -> Void
 
         static let live = WorkoutHandOff(
-            watchConnected: { WorkoutMirror.shared.isConnected },
-            sendToWatch: { await WorkoutMirror.shared.send($0) },
+            watchConnected: {
+                #if os(iOS)
+                WorkoutMirror.shared.isConnected
+                #else
+                // Only an iPhone pairs with a Watch; the Mac and Vision Pro save the workout themselves.
+                false
+                #endif
+            },
+            sendToWatch: { data in
+                #if os(iOS)
+                await WorkoutMirror.shared.send(data)
+                #else
+                false
+                #endif
+            },
             saveToHealth: { record in
                 do {
                     try await HealthBridge.shared.saveStrengthWorkout(
