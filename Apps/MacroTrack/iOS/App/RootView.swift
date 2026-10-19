@@ -94,8 +94,6 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         #if os(iOS)
-        // The iPad opens on its sidebar, where the destinations are.
-        .defaultAdaptableTabBarPlacement(.sidebar)
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(isEnabled: !wide) { QuickLogBar() }
         #endif
