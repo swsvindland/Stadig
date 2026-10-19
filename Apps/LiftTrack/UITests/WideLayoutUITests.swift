@@ -18,10 +18,9 @@ nonisolated final class WideLayoutUITests: XCTestCase {
     func testProgramSelectsASlotIntoTheInspector() {
         let app = XCUIApplication.launched(["-seedSampleData", "-tab", "program"])
         app.element("program.screen").waitToAppear(timeout: XCUIApplication.firstScreenTimeout)
-        let table = app.element("program.table").waitToAppear()
-        // A main lift's row: selecting it shows the slot in the inspector, with swaps.
-        let bench = table.cells.containing(.staticText, identifier: "Barbell Bench Press").firstMatch
-        bench.waitToAppear().tap()
+        // A main lift's row: selecting it shows the slot in the inspector, with swaps. (SwiftUI
+        // gives the table's rows to accessibility, not the table itself.)
+        app.staticTexts["Barbell Bench Press"].firstMatch.waitToAppear().tap()
         app.element("program.inspector").waitToAppear()
         XCTAssertTrue(app.buttons["program.swapOption"].firstMatch.waitForExistence(timeout: 10), "Swap candidates are offered")
     }
@@ -49,7 +48,8 @@ nonisolated final class WideLayoutUITests: XCTestCase {
     @MainActor
     func testTheWideSessionLogsFromTheKeyboard() {
         let app = XCUIApplication.launched(["-seedSampleData", "-startSession"])
-        app.element("session.outline").waitToAppear(timeout: XCUIApplication.firstScreenTimeout)
+        // The exercise list's rows: the list itself isn't an accessibility element.
+        app.element("session.outlineItem").waitToAppear(timeout: XCUIApplication.firstScreenTimeout)
         // Through the warm-ups to the first rated set, then rate it with the 2 key: Just right.
         let rate = app.buttons["logger.ratingOrange"]
         for _ in 0..<40 where !rate.exists {
