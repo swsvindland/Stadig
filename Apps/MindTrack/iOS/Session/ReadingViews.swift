@@ -344,7 +344,7 @@ struct ReflectView: View {
                     }
                     TextEditor(text: $text)
                         .font(.writing)
-                        .lineSpacing(LineSpacing.writing)
+                        .lineSpacing(sizeClass == .regular ? LineSpacing.writing : 0)
                         .frame(minHeight: sizeClass == .regular ? 280 : 160)
                         .padding(10)
                         .scrollContentBackground(.hidden)

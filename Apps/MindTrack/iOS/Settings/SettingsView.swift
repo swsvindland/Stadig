@@ -284,6 +284,10 @@ struct DataSettings: View {
                 }
             }
             .accessibilityIdentifier("settings.exportCSV")
+            // The Mac saves files where the person chooses, as a Mac app does; one presenter a row.
+            .fileExporter(isPresented: $savingCSV, items: exportURLs.map(CSVExport.init), contentTypes: [.commaSeparatedText]) { result in
+                if case .failure(let error) = result { message = error.localizedDescription }
+            }
             if !exportURLs.isEmpty, !Platform.isMac {
                 ShareLink(items: exportURLs) { Label("Share \(exportURLs.count) CSV files", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("settings.shareCSV")
@@ -302,6 +306,12 @@ struct DataSettings: View {
             }
             .disabled(working != nil)
             .accessibilityIdentifier("settings.makeBackup")
+            .fileExporter(
+                isPresented: $savingBackup, item: backupURL.map(BackupExport.init), contentTypes: [BackupExport.type],
+                defaultFilename: backupURL?.lastPathComponent
+            ) { result in
+                if case .failure(let error) = result { message = error.localizedDescription }
+            }
             if let backupURL, !Platform.isMac {
                 ShareLink(item: backupURL) { Label("Save or share the backup", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("settings.shareBackup")
@@ -325,16 +335,6 @@ struct DataSettings: View {
                     case .failure(let error):
                         message = error.localizedDescription
                     }
-                }
-                // The Mac saves files where the person chooses, as a Mac app does.
-                .fileExporter(isPresented: $savingCSV, items: exportURLs.map(CSVExport.init), contentTypes: [.commaSeparatedText]) { result in
-                    if case .failure(let error) = result { message = error.localizedDescription }
-                }
-                .fileExporter(
-                    isPresented: $savingBackup, item: backupURL.map(BackupExport.init), contentTypes: [BackupExport.type],
-                    defaultFilename: backupURL?.lastPathComponent
-                ) { result in
-                    if case .failure(let error) = result { message = error.localizedDescription }
                 }
             if let working {
                 HStack(spacing: 10) {

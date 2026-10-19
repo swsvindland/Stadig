@@ -312,7 +312,7 @@ private struct ComposeEditor: View {
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $text)
                     .font(.writing)
-                    .lineSpacing(LineSpacing.writing)
+                    .lineSpacing(fills ? LineSpacing.writing : 0)
                     .frame(minHeight: notesOnly ? 160 : 280, maxHeight: fills ? .infinity : nil)
                     .padding(8)
                     .scrollContentBackground(.hidden)
