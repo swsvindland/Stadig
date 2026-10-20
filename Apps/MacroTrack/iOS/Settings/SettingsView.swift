@@ -121,11 +121,17 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.caffeineLimit")
                 }
             }
+            Toggle("Meal timing and fasting", isOn: Binding(get: { model.tracksMealTiming }, set: { model.setTracksMealTiming($0) }))
+                .accessibilityIdentifier("settings.mealTiming")
+            if model.tracksMealTiming {
+                Toggle("Fast notifications", isOn: Binding(get: { model.fastAlerts }, set: { model.setFastAlerts($0) }))
+                    .accessibilityIdentifier("settings.fastAlerts")
+            }
         } header: {
             Text("Tracking")
         } footer: {
             Text(
-                "Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest."
+                "Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest. Meal timing shows the time since your last meal, the gaps between meals and the overnight fast, all from what you log, and lets you run a fast toward a goal."
             )
         }
 

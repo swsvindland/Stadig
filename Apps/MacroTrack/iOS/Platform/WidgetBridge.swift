@@ -23,6 +23,12 @@ enum WidgetBridge {
             case .vacation: "Vacation"
             case .phase: analysis.phase?.kind.label
             }
+        if model.tracksMealTiming {
+            snapshot.tracksMealTiming = true
+            snapshot.fastStart = analysis.fast?.fast.start
+            snapshot.fastGoalHours = analysis.fast?.fast.goalHours
+            snapshot.lastMealEnd = analysis.lastMeal?.end
+        }
         if snapshot.save(to: model.widgetURL), model.usesSystemServices { WidgetCenter.shared.reloadAllTimelines() }
     }
 }

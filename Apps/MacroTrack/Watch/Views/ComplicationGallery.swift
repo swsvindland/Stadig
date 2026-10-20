@@ -29,9 +29,20 @@ struct ComplicationGallery: View {
                     .padding(8)
                     .frame(width: 180, height: 70)
                     .background(Color.accentColor.opacity(0.25).gradient, in: .rect(cornerRadius: 14))
+                HStack(spacing: 8) {
+                    fast(snapshot, .accessoryCircular).frame(width: 52, height: 52)
+                    fast(snapshot, .accessoryCorner).frame(width: 32, height: 32)
+                }
+                fast(snapshot, .accessoryRectangular).frame(width: 180, height: 58)
+                fast(snapshot, .accessoryInline).frame(width: 180, height: 20)
             }
         }
         .navigationTitle("Complications")
+    }
+
+    private func fast(_ snapshot: WristSnapshot, _ family: WidgetFamily) -> some View {
+        FastComplication(snapshot: snapshot, date: Date(), family: family)
+            .overlay { RoundedRectangle(cornerRadius: 4).stroke(.gray.opacity(0.4), lineWidth: 0.5) }
     }
 
     private func tile(_ macro: ComplicationMacro, _ snapshot: WristSnapshot, _ family: WidgetFamily) -> some View {

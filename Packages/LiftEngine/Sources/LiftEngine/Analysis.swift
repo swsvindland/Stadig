@@ -30,6 +30,8 @@ public struct LiftState: Sendable {
     public var nutrition: NutritionSummary?
     public var recommendations: [Recommendation]
     public var today: Day
+    /// The moment the analysis is for, on `today`: how far into a fast it is.
+    public var now: Date
 
     public init(
         profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, sessions: [SessionRecord] = [],
@@ -37,7 +39,7 @@ public struct LiftState: Sendable {
         benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
         recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyweightDate: Date? = nil,
         bodyFatPercent: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil,
-        recommendations: [Recommendation] = [], today: Day = .today
+        recommendations: [Recommendation] = [], today: Day = .today, now: Date = Date()
     ) {
         self.profile = profile
         self.settings = settings
@@ -61,6 +63,7 @@ public struct LiftState: Sendable {
         self.nutrition = nutrition
         self.recommendations = recommendations
         self.today = today
+        self.now = now
     }
 
     /// Body weight as last measured: Health's, or the latest typed on the tape when that's from a
@@ -109,7 +112,7 @@ public struct LiftState: Sendable {
 
 /// A prescriptive insight: every one ends in a concrete action, or it isn't shown.
 public struct NextAction: Hashable, Sendable, Identifiable {
-    public enum Kind: String, Sendable { case stall, deloadEarly, checkIn, measure, mobility, conditioning, smallerPlan, physio, generate }
+    public enum Kind: String, Sendable { case stall, deloadEarly, checkIn, measure, mobility, conditioning, smallerPlan, physio, generate, fasting }
 
     public var id: String
     public var kind: Kind
@@ -468,6 +471,14 @@ public enum Analyst {
                     detail: "You've done \(a.discipline.completed) of \(a.discipline.planned) planned sessions in four weeks.",
                     action: "Try \(max(2, state.profile.schedule.daysPerWeek - 1)) shorter sessions this week. Showing up is the target, not volume.",
                     priority: 6))
+        }
+
+        if let fasting = FastingTraining.note(
+            fast: state.nutrition?.fast, next: a.next, deload: a.block?.week(of: today) == .deload,
+            trainedToday: state.sessions.contains { $0.day == today },
+            usualStart: FastingTraining.usualStart(on: today, sessions: state.sessions), now: state.now)
+        {
+            list.append(fasting)
         }
 
         if a.endurance.engineLagging, !state.settings.includeConditioning {

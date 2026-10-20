@@ -18,6 +18,9 @@ struct WristToast: Identifiable, Equatable {
         case weighIn(UUID)
         /// The day's state before it was marked: Undo puts it back.
         case dayState(DayState?)
+        /// A fast just started: Undo removes it. One just ended: Undo runs it again.
+        case fastStarted(UUID)
+        case fastEnded(Fast)
     }
 
     var id = UUID()
@@ -65,6 +68,7 @@ final class WristModel {
     @ObservationIgnored private var supplements: [Supplement] = []
     @ObservationIgnored private var supplementLogs: [SupplementLog] = []
     @ObservationIgnored private var water: [WaterLog] = []
+    @ObservationIgnored private var fasts: [Fast] = []
     @ObservationIgnored private var ownLifeModes: [LifeModePeriod] = []
     @ObservationIgnored private var lifeModes: [LifeModePeriod] = []
     @ObservationIgnored private var lift: AppSummary?
@@ -136,6 +140,7 @@ final class WristModel {
         }
         if needsReading(SupplementLog.self) { supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date } }
         if needsReading(WaterLog.self) { water = store.all(WaterLog.self).sorted { $0.date < $1.date } }
+        if needsReading(Fast.self) { fasts = store.all(Fast.self).sorted { $0.start < $1.start } }
         if needsReading(LifeModeRecord.self) { ownLifeModes = store.all(LifeModeRecord.self).map(\.period) }
         lastRevision = store.revision
         readShared(recompute: false)
@@ -193,7 +198,7 @@ final class WristModel {
         return MacroState(
             profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
             lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
-            supplementLogs: supplementLogs, water: water, today: Day(now), now: now)
+            supplementLogs: supplementLogs, water: water, fasts: fasts, today: Day(now), now: now)
     }
 
     /// Runs the analysis off the main thread (it reads the whole history) and shows its today.
@@ -320,8 +325,34 @@ final class WristModel {
         return existing.first?.state
     }
 
+    /// Starts a fast from the end of the last meal. Goals over a day start on the phone, where the
+    /// safety notes are.
+    func startFast(goalHours: Double) {
+        guard let today else { return }
+        let fast = Fast(start: today.suggestedFastStart, goalHours: min(goalHours, FastSafety.screenHours))
+        store.save(fast)
+        reload()
+        confirm(WristToast(message: "Fasting · goal \(WristFormat.hours(fast.goalHours))", undo: .fastStarted(fast.id)))
+    }
+
+    func endFast() {
+        guard var fast = today?.fast?.fast else { return }
+        let before = fast
+        fast.end = max(fast.start, Date())
+        fast.updatedAt = Date()
+        store.save(fast)
+        reload()
+        confirm(WristToast(message: "Fast ended · \(WristFormat.duration(Date().timeIntervalSince(fast.start)))", undo: .fastEnded(before)))
+    }
+
     func undo(_ toast: WristToast) {
         switch toast.undo {
+        case .fastStarted(let id): store.delete(Fast.self, id: id)
+        case .fastEnded(let fast):
+            var fast = fast
+            fast.end = nil
+            fast.updatedAt = Date()
+            store.save(fast)
         case .entries(let ids): for id in ids { store.delete(FoodEntry.self, id: id) }
         case .water(let id): store.delete(WaterLog.self, id: id)
         case .doses(let ids): for id in ids { store.delete(SupplementLog.self, id: id) }

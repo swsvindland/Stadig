@@ -28,6 +28,21 @@ enum WristFormat {
         return ml >= 1000 ? "\((ml / 1000).formatted(.number.precision(.fractionLength(0...1)))) L" : "\(Int(ml.rounded())) ml"
     }
 
+    /// "45m", "3h 10m", "18h", "2d 4h", worded as the phone's but shorter.
+    static func duration(_ interval: TimeInterval) -> String {
+        let minutes = max(0, Int((interval / 60).rounded(.down)))
+        let hours = minutes / 60
+        switch hours {
+        case 0: return "\(minutes)m"
+        case ..<24: return minutes % 60 == 0 ? "\(hours)h" : "\(hours)h \(minutes % 60)m"
+        case ..<48: return "\(hours)h"
+        default: return "\(hours / 24)d \(hours % 24)h"
+        }
+    }
+
+    /// "16 h", a fast's goal.
+    static func hours(_ hours: Double) -> String { "\(Int(hours.rounded())) h" }
+
     /// "1,060 left", "120 over" or, with no target, "1,240 eaten"; the unit goes beside it.
     static func left(_ progress: MacroProgress) -> (value: String, label: String) {
         guard let left = progress.left else { return (whole(progress.eaten), "eaten") }

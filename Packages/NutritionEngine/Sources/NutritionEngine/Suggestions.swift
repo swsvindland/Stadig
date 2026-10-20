@@ -110,7 +110,8 @@ public enum NutritionExport {
 
     public static func tables(
         entries: [FoodEntry], weighIns: [WeighIn], checkIns: [CheckIn], days: [DayStatus],
-        supplements: [SupplementLog] = [], water: [WaterLog] = [], calendar: Calendar = .current
+        supplements: [SupplementLog] = [], water: [WaterLog] = [], fasts: [FastRun] = [], now: Date = Date(),
+        calendar: Calendar = .current
     ) -> [NutritionExportTable] {
         // Times on the clock, in the zone the days are in; `.iso8601` alone writes UTC with no zone.
         let clock = Date.ISO8601FormatStyle(timeZone: calendar.timeZone).time(includingFractionalSeconds: false)
@@ -178,6 +179,19 @@ public enum NutritionExport {
                 NutritionExportTable(
                     name: "water", header: ["day", "time", "ml"],
                     rows: water.sorted { $0.date < $1.date }.map { [$0.day.iso, $0.date.formatted(clock), n($0.ml)] }))
+        }
+        if !fasts.isEmpty {
+            // When each ended, by hand or by the meal that broke it; blank while one runs.
+            let stamp = Date.ISO8601FormatStyle(timeZone: calendar.timeZone)
+            tables.append(
+                NutritionExportTable(
+                    name: "fasts", header: ["start", "end", "hours", "goal_hours"],
+                    rows: fasts.map { run in
+                        [
+                            run.fast.start.formatted(stamp), run.end?.formatted(stamp) ?? "", n((run.duration(at: now) / 360).rounded() / 10),
+                            n(run.fast.goalHours),
+                        ]
+                    }))
         }
         return tables
     }

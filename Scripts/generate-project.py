@@ -286,6 +286,9 @@ macro_app = dict(swift_common, **ios_app_common, **{
     "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.",
     "INFOPLIST_KEY_NSCameraUsageDescription": "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.",
     "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Macro Track can log a meal from a photo you choose.",
+    # A running fast on the Lock Screen and in the Dynamic Island.
+    "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
+    "INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates": "NO",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro",
 })
 
@@ -318,8 +321,9 @@ MACRO = {
     "targets": [
         ("MacroTrack", "MacroTrack.app", "com.apple.product-type.application", "wrapper.application", macro_app,
          ["iOS", "Shared", "Catalogs", "Records"], MACRO_PACKAGES),
+        # NutritionEngine for the fasting widget's phases, the same the app shows.
         ("MacroTrackWidgets", "MacroTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
-         macro_widgets, ["Widgets", "Shared"], ["SystemCore"]),
+         macro_widgets, ["Widgets", "Shared"], ["SystemCore", "NutritionEngine"]),
         ("MacroTrackWatch", "MacroTrackWatch.app", "com.apple.product-type.application", "wrapper.application", macro_watch,
          ["Watch", "WatchShared", "Records"], ["SystemCore", "SystemStore", "NutritionEngine"]),
         ("MacroTrackWatchWidgets", "MacroTrackWatchWidgets.appex", "com.apple.product-type.app-extension",

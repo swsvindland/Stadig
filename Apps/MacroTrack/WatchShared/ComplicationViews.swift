@@ -171,3 +171,71 @@ struct TodayStackView: View {
         }
     }
 }
+
+/// The running fast on the watch face: a ring toward the goal with the hours, or between meals the
+/// time since the last one toward the 3–5 hour band's end.
+struct FastComplication: View {
+    let snapshot: WristSnapshot
+    let date: Date
+    let family: WidgetFamily
+
+    private var fast: FastStatus? { snapshot.fast(at: date) }
+    private var since: Date? { snapshot.fastStart ?? snapshot.lastMealEnd }
+    private var hours: Double { since.map { max(0, date.timeIntervalSince($0) / 3600) } ?? 0 }
+    private var fraction: Double { min(1, hours / (fast?.fast.goalHours ?? 5)) }
+    private var phase: FastPhase { fast?.phase ?? FastPhase.at(hours: hours) }
+    /// A phase only for a fast started on purpose: a long gap without one may be meals not logged.
+    private var symbol: String { fast == nil ? "fork.knife" : phase.symbol }
+    private var short: String { hours < 1 ? "\(Int(hours * 60))m" : "\(Int(hours))h" }
+    private var sentence: String {
+        guard since != nil else { return "No meal logged to count from" }
+        return fast == nil ? "\(short) since you ate" : "\(short) fasting, \(phase.title.lowercased())"
+    }
+
+    var body: some View {
+        switch family {
+        case .accessoryCircular:
+            Gauge(value: fraction) {
+                Image(systemName: symbol)
+            } currentValueLabel: {
+                Text(since == nil ? "–" : short).minimumScaleFactor(0.5)
+            }
+            .gaugeStyle(.accessoryCircularCapacity)
+            .tint(.teal)
+            .widgetAccentable()
+            .accessibilityLabel(sentence)
+        case .accessoryInline:
+            Label(sentence, systemImage: symbol)
+        case .accessoryCorner:
+            Image(systemName: symbol)
+                .font(.title3)
+                .widgetAccentable()
+                .widgetLabel {
+                    Gauge(value: fraction) {
+                        Text("h")
+                    } currentValueLabel: {
+                        Text(short)
+                    }
+                    .tint(.teal)
+                }
+                .accessibilityLabel(sentence)
+        default:
+            VStack(alignment: .leading, spacing: 2) {
+                Label(fast == nil ? "Since you ate" : phase.title, systemImage: symbol)
+                    .font(.headline)
+                    .foregroundStyle(.teal)
+                    .widgetAccentable()
+                if let since {
+                    Text(since, style: .timer).font(.title3.weight(.semibold).monospacedDigit())
+                }
+                Gauge(value: fraction) { EmptyView() }
+                    .gaugeStyle(.accessoryLinearCapacity)
+                    .tint(.teal)
+            }
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(sentence)
+        }
+    }
+}

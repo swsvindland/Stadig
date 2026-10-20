@@ -217,5 +217,15 @@ struct MacroShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: LogWaterIntent(), phrases: ["Log water in \(.applicationName)", "Add a glass of water in \(.applicationName)"],
             shortTitle: "Log Water", systemImageName: "drop.fill")
+        AppShortcut(
+            intent: StartFastIntent(), phrases: ["Start a fast in \(.applicationName)", "Start fasting in \(.applicationName)"],
+            shortTitle: "Start a Fast", systemImageName: "timer")
+        AppShortcut(
+            intent: FastStatusIntent(),
+            phrases: ["How long have I been fasting in \(.applicationName)", "How's my fast in \(.applicationName)"],
+            shortTitle: "Fast Status", systemImageName: "hourglass")
+        AppShortcut(
+            intent: EndFastIntent(), phrases: ["End my fast in \(.applicationName)", "Break my fast in \(.applicationName)"],
+            shortTitle: "End Fast", systemImageName: "fork.knife.circle")
     }
 }

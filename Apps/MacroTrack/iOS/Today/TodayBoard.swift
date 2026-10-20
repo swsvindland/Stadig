@@ -65,6 +65,7 @@ struct TodayBoard: View {
                     .listRowBackground(Color.clear)
             }
             WeightSection(day: model.selectedDay)
+            MealTimingSection(day: model.selectedDay)
             if model.selectedDay == model.today {
                 ActionsSection()
                 PlannedMealsSection(day: model.selectedDay)
@@ -95,6 +96,7 @@ struct TodayBoard: View {
     func log(_ entries: [FoodEntry]) -> some View {
         let byTime = sortOrder.first.map { $0.keyPath == \FoodEntry.date && $0.order == .forward } ?? true
         let moments = byTime ? Timeline.moments(entries) : []
+        let gaps = byTime ? model.gapsBefore(on: model.selectedDay) : [:]
         let sorted = byTime ? [] : entries.sorted(using: sortOrder)
         return Table(of: FoodEntry.self, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Time", value: \.date) { entry in Text(Format.time(entry.date)).monospacedDigit().foregroundStyle(.secondary) }
@@ -134,6 +136,7 @@ struct TodayBoard: View {
                     } header: {
                         HStack {
                             Text(Format.time(moment.start)).fontWeight(.semibold)
+                            if let gap = gaps[moment.id] { GapBadge(gap: gap) }
                             Spacer()
                             Text("\(Format.kcal(moment.nutrients.kcal)) · \(Format.macros(moment.nutrients))").monospacedDigit()
                                 .foregroundStyle(.secondary)

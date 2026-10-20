@@ -256,17 +256,23 @@ public struct NutritionDay: Hashable, Codable, Sendable {
 }
 
 public struct NutritionSummary: Hashable, Codable, Sendable {
+    /// Still 1 with `fast` added: it's optional, so a reader that doesn't know it skips it and one
+    /// that does reads older files as no fast. A bump would stop older apps reading the file at all.
     public static let schemaVersion = 1
 
     public var phase: NutritionPhase?
     public var maintenanceKcal: Double?
     public var days: [NutritionDay]
+    /// The fast running in Macro Track, while meal timing is on; nil otherwise, and in files written
+    /// before fasts.
+    public var fast: PublishedFast?
     public var updated: Date
 
-    public init(phase: NutritionPhase?, maintenanceKcal: Double?, days: [NutritionDay], updated: Date = Date()) {
+    public init(phase: NutritionPhase?, maintenanceKcal: Double?, days: [NutritionDay], fast: PublishedFast? = nil, updated: Date = Date()) {
         self.phase = phase
         self.maintenanceKcal = maintenanceKcal
         self.days = days
+        self.fast = fast
         self.updated = updated
     }
 
@@ -275,6 +281,21 @@ public struct NutritionSummary: Hashable, Codable, Sendable {
         let known = days.filter { range.contains($0.day) && $0.logged && $0.proteinHit != nil }
         return (known.filter { $0.proteinHit == true }.count, known.count)
     }
+}
+
+/// A fast someone is running, as Macro Track publishes it: when it began and its goal.
+public struct PublishedFast: Hashable, Codable, Sendable {
+    public var start: Date
+    public var goalHours: Double
+
+    public init(start: Date, goalHours: Double) {
+        self.start = start
+        self.goalHours = goalHours
+    }
+
+    public var goalEnd: Date { start.addingTimeInterval(goalHours * 3600) }
+
+    public func hours(at date: Date) -> Double { max(0, date.timeIntervalSince(start) / 3600) }
 }
 
 /// What each app publishes to the shared container for the others and the hub: small, recent and
