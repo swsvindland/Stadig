@@ -49,6 +49,7 @@ struct ProgressTab: View {
             WeightCard(trend: analysis.trend, weeklyChange: analysis.weeklyChange, range: $range)
             IntakeCard(analysis: analysis)
             QualityCard(report: analysis.quality, fiber: analysis.micros.reading("fiber"))
+            if model.tracksMealTiming { MealTimingCard(report: analysis.mealTiming) }
             NutrientsCard(report: analysis.micros)
             DisciplineCard(analysis: analysis)
         }
@@ -67,6 +68,11 @@ struct ProgressTab: View {
                 VStack(spacing: 16) {
                     QualityCard(report: analysis.quality, fiber: analysis.micros.reading("fiber"))
                     DisciplineCard(analysis: analysis)
+                }
+            }
+            if model.tracksMealTiming {
+                GridRow {
+                    MealTimingCard(report: analysis.mealTiming).gridCellColumns(2)
                 }
             }
             GridRow {

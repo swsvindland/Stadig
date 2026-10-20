@@ -349,10 +349,11 @@ public enum CheckIns {
     /// The week's review: observe the last 21 days, move expenditure part of the way, and move
     /// targets at most 150 kcal (or 7.5%). Holds rather than reacting to a jump or a lone misread.
     /// In a deficit, when fewer steps explain most of a lower maintenance, it holds once and says
-    /// to walk back up before calories come down.
+    /// to walk back up before calories come down. During a long fast and the few days after it, it
+    /// holds: the fast's days count at what was eaten, but the scale hasn't caught up with them yet.
     public static func review(
         previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
-        weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil
+        weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil, longFast: FastRun? = nil
     ) -> CheckIn {
         let prior = previous?.expenditure ?? fallbackExpenditure
         let window = DayRange(today.adding(days: -21), today.adding(days: -1))
@@ -370,6 +371,11 @@ public enum CheckIns {
             return CheckIn(
                 id: CheckIn.id(for: today), day: today, expenditure: (expenditure / 10).rounded() * 10, kcal: kcal,
                 protein: m.protein, carbs: m.carbs, fat: m.fat, status: status, reason: reason)
+        }
+        if longFast != nil {
+            return make(
+                prior, .holding,
+                "A long fast's weigh-ins are mostly water and glycogen, and they come back with food. Holding until the scale settles.")
         }
         let recentWeighIn = trend.points.last { $0.scale != nil }?.day
         guard let recentWeighIn, recentWeighIn >= window.end.adding(days: -3) else {

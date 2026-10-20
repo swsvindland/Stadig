@@ -172,6 +172,13 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     public var doseTimes: [DoseTime: Int]?
     /// Notify at each time of day with doses due, with a button to mark them taken.
     public var supplementReminders: Bool?
+    /// Show meal timing and fasting: time since the last meal, gaps, the overnight fast, fasts with a
+    /// goal. Off until turned on.
+    public var tracksMealTiming: Bool?
+    /// Notify at each phase of a fast and at its goal; nil is on.
+    public var fastAlerts: Bool?
+    /// When the person read who shouldn't fast for more than a day; nil until they have.
+    public var fastingScreenSeen: Date?
     public var updatedAt: Date
 
     public init(
@@ -191,6 +198,7 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     }
 
     public var drinks: Bool { tracksDrinks ?? false }
+    public var mealTiming: Bool { tracksMealTiming ?? false }
 
     /// Minutes after midnight for a time of day.
     public func minutes(_ time: DoseTime) -> Int { doseTimes?[time] ?? time.defaultMinutes }

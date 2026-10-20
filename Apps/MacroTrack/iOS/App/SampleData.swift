@@ -174,6 +174,30 @@ enum SampleData {
         model.updateSettings { $0.tracksDrinks = true }
     }
 
+    /// Meal timing on, with an overnight fast pushed to 16 hours earlier in the week (-seedMealTiming); with
+    /// `fast`, a 24-hour fast running from last night's dinner too (-seedFast). Needs Macro Track set
+    /// up, which -seedSampleData does.
+    @MainActor
+    static func seedMealTiming(_ model: AppModel, fast: Bool) {
+        guard model.profile != nil else { return }
+        model.updateSettings { $0.tracksMealTiming = true }
+        // The latest evening at least two days back with its dinner logged.
+        let nights = (2...7).map { model.today.adding(days: -$0) }
+        let dinners = nights.lazy.compactMap { night in
+            MealTiming.lastMeal(before: night.at(hour: 23, minute: 0), entries: model.entries(on: night)).map { (night, $0) }
+        }
+        if model.fasts.isEmpty, let (night, dinner) = dinners.first(where: { $0.1.end >= $0.0.at(hour: 18, minute: 0) }) {
+            // Breakfast skipped, so the fast ran its 16 hours.
+            let end = dinner.end.addingTimeInterval(16 * 3600)
+            for entry in model.entries(on: night.adding(days: 1)) where entry.date > dinner.end && entry.date < end {
+                model.store.delete(FoodEntry.self, id: entry.id)
+            }
+            model.store.save(Fast(start: dinner.end, goalHours: 16, end: end))
+            model.reload()
+        }
+        if fast, model.analysis?.fast == nil { model.startFast(goalHours: 24) }
+    }
+
     /// The same person every launch (SplitMix64), so screens and UI tests see the same weeks.
     struct SampleRandom: RandomNumberGenerator {
         private var state: UInt64

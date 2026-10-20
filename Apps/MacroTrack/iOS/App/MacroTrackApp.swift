@@ -33,6 +33,8 @@ struct MacroTrackApp: App {
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
+        if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }
+        if launch.has("-showFast") { model.showFast = true }
         if let tab = launch.value(after: "-tab") {
             model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
@@ -99,6 +101,8 @@ struct MacroTrackApp: App {
                     // What another device logged while Health couldn't be written (the phone locked,
                     // Health not connected yet) goes in now, not at the next import.
                     model.healthBackfill?.run()
+                    // The system ends a fast's Live Activity after about 8 hours; opening the app starts it again.
+                    if model.usesSystemServices { FastActivityBridge.update(model) }
                 case .background:
                     releaseCatalogMemory(model)
                 default:
@@ -142,6 +146,10 @@ enum DeepLink {
         case "supplements":
             model.dismissSheets()
             model.showSupplements = true
+        case "fast":
+            model.dismissSheets()
+            model.tab = .today
+            if model.tracksMealTiming { model.showFast = true }
         case "plan": model.tab = .plan
         default: model.tab = .today
         }

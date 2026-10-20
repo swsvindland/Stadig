@@ -77,6 +77,15 @@ struct HistoryView: View {
             }
             TableColumn("Status", sortUsing: HistoryOrder(.status)) { row in StatusCell(row: row) }
                 .width(min: width(84, 108), ideal: 100)
+            if allColumns && model.tracksMealTiming {
+                TableColumn("Overnight", sortUsing: HistoryOrder(.overnightFast, order: .reverse)) { row in
+                    Text(row.overnightFast.map(Format.duration) ?? "—").monospacedDigit()
+                        .foregroundStyle(row.overnightFast == nil ? .tertiary : .secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .help("From the last meal the evening before to the day's first")
+                }
+                .width(min: 60, ideal: 72, max: cap(84))
+            }
             TableColumn("Weigh-in", sortUsing: HistoryOrder(.weighIn, order: .reverse)) { row in
                 Text(row.weighIn.map { Format.weight($0, unit: unit) } ?? "—").monospacedDigit()
                     .foregroundStyle(row.weighIn == nil ? .tertiary : .primary)

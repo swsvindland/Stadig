@@ -161,6 +161,31 @@ struct SharedContainerTests {
         }
     }
 
+    /// Macro Track's summary as it was before fasts, to read a file the way an older Lift Track does.
+    struct NutritionBeforeFasts: Codable, Sendable, Equatable {
+        var phase: NutritionPhase?
+        var maintenanceKcal: Double?
+        var days: [NutritionDay]
+    }
+
+    @Test func theNutritionSummarysFastIsReadByNewAppsAndSkippedByOld() throws {
+        let shared = SharedContainer(directory: temporaryDirectory())
+        let day = Day(year: 2026, month: 10, day: 19)
+        let days = [NutritionDay(day: day, logged: true, proteinHit: true, caloriesHit: false)]
+        // Written before fasts (no "fast" key): read as no fast.
+        try shared.write(NutritionSummary(phase: nil, maintenanceKcal: 2600, days: days), to: .nutrition, by: .macroTrack)
+        let raw = try String(contentsOf: shared.directory.appending(path: "apps/macroTrack/nutrition.json"), encoding: .utf8)
+        #expect(!raw.contains("\"fast\""))
+        #expect(shared.read(.nutrition)?.fast == nil && shared.read(.nutrition)?.maintenanceKcal == 2600)
+        // With a fast: read back whole, and still readable by an app that doesn't know fasts.
+        let fast = PublishedFast(start: t0, goalHours: 36)
+        try shared.write(NutritionSummary(phase: nil, maintenanceKcal: 2600, days: days, fast: fast), to: .nutrition, by: .macroTrack)
+        #expect(shared.read(.nutrition)?.fast == fast)
+        let older = SharedKey<NutritionBeforeFasts>(path: "apps/macroTrack/nutrition.json", schemaVersion: 1)
+        #expect(shared.read(older) == NutritionBeforeFasts(phase: nil, maintenanceKcal: 2600, days: days))
+        #expect(fast.goalEnd == t0.addingTimeInterval(36 * 3600) && fast.hours(at: t0.addingTimeInterval(5400)) == 1.5)
+    }
+
     @Test func writeIfChangedSkipsTheSameContent() throws {
         let shared = temporarySharedContainer()
         let url = shared.directory.appending(path: "apps/liftTrack/summary.json")

@@ -112,12 +112,22 @@ enum SupplementReminders {
     }
 }
 
-/// Handles a reminder's Taken button (in the background) and a tap on it (opens Today).
+/// Handles a reminder's Taken button (in the background) and a tap on it or on a fast's
+/// notification (opens Today).
 final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate, Sendable {
     static let shared = NotificationHandler()
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
+        if response.notification.request.content.categoryIdentifier == FastReminders.category {
+            await MainActor.run {
+                let model = AppModel.shared
+                model.refreshDay()
+                model.selectedDay = model.today
+                model.tab = .today
+            }
+            return
+        }
         guard response.notification.request.content.categoryIdentifier == SupplementReminders.category,
             let iso = info["day"] as? String, let day = Day(iso: iso),
             let raw = info["time"] as? String, let time = DoseTime(rawValue: raw)

@@ -68,3 +68,8 @@ nonisolated extension WaterLog: @retroactive StoredRecord {
     public static var kind: String { "water" }
     public static var schemaVersion: Int { 1 }
 }
+
+nonisolated extension Fast: @retroactive StoredRecord {
+    public static var kind: String { "fast" }
+    public static var schemaVersion: Int { 1 }
+}

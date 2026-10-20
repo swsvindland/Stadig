@@ -21,6 +21,7 @@
 		4D2EB6DD5B16FE37CE25BED1 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EEC29F2C791444BB6AEBD /* HealthBridge */; };
 		4D2EBE8EC3D2486AF8652BDD /* MealPlanner in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EF05702E4CD97E846AA31 /* MealPlanner */; };
 		4D2ECA034642BD1F60F09266 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E94BBBA06C1531E526B29 /* SystemCore */; };
+		4D2EE746791582DDBB4C0405 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EF5C58771BF1B33D86F0B /* NutritionEngine */; };
 		4D2EEB0D911012BD08D627FC /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EDB9BE16BD8647B1BCD2D /* SystemCore */; };
 		4D2EEEDEFDEC9FF7965286E5 /* FoodIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */; };
 /* End PBXBuildFile section */
@@ -214,6 +215,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D2ECA034642BD1F60F09266 /* SystemCore in Frameworks */,
+				4D2EE746791582DDBB4C0405 /* NutritionEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,6 +404,7 @@
 			name = MacroTrackWidgets;
 			packageProductDependencies = (
 				4D2E94BBBA06C1531E526B29 /* SystemCore */,
+				4D2EF5C58771BF1B33D86F0B /* NutritionEngine */,
 			);
 			productName = MacroTrackWidgets;
 			productReference = 4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */;
@@ -798,6 +801,8 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -974,6 +979,8 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1327,6 +1334,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */;
 			productName = MealPlanner;
+		};
+		4D2EF5C58771BF1B33D86F0B /* NutritionEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
+			productName = NutritionEngine;
 		};
 		4D2EFA86AE2AEC56B6ADB3E5 /* SystemStore */ = {
 			isa = XCSwiftPackageProductDependency;

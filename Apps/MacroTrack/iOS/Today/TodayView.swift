@@ -28,6 +28,7 @@ struct TodayList: View {
                         .listRowBackground(Color.clear)
                 }
                 WeightSection(day: model.selectedDay)
+                MealTimingSection(day: model.selectedDay)
                 if model.selectedDay == model.today {
                     ActionsSection()
                     PlannedMealsSection(day: model.selectedDay)
@@ -394,6 +395,7 @@ struct ActionRow: View {
         case .planReady: "sparkles"
         case .whoosh: "drop"
         case .reviewPlan: "checklist"
+        case .fastWater: "drop.triangle"
         }
     }
 
@@ -471,6 +473,7 @@ struct TimelineSections: View {
 
     var body: some View {
         let moments = Timeline.moments(model.entries(on: day))
+        let gaps = model.gapsBefore(on: day)
         if moments.isEmpty {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
@@ -483,7 +486,7 @@ struct TimelineSections: View {
             }
         }
         ForEach(moments) { moment in
-            MomentSection(moment: moment, editing: $editing)
+            MomentSection(moment: moment, gap: gaps[moment.id], editing: $editing)
         }
     }
 }
@@ -492,6 +495,8 @@ struct TimelineSections: View {
 struct MomentSection: View {
     @Environment(AppModel.self) private var model
     let moment: Moment
+    /// Since the meal before, when meal timing is on.
+    var gap: MealGap?
     @Binding var editing: FoodEntry?
 
     var body: some View {
@@ -518,6 +523,7 @@ struct MomentSection: View {
         } header: {
             HStack(spacing: 10) {
                 Text(Format.time(moment.start)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                if let gap { GapBadge(gap: gap) }
                 Spacer()
                 Text(Format.kcal(moment.nutrients.kcal)).monospacedDigit()
                 Menu {

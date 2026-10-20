@@ -53,8 +53,15 @@ struct Toast: Identifiable, Equatable {
     var undoDoses: [UUID] = []
     /// Entries just deleted, which the Undo brings back.
     var deleted: [FoodEntry] = []
+    /// A fast just started (Undo removes it) or ended (Undo runs it again).
+    var fast: FastUndo?
 
-    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty }
+    enum FastUndo: Equatable {
+        case started(UUID)
+        case ended(Fast)
+    }
+
+    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil }
 }
 
 /// The app's state: Macro Track's own synced records, what Lift Track and the hub published, what
@@ -99,6 +106,8 @@ final class AppModel {
     private(set) var supplements: [Supplement] = []
     private(set) var supplementLogs: [SupplementLog] = []
     private(set) var water: [WaterLog] = []
+    /// Fasts started on purpose, oldest first.
+    private(set) var fasts: [Fast] = []
 
     // From the other apps and the hub.
     private(set) var lift: AppSummary?
@@ -140,6 +149,8 @@ final class AppModel {
     var showSettings = false
     var showPaywall = false
     var showWeighIn = false
+    /// The fast screen: start one, or follow the one running.
+    var showFast = false
     /// The supplements screen: a sheet, or where the sidebar has it, that destination.
     var showSupplements: Bool {
         get { supplementsSheet }
@@ -276,6 +287,7 @@ final class AppModel {
         }
         if needsReading(SupplementLog.self) { supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date } }
         if needsReading(WaterLog.self) { water = store.all(WaterLog.self).sorted { $0.date < $1.date } }
+        if needsReading(Fast.self) { fasts = store.all(Fast.self).sorted { $0.start < $1.start } }
         if needsReading(MealPlan.self) { reloadMealPlans() }
         applyAISetting()
         readShared(recompute: false)
@@ -378,7 +390,7 @@ final class AppModel {
         return MacroState(
             profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
             lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
-            supplementLogs: supplementLogs, water: water, today: today)
+            supplementLogs: supplementLogs, water: water, fasts: fasts, today: today)
     }
 
     func recompute() {
@@ -404,7 +416,11 @@ final class AppModel {
         publish()
         refreshMicroFix()
         refreshFermentedFix()
-        if usesSystemServices { SupplementReminders.schedule(self) }
+        if usesSystemServices {
+            SupplementReminders.schedule(self)
+            FastReminders.schedule(self)
+            FastActivityBridge.update(self)
+        }
     }
 
     /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
@@ -639,6 +655,7 @@ final class AppModel {
     func dismissSheets() {
         logger = nil
         showWeighIn = false
+        showFast = false
         showSupplements = false
         showSettings = false
         showPaywall = false
@@ -685,16 +702,22 @@ final class AppModel {
         "spray", "extract", "marinade", "gravy",
     ]
 
-    /// Saves entries, shows "Logged … Undo", and writes them to Health.
+    /// Saves entries, shows "Logged … Undo", and writes them to Health. A meal logged during a fast
+    /// ends it, and says so: the Undo puts the fast back with the food.
     func log(_ new: [FoodEntry], message: String? = nil) {
         guard !new.isEmpty else { return }
+        let fasting = analysis?.fast
         store.save(new)
         reload()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
         let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
         let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
-        toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
+        if let fasting, analysis?.fast == nil, let run = analysis?.fasts.first(where: { $0.id == fasting.fast.id }), let end = run.end {
+            toast = Toast(message: "\(text) · ended your \(Format.duration(run.duration(at: end))) fast", undo: new.map(\.id))
+        } else {
+            toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
+        }
         if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(new.map(Self.healthFood)) } }
     }
 
@@ -724,6 +747,7 @@ final class AppModel {
         if !toast.undoWater.isEmpty { delete(water: toast.undoWater) }
         if !toast.undoDoses.isEmpty { delete(doses: toast.undoDoses) }
         if !toast.deleted.isEmpty { bringBack(toast.deleted) }
+        if let fast = toast.fast { undo(fast) }
         self.toast = nil
     }
 
@@ -1073,7 +1097,7 @@ final class AppModel {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return try NutritionExport.tables(
             entries: entries, weighIns: weighIns, checkIns: checkIns, days: dayStatus,
-            supplements: supplementLogs, water: water
+            supplements: supplementLogs, water: water, fasts: analysis?.fasts ?? []
         ).map { table in
             var csv = CSVTable(header: table.header)
             for row in table.rows { csv.append(row) }

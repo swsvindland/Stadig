@@ -17,6 +17,12 @@ nonisolated struct MacroSnapshot: Codable, Hashable, Sendable {
     /// "Day 5 of 21", "Diet break", "Vacation".
     var badge: String?
     var weighedToday = false
+    /// Meal timing on, the running fast, and when the last meal ended, for the fasting widget. Older
+    /// snapshots don't have them.
+    var tracksMealTiming: Bool?
+    var fastStart: Date?
+    var fastGoalHours: Double?
+    var lastMealEnd: Date?
     var updated = Date()
 
     static let groupID = "group.dev.svindland.stadig"
@@ -24,6 +30,14 @@ nonisolated struct MacroSnapshot: Codable, Hashable, Sendable {
     static let sample = MacroSnapshot(
         day: isoDay(Date()), kcal: 1240, kcalTarget: 2300, protein: 96, proteinTarget: 170, carbs: 130,
         carbsTarget: 240, fat: 42, fatTarget: 70, badge: nil, weighedToday: true)
+    /// Fourteen hours into a sixteen-hour fast, for the widget gallery.
+    static var fastSample: MacroSnapshot {
+        var sample = MacroSnapshot(day: isoDay(Date()))
+        sample.tracksMealTiming = true
+        sample.fastStart = Date().addingTimeInterval(-14 * 3600)
+        sample.fastGoalHours = 16
+        return sample
+    }
 
     /// Today's view of it: eaten resets to nothing once the day it was written for has passed.
     func current(now: Date = Date()) -> MacroSnapshot {

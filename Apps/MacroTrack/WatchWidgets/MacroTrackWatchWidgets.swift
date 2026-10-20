@@ -9,7 +9,64 @@ struct MacroTrackWatchWidgets: WidgetBundle {
         CaloriesLeftWidget()
         ProteinLeftWidget()
         TodayWidget()
+        FastComplicationWidget()
     }
+}
+
+/// The fast, or the time since the last meal, on the watch face.
+struct FastComplicationWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "Fast", provider: FastSnapshotProvider()) { entry in
+            FastComplicationEntry(snapshot: entry.snapshot, date: entry.date)
+                .containerBackground(for: .widget) { Color.clear }
+        }
+        .configurationDisplayName("Fasting")
+        .description("How long since you last ate, or into a fast.")
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline, .accessoryCorner])
+    }
+}
+
+/// Entries every half hour and at each phase and the goal for the next day, so the ring moves on
+/// with the Watch app closed.
+struct FastSnapshotProvider: TimelineProvider {
+    func placeholder(in context: Context) -> SnapshotEntry {
+        SnapshotEntry(date: Date(), snapshot: Self.sample)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
+        completion(SnapshotEntry(date: Date(), snapshot: context.isPreview ? Self.sample : WristSnapshotFile.load()))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<SnapshotEntry>) -> Void) {
+        let now = Date()
+        let snapshot = WristSnapshotFile.load()
+        guard let from = snapshot.fastStart ?? snapshot.lastMealEnd else {
+            completion(WidgetKit.Timeline(entries: [SnapshotEntry(date: now, snapshot: snapshot)], policy: .never))
+            return
+        }
+        let horizon = now.addingTimeInterval(24 * 3600)
+        var dates = stride(from: 0.0, to: 24 * 3600, by: 1800).map { now.addingTimeInterval($0) }
+        dates += FastPhase.allCases.map { from.addingTimeInterval($0.startHours * 3600) }
+        if let goal = snapshot.fastGoalHours { dates.append(from.addingTimeInterval(goal * 3600)) }
+        let entries = Set(dates.filter { $0 >= now && $0 <= horizon }).sorted().map { SnapshotEntry(date: $0, snapshot: snapshot) }
+        completion(WidgetKit.Timeline(entries: entries, policy: .after(horizon)))
+    }
+
+    /// Fourteen hours into a sixteen-hour fast.
+    static var sample: WristSnapshot {
+        var sample = WristSnapshot.sample(on: .today)
+        sample.fastStart = Date().addingTimeInterval(-14 * 3600)
+        sample.fastGoalHours = 16
+        return sample
+    }
+}
+
+struct FastComplicationEntry: View {
+    @Environment(\.widgetFamily) private var family
+    let snapshot: WristSnapshot
+    let date: Date
+
+    var body: some View { FastComplication(snapshot: snapshot, date: date, family: family) }
 }
 
 /// Calories left on the watch face, from the snapshot the Watch app writes.

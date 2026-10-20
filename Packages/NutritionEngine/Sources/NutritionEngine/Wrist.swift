@@ -124,6 +124,13 @@ public struct WristToday: Hashable, Sendable {
     public var weighedToday: Bool
     public var dayState: DayState?
     public var hasEntries: Bool
+    /// Meal timing and fasting turned on, the fast running, and when the last meal ended (what the
+    /// time since counts from when no fast runs).
+    public var tracksMealTiming: Bool
+    public var fast: FastStatus?
+    public var lastMealEnd: Date?
+    /// Where a fast started now would start: the end of the last meal in the last day, else now.
+    public var suggestedFastStart: Date
 
     /// How many single foods to offer: what the phone's Log again row shows.
     public static let logAgainCount = 10
@@ -157,6 +164,10 @@ public struct WristToday: Hashable, Sendable {
         weighedToday = state.weighIns.contains { $0.day == today }
         dayState = state.dayStatus.first { $0.day == today }?.state
         hasEntries = state.entries.contains { $0.day == today }
+        tracksMealTiming = state.settings.mealTiming
+        fast = analysis.fast
+        lastMealEnd = analysis.lastMeal?.end
+        suggestedFastStart = Fasting.suggestedStart(entries: state.entries.filter { $0.day >= today.adding(days: -2) }, now: state.now)
     }
 
     /// The day in a word or two: the assessment's progress, a life mode, or the phase.
@@ -180,18 +191,40 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
     public var kcal: MacroProgress
     public var protein: MacroProgress
     public var badge: String?
+    /// The fast running when it was written, for the fasting complication; nil without one. Older
+    /// snapshots don't have them.
+    public var fastStart: Date?
+    public var fastGoalHours: Double?
+    /// When the last meal ended, while meal timing is on, for the time since it.
+    public var lastMealEnd: Date?
     public var updated: Date
 
-    public init(day: Day, kcal: MacroProgress, protein: MacroProgress, badge: String? = nil, updated: Date = Date()) {
+    public init(
+        day: Day, kcal: MacroProgress, protein: MacroProgress, badge: String? = nil, fastStart: Date? = nil, fastGoalHours: Double? = nil,
+        lastMealEnd: Date? = nil, updated: Date = Date()
+    ) {
         self.day = day
         self.kcal = kcal
         self.protein = protein
         self.badge = badge
+        self.fastStart = fastStart
+        self.fastGoalHours = fastGoalHours
+        self.lastMealEnd = lastMealEnd
         self.updated = updated
     }
 
     public init(_ today: WristToday, updated: Date = Date()) {
-        self.init(day: today.day, kcal: today.kcal, protein: today.protein, badge: today.badge, updated: updated)
+        self.init(
+            day: today.day, kcal: today.kcal, protein: today.protein, badge: today.badge,
+            fastStart: today.tracksMealTiming ? today.fast?.fast.start : nil,
+            fastGoalHours: today.tracksMealTiming ? today.fast?.fast.goalHours : nil,
+            lastMealEnd: today.tracksMealTiming ? today.lastMealEnd : nil, updated: updated)
+    }
+
+    /// The fast as it stands at `date`, for a complication's timeline entry.
+    public func fast(at date: Date) -> FastStatus? {
+        guard let fastStart, let fastGoalHours else { return nil }
+        return Fasting.status(Fast(start: fastStart, goalHours: fastGoalHours), now: date)
     }
 
     /// Before the Watch app has written one: nothing eaten, no targets.

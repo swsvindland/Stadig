@@ -4,7 +4,7 @@ import SystemCore
 
 /// The pages, top to bottom: the Digital Crown moves between them.
 enum WristPage: String, Hashable {
-    case today, logAgain, water, supplements
+    case today, fast, logAgain, water, supplements
 }
 
 /// Screens pushed over the pages.
@@ -36,6 +36,9 @@ struct RootView: View {
         if let today = model.today {
             TabView(selection: $page) {
                 TodayPage(today: today).tag(WristPage.today)
+                if today.tracksMealTiming {
+                    FastPage(today: today).tag(WristPage.fast)
+                }
                 LogAgainPage(today: today).tag(WristPage.logAgain)
                 if let water = today.water {
                     WaterPage(water: water, glasses: today.glasses).tag(WristPage.water)

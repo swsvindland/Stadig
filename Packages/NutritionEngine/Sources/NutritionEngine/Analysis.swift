@@ -20,6 +20,8 @@ public struct MacroState: Sendable {
     public var supplements: [Supplement]
     public var supplementLogs: [SupplementLog]
     public var water: [WaterLog]
+    /// Fasts started on purpose, with a goal.
+    public var fasts: [Fast]
     public var today: Day
     /// The moment the analysis is for, on `today`: what "late in the day" is judged by.
     public var now: Date
@@ -28,7 +30,7 @@ public struct MacroState: Sendable {
         profile: SharedProfile, settings: MacroSettings, entries: [FoodEntry] = [], weighIns: [WeighIn] = [],
         dayStatus: [DayStatus] = [], plan: PhasePlan? = nil, lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil,
         lift: AppSummary? = nil, checkIns: [CheckIn] = [], supplements: [Supplement] = [], supplementLogs: [SupplementLog] = [],
-        water: [WaterLog] = [], today: Day = .today, now: Date = Date()
+        water: [WaterLog] = [], fasts: [Fast] = [], today: Day = .today, now: Date = Date()
     ) {
         self.profile = profile
         self.settings = settings
@@ -46,6 +48,7 @@ public struct MacroState: Sendable {
         self.supplements = supplements
         self.supplementLogs = supplementLogs
         self.water = water
+        self.fasts = fasts
         self.today = today
         self.now = now
     }
@@ -76,7 +79,7 @@ public struct AssessmentProgress: Hashable, Sendable {
 
 /// A prescriptive insight: what was seen, then the one thing to do.
 public struct MacroAction: Hashable, Sendable, Identifiable {
-    public enum Kind: String, Sendable { case weighIn, protein, logYesterday, planReady, whoosh, reviewPlan, weighInSoon }
+    public enum Kind: String, Sendable { case weighIn, protein, logYesterday, planReady, whoosh, reviewPlan, weighInSoon, fastWater }
 
     public var id: String
     public var kind: Kind
@@ -119,6 +122,14 @@ public struct MacroAnalysis: Sendable {
     /// Today's caffeine and drinks.
     public var caffeine: CaffeineReport?
     public var hydration: HydrationDay?
+    /// Every fast, with when it ended; the one running now; and the last meal, which the time since
+    /// counts from when no fast is running.
+    public var fasts: [FastRun] = []
+    public var fast: FastStatus?
+    public var lastMeal: Moment?
+    /// Today's meals and gaps so far, and the week's pattern.
+    public var eatingToday: EatingDay?
+    public var mealTiming: MealTimingReport = .empty
 
     public var remaining: Nutrients? {
         guard let kcal = targets.kcal else { return nil }
@@ -147,7 +158,10 @@ public enum MacroAnalyst {
                 break
             }
         }
-        let trend = Weight.trend(state.weighIns, through: today, ignored: ignored)
+        // A long fast's weigh-ins, and those of the days after it, are water and glycogen: they
+        // leave the trend, but the fast's days still count for intake.
+        let fastRuns = Fasting.runs(state.fasts, entries: state.entries, now: state.now)
+        let trend = Weight.trend(state.weighIns, through: today, ignored: ignored.union(Fasting.waterDays(fastRuns, now: state.now)))
         // Without a trend, the newest reading it could have used (never a typo or an ignored one),
         // else a typical weight.
         let weight =
@@ -182,27 +196,42 @@ public enum MacroAnalyst {
         let formula = Energy.formula(
             sex: state.profile.sex, kg: weight, heightCm: state.profile.heightCm, age: state.profile.age(on: today),
             trainingDays: trainingDays, otherActiveMinutes: otherMinutes, dailySteps: dailySteps)
-        // Usable days: marked complete (or fasting), or finished yesterday-or-earlier with at least
-        // three entries logged live reaching 70% of the day's need. Everything else is unknown.
+        // Usable days: marked complete (or fasting), whole days inside a fast with no meal, or finished
+        // yesterday-or-earlier with at least three entries logged live reaching 70% of the day's need.
+        // Everything else is unknown.
         let states = Dictionary(state.dayStatus.map { ($0.day, $0.state) }, uniquingKeysWith: { a, _ in a })
         let entriesByDay = Dictionary(grouping: state.entries, by: \.day)
         let calendar = Calendar.current
+        let fastedDays = Fasting.fastedDays(fastRuns, today: today, now: state.now, calendar: calendar)
         var complete: [Day: Double] = [:]
-        for day in Set(intakeByDay.keys).union(states.keys) where day < today {
+        for day in Set(intakeByDay.keys).union(states.keys).union(fastedDays) where day < today {
             let kcal = intakeByDay[day]?.kcal ?? 0
             switch states[day] {
             case .complete?: if kcal > 0 { complete[day] = kcal }
-            case .fasting?: if kcal == 0 { complete[day] = 0 }
+            // Black coffee or tea leaves it fasted.
+            case .fasting?: if kcal < MealTiming.mealKcal { complete[day] = kcal }
             case .partial?, .inProgress?: break
             case nil:
+                if fastedDays.contains(day), kcal < MealTiming.mealKcal {
+                    // Black coffee or tea through a fast leaves it a fasted day.
+                    complete[day] = kcal
+                    continue
+                }
                 let cutoff = day.adding(days: 1).date(calendar: calendar).addingTimeInterval(4 * 3600)
                 let live = (entriesByDay[day] ?? []).filter { $0.updatedAt <= cutoff }
                 if live.count >= 3, kcal >= formula * 0.7 { complete[day] = kcal }
             }
         }
-        let maintenance = Energy.estimate(
-            trend: trend, usable: complete.filter { !ignored.contains($0.key) }, formula: formula,
-            through: today.adding(days: -1))
+        // Around a long fast, the estimate and the check-in learn as if its days were eaten at
+        // maintenance; the trend shown is the real one, its water days left out.
+        let fastAdjustment = Fasting.adjustment(
+            fastRuns, usable: complete, maintenance: state.checkIns.last { $0.day <= today }?.expenditure ?? formula, today: today,
+            now: state.now, calendar: calendar)
+        let learning = complete.filter { !ignored.contains($0.key) && !fastAdjustment.excluded.contains($0.key) }
+        let learningTrend =
+            fastAdjustment.isEmpty
+            ? trend : Weight.trend(fastAdjustment.adjusted(state.weighIns), through: today, ignored: ignored.union(fastAdjustment.excluded))
+        let maintenance = Energy.estimate(trend: learningTrend, usable: learning, formula: formula, through: today.adding(days: -1))
 
         // Assessment.
         var assessment: AssessmentProgress?
@@ -252,9 +281,10 @@ public enum MacroAnalyst {
         var dueCheckIn: CheckIn?
         if !assessing, CheckIns.isDue(last: checkIn, today: today) {
             dueCheckIn = CheckIns.review(
-                previous: checkIn, trend: trend, usable: complete.filter { !ignored.contains($0.key) }, today: today,
+                previous: checkIn, trend: learningTrend, usable: learning, today: today,
                 phase: state.plan?.phase(on: today), weightKg: weight, referenceKg: referenceKg,
-                fallbackExpenditure: maintenance.kcal, steps: state.lift?.steps)
+                fallbackExpenditure: maintenance.kcal, steps: state.lift?.steps,
+                longFast: Fasting.recentLongFast(fastRuns, today: today, now: state.now, calendar: calendar))
         }
         // A day's targets as they stood that day: its life modes, the check-in then in force, the
         // plan's phase, a deload, and only protein before the plan began.
@@ -320,6 +350,20 @@ public enum MacroAnalyst {
             today, water: state.water, entries: weekEntries,
             target: state.settings.waterTarget ?? Hydration.target(sex: state.profile.sex))
         analysis.quality = QualityAnalyst.report(entries: state.entries, complete: Set(complete.keys), today: today)
+        analysis.fasts = fastRuns
+        analysis.fast = Fasting.active(fastRuns).map { Fasting.status($0.fast, now: state.now) }
+        analysis.lastMeal = MealTiming.lastMeal(before: state.now, entries: weekEntries)
+        // Today counts so far; a day the analysis doesn't use is unknown, so it isn't read.
+        let known = Set(complete.keys).union([today])
+        let recent = state.entries.filter { $0.day >= today.adding(days: -11) }
+        analysis.eatingToday =
+            MealTiming.days(
+                recent, in: DayRange(today, today), known: known, bedtime: { state.bedtime(on: $0, calendar: calendar) },
+                proteinPerMeal: nil, calendar: calendar
+            ).first
+        analysis.mealTiming = MealTiming.report(
+            recent, today: today, known: known, bedtime: { state.bedtime(on: $0, calendar: calendar) },
+            phase: analysis.phase?.kind, referenceKg: referenceKg, calendar: calendar)
         analysis.actions = actions(state, analysis)
         return analysis
     }
@@ -349,7 +393,7 @@ public enum MacroAnalyst {
         }
         // Protein short late in the day.
         let hour = Calendar.current.component(.hour, from: state.now)
-        if let target = a.targets.protein, a.todayIntake.kcal > 0, hour >= 15 {
+        if let target = a.targets.protein, a.todayIntake.kcal > 0, hour >= 15, a.fast == nil {
             let gap = target - a.todayIntake.protein
             if gap >= 25 {
                 list.append(
@@ -361,8 +405,8 @@ public enum MacroAnalyst {
             }
         }
         let yesterday = today.adding(days: -1)
-        if expectingLogs, a.intakeByDay[yesterday] == nil, !LifeModes.effects(on: yesterday, periods: state.lifeModes).disciplineExempt,
-            !state.entries.isEmpty
+        if expectingLogs, a.intakeByDay[yesterday] == nil, a.usable[yesterday] == nil,
+            !LifeModes.effects(on: yesterday, periods: state.lifeModes).disciplineExempt, !state.entries.isEmpty
         {
             list.append(
                 MacroAction(
@@ -376,6 +420,15 @@ public enum MacroAnalyst {
                     id: "whoosh", kind: .whoosh, title: "The scale stalled: expected",
                     detail: "Water held during a cut often drops during a diet break.",
                     action: "Hold the targets; nothing tightens mid-cut because of the scale.", priority: 2))
+        }
+        if let run = Fasting.recentLongFast(a.fasts, today: today, now: state.now), let end = run.end {
+            let days = run.vouched(at: end) / 86_400
+            list.append(
+                MacroAction(
+                    id: "fast-water-\(run.id.uuidString)", kind: .fastWater, title: "The scale after a fast is water",
+                    detail:
+                        "A fast of \(days >= 1.5 ? "\(days.formatted(.number.precision(.fractionLength(0...1)))) days" : "a day or more") empties glycogen and the water it holds; eating brings most of it back over a few days.",
+                    action: "Weigh in as usual: these days stay out of the trend, and the check-in waits for it to settle.", priority: 2))
         }
         if let plan = a.plan, let last = plan.phases.last, today > last.end {
             // Targets hold the last phase after a plan ends; without this, only Lift Track's block
@@ -413,9 +466,11 @@ public enum MacroAnalyst {
             let hit = a.dayTargets[day]?.hits(n)
             days.append(NutritionDay(day: day, logged: true, proteinHit: hit?.protein, caloriesHit: hit?.calories))
         }
+        // Lift Track hears about a fast only while meal timing is on, as the person sees it here.
+        let fast = state.settings.mealTiming ? a.fast.map { PublishedFast(start: $0.fast.start, goalHours: $0.fast.goalHours) } : nil
         return NutritionSummary(
             phase: phase, maintenanceKcal: a.assessment == nil || a.maintenance.basis != .formula ? a.maintenance.kcal : nil,
-            days: days)
+            days: days, fast: fast)
     }
 
     public static func appSummary(_ state: MacroState, _ a: MacroAnalysis) -> AppSummary {

@@ -7,7 +7,9 @@ import WidgetKit
 struct MacroTrackWidgets: WidgetBundle {
     var body: some Widget {
         RemainingWidget()
+        FastWidget()
         #if os(iOS)
+        FastLiveActivity()
         SnapMealControl()
         ScanBarcodeControl()
         #endif

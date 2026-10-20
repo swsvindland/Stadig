@@ -5,7 +5,7 @@ import SystemCore
 public enum HistoryStatus: String, Sendable, CaseIterable, Comparable {
     /// Teaches the estimate: marked complete, or finished with enough logged.
     case complete
-    /// Marked fasted, with nothing eaten: it teaches the estimate too.
+    /// Marked fasted with nothing eaten, or a whole day inside a fast: it teaches the estimate too.
     case fasting
     /// Something logged, but not all of it (or marked partly logged): left out of the estimate.
     case partial
@@ -44,6 +44,8 @@ public struct HistoryDay: Identifiable, Hashable, Sendable {
     public var weighIn: Double?
     /// The weight trend that day, kg.
     public var trend: Double?
+    /// From the evening before's last meal to the day's first, when both days were fully logged.
+    public var overnightFast: TimeInterval?
 
     public var id: Day { day }
 
@@ -84,11 +86,17 @@ public enum DayHistory {
             state.dayStatus.map(\.day).min(),
         ]
         guard let first = starts.compactMap({ $0 }).min(), first <= today else { return [] }
+        let known = Set(analysis.usable.keys).union([today])
+        let overnights = Dictionary(
+            MealTiming.days(state.entries, in: DayRange(first, today), known: known, bedtime: { state.bedtime(on: $0) }, proteinPerMeal: nil)
+                .compactMap { day in day.overnight.map { (day.day, $0.duration) } },
+            uniquingKeysWith: { a, _ in a })
         return DayRange(first, today).days.reversed().map { day in
             let intake = analysis.intakeByDay[day]
             let status: HistoryStatus
             if let kcal = analysis.usable[day] {
-                status = kcal == 0 ? .fasting : .complete
+                // Under a meal's worth (black coffee through a fast) is a fasted day.
+                status = kcal < MealTiming.mealKcal ? .fasting : .complete
             } else if day == today {
                 status = .inProgress
             } else if intake != nil || states[day] == .partial || states[day] == .inProgress {
@@ -99,7 +107,7 @@ public enum DayHistory {
             return HistoryDay(
                 day: day, intake: intake, entries: entriesByDay[day]?.count ?? 0,
                 targets: day == today ? analysis.targets : analysis.dayTargets[day] ?? MacroAnalyst.targets(on: day, state, analysis),
-                status: status, weighIn: counted[day]?.max { $0.date < $1.date }?.kg, trend: trend[day])
+                status: status, weighIn: counted[day]?.max { $0.date < $1.date }?.kg, trend: trend[day], overnightFast: overnights[day])
         }
     }
 }
@@ -123,7 +131,7 @@ extension MacroAnalyst {
 /// logged) go last whichever way the column is sorted; ties go newest first.
 public struct HistoryOrder: SortComparator, Hashable, Sendable {
     public enum Column: String, Hashable, Sendable {
-        case day, kcal, overTarget, protein, carbs, fat, fiber, status, weighIn, trend
+        case day, kcal, overTarget, protein, carbs, fat, fiber, status, weighIn, trend, overnightFast
     }
 
     public var column: Column
@@ -146,6 +154,7 @@ public struct HistoryOrder: SortComparator, Hashable, Sendable {
         case .status: return ordered(a.status, b.status, a, b)
         case .weighIn: return ordered(a.weighIn, b.weighIn, a, b)
         case .trend: return ordered(a.trend, b.trend, a, b)
+        case .overnightFast: return ordered(a.overnightFast, b.overnightFast, a, b)
         }
     }
 

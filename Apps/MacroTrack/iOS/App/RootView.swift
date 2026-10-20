@@ -31,6 +31,9 @@ struct RootView: View {
         .sheet(isPresented: $model.showWeighIn) {
             WeighInSheet().macSheetSize(width: 440, height: 520)
         }
+        .sheet(isPresented: $model.showFast) {
+            FastSheet().macSheetSize(width: 520, height: 680)
+        }
         .sheet(isPresented: $model.showSupplements) {
             SupplementsView().macSheetSize(width: 520, height: 640)
         }

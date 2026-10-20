@@ -53,6 +53,27 @@ enum Format {
 
     static func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
 
+    /// "45 m", "3 h 10 m", "18 h", "2 d 4 h": how long since a meal, or a fast.
+    static func duration(_ interval: TimeInterval) -> String {
+        let minutes = max(0, Int((interval / 60).rounded(.down)))
+        let hours = minutes / 60
+        switch hours {
+        case 0: return "\(minutes) m"
+        case ..<48: return minutes % 60 == 0 || hours >= 24 ? "\(hours) h" : "\(hours) h \(minutes % 60) m"
+        default: return hours % 24 == 0 ? "\(hours / 24) d" : "\(hours / 24) d \(hours % 24) h"
+        }
+    }
+
+    /// "16 h", "36 h", "3 days": a fast's goal.
+    static func goal(_ hours: Double) -> String {
+        hours >= 48 && hours.truncatingRemainder(dividingBy: 24) == 0 ? "\(Int(hours / 24)) days" : "\(Int(hours.rounded())) h"
+    }
+
+    /// A time with its weekday when it isn't today: "8:05 PM", "Mon 8:05 PM".
+    static func moment(_ date: Date, now: Date = Date()) -> String {
+        Day(date) == Day(now) ? time(date) : date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
+
     /// "P 32 · C 40 · F 12"
     static func macros(_ n: Nutrients) -> String {
         "P \(Int(n.protein.rounded())) · C \(Int(n.carbs.rounded())) · F \(Int(n.fat.rounded()))"

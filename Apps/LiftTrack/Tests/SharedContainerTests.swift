@@ -46,6 +46,22 @@ struct SharedContainerTests {
         #expect(model.analysis?.phase.kind == .cut)
     }
 
+    @Test("A fast running in Macro Track is read, and a day into one, a session still to do today gets a word")
+    func readsMacroTracksFast() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let other = TestApp.container(in: app.folder)
+        // In whole seconds: the shared file keeps times to the millisecond.
+        let fast = PublishedFast(start: Date(timeIntervalSince1970: (Date().timeIntervalSince1970 - 30 * 3600).rounded()), goalHours: 48)
+        try other.write(NutritionSummary(phase: nil, maintenanceKcal: nil, days: [], fast: fast), to: .nutrition, by: .macroTrack)
+        model.readShared()
+        #expect(model.nutrition?.fast == fast)
+        let analysis = try #require(model.analysis)
+        // Whether today has a session to do depends on the weekday the test runs on.
+        let sessionToDo = analysis.next?.scheduledToday == true && analysis.block?.week(of: model.today) != .deload
+        #expect(analysis.actions.contains { $0.kind == .fasting } == sessionToDo)
+    }
+
     // MARK: Life modes
 
     private func vacation(by app: AppID = .macroTrack, updatedAt: Date = Date()) -> LifeModePeriod {
