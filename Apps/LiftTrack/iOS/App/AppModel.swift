@@ -150,6 +150,9 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
+    /// On a launch that found Lift Track not set up: the person's training on its way from iCloud,
+    /// which onboarding waits for. Nil when there was nothing to look for.
+    private(set) var arrival: ICloudArrival?
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var healthObserver: AnyObject?
@@ -178,6 +181,10 @@ final class AppModel {
         #endif
         self.init(store: store, shared: files.shared, liveURL: files.liveURL, widgetURL: files.widgetURL)
         if !memory { family = FamilySync(shared: files.shared) }
+        #if DEBUG
+        // The wait a second device shows while its data comes down, over a store that never gets any.
+        if launch.has("-simulateICloudData"), !onboarded { arrival = ICloudArrival(store: store) { .records } }
+        #endif
     }
 
     /// Everything outside the store the model reads or writes: tests pass a store in memory and a
@@ -188,6 +195,8 @@ final class AppModel {
         self.liveURL = liveURL
         self.widgetURL = widgetURL
         reload()
+        // A second device or a reinstall: onboarding waits while the person's data comes down.
+        if !onboarded { arrival = ICloudArrival.start(for: store) }
         restoreLive()
         LiveActivityBridge.resume(live, catalog: catalog, unit: gym.unit)
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }

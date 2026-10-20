@@ -1,5 +1,6 @@
 import MindEngine
 import SwiftUI
+import SystemStore
 
 /// Today for the session, Plan for the week and what's next, Progress for the honest measures. In a
 /// wide window (iPad, the Mac, Vision Pro) the tabs are a sidebar, with the shelf, your writing and
@@ -31,6 +32,8 @@ struct RootView: View {
                     }
                 }
                 .tabViewStyle(.sidebarAdaptable)
+            } else if let arrival = model.arrival, arrival.isWaiting {
+                ICloudWaitView(arrival: arrival)
             } else {
                 OnboardingView()
             }

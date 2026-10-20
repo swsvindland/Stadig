@@ -85,6 +85,7 @@ Each app owns its own **SwiftData + CloudKit** database: one generic `RecordRow`
 - **Records:** schema versioning and step-by-step migration from day one, newest-wins dedupe of rows CloudKit delivers twice, and soft deletes that sync. Changes that sync in while an app is open are announced (`observeChanges`), so Lift Track shows them without a relaunch, and a local save updates only its own kind of record in the cache.
 - **The shared App Group container** (`group.dev.svindland.stadig`): versioned envelopes, coordinated writes, and change notifications across apps. It holds the profile, life modes, the calendar, each app's summary, Macro Track's nutrition summary and the hub's recommendations and quests. Life modes are at schema 2, with deletes as tombstones. A summary or calendar is rewritten only when its content changes.
 - **Backups:** the full backup file and restore (merge, newest wins), and CSV export. A backup restores only into the app that wrote it: another app's is refused before anything is written. CSV fields that start like a formula get a leading apostrophe.
+- **Sync state and a second device:** A second device, or a reinstall, that finds the app not set up asks iCloud once whether the app has records there (`ICloudArrival`, SystemStore): the account, then one record id from the store's zone. Nothing there, no account, or no answer within 10 seconds goes straight to onboarding, after a blank moment rather than a flash of the wait. Records there show "Bringing your training from iCloud" instead of onboarding until this launch's first import has ended; the data arriving opens Today, and a failure to set up or import ends the wait with its reason under the spinner. "Set up as new" skips the wait. Settings' Sync row follows CloudKit's own events (`SyncState`): "Syncing…", "Up to date" with when it last synced, or "Not syncing" with the reason in words (not signed in, storage full, the server refusing the schema), and the shared setup's state when that's the part failing.
 
 ## HealthBridge
 
@@ -195,6 +196,7 @@ Lift Track is one app on iPhone, iPad, the Mac and Apple Vision Pro, its records
 - `-tab plan|program|library|history|progress|body` opens a destination (program, library and history are the sidebar's; in a narrow window they show the tab that reaches them).
 - `-exercise <id>` opens Library on that exercise (`-exercise barbell-bench-press`).
 - `-openSettings` opens the Mac's Settings window.
+- `-simulateICloudData` shows the wait a second device shows while its training comes down from iCloud, over a store that never gets any ("Set up as new" leaves it for onboarding).
 
 `SIM_DEBUG=1 swift test --filter simulationReport` in `Packages/SystemCore` prints every simulated lifter's sessions and calibration evidence. `PRINT_PROGRAMS=1 swift test` in `Packages/LiftEngine` prints generated programs.
 
@@ -216,9 +218,9 @@ The rules are tested in the packages ([package-tests.md](package-tests.md)). The
 - **Settings edits:** a pane left open catching up with a profile synced in, and a visit that changes nothing writing nothing (to the store or the shared profile); edits on an old copy writing only their fields (each part of the schedule on its own) over what synced in; the gym's edits made on the gym as it is.
 - **The Watch and Health:** the workout saved once, by the Watch, or by the phone when the session's end doesn't reach the Watch or there's no Watch; the Watch's workout thrown away when Save to Health is off or nothing was logged; a heart-rate recovery ending a rest only while it runs; Health's weight against one typed on the tape later.
 
-**UI tests** (`Apps/LiftTrack/UITests`, XCUITest, 13 tests: all 13 run on the iPad, where `openTab` reaches the tabs through the sidebar, and the 4 wide-layout ones skip on an iPhone) launch with `-uiTesting` plus the arguments the screen needs, and find elements by accessibility identifier (`today.startSession`, `logger.done`, …). `UITests/Support/Launch.swift` declines a leftover permission alert before each launch.
+**UI tests** (`Apps/LiftTrack/UITests`, XCUITest, 14 tests: all 14 run on the iPad, where `openTab` reaches the tabs through the sidebar, and the 4 wide-layout ones skip on an iPhone) launch with `-uiTesting` plus the arguments the screen needs, and find elements by accessibility identifier (`today.startSession`, `logger.done`, …). `UITests/Support/Launch.swift` declines a leftover permission alert before each launch.
 
-- **Launch and onboarding:** a seeded launch shows every tab; a first run goes through onboarding to Today.
+- **Launch and onboarding:** a seeded launch shows every tab; a first run goes through onboarding to Today; a second device waits for its training from iCloud rather than onboarding, until "Set up as new".
 - **Session:** start from Today, log and rate a set, skip a rest, finish and save; minimise and resume; discard; correct a logged set.
 - **Screens:** Settings and CSV export; adding and deleting a vacation on Plan; adding a measurement on Body.
 - **The iPad's wide layout** (`Scripts/build.sh ui lift ipad`): a Program slot selected into the inspector with swaps; Library opened on an exercise, set aside and allowed back; History as a table; the two-pane session rated with the 2 key and its rest ended with Space.

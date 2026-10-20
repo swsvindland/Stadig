@@ -110,6 +110,9 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
+    /// On a launch that found Mind Track not set up: the person's courses and progress on its way from iCloud,
+    /// which onboarding waits for. Nil when there was nothing to look for.
+    private(set) var arrival: ICloudArrival?
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var dayObservers: [NotificationToken] = []
@@ -152,6 +155,10 @@ final class AppModel {
             self.init(store: store, shared: shared, drafts: WritingDrafts(folder: WritingDrafts.defaultFolder))
             family = FamilySync(shared: shared)
         }
+        #if DEBUG
+        // The wait a second device shows while its data comes down, over a store that never gets any.
+        if launch.has("-simulateICloudData"), !onboarded { arrival = ICloudArrival(store: store) { .records } }
+        #endif
     }
 
     /// Everything that touches disk or the system comes in, so a test builds one over an in-memory
@@ -168,6 +175,8 @@ final class AppModel {
         today = Day(now())
         catalogs = Catalogs(decks: LanguageDeck.bundled())
         reload()
+        // A second device or a reinstall: onboarding waits while the person's data comes down.
+        if !onboarded { arrival = ICloudArrival.start(for: store) }
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
         // Another device's changes, as CloudKit imports them while the app is open: a stale copy
         // left on screen would be saved back over them.

@@ -291,7 +291,7 @@ struct SettingsView: View {
                     Text(busy).foregroundStyle(.secondary)
                 }
             }
-            LabeledContent("Sync", value: model.store.syncStatus)
+            SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
         }
 
         Section {

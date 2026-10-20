@@ -30,6 +30,21 @@ struct AppModelTests {
         #expect(model.shared.directory.path(percentEncoded: false).hasPrefix(URL.temporaryDirectory.path(percentEncoded: false)))
         #expect(!AppModel.shared.shared.isAppGroup, "the test host's own model is a test one too")
         #expect(AppModel.shared.store.syncStatus == "Memory only")
+        #expect(model.arrival == nil, "nothing kept, so nothing coming from iCloud to wait for")
+    }
+
+    @Test func simulatedICloudDataWaitsUntilSetUpAsNew() async throws {
+        let launch = LaunchOptions(
+            arguments: ["MindTrack", "-simulateICloudData"], environment: ["XCTestConfigurationFilePath": "/tmp/x.xctestconfiguration"])
+        let model = AppModel(launch: launch)
+        let arrival = try #require(model.arrival)
+        for _ in 0..<200 where arrival.phase == .looking {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(arrival.phase == .arriving)
+        #expect(arrival.isWaiting)
+        arrival.setUpAsNew()
+        #expect(!arrival.isWaiting)
     }
 
     @Test func onboardingSavesTheSetupAndStartsTheFirstSession() throws {

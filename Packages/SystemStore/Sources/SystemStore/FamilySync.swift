@@ -46,6 +46,9 @@ public final class FamilySync {
     /// Where the family's files live: "iCloud", "This device only" or "Memory only".
     public var syncStatus: String { store.syncStatus }
 
+    /// What CloudKit last reported doing for the family's files.
+    public var syncState: SyncState { store.syncState }
+
     /// Both directions now: newer copies from other devices come down, then newer files here go up.
     public func sync() {
         pull()

@@ -13,9 +13,9 @@ import SystemCore
 /// previous app version can keep reading it until then.
 @MainActor @Observable
 public final class RecordStore {
-    static let iCloudStatus = "iCloud"
-    static let localStatus = "This device only"
-    static let memoryStatus = "Memory only"
+    nonisolated static let iCloudStatus = "iCloud"
+    nonisolated static let localStatus = "This device only"
+    nonisolated static let memoryStatus = "Memory only"
 
     /// Bumps on every local change (save, delete, erase, import) and when CloudKit delivers remote
     /// changes. `all` and `get` read it, so a SwiftUI view that calls them re-renders on its own.
@@ -23,6 +23,10 @@ public final class RecordStore {
     public private(set) var revision: Int = 0
     /// Where the data lives, in words: "iCloud", "This device only" or "Memory only".
     public private(set) var syncStatus: String
+    /// What CloudKit last reported doing for this store: syncing, up to date, or failing and why.
+    public private(set) var syncState: SyncState
+    /// The CloudKit container the store syncs with; nil when it keeps its data on this device.
+    public let cloudKitContainer: String?
 
     private let name: String
     private let container: ModelContainer?
@@ -42,6 +46,9 @@ public final class RecordStore {
     @ObservationIgnored private var kindRevisions: [String: Int] = [:]
     @ObservationIgnored private var everyKindRevision = 0
     @ObservationIgnored private var remoteObserver: NotificationObservation?
+    @ObservationIgnored private var syncObserver: NotificationObservation?
+    /// The store's identifier in CloudKit's events, read from its file the first time one arrives.
+    @ObservationIgnored private var eventIdentifier: String?
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var remoteChangeNoticed: ContinuousClock.Instant?
     /// The newest history transaction already accounted for.
@@ -118,6 +125,15 @@ public final class RecordStore {
         container = opened?.container
         storeURL = opened?.url
         syncStatus = opened?.status ?? "Unavailable"
+        let place: SyncState.Place =
+            switch opened?.status {
+            case Self.iCloudStatus: .iCloud
+            case Self.localStatus: .thisDevice
+            case Self.memoryStatus: .memory
+            default: .unavailable
+            }
+        syncState = SyncState(place: place)
+        self.cloudKitContainer = place == .iCloud ? cloudKitContainer : nil
         context = opened.map { Self.makeContext($0.container, author: author) }
 
         if let opened {
@@ -140,6 +156,9 @@ public final class RecordStore {
                 MainActor.assumeIsolated { self?.storeChangedRemotely(at: changedURL) }
             }
             remoteObserver = NotificationObservation(token)
+        }
+        if place == .iCloud {
+            syncObserver = SyncEvent.observe { [weak self] event, store in self?.received(event, fromStore: store) }
         }
     }
 
@@ -553,6 +572,26 @@ public final class RecordStore {
             try? await Task.sleep(until: deadline, clock: .continuous)
             guard !Task.isCancelled else { return }
             self?.refreshAfterRemoteChange()
+        }
+    }
+
+    /// A CloudKit event, for this store or another one in the process (the family's).
+    func received(_ event: SyncEvent, fromStore identifier: String) {
+        if eventIdentifier == nil, let storeURL { eventIdentifier = SyncEvent.storeIdentifier(at: storeURL) }
+        guard identifier == eventIdentifier else { return }
+        if event.kind == .import, event.ended != nil {
+            // The import's rows are in the store by now. Read them before saying it's over, so what
+            // waits on the import (`ICloudArrival`) finds the data with it, not a moment later when
+            // the remote-change notification's quiet period is up.
+            remoteRefresh?.cancel()
+            refreshAfterRemoteChange()
+        }
+        let before = syncState.problem
+        syncState.apply(event)
+        if let problem = syncState.problem, problem != before {
+            storeLog.error("\(self.name, privacy: .public): iCloud isn't syncing: \(problem, privacy: .public)")
+        } else if before != nil, syncState.problem == nil {
+            storeLog.notice("\(self.name, privacy: .public): iCloud is syncing again")
         }
     }
 

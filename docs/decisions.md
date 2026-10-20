@@ -1,5 +1,6 @@
 # Decisions to check
 
+- **A second device waits for iCloud.** On 2026-10-20 the TestFlight apps on the Mac opened on onboarding with none of the iPhone's data, and you asked whether a device that finds data in iCloud should go straight into the app. The cause was the CloudKit schema never deployed to Production (`docs/ci-cd.md`); the calls made building the wait are under "Calls made for a second device" below.
 - **Meal timing and fasting.** On 2026-10-19 you asked for fasts with a goal and phases, and for time between meals. It's off until turned on in Settings; the calls made building it are under "Calls made for meal timing and fasting" below.
 - **Every device.** On 2026-10-18 you asked for every app on iPhone, iPad, the Mac and Vision Pro (and the Watch where it fits), all syncing over CloudKit, with the desktop doing more than the phone. Each app is now one multiplatform target, and the calls made building it are under "Calls made for every device" below. (The first pass had dropped the Mac and Vision Pro as "iOS first".)
 - **Purchases are switched off for testing.** Neither app is in App Store Connect yet, so `Purchases.enabled` is `false` in both: everything is unlocked, StoreKit is never asked, and the Unlock rows are hidden. Set it to `true` in each app's `Purchase/Purchases.swift` before release; the gates below then apply as written.
@@ -27,6 +28,16 @@
   - the hub
   - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for a second device (2026-10-20)
+
+All three apps, through SystemStore's `ICloudArrival` and `SyncState`.
+
+- **Ask iCloud first, then wait only when there's something.** A launch that finds the app not set up asks iCloud whether the app's zone has any record (the account, then one record id: two small requests) rather than waiting for the first import, which took 7 to 16 seconds on an empty zone in the Mac's logs, so someone new isn't kept waiting. Open: whether a record in the zone is the right signal; a device that wrote something before finishing setup (Mind Track on the Mac did) also counts, and costs that person one wait for an import that ends without a setup.
+- **10 seconds to answer.** No answer from iCloud in 10 seconds counts as nothing there, and onboarding shows (the data arriving later still takes the app out of onboarding). A simulator with no iCloud account never answers, so it waits the full 10 seconds. Open: the length.
+- **No limit once there's data.** With records in iCloud, the wait lasts until this launch's first import ends, however long that is, with "Set up as new" always there; setting up or importing failing ends it, with the reason under the spinner. Open: a limit here too, or saying more after a minute.
+- **Set up as new.** It goes straight to onboarding. If the data arrives before setup is finished, the app leaves onboarding for it as before; a setup finished first is newer, so for the settings (one record on every device) it wins over the one coming down. Open: warning about that, or keeping the synced settings whenever they arrive.
+- **What Settings says.** "Syncing…", "Up to date" with when it last synced, "Waiting for iCloud" before CloudKit has done anything, or "Not syncing" with the reason. Known CloudKit errors get plain words; anything else shows the server's own message after "iCloud said:", so a refused schema reads as itself. The shared setup (the family container) gets a row only when it's failing. Open: the wording, and whether the family's state should always show.
 
 ## Calls made for meal timing and fasting (2026-10-19)
 
