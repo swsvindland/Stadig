@@ -237,7 +237,7 @@ struct DataSections: View {
                     Text("Working through your records…").foregroundStyle(.secondary)
                 }
             }
-            LabeledContent("Sync", value: model.store.syncStatus)
+            SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
         } header: {
             Text("Your data")
         } footer: {

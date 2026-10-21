@@ -23,6 +23,20 @@ nonisolated final class AppUITests: XCTestCase {
         app.element("today.calories").waitToAppear()
     }
 
+    /// A second device, with the person's log in iCloud: the wait for it rather than onboarding, with
+    /// a way out to set up as new.
+    @MainActor
+    func testASecondDeviceWaitsForICloudBeforeOnboarding() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-simulateICloudData"])
+        app.element("icloud.waiting").waitToAppear()
+        XCTAssertFalse(app.element("onboarding.getStarted").exists, "no onboarding over data on its way")
+
+        app.buttons["icloud.setUpAsNew"].waitToAppear().tap()
+        app.element("onboarding.getStarted").waitToAppear()
+        XCTAssertFalse(app.element("icloud.waiting").exists)
+    }
+
     @MainActor
     func testFirstRunOnboardingReachesToday() {
         continueAfterFailure = false

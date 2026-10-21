@@ -182,6 +182,9 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
+    /// On a launch that found Macro Track not set up: the person's log and targets on its way from iCloud,
+    /// which onboarding waits for. Nil when there was nothing to look for.
+    private(set) var arrival: ICloudArrival?
     /// Puts what the Watch and the Mac logged into Health, once, as it syncs in (HealthBackfill.swift);
     /// nil when nothing is kept, and where there's no Health.
     @ObservationIgnored private(set) var healthBackfill: HealthBackfill?
@@ -224,6 +227,10 @@ final class AppModel {
             family = FamilySync(shared: shared)
             healthBackfill = HealthBackfill.live(store: store)
         }
+        #if DEBUG
+        // The wait a second device shows while its data comes down, over a store that never gets any.
+        if launch.has("-simulateICloudData"), !onboarded { arrival = ICloudArrival(store: store) { .records } }
+        #endif
     }
 
     /// Where the shared files and the widgets' snapshot go: the App Group, or a fresh folder of the
@@ -250,6 +257,8 @@ final class AppModel {
         self.usesSystemServices = usesSystemServices
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
         reload()
+        // A second device or a reinstall: onboarding waits while the person's data comes down.
+        if !onboarded { arrival = ICloudArrival.start(for: store) }
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
         // Another device's changes, as CloudKit imports them while the app is open or woken for them.
         storeObserver = store.observeChanges { [weak self] in self?.reloadIfChanged() }

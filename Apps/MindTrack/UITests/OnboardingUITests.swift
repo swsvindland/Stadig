@@ -37,6 +37,19 @@ nonisolated final class OnboardingUITests: XCTestCase {
         XCTAssertFalse(app.element("onboarding.readyTitle").exists)
     }
 
+    /// A second device, with the person's courses in iCloud: the wait for them rather than setup, with
+    /// a way out to set up as new.
+    @MainActor
+    func testASecondDeviceWaitsForICloudBeforeSetup() {
+        let app = XCUIApplication.launched(["-simulateICloudData"])
+        app.element("icloud.waiting").waitToAppear()
+        XCTAssertFalse(app.element("onboarding.welcomeTitle").exists, "no setup over data on its way")
+
+        app.buttons["icloud.setUpAsNew"].waitToAppear().tap()
+        app.element("onboarding.welcomeTitle").waitToAppear()
+        XCTAssertFalse(app.element("icloud.waiting").exists)
+    }
+
     @MainActor
     func testSetupNeedsAFocusCourse() {
         let app = XCUIApplication.launched(["-onboardingPage", "courses"])

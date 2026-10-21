@@ -2,6 +2,7 @@ import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
+import SystemStore
 
 /// Today to train, Plan for the block, Progress for the stats, Body for physique. The sidebar on the
 /// iPad, the Mac and Vision Pro adds the planning desk: Program, Library and History.
@@ -17,6 +18,8 @@ struct RootView: View {
         ZStack {
             if model.onboarded {
                 tabs
+            } else if let arrival = model.arrival, arrival.isWaiting {
+                ICloudWaitView(arrival: arrival)
             } else {
                 OnboardingView()
             }

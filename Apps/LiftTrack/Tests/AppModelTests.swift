@@ -19,6 +19,7 @@ struct AppModelTests {
         #expect(model.analysis == nil)
         #expect(model.plan() == nil)
         #expect(model.live == nil)
+        #expect(model.arrival == nil, "a store that keeps nothing has nothing coming from iCloud to wait for")
     }
 
     @Test("Onboarding saves the profile, settings, gym and measurements, and starts the assessment today")

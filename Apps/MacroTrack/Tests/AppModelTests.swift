@@ -19,6 +19,7 @@ struct AppModelTests {
         #expect(model.analysis == nil)
         #expect(model.entries.isEmpty)
         #expect(model.store.syncStatus == "Memory only")
+        #expect(model.arrival == nil, "a store that keeps nothing has nothing coming from iCloud to wait for")
     }
 
     @Test func onboardingSavesTheProfileSettingsAndFirstWeighIn() throws {

@@ -343,7 +343,7 @@ struct DataSettings: View {
                 Text("A restore waits until the session ends.").font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("settings.restoreWaits")
             }
-            LabeledContent("Sync", value: model.store.syncStatus)
+            SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
             if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
         } header: {
             Text("Your data")

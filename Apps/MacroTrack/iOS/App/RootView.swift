@@ -1,5 +1,6 @@
 import NutritionEngine
 import SwiftUI
+import SystemStore
 
 /// Today to log, Plan for the phase and targets, Progress for the trend. Logging is one tap away
 /// from every tab, in the bar above the tabs. With room for a sidebar (iPad, the Mac, Vision Pro)
@@ -20,6 +21,8 @@ struct RootView: View {
         Group {
             if model.onboarded {
                 tabs
+            } else if let arrival = model.arrival, arrival.isWaiting {
+                ICloudWaitView(arrival: arrival)
             } else {
                 OnboardingView()
             }
