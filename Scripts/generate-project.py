@@ -289,6 +289,8 @@ macro_app = dict(swift_common, **ios_app_common, **{
     # A running fast on the Lock Screen and in the Dynamic Island.
     "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
     "INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates": "NO",
+    # Xcode moved this out of Config/Info.plist into build settings, as it did for Lift Track.
+    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro",
 })
 
