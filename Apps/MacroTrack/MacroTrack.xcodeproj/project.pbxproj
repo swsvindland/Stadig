@@ -796,6 +796,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
@@ -974,6 +975,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";

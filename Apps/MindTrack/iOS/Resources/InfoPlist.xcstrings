@@ -1,6 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mind Track"
+          }
+        }
+      }
+    },
     "CFBundleName" : {
       "comment" : "The app's name in the Mac's menu bar, which reads the bundle name rather than the display name.",
       "extractionState" : "manual",
@@ -9,6 +21,45 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mind Track"
+          }
+        }
+      }
+    },
+    "Mind Track Backup" : {
+
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Privacy - Camera Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mind Track uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mind Track listens when you answer a speaking exercise out loud, so it can check what you said."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy - Speech Recognition Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Speaking exercises are checked by on-device speech recognition. What you say stays on this device."
           }
         }
       }
