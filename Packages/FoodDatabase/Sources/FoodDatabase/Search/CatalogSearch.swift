@@ -233,17 +233,70 @@ extension FoodCatalog {
         return brand
     }
 
+    /// The chains and brands the generic catalog writes first in capitals ("PAPA JOHN'S 14" Pepperoni
+    /// Pizza", "LITTLE CAESARS …", "McDONALD'S, BIG MAC"), in plain words. A brand written with more
+    /// than one run is the words its runs share: KRAFT, not "KRAFT FREE" from KRAFT FREE Singles.
+    var chains: [[String]] {
+        chainNames.withLock { cached in
+            if let cached { return cached }
+            var order: [String] = []
+            var shared: [String: [String]] = [:]
+            for catalog in catalogs where catalog.kind == .generic {
+                for name in catalog.names() {
+                    let run = brandWords(name: name, brand: "")
+                    guard let first = run.first else { continue }
+                    if let known = shared[first] {
+                        shared[first] = zip(known, run).prefix { $0 == $1 }.map(\.0)
+                    } else {
+                        order.append(first)
+                        shared[first] = run
+                    }
+                }
+            }
+            let found = order.compactMap { shared[$0] }
+            cached = found
+            return found
+        }
+    }
+
+    /// Whether words name a chain or brand the generic catalog writes first ("little caesars", "papa
+    /// johns", "wendys"), unless packaged foods use them in names far more often than as a brand.
+    private func isChain(_ words: ArraySlice<String>, _ catalog: Catalog?, _ fixes: Fixes) -> Bool {
+        let forms = words.map { searchForms($0) + (fixes[$0] ?? []) }
+        guard
+            let chain = chains.first(where: { chain in
+                chain.count == forms.count && zip(chain, forms).allSatisfy { word, options in options.contains { starts(word, $0) } }
+            })
+        else { return false }
+        guard let catalog else { return true }
+        // Counted as the chain's own words in a row, so "chick fil" isn't every chicken fillet nor
+        // "domino" every German Dominostein.
+        let phrase = "\"\(chain.joined(separator: " "))\""
+        let key = "chain \(phrase)"
+        if let remembered = brandish.withLock({ $0[key] }) { return remembered }
+        let inNames = catalog.count("{name}: \(phrase)")
+        let brand = inNames < 20 || 1.5 * Double(catalog.count("{brand}: \(phrase)")) >= Double(inNames)
+        brandish.withLock { remembered in
+            if remembered.count > 500 { remembered.removeAll() }
+            remembered[key] = brand
+        }
+        return brand
+    }
+
     /// The words at the start or end of a search that name a brand, the most words first: "trader
-    /// joes" in "trader joes mini wheats" or "mini wheats trader joes". At least one word is left to
-    /// name the food; a search for a brand alone ("kirkland", or "pop" on its way to Pop-Tarts) is
-    /// searched as any other.
+    /// joes" in "trader joes mini wheats" or "mini wheats trader joes", and "little caesars" before
+    /// "little". At least one word is left to name the food; a search for a brand alone ("kirkland",
+    /// or "pop" on its way to Pop-Tarts) is searched as any other.
     private func findBrand(_ words: [String], _ fixes: Fixes) -> Range<Int>? {
-        guard let catalog = branded.first, words.count > 1 else { return nil }
+        guard words.count > 1 else { return nil }
+        let catalog = branded.first
         for size in stride(from: min(words.count - 1, 3), through: 1, by: -1) {
             for start in Set([0, words.count - size]).sorted() {
                 let span = words[start..<(start + size)]
                 // A letter on its own is a size or a variety ("k cup"), whatever brands start with it.
-                if span.contains(where: { length($0) > 1 }) && isBrand(span, catalog, fixes) { return start..<(start + size) }
+                guard span.contains(where: { length($0) > 1 }) else { continue }
+                if let catalog, isBrand(span, catalog, fixes) { return start..<(start + size) }
+                if isChain(span, catalog, fixes) { return start..<(start + size) }
             }
         }
         return nil
@@ -271,20 +324,26 @@ extension FoodCatalog {
         let expression = searched.map(term).joined(separator: " AND ")
         // USDA names lead with the food ("Chicken, broilers or fryers, breast…"), so those come first.
         let lead = { (word: String) in fixes[word]?.first ?? searchForms(word)[0] }
-        // The words alone rank 12-grain bread too low to reach it for "12 grain bread".
-        let phrases = reading.counts.map { "\"\($0.0) \(stem($0.1))\"*" }
+        // The words alone rank 12-grain bread too low to reach it for "12 grain bread", or a chain's
+        // 14" pizza among every pepperoni pizza for "14 inch pepperoni pizza".
+        let phrases =
+            reading.counts.map { "\"\($0.0) \(stem($0.1))\"*" } + reading.sizes.map { "(\"\($0)\" OR \"\($0)in\"*)" }
         let span = findBrand(searched, fixes)
         let brand = span.map { Array(searched[$0]) } ?? []
         let named = span.map { span in searched.indices.filter { !span.contains($0) }.map { searched[$0] } } ?? []
         let product = named.filter { !isNumber($0) }
-        // With a brand, also the brand's foods with any of the other words, and those words' foods
-        // by any brand.
-        let theirs = "{brand}: (\(brand.map(term).joined(separator: " AND ")))"
+        // With a brand, also the brand's foods with any of the other words (packaged foods by their
+        // brand, a chain USDA names by its name), and those words' foods by any brand.
+        let brandTerms = "(\(brand.map(term).joined(separator: " AND ")))"
+        let anyWord = "(\(named.map(term).joined(separator: " OR ")))"
         let found = run([
             product.isEmpty ? [] : jobs(catalogs, named.map(term).joined(separator: " AND "), .typed),
             phrases.isEmpty ? [] : jobs(catalogs, (phrases + [expression]).joined(separator: " AND ")),
             jobs(catalogs, expression, .typed, lead: lead(foods[0])),
-            product.isEmpty ? [] : jobs(branded, "\(theirs) AND (\(named.map(term).joined(separator: " OR ")))", .typed),
+            product.isEmpty
+                ? []
+                : jobs(branded, "{brand}: \(brandTerms) AND \(anyWord)", .typed)
+                    + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms) AND \(anyWord)", .typed),
         ])
         let anyBrand = found[0]
         var pool = found[1] + found[2] + found[3] + anyBrand

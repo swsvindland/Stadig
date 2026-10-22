@@ -14,6 +14,7 @@ let alternatives: [String: [String]] = [
     "fries": ["fries", "fried"], "bun": ["bun", "roll"], "buns": ["bun", "roll"], "ketchup": ["ketchup", "catsup"],
     "soda": ["soda", "carbonated"], "pop": ["carbonated"], "strip": ["strip", "slice"], "strips": ["strip", "slice"],
     "oatmeal": ["oatmeal", "oat"], "burger": ["burger", "hamburger"], "burgers": ["burger", "hamburger"],
+    "donut": ["donut", "doughnut"], "donuts": ["donut", "doughnut"],
 ]
 
 /// Dishes the catalog files under another name, as phrases a model says: USDA's spaghetti
@@ -48,7 +49,7 @@ func catalogDish(_ name: String) -> String {
 
 /// A typed word is searched as typed, plus the catalog's own wording for the same food. Looser
 /// alternatives the model needs ("fries" as fried, "pop" as carbonated) would take over a search.
-let typedAlternatives: Set<String> = ["bun", "buns", "ketchup", "soda", "oatmeal"]
+let typedAlternatives: Set<String> = ["bun", "buns", "ketchup", "soda", "oatmeal", "donut", "donuts"]
 
 /// "Tomato slice" and "bacon strip" name a food plus how much of it; only the food is searched.
 let countWords: Set<String> = [
@@ -67,6 +68,12 @@ let unitWords: Set<String> = [
 
 /// A size before the food says how much of it: "large egg", "grande latte". "Mini" names products.
 let sizeWords: Set<String> = ["small", "medium", "large", "jumbo", "regular", "tall", "grande", "venti"]
+
+/// How a size in inches is written after its number: "14 inch", "14in", "14-inch".
+let inchWords: Set<String> = ["inch", "inches", "in"]
+
+/// Inch marks after a number: `14"`, and the curly quote a phone's keyboard types for one.
+private let inchMarks: Set<Unicode.Scalar> = ["\"", "\u{201C}", "\u{201D}"]
 
 // MARK: - Characters
 
@@ -257,23 +264,42 @@ func searchExpression(_ query: String) -> String {
 
 // MARK: - Reading a typed search
 
-/// What a typed search asks for: `words` must all match, and `counts` are numbers before a food
-/// that may be part of its name ("12 grain bread"), searched as an optional phrase.
+/// What a typed search asks for: `words` must all match, `counts` are numbers before a food that
+/// may be part of its name ("12 grain bread"), searched as an optional phrase, and `sizes` are
+/// sizes in inches ("14 inch pepperoni"), which rank a food of that size first without being words
+/// a food must have.
 struct QueryReading: Equatable {
     var words: [String]
     var counts: [(String, String)]
+    var sizes: [String] = []
 
     static func == (a: QueryReading, b: QueryReading) -> Bool {
-        a.words == b.words && a.counts.elementsEqual(b.counts, by: { $0 == $1 })
+        a.words == b.words && a.counts.elementsEqual(b.counts, by: { $0 == $1 }) && a.sizes == b.sizes
     }
 }
 
-private enum Role { case name, amount, stop }
+private enum Role { case name, amount, stop, size }
 
 /// "200g" and "12oz" are amounts; "7up" is a name.
 private func measured(_ word: String) -> Bool {
     guard let first = word.unicodeScalars.first, isDigit(first) else { return false }
     return unitWords.contains(String(word.unicodeScalars.drop(while: isDigit)))
+}
+
+/// The number of a size written as one word: "14in", "6inch".
+private func inchSize(_ word: String) -> String? {
+    let digits = String(word.unicodeScalars.prefix(while: isDigit))
+    guard !digits.isEmpty, inchWords.contains(String(word.dropFirst(digits.count))) else { return nil }
+    return digits
+}
+
+/// Whether the number at `i` is a size in inches: `14"`, "14 inch", "14-inch". USDA writes a
+/// chain's pizza as `PAPA JOHN'S 14" Pepperoni Pizza`, so "inch" itself is a word few foods have.
+private func inches(_ i: Int, _ found: [Token], _ text: [Unicode.Scalar]) -> Bool {
+    let end = found[i].end
+    if end < text.count && inchMarks.contains(text[end]) { return true }
+    guard i + 1 < found.count, inchWords.contains(found[i + 1].word) else { return false }
+    return text[end..<found[i + 1].start].allSatisfy { isSpace($0) || $0 == "-" }
 }
 
 /// Whether a number is written as part of a name: "2% milk", "93/7 beef", "7-up" and "v-8".
@@ -315,19 +341,29 @@ private func writtenIntoName(_ word: String, before: ArraySlice<Unicode.Scalar>,
 }
 
 /// What a typed search asks for. Amounts go ("2 eggs", "200 g", "1/2 cup", "cup of coffee", "large
-/// egg"), while numbers written into a name ("2% milk") and count words that name the food ("cup
-/// noodles") stay. Typed alone, small words stay: "or" and "to" are the start of orange and toast.
+/// egg"), sizes in inches are kept aside ("14 inch pizza"), while numbers written into a name ("2%
+/// milk") and count words that name the food ("cup noodles") stay. Typed alone, small words stay:
+/// "or" and "to" are the start of orange and toast.
 func readQuery(_ query: String) -> QueryReading {
     let text = plainScalars(query)
     let found = scanTokens(text)
     var roles: [Role] = []
+    var sizes: [String] = []
     for (i, token) in found.enumerated() {
         let word = token.word
         // Counted ("2 cups rice"), measured ("cup of coffee") or sized ("large egg"), it's an amount.
         let much =
-            (i > 0 && roles[i - 1] == .amount) || (i + 1 < found.count && found[i + 1].word == "of")
+            (i > 0 && (roles[i - 1] == .amount || roles[i - 1] == .size)) || (i + 1 < found.count && found[i + 1].word == "of")
             || (sizeWords.contains(word) && found[(i + 1)...].contains { !stopWords.contains($0.word) })
-        if isNumber(word) {
+        if isNumber(word) && inches(i, found, text) {
+            roles.append(.size)
+            sizes.append(word)
+        } else if i > 0 && roles[i - 1] == .size && inchWords.contains(word) {
+            roles.append(.amount)
+        } else if let size = inchSize(word) {
+            roles.append(.size)
+            sizes.append(size)
+        } else if isNumber(word) {
             roles.append(writtenIntoName(word, before: text[..<token.start], after: text[token.end...]) ? .name : .amount)
         } else if measured(word) {
             roles.append(.amount)
@@ -353,7 +389,7 @@ func readQuery(_ query: String) -> QueryReading {
     {
         counts.append((found[i].word, found[i + 1].word))
     }
-    return QueryReading(words: Array(names.prefix(8)), counts: counts)
+    return QueryReading(words: Array(names.prefix(8)), counts: counts, sizes: sizes)
 }
 
 /// The words a typed search looks for: a last word of one letter waits for its second, unless it

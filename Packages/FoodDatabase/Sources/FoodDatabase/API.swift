@@ -19,6 +19,8 @@ public final class FoodCatalog: Sendable {
     let spellings = Mutex<[String: [String]]>([:])
     /// Whether words name a brand, by their full-text expression, remembered for the launch.
     let brandish = Mutex<[String: Bool]>([:])
+    /// The chains and brands the generic catalog names, read on the first search that may name one.
+    let chainNames = Mutex<[[String]]?>(nil)
 
     /// Opens the catalogs at these URLs. `region` is the phone's ISO region ("us"), which ranks
     /// packaged foods sold here above those sold only elsewhere.

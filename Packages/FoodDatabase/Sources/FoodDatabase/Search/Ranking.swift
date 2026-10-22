@@ -33,7 +33,7 @@ private func stems(_ text: String) -> Set<String> { Set(text.split(separator: " 
 
 /// Catalog words that describe how an ordinary food is prepared or measured, not a different food.
 private let neutral = stems(
-    "raw cooked ripe fresh plain regular whole prepared commercial average year round all type varieties includes baked "
+    "raw cooked ripe fresh plain regular original whole prepared commercial average year round all type varieties includes baked "
         + "broiled roasted grilled boiled steamed pan fried microwaved heated cured sliced chopped diced shredded mature seeds "
         + "without salt added drained solids liquid enriched unenriched white red yellow green brewed tap water ready serve "
         + "made broilers fluid fryers meat only flesh separable fish beverages alcoholic nuts crustaceans mollusks spices")
@@ -210,7 +210,7 @@ struct FoodText {
         let ownWords: [String]
         if !brand.isEmpty {
             ownWords = brandWords
-        } else if !shoutingStart(original) {
+        } else if !shoutingStart(original, word: true) {
             ownWords = []
         } else {
             ownWords = FoodDatabase.brandWords(name: original, brand: "")
@@ -226,7 +226,11 @@ struct FoodText {
         let head = makeString(scalars[..<(commas.first ?? scalars.count)]).trimmingCharacters(in: .whitespaces)
         let secondPart = commas.isEmpty ? 0 : (commas.count > 1 ? commas[1] : scalars.count) - commas[0] - 1
         let grouped = groups.contains(head) && secondPart > 0
-        lead = grouped ? parts[1] : parts[0]
+        // A chain USDA writes before the food leads with the food: pepperoni pizza in
+        // `PAPA JOHN'S 14" Pepperoni Pizza`. "McDONALD'S, BIG MAC" keeps the chain, its whole first part.
+        var first = parts[0]
+        if brand.isEmpty && !own.isEmpty && first.count > own.count && first.starts(with: own) { first.removeFirst(own.count) }
+        lead = grouped ? parts[1] : first
         heads = Array(parts[(grouped ? 1 : 0)...].prefix(commas.count + (grouped ? 0 : 1)).prefix(2))
         branded = !brand.isEmpty || source == .off || (shoutingStart(original, word: true) && shouting(dropMc(firstWord(original))))
     }
@@ -323,27 +327,16 @@ private func shouting(_ text: String) -> Bool {
     text == text.uppercased() && text.unicodeScalars.filter { $0.value >= 0x41 && $0.value <= 0x5A }.count >= 2
 }
 
-/// The brand's words, including a restaurant USDA writes first: "McDONALD'S, BIG MAC".
+/// The brand's words, including a restaurant or brand USDA writes first in capitals: "McDONALD'S,
+/// BIG MAC", `PAPA JOHN'S 14" Pepperoni Pizza`, "SILK Chocolate, soymilk".
 func brandWords(name: String, brand: String) -> [String] {
     if !brand.isEmpty { return words(brand) }
-    let first = String(name.prefix { $0 != "," })
-    // `\bMc` removed: only where it starts a word.
-    var stripped = ""
-    var previous: Character?
-    var index = first.startIndex
-    while index != first.endIndex {
-        let character = first[index]
-        let wordBefore = previous.map { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") } ?? false
-        if character == "M", !wordBefore, first[index...].hasPrefix("Mc") {
-            index = first.index(index, offsetBy: 2)
-            previous = "c"
-            continue
-        }
-        stripped.append(character)
-        previous = character
-        index = first.index(after: index)
+    var lead: [Substring] = []
+    for word in name.prefix(while: { $0 != "," }).split(whereSeparator: \.isWhitespace) {
+        guard shouting(dropMc(String(word))) else { break }
+        lead.append(word)
     }
-    return shouting(stripped) ? words(first) : []
+    return words(lead.joined(separator: " "))
 }
 
 /// Restaurant and packaged foods, which suit a seen food only when its brand is known.
@@ -645,7 +638,11 @@ func scoreFoods(
     let query = CoverageQuery(
         seen: seen, target: named.isEmpty ? target : named, prefix: search, fixes: fixes,
         nameOnly: asked && !named.isEmpty)
-    let brandForms = brand.map { word in isNumber(word) ? [word] : searchForms(word) + (fixes[word] ?? []) }
+    // Each brand word's forms, a form being words in a row: "papajohns" is corrected to "papa john".
+    let brandForms = brand.map { word in
+        isNumber(word) ? [[word]] : (searchForms(word) + (fixes[word] ?? [])).map { $0.split(separator: " ").map(String.init) }
+    }
+    let brandParts = Array(brandForms.joined().joined())
     let mentionForms = target.map(searchForms)
 
     struct Row {
@@ -653,10 +650,13 @@ func scoreFoods(
         var text: FoodText
         var match: Coverage
         var mine: Bool
+        /// The brand is the one asked for and no longer: Papa John's, not Papa John's Salads & Produce.
+        var exact: Bool
         var name: Double
         var like: Double
         var plausible: Bool
     }
+    let isForm = { (word: String, form: String) in isNumber(form) ? word == form : starts(word, form) }
     var rows: [Row] = []
     rows.reserveCapacity(keys.count)
     for key in keys {
@@ -665,13 +665,16 @@ func scoreFoods(
         let text = entry.text
         let match = query.cover(text)
         let mine: Bool
+        var exact = false
         if asked {
             // The brand asked for: each of its words starts a word of the food's brand.
             mine =
                 !text.own.isEmpty
                 && brandForms.allSatisfy { options in
-                    options.contains { form in text.own.contains { isNumber(form) ? $0 == form : starts($0, form) } }
+                    options.contains { form in form.allSatisfy { part in text.own.contains { isForm($0, part) } } }
                 }
+            // Word for word: "Poptart" starts with "pop", but isn't the brand Pop.
+            exact = mine && text.own.allSatisfy { word in brandParts.contains { same(word, $0) } }
         } else {
             mine = match.brand == true
         }
@@ -679,13 +682,20 @@ func scoreFoods(
         let name = asked && named.isEmpty && mine ? 1 : match.name
         rows.append(
             Row(
-                food: food, text: text, match: match, mine: mine, name: name,
+                food: food, text: text, match: match, mine: mine, exact: exact, name: name,
                 like: hints.profile.map { likeness(food, $0) } ?? 0, plausible: entry.plausible))
     }
     let sold = rows.contains { $0.mine && $0.name == 1 && $0.like > 0 }
+    // A brand that makes nothing like what the other words usually name means its own food by
+    // them: Papa John's pepperoni is its pizza, not sliced pepperoni, and Tillamook's cheddar is
+    // cheese, not crackers. One that does is read by the profile: Trader Joe's Mini-Wheats are its
+    // shredded wheat, not its mini wheat pitas.
+    let makesKind = rows.contains { $0.mine && $0.like > 0 }
     var ranked: [Ranked] = []
     for (index, row) in rows.enumerated() where row.name > 0 {
         let match = row.match
+        let theirs = asked && row.mine && row.name == 1 && !makesKind
+        let like = theirs ? max(0, row.like) : row.like
         var score =
             3 * row.name + (match.leads ? (search ? 0.75 : 0.5) : 0)
             // A generic food USDA names by exactly the words said, inverted, ranks above a blend or
@@ -698,7 +708,11 @@ func scoreFoods(
         if asked {
             // The brand asked for; then other brands' products, among them the one the search is
             // usually named after ("Kellogg's Mini-Wheats"); then plain foods.
-            if row.mine { score += 1.5 } else if !row.text.branded { score -= 1 }
+            if row.mine {
+                score += (theirs ? 3 : 1.5) + (row.exact ? 0.5 : 0)
+            } else if !row.text.branded {
+                score -= 1
+            }
         } else if let brand = match.brand {
             score += brand ? 2 : -1
         } else if row.text.branded {
@@ -718,16 +732,17 @@ func scoreFoods(
             {
                 score += 2
             }
-            if !read.counts.isEmpty {
+            if !read.counts.isEmpty || !read.sizes.isEmpty {
                 let list = tokens("\(row.food.name) \(row.food.brand ?? "")")
                 for (count, next) in read.counts where counted(list, count, next) { score += 2 }
+                for size in read.sizes where sized(list, size) { score += 2 }
             }
         }
         // Like the kind of food named, and for the brand asked for, more so when it is named the
         // same kind of food: its "wheats" are its Mini-Wheats, its "mini pretzels" are not. A
         // brand that sells the food by the name searched for isn't searched for another name of it.
         let version = row.mine && match.head && (row.name == 1 || !sold)
-        score += row.like + (version ? max(0, row.like) : 0)
+        score += like + (version ? max(0, like) : 0)
         // The person's own foods move up only among foods that have every word said.
         if match.missing == 0 { score += boost(known, row.food.id) }
         // Among packaged foods, the ones people scan most: Coca-Cola before a store's cola.
@@ -748,6 +763,15 @@ func scoreFoods(
 private func counted(_ list: [String], _ count: String, _ next: String) -> Bool {
     let wanted = stem(next)
     return list.indices.contains { i in list[i] == count && starts(stem(i + 1 < list.count ? list[i + 1] : ""), wanted) }
+}
+
+/// Whether a name has a size the search asked for in inches: 14 in `PAPA JOHN'S 14" Pepperoni
+/// Pizza`, "14 Inch Pepperoni Pizza" or "14in", not in "14 oz".
+private func sized(_ list: [String], _ size: String) -> Bool {
+    list.indices.contains { i in
+        if list[i] == size { return i + 1 == list.count || !unitWords.contains(list[i + 1]) }
+        return starts(list[i], size) && inchWords.contains(String(list[i].dropFirst(size.count)))
+    }
 }
 
 /// Orders foods for a typed search; foods that don't match it are left out.

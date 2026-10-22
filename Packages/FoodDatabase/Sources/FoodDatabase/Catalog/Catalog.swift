@@ -170,6 +170,18 @@ final class Catalog: Sendable {
         return rows
     }
 
+    /// Every food's name, for the small generic catalog: the chains it names are read from them.
+    func names() -> [String] {
+        guard kind == .generic else { return [] }
+        var names: [String] = []
+        pool.read { connection in
+            try connection.query("SELECT name FROM foods") { row in
+                if let name = row.string(0) { names.append(name) }
+            }
+        }
+        return names
+    }
+
     /// The food stored under a 14-digit barcode key.
     func food(barcode key: String) -> Food? {
         let value: SQLValue = barcodeIsInteger ? .integer(Int64(key) ?? -1) : .text(key)
