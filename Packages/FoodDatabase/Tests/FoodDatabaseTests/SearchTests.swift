@@ -67,6 +67,8 @@ let searchBasket: [(String, String)] = [
     ("fries", "(?i)fries"),
     ("pop tarts", "(?i)pop.?tart"),
     ("burger", "(?i)burger"),
+    // USDA spells it doughnut.
+    ("glazed donut", "^Doughnuts, .*glazed"),
 ]
 
 /// Searches whose first result must match.
@@ -147,6 +149,21 @@ struct GenericSearchTests {
             ("chicken br", "^Chicken, broilers or fryers, breast"),
         ])
     func first(query: String, pattern: String) {
+        let names = Catalogs.usda.top(query)
+        #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
+    }
+
+    @Test(
+        "a chain's menu item is found by the chain and the item, with or without its size",
+        arguments: [
+            ("papa johns 14 inch pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("papa johns pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("little caesars pepperoni", "^LITTLE CAESARS .*Pepperoni"),
+            ("dominos 14 inch pepperoni pizza", #"^DOMINO'S 14" Pepperoni Pizza"#),
+            ("pizza hut 12 inch pepperoni", #"^PIZZA HUT 12" Pepperoni Pizza"#),
+        ])
+    func chains(query: String, pattern: String) {
+        // Without packaged foods the chains USDA writes in capitals are still known as brands.
         let names = Catalogs.usda.top(query)
         #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
     }
@@ -268,6 +285,45 @@ struct SearchTests {
         }
         // A word found only in a brand counts half: "wheats" is not the brand Wheaty.
         #expect(!catalog.names("mini wheats", 8).contains { matches("(?i)wheaty", $0) })
+    }
+
+    @Test(
+        "a chain's menu item comes first, however the chain and its size are typed",
+        arguments: [
+            ("papa johns 14 inch pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("papa johns 14” pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("papa john's pepperoni pizza", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("pepperoni pizza papa johns", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("papa johns large pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("papajohns pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),
+            ("dominos pepperoni", #"^DOMINO'S 14" Pepperoni Pizza"#),
+            ("little caesars pepperoni", "^LITTLE CAESARS .*Pepperoni"),
+            ("pizza hut pepperoni", "^PIZZA HUT .*Pepperoni"),
+            ("wendys frosty", "^WENDY'S, Frosty"),
+            ("kfc original recipe", "^KFC, .*ORIGINAL RECIPE"),
+            ("14 inch pepperoni pizza", #"14" (pizza, )?pepperoni"#),
+        ])
+    func chainItems(query: String, pattern: String) {
+        let names = catalog.top(query)
+        #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
+    }
+
+    @Test("a brand that makes nothing like what the other words usually name means its own food by them")
+    func brandsOwnKind() {
+        // Pepperoni is usually the sausage, but Papa John's sells it on a pizza; cheddar is often a
+        // cracker, but Tillamook's is cheese; and labels say "milk chocolate" far more than chocolate milk.
+        let papa = catalog.names("papa johns pepperoni", 3)
+        #expect(papa.first.map { matches("^PAPA JOHN'S", $0) } == true, "\(papa)")
+        #expect(!papa.contains { matches(#"^Pepperoni \["#, $0) }, "\(papa)")
+        for name in catalog.names("tillamook cheddar", 3) { #expect(matches(#"(?i)cheddar.*\[Tillamook\]"#, name), "\(name)") }
+        let fairlife = catalog.names("fairlife chocolate milk", 3)
+        #expect(fairlife.first.map { matches(#"(?i)^chocolate milk \[fairlife\]"#, $0) } == true, "\(fairlife)")
+        // The brand as typed comes before a longer one that starts with it: Papa John's, then Papa
+        // John's Salads & Produce.
+        #expect(catalog.names("papa johns 14 inch pepperoni", 2).last.map { matches(#"\[Papa John's Salads? & Produce\]"#, $0) } == true)
+        // A chain USDA names is a brand of its own words, not a shorter brand inside them.
+        #expect(catalog.searchCatalog("little caesars pepperoni", known: [:]).brand == ["little", "caesars"])
+        #expect(catalog.searchCatalog("dominos pepperoni", known: [:]).brand == ["dominos"])
     }
 
     @Test("the person's own foods lead a search, more so the more often they are eaten")

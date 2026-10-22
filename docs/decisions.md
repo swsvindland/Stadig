@@ -1,5 +1,6 @@
 # Decisions to check
 
+- **Food search by brand.** On 2026-10-22 you searched "Papa John's 14-inch pepperoni" and got nothing useful, though USDA has the pizza, and asked whether a model should split the brand from the food. The calls made are under "Calls made for food search" below.
 - **A second device waits for iCloud.** On 2026-10-20 the TestFlight apps on the Mac opened on onboarding with none of the iPhone's data, and you asked whether a device that finds data in iCloud should go straight into the app. The cause was the CloudKit schema never deployed to Production (`docs/ci-cd.md`); the calls made building the wait are under "Calls made for a second device" below.
 - **Meal timing and fasting.** On 2026-10-19 you asked for fasts with a goal and phases, and for time between meals. It's off until turned on in Settings; the calls made building it are under "Calls made for meal timing and fasting" below.
 - **Every device.** On 2026-10-18 you asked for every app on iPhone, iPad, the Mac and Vision Pro (and the Watch where it fits), all syncing over CloudKit, with the desktop doing more than the phone. Each app is now one multiplatform target, and the calls made building it are under "Calls made for every device" below. (The first pass had dropped the Mac and Vision Pro as "iOS first".)
@@ -28,6 +29,17 @@
   - the hub
   - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for food search (2026-10-22)
+
+Macro Track's typed search, in FoodDatabase.
+
+- **No model in typed search.** Search runs on every keystroke in milliseconds; Apple's model takes a second or more and isn't on every device (not the Watch, not older iPhones, not every region). The catalogs are also better judges of a brand than the model: how often words are a brand rather than part of a name, and the chains USDA writes in capitals. The miss wasn't a wrong split anyway: "papa johns" was read as the brand, but USDA's Papa John's pizzas weren't counted as Papa John's, and "inch" had to be in the name. Open: a model pass on Return when nothing matches well.
+- **Chains from USDA's capitals.** Words USDA writes in capitals before a food (`PAPA JOHN'S 14" Pepperoni Pizza`, LITTLE CAESARS, KFC; about 230 menu items from 20 chains) are that food's brand. Typed at the start or end of a search, they're read as a brand unless packaged foods put them in at least 20 names and in names more than 1.5 times as often as in brands.
+- **A brand's own food first.** With a brand typed, the brand's foods with every other word rank above other brands' foods whenever the brand makes nothing like what those words usually name (pepperoni is usually the sausage; Papa John's sells it on a pizza). When the brand does make that kind of food, the old rule stands: Trader Joe's Mini-Wheats are its shredded wheat, not its mini wheat pitas. The brand word for word ranks a little above a longer brand starting with it: Papa John's before Papa John's Salads & Produce.
+- **Sizes in inches.** "14 inch", 14", 14”, "14-inch" and "14in" rank foods of that size first, as much as a number written into a name, but a food doesn't need it. "Large" is still an amount and dropped, so "papa johns large pepperoni" finds the same pizzas without knowing a large is 14".
+- **Doughnut.** "Donut" also searches USDA's "doughnut". "Original" no longer counts as a word the search didn't ask for, like "regular".
+- **What isn't in the catalogs.** Open Food Facts has almost no restaurant menus (seven foods under Papa John's own brand), and USDA's chain items are from SR Legacy, mostly analysed 2006 to 2012. Chick-fil-A's nuggets, a Popeyes chicken sandwich, In-N-Out and Chipotle aren't there however they're searched; the search then offers the nearest food. Open: a restaurant catalog, and which source's licence allows bundling it.
 
 ## Calls made for a second device (2026-10-20)
 
