@@ -1,7 +1,7 @@
 import Foundation
 
 /// Text in the language with help on what isn't mastered yet: furigana over a kanji word, romaji
-/// under a kana, a stress guide under a Spanish word. Each item's help goes once that item is
+/// under a kana (and under a kanji word whose reading's kana aren't), a stress guide under a Spanish word. Each item's help goes once that item is
 /// mastered, so a sentence loses its scaffolding word by word rather than all at once.
 public struct Scaffolded: Hashable, Sendable {
     public enum Help: String, Hashable, Sendable {
@@ -93,7 +93,7 @@ public enum Scaffolds {
             return Scaffolded(
                 language: word.language,
                 segments: kana(split.prefix, context)
-                    + [Scaffolded.Segment(text: split.stem, help: mastered ? nil : split.reading)] + kana(split.suffix, context))
+                    + [stem(split.stem, reading: mastered ? nil : split.reading, context)] + kana(split.suffix, context))
         case .none:
             guard !mastered, word.language.pack.pronunciation == .spanish, let guide = SpanishSounds.guide(word.text) else {
                 return .plain(word.text, word.language)
@@ -184,7 +184,7 @@ public enum Scaffolds {
             if let help = helps[i] {
                 segments += kana(run, context)
                 run = ""
-                segments.append(Scaffolded.Segment(text: help.stem, help: help.reading))
+                segments.append(stem(help.stem, reading: help.reading, context))
                 i += help.stem.count
             } else {
                 run.append(characters[i])
@@ -193,6 +193,17 @@ public enum Scaffolds {
         }
         segments += kana(run, context)
         return Scaffolded(language: .japanese, segments: segments)
+    }
+
+    /// A kanji stem and its help: the reading over it, or for someone still learning kana, the
+    /// reading in romaji under it until each of its kana is mastered. Nil `reading` for a word
+    /// that's mastered.
+    static func stem(_ stem: String, reading: String?, _ context: Context) -> Scaffolded.Segment {
+        guard let reading else { return Scaffolded.Segment(text: stem) }
+        if context.romaji, kana(reading, context).contains(where: { $0.help != nil }), let romaji = KanaTable.romaji(reading) {
+            return Scaffolded.Segment(text: stem, help: romaji, kind: .romaji)
+        }
+        return Scaffolded.Segment(text: stem, help: reading)
     }
 
     /// Kana with romaji under each one not mastered yet, for someone still learning to read them.

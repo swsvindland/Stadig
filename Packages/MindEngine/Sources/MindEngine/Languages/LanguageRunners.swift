@@ -80,7 +80,8 @@ struct LearnRunner: PartRunner {
             return LanguageQuiz.question(kana, reps: task.stage == .second ? 1 : 0, kind: .learn, introduced: introduced, seed: seed)
         case .teach(let word), .probe(let word):
             guard let deck = run.catalogs.deck(language) else { return nil }
-            let ask: LanguageQuiz.WordAsk = task.stage == .second ? (word.hasKanji ? .reading : .listening) : .meaning
+            let reading = word.hasKanji && LanguagePlan.asksReading(run.settings) { run.cards[$0] != nil }
+            let ask: LanguageQuiz.WordAsk = task.stage == .second ? (reading ? .reading : .listening) : .meaning
             return LanguageQuiz.question(
                 word, ask: ask, kind: task.stage == .probe ? .probe : .learn, deck: deck, seed: seed,
                 help: run.scaffold(word))

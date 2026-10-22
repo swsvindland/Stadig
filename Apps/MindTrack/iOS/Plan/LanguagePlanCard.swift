@@ -12,9 +12,12 @@ struct LanguagePlanCard: View {
     var domain: Domain { summary.domain }
     var language: Language { domain.language ?? .japanese }
 
-    /// New words a session and the week's reviews, from the pacing sessions use, so the card says
-    /// what they'll teach.
-    var pace: (count: Int, reason: String?, dueThisWeek: Int) { LanguagePlan.pace(domain, state: state, reviewWeek: state.phase.isReview) }
+    /// New words a session (or a Secondary course's block) and the week's reviews, from the pacing
+    /// sessions use, so the card says what they'll teach.
+    var pace: (count: Int, reason: String?, dueThisWeek: Int) {
+        let block = summary.mode == .secondary ? CourseLoad.secondaryMinutes(state.settings.schedule.minutes) : nil
+        return LanguagePlan.pace(domain, state: state, reviewWeek: state.phase.isReview, minutes: block)
+    }
 
     var body: some View {
         let retention = summary.retention
@@ -35,7 +38,8 @@ struct LanguagePlanCard: View {
                     LabeledContent("Due this week", value: "\(pace.dueThisWeek)")
                     LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
                 } else {
-                    LabeledContent("New words a session", value: "\(pace.count)")
+                    if summary.mode == .secondary { LabeledContent("Secondary", value: "A short block, taking turns") }
+                    LabeledContent(summary.mode == .secondary ? "New words a block" : "New words a session", value: "\(pace.count)")
                     LabeledContent("Recall on reviews", value: retention.map(Format.percent) ?? "Not enough yet")
                     if let reason = pace.reason { Text(reason).font(.footnote).foregroundStyle(.secondary) }
                     if let dialogue = nextDialogue {

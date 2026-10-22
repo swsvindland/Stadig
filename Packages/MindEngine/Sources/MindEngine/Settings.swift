@@ -6,7 +6,7 @@ import SystemCore
 /// course or genre from a newer version on another device) aside and writes them back unchanged.
 public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000317D")!
-    /// Heavy Focus courses (languages and maths) past this spread the week too thin.
+    /// Heavy Main courses (languages and maths) past this spread the week too thin.
     public static let focusCap = 3
 
     public var id: UUID
@@ -83,8 +83,12 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
 
     /// Every active course, in order.
     public var domains: [Domain] { courses.keys.sorted() }
+    /// Main courses: the ones with days of their own.
     public var focus: [Domain] { domains.filter { courses[$0] == .focus } }
+    public var secondary: [Domain] { domains.filter { courses[$0] == .secondary } }
     public var maintenance: [Domain] { domains.filter { courses[$0] == .maintenance } }
+    /// Main and Secondary: the courses that learn new material.
+    public var studied: [Domain] { domains.filter { courses[$0]?.learns == true } }
     public var languages: [Domain] { domains.filter(\.isLanguage) }
 
     public func has(_ domain: Domain) -> Bool { courses[domain] != nil }
@@ -181,11 +185,11 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
 }
 
 /// How much the chosen courses ask of the week, against the time there is. Languages need
-/// near-daily exposure, so each extra Focus course dilutes the others.
+/// near-daily exposure, so each extra Main course dilutes the others.
 public enum CourseLoad {
-    /// Sessions a week a Focus course needs to move: two for a language (its reviews come up in
+    /// Sessions a week a Main course needs to move: two for a language (its reviews come up in
     /// every warm-up as well), one for the rest. Writing rides along in a maths session when both
-    /// are Focus.
+    /// are Main.
     public static func sessionsNeeded(_ domain: Domain) -> Int { domain.isLanguage ? 2 : 1 }
 
     /// The heavy courses the cap counts: languages and maths. Writing pairs with maths and reading
@@ -194,6 +198,19 @@ public enum CourseLoad {
 
     /// Minutes of reviews a Maintenance course takes in each session's warm-up.
     public static let maintenanceMinutes = 4
+
+    /// A Secondary block's share of the time a session has after its warm-up, and its least: about
+    /// seven minutes of a 25-minute session.
+    public static let secondaryShare = 0.3
+    public static let secondaryMinimum = 5
+
+    /// A Secondary block's minutes, from the minutes a session has once its warm-up is done.
+    public static func secondaryMinutes(_ remaining: Int) -> Int {
+        max(secondaryMinimum, Int((Double(remaining) * secondaryShare).rounded()))
+    }
+    /// Blocks a week a Secondary course needs to keep moving. Every study day has one block, and
+    /// the Secondary courses take turns at it.
+    public static let secondaryBlocksNeeded = 2
 
     public struct Check: Hashable, Sendable {
         public var sessionsNeeded: Int
@@ -209,12 +226,17 @@ public enum CourseLoad {
         if focus.contains(.maths) && focus.contains(.writing) { needed -= 1 }
         let heavyCount = focus.filter(heavy).count
         let available = settings.schedule.daysPerWeek
+        let secondary = settings.secondary.count
         let reviewShare = settings.maintenance.count * maintenanceMinutes
         var warning: String?
         if heavyCount > MindSettings.focusCap {
-            warning = "\(heavyCount) heavy Focus courses is more than three. Each one dilutes the others: move one to Maintenance."
+            warning = "\(heavyCount) heavy Main courses is more than three. Each one dilutes the others: make one Secondary."
         } else if needed > available {
-            warning = "These Focus courses want about \(needed) sessions a week and there are \(available). Add a day, or move one to Maintenance."
+            warning = "These Main courses want about \(needed) sessions a week and there are \(available). Add a day, or make one Secondary."
+        } else if secondary > 0 && available < secondaryBlocksNeeded * secondary {
+            let each = (Double(available) / Double(secondary)).formatted(.number.precision(.fractionLength(0...1)))
+            warning =
+                "\(secondary) Secondary courses take turns at one short block a session, so each comes up about \(each) times a week. Add a day, or move one to Maintenance."
         } else if reviewShare > settings.schedule.minutes / 2 {
             warning = "Maintenance reviews would take most of each session. Keep fewer courses on Maintenance, or make sessions longer."
         }

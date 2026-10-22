@@ -9,6 +9,7 @@ struct MindTrackApp: App {
 
     init() {
         let launch = LaunchOptions.current
+        Platform.styleControls()
         // UI tests tap through screens faster without animations to wait for.
         if launch.isUITesting { Platform.disableAnimations() }
         // The unit tests build models of their own: the app only needs to come up, empty.
@@ -103,11 +104,16 @@ enum DebugLaunch {
         // -seedSampleData fills an empty store with eight and a half weeks of study; -tab plan|progress
         // opens a tab; -startSession starts today's session; -showSettings opens Settings.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
-        // -courses maths,writing keeps only those courses (as Focus), to reach their screens without
-        // scrolling; with -onboarded, the first session is theirs alone.
+        // -courses maths,writing keeps only those courses (as Main), to reach their screens without
+        // scrolling; with -onboarded, the first session is theirs alone. A course can name its mode:
+        // -courses japanese,reading,maths:secondary,writing:maintenance.
         let courses = launch.value(after: "-courses").map {
             Dictionary(
-                $0.split(separator: ",").compactMap { Domain(rawValue: String($0)) }.map { ($0, CourseMode.focus) },
+                $0.split(separator: ",").compactMap { item -> (Domain, CourseMode)? in
+                    let pieces = item.split(separator: ":").map(String.init)
+                    guard let domain = pieces.first.flatMap(Domain.init(rawValue:)) else { return nil }
+                    return (domain, pieces.count > 1 ? CourseMode(rawValue: pieces[1]) ?? .focus : .focus)
+                },
                 uniquingKeysWith: { first, _ in first })
         }
         // -onboarded skips setup with the defaults and starts the first session.

@@ -102,6 +102,15 @@ enum Platform {
         UIView.setAnimationsEnabled(false)
         #endif
     }
+
+    /// Segmented pickers size each segment to its label rather than splitting the width evenly, so
+    /// "Main, Secondary, Maintenance, Off" fits a phone without "Maintena…". The Mac's segmented
+    /// control already sizes to its labels.
+    static func styleControls() {
+        #if canImport(UIKit)
+        UISegmentedControl.appearance().apportionsSegmentWidthsByContent = true
+        #endif
+    }
 }
 
 /// Whether scrolling puts the on-screen keyboard away.

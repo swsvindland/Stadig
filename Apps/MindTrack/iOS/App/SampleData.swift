@@ -16,7 +16,7 @@ enum SampleData {
         var settings = MindSettings(
             schedule: StudySchedule(daysPerWeek: 5), onboardedAt: start.date(), readsKana: true,
             mathsStrands: [.numeracy, .discrete, .classic], genres: [.fantasy, .sciFi, .nonfiction])
-        // -sampleSpanish adds Spanish as a second Focus language, on a six-day week.
+        // -sampleSpanish adds Spanish as a second Main language, on a six-day week.
         if LaunchOptions.current.has("-sampleSpanish") {
             settings.courses[.spanish] = .focus
             settings.schedule = StudySchedule(daysPerWeek: 6)

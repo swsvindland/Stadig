@@ -50,11 +50,30 @@ private struct BlockCard: View {
             Text(analysis.phase.label).font(.title2.bold())
                 .accessibilityIdentifier("plan.phase")
             Text(detail).font(.subheadline).foregroundStyle(.secondary)
+            if let secondary {
+                Label(secondary, systemImage: "rectangle.split.2x1").font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("plan.secondary")
+            }
+            if !state.settings.maintenance.isEmpty {
+                Label(
+                    "\(ListFormatter.localizedString(byJoining: state.settings.maintenance.map(\.label))): reviews in the warm-ups",
+                    systemImage: "arrow.triangle.2.circlepath"
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
             if state.calendar != nil {
                 Label("Review weeks follow Lift Track's deloads", systemImage: "link").font(.caption).foregroundStyle(.secondary)
             }
         }
         .card()
+    }
+
+    /// What the Secondary courses get: the week strip shows only Main courses' days.
+    var secondary: String? {
+        let courses = state.settings.secondary
+        guard let first = courses.first else { return nil }
+        if courses.count == 1 { return "\(first.label) gets a short block in each session" }
+        return "\(ListFormatter.localizedString(byJoining: courses.map(\.label))) take turns at a short block in each session"
     }
 
     var detail: String {

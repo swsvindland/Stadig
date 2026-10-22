@@ -38,19 +38,20 @@ nonisolated final class OnboardingUITests: XCTestCase {
     }
 
     @MainActor
-    func testSetupNeedsAFocusCourse() {
+    func testSetupNeedsAMainCourse() {
         let app = XCUIApplication.launched(["-onboardingPage", "courses"])
         app.element("onboarding.coursesTitle").waitToAppear()
         let next = app.buttons["onboarding.next"]
         XCTAssertTrue(next.isEnabled)
 
         app.scroll(to: app.segmentedControls["onboarding.course.spanish"]).buttons["Maintenance"].tap()
-        for course in ["japanese", "maths", "writing", "reading"] {
+        app.scroll(to: app.segmentedControls["onboarding.course.maths"]).buttons["Secondary"].tap()
+        for course in ["japanese", "writing", "reading"] {
             app.scroll(to: app.segmentedControls["onboarding.course.\(course)"]).buttons["Off"].tap()
         }
-        XCTAssertFalse(next.isEnabled, "Maintenance alone is reviews of nothing")
+        XCTAssertFalse(next.isEnabled, "only Main courses have days: Secondary and Maintenance alone have none")
 
-        app.segmentedControls["onboarding.course.reading"].buttons["Focus"].tap()
+        app.segmentedControls["onboarding.course.reading"].buttons["Main"].tap()
         XCTAssertTrue(next.isEnabled)
 
         app.buttons["onboarding.back"].tap()

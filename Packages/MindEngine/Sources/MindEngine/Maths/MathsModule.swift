@@ -14,6 +14,9 @@ enum MathsModule: SubjectModule {
         [placementPart(state.settings.strands.filter { !MathsPlan.placed($0, state) })]
     }
 
+    /// A right answer marks the topics beneath it known, and they come back as reviews.
+    static var placementCardsKnown: Bool { true }
+
     static func placementPart(_ strands: [MathsStrand]) -> PlanPart {
         let problems = MathsPlacementRunner.sizes(strands).reduce(0, +)
         let names = strands.map { $0 == .numeracy ? $0.label : $0.short }

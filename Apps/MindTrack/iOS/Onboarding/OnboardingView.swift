@@ -14,13 +14,14 @@ struct OnboardingView: View {
 
     var pages: [Page] { Self.pages(for: settings) }
 
-    /// The pages a setup shows: a subject's own page only while it's a Focus course.
+    /// The pages a setup shows: a subject's own page only while it learns (Main or Secondary).
     static func pages(for settings: MindSettings) -> [Page] {
         var pages: [Page] = [.welcome, .courses, .schedule]
-        if settings.focus.contains(where: \.isLanguage) { pages.append(.languages) }
-        if settings.mode(.maths) == .focus { pages.append(.maths) }
-        if settings.mode(.writing) == .focus { pages.append(.writing) }
-        if settings.mode(.reading) == .focus { pages.append(.reading) }
+        let studied = settings.studied
+        if studied.contains(where: \.isLanguage) { pages.append(.languages) }
+        if studied.contains(.maths) { pages.append(.maths) }
+        if studied.contains(.writing) { pages.append(.writing) }
+        if studied.contains(.reading) { pages.append(.reading) }
         return pages + [.ready]
     }
 
@@ -108,7 +109,7 @@ struct OnboardingView: View {
             Text("What do you want to train?").font(.title.bold())
                 .accessibilityIdentifier("onboarding.coursesTitle")
             Text(
-                "Focus courses get full sessions. Maintenance keeps what you know with a few minutes of reviews. Two or three Focus courses at once is plenty."
+                "Main courses get days of their own. Secondary courses take turns at a short block in each session, so they keep moving, more slowly. Maintenance keeps what you know with a few minutes of reviews. Two or three Main courses at once is plenty."
             )
             .foregroundStyle(.secondary)
             CoursePicker(settings: $settings)
@@ -120,8 +121,10 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("When do you study?").font(.title.bold())
                 .accessibilityIdentifier("onboarding.scheduleTitle")
-            Text("Focus courses rotate across the week like a training split. Reviews from every course open each session.")
-                .foregroundStyle(.secondary)
+            Text(
+                "Main courses rotate across the week like a training split. Reviews from every course open each session, and a Secondary course's block closes it."
+            )
+            .foregroundStyle(.secondary)
             ScheduleEditor(settings: $settings)
             LoadWarning(settings: settings)
             WeekPreview(settings: settings)
@@ -137,12 +140,12 @@ struct OnboardingView: View {
             )
             .font(.title3)
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(settings.focus) { domain in
+                ForEach(settings.studied) { domain in
                     if let line = firstSession(domain) { Label(line, systemImage: domain.symbol) }
                 }
                 if !settings.maintenance.isEmpty {
                     Label(
-                        "Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews only",
+                        "Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews of what you know",
                         systemImage: "arrow.triangle.2.circlepath")
                 }
             }
@@ -165,9 +168,9 @@ struct OnboardingView: View {
     }
 }
 
-/// Every course with Focus, Maintenance or Off.
+/// Every course as Main, Secondary, Maintenance or Off.
 struct CoursePicker: View {
-    enum Choice: Hashable { case focus, maintenance, off }
+    enum Choice: Hashable { case focus, secondary, maintenance, off }
 
     @Binding var settings: MindSettings
 
@@ -183,8 +186,9 @@ struct CoursePicker: View {
                         }
                     }
                     Picker(domain.label, selection: binding(domain)) {
-                        Text("Focus").tag(Choice.focus)
-                        Text("Maintenance").tag(Choice.maintenance)
+                        Text(CourseMode.focus.label).tag(Choice.focus)
+                        Text(CourseMode.secondary.label).tag(Choice.secondary)
+                        Text(CourseMode.maintenance.label).tag(Choice.maintenance)
                         Text("Off").tag(Choice.off)
                     }
                     .pickerStyle(.segmented)
@@ -199,12 +203,14 @@ struct CoursePicker: View {
         Binding {
             switch settings.mode(domain) {
             case .focus: .focus
+            case .secondary: .secondary
             case .maintenance: .maintenance
             case nil: .off
             }
         } set: { choice in
             switch choice {
             case .focus: settings.courses[domain] = .focus
+            case .secondary: settings.courses[domain] = .secondary
             case .maintenance: settings.courses[domain] = .maintenance
             case .off: settings.courses[domain] = nil
             }

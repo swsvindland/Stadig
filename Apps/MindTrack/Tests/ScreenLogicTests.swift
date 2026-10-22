@@ -11,12 +11,15 @@ import Testing
 struct OnboardingLogicTests {
     func settings(_ courses: [Domain: CourseMode]) -> MindSettings { MindSettings(courses: courses) }
 
-    @Test func eachFocusCourseGetsItsOwnPage() {
+    @Test func eachCourseThatLearnsGetsItsOwnPage() {
         #expect(OnboardingView.pages(for: MindSettings()) == [.welcome, .courses, .schedule, .languages, .maths, .writing, .reading, .ready])
         #expect(OnboardingView.pages(for: settings([.maths: .focus])) == [.welcome, .courses, .schedule, .maths, .ready])
-        // A Maintenance course is reviews only: nothing to set up.
+        // A Maintenance course is reviews only: nothing to set up. A Secondary one learns, so it has its page.
         #expect(
             OnboardingView.pages(for: settings([.reading: .focus, .japanese: .maintenance])) == [.welcome, .courses, .schedule, .reading, .ready])
+        #expect(
+            OnboardingView.pages(for: settings([.reading: .focus, .japanese: .secondary, .writing: .secondary]))
+                == [.welcome, .courses, .schedule, .languages, .writing, .reading, .ready])
         #expect(OnboardingView.pages(for: settings([.spanish: .focus])) == [.welcome, .courses, .schedule, .languages, .ready])
         #expect(OnboardingView.pages(for: settings([:])) == [.welcome, .courses, .schedule, .ready])
     }

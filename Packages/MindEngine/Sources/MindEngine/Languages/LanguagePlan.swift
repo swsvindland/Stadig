@@ -8,7 +8,10 @@ public enum LanguagePlan {
     /// about 1,500 words a year.
     public static let baseNewWords = 15
     public static let maxNewWords = 25
-    public static let newKanaPerSession = 12
+    /// Kana a session beside the words while the first hiragana (the basic rows and voiced
+    /// sounds) come in, then for the combinations and katakana.
+    public static let newKanaPerSession = 8
+    public static let laterKanaPerSession = 6
     /// Recall on reviews over the last fortnight, against the scheduler's 90% aim.
     public static let retentionWindowDays = 14
     /// Reviews due in the coming week above which new words wait: about half an hour of them,
@@ -88,23 +91,30 @@ public enum LanguagePlan {
     }
 
     public static func kanaIntroduced(_ script: Script, cards: Set<CardKey>) -> Bool {
-        KanaTable.kana(script).filter { $0.group < 2 }.allSatisfy { cards.contains($0.key) }
+        kanaIntroduced(script) { cards.contains($0) }
     }
 
-    /// The next new items, in order. For Japanese without kana, hiragana comes first and words
-    /// wait; katakana then runs alongside words, and loanwords wait until it's in.
+    static func kanaIntroduced(_ script: Script, has: (CardKey) -> Bool) -> Bool {
+        KanaTable.kana(script).filter { $0.group < 2 }.allSatisfy { has($0.key) }
+    }
+
+    /// Whether a word's reading can be asked: always, unless the person is still on the first
+    /// hiragana, when kana choices would be guesses. Meaning and listening carry it until then.
+    static func asksReading(_ settings: MindSettings, has: (CardKey) -> Bool) -> Bool {
+        settings.readsKana != false || kanaIntroduced(.hiragana, has: has)
+    }
+
+    /// The next new items, in order. Words come from the first session: for Japanese without
+    /// kana, kana come beside them (hiragana, then katakana), and the words carry romaji under
+    /// each kana not yet mastered. Loanwords wait until katakana is in.
     public static func next(count: Int, cards: Set<CardKey>, deck: LanguageDeck, readsKana: Bool?, frontier: Int) -> [NewItem] {
         guard count > 0 else { return [] }
         var kana: [NewItem] = []
         var wordLimit = count
         let readsKana: Bool? = deck.language == .japanese ? readsKana : true
         if readsKana == false {
-            if !kanaIntroduced(.hiragana, cards: cards) {
-                return KanaTable.kana(.hiragana).filter { !cards.contains($0.key) }.prefix(newKanaPerSession).map(NewItem.kana)
-            }
-            // The rest of hiragana (the combinations), then katakana, half as fast, beside words.
-            let remaining = KanaTable.all.filter { !cards.contains($0.key) }
-            kana = remaining.prefix(newKanaPerSession / 2).map(NewItem.kana)
+            let pace = kanaIntroduced(.hiragana, cards: cards) ? laterKanaPerSession : newKanaPerSession
+            kana = KanaTable.all.filter { !cards.contains($0.key) }.prefix(min(pace, count)).map(NewItem.kana)
             wordLimit = max(2, count - kana.count / 2)
         }
         let katakanaReady = readsKana != false || kanaIntroduced(.katakana, cards: cards)
@@ -114,6 +124,12 @@ public enum LanguagePlan {
             if cards.contains(word.key) || (!katakanaReady && word.hasKatakana) { continue }
             words.append(word.rank <= frontier ? .probe(word) : .teach(word))
         }
-        return kana + words
+        // Taken in turns, so a part cut short still has some of each.
+        var out: [NewItem] = []
+        for index in 0..<max(kana.count, words.count) {
+            if index < kana.count { out.append(kana[index]) }
+            if index < words.count { out.append(words[index]) }
+        }
+        return out
     }
 }

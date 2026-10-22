@@ -291,8 +291,12 @@ public enum Analyst {
                 notes.append(
                     "\(domain.label): about \(words.formatted()) words known (\(level)). Words up to there get a quick check instead of a lesson.")
             } else if language == .japanese && state.settings.readsKana == false {
-                let kana = state.cards.values.filter { $0.key.isKana && $0.memory != nil }.count
-                notes.append("Japanese: \(kana) of \(KanaTable.all.count) kana in. Words start once hiragana is.")
+                let learned = state.cards.values.filter { $0.domain == domain && $0.memory != nil }
+                let kana = learned.filter(\.key.isKana).count
+                let words = learned.count - kana
+                notes.append(
+                    "Japanese: \(kana) of \(KanaTable.all.count) kana in, beside \(words) word\(words == 1 ? "" : "s"). Romaji shows under each kana until it's yours."
+                )
             }
         }
         if state.settings.has(.maths), let note = MathsModule.learnedNote(state) { notes.append(note) }
@@ -365,7 +369,7 @@ public enum Analyst {
                 }
             }
         }
-        for domain in state.settings.focus
+        for domain in state.settings.studied
         where domain.isLanguage && analysis.phase.isReview
             && !state.tests.contains(where: { $0.test == .episode && $0.domain == domain && $0.day.days(until: state.today) < 7 })
         {

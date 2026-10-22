@@ -41,7 +41,7 @@ enum ReadingModule: SubjectModule {
     }
 
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
-        guard state.settings.mode(.reading) == .focus else { return [] }
+        guard state.settings.mode(.reading)?.learns == true else { return [] }
         return [
             PlanPart(
                 kind: .test(.readingTest), domain: .reading, minutes: 5, title: "Reading",

@@ -22,6 +22,15 @@ nonisolated final class NavigationUITests: XCTestCase {
     }
 
     @MainActor
+    func testPlanSaysWhatTheSecondaryCoursesGet() {
+        let app = XCUIApplication.launched([
+            "-seedSampleData", "-courses", "japanese,reading,maths:secondary,writing:secondary", "-tab", "plan",
+        ])
+        let secondary = app.element("plan.secondary").waitToAppear(timeout: 10)
+        XCTAssertEqual(secondary.label, "Maths and Writing take turns at a short block in each session")
+    }
+
+    @MainActor
     func testSettingsOpensAndCloses() {
         let app = XCUIApplication.launched(["-seedSampleData"])
         app.element("today.settings").waitToAppear().tap()

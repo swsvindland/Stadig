@@ -179,6 +179,21 @@ struct ScaffoldTests {
         #expect(KanaTable.romaji("コーヒー") == "koohii")
     }
 
+    @Test("for someone still learning kana, a kanji word's reading shows in romaji until its kana are mastered, then as furigana")
+    func romajiOverKanji() {
+        let learning = Scaffolds.word(eat, Scaffolds.Context(cards: [:], frontier: 0, readsKana: false))
+        #expect(learning.segments.map(\.text) == ["食", "べ", "る"])
+        #expect(learning.segments.map(\.help) == ["ta", "be", "ru"] && learning.segments[0].kind == .romaji)
+        let ta = KanaTable.byKana["た"]!
+        let known = MemoryCard(key: ta.key, memory: Memory(stability: 30, difficulty: 5, lastReview: now, due: now), introduced: now)
+        let kanaIn = Scaffolds.word(eat, Scaffolds.Context(cards: [ta.key: known], frontier: 0, readsKana: false))
+        #expect(kanaIn.segments[0].help == "た" && kanaIn.segments[0].kind == .furigana, "た is read now, so the furigana is")
+        let sentence = Sentence(id: 1, text: "本を食べた。", english: "I ate the book.", level: 500, words: [4, 1])
+        let deck = LanguageDeck(language: .japanese, words: [eat, book])
+        let line = Scaffolds.sentence(sentence, deck: deck, Scaffolds.Context(cards: [:], frontier: 0, readsKana: false))
+        #expect(line.segments.first { $0.text == "本" }?.help == "hon" && line.segments.first { $0.text == "食" }?.help == "ta")
+    }
+
     @Test("a Spanish word shows its stress guide until it's mastered; in a sentence only the words still being learned do")
     func spanish() {
         let deck = SpanishFixture.deck(words: 50, sentences: 0)
