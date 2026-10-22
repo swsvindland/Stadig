@@ -5,11 +5,14 @@ git. Build it from the Open Food Facts export (about 13 GB to download, then abo
 
     curl -LO https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz
     curl -LO https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip
+    curl -LO https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip
     python3 Scripts/build-food-catalog.py --usda FoodData_Central_sr_legacy_food_json_2018-04.zip \
-        --off openfoodfacts-products.jsonl.gz
+        --fndds FoodData_Central_survey_food_json_2024-10-31.zip --off openfoodfacts-products.jsonl.gz
 
-That also rebuilds `usda.db` in `Packages/FoodDatabase` and records both in
-`Packages/FoodDatabase/catalog-manifest.json`. For a quick start, `Scripts/install-food-catalogs.sh`
+That also rebuilds `usda.db` in `Packages/FoodDatabase` (SR Legacy, plus FNDDS's fast-food and
+restaurant foods) and records both in `Packages/FoodDatabase/catalog-manifest.json`. Leave out
+`--off` to rebuild only `usda.db` (about 17 MB to download, seconds to build), or `--usda` and `--fndds`
+to rebuild only `off.db`. For a quick start, `Scripts/install-food-catalogs.sh`
 clones an older catalog from `../macro-track` instead; it works, but has no processing or
 fermented data. Without either the app still works with the USDA catalog.
 

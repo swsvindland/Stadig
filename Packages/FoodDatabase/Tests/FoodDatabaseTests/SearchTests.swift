@@ -168,6 +168,27 @@ struct GenericSearchTests {
         #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
     }
 
+    @Test(
+        "a restaurant food is found by what it is and where it's from, and a chain's burger by its name",
+        arguments: [
+            ("chicken nuggets", "^Chicken nuggets, from (restaurant|fast food)$"),
+            ("chicken nuggets fast food", "^Chicken nuggets, from fast food$"),
+            ("fast food fries", "^Potato, french fries, fast food$"),
+            ("pepperoni pizza restaurant", "^Pizza with pepperoni, from restaurant or fast food"),
+            ("black beans restaurant", "^Black beans, from fast food / restaurant$"),
+            ("pancakes restaurant", "^Pancakes, plain, fast food / restaurant$"),
+            ("big mac", #"^Big Mac \(McDonalds\)$"#),
+            ("whopper", #"^Whopper \(Burger King\)$"#),
+            ("mcdouble", #"^McDouble \(McDonalds\)$"#),
+        ])
+    func restaurantFoods(query: String, pattern: String) {
+        // FNDDS's fast-food and restaurant foods, beside SR Legacy's older chain items.
+        for catalog in [Catalogs.usda, Catalogs.both] {
+            let names = catalog.top(query)
+            #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
+        }
+    }
+
     @Test("the person's own foods appear only for searches they have every word of")
     func personal() throws {
         let catalog = Catalogs.usda

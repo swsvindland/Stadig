@@ -2,8 +2,10 @@
 
 ## USDA — `usda.db`
 
-USDA SR Legacy, April 2018, from [FoodData Central](https://fdc.nal.usda.gov/download-datasets/).
-USDA describes its data as [public domain / CC0](https://fdc.nal.usda.gov/api-guide/).
+USDA SR Legacy, April 2018, and the fast-food and restaurant foods of FNDDS 2021–2023 (the Food and
+Nutrient Database for Dietary Studies, October 2024), both from
+[FoodData Central](https://fdc.nal.usda.gov/download-datasets/). USDA describes its data as
+[public domain / CC0](https://fdc.nal.usda.gov/api-guide/).
 
 ## Open Food Facts — `off.db`
 

@@ -1,9 +1,9 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-/// The offline food catalog: USDA SR Legacy bundled here, and Open Food Facts when the app ships
-/// it. Read-only SQLite with FTS5, the search ranker, portion units, barcodes and the nutrition
-/// label parser. Pure Swift over the system's SQLite.
+/// The offline food catalog: USDA SR Legacy and FNDDS's restaurant foods bundled here, and Open
+/// Food Facts when the app ships it. Read-only SQLite with FTS5, the search ranker, portion units,
+/// barcodes and the nutrition label parser. Pure Swift over the system's SQLite.
 let package = Package(
     name: "FoodDatabase",
     platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],

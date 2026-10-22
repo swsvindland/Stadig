@@ -139,7 +139,7 @@ struct CatalogTests {
         #expect(pool.failures.load(ordering: .relaxed) == 0)
         pool.trim()
         #expect(pool.idleCount == 1)
-        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 7793) } }
+        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 7984) } }
     }
 
     @Test("generic foods say how processed they are, and which are fermented")
@@ -156,6 +156,13 @@ struct CatalogTests {
         #expect(try first("cheddar cheese").fermented == false, "fermented, but not what eating fermented foods means")
         #expect(try first("frozen yogurt").fermented == false)
         #expect(try first("banana raw").fermented == false)
+        // FNDDS's fast food is ultra-processed like SR Legacy's; a dish from a restaurant, or from
+        // either, is processed unless its name says otherwise.
+        #expect(try first("chicken nuggets fast food").processing == .ultraProcessed)
+        #expect(try first("big mac").processing == .ultraProcessed)
+        #expect(try first("broccoli restaurant").processing == .processed)
+        #expect(try first("black beans restaurant").processing == .processed)
+        #expect(try first("pepperoni pizza restaurant").processing == .ultraProcessed)
     }
 
     @Test("barcodes are keyed as 14 digits")
@@ -170,10 +177,10 @@ struct CatalogTests {
     func usda() throws {
         let catalog = FoodCatalog.standard(region: "us")
         let info = try #require(catalog.sources.first)
-        #expect(info.version.hasPrefix("usda-v3-0fe8ae486a2c-"), "SR Legacy, packed rows")
+        #expect(info.version.hasPrefix("usda-v3-0fe8ae486a2c-dfb06ae7-"), "SR Legacy and FNDDS, packed rows")
         #expect(info.license == "CC0-1.0")
-        #expect(info.foods == 7793)
-        #expect(info.attribution.contains("USDA"))
+        #expect(info.foods == 7984, "SR Legacy's 7,793 and FNDDS's 191 restaurant foods")
+        #expect(info.attribution.contains("USDA") && info.attribution.contains("FNDDS"))
         let apples = try #require(catalog.search("apples").first)
         #expect(apples.food.name.hasPrefix("Apples, raw"))
         #expect(apples.food.source == .usda && !apples.personal)
@@ -203,6 +210,27 @@ struct CatalogTests {
         #expect(food.extras["vitaminC"] == 58.8 && food.extras["caffeine"] == 0 && food.extras.count == 29)
         #expect(food.portions.count == 10 && food.portions[1] == Portion(label: "1 large (1-3/8\" dia)", amount: 18))
         #expect(food.barcode == nil && food.brand == nil)
+    }
+
+    @Test("an FNDDS restaurant food offers the amount people usually eat first")
+    func fnddsRow() throws {
+        let catalog = Catalogs.usda
+        let mac = try #require(catalog.food(id: "usda:2706916"))
+        #expect(mac.name == "Big Mac (McDonalds)" && mac.source == .usda && mac.brand == nil && mac.basis == .g)
+        #expect(
+            mac.nutrients == Nutrients(kcal: 261, protein: 11.9, carbs: 21.5, fat: 14.1, fiber: 1.4, sugar: 3.26, saturatedFat: 5.04, sodium: 485))
+        // FNDDS's usual amount is a Big Mac, so it leads the Mac Jr listed before it.
+        #expect(mac.portions.map(\.label) == ["1 McDonald's Big Mac", "1 MCDonald's Mac Jr", "1 McDonald's Grand Mac"])
+        #expect(mac.portions.first?.amount == 205)
+        // Five nuggets is no portion of its own, so FNDDS's order stands and the unnamed amount goes.
+        let nuggets = try #require(catalog.food(id: "usda:2706093"))
+        #expect(nuggets.name == "Chicken nuggets, from fast food")
+        #expect(
+            nuggets.portions == [
+                Portion(label: "1 nugget", amount: 16), Portion(label: "1 chicken bite", amount: 16), Portion(label: "1 cup", amount: 140),
+            ])
+        let fries = try #require(catalog.food(id: "usda:2709461"))
+        #expect(fries.portions.first == Portion(label: "1 small fast food order", amount: 110))
     }
 
     @Test("the packaged catalog decodes compact rows, ids and barcodes", .enabled(if: Catalogs.hasOFF))
