@@ -9,7 +9,11 @@ protocol SubjectModule {
     static func needsPlacement(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> Bool
     /// The placement parts for a course, in a first session or the first one after it's added.
     static func placementParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart]
-    /// The main block for a Focus course: new material in a regular week, practice in a review week.
+    /// Whether the placement cards what it finds known, so a Maintenance course with nothing
+    /// learned yet has reviews once it's placed. A test that only measures gives it nothing.
+    static var placementCardsKnown: Bool { get }
+    /// The main block for a Main course, or a Secondary course's short block: new material in a
+    /// regular week, practice in a review week.
     static func mainParts(
         _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
         notes: inout [String]
@@ -34,6 +38,8 @@ protocol SubjectModule {
 }
 
 extension SubjectModule {
+    static var placementCardsKnown: Bool { false }
+
     static func recent(_ domain: Domain, state: StudyState, count: Int) -> [(day: Day, score: Double)] {
         Array(series(domain, state: state).suffix(count))
     }

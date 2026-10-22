@@ -141,6 +141,11 @@ struct Student {
                 now += 30
                 run.respond(.picked(1), now: now)
             }
+            // What was said or written is marked before moving on, as Continue does on screen.
+            if run.feedback != nil {
+                now += 2
+                run.next(now: now)
+            }
         }
         run.finish(now: now)
         return now

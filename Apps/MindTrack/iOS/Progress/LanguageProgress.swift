@@ -19,7 +19,7 @@ struct LanguageProgress: View {
                 DomainBadge(domain: summary.domain)
                 Text(summary.domain.label).font(.headline)
                 Spacer()
-                if summary.mode == .maintenance { Pill(text: "Maintenance", color: .secondary) }
+                if summary.mode != .focus { Pill(text: summary.mode.label, color: .secondary) }
             }
             SkillLevels(domain: summary.domain, state: state)
             if let latest = series.last, series.count >= 2 || LanguageSkills.levels(summary.domain, tests: state.tests).count >= 3 {
@@ -79,7 +79,7 @@ struct SkillLevels: View {
     func pending(_ skill: LanguageSkill) -> String {
         if skill == .speaking && !state.settings.speaking { return "Speaking is off" }
         let words = Int(state.latest(.vocabulary, in: domain)?.score ?? 0)
-        if state.settings.mode(domain) == .focus, words >= LanguageSkills.measuredFrom { return "Measured next session" }
+        if state.settings.mode(domain)?.learns == true, words >= LanguageSkills.measuredFrom { return "Measured next session" }
         return "At the first check-in"
     }
 }

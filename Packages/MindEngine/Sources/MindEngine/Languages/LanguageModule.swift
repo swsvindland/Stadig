@@ -2,17 +2,20 @@ import Foundation
 import SystemCore
 
 /// Languages: one module for every pack. Placement is a vocabulary test from common words to rare;
-/// sessions teach new words (and, for Japanese without kana, kana first), then a practice block of
+/// sessions teach new words (and, for Japanese without kana, kana beside them), then a practice block of
 /// real use: a dialogue, listening, speaking, reading and writing over what's known. Each of the
 /// four skills has its own level from its own test, measured once there's enough to measure and
 /// again at every check-in.
 enum LanguageModule: SubjectModule {
     /// Skill checks in one regular session, at most.
     static let skillChecksPerSession = 2
+    /// Known words before a session has a practice block: enough to say, hear and write a few,
+    /// so a beginner practises from the second session.
+    static let practiceFrom = 8
 
     static func needsPlacement(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> Bool {
         guard let language = domain.language, catalogs.deck(language) != nil else { return false }
-        // Japanese without kana starts with hiragana; the vocabulary test waits.
+        // Japanese without kana: a test of written words would be guesses, so it waits for a check-in.
         if language == .japanese && state.settings.readsKana == false { return false }
         return state.latest(.vocabulary, in: domain) == nil
     }
@@ -40,17 +43,20 @@ enum LanguageModule: SubjectModule {
                 rest,
             ]
         }
-        let checks = skillChecks(domain, state: state, catalogs: catalogs)
+        // A Secondary course's short block: one skill check at most, and new words paced for the
+        // block rather than a whole session.
+        let secondary = state.settings.mode(domain) == .secondary
+        let checks = Array(skillChecks(domain, state: state, catalogs: catalogs).prefix(secondary ? 1 : skillChecksPerSession))
         if !checks.isEmpty {
             notes.append(
                 "\(domain.label): measuring \(ListFormatter.localizedString(byJoining: checks.map { $0.title.lowercased() })) for the first time.")
         }
         let remaining = max(5, minutes - checks.map(\.minutes).reduce(0, +))
         let learn = learnPart(
-            domain, minutes: Int((Double(remaining) * 0.55).rounded()), session: state.settings.schedule.minutes, state: state,
-            catalogs: catalogs, notes: &notes)
+            domain, minutes: Int((Double(remaining) * 0.55).rounded()), session: secondary ? minutes : state.settings.schedule.minutes,
+            state: state, catalogs: catalogs, notes: &notes)
         let known = state.cards.values.filter { $0.domain == domain && $0.memory != nil && !$0.key.isKana }.count
-        if known < 15 && LanguagePlan.frontier(state.tests, language) < 100 {
+        if known < practiceFrom && LanguagePlan.frontier(state.tests, language) < 100 {
             var all = learn
             all.minutes = remaining
             return checks + [all]
@@ -181,7 +187,8 @@ enum LanguageModule: SubjectModule {
             return LanguageQuiz.question(kana, reps: reps + (kind == .learn ? 1 : 0), kind: kind, introduced: introduced, seed: run.seed)
         }
         guard let language = key.language, let deck = run.catalogs.deck(language), let id = key.wordID, let word = deck.word(id) else { return nil }
-        let ask = kind == .learn ? .meaning : LanguageQuiz.ask(for: word, reps: reps)
+        var ask = kind == .learn ? .meaning : LanguageQuiz.ask(for: word, reps: reps)
+        if ask == .reading && !LanguagePlan.asksReading(run.settings, has: { run.cards[$0] != nil }) { ask = .listening }
         return LanguageQuiz.question(word, ask: ask, kind: kind, deck: deck, seed: run.seed, help: run.scaffold(word))
     }
 

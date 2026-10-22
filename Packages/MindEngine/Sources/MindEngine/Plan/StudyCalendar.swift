@@ -109,9 +109,10 @@ public enum StudyCalendar {
     }
 }
 
-/// The weekly split: Focus courses rotate across study days like a training split. Each language
-/// alone, maths with a writing segment beside it, and reading alone. Maintenance courses aren't
-/// in the split: their reviews ride in every session's warm-up.
+/// The weekly split: Main courses rotate across study days like a training split. Each language
+/// alone, maths with a writing segment beside it, and reading alone. Secondary and Maintenance
+/// courses aren't in the split: a Secondary course's block and a Maintenance course's reviews ride
+/// in the sessions of the days there are.
 public enum Split {
     static func groups(_ domains: [Domain]) -> [[Domain]] {
         var out: [[Domain]] = domains.filter(\.isLanguage).map { [$0] }

@@ -18,6 +18,9 @@ enum WritingModule: SubjectModule {
         [PlanPart(kind: .placement, domain: .writing, minutes: 5, title: "Writing level", detail: "One item for each skill")]
     }
 
+    /// Each skill answered right is known, and comes back as a review.
+    static var placementCardsKnown: Bool { true }
+
     static func mainParts(
         _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
         notes: inout [String]
@@ -65,7 +68,7 @@ enum WritingModule: SubjectModule {
 
     static func checkInParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart] {
         var parts = [PlanPart(kind: .test(.writing), domain: .writing, minutes: 4, title: "Grammar check", detail: "Ten items across every skill")]
-        guard state.settings.mode(.writing) == .focus else { return parts }
+        guard state.settings.mode(.writing)?.learns == true else { return parts }
         let library = catalogs.writing.library
         var benchmark: WritingPrompt?
         if WritingSchedule.benchmarkDue(state), let task = WritingSchedule.benchmarkTask(state, library: library) {

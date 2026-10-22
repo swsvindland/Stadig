@@ -58,16 +58,53 @@ struct SimulatedStudentTests {
         #expect(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck))?.kind == .regular)
     }
 
-    @Test("someone who can't read kana starts with hiragana, and words wait for it")
-    func kanaFirst() throws {
+    @Test("someone who can't read kana learns words from the first session with hiragana beside them, and practises from the second")
+    func kanaBesideWords() throws {
         var store = Store(settings: Fixtures.settings([.japanese], readsKana: false))
         var student = Student(vocabulary: 0, mathsLevel: 0, writingLevel: 0, deck: deck)
         let plan = try #require(SessionPlanner.today(store.state(on: Fixtures.monday), catalogs: Fixtures.catalogs(deck)))
-        #expect(plan.parts.first?.detail.contains("kana") == true, "\(plan.parts)")
+        let learn = try #require(plan.parts.first { $0.kind == .learn })
+        #expect(learn.detail.contains("kana") && learn.detail.contains("words"), "\(learn.detail)")
         store.study(on: Fixtures.monday, student: &student, deck: deck)
+        let words = store.cards.keys.filter { $0.wordID != nil }
+        #expect(words.count >= LanguageModule.practiceFrom, "\(words.count) words in the first session")
         #expect(store.cards.keys.contains { $0.isKana })
-        #expect(!store.cards.keys.contains { $0.wordID != nil }, "no words before hiragana")
         #expect(store.cards.keys.filter(\.isKana).allSatisfy { KanaTable.byKana[$0.item]?.script == .hiragana })
+
+        // The next Japanese day says, hears and writes what the first one taught.
+        var practised = false
+        for offset in 1..<5 where !practised {
+            if let run = store.study(on: Fixtures.monday.adding(days: offset), student: &student, deck: deck) {
+                practised = run.plan.parts.contains { $0.kind == .sentences }
+            }
+        }
+        #expect(practised)
+        // Kana keep coming in until hiragana is done, then katakana.
+        for offset in 5..<42 { store.study(on: Fixtures.monday.adding(days: offset), student: &student, deck: deck) }
+        #expect(LanguagePlan.kanaIntroduced(.hiragana, cards: Set(store.cards.keys)))
+        #expect(store.cards.keys.contains { $0.isKana && KanaTable.byKana[$0.item]?.script == .katakana })
+    }
+
+    @Test("a word's reading isn't asked of someone still on the first hiragana: listening asks it again instead")
+    func noReadingBeforeKana() throws {
+        let store = Store(settings: Fixtures.settings([.japanese], readsKana: false))
+        let state = store.state(on: Fixtures.monday)
+        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
+        var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
+        var now = state.now
+        var asked: [String] = []
+        var steps = 0
+        while let step = run.step, steps < 500 {
+            steps += 1
+            now += 5
+            if case .question(let question) = step, let index = question.correctChoice {
+                if question.key.wordID != nil { asked.append(question.instruction) }
+                run.choose(index, now: now)
+            }
+            run.next(now: now)
+        }
+        #expect(asked.contains("What did you hear?"), "a kanji word's second ask: \(asked)")
+        #expect(!asked.contains("How is it read?"))
     }
 
     @Test("seven weeks: the assessment, five weeks of learning, a review week with nothing new, then a check-in")

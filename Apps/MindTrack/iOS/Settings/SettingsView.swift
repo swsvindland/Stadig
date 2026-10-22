@@ -80,7 +80,8 @@ struct MacSettings: View {
     }
 }
 
-/// Focus, Maintenance or off for each course, with the load check.
+/// Main, Secondary, Maintenance or off for each course, with the load check. At least one stays
+/// Main: only Main courses have days.
 struct CourseSettings: View {
     @Environment(AppModel.self) private var model
     let settings: MindSettings
@@ -97,8 +98,7 @@ struct CourseSettings: View {
                             if !s.focus.isEmpty { model.save(settings: s) }
                         })
                 ) {
-                    Text("Focus").tag(CourseMode?.some(.focus))
-                    Text("Maintenance").tag(CourseMode?.some(.maintenance))
+                    ForEach(CourseMode.allCases) { Text($0.label).tag(CourseMode?.some($0)) }
                     Text("Off").tag(CourseMode?.none)
                 } label: {
                     Label(domain.label, systemImage: domain.symbol)
@@ -112,7 +112,7 @@ struct CourseSettings: View {
             Text("Courses")
         } footer: {
             Text(
-                "Focus courses get full sessions; Maintenance is a few minutes of reviews in each warm-up. Turning one off keeps everything learned; its reviews simply wait until it's back."
+                "Main courses get days of their own. Secondary courses take turns at a short block in each session, about seven minutes of a 25-minute one. Maintenance is a few minutes of reviews in each warm-up; maths and writing take a short placement first if nothing's learned yet. Turning one off keeps everything learned; its reviews simply wait until it's back."
             )
         }
     }

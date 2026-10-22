@@ -56,26 +56,33 @@ public enum Domain: String, CaseIterable, Codable, CodingKeyRepresentable, Senda
     public static func < (a: Domain, b: Domain) -> Bool { allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)! }
 }
 
-/// How hard a course is pushed. Focus courses get full sessions and new material; Maintenance
-/// courses keep what's learned with a few minutes of reviews in each session's warm-up.
+/// How hard a course is pushed. Main courses have days of their own in the weekly split: full
+/// sessions and new material. Secondary courses take turns at a short block in sessions, so they
+/// keep moving, more slowly. Maintenance courses keep what's learned with a few minutes of
+/// reviews in each session's warm-up. `focus` is Main's stored name, from before there were three.
 public enum CourseMode: String, CaseIterable, Codable, Sendable, Identifiable {
-    case focus, maintenance
+    case focus, secondary, maintenance
 
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
-        case .focus: "Focus"
+        case .focus: "Main"
+        case .secondary: "Secondary"
         case .maintenance: "Maintenance"
         }
     }
 
     public var detail: String {
         switch self {
-        case .focus: "New material and full sessions."
+        case .focus: "Days of its own: full sessions and new material."
+        case .secondary: "A short block in most sessions: new material, more slowly."
         case .maintenance: "Reviews only, a few minutes a day, so nothing slips."
         }
     }
+
+    /// Main and Secondary courses learn new material; Maintenance only reviews.
+    public var learns: Bool { self != .maintenance }
 }
 
 /// When the person studies: focused 25-minute blocks, five days a week by default.

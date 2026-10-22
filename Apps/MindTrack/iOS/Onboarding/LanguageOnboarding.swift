@@ -29,7 +29,7 @@ struct LanguageOnboarding: View {
                 .font(.subheadline)
             }
             .card()
-            if settings.mode(.japanese) == .focus {
+            if settings.mode(.japanese)?.learns == true {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Can you read hiragana and katakana?", systemImage: Domain.japanese.symbol).font(.headline)
                     Picker("Kana", selection: Binding(get: { settings.readsKana ?? true }, set: { settings.readsKana = $0 })) {
@@ -40,7 +40,7 @@ struct LanguageOnboarding: View {
                     .accessibilityIdentifier("onboarding.kana")
                     Text(
                         settings.readsKana == false
-                            ? "You'll start with hiragana, with romaji under each kana until it sticks. Words follow once hiragana is in."
+                            ? "Words start in the first session, with romaji under each kana until it sticks, and hiragana then katakana come in beside them."
                             : "You'll start with a word test to find your vocabulary."
                     )
                     .font(.footnote).foregroundStyle(.secondary)
@@ -82,14 +82,14 @@ struct LanguageOnboarding: View {
     }
 
     static func firstSession(_ domain: Domain, settings: MindSettings) -> String? {
-        if domain == .japanese, settings.readsKana == false { return "Japanese: your first hiragana" }
+        if domain == .japanese, settings.readsKana == false { return "Japanese: your first words and hiragana" }
         return "\(domain.label): words from common to rare"
     }
 }
 
-/// Two languages at once: feasible, especially dissimilar ones, but each extra Focus language
-/// dilutes the others. The suggestion follows the doc: Japanese as Focus, Spanish in small daily
-/// doses until kana are solid.
+/// Two languages at once: feasible, especially dissimilar ones, but each extra Main language
+/// dilutes the others. The suggestion follows the doc: Japanese as Main, Spanish in small daily
+/// doses (Secondary) until kana are solid.
 private struct TwoLanguages: View {
     @Binding var settings: MindSettings
 
@@ -97,7 +97,7 @@ private struct TwoLanguages: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Two languages", systemImage: "globe").font(.headline)
             Text(
-                "Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so each extra Focus course dilutes the others."
+                "Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so each extra Main course dilutes the others."
             )
             .font(.subheadline)
             ForEach(settings.languages.filter { $0 != settings.languages.first }) { domain in
@@ -110,8 +110,8 @@ private struct TwoLanguages: View {
             if settings.has(.japanese), settings.has(.spanish) {
                 Text(
                     settings.readsKana == false
-                        ? "Suggested: Japanese as Focus, and Spanish in Maintenance-sized doses until kana are solid. Make it a second Focus then."
-                        : "Suggested: Japanese as Focus. Spanish works as a second Focus, or in Maintenance-sized doses for now."
+                        ? "Suggested: Japanese as Main, and Spanish as Secondary until kana are solid. Make it a second Main course then."
+                        : "Suggested: Japanese as Main. Spanish works as a second Main course, or as Secondary for now."
                 )
                 .font(.footnote).foregroundStyle(.secondary)
             }
