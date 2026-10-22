@@ -47,6 +47,10 @@ struct QueryTests {
             ("fries", #""fries"*"#),
             ("pop", #""pop"*"#),
             ("ketchup", #"("ketchup"* OR "catsup"*)"#),
+            ("glazed donut", #""glazed"* AND ("donut"* OR "doughnut"*)"#),
+            // A size in inches isn't a word the food must have.
+            ("papa johns 14 inch pepperoni", #""papa"* AND "john"* AND "pepperoni"*"#),
+            ("6-inch sub", #""sub"*"#),
             (#"" OR - NEAR ( *"#, #""near"*"#),
             ("", ""),
         ])
@@ -60,6 +64,23 @@ struct QueryTests {
         #expect(readQuery("2 eggs").counts.map { [$0.0, $0.1] } == [["2", "eggs"]])
         #expect(readQuery("2 cups rice").counts.isEmpty)
         #expect(readQuery("2% milk").counts.isEmpty)
+    }
+
+    @Test("a size in inches is kept aside, however it's written")
+    func sizes() {
+        // A phone's keyboard types the curly quote after a number.
+        for query in [
+            "papa johns 14 inch pepperoni", #"papa johns 14" pepperoni"#, "papa johns 14” pepperoni", "papa johns 14-inch pepperoni",
+            "papa johns 14in pepperoni", "papa johns 14 in pepperoni", "papa johns 14 inches pepperoni",
+        ] {
+            #expect(readQuery(query) == QueryReading(words: ["papa", "johns", "pepperoni"], counts: [], sizes: ["14"]), "\(query)")
+        }
+        #expect(readQuery("6 inch turkey sub") == QueryReading(words: ["turkey", "sub"], counts: [], sizes: ["6"]))
+        // Weights and counts are amounts, and a number written into a name stays in it.
+        #expect(readQuery("14 oz steak").sizes.isEmpty)
+        #expect(readQuery("2 eggs").sizes.isEmpty)
+        #expect(readQuery("7-up").sizes.isEmpty)
+        #expect(readQuery("12 grain bread").sizes.isEmpty)
     }
 
     @Test("stems match singular and plural prefixes")
@@ -147,5 +168,16 @@ struct QueryTests {
         #expect(!isBranded(usda("Fast foods, potato, french fried in vegetable oil")))
         #expect(!isBranded(usda("Tomatoes, red, ripe, raw, year round average")))
         #expect(brandWords(name: "McDONALD'S, BIG MAC", brand: "") == ["mcdonald"])
+        // A chain or brand USDA writes in capitals before the food is its brand.
+        #expect(brandWords(name: #"PAPA JOHN'S 14" Pepperoni Pizza, Original Crust"#, brand: "") == ["papa", "john"])
+        #expect(brandWords(name: #"LITTLE CAESARS 14" Original Round Cheese Pizza, Regular Crust"#, brand: "") == ["little", "caesars"])
+        #expect(brandWords(name: "SILK Chocolate, soymilk", brand: "") == ["silk"])
+        #expect(brandWords(name: "T.G.I. FRIDAY'S, chicken fingers", brand: "") == ["t", "g", "i", "friday"])
+        #expect(brandWords(name: "Fast foods, potato, french fried in vegetable oil", brand: "").isEmpty)
+        #expect(brandWords(name: "Pizza, cheese topping, regular crust", brand: "").isEmpty)
+        // It isn't what the name leads with: the food after it is.
+        let pizza = FoodText(name: #"PAPA JOHN'S 14" Pepperoni Pizza, Original Crust"#, brand: "", source: .usda)
+        #expect(pizza.lead == ["pepperoni", "pizza"] && pizza.own == ["papa", "john"])
+        #expect(FoodText(name: "McDONALD'S, BIG MAC", brand: "", source: .usda).lead == ["mcdonald"])
     }
 }
