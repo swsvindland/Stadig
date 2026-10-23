@@ -20,6 +20,10 @@ public struct SyncState: Sendable, Equatable {
     private var running: [UUID: SyncEvent.Kind] = [:]
     /// Each kind's latest failure, until that kind next works.
     private var failures: [SyncEvent.Kind: String] = [:]
+    /// Whether the latest export failed because iCloud turned records down.
+    private var exportRefused = false
+    /// Why it does, from `explainRefusals`, until an export works.
+    private var refusalReason: String?
 
     public init(place: Place) {
         self.place = place
@@ -60,12 +64,25 @@ public struct SyncState: Sendable, Equatable {
         }
         running[event.id] = nil
         if event.kind == .import { importsEnded += 1 }
+        let refusal = event.kind == .export && event.refused
         if event.succeeded {
             failures[event.kind] = nil
             if event.kind != .setup { lastSynced = max(lastSynced ?? ended, ended) }
         } else {
-            failures[event.kind] = event.problem ?? "Something went wrong with iCloud"
+            failures[event.kind] = (refusal ? refusalReason : nil) ?? event.problem ?? "Something went wrong with iCloud"
         }
+        if event.kind == .export {
+            exportRefused = refusal
+            // Records going up means iCloud takes them now.
+            if event.succeeded { refusalReason = nil }
+        }
+    }
+
+    /// Why iCloud turns this device's records down, once it's been asked (the event doesn't say):
+    /// in place of the bare words for as long as exports keep being turned down.
+    mutating func explainRefusals(_ reason: String) {
+        refusalReason = reason
+        if exportRefused { failures[.export] = reason }
     }
 }
 
@@ -82,13 +99,17 @@ struct SyncEvent: Sendable, Equatable {
     var succeeded: Bool
     /// Why it failed, in words.
     var problem: String?
+    /// It failed because iCloud turned some records down (a partial failure). The event says no
+    /// more than that, so this is the failure worth asking iCloud about.
+    var refused: Bool
 
-    init(id: UUID = UUID(), kind: Kind, ended: Date? = nil, succeeded: Bool = false, problem: String? = nil) {
+    init(id: UUID = UUID(), kind: Kind, ended: Date? = nil, succeeded: Bool = false, problem: String? = nil, refused: Bool = false) {
         self.id = id
         self.kind = kind
         self.ended = ended
         self.succeeded = succeeded
         self.problem = problem
+        self.refused = refused
     }
 
     /// Nil for a kind of step this version doesn't know.
@@ -100,9 +121,11 @@ struct SyncEvent: Sendable, Equatable {
         case .export: kind = .export
         @unknown default: return nil
         }
+        let error = event.error as NSError?
         self.init(
             id: event.identifier, kind: kind, ended: event.endDate, succeeded: event.succeeded,
-            problem: event.error.map(SyncProblem.reason(for:)))
+            problem: error.map(SyncProblem.reason(for:)),
+            refused: error.map { $0.domain == CKErrorDomain && $0.code == CKError.Code.partialFailure.rawValue } ?? false)
     }
 
     /// Calls `handler` on the main actor with every store's CloudKit events in this process, each
@@ -138,21 +161,18 @@ enum SyncProblem {
     /// Core Data's error when CloudKit mirroring starts without an iCloud account.
     static let noAccountCode = 134400
 
-    /// A CloudKit failure in words a person can act on. The server's own message is kept where it's
-    /// the only thing that says what went wrong (a schema the server refuses, say).
+    /// What a partial failure says: iCloud turned some of the records down, not which or why.
+    static let refused = "iCloud turned down some changes"
+
+    /// A CloudKit failure in words a person can act on, from its domain and code alone: that's all
+    /// of an event's error Core Data keeps (its `ANSCKEVENT` table has columns for nothing else),
+    /// so the server's message and a partial failure's errors for each record never get here.
     static func reason(for error: any Error) -> String {
         let nsError = error as NSError
         if nsError.domain == NSCocoaErrorDomain && nsError.code == noAccountCode { return "Not signed in to iCloud" }
-        guard let error = error as? CKError else { return nsError.localizedDescription }
+        guard let error = error as? CKError else { return "Sync error \(nsError.code) (\(nsError.domain))" }
         switch error.code {
-        case .partialFailure:
-            // The operation's own message only says some items failed, and most items of a failed
-            // batch only say the batch failed: the item that failed itself says why.
-            let items = error.partialErrorsByItemID.map { Array($0.values) } ?? []
-            guard let item = items.first(where: { ($0 as? CKError)?.code != .batchRequestFailed }) ?? items.first else {
-                return error.localizedDescription
-            }
-            return reason(for: item)
+        case .partialFailure: return refused
         case .notAuthenticated: return "Not signed in to iCloud"
         case .accountTemporarilyUnavailable: return "Your iCloud account needs attention"
         case .networkUnavailable, .networkFailure: return "No connection to iCloud"
@@ -161,7 +181,28 @@ enum SyncProblem {
         case .userDeletedZone: return "This app's iCloud data was deleted"
         case .incompatibleVersion: return "Update the app to keep syncing"
         case .permissionFailure, .managedAccountRestricted: return "iCloud isn't allowed for this app"
-        default: return "iCloud said: \(error.localizedDescription)"
+        // The number is what there is to look up.
+        default: return "iCloud error \(error.errorCode)"
+        }
+    }
+
+    /// Why iCloud turns a store's records down, when it's the usual reason: the environment the
+    /// build syncs with (Production, for TestFlight and the App Store) has no `recordType` in its
+    /// schema, which Development builds create as they go but Production only gets when it's
+    /// deployed. Asked with a query for the type, which the server answers with "unknown item"
+    /// when it has none. Nil when the type is there, or iCloud couldn't be asked.
+    @concurrent nonisolated static func missingRecordType(_ recordType: String, inContainer identifier: String) async -> String? {
+        let database = CKContainer(identifier: identifier).privateCloudDatabase
+        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+        do {
+            _ = try await database.records(matching: query, inZoneWith: nil, desiredKeys: [], resultsLimit: 1)
+            return nil
+        } catch let error as CKError where error.code == .unknownItem {
+            return "iCloud's schema has no \(recordType) yet, so changes stay on this device"
+        } catch {
+            storeLog.notice(
+                "Couldn't ask \(identifier, privacy: .public) about \(recordType, privacy: .public): \(String(describing: error), privacy: .public)")
+            return nil
         }
     }
 }

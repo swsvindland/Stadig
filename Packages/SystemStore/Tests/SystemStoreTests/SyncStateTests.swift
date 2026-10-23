@@ -31,8 +31,8 @@ struct SyncStateTests {
 
     @Test func aFailureStaysUntilItsOwnKindWorks() {
         var state = SyncState(place: .iCloud)
-        let refused = "iCloud said: Cannot create new type CD_RecordRow in production schema"
-        state.apply(SyncEvent(kind: .export, ended: t0, succeeded: false, problem: refused))
+        let refused = SyncProblem.refused
+        state.apply(SyncEvent(kind: .export, ended: t0, succeeded: false, problem: refused, refused: true))
         #expect(state.problem == refused)
         #expect(state.summary == "Not syncing")
 
@@ -71,25 +71,46 @@ struct SyncStateTests {
         #expect(SyncProblem.reason(for: CKError(.quotaExceeded)) == "iCloud storage is full")
         #expect(SyncProblem.reason(for: NSError(domain: NSCocoaErrorDomain, code: SyncProblem.noAccountCode)) == "Not signed in to iCloud")
 
-        // A batch that partly failed: the item's own error says why.
-        let item = CKError(.quotaExceeded)
-        let partial = CKError(.partialFailure, userInfo: [CKPartialErrorsByItemIDKey: [CKRecord.ID(recordName: "row"): item]])
-        #expect(SyncProblem.reason(for: partial) == "iCloud storage is full")
-        let batch = CKError(
-            .partialFailure,
-            userInfo: [
-                CKPartialErrorsByItemIDKey: [
-                    CKRecord.ID(recordName: "a"): CKError(.batchRequestFailed), CKRecord.ID(recordName: "b"): item,
-                    CKRecord.ID(recordName: "c"): CKError(.batchRequestFailed),
-                ]
-            ])
-        #expect(SyncProblem.reason(for: batch) == "iCloud storage is full", "not one of the items that only failed with it")
+        // An event's error as Core Data keeps it: the domain and code, nothing else. A partial
+        // failure's own message ("The operation couldn't be completed. (CKErrorDomain error 2.)")
+        // is what Settings showed on an iPhone whose exports a Production schema turned down.
+        let partial = NSError(domain: CKErrorDomain, code: CKError.Code.partialFailure.rawValue)
+        #expect(SyncProblem.reason(for: partial) == SyncProblem.refused)
 
-        // What has no better words keeps the server's.
-        let schema = CKError(.invalidArguments, userInfo: [NSLocalizedDescriptionKey: "Cannot create new type CD_RecordRow in production schema"])
-        #expect(SyncProblem.reason(for: schema) == "iCloud said: Cannot create new type CD_RecordRow in production schema")
-        let other = NSError(domain: "elsewhere", code: 1, userInfo: [NSLocalizedDescriptionKey: "The disk is full"])
-        #expect(SyncProblem.reason(for: other) == "The disk is full")
+        // What has no words of its own keeps its number, to look up.
+        #expect(SyncProblem.reason(for: NSError(domain: CKErrorDomain, code: CKError.Code.invalidArguments.rawValue)) == "iCloud error 12")
+        #expect(SyncProblem.reason(for: NSError(domain: "elsewhere", code: 1)) == "Sync error 1 (elsewhere)")
+    }
+
+    @Test func aRefusalKeepsWhatICloudSaidWhileExportsAreTurnedDown() {
+        let refused = SyncEvent(kind: .export, ended: t0, succeeded: false, problem: SyncProblem.refused, refused: true)
+        var state = SyncState(place: .iCloud)
+        state.apply(refused)
+        #expect(state.problem == SyncProblem.refused, "the event alone says no more")
+
+        let schema = "iCloud's schema has no CD_RecordRow yet, so changes stay on this device"
+        state.explainRefusals(schema)
+        #expect(state.problem == schema)
+        state.apply(refused)
+        #expect(state.problem == schema, "the next refused export is the same refusal")
+
+        // A different failure says itself, and a refusal after it is still explained.
+        state.apply(SyncEvent(kind: .export, ended: t0 + 1, succeeded: false, problem: "No connection to iCloud"))
+        #expect(state.problem == "No connection to iCloud")
+        state.apply(refused)
+        #expect(state.problem == schema)
+
+        // Once an export works the reason is gone with the failure; a later refusal is asked about afresh.
+        state.apply(SyncEvent(kind: .export, ended: t0 + 2, succeeded: true))
+        #expect(state.problem == nil)
+        state.apply(refused)
+        #expect(state.problem == SyncProblem.refused)
+
+        // A reason only stands in for a refused export, not for another kind's failure.
+        var importing = SyncState(place: .iCloud)
+        importing.apply(SyncEvent(kind: .import, ended: t0, succeeded: false, problem: "No connection to iCloud"))
+        importing.explainRefusals(schema)
+        #expect(importing.problem == "No connection to iCloud")
     }
 }
 
@@ -111,6 +132,31 @@ struct RecordStoreSyncTests {
         let identifier = try #require(store.storeFileURL.flatMap(SyncEvent.storeIdentifier(at:)))
         store.received(SyncEvent(kind: .export, ended: t0, succeeded: false, problem: "iCloud storage is full"), fromStore: identifier)
         #expect(store.syncState.problem == "iCloud storage is full")
+    }
+
+    @Test func aRefusedExportAsksICloudWhyOnce() async throws {
+        let store = RecordStore(name: "refused-\(UUID().uuidString)", cloudKitContainer: nil, inMemory: false, directory: temporaryDirectory())
+        let identifier = try #require(store.storeFileURL.flatMap(SyncEvent.storeIdentifier(at:)))
+        #expect(store.askWhyRefused == nil, "off iCloud there's no one to ask")
+        let asked = Counter()
+        let schema = "iCloud's schema has no CD_RecordRow yet, so changes stay on this device"
+        store.askWhyRefused = {
+            await MainActor.run { asked.value += 1 }
+            return schema
+        }
+
+        // Another kind's failure, or an export failing some other way, isn't a refusal to ask about.
+        store.received(SyncEvent(kind: .export, ended: t0, succeeded: false, problem: "No connection to iCloud"), fromStore: identifier)
+        #expect(store.refusalQuestion == nil)
+
+        let refused = SyncEvent(kind: .export, ended: t0 + 1, succeeded: false, problem: SyncProblem.refused, refused: true)
+        store.received(refused, fromStore: identifier)
+        await store.refusalQuestion?.value
+        #expect(store.syncState.problem == schema)
+        store.received(refused, fromStore: identifier)
+        await store.refusalQuestion?.value
+        #expect(asked.value == 1, "once a launch: every retry is turned down the same way")
+        #expect(store.syncState.problem == schema)
     }
 
     @Test func theEndOfAnImportReadsWhatItBroughtAtOnce() throws {

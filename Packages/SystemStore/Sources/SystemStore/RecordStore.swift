@@ -49,6 +49,11 @@ public final class RecordStore {
     @ObservationIgnored private var syncObserver: NotificationObservation?
     /// The store's identifier in CloudKit's events, read from its file the first time one arrives.
     @ObservationIgnored private var eventIdentifier: String?
+    /// Asks iCloud why it turns this store's records down, which the event can't say; nil off
+    /// iCloud. Tests swap it.
+    @ObservationIgnored var askWhyRefused: (@Sendable () async -> String?)?
+    /// That question, asked once a launch, at the first export turned down.
+    @ObservationIgnored private(set) var refusalQuestion: Task<Void, Never>?
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var remoteChangeNoticed: ContinuousClock.Instant?
     /// The newest history transaction already accounted for.
@@ -157,8 +162,10 @@ public final class RecordStore {
             }
             remoteObserver = NotificationObservation(token)
         }
-        if place == .iCloud {
+        if place == .iCloud, let cloudKitContainer {
             syncObserver = SyncEvent.observe { [weak self] event, store in self?.received(event, fromStore: store) }
+            let recordType = "CD_\(Self.rowEntity)"
+            askWhyRefused = { await SyncProblem.missingRecordType(recordType, inContainer: cloudKitContainer) }
         }
     }
 
@@ -586,8 +593,18 @@ public final class RecordStore {
             remoteRefresh?.cancel()
             refreshAfterRemoteChange()
         }
+        changingSyncState { $0.apply(event) }
+        if event.kind == .export, event.refused, refusalQuestion == nil, let askWhyRefused {
+            refusalQuestion = Task { [weak self] in
+                guard let reason = await askWhyRefused() else { return }
+                self?.changingSyncState { $0.explainRefusals(reason) }
+            }
+        }
+    }
+
+    private func changingSyncState(_ change: (inout SyncState) -> Void) {
         let before = syncState.problem
-        syncState.apply(event)
+        change(&syncState)
         if let problem = syncState.problem, problem != before {
             storeLog.error("\(self.name, privacy: .public): iCloud isn't syncing: \(problem, privacy: .public)")
         } else if before != nil, syncState.problem == nil {
