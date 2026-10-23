@@ -40,6 +40,7 @@ final class Catalog: Sendable {
         var markets = false
         var quality = false
         var integerBarcodes = false
+        var otherNames = false
         var foods = 0
         try pool.with { connection in
             try connection.query("SELECT key, value FROM catalog_meta") { row in
@@ -49,6 +50,7 @@ final class Catalog: Sendable {
                 if row.string(0) == "markets" { markets = true }
                 if row.string(0) == "nova" { quality = true }
                 if row.string(0) == "barcode" { integerBarcodes = row.string(1)?.uppercased() == "INTEGER" }
+                if row.string(0) == "also" { otherNames = true }
             }
             try connection.query("SELECT max(rowid) FROM foods") { row in foods = Int(row.int(0)) }
         }
@@ -60,10 +62,11 @@ final class Catalog: Sendable {
         self.foods = foods
         order = meta["nutrients"].flatMap { JSONValue.parse($0)?.array?.compactMap(\.string) }
         barcodeIsInteger = integerBarcodes
-        // Catalogs from before processing and traits were kept read as unknown for both.
+        // Catalogs from before processing and traits were kept read as unknown for both. Only USDA's
+        // foods have other names: the chains' items FNDDS files under them.
         columns =
             "foods.rowid, foods.id, foods.name, foods.brand, foods.barcode, foods.data, foods.popularity, "
-            + (quality ? "foods.nova, foods.traits" : "NULL, NULL")
+            + (quality ? "foods.nova, foods.traits" : "NULL, NULL") + (otherNames ? ", foods.also" : ", ''")
         // A brand's recipe differs between countries (US and French Oreos), so a packaged food sold
         // only elsewhere ranks below the foods sold here; one whose countries aren't known isn't one.
         let away: String
@@ -130,11 +133,11 @@ final class Catalog: Sendable {
             ) { row in
                 let rowid = row.int(0)
                 if let entry = read.withLock({ $0[rowid] }) {
-                    hits.append(Hit(entry: entry, away: row.int(9) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(10) == 1))
                 } else if let food = food(row) {
-                    let entry = Entry(food)
+                    let entry = Entry(food, also: row.string(9) ?? "")
                     fresh.append((rowid, entry))
-                    hits.append(Hit(entry: entry, away: row.int(9) == 1))
+                    hits.append(Hit(entry: entry, away: row.int(10) == 1))
                 }
             }
         }

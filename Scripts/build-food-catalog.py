@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build source-separated, indexed offline catalogs for Macro Track. Python standard library only.
 
-Usage: python3 Scripts/build-food-catalog.py [--usda /path/usda.zip] --off /path/off.jsonl[.gz]
+Usage: python3 Scripts/build-food-catalog.py [--usda /path/sr.zip --fndds /path/fndds.zip] [--off /path/off.jsonl[.gz]]
 
-Writes usda.db into Packages/FoodDatabase/Sources/FoodDatabase/Resources (bundled, in git) and off.db
+Writes usda.db (SR Legacy, and FNDDS's fast-food and restaurant foods) into
+Packages/FoodDatabase/Sources/FoodDatabase/Resources (bundled, in git) and off.db
 into Apps/MacroTrack/Catalogs (bundled from there, not in git). Sources, hashes and counts are
 recorded in Packages/FoodDatabase/catalog-manifest.json. Never processes user data.
 
@@ -21,6 +22,7 @@ import functools
 import gzip
 import hashlib
 import html
+import itertools
 import json
 import math
 import multiprocessing
@@ -38,6 +40,7 @@ MANIFEST = ROOT / "Packages" / "FoodDatabase" / "catalog-manifest.json"
 RECIPE_URL = "https://github.com/swsvindland/macro-track/tree/main/assets/food"
 SCHEMA_VERSION = 3
 USDA_URL = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip"
+FNDDS_URL = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip"
 OFF_URL = "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz"
 OFF_SAMPLE_URL = "https://world.openfoodfacts.org/data/exports/products.random-modulo-1000.jsonl.gz"
 OFF_CSV_URL = "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz"
@@ -77,7 +80,8 @@ COUNTRIES = dict(pair.split(":") for pair in """
     belize:bz sierra-leone:sl angola:ao yemen:ye cape-verde:cv sint-maarten:sx laos:la world:world
 """.split())
 LICENSES = {
-    "usda": ("CC0-1.0", "USDA FoodData Central, SR Legacy (April 2018). Public domain (CC0 1.0)."),
+    "usda": ("CC0-1.0", "USDA FoodData Central: SR Legacy (April 2018), and the fast-food and restaurant "
+                        "foods of FNDDS 2021-2023 (October 2024). Public domain (CC0 1.0)."),
     "off": ("ODbL-1.0",
             "Contains information from Open Food Facts (https://world.openfoodfacts.org), which is "
             "made available here under the Open Database License (ODbL) 1.0 "
@@ -567,6 +571,100 @@ def usda_foods(path, stats):
                "nova": usda_processing(category, name), "traits": TRAIT_FERMENTED if fermented else 0}
 
 
+# SR Legacy's chain items are from 2006 to 2012; FNDDS, the survey database that replaced its
+# fast-food and restaurant groups, has the generic restaurant foods ("Chicken nuggets, from fast
+# food") and a few chain burgers by name ("Big Mac (McDonalds)"). The rest of FNDDS repeats SR,
+# but for the foods it files chains' items under (an Egg McMuffin is an egg sandwich on an English
+# muffin, with ham).
+FNDDS_CHAIN = re.compile(r"\((McDonalds|Burger King)\)$")
+FNDDS_RESTAURANT = re.compile(r"fast food|restaurant", re.I)
+# The chains FNDDS's alternate descriptions name, as it spells them ("Starbuck's", "Dunkin Donut's").
+FNDDS_CHAINS = re.compile(
+    r"\b(Mc?Donald'?s|Burger King|Wendy'?s|Taco Bell|Subway|Starbuck'?s|Dunkin'?(?: Donut'?s)?|Domino'?s|"
+    r"Papa John[’']?s|Pizza Hut|Chick-fil-A|Popeyes|KFC|Arby'?s|Sonic|Jack in the Box|Dairy Queen|"
+    r"White Castle|Hardee'?s|Carl'?s Jr\.?|Little Caesars?|Krispy Kreme|Chipotle|Panera|In-N-Out)", re.I)
+# The words search skips, as FoodDatabase's `stopWords`.
+STOP_WORDS = {"a", "an", "and", "the", "of", "with", "in", "on", "or", "s", "to", "for", "style"}
+
+
+def fndds_also(raw):
+    """The chains' items FNDDS files under a food, as it names them ("McDonald's Chicken
+    McNuggets" under chicken nuggets from fast food): its alternate descriptions that name a chain
+    and something the chain sells, not a chain alone ("Burger King") nor a note ("NS as to skin
+    eaten", "bread, bun or roll")."""
+    names = []
+    for attribute in raw.get("foodAttributes", []):
+        if (attribute.get("foodAttributeType") or {}).get("name") != "Additional Description":
+            continue
+        for part in (attribute.get("value") or "").split(";"):
+            part = " ".join(part.split()).strip(" ,")
+            if not FNDDS_CHAINS.search(part):
+                continue
+            rest = [w for w in re.findall(r"[a-z0-9]+", FNDDS_CHAINS.sub(" ", part).lower())
+                    if w not in STOP_WORDS and w != "nfs"]
+            if rest and part not in names:
+                names.append(part)
+    return names
+
+
+def fndds_portions(raw):
+    """FNDDS's portions in its own order, its usual amount first: "Quantity not specified" is the
+    amount people report when they don't say how much, and is dropped when no portion is that
+    much ("1 McDonald's Big Mac" is, five nuggets aren't)."""
+    portions = []
+    usual = None
+    for p in sorted(raw.get("foodPortions", []), key=lambda p: p.get("sequenceNumber") or 0):
+        grams = number(p.get("gramWeight"))
+        label = " ".join((p.get("portionDescription") or "").split())
+        if not grams or not label:
+            continue
+        if label.lower() == "quantity not specified":
+            usual = grams
+        else:
+            portions.append({"label": label, "amount": grams})
+    first = next((p for p in portions if p["amount"] == usual), None)
+    return ([first] if first else []) + [p for p in portions if p is not first]
+
+
+def fndds_foods(path, stats):
+    with zipfile.ZipFile(path) as archive:
+        with archive.open(next(n for n in archive.namelist() if n.endswith(".json"))) as src:
+            records = json.load(src)["SurveyFoods"]
+    for raw in records:
+        stats["fnddsRecords"] += 1
+        name = " ".join(raw["description"].split())
+        also = fndds_also(raw)
+        if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also:
+            continue
+        values = {n["nutrient"]["id"]: number(n.get("amount")) for n in raw["foodNutrients"]}
+        nutrients = dict(zip(("calories", "protein", "carbs", "fat", "fiber", "sodium"),
+                             (values.get(i) for i in (1008, 1003, 1005, 1004, 1079, 1093))))
+        if not valid_nutrients(nutrients):
+            stats["fnddsExcludedNutrition"] += 1
+            continue
+        micros = {}
+        for key, ids, _, _ in MICROS:
+            parts = [next((values[i] for i in (part if isinstance(part, tuple) else (part,))
+                           if values.get(i) is not None), None) for part in ids]
+            if parts and parts[0] is not None:
+                micros[key] = sum(part or 0 for part in parts)
+        # Read as SR Legacy's groups of the same name: fast food is ultra-processed, and a dish
+        # from a restaurant, from either ("Black beans, from fast food / restaurant") or a chain's
+        # item under a plain name ("Frozen coffee drink") is processed unless its name says
+        # otherwise (nuggets, pizza, cookies). None is a fermented food.
+        fast = FNDDS_CHAIN.search(name) or (re.search("fast food", name, re.I) and not re.search("restaurant", name, re.I))
+        dish = re.sub(r"fast food|restaurant", "", name, flags=re.I)
+        stats["fnddsIncluded"] += 1
+        stats["fnddsWithChainNames"] += bool(also)
+        stats["fnddsChainNames"] += len(also)
+        yield {"id": f"usda:{raw['fdcId']}", "name": name, "brand": "",
+               "barcode": None, "basis": "g", "nutrients": nutrients,
+               "micros": checked_micros(nutrients, micros, {}, stats),
+               "portions": fndds_portions(raw)[:12], "popularity": 0, "markets": "",
+               "nova": usda_processing("fast foods" if fast else "restaurant foods", dish), "traits": 0,
+               "also": also}
+
+
 def off_food(raw, limits, stats):
     """One Open Food Facts product as a catalog food, or None and the reason in `stats`."""
     stats["sourceRecords"] += 1
@@ -686,11 +784,14 @@ def food_values(data, order):
     return dict(zip(order, data[1])) if order else data["nutrients"]
 
 
-def build(source, path, destination, limits=None):
+def build(source, path, destination, limits=None, fndds=None):
     destination.mkdir(parents=True, exist_ok=True)
     digest = sha256_file(path)
     recipe = sha256_file(Path(__file__))
+    fndds_digest = sha256_file(fndds) if fndds else None
     version = f"{source}-v{SCHEMA_VERSION}-{digest[:12]}-{recipe[:8]}"
+    if fndds_digest:
+        version = f"{source}-v{SCHEMA_VERSION}-{digest[:12]}-{fndds_digest[:8]}-{recipe[:8]}"
     output = destination / f"{source}.db"
     temporary = destination / f"{source}.pending.db"
     temporary.unlink(missing_ok=True)
@@ -698,27 +799,37 @@ def build(source, path, destination, limits=None):
     # Every typed word is searched as a prefix, and across millions of foods "ch" or "chi" has
     # thousands of words to merge: the prefix indexes keep a keystroke near 10 ms on a laptop for
     # a sixth more size. Without column sizes, bm25 measures the few rows a search ranks itself.
-    connection.executescript("""
+    # Only USDA's foods have other names, one a line: the chains' items FNDDS files under them,
+    # searched with the name and brand.
+    also = source == "usda"
+    connection.executescript(f"""
         CREATE TABLE staged (id TEXT PRIMARY KEY, name TEXT NOT NULL, brand TEXT NOT NULL,
                              barcode TEXT, popularity REAL NOT NULL, markets TEXT NOT NULL,
-                             data TEXT NOT NULL, nova INTEGER, traits INTEGER NOT NULL) WITHOUT ROWID;
+                             data TEXT NOT NULL, nova INTEGER, traits INTEGER NOT NULL
+                             {", also TEXT NOT NULL" if also else ""}) WITHOUT ROWID;
         CREATE TABLE foods (id TEXT, name TEXT NOT NULL, brand TEXT NOT NULL, barcode INTEGER,
                             popularity REAL NOT NULL, markets TEXT NOT NULL, data TEXT NOT NULL,
-                            nova INTEGER, traits INTEGER NOT NULL DEFAULT 0);
-        CREATE VIRTUAL TABLE food_search USING fts5(name, brand, content='foods', content_rowid='rowid',
+                            nova INTEGER, traits INTEGER NOT NULL DEFAULT 0
+                            {", also TEXT NOT NULL DEFAULT ''" if also else ""});
+        CREATE VIRTUAL TABLE food_search USING fts5(name, brand{", also" if also else ""}, content='foods',
+                                                    content_rowid='rowid',
                                                     tokenize='unicode61 remove_diacritics 2',
                                                     prefix='2 3', columnsize=0);
         CREATE TABLE catalog_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     """)
     stats = collections.Counter()
     peaks = collections.defaultdict(float)
-    foods = usda_foods(path, stats) if source == "usda" else off_foods(path, limits, stats)
+    if source == "usda":
+        foods = itertools.chain(usda_foods(path, stats), fndds_foods(fndds, stats) if fndds else ())
+    else:
+        foods = off_foods(path, limits, stats)
     with connection:
         for food in foods:
-            result = connection.execute("INSERT OR IGNORE INTO staged VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                        (food["id"], food["name"], food["brand"], food["barcode"],
-                                         food["popularity"], food["markets"], row_data(food),
-                                         food["nova"], food["traits"]))
+            values = (food["id"], food["name"], food["brand"], food["barcode"], food["popularity"],
+                      food["markets"], row_data(food), food["nova"], food["traits"])
+            if also:
+                values += ("\n".join(food.get("also", [])),)
+            result = connection.execute(f"INSERT OR IGNORE INTO staged VALUES ({', '.join('?' * len(values))})", values)
             if not result.rowcount:
                 stats["duplicates"] += 1
                 continue
@@ -736,10 +847,11 @@ def build(source, path, destination, limits=None):
         # The 14-digit barcode is kept as a number, and an id that is "off:" and the barcode's
         # 13-digit form, as nearly all are, is left out for the app to derive: together a sixth
         # of the catalog. The id has no index: the app never looks a food up by it.
-        connection.executescript("""
-            INSERT INTO foods (id, name, brand, barcode, popularity, markets, data, nova, traits)
+        connection.executescript(f"""
+            INSERT INTO foods (id, name, brand, barcode, popularity, markets, data, nova, traits{", also" if also else ""})
                 SELECT CASE WHEN id = 'off:' || substr(barcode, 2) THEN NULL ELSE id END,
-                       name, brand, CAST(barcode AS INTEGER), popularity, markets, data, nova, traits FROM staged
+                       name, brand, CAST(barcode AS INTEGER), popularity, markets, data, nova, traits
+                       {", also" if also else ""} FROM staged
                 ORDER BY popularity DESC, id;
             DROP TABLE staged;
             CREATE INDEX foods_barcode ON foods(barcode);
@@ -761,7 +873,8 @@ def build(source, path, destination, limits=None):
         url = source_url(source, path)
         connection.executemany("INSERT INTO catalog_meta VALUES (?, ?)", [
             ("version", version), ("license", license_id), ("attribution", notice),
-            ("source", url), ("nutrients", json.dumps(ORDER, separators=(",", ":")))])
+            ("source", f"{url} {FNDDS_URL}" if fndds else url),
+            ("nutrients", json.dumps(ORDER, separators=(",", ":")))])
         connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
     stats["terms"] = connection.execute("SELECT count(*) FROM terms").fetchone()[0]
     assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
@@ -772,6 +885,8 @@ def build(source, path, destination, limits=None):
                 "recipeSha256": recipe, "sourceSha256": digest,
                 "sha256": sha256_file(output), "bytes": output.stat().st_size,
                 "license": license_id, "developmentSample": url == OFF_SAMPLE_URL, **dict(stats)}
+    if fndds:
+        manifest.update({"fnddsUrl": FNDDS_URL, "fnddsSha256": fndds_digest})
     return manifest, dict(peaks)
 
 
@@ -802,19 +917,31 @@ if __name__ == "__main__":
     parser.add_argument("--usda", type=Path,
                         help="USDA SR Legacy JSON zip. Without it the bundled USDA catalog is kept, "
                              "since SR Legacy no longer changes, and only Open Food Facts is rebuilt.")
-    parser.add_argument("--off", type=Path, required=True)
+    parser.add_argument("--fndds", type=Path,
+                        help="USDA FNDDS (Survey Foods) JSON zip, whose fast-food and restaurant foods "
+                             "join SR Legacy's in usda.db. Needed with --usda.")
+    parser.add_argument("--off", type=Path, help="Open Food Facts export. Without it only usda.db is rebuilt.")
     args = parser.parse_args()
+    if not args.usda and not args.off:
+        parser.error("give --usda and --fndds, --off, or all three")
+    if args.usda and not args.fndds:
+        parser.error("--usda needs --fndds too, or usda.db loses its restaurant foods")
+    previous = json.loads(MANIFEST.read_text())
     if args.usda:
-        usda, peaks = build("usda", args.usda, USDA_DESTINATION)
+        usda, peaks = build("usda", args.usda, USDA_DESTINATION, fndds=args.fndds)
     else:
-        usda = json.loads(MANIFEST.read_text())["usda"]
+        usda = previous["usda"]
         kept = USDA_DESTINATION / "usda.db"
         if hashlib.sha256(kept.read_bytes()).hexdigest() != usda["sha256"]:
             raise SystemExit(f"{kept} doesn't match its manifest entry; rebuild it with --usda.")
         peaks = catalog_peaks(kept)
     # A packaged food holding over twice the richest USDA food's amount is a unit slip
     # (micrograms entered as grams), not food. Added sugar has no USDA value; its whole limits it.
-    off, _ = build("off", args.off, OFF_DESTINATION, {key: peak * 2 for key, peak in peaks.items()})
-    manifest = {"schemaVersion": SCHEMA_VERSION, "usda": usda, "off": off}
+    if args.off:
+        off, _ = build("off", args.off, OFF_DESTINATION, {key: peak * 2 for key, peak in peaks.items()})
+    else:
+        off = previous["off"]
+    # The supplements builder records its catalog here too.
+    manifest = {**previous, "schemaVersion": SCHEMA_VERSION, "usda": usda, "off": off}
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))

@@ -57,7 +57,7 @@ public final class FoodCatalog: Sendable {
     public var sources: [CatalogInfo] {
         catalogs.map { catalog in
             CatalogInfo(
-                name: catalog.kind == .generic ? "USDA FoodData Central SR Legacy" : "Open Food Facts",
+                name: catalog.kind == .generic ? "USDA FoodData Central" : "Open Food Facts",
                 version: catalog.version, license: catalog.license, attribution: catalog.attribution,
                 source: catalog.source, foods: catalog.foods)
         }

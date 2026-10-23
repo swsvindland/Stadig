@@ -168,6 +168,62 @@ struct GenericSearchTests {
         #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
     }
 
+    @Test(
+        "a restaurant food is found by what it is and where it's from, and a chain's burger by its name",
+        arguments: [
+            ("chicken nuggets", "^Chicken nuggets, from (restaurant|fast food)$"),
+            ("chicken nuggets fast food", "^Chicken nuggets, from fast food$"),
+            ("fast food fries", "^Potato, french fries, fast food$"),
+            ("pepperoni pizza restaurant", "^Pizza with pepperoni, from restaurant or fast food"),
+            ("black beans restaurant", "^Black beans, from fast food / restaurant$"),
+            ("pancakes restaurant", "^Pancakes, plain, fast food / restaurant$"),
+            ("big mac", #"^Big Mac \(McDonalds\)$"#),
+            ("whopper", #"^Whopper \(Burger King\)$"#),
+            ("mcdouble", #"^McDouble \(McDonalds\)$"#),
+        ])
+    func restaurantFoods(query: String, pattern: String) {
+        // FNDDS's fast-food and restaurant foods, beside SR Legacy's older chain items.
+        for catalog in [Catalogs.usda, Catalogs.both] {
+            let names = catalog.top(query)
+            #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
+        }
+    }
+
+    @Test(
+        "a chain's item is found by the chain's name for it, as the food FNDDS counts it as",
+        arguments: [
+            ("mcrib", "^Barbecue rib sandwich$"),
+            ("blizzard", "^Soft serve, blended with candy or cookies, from fast food$"),
+            ("dairy queen blizzard", "^Soft serve, blended with candy or cookies, from fast food$"),
+            ("frappuccino", "^Frozen (mocha )?coffee drink"),
+            ("starbucks frappuccino", "^Frozen coffee drink"),
+            ("mccafe frappe", "^Frozen coffee drink"),
+            ("coolatta", "^(Frozen coffee drink|Slush frozen drink)"),
+            ("big mac sauce", "^Thousand Island dressing$"),
+        ])
+    func chainNames(query: String, pattern: String) {
+        // USDA has none of these by the chain's name, and FNDDS files them under a plain food.
+        let names = Catalogs.usda.top(query)
+        #expect(names.first.map { matches(pattern, $0) } == true, "\(query): \(names.joined(separator: " | "))")
+    }
+
+    @Test(
+        "the chain's own item comes before the food FNDDS counts it as, though no chain was typed",
+        arguments: [
+            ("mcnuggets", "^McDONALD'S, Chicken McNUGGETS$", "^Chicken nuggets, from fast food$"),
+            ("egg mcmuffin", "^McDONALD'S, Egg McMUFFIN$", "^Egg sandwich on English muffin, with ham$"),
+            ("mcgriddle", "^McDONALD'S, Sausage McGRIDDLES$", "^Sausage griddle/pancake sandwich$"),
+            ("mcflurry", "^McDONALD'S, McFLURRY", "^Soft serve, blended with candy or cookies, from fast food$"),
+            ("taco bell taco salad", "^TACO BELL, Taco Salad$", "^Taco or tostada salad with meat$"),
+        ])
+    func chainsOwnFirst(query: String, own: String, standIn: String) {
+        // Each stand-in follows its own chain item: two McGriddles lead their two stand-ins.
+        let names = Catalogs.usda.top(query, 4)
+        let mine = names.firstIndex { matches(own, $0) }
+        let theirs = names.firstIndex { matches(standIn, $0) }
+        #expect(mine == 0 && theirs.map { $0 > 0 } == true, "\(query): \(names.joined(separator: " | "))")
+    }
+
     @Test("the person's own foods appear only for searches they have every word of")
     func personal() throws {
         let catalog = Catalogs.usda
@@ -324,6 +380,20 @@ struct SearchTests {
         // A chain USDA names is a brand of its own words, not a shorter brand inside them.
         #expect(catalog.searchCatalog("little caesars pepperoni", known: [:]).brand == ["little", "caesars"])
         #expect(catalog.searchCatalog("dominos pepperoni", known: [:]).brand == ["dominos"])
+    }
+
+    @Test("a chain's own products come before the food FNDDS counts their item as")
+    func chainsOwnBeforeStandIns() {
+        // Starbucks' bottled mocha Frappuccino, then FNDDS's frozen mocha coffee drink.
+        let mocha = catalog.names("mocha frappuccino", 3)
+        #expect(mocha.first.map { matches(#"(?i)frappuccino.*\[Starbucks\]"#, $0) } == true, "\(mocha)")
+        #expect(mocha.contains { matches("^Frozen mocha coffee drink", $0) }, "\(mocha)")
+        let flurry = catalog.names("mcflurry", 2)
+        #expect(flurry.first.map { matches("^McDONALD'S, McFLURRY", $0) } == true, "\(flurry)")
+        #expect(flurry.last.map { matches("^Soft serve, blended", $0) } == true, "\(flurry)")
+        // With the chain typed, its own item; and a plain food FNDDS names no chain for stays first.
+        #expect(catalog.top("mcdonalds mcnuggets", 1) == ["McDONALD'S, Chicken McNUGGETS"])
+        #expect(catalog.top("chicken nuggets fast food", 1) == ["Chicken nuggets, from fast food"])
     }
 
     @Test("the person's own foods lead a search, more so the more often they are eaten")

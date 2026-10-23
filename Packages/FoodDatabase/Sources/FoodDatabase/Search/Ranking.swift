@@ -240,16 +240,36 @@ struct FoodText {
 struct Entry: Sendable {
     let food: Food
     let text: FoodText
+    /// Other names the catalog files the food under: the chains' items FNDDS counts as it
+    /// ("McDonald's Chicken McNuggets" for chicken nuggets from fast food).
+    let also: [OtherName]
     /// Catalogs repeat products, so listed foods are kept one per name and brand; others by id.
     let key: String
     /// The numbers hang together (see `Food.problem`); worked out once, as catalogs keep entries.
     let plausible: Bool
 
-    init(_ food: Food) {
+    /// `also` is the catalog's other names for the food, one a line.
+    init(_ food: Food, also: String = "") {
         self.food = food
         text = FoodText(food)
+        self.also = also.isEmpty ? [] : also.split(separator: "\n").map { OtherName(String($0), source: food.source) }
         plausible = food.isPlausible
         key = food.source == .usda || food.source == .off ? "\(food.name)|\(food.brand ?? "")".lowercased() : food.id
+    }
+}
+
+/// One of a catalog's other names for a food, its words read like a name's.
+struct OtherName: Sendable {
+    let text: FoodText
+    /// The word naming what it is, stemmed: the last, or the last before "with" ("McGriddle" in
+    /// "McDonald's McGriddle with Egg"). A search finds the food by this name only when it asks for
+    /// that, so "big mac" isn't "McDonald's Big Mac sauce".
+    let head: String
+
+    init(_ name: String, source: FoodSource) {
+        text = FoodText(name: name, brand: "", source: source)
+        let main = name.range(of: " with ", options: .caseInsensitive).map { String(name[..<$0.lowerBound]) } ?? name
+        head = words(main).last.map(stem) ?? ""
     }
 }
 
@@ -609,7 +629,7 @@ func scoreFoods(
     _ seen: Named, _ foods: [Food], known: [String: Double] = [:], search: Bool = false,
     hints: RankHints = RankHints()
 ) -> [Ranked] {
-    scoreFoods(seen, foods.map(Entry.init), known: known, search: search, hints: hints)
+    scoreFoods(seen, foods.map { Entry($0) }, known: known, search: search, hints: hints)
 }
 
 func scoreFoods(
@@ -649,6 +669,8 @@ func scoreFoods(
         var food: Food
         var text: FoodText
         var match: Coverage
+        /// The catalog's other name for the food that matched, when its own name matched less.
+        var other: FoodText?
         var mine: Bool
         /// The brand is the one asked for and no longer: Papa John's, not Papa John's Salads & Produce.
         var exact: Bool
@@ -663,7 +685,19 @@ func scoreFoods(
         let entry = unique[key]!
         let food = entry.food
         let text = entry.text
-        let match = query.cover(text)
+        var match = query.cover(text)
+        // A food is also found by a chain's name for it ("mcnuggets" finds chicken nuggets from
+        // fast food), when that name says more of what was asked than its own and names what was asked.
+        var other: FoodText?
+        if match.name < 1 {
+            for name in entry.also where mentionForms.contains(where: { $0.contains { starts(name.head, $0) } }) {
+                let named = query.cover(name.text)
+                if named.name > match.name {
+                    match = named
+                    other = name.text
+                }
+            }
+        }
         let mine: Bool
         var exact = false
         if asked {
@@ -682,7 +716,7 @@ func scoreFoods(
         let name = asked && named.isEmpty && mine ? 1 : match.name
         rows.append(
             Row(
-                food: food, text: text, match: match, mine: mine, exact: exact, name: name,
+                food: food, text: text, match: match, other: other, mine: mine, exact: exact, name: name,
                 like: hints.profile.map { likeness(food, $0) } ?? 0, plausible: entry.plausible))
     }
     let sold = rows.contains { $0.mine && $0.name == 1 && $0.like > 0 }
@@ -705,6 +739,8 @@ func scoreFoods(
             + (match.usual ? 0.6 : 0) + (match.typical ? 0.3 : 0)
             - 0.5 * Double(match.partial) - 0.4 * Double(match.fixed) - 0.8 * Double(match.variations)
             - 0.25 * Double(match.others) - 0.05 * Double(match.notes)
+            // A food found by another name ranks a little below one its own name matches as well.
+            - (row.other == nil ? 0 : 0.5)
         if asked {
             // The brand asked for; then other brands' products, among them the one the search is
             // usually named after ("Kellogg's Mini-Wheats"); then plain foods.
@@ -754,6 +790,24 @@ func scoreFoods(
         // below every plausible food that matches as well.
         if !row.plausible { score -= 1.5 }
         ranked.append(Ranked(food: row.food, score: score, index: index, name: row.name))
+    }
+    // A generic food found by a chain's name for it stands in for the chain's item, so the chain's
+    // own comes just before it though no brand was typed: SR Legacy's McDonald's McNuggets, then
+    // chicken nuggets from fast food; a Starbucks mocha Frappuccino, then a frozen mocha coffee
+    // drink. The chain's own has the name's every word outside brackets, so a Big Mac "(without
+    // Big Mac Sauce)" isn't Big Mac sauce.
+    let isTheirs = { (row: Row, other: FoodText) in
+        row.other == nil && row.name == 1 && !row.text.own.isEmpty
+            && row.text.own.allSatisfy { w in other.titled.contains { same($0, w) } }
+            && other.titled.allSatisfy { w in row.text.own.contains { same(w, $0) } || row.text.said.contains { same(w, $0) } }
+    }
+    if rows.contains(where: { $0.other != nil }) {
+        for i in ranked.indices {
+            guard let other = rows[ranked[i].index].other,
+                let theirs = ranked.indices.filter({ isTheirs(rows[ranked[$0].index], other) }).max(by: { ranked[$0].score < ranked[$1].score })
+            else { continue }
+            if ranked[theirs].score <= ranked[i].score { ranked[theirs].score = ranked[i].score + 0.01 }
+        }
     }
     ranked.sort { $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index }
     return ranked
