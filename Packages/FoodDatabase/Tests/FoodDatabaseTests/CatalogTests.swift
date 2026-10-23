@@ -139,7 +139,7 @@ struct CatalogTests {
         #expect(pool.failures.load(ordering: .relaxed) == 0)
         pool.trim()
         #expect(pool.idleCount == 1)
-        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 7984) } }
+        try pool.with { connection in try connection.query("SELECT count(*) FROM foods") { #expect($0.int(0) == 8031) } }
     }
 
     @Test("generic foods say how processed they are, and which are fermented")
@@ -179,7 +179,7 @@ struct CatalogTests {
         let info = try #require(catalog.sources.first)
         #expect(info.version.hasPrefix("usda-v3-0fe8ae486a2c-dfb06ae7-"), "SR Legacy and FNDDS, packed rows")
         #expect(info.license == "CC0-1.0")
-        #expect(info.foods == 7984, "SR Legacy's 7,793 and FNDDS's 191 restaurant foods")
+        #expect(info.foods == 8031, "SR Legacy's 7,793, FNDDS's 191 restaurant foods and 47 it files chains' items under")
         #expect(info.attribution.contains("USDA") && info.attribution.contains("FNDDS"))
         let apples = try #require(catalog.search("apples").first)
         #expect(apples.food.name.hasPrefix("Apples, raw"))
@@ -231,6 +231,29 @@ struct CatalogTests {
             ])
         let fries = try #require(catalog.food(id: "usda:2709461"))
         #expect(fries.portions.first == Portion(label: "1 small fast food order", amount: 110))
+    }
+
+    @Test("an FNDDS food keeps the names of the chains' items it stands for, and only those")
+    func fnddsOtherNames() throws {
+        let usda = try #require(Catalogs.usda.catalogs.first)
+        let found = usda.match("nuggets", limit: 50)
+        // "KFC Bites" and "McDonald's Chicken McNuggets", but not the "Wendy's" or "Burger King" alone
+        // FNDDS also lists.
+        let fast = try #require(found.first { $0.food.id == "usda:2706093" })
+        #expect(fast.entry.also.count == 2)
+        #expect(fast.entry.also.last.map { $0.text.titled.contains("mcdonald") && $0.head.hasPrefix("mcnugget") } == true)
+        // A name finds its food only when the search asks for what it names: "McDonald's Big Mac
+        // sauce" is Thousand Island dressing for "big mac sauce", not for "big mac".
+        #expect(Catalogs.usda.top("big mac sauce", 1) == ["Thousand Island dressing"])
+        #expect(!Catalogs.usda.top("big mac", 5).contains("Thousand Island dressing"))
+        #expect(found.first { $0.food.name == "Chicken nuggets, from restaurant" }?.entry.also.isEmpty == true)
+        let shake = try #require(usda.match("shake", limit: 50).first { $0.food.id == "usda:2705508" })
+        #expect(shake.entry.also.count == 1, "Wendy's Frosty Shakes; Dairy Queen, Sonic and the rest alone are left out")
+        // The names are the catalog's, not the food's: nothing logged or synced carries them.
+        #expect(fast.food == Catalogs.usda.food(id: fast.food.id))
+        if let off = Catalogs.both.catalogs.last, off.kind == .branded {
+            #expect(off.match("frappuccino", limit: 20).allSatisfy { $0.entry.also.isEmpty })
+        }
     }
 
     @Test("the packaged catalog decodes compact rows, ids and barcodes", .enabled(if: Catalogs.hasOFF))
