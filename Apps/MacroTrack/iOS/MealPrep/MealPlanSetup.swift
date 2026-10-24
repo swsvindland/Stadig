@@ -45,6 +45,18 @@ struct MealPlanSetup: View {
                     Text("The rest are yours, with room kept for them in your targets.")
                 }
 
+                let bowls = [MealSlot.lunch, .dinner].filter(preferences.slots.contains)
+                if !bowls.isEmpty {
+                    Section {
+                        Toggle("One dish all week", isOn: $preferences.oneDish)
+                            .accessibilityIdentifier("mealPlanSetup.oneDish")
+                    } footer: {
+                        Text(
+                            "Every \(bowls.map { $0.label.lowercased() }.joined(separator: " and ")) from one batch, instead of two dishes taking turns."
+                        )
+                    }
+                }
+
                 Section("Diet") {
                     Picker("Diet", selection: $preferences.diet) {
                         ForEach(PlanPreferences.Diet.allCases) { Text($0.label).tag($0) }
@@ -72,6 +84,7 @@ struct MealPlanSetup: View {
 
                 Section {
                     TextField("More spicy, no salmon, cheaper…", text: $request, axis: .vertical)
+                        .accessibilityIdentifier("mealPlanSetup.request")
                 } header: {
                     Text("Anything else?")
                 } footer: {
@@ -173,6 +186,7 @@ struct MealPrepCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(plan.recipes) { recipe in
                         Label(recipe.title, systemImage: (recipe.slots.first ?? .lunch).symbol).font(.subheadline).lineLimit(1)
+                            .accessibilityIdentifier("mealPrep.dish")
                     }
                 }
                 Text("\(guide.containers) containers, about \(Format.duration(guide.minutes)) of prep.").font(.caption).foregroundStyle(.secondary)

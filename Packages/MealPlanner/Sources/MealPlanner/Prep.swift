@@ -131,9 +131,9 @@ public struct PrepGuide: Hashable, Sendable {
                         .map { "\(Self.amount($0.grams * n, Library.ingredient($0.ingredientID)!)) \($0.name.lowercased())" }
                     jobs.append(
                         Job(
-                            title: "Make the \(profile!.name.lowercased()) sauce",
+                            title: "Make the \(profile!.inSentence) sauce",
                             detail: step.replacingOccurrences(of: "{protein}", with: protein) + (sauce.isEmpty ? "" : " You need \(list(sauce))."),
-                            place: .hands, minutes: profile?.id == "curry" || profile?.id == "italian" ? 14 : 5, prep: 0))
+                            place: .hands, minutes: ["curry", "italian", "japanese-curry"].contains(profile!.id) ? 14 : 5, prep: 0))
                 }
             case .template:
                 guard let template = recipe.templateID.flatMap(Library.template) else { continue }

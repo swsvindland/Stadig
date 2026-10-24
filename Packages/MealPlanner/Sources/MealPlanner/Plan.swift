@@ -61,10 +61,12 @@ public struct PlanPreferences: Hashable, Codable, Sendable {
     public var cheaper: Bool
     /// Lean toward the quicker ones: pan and short roasts over long simmers.
     public var quicker: Bool
+    /// One bowl for every lunch and dinner, from one batch, rather than two that alternate.
+    public var oneDish: Bool
 
     public init(
         slots: Set<MealSlot> = [.lunch, .dinner], diet: Diet = .everything, avoid: Set<String> = [], want: Set<String> = [],
-        cheaper: Bool = false, quicker: Bool = false
+        cheaper: Bool = false, quicker: Bool = false, oneDish: Bool = false
     ) {
         self.slots = slots
         self.diet = diet
@@ -72,6 +74,7 @@ public struct PlanPreferences: Hashable, Codable, Sendable {
         self.want = want
         self.cheaper = cheaper
         self.quicker = quicker
+        self.oneDish = oneDish
     }
 
     /// Tags no ingredient may have.

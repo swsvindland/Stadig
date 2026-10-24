@@ -1,4 +1,5 @@
 import Foundation
+import MealPlanner
 import NutritionEngine
 import SystemCore
 import SystemStore
@@ -37,6 +38,33 @@ struct DataTests {
         #expect(fresh.entries.count == original.entries.count)
         #expect(fresh.weighIns.count == original.weighIns.count)
         #expect(fresh.lifeModes.map(\.id) == [trip.id])
+    }
+
+    @Test func aMealPlanStoredBeforeOneDishReadsAsTwoDishes() async throws {
+        let original = TestEnvironment().model()
+        SampleData.seedIfEmpty(original)
+        let plan = original.makeMealPlan(preferences: PlanPreferences(slots: [.lunch, .dinner]), start: original.today.adding(days: 1))
+        var json = try #require(JSONSerialization.jsonObject(with: SystemJSON.encoder().encode(plan)) as? [String: Any])
+        var preferences = try #require(json["preferences"] as? [String: Any])
+        preferences.removeValue(forKey: "oneDish")
+        json["preferences"] = preferences
+        let file = BackupFile(
+            app: .macroTrack,
+            records: [
+                BackupRecord(
+                    kind: MealPlan.kind, uuid: plan.id, updatedAt: plan.updatedAt, schemaVersion: 1,
+                    payload: try JSONSerialization.data(withJSONObject: json), deleted: false)
+            ])
+        let url = TestEnvironment().folder.appending(path: "Macro Track.macrobackup")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try SystemJSON.encoder().encode(file).write(to: url)
+
+        let fresh = TestEnvironment().model()
+        let summary = try await fresh.restore(from: url)
+        #expect(summary.records == 1)
+        let restored = try #require(fresh.mealPlans.first { $0.id == plan.id })
+        #expect(restored.preferences.oneDish == false)
+        #expect(restored.recipes == plan.recipes && restored.meals == plan.meals)
     }
 
     @Test func anotherAppsBackupIsRefusedBeforeAnythingIsWritten() throws {

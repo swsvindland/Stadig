@@ -73,12 +73,13 @@ public struct FoodTags: OptionSet, Hashable, Sendable {
     public static let peanuts = FoodTags(rawValue: 1 << 9)
     public static let soy = FoodTags(rawValue: 1 << 10)
 
-    /// Words people use for each, in requests and settings.
+    /// Words people use for each, in requests and settings. The first for a group is the one a
+    /// request stores and the setup's chips use: "dairy", "eggs", "nuts".
     public static let named: [(word: String, tags: FoodTags)] = [
         ("meat", [.meat, .poultry, .pork]), ("red meat", [.meat, .pork]), ("beef", .meat), ("poultry", .poultry), ("pork", .pork),
         ("fish", .fish), ("seafood", [.fish, .shellfish]), ("shellfish", .shellfish), ("dairy", .dairy), ("lactose", .dairy),
-        ("milk", .dairy), ("cheese", .dairy), ("egg", .eggs), ("eggs", .eggs), ("gluten", .gluten), ("wheat", .gluten),
-        ("nuts", .nuts), ("tree nuts", .nuts), ("peanut", .peanuts), ("peanuts", .peanuts), ("soy", .soy),
+        ("milk", .dairy), ("cheese", .dairy), ("eggs", .eggs), ("egg", .eggs), ("gluten", .gluten), ("wheat", .gluten),
+        ("nuts", .nuts), ("nut", .nuts), ("tree nuts", .nuts), ("peanuts", .peanuts), ("peanut", .peanuts), ("soy", .soy),
     ]
 }
 
@@ -189,6 +190,9 @@ public struct Profile: Hashable, Sendable, Identifiable {
     public var vegetables: Set<String>
     /// Words a request might use for it: "asian", "spicy".
     public var words: Set<String>
+
+    /// The name mid-sentence: "the teriyaki sauce", but "the Italian sauce".
+    var inSentence: String { ["tex-mex", "mediterranean", "italian", "japanese-curry"].contains(id) ? name : name.lowercased() }
 
     public static func == (a: Profile, b: Profile) -> Bool { a.id == b.id }
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -315,6 +319,8 @@ public enum Library {
             "soy-sauce", "Soy sauce", food: 174278, .extra, tags: [.soy, .gluten], aisle: .pantry, range: 0...20, typical: 12,
             pantry: true),
         Ingredient("honey", "Honey", food: 169640, .extra, aisle: .pantry, range: 0...20, typical: 8, pantry: true),
+        Ingredient(
+            "flour", "Plain flour", food: 168894, .extra, tags: .gluten, aisle: .pantry, range: 0...10, typical: 4, pantry: true),
         Ingredient("sesame", "Sesame seeds", food: 170150, .extra, aisle: .pantry, range: 0...10, typical: 3, pantry: true),
         Ingredient(
             "peanut-butter", "Peanut butter", food: 172470, .fat, tags: .peanuts, aisle: .pantry, range: 0...30, typical: 15,
@@ -425,6 +431,17 @@ public enum Library {
             proteins: ["chicken-breast", "tofu", "shrimp", "pork"],
             carbs: ["rice-white", "rice-brown", "quinoa"], vegetables: ["broccoli", "carrots", "peppers", "green-beans"],
             words: ["peanut", "thai", "satay", "asian", "nutty"]),
+        // Curry rice as it's made at home in Japan: onion, carrot and potato in a mild, thick gravy.
+        // The flour and curry powder stand in for a block of roux.
+        Profile(
+            id: "japanese-curry", name: "Japanese curry", seasoning: "curry powder, onion, soy sauce and honey",
+            spices: ["Curry powder", "Fresh ginger", "Garlic"],
+            sauce: [("onion", 40), ("potato", 80), ("flour", 4), ("soy-sauce", 6), ("honey", 5)], topping: nil,
+            sauceStep:
+                "Soften the onion in a little oil for 8 minutes, stir in the flour and 3 tablespoons of curry powder for a minute, then whisk in water a ladle at a time with the soy sauce, honey, a thumb of grated ginger and 3 cloves of garlic until it's a thick gravy. Simmer 10 minutes and stir in the {protein} and the roast potatoes.",
+            proteins: ["chicken-thigh", "chicken-breast", "beef", "pork", "tofu"],
+            carbs: ["rice-white", "rice-brown"], vegetables: ["carrots"],
+            words: ["japanese curry", "curry rice", "katsu curry", "kare", "kare raisu"]),
     ]
 
     public static let templates: [Template] = [

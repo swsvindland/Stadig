@@ -72,5 +72,14 @@ nonisolated extension FavoriteRecord: StoredRecord {
 
 nonisolated extension MealPlan: @retroactive StoredRecord {
     public static var kind: String { "meal-plan" }
-    public static var schemaVersion: Int { 1 }
+    public static var schemaVersion: Int { 2 }
+
+    /// 2 added one dish for every lunch and dinner (`PlanPreferences.oneDish`); a plan from before
+    /// has two.
+    public static func migrate(_ json: inout [String: Any], from version: Int) throws {
+        if version == 1, var preferences = json["preferences"] as? [String: Any] {
+            preferences["oneDish"] = false
+            json["preferences"] = preferences
+        }
+    }
 }

@@ -189,9 +189,10 @@ public struct MealPlanner: Sendable {
             let ranked = rankedBowls(preferences, recent: recent, variation: variation)
             if let first = ranked.first {
                 bowls.append(first)
-                // A second for variety: another protein and another flavour, else at least another protein.
-                if let second = ranked.first(where: { differs($0, first) })
-                    ?? ranked.first(where: { $0.protein.id != first.protein.id })
+                // A second for variety, unless one dish was asked for: another protein and another
+                // flavour, else at least another protein.
+                if !preferences.oneDish,
+                    let second = ranked.first(where: { differs($0, first) }) ?? ranked.first(where: { $0.protein.id != first.protein.id })
                 {
                     bowls.append(second)
                 }
@@ -324,7 +325,8 @@ public struct MealPlanner: Sendable {
         var recipes: [PlannedRecipe] = []
         var meals: [PlannedMeal] = []
 
-        // Lunch and dinner: the bowls, alternating so the same dish isn't eaten twice a day.
+        // Lunch and dinner: the bowls, alternating so the same dish isn't eaten twice a day, unless
+        // there's one.
         let bowlSlots = [MealSlot.lunch, .dinner].filter(preferences.slots.contains)
         var bowlRecipes = choices.bowls.map { bowl(for: $0, target: targets.scaled(MealSlot.lunch.share), preferences: preferences) }
         if !bowlRecipes.isEmpty {

@@ -258,7 +258,7 @@ struct MealPlannerTests {
             ("I cannot eat shrimp", ["shrimp"], []),
             ("we didn't like the cod", ["cod"], []),
             // A tag word that also names a flavour or a food is avoided as the tag too.
-            ("allergic to fish and peanut", ["fish", "peanut"], []),
+            ("allergic to fish and peanut", ["fish", "peanuts", "peanut"], []),
             ("allergic to soy", ["soy", "teriyaki"], []),
             ("no eggs", ["eggs"], []),
             ("more eggs", [], ["egg-muffins"]),
@@ -284,18 +284,107 @@ struct MealPlannerTests {
         }
     }
 
-    @Test("the model's reading and the word rules merge, and nothing avoided stays wanted")
+    @Test("the model's reading counts only for what the request names, and nothing avoided stays wanted")
     func assistantMerge() {
-        // The model avoids the tag; a wish for its foods from the word rules goes.
-        let merged = PlanAssistant.merge(PlanChange(avoid: ["fish"]), words: PlanChange(want: ["salmon", "cod", "curry"]))
-        #expect(merged.avoid == ["fish"] && merged.want == ["curry"], "\(merged)")
-        #expect(merged.summary == "No fish · more Curry")
-        // The word rules add what the model missed, and a diet from either side rules foods out.
-        let diet = PlanAssistant.merge(PlanChange(want: ["beef", "tex-mex"], diet: .vegetarian), words: PlanChange(avoid: ["dairy"], quicker: true))
-        #expect(diet.avoid == ["dairy"] && diet.want == ["tex-mex"] && diet.diet == .vegetarian && diet.quicker == true, "\(diet)")
+        func merged(_ request: String, avoid: [String], want: [String]) -> PlanChange {
+            let (words, named) = PlanRequests.reading(request)
+            return PlanAssistant.merge(PlanRequests.read(avoid: avoid, want: want), words: words, named: named)
+        }
+        // The word rules read "but chicken" as more chicken; the model's avoid wins.
+        let butChicken = merged("I'd love anything but chicken", avoid: ["chicken"], want: [])
+        #expect(butChicken.avoid == ["chicken-breast", "chicken-thigh"] && butChicken.want.isEmpty, "\(butChicken)")
+        // A wish the model reads for something left out goes: more fish is cod, not salmon.
+        let noSalmon = merged("more fish, but no salmon", avoid: ["salmon"], want: ["fish"])
+        #expect(noSalmon.avoid == ["salmon"] && noSalmon.want == ["cod"], "\(noSalmon)")
+        // The device model's own replies (macOS 27, 24 October 2026): the whole menu, or an allergy,
+        // from words that name none of it. Only what the request names is kept.
+        let curry = merged(
+            "combine or same meal for lunch and dinner, just do a high protein Japanese curry",
+            avoid: ["rice", "quinoa", "pasta", "potatoes", "sweet potatoes", "vegetables"],
+            want: ["chicken", "turkey", "beef", "pork", "salmon", "cod", "shrimp", "tofu"])
+        #expect(curry == PlanChange(want: ["japanese-curry"], oneDish: true), "\(curry)")
+        #expect(curry.summary == "One dish all week · more Japanese curry")
+        #expect(merged("high protein please", avoid: ["gluten"], want: ["salmon", "curry"]).isEmpty)
+        #expect(merged("I'm really busy this week", avoid: ["gluten"], want: ["beef", "pasta"]) == PlanChange(quicker: true))
+        // Nor the other flavour a dish's name is made of: "Japanese" alone is teriyaki.
+        #expect(merged("a Japanese curry", avoid: [], want: ["Japanese", "curry"]).want == ["japanese-curry"])
         // A model reply with nothing in it leaves the word rules' reading.
         let words = PlanRequests.read("no chicken, something spicy")
-        #expect(PlanAssistant.merge(PlanChange(), words: words) == words)
+        #expect(merged("no chicken, something spicy", avoid: [], want: []) == words)
+    }
+
+    @Test("one dish for every lunch and dinner, asked for in a request")
+    func oneDishRequests() {
+        for request in [
+            "combine or same meal for lunch and dinner, just do a high protein Japanese curry",
+            "Same meal for lunch and dinner. Just do a high protein Japanese curry",
+            "Instead of two different meals just do Japanese curry for lunch and dinner",
+            "Japanese curry for both lunch and dinner",
+        ] {
+            let change = PlanRequests.read(request)
+            #expect(change.oneDish == true && change.want == ["japanese-curry"] && change.avoid.isEmpty, "\(request): \(change)")
+        }
+        #expect(PlanRequests.read("just one dish this week").oneDish == true)
+        #expect(PlanRequests.read("more variety please").oneDish == false)
+        #expect(PlanRequests.read("not the same meal for lunch and dinner").oneDish == false)
+        #expect(PlanRequests.read("I don't need variety").oneDish == true)
+        // The week, not the dish.
+        #expect(PlanRequests.read("the same meals as last week but no pork").oneDish == nil)
+        #expect(PlanRequests.read("no fish").oneDish == nil)
+        // A wish for one week of curry doesn't stop at the flavour's first dish.
+        #expect(PlanRequests.read("curry").want == ["curry"])
+    }
+
+    @Test("one dish is one batch for every lunch and dinner, through swaps, other dishes and a change back")
+    func oneDish() throws {
+        let preferences = PlanChange(want: ["japanese-curry"], oneDish: true).applied(to: PlanPreferences(slots: Set(MealSlot.allCases)))
+        let plan = planner.plan(start: monday, targets: cut, preferences: preferences)
+        let bowls = plan.recipes.filter { $0.kind == .bowl }
+        let bowl = try #require(bowls.first)
+        #expect(bowls.count == 1 && bowl.servings == 14, "\(plan.recipes.map(\.title))")
+        #expect(bowl.profileID == "japanese-curry" && bowl.title.hasPrefix("Japanese curry "), "\(bowl.title)")
+        #expect(plan.meals.filter { $0.slot == .lunch || $0.slot == .dinner }.allSatisfy { $0.recipeID == bowl.id })
+        // Still sized to the day: one dish isn't a smaller or bigger one.
+        for day in plan.days {
+            let n = plan.planned(on: day)
+            #expect(abs(n.kcal - cut.kcal) / cut.kcal < 0.08, "\(day): \(Int(n.kcal)) kcal")
+            #expect(n.protein >= cut.protein * 0.9, "\(day): \(Int(n.protein)) g protein")
+        }
+        // Kept for days 1 to 3, then frozen, as any batch.
+        #expect(plan.meals.filter { $0.recipeID == bowl.id && $0.storage == .freezer }.count == 8)
+
+        let swapped = planner.swap(bowl.id, in: plan, now: prepMorning)
+        let swappedBowls = swapped.recipes.filter { $0.kind == .bowl }
+        #expect(swappedBowls.count == 1 && swappedBowls[0].id != bowl.id && swappedBowls[0].servings == 14)
+        #expect(swappedBowls[0].profileID == "japanese-curry", "still what was asked for: \(swappedBowls[0].title)")
+        let shuffled = planner.shuffle(plan, variation: 1, now: prepMorning)
+        #expect(shuffled.recipes.filter { $0.kind == .bowl }.count == 1)
+
+        let two = planner.replan(plan, preferences: PlanChange(oneDish: false).applied(to: plan.preferences), now: prepMorning)
+        let twoBowls = two.recipes.filter { $0.kind == .bowl }
+        #expect(twoBowls.count == 2 && twoBowls.allSatisfy { $0.servings == 7 }, "\(two.recipes.map(\.title))")
+        #expect(twoBowls.contains { $0.profileID == "japanese-curry" })
+    }
+
+    @Test("a Japanese curry: carrot and potato in a thickened curry gravy over rice")
+    func japaneseCurry() throws {
+        let plan = planner.plan(start: monday, targets: cut, preferences: PlanPreferences(want: ["japanese-curry"], oneDish: true))
+        let bowl = try #require(plan.recipes.first)
+        #expect(
+            Set(bowl.items.map(\.ingredientID)).isSuperset(of: ["carrots", "potato", "onion", "flour", "soy-sauce"]), "\(bowl.items.map(\.name))")
+        #expect(bowl.items.contains { $0.ingredientID.hasPrefix("rice") })
+        let guide = PrepGuide.make(for: plan)
+        let sauce = try #require(guide.steps.first { $0.title == "Make the Japanese curry sauce" }, "\(guide.steps.map(\.title))")
+        #expect(sauce.detail.contains("flour") && sauce.detail.contains("roast potatoes") && sauce.minutes == 14)
+        #expect(guide.steps.contains { $0.title == "Prep for the oven: potatoes" })
+        #expect(guide.containers == 14)
+        let groceries = Groceries.list(for: plan)
+        #expect(groceries.contains { $0.id == "flour" && $0.pantry })
+        #expect(groceries.contains { $0.id == "spice:Curry powder" })
+        // Gluten-free leaves it out: the gravy is thickened with flour.
+        #expect(
+            !planner.plan(start: monday, targets: cut, preferences: PlanPreferences(avoid: ["gluten"], want: ["japanese-curry"]))
+                .recipes.contains { $0.profileID == "japanese-curry" })
     }
 
     @Test("diet words and cost or time")
@@ -305,8 +394,17 @@ struct MealPlannerTests {
         #expect(vegan.diet == .vegetarian && vegan.avoid.isSuperset(of: ["dairy", "eggs"]))
         #expect(PlanRequests.read("cheaper this week, money's tight").cheaper == true)
         #expect(PlanRequests.read("I'm short on time").quicker == true)
+        #expect(PlanRequests.read("busy week").quicker == true)
+        // Allergies and intolerances, however they're put, by the setup's word for the group.
+        #expect(PlanRequests.read("I'm lactose intolerant").avoid == ["dairy"])
+        #expect(PlanRequests.read("I have a nut allergy").avoid == ["nuts"])
+        #expect(PlanRequests.read("an allergy to shellfish, more salmon") == PlanChange(avoid: ["shellfish"], want: ["salmon"]))
+        #expect(PlanRequests.read("I'm coeliac").avoid == ["gluten"])
+        #expect(PlanRequests.read("peanut-free, please").avoid == ["peanuts"])
+        // Words inside other words don't count: breakfast isn't fast.
+        #expect(PlanRequests.read("the same breakfast every day").quicker == nil)
         // Tidied phrases from the model read the same way.
-        let tidy = PlanRequests.read(avoid: ["seafood", "chicken"], want: ["Mexican"], diet: "", cheaper: false, quicker: false)
+        let tidy = PlanRequests.read(avoid: ["seafood", "chicken"], want: ["Mexican"])
         #expect(tidy.avoid == ["seafood", "chicken-breast", "chicken-thigh"] && tidy.want == ["tex-mex"])
         // Applied, an avoided thing stops being wanted, and a new wish replaces the last.
         var preferences = PlanPreferences(want: ["salmon"])

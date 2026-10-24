@@ -9,19 +9,21 @@ public struct PlanChange: Hashable, Sendable {
     public var diet: PlanPreferences.Diet?
     public var cheaper: Bool?
     public var quicker: Bool?
+    public var oneDish: Bool?
 
     public init(
         avoid: Set<String> = [], want: Set<String> = [], diet: PlanPreferences.Diet? = nil, cheaper: Bool? = nil,
-        quicker: Bool? = nil
+        quicker: Bool? = nil, oneDish: Bool? = nil
     ) {
         self.avoid = avoid
         self.want = want
         self.diet = diet
         self.cheaper = cheaper
         self.quicker = quicker
+        self.oneDish = oneDish
     }
 
-    public var isEmpty: Bool { avoid.isEmpty && want.isEmpty && diet == nil && cheaper == nil && quicker == nil }
+    public var isEmpty: Bool { avoid.isEmpty && want.isEmpty && diet == nil && cheaper == nil && quicker == nil && oneDish == nil }
 
     /// The preferences with this change: an avoided thing is no longer wanted, and the other way round.
     public func applied(to preferences: PlanPreferences) -> PlanPreferences {
@@ -34,6 +36,7 @@ public struct PlanChange: Hashable, Sendable {
         if !want.isEmpty { p.want = want }
         if let cheaper { p.cheaper = cheaper }
         if let quicker { p.quicker = quicker }
+        if let oneDish { p.oneDish = oneDish }
         return p
     }
 
@@ -41,6 +44,7 @@ public struct PlanChange: Hashable, Sendable {
     public var summary: String {
         var parts: [String] = []
         if let diet { parts.append(diet.label) }
+        if let oneDish { parts.append(oneDish ? "one dish all week" : "two dishes") }
         if !avoid.isEmpty { parts.append("no " + PlanRequests.names(avoid).joined(separator: ", ")) }
         if !want.isEmpty { parts.append("more " + PlanRequests.names(want).joined(separator: ", ")) }
         if cheaper == true { parts.append("cheaper") }
@@ -50,8 +54,8 @@ public struct PlanChange: Hashable, Sendable {
 }
 
 /// Reads a request ("no fish this week, and I'm sick of chicken") into a plan change, by its
-/// words. The on-device model, when there is one, first tidies messy requests into short phrases
-/// this reads the same way.
+/// words. The on-device model, when there is one, reads it too, into short phrases this reads the
+/// same way; `PlanAssistant.merge` keeps the ones for foods the request names.
 public enum PlanRequests {
     /// Words for building blocks, flavours and breakfasts, longest phrases first when matched.
     static let vocabulary: [(phrase: String, ids: [String])] = {
@@ -88,41 +92,55 @@ public enum PlanRequests {
         "doesnt", "doesn't", "didnt", "didn't", "won't", "wouldnt", "wouldn't", "sick",
         "tired", "bored", "except", "nothing", "instead", "lose", "ditch", "swap", "replace",
     ]
-    /// Words that end what a negation covers: "no chicken, more salmon". Not "and" or "or", which
-    /// carry it along a list: "allergic to shellfish and peanuts".
+    /// Words that end what a negation covers: "no chicken, more salmon", "no pasta just rice". Not
+    /// "and" or "or", which carry it along a list: "allergic to shellfish and peanuts".
     static let breaks: Set<String> = [
         ",", ";", ".", "but", "though", "more", "want", "add", "love", "like", "prefer", "please",
-        "with", "plus",
+        "with", "plus", "just",
     ]
     /// Breaks that belong to the negation just before them: "don't want", "not like", "no more".
     static let negatedVerbs: Set<String> = ["want", "like", "love", "prefer", "more"]
-    /// Words that can sit between a negation and its verb: "don't really want", "don't want to eat any more".
-    static let fillers: Set<String> = ["really", "much", "particularly", "even", "actually", "any", "to", "eat", "have"]
+    /// Words that can sit between a negation and its verb: "don't really want", "don't want to eat any more",
+    /// "don't just give me".
+    static let fillers: Set<String> = ["really", "much", "particularly", "even", "actually", "any", "to", "eat", "have", "just"]
+    /// After a food group, these leave it out: "lactose intolerant", "a nut allergy". Before one,
+    /// with "to" or "of": "an allergy to shellfish".
+    static let allergies: Set<String> = ["intolerant", "intolerance", "allergy", "allergies", "sensitive", "sensitivity"]
     /// A verb starting a new clause after "and" ends the negation the way a comma would: "no rice
     /// and use quinoa", "no fish and make it spicy". Elsewhere they're just words: "can't eat fish".
     static let clauseVerbs: Set<String> = ["use", "try", "do", "make", "give", "have", "eat", "get", "include", "go", "put", "keep"]
 
-    public static func read(_ text: String) -> PlanChange {
+    public static func read(_ text: String) -> PlanChange { reading(text).change }
+
+    /// The change a request asks for, and every food, flavour and food group it names, wanted or
+    /// not: all the model's reading may use (`PlanAssistant.merge`).
+    static func reading(_ text: String) -> (change: PlanChange, named: Set<String>) {
         var change = PlanChange()
+        var named: Set<String> = []
         let lower = text.lowercased().replacingOccurrences(of: "’", with: "'")
+        let tokens = tokenize(lower)
+        let words = " \(tokens.joined(separator: " ")) "
         // Phrases that aren't single foods.
-        if lower.contains("vegan") {
+        if says(words, ["vegan"]) {
             change.diet = .vegetarian
             change.avoid.formUnion(["dairy", "eggs"])
-        } else if contains(lower, ["vegetarian", "veggie", "meatless", "plant-based", "plant based", "no meat"]) {
+        } else if says(words, ["vegetarian", "veggie", "meatless", "plant-based", "plant based", "no meat"]) {
             change.diet = .vegetarian
-        } else if lower.contains("pescatarian") || lower.contains("pescetarian") {
+        } else if says(words, ["pescatarian", "pescetarian"]) {
             change.diet = .pescatarian
-        } else if contains(lower, ["meat again", "eat everything", "anything is fine", "back to normal"]) {
+        } else if says(words, ["meat again", "eat everything", "anything is fine", "back to normal"]) {
             change.diet = .everything
         }
-        if contains(lower, ["cheap", "budget", "save money", "less expensive", "affordable"]) { change.cheaper = true }
-        if contains(lower, ["quick", "fast", "less time", "easy", "simple", "short on time", "lazy"]) { change.quicker = true }
-        for (word, _) in FoodTags.named where lower.contains("\(word)-free") || lower.contains("\(word) free") {
-            change.avoid.insert(word)
+        if says(words, ["cheap", "budget", "save money", "less expensive", "affordable"]) { change.cheaper = true }
+        if says(words, ["quick", "fast", "less time", "no time", "busy", "easy", "simple", "short on time", "lazy"]) {
+            change.quicker = true
         }
+        for (word, _) in FoodTags.named where says(words, ["\(word)-free", "\(word) free"]) {
+            if let group = group(word) { change.avoid.insert(group) }
+        }
+        if says(words, ["coeliac", "celiac"]) { change.avoid.insert("gluten") }
 
-        let tokens = tokenize(lower)
+        change.oneDish = oneDish(tokens)
         var negated = false
         // Just after a negation, where "want" or "more" is still part of it.
         var verbOfNegation = false
@@ -140,7 +158,7 @@ public enum PlanRequests {
                 i += 1
                 continue
             }
-            if negations.contains(token) {
+            if negations.contains(token) || (allergies.contains(token) && i + 1 < tokens.count && ["to", "of"].contains(tokens[i + 1])) {
                 negated = true
                 verbOfNegation = true
                 i += 1
@@ -150,10 +168,14 @@ public enum PlanRequests {
             var matched = false
             for length in stride(from: 3, through: 1, by: -1) where i + length <= tokens.count {
                 let phrase = tokens[i..<i + length].joined(separator: " ")
-                let tag = FoodTags.named.first { $0.word == phrase }?.word
+                let tag = group(phrase)
                 let ids = vocabulary.filter { $0.phrase == phrase }.flatMap(\.ids)
                 guard tag != nil || !ids.isEmpty else { continue }
-                if negated {
+                named.formUnion(ids)
+                if let tag { named.insert(tag) }
+                named.formUnion(wantedTags[phrase] ?? [])
+                let allergy = tag != nil && i + length < tokens.count && allergies.contains(tokens[i + length])
+                if negated || allergy {
                     // A tag word leaves out everything with it, even when it also names a food or a
                     // flavour: "allergic to peanut" is the Peanut-lime bowl and peanuts, "no soy" is
                     // teriyaki and soy sauce, "no eggs" is every egg.
@@ -170,8 +192,40 @@ public enum PlanRequests {
             if !matched { i += 1 }
         }
         change.want = remaining(change.want, avoiding: change.avoid, diet: change.diet)
-        return change
+        named.formUnion(change.avoid)
+        return (change, named)
     }
+
+    /// True for one dish all week ("the same meal for lunch and dinner", "just one dish"), false
+    /// for two again ("more variety"), nil when the request says neither. A negation just before
+    /// turns a phrase round: "not the same meal", "instead of two different meals".
+    static func oneDish(_ tokens: [String]) -> Bool? {
+        let meals = tokens.contains("lunch") && tokens.contains("dinner")
+        let one =
+            [
+                "same meal", "same dish", "same bowl", "same recipe", "same thing every day", "same every day", "one dish", "one bowl",
+                "one recipe", "single dish", "single meal",
+            ] + (meals ? ["same", "single", "combine", "combined", "identical", "both"] : [])
+        let two =
+            ["two dishes", "two meals", "two bowls", "two recipes", "different dishes", "different meals", "variety", "mix it up"]
+            + (meals ? ["different"] : [])
+        for (phrases, asked) in [(one, true), (two, false)] {
+            for phrase in phrases {
+                let words = phrase.split(separator: " ").map(String.init)
+                guard tokens.count >= words.count,
+                    let start = (0...tokens.count - words.count).first(where: { tokens[$0..<$0 + words.count].elementsEqual(words) })
+                else { continue }
+                var before = start - 1
+                while before >= 0, leadIns.contains(tokens[before]) { before -= 1 }
+                return before >= 0 && negations.contains(tokens[before]) ? !asked : asked
+            }
+        }
+        return nil
+    }
+
+    /// Words that can sit between a negation and the phrase it turns round: "instead of two
+    /// different meals", "don't want the same meal".
+    static let leadIns: Set<String> = ["of", "the", "a", "two", "need", "want", "really", "have", "do", "any", "to"]
 
     /// What's still wanted once the avoided things are out: an avoided id, or a food the avoided
     /// tags or the diet rule out ("no fish" is no salmon either; a vegetarian diet isn't also a wish
@@ -181,32 +235,27 @@ public enum PlanRequests {
         return want.filter { id in !avoid.contains(id) && (Library.ingredient(id).map(preferences.allows) ?? true) }
     }
 
-    /// Reads short phrases the model tidied a request into.
-    public static func read(avoid: [String], want: [String], diet: String, cheaper: Bool, quicker: Bool) -> PlanChange {
+    /// Reads short phrases the model tidied a request into: only foods and flavours, since the
+    /// word rules read the diet, cost and time from the request itself.
+    public static func read(avoid: [String], want: [String]) -> PlanChange {
         var change = PlanChange()
-        for phrase in avoid {
-            let read = self.read("no \(phrase)")
-            change.avoid.formUnion(read.avoid)
-            if read.diet != nil { change.diet = read.diet }
-        }
-        for phrase in want {
-            let read = self.read(phrase)
-            change.want.formUnion(read.want)
-            if read.diet != nil { change.diet = read.diet }
-        }
-        switch diet.lowercased() {
-        case "vegetarian", "vegan": change.diet = .vegetarian
-        case "pescatarian": change.diet = .pescatarian
-        case "everything": change.diet = .everything
-        default: break
-        }
-        if cheaper { change.cheaper = true }
-        if quicker { change.quicker = true }
-        change.want = remaining(change.want, avoiding: change.avoid, diet: change.diet)
+        for phrase in avoid { change.avoid.formUnion(read("no \(phrase)").avoid) }
+        for phrase in want { change.want.formUnion(read(phrase).want) }
+        change.want = remaining(change.want, avoiding: change.avoid)
         return change
     }
 
-    static func contains(_ text: String, _ phrases: [String]) -> Bool { phrases.contains { text.contains($0) } }
+    /// Whether any of the phrases is in the request's words (`" no fish , cheaper "`), starting at
+    /// a word: "cheap" is in "cheaper", "fast" isn't in "breakfast" nor "nut-free" in "peanut-free".
+    static func says(_ words: String, _ phrases: [String]) -> Bool { phrases.contains { words.contains(" \($0)") } }
+
+    /// The word a request leaves a food group out by: the first `FoodTags.named` has for it, which
+    /// the setup's chips use too, so "lactose intolerant" shows as Dairy left out. Nil for a word
+    /// that isn't a food group.
+    static func group(_ word: String) -> String? {
+        guard let tags = FoodTags.named.first(where: { $0.word == word })?.tags else { return nil }
+        return FoodTags.named.first { $0.tags == tags }?.word
+    }
 
     static func tokenize(_ text: String) -> [String] {
         var tokens: [String] = []
