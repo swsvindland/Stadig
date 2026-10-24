@@ -16,6 +16,8 @@ enum SessionStep: Equatable {
     /// Mobility, warm-up, stretches and unloaded holds: a countdown or a count, then Done.
     case timed(item: Int, set: Int)
     case conditioning(item: Int)
+    /// The sauna or steam room, in a session the iPhone runs: the thermometer is logged there.
+    case heat(item: Int)
     /// Everything is done, or the person chose to end: feedback, then save.
     case finish
 }
@@ -45,8 +47,10 @@ struct SessionSummary: Equatable {
     var ratings: [SetRating: Int]
     var conditioningMinutes: Int
     var averageHeartRate: Double?
+    /// The iPhone ran the session and saved it; this Watch logged into it.
+    var savedOnPhone: Bool
 
-    init(_ record: SessionRecord) {
+    init(_ record: SessionRecord, savedOnPhone: Bool = false) {
         title = record.title
         minutes = record.minutes
         exercises = record.exercises.count
@@ -54,12 +58,16 @@ struct SessionSummary: Equatable {
         ratings = Dictionary(grouping: record.workSets.compactMap(\.rating)) { $0 }.mapValues(\.count)
         conditioningMinutes = record.conditioning.map(\.minutes).reduce(0, +)
         averageHeartRate = record.averageHeartRate
+        self.savedOnPhone = savedOnPhone
     }
 }
 
 /// The Watch's state: the phone's latest context, the session in progress and its live workout.
-/// The session is the same pure state machine the phone runs; this model persists it after every
-/// change, feeds it heart rate, and keeps the timers and haptics that rests and drills need.
+/// The session is the same pure state machine the phone runs, and it's one of two kinds. Started
+/// here, it's the Watch's own: this model persists it after every change, and the record goes to
+/// the phone at the end. Started on the iPhone, the Watch measures heart rate for it and shows a
+/// copy of it (`mirrored`): every change made here goes to the phone, which sends its session back.
+/// Either way the model feeds it heart rate and keeps the timers and haptics that rests and drills need.
 @MainActor @Observable
 final class WatchModel {
     /// One model: the app's scene and the phone's request to start a workout share it.
@@ -72,10 +80,19 @@ final class WatchModel {
     private(set) var companionSince: Date?
 
     private(set) var context: PhoneContext?
+    /// The session on screen: this Watch's own, or its copy of the phone's.
     private(set) var session: StoredSession?
+    /// The session the iPhone runs, while this Watch logs into it; nil when the session on screen
+    /// (if any) is this Watch's own.
+    private(set) var mirrored: MirroredSession?
+    /// Ending the phone's session was asked for here, until the phone says it's over.
+    private(set) var endingOnPhone: MirrorMessage?
     /// The last finished session, until the person dismisses it.
     var summary: SessionSummary?
     private(set) var notice: Notice?
+    /// Moves when a rest in the phone's session runs out, so the screen moves on: the phone keeps the
+    /// rest until the next set is logged (that set's rest is timed from it), as the Watch's copy does.
+    private(set) var restsRunOut = 0
     /// False skips HealthKit (sample sessions in the simulator).
     var healthEnabled = true
     #if DEBUG
@@ -86,6 +103,16 @@ final class WatchModel {
     @ObservationIgnored private var alarm: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var lastSave = Date.distantPast
+    /// The context the phone sent with its session: the gym, loads and zones it runs it with.
+    @ObservationIgnored private var mirroredContext: PhoneContext?
+    /// Asks the phone again for what it hasn't answered, while measuring for it.
+    @ObservationIgnored private var linkRetry: Task<Void, Never>?
+    /// Sends over the workout not yet returned, nor ten seconds old. A send there can hang; while
+    /// three are out, only WatchConnectivity carries messages.
+    @ObservationIgnored private var mirrorSendsInFlight: Set<UUID> = []
+    /// The phone's sessions this Watch has left, the last few: a late end or copy of one (it can come
+    /// by either route, and after the next session has started) is ignored.
+    @ObservationIgnored private var leftSessions: [UUID] = []
     private static let restoreWindow: TimeInterval = 6 * 3600
 
     init() {
@@ -102,6 +129,7 @@ final class WatchModel {
         workout.onEndedRemotely = { [weak self] in self?.stopCompanion() }
         // Wired here rather than from a view: a background wake to deliver a context may never render one.
         PhoneLink.shared.onContext = { [weak self] context in self?.receive(context) }
+        PhoneLink.shared.onMirror = { [weak self] data in self?.fromPhone(data) }
         PhoneLink.shared.activate()
     }
 
@@ -149,11 +177,42 @@ final class WatchModel {
 
     /// Today's planned session was already finished on this Watch (an old plan's isn't today's).
     var finishedToday: Bool {
-        guard let plan = context?.plan, !isStale, let done = UserDefaults.standard.string(forKey: "finished") else { return false }
-        return done == Self.finishedKey(plan)
+        guard let plan = context?.plan, !isStale else { return false }
+        return Self.isFinished(plan)
     }
 
+    /// Home offers the session after the phone's plan: this Watch has done the plan since the phone
+    /// last planned (on an earlier day, so the phone was left behind), and the program goes on.
+    var offersFollowing: Bool {
+        guard isStale, let plan = context?.plan, let following = context?.following else { return false }
+        return Self.isFinished(plan) && !Self.isFinished(following)
+    }
+
+    /// The session Home offers: the phone's plan, or the one after it (`offersFollowing`).
+    var upcoming: SessionPlan? { offersFollowing ? context?.following : context?.plan }
+
     private static func finishedKey(_ plan: SessionPlan) -> String { "\(plan.day.iso) \(plan.dayID?.uuidString ?? plan.title)" }
+
+    /// The plans this Watch has finished sessions of, oldest first, the last ten.
+    private static var finishedPlans: [String] {
+        get {
+            var plans = UserDefaults.standard.stringArray(forKey: "finishedPlans") ?? []
+            // Builds before this kept only the last one.
+            if let old = UserDefaults.standard.string(forKey: "finished"), !plans.contains(old) { plans.insert(old, at: 0) }
+            return plans
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue.suffix(10)), forKey: "finishedPlans")
+            UserDefaults.standard.removeObject(forKey: "finished")
+        }
+    }
+
+    private static func isFinished(_ plan: SessionPlan) -> Bool { finishedPlans.contains(finishedKey(plan)) }
+
+    private static func markFinished(_ plan: SessionPlan) {
+        let key = finishedKey(plan)
+        finishedPlans = finishedPlans.filter { $0 != key } + [key]
+    }
 
     // MARK: Where we are
 
@@ -164,17 +223,29 @@ final class WatchModel {
     var unit: WeightUnit { sessionContext?.gym.unit ?? .kg }
     var zones: HeartRateZones { sessionContext?.zones ?? .estimated(age: nil, resting: nil) }
 
+    /// The iPhone runs the session on screen; this Watch logs into it.
+    var phoneLed: Bool { mirrored != nil }
+
     /// The item and set to do next, in the session's order (which "Do This Now" changes), alternating
     /// within a superset.
     var position: (item: Int, set: Int)? { session?.live.current }
 
+    /// The item to do next, by id: the phone's "Do This Now" can put another exercise at the same
+    /// place on the same set number, which `step` alone wouldn't show.
+    var currentItemID: UUID? {
+        guard let live, let position else { return nil }
+        return live.items[position.item].id
+    }
+
     var step: SessionStep? {
+        _ = restsRunOut
         guard let stored = session else { return nil }
-        if stored.wrappingUp { return .finish }
-        if stored.live.rest != nil { return .rest }
+        if stored.wrappingUp || endingOnPhone != nil { return .finish }
+        if let rest = stored.live.rest, mirrored == nil || rest.endsAt > Date() { return .rest }
         guard let (item, set) = position else { return .finish }
         let planned = stored.live.items[item].plan
         if planned.role == .conditioning || planned.conditioning != nil { return .conditioning(item: item) }
+        if planned.role == .recovery, mirrored != nil { return .heat(item: item) }
         let exercise = catalog.resolve(stored.live.items[item].exerciseID)
         if !planned.isStrength || (exercise.timed && exercise.loadBasis == .none) { return .timed(item: item, set: set) }
         return .set(item: item, set: set)
@@ -189,6 +260,15 @@ final class WatchModel {
         sessionContext?.gym.increments(for: exercise.equipment)
     }
 
+    /// What an item's exercise could be swapped for here, closest first. It searches the whole
+    /// library, so off the main actor.
+    func swaps(for item: Int) async -> [Exercise] {
+        guard let context = sessionContext, let live, live.items.indices.contains(item), live.items[item].plan.isStrength else { return [] }
+        let exercise = exercise(item)
+        let catalog = catalog
+        return await Task.detached(priority: .userInitiated) { context.swaps(for: exercise, catalog: catalog, limit: 8) }.value
+    }
+
     /// Where the crown starts: the prescribed load, else a sensible guess for a finding-weight set
     /// (the last load used, the phone's estimate, none for bodyweight and assisted work, else the
     /// lightest makeable load).
@@ -198,10 +278,11 @@ final class WatchModel {
         let exercise = catalog.resolve(item.exerciseID)
         guard exercise.loadBasis != .none else { return nil }
         if let load = item.sets[setIndex].prescription.loadKg { return load }
-        if let last = item.loggedSets.last { return last.loadKg }
-        if let last = context?.history[item.exerciseID]?.last(where: { $0.kind.countsAsWork }) { return last.loadKg }
+        if let last = item.loggedSets.last(where: { $0.exerciseID == item.exerciseID }) { return last.loadKg }
+        let known = sessionContext?.history[item.exerciseID] ?? context?.history[item.exerciseID]
+        if let last = known?.last(where: { $0.kind.countsAsWork }) { return last.loadKg }
         // The phone's guess from bodyweight and experience, so a heavy leg press isn't a long crown turn away.
-        if let guess = context?.startingLoads?[item.exerciseID] { return guess }
+        if let guess = sessionContext?.startingLoads?[item.exerciseID] ?? context?.startingLoads?[item.exerciseID] { return guess }
         switch exercise.loadBasis {
         case .bodyweightPlus, .assisted, .none: return 0
         case .external, .perHand: return increments(for: exercise)?.around(nil).first { $0 > 0 } ?? 0
@@ -230,13 +311,10 @@ final class WatchModel {
     }
 
     func log(item: Int, set: Int, reps: Int, loadKg: Double?, rating: SetRating?, seconds: Int? = nil) {
-        guard let environment = session?.context.environment(catalog: catalog) else { return }
+        guard let id = itemID(item) else { return }
         let peak = workout.heartRate
-        update { stored in
-            stored.live.log(
-                item: item, set: set, reps: reps, loadKg: loadKg, rating: rating, seconds: seconds,
-                heartRatePeak: peak, environment: environment)
-            stored.timer = nil
+        perform(.log(item: id, set: set, reps: reps, loadKg: loadKg, rating: rating, seconds: seconds, heartRatePeak: peak)) {
+            $0.timer = nil
         }
     }
 
@@ -262,75 +340,87 @@ final class WatchModel {
 
     /// Logs conditioning with its minutes, average heart rate and minutes in each zone.
     func finishConditioning(item: Int) {
-        guard let stored = session else { return }
+        guard let stored = session, let id = itemID(item) else { return }
         let now = Date()
         let started = timer(for: item, set: 0)?.started ?? now
         let minutes = max(1, Int((now.timeIntervalSince(started) / 60).rounded()))
         let average = stored.live.averageHeartRate(from: started, to: now)
         let zoneMinutes = stored.live.zoneMinutes(from: started, to: now, zones: stored.context.zones)
-        update { stored in
-            stored.live.logConditioning(item: item, minutes: minutes, averageHeartRate: average, zoneMinutes: zoneMinutes)
-            stored.timer = nil
-        }
+        perform(.logConditioning(item: id, minutes: minutes, averageHeartRate: average, zoneMinutes: zoneMinutes)) { $0.timer = nil }
     }
 
     func skipSet(item: Int, set: Int) {
-        update { stored in
-            guard stored.live.items.indices.contains(item) else { return }
-            stored.live.skipSet(item: item, set: set)
+        guard let id = itemID(item) else { return }
+        perform(.skipSet(item: id, set: set)) { stored in
             // Its countdown would otherwise carry over to the next set.
-            if let timer = stored.timer, timer.item == stored.live.items[item].id, timer.set == set { stored.timer = nil }
+            if let timer = stored.timer, timer.item == id, timer.set == set { stored.timer = nil }
         }
     }
 
     func skip(item: Int) {
-        update { stored in
-            guard stored.live.items.indices.contains(item) else { return }
-            stored.live.skip(item: item)
-            if stored.timer?.item == stored.live.items[item].id { stored.timer = nil }
+        guard let id = itemID(item) else { return }
+        perform(.skip(item: id)) { stored in
+            if stored.timer?.item == id { stored.timer = nil }
         }
     }
 
-    func addSet(item: Int) { update { $0.live.addSet(item: item) } }
+    func addSet(item: Int) {
+        guard let id = itemID(item) else { return }
+        perform(.addSet(item: id))
+    }
+
+    /// Swaps an exercise for the rest of the session: its open sets are prescribed afresh.
+    func swap(item: Int, to exercise: Exercise) {
+        guard let id = itemID(item) else { return }
+        perform(.swap(item: id, to: exercise.id)) { stored in
+            if stored.timer?.item == id { stored.timer = nil }
+        }
+    }
 
     /// Does an item next, ahead of the plan's order: it moves up with its superset partner, as on
     /// the phone, so the pair still alternates with their own rests.
     func focus(item: Int) {
-        update { stored in
-            guard stored.live.items.indices.contains(item) else { return }
-            let id = stored.live.items[item].id
-            stored.live.doNext(item: item)
-            stored.live.endRest()
+        guard let id = itemID(item) else { return }
+        perform(.doNext(item: id)) { stored in
             // A countdown left running on the item put aside would still go off, and show again on return.
             if let timer = stored.timer, timer.item != id { stored.timer = nil }
         }
     }
 
-    func endRest() { update { $0.live.endRest() } }
+    func endRest() { perform(.endRest) }
 
-    func extendRest(by seconds: Int) { update { $0.live.extendRest(by: seconds) } }
+    func extendRest(by seconds: Int) { perform(.extendRest(seconds: seconds)) }
 
     func wrapUp() { update { $0.wrappingUp = true } }
 
     func keepGoing() { update { $0.wrappingUp = false } }
 
     /// Saves the session: the record goes to the phone and the workout to Health. A session with
-    /// nothing logged is discarded instead.
+    /// nothing logged is discarded instead. The phone's session is the phone's to save: it's asked
+    /// to, and the session closes here when it says it has.
     func finish(feedback: SessionFeedback?) {
         guard let stored = session else { return }
+        if mirrored != nil {
+            endOnPhone(.finishFromWatch(id: stored.live.id, feedback: feedback))
+            return
+        }
         let record = stored.live.record(feedback: feedback)
         guard record.hasContent else {
             discard()
             return
         }
         PhoneLink.shared.send(record)
-        UserDefaults.standard.set(Self.finishedKey(stored.live.plan), forKey: "finished")
+        Self.markFinished(stored.live.plan)
         summary = SessionSummary(record)
         close()
         Task { _ = await workout.end() }
     }
 
     func discard() {
+        if let mirrored {
+            endOnPhone(.discardFromWatch(id: mirrored.session.id))
+            return
+        }
         close()
         Task { await workout.discard() }
     }
@@ -343,7 +433,7 @@ final class WatchModel {
         if record.hasContent {
             WatchStorage.log.notice("Saving a session left unfinished since \(stored.live.updatedAt, privacy: .public)")
             PhoneLink.shared.send(record)
-            UserDefaults.standard.set(finishedKey(stored.live.plan), forKey: "finished")
+            markFinished(stored.live.plan)
         }
         WatchStorage.remove(WatchStorage.session)
     }
@@ -357,6 +447,34 @@ final class WatchModel {
 
     // MARK: Changes
 
+    /// The item's id: changes name items by id, since either device can reorder them.
+    private func itemID(_ index: Int) -> UUID? {
+        guard let live, live.items.indices.contains(index) else { return nil }
+        return live.items[index].id
+    }
+
+    /// Makes a change to the session on screen: this Watch's own, or its copy of the phone's, which
+    /// the change goes to as well. `local` changes what only this Watch keeps (its timers).
+    private func perform(_ kind: SessionChange.Kind, local: (inout StoredSession) -> Void = { _ in }) {
+        guard var stored = session else { return }
+        var environment = stored.context.environment(catalog: catalog)
+        if var copy = mirrored {
+            // Every change not yet taken, in order: one sent earlier may not have got there.
+            if copy.make(kind, environment: environment) != nil { send(.changes(copy.pending)) }
+            mirrored = copy
+            stored.live = copy.session
+        } else {
+            // A session of the Watch's own keeps no history (it's saved after every change); a swap
+            // prescribes from the history the phone sent for the plan's likely swaps.
+            if environment.history.isEmpty, let history = context?.history { environment.history = history }
+            stored.live.apply(kind, environment: environment)
+        }
+        local(&stored)
+        session = stored
+        changed()
+    }
+
+    /// A change only this Watch keeps: its timers, and whether it's wrapping up.
     private func update(_ change: (inout StoredSession) -> Void) {
         guard var stored = session else { return }
         change(&stored)
@@ -369,8 +487,9 @@ final class WatchModel {
         scheduleAlarm()
     }
 
+    /// The Watch's own session goes to disk after every change. The phone's is the phone's to keep.
     private func save() {
-        guard let session else { return }
+        guard let session, mirrored == nil else { return }
         WatchStorage.save(session, to: WatchStorage.session)
         lastSave = Date()
     }
@@ -385,10 +504,10 @@ final class WatchModel {
         }
     }
 
-    // MARK: Heart rate for the iPhone
+    // MARK: The iPhone's session
 
-    /// The phone started a session and asked for heart rate: a workout here, mirrored to it. A
-    /// session already running on this Watch carries on instead.
+    /// The phone started a session and asked for heart rate: a workout here, mirrored to it, and then
+    /// the session itself, to log into. A session already running on this Watch carries on instead.
     func startCompanion() {
         guard session == nil, companionSince == nil, healthEnabled else { return }
         // A summary still on screen from earlier would cover the heart rate and its Stop button.
@@ -406,42 +525,184 @@ final class WatchModel {
                 return
             }
             // Stopped while it was starting: nothing would ever end it.
-            if companionSince != since { await workout.discard() }
+            if companionSince != since {
+                await workout.discard()
+                return
+            }
+            send(.join)
+            startLinkRetry()
         }
     }
 
-    /// Stops measuring for the iPhone: Stop here, or the system ending the workout (another workout
-    /// app started, say). The session carries on on the phone, which saves the workout to Health
-    /// itself once it no longer sees this one, so this one is discarded rather than saved: it has no
-    /// session id yet, and the two would overlap in Health.
+    /// Stops measuring for the iPhone: Stop or Continue on iPhone here, or the system ending the
+    /// workout (another workout app started, say). The session carries on on the phone, which saves
+    /// the workout to Health itself once it no longer sees this one, so this one is discarded rather
+    /// than saved: it has no session id yet, and the two would overlap in Health.
     func stopCompanion() {
         // Never a workout this Watch's own session is running.
         guard companionSince != nil || workout.isMirrored else { return }
+        // Sets logged here that haven't landed get one last try.
+        if let pending = mirrored?.pending, !pending.isEmpty { send(.changes(pending)) }
         companionSince = nil
+        leavePhoneSession(saved: false)
         Task { await workout.discard() }
     }
 
-    /// Messages only arrive over the mirrored workout, so they act on it whatever `companionSince` says.
+    /// What the phone sends, over the workout or WatchConnectivity.
     private func fromPhone(_ data: [Data]) {
         for item in data {
-            guard let message = try? JSONDecoder().decode(MirrorMessage.self, from: item) else { continue }
+            guard let message = MirrorMessage(encoded: item) else { continue }
             switch message {
             case .finish(let id, _):
                 // The phone's session is over: this workout, with its heart rate and energy, is the one Health keeps.
+                guard endsWorkout(for: id) else { continue }
+                leavePhoneSession(saved: true)
                 companionSince = nil
                 Task { _ = await workout.end(syncID: id) }
-            case .discard:
+            case .discard(let id, let saved):
+                guard endsWorkout(for: id) else { continue }
+                leavePhoneSession(saved: saved)
                 companionSince = nil
                 Task { await workout.discard() }
-            case .heartRate:
+            case .session(let copy, let sent, let sentAt):
+                receive(copy, context: sent, sentAt: sentAt)
+            case .heartRate, .join, .changes, .finishFromWatch, .discardFromWatch:
                 break
             }
         }
     }
 
+    /// Whether the phone's end of session `id` is for the workout running here: the session on screen,
+    /// or, before its first copy has come, any but one already left (a late end of the last session,
+    /// by the slower route, mustn't end the next one's workout).
+    private func endsWorkout(for id: UUID) -> Bool {
+        guard companionSince != nil || mirrored != nil, !leftSessions.contains(id) else { return false }
+        return mirrored.map { $0.session.id == id } ?? true
+    }
+
+    /// The phone's session as it stands: shown, with what's been done here since made on top. Only
+    /// while measuring for the phone: not after Stop, and never over a session of this Watch's own,
+    /// one already left, or a copy older than the session on screen.
+    private func receive(_ copy: LiveSession, context sent: PhoneContext?, sentAt: Date) {
+        guard companionSince != nil, mirrored != nil || session == nil, !leftSessions.contains(copy.id) else { return }
+        if let mirrored, mirrored.session.id != copy.id, sentAt <= mirrored.sentAt { return }
+        if let sent { mirroredContext = sent }
+        // Without the gym's loads there's nothing to show the session with: the retry asks again.
+        guard let context = mirroredContext ?? context else { return }
+        let environment = context.environment(catalog: catalog)
+        if var here = mirrored, here.session.id == copy.id {
+            guard here.receive(copy, sentAt: sentAt, environment: environment) else { return }
+            mirrored = here
+            session?.live = here.session
+            session?.context = context
+        } else {
+            // The first copy, or a new session started on the phone (the last one's end never came).
+            if let old = mirrored { remember(left: old.session.id) }
+            mirrored = MirroredSession(copy, sentAt: sentAt)
+            session = StoredSession(live: copy, context: context)
+            endingOnPhone = nil
+            summary = nil
+            writeSnapshot()
+        }
+        // Ending waits for the sets logged here to land, so the phone saves them.
+        if let endingOnPhone, mirrored?.pending.isEmpty == true { send(endingOnPhone) }
+        scheduleAlarm()
+    }
+
+    #if DEBUG
+    /// A session as if the phone ran it and had sent it, for trying the Watch's side without a phone.
+    func followSample(_ plan: SessionPlan, context sample: PhoneContext) {
+        companionSince = Date()
+        receive(LiveSession(plan: plan, device: "iPhone"), context: sample, sentAt: Date())
+    }
+    #endif
+
+    /// Asks the phone to finish or discard its session, once what was logged here has landed.
+    private func endOnPhone(_ message: MirrorMessage) {
+        endingOnPhone = message
+        if mirrored?.pending.isEmpty == true { send(message) }
+    }
+
+    /// Off the phone's session: it's over there, or this Watch stopped following it. The summary
+    /// shows when the phone saved it with something in it.
+    private func leavePhoneSession(saved: Bool) {
+        linkRetry?.cancel()
+        linkRetry = nil
+        guard let copy = mirrored else { return }
+        remember(left: copy.session.id)
+        if saved {
+            let record = copy.session.record(feedback: nil)
+            if record.hasContent { summary = SessionSummary(record, savedOnPhone: true) }
+        }
+        mirrored = nil
+        mirroredContext = nil
+        endingOnPhone = nil
+        alarm?.cancel()
+        session = nil
+        writeSnapshot()
+    }
+
+    private func remember(left id: UUID) {
+        leftSessions = Array((leftSessions.filter { $0 != id } + [id]).suffix(10))
+    }
+
+    /// Every couple of seconds while measuring for the phone: whatever it hasn't answered goes again.
+    private func startLinkRetry() {
+        linkRetry?.cancel()
+        linkRetry = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                self?.retryLink()
+            }
+        }
+    }
+
+    /// Joining, until the session (and the gym to show it with) arrives; then the changes the phone
+    /// hasn't taken, and ending the session once they're in.
+    private func retryLink() {
+        guard companionSince != nil else { return }
+        guard let mirrored, (mirroredContext ?? context) != nil else {
+            send(.join)
+            return
+        }
+        if !mirrored.pending.isEmpty {
+            send(.changes(mirrored.pending))
+        } else if let endingOnPhone {
+            send(endingOnPhone)
+        }
+    }
+
+    /// To the phone: over WatchConnectivity when it's reachable, and over the workout unless sends
+    /// there are stuck. Heart rate goes over the workout only, unless sends there are stuck: a
+    /// reading twice would count twice.
+    private func send(_ message: MirrorMessage, bothRoutes: Bool = true) {
+        guard let data = message.encoded() else { return }
+        let workoutRouteFull = mirrorSendsInFlight.count >= 3
+        if bothRoutes || workoutRouteFull { PhoneLink.shared.sendLive(data) }
+        guard !workoutRouteFull else { return }
+        // A send that hangs stops counting after ten seconds, so a few can't close the route for good.
+        let token = UUID()
+        mirrorSendsInFlight.insert(token)
+        let workout = workout
+        Task { [weak self] in
+            await workout.send(data)
+            self?.mirrorSendsInFlight.remove(token)
+        }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            self?.mirrorSendsInFlight.remove(token)
+        }
+    }
+
     private func heartRate(_ bpm: Double) {
-        if companionSince != nil, let data = try? JSONEncoder().encode(MirrorMessage.heartRate(bpm: bpm, date: Date())) {
-            Task { await workout.send(data) }
+        if companionSince != nil {
+            send(.heartRate(bpm: bpm, date: Date()), bothRoutes: false)
+            // Kept on the copy for zone minutes; the phone decides whether it ends a rest.
+            guard var copy = mirrored else { return }
+            copy.record(heartRate: bpm, zones: zones)
+            mirrored = copy
+            session?.live = copy.session
             return
         }
         guard var stored = session else { return }
@@ -476,10 +737,11 @@ final class WatchModel {
     }
 
     /// The next moment something should happen on its own: a rest ending, a drill's countdown,
-    /// conditioning reaching its minutes, or an interval switching.
+    /// conditioning reaching its minutes, or an interval switching. A rest in the phone's session
+    /// that has run out is left for the phone, which keeps it until the next set.
     private func nextAlarm(after now: Date) -> (date: Date, alarm: Alarm)? {
         guard let stored = session else { return nil }
-        if let rest = stored.live.rest { return (rest.endsAt, .restOver) }
+        if let rest = stored.live.rest, mirrored == nil || rest.endsAt > now { return (rest.endsAt, .restOver) }
         guard let timer = stored.timer, let item = stored.live.items.first(where: { $0.id == timer.item }) else { return nil }
         if let plan = item.plan.conditioning {
             let target = timer.started.addingTimeInterval(TimeInterval(plan.minutes * 60))
@@ -521,7 +783,12 @@ final class WatchModel {
         switch alarm {
         case .restOver:
             if !late { device.play(.stop) }
-            endRest()
+            if mirrored != nil {
+                restsRunOut += 1
+                scheduleAlarm(after: max(Date(), due.addingTimeInterval(0.01)))
+            } else {
+                endRest()
+            }
         case .timerDone, .conditioningDone:
             if !late { device.play(.notification) }
             scheduleAlarm(after: max(Date(), due.addingTimeInterval(0.01)))

@@ -91,6 +91,13 @@ struct ItemDetailView: View {
                             close()
                         }
                     }
+                    if !liveItem.isDone, liveItem.plan.isStrength {
+                        NavigationLink {
+                            SwapListView(item: item, close: close)
+                        } label: {
+                            Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
                     if liveItem.takesMoreSets {
                         Button("Add a Set", systemImage: "plus") { model.addSet(item: item) }
                     }
@@ -143,5 +150,43 @@ struct ItemDetailView: View {
         }
         if set.skipped { return "\(position), skipped" }
         return "\(position), \(WatchFormat.prescription(set.prescription, exercise: exercise, unit: model.unit, plannedSeconds: item.plan.seconds))"
+    }
+}
+
+/// What an exercise can be swapped for in this gym (the machine's taken, or it doesn't feel right
+/// today): the sets still to do are prescribed afresh for the one picked.
+struct SwapListView: View {
+    @Environment(WatchModel.self) private var model
+    let item: Int
+    let close: () -> Void
+
+    /// Worked out once on appearing, off the main actor, not on every redraw: it searches the whole library.
+    @State private var options: [Exercise]?
+
+    var body: some View {
+        List {
+            if let options {
+                if options.isEmpty {
+                    Text("Nothing else in your gym does the same job.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(options) { exercise in
+                    Button {
+                        model.swap(item: item, to: exercise)
+                        close()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(exercise.name).font(.footnote)
+                            Text(exercise.equipment.label).font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .navigationTitle("Swap")
+        .task { options = await model.swaps(for: item) }
     }
 }

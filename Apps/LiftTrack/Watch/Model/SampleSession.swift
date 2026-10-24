@@ -7,18 +7,25 @@ import SystemCore
 /// Debug launch arguments for trying the app without a phone:
 /// `-sampleContext` seeds a small context; `-sampleScreen set|rating|rest|timed|conditioning|finish`
 /// also starts a fresh sample session (without HealthKit) and moves it to that screen, and
-/// `-sampleScreen home` drops any session to show the home screen.
+/// `-sampleScreen home` drops any session to show the home screen. `-sampleScreen phone` shows the
+/// sample session as if the iPhone ran it and this Watch were logging into it, and `phone-set`,
+/// `phone-rating`, `phone-finish` and so on move it to that screen; `phone-saving` is the wait for the
+/// phone after Save. (No phone answers, so what's logged stays pending.)
 extension WatchModel {
     func applyLaunchArguments() {
         let launch = LaunchOptions.current
-        let screen = launch.value(after: "-sampleScreen")
-        guard launch.has("-sampleContext") || screen != nil else { return }
+        guard var screen = launch.value(after: "-sampleScreen") ?? (launch.has("-sampleContext") ? "" : nil) else { return }
         receive(SampleContext.make())
-        guard let screen, let plan = context?.plan else { return }
+        guard !screen.isEmpty, let plan = context?.plan else { return }
         healthEnabled = false
         if session != nil { discard() }
         guard screen != "home" else { return }
-        start(plan)
+        if screen.hasPrefix("phone") {
+            followSample(plan, context: SampleContext.make())
+            screen = String(screen.dropFirst("phone".count).drop { $0 == "-" })
+        } else {
+            start(plan)
+        }
         switch screen {
         case "set", "rating", "rest":
             skip(item: 0)
@@ -35,11 +42,12 @@ extension WatchModel {
         case "conditioning":
             for item in 0..<4 { skip(item: item) }
             startTimer(item: 4, set: 0)
-        case "finish":
+        case "finish", "saving":
             skip(item: 0)
             log(item: 1, set: 0, reps: 10, loadKg: nil, rating: nil)
             endRest()
             wrapUp()
+            if screen == "saving" { finish(feedback: nil) }
         default:
             break
         }

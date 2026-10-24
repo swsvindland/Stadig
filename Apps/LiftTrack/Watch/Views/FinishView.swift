@@ -14,7 +14,9 @@ struct FinishView: View {
     private static let sorenessLabels = [0: "None", 1: "A little", 2: "Sore", 3: "Very sore"]
 
     var body: some View {
-        if let live = model.live {
+        if let ending = model.endingOnPhone {
+            WaitingForPhone(ending: ending)
+        } else if let live = model.live {
             let logged = live.items.contains { !$0.loggedSets.isEmpty }
             List {
                 Section {
@@ -114,7 +116,7 @@ struct SummaryView: View {
                     Label("Average \(Int(bpm.rounded())) bpm", systemImage: "heart.fill")
                         .font(.footnote)
                 }
-                Text("Sent to Lift Track on your iPhone.")
+                Text(summary.savedOnPhone ? "Saved in Lift Track on your iPhone." : "Sent to Lift Track on your iPhone.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button {
@@ -127,5 +129,36 @@ struct SummaryView: View {
             }
         }
         .navigationTitle("Summary")
+    }
+}
+
+/// Ending a session the iPhone runs: the phone saves it (or throws it away) and says so, and the
+/// summary follows. Should the phone never answer, the session can be left to it.
+struct WaitingForPhone: View {
+    @Environment(WatchModel.self) private var model
+    let ending: MirrorMessage
+
+    private var discarding: Bool {
+        if case .discardFromWatch = ending { true } else { false }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                ProgressView()
+                Text(discarding ? "Discarding on your iPhone" : "Saving on your iPhone")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                Text("Keep your iPhone nearby.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Leave It to iPhone", systemImage: "iphone") { model.stopCompanion() }
+                    .buttonStyle(.glass)
+                    .accessibilityHint("Stops heart rate here. Finish the session on your iPhone.")
+            }
+        }
+        .navigationTitle("Finish")
     }
 }

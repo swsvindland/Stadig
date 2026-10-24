@@ -1,5 +1,6 @@
 # Decisions to check
 
+- **Logging on the Watch.** On 2026-10-24 you said the Watch app only showed a time and an end-workout button, and asked to log exercises and stress on the Watch as you lift, ideally with no phone nearby. That screen was the heart-rate screen the Watch shows for a session started on the iPhone; its own set logger only appeared for a session started on the Watch. The calls made are under "Calls made for logging on the Watch" below.
 - **Mind Track's day start and voice.** On 2026-10-24 you said a lesson done after midnight counted for the next day, and that the voice, Japanese especially, was short, fast and clipped. Calls made:
   - **Day start:** a setting, 4 a.m. by default (Anki's default), from midnight to 6 a.m., rather than a fuzzy rule. Every moment (sessions, tests, writing, card due dates, setup) is filed by the setting as it is now rather than keeping the day it was filed under, so Friday night's lesson moves back to Friday with this build, and changing the hour later moves past late nights too.
   - **The hub:** Mind Track's published sessions still carry their start times, not their study days, so a hub that files them by date would put a 1 a.m. session on the next day. Changing that is a schema bump.
@@ -72,6 +73,22 @@
   - the hub
   - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for logging on the Watch (2026-10-24)
+
+Lift Track's Watch app, `LiveSession`'s `SessionChange` and `MirroredSession`, and the phone's `AppModel`.
+
+- **"Stress" is the set rating.** Read as how hard each set was, the three-tap Easy / Just right / Missed the Watch already had, now on the wrist for sessions started on the phone too. Not built: a "how stressed am I today" check-in. Life stress reaches the Fatigue Budget only through life modes today, so one would be a new input (and a change to `SessionFeedback`, a shared payload).
+- **The phone keeps the session; the Watch logs into it.** A session started on the iPhone stays the phone's: the Watch sends each change and shows the phone's copy back, rather than both devices running the session and merging. The phone's analysis (history, trust, heat) works out the next sets, and its copy wins. A set logged on both devices at once is corrected to the last one to arrive.
+- **Both routes, nothing waited on.** Messages go over the mirrored workout and WatchConnectivity, because Apple's forums report sends over a workout hanging in about 5% of workouts, and HealthKit caps them at 100 KB in any 10 seconds. The Watch numbers its changes and sends all those not yet taken, every 2 seconds until a copy from the phone has them; it stops using the workout route while three sends there are out (each for at most ten seconds). The phone sends at most one copy a quarter of a second.
+- **The workout's end goes one way.** The phone's "save your workout" goes over the mirrored workout alone, and the phone saves the workout itself if that send hasn't got there in 15 seconds. Sent both ways, a copy arriving by WatchConnectivity could have the Watch save while the phone's other send failed and the phone saved a second (Health keeps the higher version only within one app). A send that reports failure though it arrived can still make two, as before.
+- **After a drop, the Watch mirrors again.** When the phone's end of the mirrored workout goes away, the Watch calls `startMirroringToCompanionDevice` again, and the phone keeps talking to it over WatchConnectivity meanwhile. Whether HealthKit allows mirroring again on the same workout isn't documented; if it doesn't, the session carries on by WatchConnectivity without heart rate on the phone, and the phone saves the workout. Not tried on hardware.
+- **Ending on the Watch asks the phone.** Save or Discard on the Watch waits for the phone to say it's done ("Saving on your iPhone"), after the Watch's sets have landed; Leave It to iPhone gives up waiting. The Watch never saves a phone session's record itself, so it can't be saved twice or with sets missing.
+- **Continue on iPhone** stops the Watch's heart rate and leaves the session to the phone, as Stop did; it's in the session's options rather than on screen, since the set screens have no room.
+- **The sauna is logged on the phone.** In a phone session the Watch shows the room and offers Skip: the minutes follow the thermometer, which is typed on the phone. A sauna in a session started on the Watch is still logged as a timed hold, as before (no temperature or heat dose).
+- **Swap on the Watch** offers the eight closest substitutes in today's gym, minus what an injury rules out or was set aside, the phone's own list cut short. There's no search.
+- **Without the phone, the program goes on one session.** The context carries the session after today's, planned the same day (its loads don't know about today's session yet). Home offers it once the phone's plan is from an earlier day and this Watch has done it. A third session in a row without the phone repeats the plan. Not built: the Watch opening Lift Track's CloudKit store and planning sessions itself, as Macro Track's Watch does, which would cover any number. iCloud sync isn't working in TestFlight yet anyway (`docs/ci-cd.md`).
+- **The first weight after a swap** on the Watch no longer comes from the exercise swapped out (it took the item's last logged set, whichever exercise it was on), matching the phone.
 
 ## Calls made for logging meals (2026-10-24)
 

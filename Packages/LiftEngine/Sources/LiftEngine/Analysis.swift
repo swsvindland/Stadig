@@ -136,6 +136,9 @@ public struct NextSession: Hashable, Sendable {
     public var plannedThisWeek: Int
     /// The next training weekday, when today isn't one.
     public var nextDay: Day?
+
+    /// The day after this one in rotation: what's next once this one is done.
+    public var followingDay: PlannedDay { mesocycle.days[(dayIndex + 1) % mesocycle.days.count] }
 }
 
 public struct LiftAnalysis: Sendable {

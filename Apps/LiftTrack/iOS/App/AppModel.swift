@@ -122,6 +122,8 @@ final class AppModel {
         didSet {
             persistLive()
             watchRestTime()
+            // The Watch logging into this session gets a copy after every change, but not for each heart-rate reading.
+            if let live, live.id != oldValue?.id || live.updatedAt != oldValue?.updatedAt { shareWithWatch() }
         }
     }
     /// The latest reading from the Watch during a session led from here, and when it came.
@@ -792,8 +794,20 @@ final class AppModel {
 
     /// Today's session from the program, fitted to the minutes available if they differ.
     func plan(minutes: Int? = nil) -> SessionPlan? {
-        guard let profile, let analysis, let next = analysis.next else { return nil }
-        var day = next.day
+        guard let next = analysis?.next else { return nil }
+        return plan(next.day, of: next, minutes: minutes, sessionIndexInWeek: next.doneThisWeek)
+    }
+
+    /// The session after today's in the program, planned as things stand: the Watch goes on to it
+    /// once it has done today's, when it hasn't heard from here since (the phone left at home).
+    func followingPlan() -> SessionPlan? {
+        guard let next = analysis?.next else { return nil }
+        return plan(next.followingDay, of: next, minutes: nil, sessionIndexInWeek: next.doneThisWeek + 1)
+    }
+
+    private func plan(_ planned: PlannedDay, of next: NextSession, minutes: Int?, sessionIndexInWeek: Int) -> SessionPlan? {
+        guard let profile, let analysis else { return nil }
+        var day = planned
         var minutesAvailable = minutes
         if let cap = analysis.life.maxMinutes { minutesAvailable = min(minutesAvailable ?? cap, cap) }
         if let minutesAvailable, minutesAvailable != next.mesocycle.minutesPerSession {
@@ -801,13 +815,13 @@ final class AppModel {
                 profile: profile, gym: gymForToday, kind: next.mesocycle.block.kind, start: next.mesocycle.block.start,
                 loadingWeeks: next.mesocycle.block.loadingWeeks, phase: analysis.phase)
             input.profile.schedule.minutesPerSession = minutesAvailable
-            day = ProgramGenerator.refit(next.day, minutes: minutesAvailable, input: input)
+            day = ProgramGenerator.refit(planned, minutes: minutesAvailable, input: input)
         }
         var context = PlanningContext(
             catalog: catalog, gym: gym, profile: profile, settings: settings, trust: analysis.trust,
             phase: analysis.phase, life: analysis.life, history: analysis.history,
             bodyweightKg: state?.effectiveBodyweight, enduranceScore: analysis.endurance.score,
-            sessionIndexInWeek: next.doneThisWeek)
+            sessionIndexInWeek: sessionIndexInWeek)
         context.heat = analysis.heat
         return SessionPlanner.plan(day, of: next.mesocycle, on: today, context: context)
     }
@@ -836,29 +850,181 @@ final class AppModel {
         RestAlerts.shared.requestPermission()
         LiveActivityBridge.update(live, catalog: catalog, unit: gym.unit)
         heartRate = nil
+        // A new session: what the Watch did with the last one is past.
+        watchFollows = nil
+        endedForWatch = nil
         #if os(iOS)
         // A workout on the Watch, mirrored here, for heart rate: warm-up, rests and conditioning.
         if WatchLink.shared.watchAppInstalled { Task { await WorkoutMirror.shared.startWatchWorkout() } }
         #endif
     }
 
-    /// Readings from the Watch's mirrored workout.
+    /// What the Watch sends during a session led from here: its readings, the sets logged on it, and
+    /// the session ended there.
     func fromWatch(_ data: [Data]) {
         for item in data {
-            guard case .heartRate(let bpm, let date)? = try? JSONDecoder().decode(MirrorMessage.self, from: item) else { continue }
-            heartRate = bpm
-            heartRateAt = date
-            guard var session = live else { continue }
-            let recovered = session.record(heartRate: bpm, zones: heartRateZones, now: date)
-            // Samples come every few seconds: they needn't hit the disk as often.
-            heartRateOnly = true
-            live = session
-            heartRateOnly = false
-            if recovered, settings.heartRateGuidedRest {
-                update { $0.endRest() }
-                RestAlerts.shared.heartRateRecovered()
+            guard let message = MirrorMessage(encoded: item) else { continue }
+            switch message {
+            case .heartRate(let bpm, let date):
+                heartRate(bpm, at: date)
+            case .join:
+                watchFollows = live?.id
+                // The context goes with the next copy, whatever the Watch was sent before.
+                watchHasContextFor = nil
+                shareWithWatch()
+            case .changes(let changes):
+                guard let live, let environment else { continue }
+                watchFollows = live.id
+                update { session in
+                    for change in changes { session.take(change, environment: environment) }
+                }
+                // Even when nothing was new: the copy is how the Watch learns what landed.
+                shareWithWatch()
+            case .finishFromWatch(let id, let feedback):
+                if live?.id == id {
+                    watchFollows = id
+                    finish(feedback: feedback)
+                } else if let ended = endedForWatch, ended.id == id {
+                    // Already over here; the Watch missed hearing so.
+                    tellWatch(ended.message)
+                }
+            case .discardFromWatch(let id):
+                if live?.id == id {
+                    watchFollows = id
+                    discardLive()
+                } else if let ended = endedForWatch, ended.id == id {
+                    tellWatch(ended.message)
+                }
+            case .finish, .discard, .session:
+                break
             }
         }
+    }
+
+    private func heartRate(_ bpm: Double, at date: Date) {
+        heartRate = bpm
+        heartRateAt = date
+        guard var session = live else { return }
+        let recovered = session.record(heartRate: bpm, zones: heartRateZones, now: date)
+        // Samples come every few seconds: they needn't hit the disk as often.
+        heartRateOnly = true
+        live = session
+        heartRateOnly = false
+        if recovered, settings.heartRateGuidedRest {
+            update { $0.endRest() }
+            RestAlerts.shared.heartRateRecovered()
+        }
+    }
+
+    // MARK: The Watch logging into a session led from here
+
+    /// The session the Watch has been sent the context for, so it goes with the first copy only.
+    @ObservationIgnored private var watchHasContextFor: UUID?
+    /// The session the Watch has joined (asked for it, or sent changes or an end for it). Messages
+    /// keep going to it over WatchConnectivity when the mirrored workout drops (out of range for a
+    /// minute), which nothing restarts from here.
+    @ObservationIgnored private var watchFollows: UUID?
+    /// The copy waiting a moment to go, so a burst of changes sends one; kept so a test can wait for it.
+    @ObservationIgnored private(set) var watchShare: Task<Void, Never>?
+    /// The latest copy for the Watch, waiting for the send over the workout before it to finish.
+    @ObservationIgnored private var watchCopyWaiting: Data?
+    @ObservationIgnored private var watchCopySend: Task<Void, Never>?
+    /// The last session ended while the Watch was logging into it, and what it was told, for an end
+    /// asked for on the Watch that arrives after the session is already over here.
+    @ObservationIgnored private var endedForWatch: (id: UUID, message: MirrorMessage)?
+
+    /// The Watch can be told things: over its mirrored workout, or over WatchConnectivity once it has
+    /// joined the session.
+    private var watchListening: Bool { workoutHandOff.watchConnected() || watchFollows != nil }
+
+    /// The Watch's mirrored workout has connected (again): it gets the session, with its context.
+    func watchJoined() {
+        watchFollows = live?.id
+        watchHasContextFor = nil
+        shareWithWatch()
+    }
+
+    /// Sends the Watch a copy of the session a moment from now, so the copies for a burst of changes
+    /// (a change, and the copy that says it landed; sixty changes after a reconnect) are one.
+    private func shareWithWatch() {
+        guard live != nil, watchListening, watchShare == nil else { return }
+        watchShare = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            self?.sendCopyToWatch()
+            self?.watchShare = nil
+        }
+    }
+
+    /// The session as it stands, stamped now. It goes over WatchConnectivity at once and over the
+    /// workout one send at a time, the latest copy when the send before it is done: a send over the
+    /// workout can hang, and the Watch drops a copy older than the one it has.
+    private func sendCopyToWatch() {
+        guard let live, watchListening else { return }
+        var context: PhoneContext?
+        if watchHasContextFor != live.id {
+            let exercises = Dictionary(live.items.map { ($0.exerciseID, $0.plan) }, uniquingKeysWith: { first, _ in first })
+            context = watchContext(plan: nil, exercises: exercises, withSwaps: false)
+            if context != nil { watchHasContextFor = live.id }
+        }
+        guard let data = MirrorMessage.session(live.withoutHeartRate, context: context, sentAt: Date()).encoded() else { return }
+        workoutHandOff.sendToWatchApp(data)
+        guard workoutHandOff.watchConnected() else { return }
+        watchCopyWaiting = data
+        guard watchCopySend == nil else { return }
+        let handOff = workoutHandOff
+        watchCopySend = Task { [weak self] in
+            while let data = self?.takeWatchCopy() {
+                _ = await handOff.sendToWatch(data)
+            }
+            self?.watchCopySend = nil
+        }
+    }
+
+    private func takeWatchCopy() -> Data? {
+        defer { watchCopyWaiting = nil }
+        return watchCopyWaiting
+    }
+
+    /// What the Watch needs to run or follow a session: the gym's loads, trust, zones, recent sets for
+    /// its exercises (and their likely swaps, for a session the Watch runs itself), and first guesses
+    /// at the weight for strength work with no history. `exercises` are by id, each with its planned item.
+    func watchContext(plan: SessionPlan?, exercises: [String: PlannedItem], withSwaps: Bool) -> PhoneContext? {
+        guard let analysis, let profile else { return nil }
+        var ids = Set(exercises.keys)
+        if withSwaps {
+            for id in exercises.keys {
+                let exercise = catalog.resolve(id)
+                for option in Substitutions.candidates(for: exercise, in: catalog.all, availability: gym.availability, limit: 4) {
+                    ids.insert(option.id)
+                }
+            }
+        }
+        var history: [String: [LoggedSet]] = [:]
+        for id in ids {
+            let sets = analysis.history[id] ?? []
+            let days = Array(Set(sets.map { Day($0.date) })).sorted().suffix(4)
+            history[id] = sets.filter { days.contains(Day($0.date)) }
+        }
+        let zones = HeartRateZones.estimated(age: profile.age(), resting: restingHeartRate)
+        let todaysGym = gymForToday
+        // Where the Watch's crown starts for exercises with no history yet.
+        var startingLoads: [String: Double] = [:]
+        for (id, item) in exercises where item.isStrength && (analysis.history[id] ?? []).isEmpty {
+            let exercise = catalog.resolve(id)
+            if let guess = StartingLoad.estimate(
+                exercise, reps: item.repRange.middle, bodyweightKg: state?.effectiveBodyweight, sex: profile.sex,
+                experience: profile.experience)
+            {
+                startingLoads[id] = todaysGym.increments(for: exercise.equipment).round(guess, down: true)
+            }
+        }
+        var context = PhoneContext(
+            plan: plan, upNext: nil, gym: todaysGym, trust: analysis.trust, phase: analysis.phase.effects,
+            bodyweightKg: state?.effectiveBodyweight, history: history, enduranceScore: analysis.endurance.score,
+            heartRateGuidedRest: settings.heartRateGuidedRest, zones: zones, units: profile.units, startingLoads: startingLoads)
+        context.injuries = analysis.life.injuries
+        context.avoid = settings.avoid
+        return context
     }
 
     /// The rest being taken: nil once its time is up, though the session keeps it until the next set
@@ -898,9 +1064,12 @@ final class AppModel {
     /// Tests put their own in, since under XCTest there's no Watch and Health is off.
     struct WorkoutHandOff {
         var watchConnected: @MainActor () -> Bool
-        /// Whether the message reached the Watch.
+        /// Over the mirrored workout. Whether the message reached the Watch.
         var sendToWatch: @MainActor (Data) async -> Bool
         var saveToHealth: @MainActor (SessionRecord) async -> Void
+        /// The same message over WatchConnectivity, when the Watch app is reachable: the second route,
+        /// for when a send over the workout hangs or fails.
+        var sendToWatchApp: @MainActor (Data) -> Void = { _ in }
 
         static let live = WorkoutHandOff(
             watchConnected: {
@@ -925,6 +1094,11 @@ final class AppModel {
                 } catch {
                     appLog.error("Couldn't save the workout to Health: \(error.localizedDescription)")
                 }
+            },
+            sendToWatchApp: { data in
+                #if os(iOS)
+                WatchLink.shared.sendLive(data)
+                #endif
             })
     }
 
@@ -933,9 +1107,12 @@ final class AppModel {
     /// wait for it.
     @ObservationIgnored private(set) var workoutTask: Task<Void, Never>?
 
+    /// By both routes: WatchConnectivity, and the mirrored workout while there is one.
     private func tellWatch(_ message: MirrorMessage) {
-        guard workoutHandOff.watchConnected(), let data = try? JSONEncoder().encode(message) else { return }
+        guard watchListening, let data = message.encoded() else { return }
         let handOff = workoutHandOff
+        handOff.sendToWatchApp(data)
+        guard handOff.watchConnected() else { return }
         workoutTask = Task { _ = await handOff.sendToWatch(data) }
     }
 
@@ -954,7 +1131,9 @@ final class AppModel {
         // The Watch measured it: its workout, with heart rate and energy, is the one Health keeps, when
         // there's a session to keep and Health is to have it. Otherwise the Watch throws its workout away.
         let watchSaves = workoutHandOff.watchConnected() && record.hasContent && settings.saveToHealth
-        if !watchSaves { tellWatch(.discard) }
+        let ending: MirrorMessage = watchSaves ? .finish(id: record.id, title: record.title) : .discard(id: live.id, saved: record.hasContent)
+        if !watchSaves { tellWatch(ending) }
+        endedForWatch = (live.id, ending)
         self.live = nil
         showSession = false
         RestAlerts.shared.cancel()
@@ -964,16 +1143,33 @@ final class AppModel {
         if record.hasContent { finished = record }
     }
 
-    /// Asks the Watch to save its workout under the session's id. When that doesn't reach it (out of
-    /// range, or its workout already over), the workout is saved from here, as with no Watch, rather
-    /// than not at all.
+    /// Asks the Watch to save its workout under the session's id, over the workout alone: a copy over
+    /// WatchConnectivity could save it there while this send failed and the phone saved a second.
+    /// When the send doesn't get there within 15 seconds (out of range, its workout already over, or a
+    /// send that hangs), the workout is saved from here, as with no Watch, rather than not at all, and
+    /// the Watch is told by the other route to throw its own away.
     private func handWorkoutToWatch(_ record: SessionRecord) {
         let handOff = workoutHandOff
-        let message = try? JSONEncoder().encode(MirrorMessage.finish(id: record.id, title: record.title))
+        guard let message = MirrorMessage.finish(id: record.id, title: record.title).encoded() else { return }
+        let fallback = MirrorMessage.discard(id: record.id, saved: true).encoded()
         workoutTask = Task {
-            if let message, await handOff.sendToWatch(message) { return }
+            if await Self.delivered(within: 15, { await handOff.sendToWatch(message) }) { return }
             appLog.notice("The Watch didn't get the session's end, so the workout is saved from the phone")
+            if let fallback { handOff.sendToWatchApp(fallback) }
             await handOff.saveToHealth(record)
+        }
+    }
+
+    /// Whether a send says it got there within `seconds`. One that hangs counts as not (and is left
+    /// to hang: a send over a workout can't be cancelled).
+    private static func delivered(within seconds: Double, _ send: @escaping @MainActor () async -> Bool) async -> Bool {
+        await withCheckedContinuation { continuation in
+            let answer = FirstAnswer(continuation)
+            Task { @MainActor in answer.give(await send()) }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(seconds))
+                answer.give(false)
+            }
         }
     }
 
@@ -990,7 +1186,11 @@ final class AppModel {
     }
 
     func discardLive() {
-        tellWatch(.discard)
+        if let live {
+            let ending = MirrorMessage.discard(id: live.id, saved: false)
+            tellWatch(ending)
+            endedForWatch = (live.id, ending)
+        }
         live = nil
         showSession = false
         RestAlerts.shared.cancel()
@@ -1178,4 +1378,17 @@ final class AppModel {
         reload()
     }
     #endif
+}
+
+/// Resumes a continuation once, with the first answer given: a send or its time limit, whichever comes first.
+@MainActor
+private final class FirstAnswer {
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    init(_ continuation: CheckedContinuation<Bool, Never>) { self.continuation = continuation }
+
+    func give(_ answer: Bool) {
+        continuation?.resume(returning: answer)
+        continuation = nil
+    }
 }

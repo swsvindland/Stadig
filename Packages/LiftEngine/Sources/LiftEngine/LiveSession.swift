@@ -168,6 +168,9 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     public var mobilityDone: [String]
     public var heartRateSamples: [HeartRatePoint]
     public var updatedAt: Date
+    /// How many of the Watch's changes this session has taken (`take`), in the Watch's numbering, so
+    /// one that arrives twice or early isn't taken again, and the Watch can tell which have landed.
+    public var takenChanges: Int
 
     public struct HeartRatePoint: Codable, Hashable, Sendable {
         public var date: Date
@@ -188,6 +191,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         mobilityDone = []
         heartRateSamples = []
         updatedAt = now
+        takenChanges = 0
     }
 
     public init(from decoder: any Decoder) throws {
@@ -204,6 +208,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         mobilityDone = try c.decodeIfPresent([String].self, forKey: .mobilityDone) ?? []
         heartRateSamples = try c.decodeIfPresent([HeartRatePoint].self, forKey: .heartRateSamples) ?? []
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? startedAt
+        takenChanges = try c.decodeIfPresent(Int.self, forKey: .takenChanges) ?? 0
     }
 
     // MARK: Where we are

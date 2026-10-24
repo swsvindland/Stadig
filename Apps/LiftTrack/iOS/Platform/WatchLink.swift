@@ -2,6 +2,7 @@
 import ExerciseLibrary
 import Foundation
 import LiftEngine
+import OSLog
 import SystemCore
 import SystemStore
 import WatchConnectivity
@@ -31,51 +32,49 @@ final class WatchLink: NSObject {
 
     func publish(_ model: AppModel) {
         guard let session, session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
-            let analysis = model.analysis, let profile = model.profile
+            let context = Self.context(for: model)
         else { return }
-        let plan = model.plan()
-        var upNext: String?
-        if let next = analysis.next, !next.scheduledToday {
-            upNext = next.nextDay.map { "\(next.day.name) on \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? next.day.name
-        }
-        // Enough history for the plan's exercises and their likely swaps.
-        var ids = Set(plan?.items.map(\.exerciseID) ?? [])
-        for id in ids {
-            let exercise = model.catalog.resolve(id)
-            for option in Substitutions.candidates(for: exercise, in: model.catalog.all, availability: model.gym.availability, limit: 4) {
-                ids.insert(option.id)
-            }
-        }
-        var history: [String: [LoggedSet]] = [:]
-        for id in ids {
-            let sets = analysis.history[id] ?? []
-            let days = Array(Set(sets.map { Day($0.date) })).sorted().suffix(4)
-            history[id] = sets.filter { days.contains(Day($0.date)) }
-        }
-        let zones = HeartRateZones.estimated(age: profile.age(), resting: model.restingHeartRate)
-        // Where the Watch's crown starts for exercises with no history yet.
-        var startingLoads: [String: Double] = [:]
-        for item in plan?.items ?? [] where item.isStrength && (analysis.history[item.exerciseID] ?? []).isEmpty {
-            let exercise = model.catalog.resolve(item.exerciseID)
-            if let guess = StartingLoad.estimate(
-                exercise, reps: item.repRange.middle, bodyweightKg: model.state?.effectiveBodyweight,
-                sex: profile.sex, experience: profile.experience)
-            {
-                startingLoads[item.exerciseID] = model.gymForToday.increments(for: exercise.equipment).round(guess, down: true)
-            }
-        }
-        let context = PhoneContext(
-            plan: plan, upNext: upNext, gym: model.gymForToday, trust: analysis.trust, phase: analysis.phase.effects,
-            bodyweightKg: model.state?.effectiveBodyweight, history: history,
-            enduranceScore: analysis.endurance.score, heartRateGuidedRest: model.settings.heartRateGuidedRest,
-            zones: zones, units: profile.units, startingLoads: startingLoads, sentAt: .distantPast)
         guard let data = try? SystemJSON.encoder().encode(context), data != lastContext else { return }
         lastContext = data
         var stamped = context
         stamped.sentAt = Date()
         guard let payload = try? SystemJSON.encoder().encode(stamped) else { return }
-        try? session.updateApplicationContext(["context": payload])
+        do {
+            // Compressed: two plans' history, and their swaps', runs to tens of kilobytes of JSON.
+            try session.updateApplicationContext(["context": LinkData.compressed(payload)])
+        } catch {
+            appLog.error("Couldn't send the Watch today's plan: \(error.localizedDescription)")
+        }
     }
+
+    /// Today's plan and the one after it, with enough history for their exercises and likely swaps,
+    /// stamped `.distantPast` so an unchanged context compares equal.
+    static func context(for model: AppModel) -> PhoneContext? {
+        guard let analysis = model.analysis else { return nil }
+        let plan = model.plan()
+        let following = model.followingPlan()
+        let items = (plan?.items ?? []) + (following?.items ?? [])
+        let exercises = Dictionary(items.map { ($0.exerciseID, $0) }, uniquingKeysWith: { first, _ in first })
+        guard var context = model.watchContext(plan: plan, exercises: exercises, withSwaps: true) else { return nil }
+        if let next = analysis.next, !next.scheduledToday {
+            context.upNext =
+                next.nextDay.map { "\(next.day.name) on \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? next.day.name
+        }
+        context.following = following
+        context.sentAt = .distantPast
+        return context
+    }
+
+    /// A message for the Watch app while it's reachable (during a workout it is): the second route
+    /// beside the mirrored workout, for a session led from here.
+    func sendLive(_ data: Data) {
+        guard let session, session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(["mirror": data], replyHandler: nil, errorHandler: Self.ignore)
+    }
+
+    /// WatchConnectivity calls error handlers on its own queue, so this one must not be main-actor
+    /// isolated (a closure written here would be, and would trap). The other route covers a failure.
+    nonisolated private static func ignore(_ error: any Error) {}
 
     fileprivate func handle(_ data: Data) {
         guard let message = try? SystemJSON.decoder().decode(LinkMessage.self, from: data) else { return }
@@ -97,6 +96,11 @@ extension WatchLink: WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        if let data = message["mirror"] as? Data {
+            // The Watch's half of a session led from here, by the second route: as if over the workout.
+            Task { @MainActor in AppModel.shared.fromWatch([data]) }
+            return
+        }
         guard let data = message["m"] as? Data else { return }
         Task { @MainActor in self.handle(data) }
     }

@@ -40,7 +40,8 @@ struct CompanionView: View {
             if let since = model.companionSince {
                 Text(since, style: .timer).font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
             }
-            Text("For your iPhone session").font(.caption2).foregroundStyle(.tertiary)
+            // Until the phone's session arrives, to log into.
+            Text("Getting your iPhone session").font(.caption2).foregroundStyle(.tertiary)
             Button("Stop", systemImage: "stop.fill", role: .destructive) { model.stopCompanion() }
                 .padding(.top, 4)
         }
