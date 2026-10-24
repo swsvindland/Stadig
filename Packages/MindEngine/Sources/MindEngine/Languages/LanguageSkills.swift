@@ -79,11 +79,19 @@ public enum LanguageSkills {
             score: LanguageTests.vocabularyScore(Double(words)))
     }
 
-    /// The latest level of each skill measured in a course, on or before `day` when given.
-    public static func levels(_ domain: Domain, tests: [TestResult], on day: Day? = nil) -> [LanguageSkill: SkillLevel] {
+    /// The latest level of each skill measured in a course.
+    public static func levels(_ domain: Domain, tests: [TestResult]) -> [LanguageSkill: SkillLevel] {
+        levels(domain, tests: tests) { _ in true }
+    }
+
+    /// The latest level of each skill measured in a course on or before a study day.
+    public static func levels(_ domain: Domain, tests: [TestResult], on day: Day, dayStart: Int) -> [LanguageSkill: SkillLevel] {
+        levels(domain, tests: tests) { $0.day(startingAt: dayStart) <= day }
+    }
+
+    private static func levels(_ domain: Domain, tests: [TestResult], counting: (TestResult) -> Bool) -> [LanguageSkill: SkillLevel] {
         var out: [LanguageSkill: SkillLevel] = [:]
-        for result in tests.sorted(by: { $0.date < $1.date }) where result.domain == domain {
-            if let day, result.day > day { continue }
+        for result in tests.sorted(by: { $0.date < $1.date }) where result.domain == domain && counting(result) {
             if let level = level(result) { out[level.skill] = level }
         }
         return out

@@ -123,7 +123,7 @@ public enum Analyst {
         // Each course's trend is worked out once: the plan and the week both need it.
         let priorities = SessionPlanner.priorities(state)
         let plan = SessionPlanner.today(state, catalogs: catalogs, priorities: priorities)
-        let doneToday = state.sessions.filter { $0.day == state.today && $0.finished }
+        let doneToday = state.sessions.filter { $0.day(startingAt: state.dayStart) == state.today && $0.finished }
         let todayDone = doneToday.contains { $0.planned && $0.counts }
         let due = state.due(on: state.today, catalogs: catalogs)
         let discipline = discipline(state)
@@ -202,7 +202,7 @@ public enum Analyst {
         var items: [AdherenceItem] = []
         for day in window.days where day >= state.start && state.settings.schedule(on: day).studyDays.contains(day.weekday) {
             guard StudyCalendar.pause(on: day, lifeModes: state.lifeModes) == nil else { continue }
-            let done = state.sessions.contains { $0.day == day && $0.planned && $0.counts }
+            let done = state.sessions.contains { $0.day(startingAt: state.dayStart) == day && $0.planned && $0.counts }
             if day == state.today && !done { continue }
             items.append(AdherenceItem(day: day, kind: .session, label: "Study session", done: done))
         }
@@ -228,7 +228,7 @@ public enum Analyst {
         return (0..<7).map { offset in
             let day = monday.adding(days: offset)
             let domains = split(day < state.today ? state.settings.schedule(on: day) : state.settings.schedule)[day] ?? []
-            let done = state.sessions.contains { $0.day == day && $0.planned && $0.counts }
+            let done = state.sessions.contains { $0.day(startingAt: state.dayStart) == day && $0.planned && $0.counts }
             let status: StudyDay.Status
             if StudyCalendar.pause(on: day, lifeModes: state.lifeModes) != nil {
                 status = .paused
@@ -256,7 +256,7 @@ public enum Analyst {
             wordsLearned: cards.filter { !$0.key.isKana }.count, kanaLearned: cards.filter(\.key.isKana).count,
             vocabulary: state.latest(.vocabulary, in: domain), listening: state.latest(.listening, in: domain),
             episodes: state.tests.filter { $0.test.selfRated && $0.domain == domain },
-            retention: domain.language.flatMap { LanguagePlan.retention(state.sessions, today: state.today, $0) })
+            retention: domain.language.flatMap { LanguagePlan.retention(state.sessions, today: state.today, dayStart: state.dayStart, $0) })
     }
 
     static func mathsSummary(_ state: StudyState) -> MathsSummary {
@@ -350,7 +350,7 @@ public enum Analyst {
         }
         if state.settings.has(.reading) {
             if let book = state.currentBook {
-                let lastRead = state.sessions.last { $0.reading?.bookID == book.id }?.day ?? book.started ?? state.today
+                let lastRead = state.sessions.last { $0.reading?.bookID == book.id }?.day(startingAt: state.dayStart) ?? book.started ?? state.today
                 if lastRead.days(until: state.today) >= 14 {
                     out.append(
                         MindAction(
@@ -359,8 +359,9 @@ public enum Analyst {
                             priority: 0.8))
                 }
             } else if !state.phase.isAssessment || !state.sessions.isEmpty {
-                let picks = ReadingPlan.suggestions(shelf: state.books, tests: state.tests, genres: state.settings.genres, on: state.today).map(
-                    \.title)
+                let picks = ReadingPlan.suggestions(
+                    shelf: state.books, tests: state.tests, genres: state.settings.genres, on: state.today, dayStart: state.dayStart
+                ).map(\.title)
                 if !picks.isEmpty {
                     out.append(
                         MindAction(
@@ -371,7 +372,9 @@ public enum Analyst {
         }
         for domain in state.settings.studied
         where domain.isLanguage && analysis.phase.isReview
-            && !state.tests.contains(where: { $0.test == .episode && $0.domain == domain && $0.day.days(until: state.today) < 7 })
+            && !state.tests.contains(where: {
+                $0.test == .episode && $0.domain == domain && $0.day(startingAt: state.dayStart).days(until: state.today) < 7
+            })
         {
             guard let language = domain.language else { continue }
             out.append(
@@ -423,7 +426,7 @@ public enum Analyst {
     /// format, discipline and quests.
     public static func appSummary(_ state: StudyState, _ analysis: MindAnalysis) -> AppSummary {
         let since = state.today.adding(days: -27)
-        let sessions = state.sessions.filter { $0.finished && $0.day >= since }.map { session -> SessionSummary in
+        let sessions = state.sessions.filter { $0.finished && $0.day(startingAt: state.dayStart) >= since }.map { session -> SessionSummary in
             let attempts = session.attempts
             var metrics: [String: Double] = ["questions": Double(attempts.count)]
             if !attempts.isEmpty { metrics["accuracy"] = Double(attempts.filter(\.correct).count) / Double(attempts.count) }

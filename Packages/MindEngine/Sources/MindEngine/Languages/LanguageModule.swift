@@ -206,9 +206,11 @@ enum LanguageModule: SubjectModule {
     static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)] {
         let skills = LanguageSkills.enabled(state.settings, tests: state.tests, domain: domain)
         let tests = state.tests.filter { $0.domain == domain }
-        let days = Set(tests.filter { LanguageSkills.skill($0.test) != nil }.map(\.day)).sorted()
+        let days = Set(tests.filter { LanguageSkills.skill($0.test) != nil }.map { $0.day(startingAt: state.dayStart) }).sorted()
         func scored(_ skills: [LanguageSkill]) -> [(day: Day, score: Double)] {
-            days.compactMap { day in LanguageSkills.score(LanguageSkills.levels(domain, tests: tests, on: day), skills: skills).map { (day, $0) } }
+            days.compactMap { day in
+                LanguageSkills.score(LanguageSkills.levels(domain, tests: tests, on: day, dayStart: state.dayStart), skills: skills).map { (day, $0) }
+            }
         }
         var measured = scored(skills)
         // Speaking just turned on and not tested yet: the three-skill score stands until it is,
@@ -217,7 +219,7 @@ enum LanguageModule: SubjectModule {
             measured = scored(skills.filter { $0 != .speaking })
         }
         if !measured.isEmpty { return measured }
-        return tests.filter { $0.test == .vocabulary }.map { ($0.day, LanguageTests.vocabularyScore($0.score)) }
+        return tests.filter { $0.test == .vocabulary }.map { ($0.day(startingAt: state.dayStart), LanguageTests.vocabularyScore($0.score)) }
     }
 
     static func label(_ domain: Domain, state: StudyState) -> String {

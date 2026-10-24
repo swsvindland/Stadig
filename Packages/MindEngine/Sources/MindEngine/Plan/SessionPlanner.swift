@@ -39,8 +39,14 @@ public struct StudyState: Sendable {
         self.now = now
     }
 
+    /// The hour on the clock a study day begins (`MindSettings.dayStart`).
+    public var dayStart: Int { settings.dayStart }
+
+    /// The study day a moment falls on: before `dayStart`, the day before's.
+    public func day(_ date: Date) -> Day { Day(date, dayStartsAt: settings.dayStart) }
+
     /// The day study began: onboarding, or today before it.
-    public var start: Day { settings.onboardedAt.map { Day($0) } ?? today }
+    public var start: Day { settings.onboardedAt.map(day) ?? today }
 
     public var phase: StudyPhase { StudyCalendar.phase(on: today, start: start, calendar: calendar, lifeModes: lifeModes) }
 
@@ -55,7 +61,7 @@ public struct StudyState: Sendable {
 
     /// Review cards due, across every active course: Focus and Maintenance alike.
     public func due(on day: Day) -> [MemoryCard] {
-        cards.values.filter { settings.has($0.domain) && $0.isDue(on: day) }
+        cards.values.filter { settings.has($0.domain) && $0.isDue(on: day, dayStart: dayStart) }
     }
 
     /// The due cards that can be asked: their catalog is installed and their item still exists.
@@ -77,7 +83,7 @@ public struct StudyState: Sendable {
     /// The English book on the go. A reader in a language being learned has its own level; see `GradedReaders`.
     public var currentBook: Book? { books.filter { $0.status == .reading && $0.language == nil }.max { $0.updatedAt < $1.updatedAt } }
 
-    public var lastCheckIn: Day? { sessions.last { $0.purpose == .checkIn && $0.finished }?.day }
+    public var lastCheckIn: Day? { sessions.last { $0.purpose == .checkIn && $0.finished }?.day(startingAt: dayStart) }
 }
 
 /// One part of a session, as Today lists it and the session runs it.
@@ -280,7 +286,8 @@ public enum SessionPlanner {
         if let unplaced = candidates.first(where: { state.needsPlacement($0, catalogs: catalogs) }) { return unplaced }
         func last(_ domain: Domain) -> Date {
             state.sessions.last { session in
-                session.day < state.today && (session.purpose == .regular || session.purpose == .review) && session.domains.contains(domain)
+                session.day(startingAt: state.dayStart) < state.today && (session.purpose == .regular || session.purpose == .review)
+                    && session.domains.contains(domain)
             }?.start ?? .distantPast
         }
         return candidates.min { (last($0), $0) < (last($1), $1) }

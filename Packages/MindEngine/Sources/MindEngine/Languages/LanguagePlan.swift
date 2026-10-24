@@ -39,9 +39,9 @@ public enum LanguagePlan {
     }
 
     /// The share of a language's reviews recalled in the window. Nil with too few to say.
-    public static func retention(_ sessions: [StudySession], today: Day, _ language: Language = .japanese) -> Double? {
+    public static func retention(_ sessions: [StudySession], today: Day, dayStart: Int, _ language: Language = .japanese) -> Double? {
         let since = today.adding(days: -retentionWindowDays)
-        let reviews = sessions.filter { $0.day >= since }.flatMap(\.attempts)
+        let reviews = sessions.filter { $0.day(startingAt: dayStart) >= since }.flatMap(\.attempts)
             .filter { $0.kind == .review && $0.domain == language.domain }
         guard reviews.count >= 20 else { return nil }
         return Double(reviews.filter(\.correct).count) / Double(reviews.count)
@@ -75,7 +75,7 @@ public enum LanguagePlan {
     /// A course's reviews due within the coming week, today included.
     public static func dueThisWeek(_ domain: Domain, state: StudyState) -> Int {
         let end = state.today.adding(days: 6)
-        return state.cards.values.filter { $0.domain == domain && ($0.memory.map { Day($0.due) <= end } ?? false) }.count
+        return state.cards.values.filter { $0.domain == domain && $0.isDue(on: end, dayStart: state.dayStart) }.count
     }
 
     /// New words a session for a language course, from its recall and the week's reviews: what a
@@ -84,7 +84,7 @@ public enum LanguagePlan {
     public static func pace(_ domain: Domain, state: StudyState, reviewWeek: Bool, minutes: Int? = nil)
         -> (count: Int, reason: String?, dueThisWeek: Int)
     {
-        let retention = domain.language.flatMap { Self.retention(state.sessions, today: state.today, $0) }
+        let retention = domain.language.flatMap { Self.retention(state.sessions, today: state.today, dayStart: state.dayStart, $0) }
         let due = dueThisWeek(domain, state: state)
         let words = newWords(retention: retention, dueThisWeek: due, minutes: minutes ?? state.settings.schedule.minutes, reviewWeek: reviewWeek)
         return (words.count, words.reason, due)

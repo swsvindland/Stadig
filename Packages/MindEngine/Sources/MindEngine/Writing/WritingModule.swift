@@ -32,7 +32,7 @@ enum WritingModule: SubjectModule {
             ]
         }
         let bank = catalogs.writing
-        let franklinDue = WritingSchedule.franklinDue(state.pieces, today: state.today, library: bank.library)
+        let franklinDue = WritingSchedule.franklinDue(state.pieces, today: state.today, dayStart: state.dayStart, library: bank.library)
         if WritingSchedule.lastBenchmark(state.pieces) == nil, franklinDue == nil,
             let task = WritingSchedule.benchmarkTask(state, library: bank.library)
         {
@@ -139,7 +139,7 @@ enum WritingModule: SubjectModule {
     static func reviewSeconds(_ card: MemoryCard) -> Double { 25 }
 
     static func series(_ domain: Domain, state: StudyState) -> [(day: Day, score: Double)] {
-        WritingProgress.series(tests: state.tests, comparisons: state.comparisons)
+        WritingProgress.series(tests: state.tests, comparisons: state.comparisons, dayStart: state.dayStart)
     }
 
     static func label(_ domain: Domain, state: StudyState) -> String {

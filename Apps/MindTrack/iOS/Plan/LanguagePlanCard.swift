@@ -86,7 +86,7 @@ struct LanguagePlanCard: View {
 
     /// The real-world test, when it's due.
     var benchmark: String {
-        let last = state.tests.filter { $0.test.selfRated && $0.domain == domain }.map(\.day).max()
+        let last = state.tests.filter { $0.test.selfRated && $0.domain == domain }.map { $0.day(startingAt: state.dayStart) }.max()
         let since = last.map { $0.days(until: state.today) }
         if state.phase.isReview {
             return "Review week: watch an episode in \(domain.label) without subtitles, just for fun, and note how much you followed."

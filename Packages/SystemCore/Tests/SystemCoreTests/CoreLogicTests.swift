@@ -97,6 +97,26 @@ struct DayTests {
         #expect(Day(time, timeZone: newYork) == day)
     }
 
+    /// A day that starts at 4 keeps the small hours with the evening before, by the clock, on the
+    /// nights the clocks go forward (14 March 2027) and back (7 November) too.
+    @Test(arguments: [Day(year: 2027, month: 3, day: 14), Day(year: 2027, month: 11, day: 7), Day(year: 2027, month: 6, day: 1)])
+    func aDayThatStartsAtFourKeepsTheSmallHoursWithTheNightBefore(_ day: Day) {
+        let newYork = TimeZone(identifier: "America/New_York")!
+        let evening = day.adding(days: -1)
+        for (hour, minute) in [(0, 0), (1, 30), (3, 59)] {
+            #expect(Day(day.at(hour: hour, minute: minute, timeZone: newYork), dayStartsAt: 4, timeZone: newYork) == evening, "\(hour):\(minute)")
+        }
+        let four = day.at(hour: 4, minute: 0, timeZone: newYork)
+        #expect(Day(four, dayStartsAt: 4, timeZone: newYork) == day)
+        #expect(Day(four.addingTimeInterval(-1), dayStartsAt: 4, timeZone: newYork) == evening)
+        #expect(Day(day.at(hour: 23, minute: 59, timeZone: newYork), dayStartsAt: 4, timeZone: newYork) == day)
+        // Starting at midnight is the plain calendar day.
+        for hour in [0, 3, 12, 23] {
+            let time = day.at(hour: hour, minute: 0, timeZone: newYork)
+            #expect(Day(time, dayStartsAt: 0, timeZone: newYork) == Day(time, timeZone: newYork))
+        }
+    }
+
     @Test(arguments: [Calendar.Identifier.buddhist, .japanese])
     func aPhoneOnAnotherCalendarGetsTheSameTimes(_ identifier: Calendar.Identifier) throws {
         var device = Calendar(identifier: identifier)

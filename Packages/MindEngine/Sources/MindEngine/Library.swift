@@ -97,12 +97,14 @@ public struct CourseWord: Hashable, Sendable, Identifiable {
 
     /// Every word with a card in the language, kana left out, most common first. A card whose
     /// word isn't in this build's deck is skipped.
-    public static func rows(_ language: Language, cards: [CardKey: MemoryCard], deck: LanguageDeck, today: Day, now: Date) -> [CourseWord] {
+    public static func rows(
+        _ language: Language, cards: [CardKey: MemoryCard], deck: LanguageDeck, today: Day, dayStart: Int, now: Date
+    ) -> [CourseWord] {
         cards.values.compactMap { card -> CourseWord? in
             guard card.key.language == language, let id = card.key.wordID, let word = deck.word(id) else { return nil }
             let state: State
             if let memory = card.memory {
-                if card.isDue(on: today) {
+                if card.isDue(on: today, dayStart: dayStart) {
                     state = .due
                 } else if memory.stability >= Scaffolds.masteredStability || (card.knownBefore && memory.lapses == 0) {
                     state = .mastered

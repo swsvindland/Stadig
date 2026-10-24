@@ -150,6 +150,19 @@ struct ScheduleSettings: View {
                 ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
             }
             .accessibilityIdentifier("settings.sessionLength")
+            Picker(
+                "Day starts at",
+                selection: Binding(
+                    get: { settings.dayStart },
+                    set: { hour in
+                        var s = settings
+                        s.dayStart = hour
+                        model.save(settings: s)
+                    })
+            ) {
+                ForEach(MindSettings.dayStarts, id: \.self) { Text(Self.dayStartLabels[$0]).tag($0) }
+            }
+            .accessibilityIdentifier("settings.dayStart")
             Toggle(
                 "Give lagging subjects more days",
                 isOn: Binding(
@@ -164,8 +177,15 @@ struct ScheduleSettings: View {
         } header: {
             Text("Schedule")
         } footer: {
-            Text("A subject that stalls or slips at a check-in gets an extra day in the split until it moves again.")
+            Text(
+                "The day turns over at the hour you set, not at midnight, so a lesson before bed on a late night counts for that evening. A subject that stalls or slips at a check-in gets an extra day in the split until it moves again."
+            )
         }
+    }
+
+    /// "Midnight", then each hour after it as the clock shows it here ("4:00 AM", "04:00").
+    static let dayStartLabels: [String] = MindSettings.dayStarts.map { hour in
+        hour == 0 ? "Midnight" : Day(year: 2026, month: 1, day: 1).at(hour: hour, minute: 0).formatted(date: .omitted, time: .shortened)
     }
 }
 

@@ -116,6 +116,9 @@ final class AppModel {
     @ObservationIgnored private var sharedObserver: AnyObject?
     @ObservationIgnored private var storeObserver: AnyObject?
     @ObservationIgnored private var dayObservers: [NotificationToken] = []
+    /// Wakes when the next study day starts, with the app open (`watchDayStart`).
+    @ObservationIgnored private var dayTimer: Task<Void, Never>?
+    @ObservationIgnored private var dayTimerFires: Date?
     @ObservationIgnored private var quitObserver: NotificationToken?
     @ObservationIgnored private var lastRevision = -1
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
@@ -172,7 +175,7 @@ final class AppModel {
         self.shared = shared
         self.drafts = drafts
         self.now = now
-        today = Day(now())
+        today = Day(now(), dayStartsAt: MindSettings.standardDayStart)
         catalogs = Catalogs(decks: LanguageDeck.bundled())
         reload()
         // A second device or a reinstall: onboarding waits while the person's data comes down.
@@ -181,7 +184,7 @@ final class AppModel {
         // Another device's changes, as CloudKit imports them while the app is open: a stale copy
         // left on screen would be saved back over them.
         storeObserver = store.observeChanges { [weak self] in self?.reloadIfChanged() }
-        // Midnight, or a new time zone, with the app open: plan for the new day.
+        // A new time zone with the app open, or midnight when days start then: plan for the new day.
         dayObservers = [.NSCalendarDayChanged, .NSSystemTimeZoneDidChange].map { name in
             NotificationToken.observe(name) { [weak self] in self?.refreshDay() }
         }
@@ -238,9 +241,31 @@ final class AppModel {
         if store.revision != lastRevision, run == nil { reload() }
     }
 
-    /// The day moved on (midnight, a new time zone) since the plan was made.
+    /// The hour a study day starts, from Settings: a session before then counts for the day before.
+    var dayStart: Int { settings?.dayStart ?? MindSettings.standardDayStart }
+
+    /// The study day a moment falls on.
+    func studyDay(_ date: Date) -> Day { Day(date, dayStartsAt: dayStart) }
+
+    /// The day moved on (the day start, a new time zone) since the plan was made.
     func refreshDay() {
-        if today != Day(now()) { recompute() }
+        if today != studyDay(now()) { recompute() }
+    }
+
+    /// The system's day-changed notice comes at midnight, and a study day starts at 4 a.m. unless
+    /// changed, so a timer wakes the plan then. On iPhone and iPad the app is suspended long
+    /// before; coming back to the front refreshes the day too.
+    private func watchDayStart() {
+        let next = today.adding(days: 1).at(hour: dayStart, minute: 0)
+        guard next != dayTimerFires else { return }
+        dayTimerFires = next
+        dayTimer?.cancel()
+        let wait = max(1, next.timeIntervalSince(now()) + 1)
+        dayTimer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(wait))
+            guard !Task.isCancelled, let self else { return }
+            self.refreshDay()
+        }
     }
 
     /// What Lift Track, Macro Track and the hub published, and life modes set anywhere.
@@ -296,7 +321,8 @@ final class AppModel {
     }
 
     func recompute() {
-        today = Day(now())
+        today = studyDay(now())
+        watchDayStart()
         state = makeState()
         defer { WidgetBridge.update(self) }
         guard let state, onboarded else {

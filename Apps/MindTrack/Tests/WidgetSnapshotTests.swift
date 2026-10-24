@@ -52,6 +52,22 @@ struct WidgetSnapshotTests {
         }
     }
 
+    /// The widget turns the day over when the app does: at 4 a.m. unless changed, and at midnight
+    /// for a snapshot from a version before there was a choice.
+    @Test func theWidgetTurnsTheDayWhenTheAppDoes() {
+        let model = TestApp.onboardedModel()
+        #expect(WidgetBridge.snapshot(for: model).dayStart == model.dayStart)
+        let thursday = Day(year: 2026, month: 10, day: 15)
+        var snapshot = MindSnapshot.sample
+        snapshot.dayStart = 4
+        #expect(snapshot.studyDay(thursday.at(hour: 0, minute: 30)) == thursday.adding(days: -1))
+        #expect(snapshot.nextDayStart(after: thursday.at(hour: 0, minute: 30)) == thursday.at(hour: 4, minute: 0))
+        #expect(snapshot.nextDayStart(after: thursday.at(hour: 9, minute: 0)) == thursday.adding(days: 1).at(hour: 4, minute: 0))
+        snapshot.dayStart = nil
+        #expect(snapshot.studyDay(thursday.at(hour: 0, minute: 30)) == thursday)
+        #expect(snapshot.nextDayStart(after: thursday.at(hour: 0, minute: 30)) == thursday.adding(days: 1).date())
+    }
+
     @Test func aSnapshotFromAnEarlierDayNudgesToOpenTheApp() {
         var snapshot = MindSnapshot.sample
         let written = Day(year: 2026, month: 10, day: 14)

@@ -253,7 +253,7 @@ struct WritingScheduleTests {
     @Test("Franklin: notes now, the rewrite at least two days later from the notes alone, then the original beside it")
     func franklin() throws {
         let notes = WritingFixtures.piece(.franklinNotes, on: day, taskID: "creative-two", notes: "garden; winter; a letter")
-        #expect(WritingSchedule.franklinDue([notes], today: day.adding(days: 1)) == nil)
+        #expect(WritingSchedule.franklinDue([notes], today: day.adding(days: 1), dayStart: 0) == nil)
         let rewrite = try #require(next([.creative], pieces: [notes], on: day.adding(days: 2)))
         #expect(rewrite.exercise == .franklinRewrite)
         #expect(rewrite.notes == "garden; winter; a letter")
@@ -335,14 +335,14 @@ struct WritingScheduleTests {
         let today = start.adding(days: 62)
         let pieces = [oldPrompt, oldPractical, notes, short, newPrompt, tooClose]
 
-        let pairs = WritingSchedule.pairs(pieces, comparisons: [], today: today)
+        let pairs = WritingSchedule.pairs(pieces, comparisons: [], today: today, dayStart: 0)
         #expect(pairs.count == 1)
         let pair = try #require(pairs.first)
         #expect(pair.older.id == oldPrompt.id && pair.newer.id == newPrompt.id)
-        #expect(WritingSchedule.pairs(pieces, comparisons: [], today: today).first == pair, "the same order every time")
+        #expect(WritingSchedule.pairs(pieces, comparisons: [], today: today, dayStart: 0).first == pair, "the same order every time")
 
         let done = BlindComparison(date: today.date(), older: oldPrompt.id, newer: newPrompt.id, pickedNewer: true)
-        #expect(WritingSchedule.pairs(pieces, comparisons: [done], today: today).isEmpty)
+        #expect(WritingSchedule.pairs(pieces, comparisons: [done], today: today, dayStart: 0).isEmpty)
 
         // Over many pairs the newer piece lands first about half the time. Fixed ids, so the count is
         // the same on every run.
@@ -359,7 +359,7 @@ struct WritingScheduleTests {
             WritingFixtures.piece(.benchmark, on: start, taskID: "benchmark-creative"),
             WritingFixtures.piece(.benchmark, on: start.adding(days: 84), taskID: "benchmark-creative"),
         ]
-        let benchmarkPair = try #require(WritingSchedule.pairs(benchmarks, comparisons: [], today: start.adding(days: 84)).first)
+        let benchmarkPair = try #require(WritingSchedule.pairs(benchmarks, comparisons: [], today: start.adding(days: 84), dayStart: 0).first)
         #expect(benchmarkPair.older.id == benchmarks[0].id && benchmarkPair.prompt.contains("same prompt"))
     }
 }
@@ -499,13 +499,13 @@ struct WritingProgressTests {
     func score() {
         let start = Fixtures.monday
         let grammar = TestResult(test: .writing, date: start.date(), score: 0.8, placement: true)
-        #expect(WritingProgress.series(tests: [grammar], comparisons: []).map(\.score) == [65])
+        #expect(WritingProgress.series(tests: [grammar], comparisons: [], dayStart: 0).map(\.score) == [65])
         let wins = (1...3).map { BlindComparison(date: start.adding(days: 40 * $0).date(), older: UUID(), newer: UUID(), pickedNewer: true) }
-        #expect(WritingProgress.series(tests: [grammar], comparisons: wins).last?.score == 72.5)
+        #expect(WritingProgress.series(tests: [grammar], comparisons: wins, dayStart: 0).last?.score == 72.5)
         // The AI disagreeing makes a comparison a draw.
         var split = wins
         for i in split.indices { split[i].aiPickedNewer = false }
-        #expect(WritingProgress.series(tests: [grammar], comparisons: split).last?.score == 65)
+        #expect(WritingProgress.series(tests: [grammar], comparisons: split, dayStart: 0).last?.score == 65)
         let losses = (1...20).map { BlindComparison(date: start.adding(days: $0).date(), older: UUID(), newer: UUID(), pickedNewer: false) }
         #expect(WritingProgress.craft(losses) == 0)
 
@@ -538,9 +538,9 @@ extension WritingScheduleTests {
     func orphanedNotes() throws {
         let notes = WritingFixtures.piece(.franklinNotes, on: day.adding(days: -5), taskID: "retired-passage", notes: "gone")
         #expect(WritingSchedule.waitingNotes([notes], library: library) == nil)
-        #expect(WritingSchedule.franklinDue([notes], today: day, library: library) == nil)
+        #expect(WritingSchedule.franklinDue([notes], today: day, dayStart: 0, library: library) == nil)
         let held = WritingFixtures.piece(.franklinNotes, on: day.adding(days: -5), taskID: "creative-two", notes: "here")
-        #expect(WritingSchedule.franklinDue([notes, held], today: day, library: library)?.id == held.id)
+        #expect(WritingSchedule.franklinDue([notes, held], today: day, dayStart: 0, library: library)?.id == held.id)
 
         // With only the orphan, the plan teaches grammar again and the rotation can take new notes.
         let state = WritingFixtures.state(

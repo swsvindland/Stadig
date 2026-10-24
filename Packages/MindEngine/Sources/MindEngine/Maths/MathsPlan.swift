@@ -328,11 +328,13 @@ extension MathsPlan {
             case .numeracy:
                 let levels = NumeracyPlan.levels(state)
                 return StrandLevel(
-                    strand: strand, measured: measured, measuredOn: test?.day, working: placed(.numeracy, state) ? levels.overall : 0,
+                    strand: strand, measured: measured, measuredOn: test?.day(startingAt: state.dayStart),
+                    working: placed(.numeracy, state) ? levels.overall : 0,
                     next: placed(.numeracy, state) ? levels.weakest.label : nil, known: 0, total: 0)
             case .classic, .discrete:
                 return StrandLevel(
-                    strand: strand, measured: measured, measuredOn: test?.day, working: highestLevel(state.cards, strand: strand),
+                    strand: strand, measured: measured, measuredOn: test?.day(startingAt: state.dayStart),
+                    working: highestLevel(state.cards, strand: strand),
                     next: next(state.cards, strand: strand)?.title, known: known(state.cards, strand: strand).count,
                     total: MathCurriculum.topics(strand).count)
             }
@@ -344,7 +346,8 @@ extension MathsPlan {
         var out: [(day: Day, score: Double)] = []
         for test in state.tests where MathsStrand(test: test.test) == strand {
             guard let score = MathsModule.score(test) else { continue }
-            if out.last?.day == test.day { out[out.count - 1].score = score } else { out.append((test.day, score)) }
+            let day = test.day(startingAt: state.dayStart)
+            if out.last?.day == day { out[out.count - 1].score = score } else { out.append((day, score)) }
         }
         return out
     }

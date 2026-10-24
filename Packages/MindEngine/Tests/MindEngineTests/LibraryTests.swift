@@ -72,7 +72,8 @@ struct LibraryTests {
             MemoryCard(key: .kana("あ"), memory: Memory(stability: 30, difficulty: 3, lastReview: now, due: now + 30 * day), introduced: now),
             MemoryCard(key: .word(999_999), memory: nil, introduced: now),
         ]
-        let rows = CourseWord.rows(.japanese, cards: Dictionary(uniqueKeysWithValues: cards.map { ($0.key, $0) }), deck: deck, today: today, now: now)
+        let rows = CourseWord.rows(
+            .japanese, cards: Dictionary(uniqueKeysWithValues: cards.map { ($0.key, $0) }), deck: deck, today: today, dayStart: 0, now: now)
         #expect(rows.map(\.rank) == [1, 2, 3, 4, 5], "most common first; kana and words not in the deck left out")
         #expect(rows.map(\.state) == [.due, .known, .learning, .mastered, .mastered])
         #expect(rows[2].due == nil && rows[2].recall == nil, "nothing scheduled while learning")
@@ -85,7 +86,7 @@ struct LibraryTests {
         #expect(CourseWord.counts(rows) == [.due: 1, .known: 1, .learning: 1, .mastered: 2])
         #expect(CourseWord.filter(rows, query: "", state: .mastered).map(\.rank) == [4, 5])
         #expect(CourseWord.filter(rows, query: "meaning 2", state: nil).map(\.rank) == [2])
-        #expect(CourseWord.rows(.spanish, cards: [:], deck: deck, today: today, now: now).isEmpty)
+        #expect(CourseWord.rows(.spanish, cards: [:], deck: deck, today: today, dayStart: 0, now: now).isEmpty)
     }
 
     @Test func spanishWordsShowTheirStressAsTheReading() {
@@ -93,9 +94,9 @@ struct LibraryTests {
         let deck = LanguageDeck(language: .spanish, words: [word])
         let now = today.date()
         let card = MemoryCard(key: .word(7, .spanish), introduced: now)
-        let rows = CourseWord.rows(.spanish, cards: [card.key: card], deck: deck, today: today, now: now)
+        let rows = CourseWord.rows(.spanish, cards: [card.key: card], deck: deck, today: today, dayStart: 0, now: now)
         #expect(rows.map(\.reading) == [SpanishSounds.guide("corazón") ?? ""])
         #expect(rows.first?.reading.contains("ZÓN") == true)
-        #expect(CourseWord.rows(.japanese, cards: [card.key: card], deck: deck, today: today, now: now).isEmpty, "each language its own")
+        #expect(CourseWord.rows(.japanese, cards: [card.key: card], deck: deck, today: today, dayStart: 0, now: now).isEmpty, "each language its own")
     }
 }

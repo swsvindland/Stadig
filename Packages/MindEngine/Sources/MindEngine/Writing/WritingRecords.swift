@@ -178,7 +178,8 @@ public struct WritingPiece: Hashable, Codable, Sendable, Identifiable {
     }
 
     public var words: Int { text.split { $0.isWhitespace || $0.isNewline }.count }
-    public var day: Day { Day(date) }
+    /// The study day it was written on, for days that start at `dayStart` on the clock.
+    public func day(startingAt dayStart: Int) -> Day { Day(date, dayStartsAt: dayStart) }
     /// The AI's notes as separate fixes.
     public var feedbackItems: [String] { (feedback ?? "").split(separator: "\n").map(String.init).filter { !$0.isEmpty } }
 }

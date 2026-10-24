@@ -42,6 +42,9 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     var phaseLastDay: Day?
     /// The day the snapshot was written for, so a widget drawn days later can say it's stale.
     var day: Day?
+    /// The hour the app's study days start (4 a.m. unless changed); nil from a version before
+    /// there was a choice, whose days started at midnight.
+    var dayStart: Int?
     var updated = Date()
 
     static let groupID = "group.dev.svindland.stadig"
@@ -81,6 +84,14 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(self).write(to: url, options: .atomic)
         return true
+    }
+
+    /// The study day a moment falls on, as the app counts days.
+    func studyDay(_ date: Date, timeZone: TimeZone = .current) -> Day { Day(date, dayStartsAt: dayStart ?? 0, timeZone: timeZone) }
+
+    /// When the study day after the one `date` falls on starts.
+    func nextDayStart(after date: Date, timeZone: TimeZone = .current) -> Date {
+        studyDay(date, timeZone: timeZone).adding(days: 1).at(hour: dayStart ?? 0, minute: 0, timeZone: timeZone)
     }
 
     /// The snapshot as it reads on `today`, which can be days after the app wrote it. Once its day

@@ -30,9 +30,11 @@ enum Fixtures {
     ) -> MindSettings {
         var courses = Dictionary(uniqueKeysWithValues: domains.map { ($0, CourseMode.focus) })
         for domain in maintenance { courses[domain] = .maintenance }
+        // The fixtures' moments are mostly midnights (`day.date()`), so their days start then;
+        // `DayStartTests` covers the 4 a.m. start.
         return MindSettings(
             courses: courses, schedule: StudySchedule(daysPerWeek: days), onboardedAt: monday.date(), readsKana: readsKana,
-            mathsBackground: background, genres: [.fantasy, .sciFi])
+            mathsBackground: background, genres: [.fantasy, .sciFi], dayStart: 0)
     }
 
     static func catalogs(_ deck: LanguageDeck) -> Catalogs { Catalogs(decks: [deck.language: deck]) }
@@ -202,4 +204,17 @@ struct Store {
         save(run)
         return run
     }
+}
+
+// The fixtures' days start at midnight (`Fixtures.settings`), so a record's day is its calendar day.
+extension StudySession {
+    var day: Day { day(startingAt: 0) }
+}
+
+extension TestResult {
+    var day: Day { day(startingAt: 0) }
+}
+
+extension WritingPiece {
+    var day: Day { day(startingAt: 0) }
 }
