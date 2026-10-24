@@ -1,10 +1,12 @@
 import AVFoundation
 import Foundation
 import MindEngine
+import OSLog
 import Observation
 
 /// The language being learned, read aloud on the device with the best voice installed for it.
 /// Enhanced and premium voices (`voicesSettings` says where to get them) sound far more natural.
+/// Each utterance is paced and padded by `SpokenPace`.
 @MainActor @Observable
 final class Speech: NSObject, AVSpeechSynthesizerDelegate {
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
@@ -36,10 +38,18 @@ final class Speech: NSObject, AVSpeechSynthesizerDelegate {
         let candidates = installed.filter { $0.language == locale }
         let fallback = installed.filter { $0.language.hasPrefix(code) }
         let voice =
-            (candidates.isEmpty ? fallback : candidates).max { $0.quality.rawValue < $1.quality.rawValue }
+            (candidates.isEmpty ? fallback : candidates).max { Self.rank($0) < Self.rank($1) }
             ?? AVSpeechSynthesisVoice(language: locale)
         voices[language] = .some(voice)
         return voice
+    }
+
+    /// Apple's natural voices before the Eloquence and novelty ones, which are made to sound
+    /// synthetic and sit at the same default quality (so a tie would go to whichever the system
+    /// lists first); then premium, enhanced, compact, super-compact.
+    private static func rank(_ voice: AVSpeechSynthesisVoice) -> (natural: Int, quality: Int, size: Int) {
+        let synthetic = voice.voiceTraits.contains(.isNoveltyVoice) || voice.identifier.contains(".eloquence.")
+        return (synthetic ? 0 : 1, voice.quality.rawValue, voice.identifier.contains(".super-compact.") ? 0 : 1)
     }
 
     /// Where the system keeps its downloadable voices, on this device.
@@ -55,12 +65,24 @@ final class Speech: NSObject, AVSpeechSynthesizerDelegate {
     func speak(_ text: String, language: Language, slow: Bool = false) {
         AudioSession.startSpeaking()
         synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
+        let utterance = Self.utterance(text, pace: SpokenPace.pace(text, language: language, slow: slow))
         utterance.voice = voice(language)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * (slow ? 0.7 : 0.92)
-        utterance.postUtteranceDelay = 0.05
         pending += 1
         synthesizer.speak(utterance)
+    }
+
+    /// As markup, whose pauses are silence the voice plays, so the output is already running when
+    /// the first sound comes (the utterance's own delays are only waits). The rate is in the markup
+    /// too, since a markup utterance ignores its `rate`. Plain text at the same rate if the markup
+    /// is turned down.
+    private static func utterance(_ text: String, pace: SpokenPace) -> AVSpeechUtterance {
+        if let marked = AVSpeechUtterance(ssmlRepresentation: pace.markup(text)) { return marked }
+        appLog.notice("The voice turned down the markup for an utterance; speaking it plain")
+        let plain = AVSpeechUtterance(string: text)
+        plain.rate = AVSpeechUtteranceDefaultSpeechRate * Float(pace.rate)
+        plain.preUtteranceDelay = Double(pace.pause) / 1000
+        plain.postUtteranceDelay = Double(pace.pause) / 1000
+        return plain
     }
 
     func stop() { synthesizer.stopSpeaking(at: .immediate) }
