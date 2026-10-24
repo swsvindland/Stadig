@@ -73,6 +73,22 @@
   - Mind Track: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
 
+## Calls made for logging meals (2026-10-24)
+
+Macro Track's logger, from "if I'm doing a multi add, it's hard to see what I've added" and "groups: Monday I log a sandwich's four or five ingredients, then add it as one Tuesday to Friday".
+
+- **Logged as you go, with the meal in sight.** Each **+** still logs at once with Undo, and the meal so far now sits under the search instead of only in a toast. Open: a basket that logs nothing until Done (MyFitnessPal's multi-add), which loses the lot if the sheet is swiped away.
+- **The meal is the moment.** What's under the search is the moment a food logged at the logger's time would join on the timeline (the 45-minute rule), so it includes foods logged before the logger opened, and "2h ago" shows that meal. Open: only what this logger added.
+- **A saved meal logs as its foods.** Each food is its own entry (source `recipe`, a second apart, at the time picked), not one "Turkey sandwich" entry, so the timeline, food quality, each food's last portion and Health see the foods. Open: one entry per meal, like a recipe, which is tidier on the timeline.
+- **Kept as logged.** A meal keeps each food's numbers as they were logged, as Log Again does, so a catalog update doesn't change it; an amount is changed in the meal, or by logging it, changing the food and choosing Update. Open: reading each food from the catalog afresh at each log.
+- **Called "meals".** "My Meals" in the logger, "Save as Meal" and "Meals" in Foods, beside My Foods. The meal plan's dishes and meal timing's meals are other things. Open: "groups" or "recipes".
+- **Two foods at least.** Save as Meal needs two foods; one food is what the star is for.
+- **What counts as eating a meal.** A moment that holds every one of its foods (by catalog id, else name and brand), whatever the amounts and whatever else is in it. That ranks meals by time of day as Log Again ranks foods (half-life 21 days, a 1.5-hour spread), and a moment of the same foods in other amounts (to the calorie and the tenth of a gram, so more water counts) is offered as an update of the meal, not a second one (the meal eaten twice over counts as changed too). Of two meals with the same foods ("Save as New" makes them), the one in the same amounts is the one a moment is. Open: requiring the amounts to match.
+- **Today offers meals eaten around now.** Up to three meals eaten within 90 minutes of this time of day on other days in the last 30 days, by name, until it's eaten within 90 minutes of now by the clock (dinner at 11:30 PM isn't offered again at 12:15 AM), after "Same as yesterday", which gives way to the meal when it is one. The rest are in the logger. Open: more, or the logger only.
+- **A name to start from.** Left blank, a meal takes its three foods with the most calories by the part of their names before the first comma ("Bread, cheese and mayonnaise +2"): mayonnaise can outrank the turkey, but it's only a placeholder. Open: naming by protein, or the order logged.
+- **Free.** Saved meals are logging, which is free; the unlock still gates only starting the phase plan.
+- **The logger's toast.** It now sits just above the time bar (64 points over the keyboard, 116 with the meal under the search) instead of 150, which left it over the results. Open: no toast in the logger at all, since the meal under the search already shows each food arriving; Undo would then be a swipe on the food in the meal.
+
 ## Calls made for food search (2026-10-22)
 
 Macro Track's typed search, in FoodDatabase.

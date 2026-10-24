@@ -55,13 +55,15 @@ struct Toast: Identifiable, Equatable {
     var deleted: [FoodEntry] = []
     /// A fast just started (Undo removes it) or ended (Undo runs it again).
     var fast: FastUndo?
+    /// A saved meal just deleted, which the Undo brings back.
+    var deletedMeal: SavedMeal?
 
     enum FastUndo: Equatable {
         case started(UUID)
         case ended(Fast)
     }
 
-    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil }
+    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil }
 }
 
 /// The app's state: Macro Track's own synced records, what Lift Track and the hub published, what
@@ -108,6 +110,8 @@ final class AppModel {
     private(set) var water: [WaterLog] = []
     /// Fasts started on purpose, oldest first.
     private(set) var fasts: [Fast] = []
+    /// Foods eaten together, saved under a name to log in one tap.
+    private(set) var savedMeals: [SavedMeal] = []
 
     // From the other apps and the hub.
     private(set) var lift: AppSummary?
@@ -123,6 +127,8 @@ final class AppModel {
     /// off the main thread (the history) and need to know when to again.
     private(set) var analysisVersion = 0
     private(set) var logAgain: [LogAgainItem] = []
+    /// Every saved meal, best first for now.
+    private(set) var mealSuggestions: [MealSuggestion] = []
     /// Foods this person logs, for search ranking and last-used portions.
     private(set) var personal: [PersonalFood] = [] {
         didSet { personalVersion &+= 1 }
@@ -297,6 +303,7 @@ final class AppModel {
         if needsReading(SupplementLog.self) { supplementLogs = store.all(SupplementLog.self).sorted { $0.date < $1.date } }
         if needsReading(WaterLog.self) { water = store.all(WaterLog.self).sorted { $0.date < $1.date } }
         if needsReading(Fast.self) { fasts = store.all(Fast.self).sorted { $0.start < $1.start } }
+        if needsReading(SavedMeal.self) { savedMeals = store.all(SavedMeal.self) }
         if needsReading(MealPlan.self) { reloadMealPlans() }
         applyAISetting()
         readShared(recompute: false)
@@ -407,7 +414,9 @@ final class AppModel {
             if selectedDay == today { selectedDay = .today }
             today = .today
         }
-        logAgain = LogAgain.rank(entries, now: Date())
+        let now = Date()
+        logAgain = LogAgain.rank(entries, now: now)
+        mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
         guard let state else {
             analysis = nil
             return
@@ -757,6 +766,7 @@ final class AppModel {
         if !toast.undoDoses.isEmpty { delete(doses: toast.undoDoses) }
         if !toast.deleted.isEmpty { bringBack(toast.deleted) }
         if let fast = toast.fast { undo(fast) }
+        if let meal = toast.deletedMeal { save(meal) }
         self.toast = nil
     }
 

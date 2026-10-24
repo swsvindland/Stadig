@@ -67,7 +67,8 @@ struct QuickAddView: View {
     }
 }
 
-/// Change an entry's amount, meal or time; or delete it.
+/// Change an entry's amount, meal or time; or delete it. With `saveTo` it edits a food of a saved
+/// meal instead: only its amount, handed back rather than logged.
 struct EntryEditor: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -80,6 +81,7 @@ struct EntryEditor: View {
     @State private var original: (unitID: String?, count: Double)?
     /// Set where the editor sits beside the log (an inspector) rather than in a sheet: what closes it.
     var close: (() -> Void)?
+    var saveTo: ((FoodEntry) -> Void)?
 
     var body: some View {
         if let close {
@@ -173,15 +175,17 @@ struct EntryEditor: View {
             Section {
                 NutrientSummary(nutrients: nutrients)
             }
-            Section {
-                DatePicker("Eaten", selection: $entry.date).accessibilityIdentifier("entryEditor.eaten")
-            }
-            Section {
-                Button("Delete", role: .destructive) {
-                    model.delete(entries: [entry.id])
-                    if let close { close() } else { dismiss() }
+            if saveTo == nil {
+                Section {
+                    DatePicker("Eaten", selection: $entry.date).accessibilityIdentifier("entryEditor.eaten")
                 }
-                .accessibilityIdentifier("entryEditor.delete")
+                Section {
+                    Button("Delete", role: .destructive) {
+                        model.delete(entries: [entry.id])
+                        if let close { close() } else { dismiss() }
+                    }
+                    .accessibilityIdentifier("entryEditor.delete")
+                }
             }
         }
     }
@@ -219,7 +223,7 @@ struct EntryEditor: View {
     func save() {
         var updated = entry
         guard amountChanged else {
-            model.update(updated)
+            if saveTo == nil { model.update(updated) }
             return
         }
         if let food, let unit {
@@ -243,7 +247,7 @@ struct EntryEditor: View {
             updated.amountLabel = "\(Format.number(count, digits: 2)) × \(entry.amountLabel)"
             updated.grams = entry.grams.map { $0 * count }
         }
-        model.update(updated)
+        if let saveTo { saveTo(updated) } else { model.update(updated) }
     }
 }
 

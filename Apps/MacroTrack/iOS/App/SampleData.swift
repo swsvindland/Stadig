@@ -88,6 +88,17 @@ enum SampleData {
         model.store.save(entries)
         model.store.save(weighIns)
         model.store.save(statuses)
+        // Breakfast and lunch saved as meals, as the person would from the last time each was eaten whole.
+        let moments = Timeline.moments(entries)
+        for (name, queries) in [
+            ("Oats and yogurt", ["oats", "greek yogurt", "banana"]), ("Chicken and rice", ["chicken breast", "white rice cooked", "broccoli"]),
+        ] {
+            let ids = Set(queries.compactMap { foods[$0]?.id })
+            guard ids.count == queries.count, let moment = moments.last(where: { ids.isSubset(of: $0.entries.compactMap(\.foodID)) }) else {
+                continue
+            }
+            model.store.save(SavedMeal(name: name, from: moment.entries.filter { $0.foodID.map(ids.contains) ?? false }, updatedAt: moment.end))
+        }
         model.reload()
         if LaunchOptions.current.has("-seedPlan"), let plan = model.recommendation {
             model.start(plan)

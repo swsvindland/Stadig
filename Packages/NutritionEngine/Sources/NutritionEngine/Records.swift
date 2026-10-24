@@ -6,7 +6,9 @@ import SystemCore
 
 /// How an entry got into the log, which says how far its numbers can be trusted.
 public enum EntrySource: String, Codable, Sendable {
-    case search, barcode, recent, favorite, copied, quickAdd, recipe, photo, description, label, shortcut
+    case search, barcode, recent, favorite, copied, quickAdd, photo, description, label, shortcut
+    /// One of the foods of a saved meal (``SavedMeal``), logged with the rest.
+    case recipe
     /// A meal from the week's meal plan, eaten as planned.
     case plan
     /// One tap in the drinks card: a coffee, a tea.

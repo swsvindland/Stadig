@@ -11,6 +11,8 @@ struct TodayBoard: View {
     @State private var selection: FoodEntry.ID?
     @State private var editing = false
     @State private var sortOrder = [KeyPathComparator(\FoodEntry.date)]
+    /// The moment being named as a saved meal.
+    @State private var savingMeal: Moment?
 
     var body: some View {
         let entries = model.entries(on: model.selectedDay)
@@ -47,6 +49,9 @@ struct TodayBoard: View {
                 }
             }
         }
+        .saveMealPrompt(
+            isPresented: Binding(get: { savingMeal != nil }, set: { if !$0 { savingMeal = nil } }), entries: savingMeal?.entries ?? []
+        )
         .onChange(of: selection) { _, selected in if selected != nil { editing = true } }
         .onChange(of: editing) { _, open in if !open { selection = nil } }
         .onChange(of: model.selectedDay) { _, _ in selection = nil }
@@ -71,7 +76,7 @@ struct TodayBoard: View {
                 PlannedMealsSection(day: model.selectedDay)
                 SupplementsSection(day: model.selectedDay)
                 DrinksSection(day: model.selectedDay)
-                if !model.logAgain.isEmpty || model.usualNow != nil { LogAgainSection() }
+                if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
             } else {
                 Section {
                     Label(
@@ -172,6 +177,7 @@ struct TodayBoard: View {
                     if moment.entries.count > 1 {
                         Button("Log All \(moment.entries.count) Again", systemImage: "arrow.clockwise") { model.logAgain(moment) }
                     }
+                    MomentMealButton(moment: moment, titleCase: true) { savingMeal = moment }
                 }
                 Divider()
                 Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }

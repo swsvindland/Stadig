@@ -34,7 +34,7 @@ struct TodayList: View {
                     PlannedMealsSection(day: model.selectedDay)
                     SupplementsSection(day: model.selectedDay)
                     DrinksSection(day: model.selectedDay)
-                    if !model.logAgain.isEmpty || model.usualNow != nil { LogAgainSection() }
+                    if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
                 } else {
                     Section {
                         Label(
@@ -409,16 +409,19 @@ struct ActionRow: View {
     }
 }
 
-/// What's worth logging again right now, one tap each: what was eaten around now yesterday,
-/// then single foods by how often and how recently they're eaten at this time of day.
+/// What's worth logging again right now, one tap each: what was eaten around now yesterday, saved
+/// meals eaten around now, then single foods by how often and how recently they're eaten at this
+/// time of day.
 struct LogAgainSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let meals = model.usualMeals
         Section {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
-                    if let usual = model.usualNow {
+                    // Yesterday's lunch that is a saved meal is offered by its name, below.
+                    if let usual = model.usualNow, SavedMeals.meal(for: usual.entries, in: meals) == nil {
                         chip(
                             title: "Same as \(Format.relative(Day(usual.start), today: model.today))",
                             detail:
@@ -431,6 +434,13 @@ struct LogAgainSection: View {
                         .accessibilityLabel(
                             "Log the same as \(Format.relative(Day(usual.start), today: model.today)): \(usual.entries.map(\.name).joined(separator: ", ")), \(Format.kcal(usual.nutrients.kcal))"
                         )
+                    }
+                    ForEach(meals) { meal in
+                        chip(title: meal.name, detail: "\(meal.foods.count) foods", kcal: meal.nutrients.kcal, highlight: true) {
+                            model.log(meal)
+                        }
+                        .accessibilityIdentifier("today.logMeal")
+                        .accessibilityLabel("Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))")
                     }
                     ForEach(model.logAgain.prefix(10)) { item in
                         chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
@@ -498,6 +508,7 @@ struct MomentSection: View {
     /// Since the meal before, when meal timing is on.
     var gap: MealGap?
     @Binding var editing: FoodEntry?
+    @State private var naming = false
 
     var body: some View {
         Section {
@@ -528,6 +539,7 @@ struct MomentSection: View {
                 Text(Format.kcal(moment.nutrients.kcal)).monospacedDigit()
                 Menu {
                     Button("Log all again", systemImage: "arrow.clockwise") { model.logAgain(moment) }
+                    MomentMealButton(moment: moment) { naming = true }
                     Button("Delete all", systemImage: "trash", role: .destructive) { model.delete(entries: moment.entries.map(\.id)) }
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3)
@@ -543,6 +555,33 @@ struct MomentSection: View {
                 .accessibilityLabel("Add to \(Format.time(moment.start))")
                 .accessibilityIdentifier("today.addToMoment")
             }
+            .saveMealPrompt(isPresented: $naming, entries: moment.entries)
+        }
+    }
+}
+
+/// A moment's menu item for the saved meals: save it as one, update the one it is, or nothing
+/// when it's a saved meal as it was saved (or a single food).
+struct MomentMealButton: View {
+    @Environment(AppModel.self) private var model
+    let moment: Moment
+    /// Title Case, as the desktop's menus are.
+    var titleCase = false
+    /// Asks for the new meal's name.
+    let name: () -> Void
+
+    var body: some View {
+        switch model.saveState(of: moment.entries) {
+        case .new:
+            if moment.entries.count > 1 {
+                Button(titleCase ? "Save as Meal…" : "Save as meal…", systemImage: "square.and.arrow.down", action: name)
+                    .accessibilityIdentifier("today.saveMeal")
+            }
+        case .changed(let meal):
+            Button("Update \(meal.name)", systemImage: "arrow.triangle.2.circlepath") { model.update(meal, from: moment.entries) }
+                .accessibilityIdentifier("today.updateMeal")
+        case .saved:
+            EmptyView()
         }
     }
 }

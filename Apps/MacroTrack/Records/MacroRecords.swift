@@ -73,3 +73,8 @@ nonisolated extension Fast: @retroactive StoredRecord {
     public static var kind: String { "fast" }
     public static var schemaVersion: Int { 1 }
 }
+
+nonisolated extension SavedMeal: @retroactive StoredRecord {
+    public static var kind: String { "saved-meal" }
+    public static var schemaVersion: Int { 1 }
+}
