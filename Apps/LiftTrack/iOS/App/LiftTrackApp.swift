@@ -37,6 +37,7 @@ struct LiftTrackApp: App {
         if !launch.isQuiet {
             WatchLink.shared.activate()
             WorkoutMirror.shared.onData = { data in AppModel.shared.fromWatch(data) }
+            WorkoutMirror.shared.onConnected = { AppModel.shared.watchJoined() }
             WorkoutMirror.shared.activate()
         }
         #endif

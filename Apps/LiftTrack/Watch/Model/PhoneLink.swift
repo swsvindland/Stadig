@@ -14,6 +14,9 @@ final class PhoneLink: NSObject {
 
     /// Called with each context that arrives.
     var onContext: ((PhoneContext) -> Void)?
+    /// Called with what the phone says about a session it leads, when it comes this way rather than
+    /// over the mirrored workout.
+    var onMirror: (([Data]) -> Void)?
 
     private var session: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
     /// When a context was asked for, until one sent after it arrives.
@@ -42,6 +45,13 @@ final class PhoneLink: NSObject {
         outbox.append(record)
         self.outbox = outbox
         deliver()
+    }
+
+    /// A message about the session the phone leads, while the phone is reachable: the second route
+    /// beside the mirrored workout. Nothing is queued: a late one is no use.
+    func sendLive(_ data: Data) {
+        guard let session, session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(["mirror": data], replyHandler: nil, errorHandler: Self.ignore)
     }
 
     /// Waits while WatchConnectivity hands over queued content, for the background task that woke the app.
@@ -94,7 +104,8 @@ final class PhoneLink: NSObject {
     nonisolated private static func ignore(_ error: any Error) {}
 
     private func received(_ data: Data) {
-        guard let context = try? WatchJSON.decoder().decode(PhoneContext.self, from: data) else { return }
+        // Compressed by builds since the context carried the session after today's; plain before.
+        guard let context = LinkData.decode(PhoneContext.self, from: data, with: WatchJSON.decoder()) else { return }
         if let asked = contextRequested, context.sentAt >= asked { answered() }
         onContext?(context)
     }
@@ -117,6 +128,11 @@ extension PhoneLink: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: (any Error)?) {
         let data = session.receivedApplicationContext["context"] as? Data
         Task { @MainActor in self.activated(context: data) }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let data = message["mirror"] as? Data else { return }
+        Task { @MainActor in self.onMirror?([data]) }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {

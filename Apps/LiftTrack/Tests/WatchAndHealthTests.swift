@@ -17,17 +17,30 @@ struct WatchAndHealthTests {
         var connected = true
         /// Whether a message gets to the Watch.
         var reachable = true
+        /// What went over the mirrored workout.
         private(set) var sent: [MirrorMessage] = []
+        /// What went over WatchConnectivity, the second route.
+        private(set) var sentToApp: [MirrorMessage] = []
         private(set) var savedToHealth: [UUID] = []
 
         var handOff: AppModel.WorkoutHandOff {
             AppModel.WorkoutHandOff(
                 watchConnected: { [self] in connected },
                 sendToWatch: { [self] data in
-                    if let message = try? JSONDecoder().decode(MirrorMessage.self, from: data) { sent.append(message) }
+                    if let message = MirrorMessage(encoded: data) { sent.append(message) }
                     return connected && reachable
                 },
-                saveToHealth: { [self] record in savedToHealth.append(record.id) })
+                saveToHealth: { [self] record in savedToHealth.append(record.id) },
+                sendToWatchApp: { [self] data in
+                    if let message = MirrorMessage(encoded: data) { sentToApp.append(message) }
+                })
+        }
+
+        /// The copies of the session sent, oldest first, with the context when one came.
+        var copies: [(session: LiveSession, context: PhoneContext?, sentAt: Date)] {
+            sentToApp.compactMap {
+                if case .session(let session, let context, let sentAt) = $0 { (session, context, sentAt) } else { nil }
+            }
         }
 
         var finishedIDs: [UUID] {
@@ -125,7 +138,7 @@ struct WatchAndHealthTests {
                 session.rest?.endsAt = now.addingTimeInterval(120)
             }
         }
-        func reading(at date: Date) throws -> Data { try JSONEncoder().encode(MirrorMessage.heartRate(bpm: 70, date: date)) }
+        func reading(at date: Date) throws -> Data { try #require(MirrorMessage.heartRate(bpm: 70, date: date).encoded()) }
 
         rest()
         model.fromWatch([try reading(at: now.addingTimeInterval(130))])
@@ -133,6 +146,115 @@ struct WatchAndHealthTests {
 
         model.fromWatch([try reading(at: now.addingTimeInterval(40))])
         #expect(model.live?.rest == nil)
+    }
+
+    @Test("A set logged on the Watch lands in the phone's session, and the copy that comes back says so")
+    func setLoggedOnTheWatch() async throws {
+        let watch = FakeWatch()
+        let model = TestApp().onboarded()
+        model.workoutHandOff = watch.handOff
+        model.start(try #require(model.plan()))
+        model.watchJoined()
+        await model.watchShare?.value
+        #expect(watch.copies.count == 1, "Starting and joining a moment apart send one copy")
+        let first = try #require(watch.copies.last)
+        let context = try #require(first.context, "The copy after joining carries the gym and loads")
+        let environment = context.environment(catalog: model.catalog)
+        var copy = MirroredSession(first.session, sentAt: first.sentAt)
+        let (item, set) = try #require(copy.session.current)
+        let kind = SessionChange.Kind.log(
+            item: copy.session.items[item].id, set: set, reps: 5, loadKg: 40, rating: nil, seconds: 30, heartRatePeak: nil)
+        _ = copy.make(kind, environment: environment)
+        let message = try #require(MirrorMessage.changes(copy.pending).encoded())
+
+        model.fromWatch([message])
+        #expect(model.live?.items[item].sets[set].logged?.reps == 5)
+        await model.watchShare?.value
+        let back = try #require(watch.copies.last)
+        #expect(watch.copies.count == 2)
+        #expect(back.session.takenChanges == 1)
+        #expect(back.context == nil, "The context goes once")
+        let taken = copy.receive(back.session, sentAt: back.sentAt, environment: environment)
+        #expect(taken && copy.pending.isEmpty)
+
+        // The same change again (sent by both routes, or again because the copy was slow): logged once,
+        // and the copy goes again so the Watch learns it landed.
+        let before = try #require(model.live)
+        model.fromWatch([message])
+        await model.watchShare?.value
+        #expect(model.live == before)
+        #expect(watch.copies.count == 3)
+    }
+
+    @Test("When the mirrored workout drops, the Watch that joined still gets copies, and the session's end, the other way")
+    func mirrorDrops() async throws {
+        let watch = FakeWatch()
+        let model = try sessionWithWork(watch)
+        model.fromWatch([try #require(MirrorMessage.join.encoded())])
+        await model.watchShare?.value
+        // Out of range for a minute: the mirrored workout is gone, WatchConnectivity comes back.
+        watch.connected = false
+        let copies = watch.copies.count
+        model.logNext(1)
+        await model.watchShare?.value
+        #expect(watch.copies.count == copies + 1)
+
+        model.finish(feedback: nil)
+        await model.workoutTask?.value
+        let record = try #require(model.finished)
+        // The phone saves the workout itself, and the Watch is told to throw its own away.
+        #expect(watch.savedToHealth == [record.id])
+        let told = watch.sentToApp.contains {
+            if case .discard(let id, let saved) = $0 { id == record.id && saved } else { false }
+        }
+        #expect(told)
+    }
+
+    @Test("Ending the session on the Watch saves it on the phone with the Watch's feedback, once")
+    func finishedOnTheWatch() async throws {
+        let watch = FakeWatch()
+        let model = try sessionWithWork(watch)
+        let id = try #require(model.live?.id)
+        let feedback = SessionFeedback(soreness: 2, jointPain: [.knee], energy: 4)
+        let message = try #require(MirrorMessage.finishFromWatch(id: id, feedback: feedback).encoded())
+        model.fromWatch([message])
+        await model.workoutTask?.value
+        let record = try #require(model.finished)
+        #expect(record.id == id && model.live == nil)
+        #expect(model.sessions.map(\.feedback) == [feedback])
+        #expect(watch.finishedIDs == [id])
+        #expect(watch.savedToHealth.isEmpty, "The Watch's workout is the one Health keeps")
+
+        // The Watch didn't hear and asks again: it's told again, and nothing is saved twice.
+        model.fromWatch([message])
+        await model.workoutTask?.value
+        #expect(watch.finishedIDs == [id, id])
+        #expect(model.sessions.count == 1)
+    }
+
+    @Test("Discarding on the Watch discards the phone's session; a request for another session does nothing")
+    func discardedOnTheWatch() async throws {
+        let watch = FakeWatch()
+        let model = try sessionWithWork(watch)
+        let id = try #require(model.live?.id)
+        model.fromWatch([try #require(MirrorMessage.discardFromWatch(id: UUID()).encoded())])
+        model.fromWatch([try #require(MirrorMessage.finishFromWatch(id: UUID(), feedback: nil).encoded())])
+        #expect(model.live?.id == id)
+
+        model.fromWatch([try #require(MirrorMessage.discardFromWatch(id: id).encoded())])
+        await model.workoutTask?.value
+        #expect(model.live == nil && model.finished == nil && model.sessions.isEmpty)
+        #expect(watch.discards == 1)
+    }
+
+    @Test("The session after today's is the program's next day, for a Watch left without the phone to go on to")
+    func followingPlan() throws {
+        let model = TestApp().onboarded()
+        let next = try #require(model.analysis?.next)
+        let plan = try #require(model.plan())
+        let following = try #require(model.followingPlan())
+        #expect(plan.dayID == next.day.id)
+        #expect(following.dayID == next.followingDay.id && following.dayID != plan.dayID)
     }
 
     @Test("A weight typed on the tape after Health's last weigh-in counts, and Health's counts otherwise")

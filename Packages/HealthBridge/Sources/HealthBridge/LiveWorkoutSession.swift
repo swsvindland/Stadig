@@ -1,6 +1,7 @@
 #if os(watchOS)
 import Foundation
 import HealthKit
+import OSLog
 import Observation
 
 /// Why a live workout didn't start.
@@ -163,6 +164,19 @@ public final class LiveWorkoutSession: NSObject {
         guard source === session else { return }
         onRemoteData?(data)
     }
+
+    /// The phone's end of a mirrored workout went away (out of range for a while, say): mirroring
+    /// starts again, so the phone takes the workout back up. Until it does, the data goes by the
+    /// app's other route; if it can't, the workout carries on here and the phone saves its own.
+    private func disconnected(_ source: HKWorkoutSession, error: (any Error)?) async {
+        guard source === session, isMirrored else { return }
+        healthLog.notice("The mirrored workout lost the phone: \(String(describing: error), privacy: .public)")
+        do {
+            try await source.startMirroringToCompanionDevice()
+        } catch {
+            healthLog.error("Couldn't mirror the workout again: \(String(describing: error), privacy: .public)")
+        }
+    }
 }
 
 extension LiveWorkoutSession: HKWorkoutSessionDelegate {
@@ -175,6 +189,10 @@ extension LiveWorkoutSession: HKWorkoutSessionDelegate {
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didReceiveDataFromRemoteWorkoutSession data: [Data]) {
         Task { @MainActor in self.received(data, from: workoutSession) }
+    }
+
+    nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didDisconnectFromRemoteDeviceWithError error: (any Error)?) {
+        Task { @MainActor in await self.disconnected(workoutSession, error: error) }
     }
 
     nonisolated public func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: any Error) {

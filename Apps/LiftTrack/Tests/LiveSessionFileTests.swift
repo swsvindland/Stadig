@@ -43,7 +43,7 @@ struct LiveSessionFileTests {
         model.start(try #require(model.plan()))
         model.logNext(1)
         let before = try written(app)
-        let reading = try JSONEncoder().encode(MirrorMessage.heartRate(bpm: 120, date: Date()))
+        let reading = try #require(MirrorMessage.heartRate(bpm: 120, date: Date()).encoded())
         model.fromWatch([reading])
         #expect(model.live?.heartRateSamples.count == 1)
         #expect(model.heartRate == 120)

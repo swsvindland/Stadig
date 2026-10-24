@@ -1,3 +1,4 @@
+import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
@@ -38,13 +39,19 @@ struct SessionView: View {
                     }
                 }
         }
-        // Logging moves the session on; whatever was pushed over the old step goes with it.
+        // Logging moves the session on; whatever was pushed over the old step goes with it. So does a
+        // rating left open when the phone puts another exercise first, so it can't land on that one.
         .onChange(of: model.step) { path.removeAll() }
+        .onChange(of: model.currentItemID) { path.removeAll() }
         .sheet(isPresented: $showingList) {
             NavigationStack { ExerciseListView { showingList = false } }
         }
         .confirmationDialog("Session", isPresented: $showingOptions) {
             Button("End Session") { model.wrapUp() }
+            if model.phoneLed {
+                // Heart rate stops here; the session carries on on the phone.
+                Button("Continue on iPhone") { model.stopCompanion() }
+            }
             Button("Discard Session", role: .destructive) { confirmingDiscard = true }
         }
         .confirmationDialog("Discard this session? Nothing is saved.", isPresented: $confirmingDiscard, titleVisibility: .visible) {
@@ -71,6 +78,9 @@ struct SessionView: View {
                 .id(stepID(item, set))
         case .conditioning(let item):
             ConditioningView(item: item)
+                .id(stepID(item, 0))
+        case .heat(let item):
+            HeatOnPhoneView(item: item)
                 .id(stepID(item, 0))
         case .finish, nil:
             FinishView()
@@ -102,6 +112,34 @@ struct SessionView: View {
         path = [.rate(SetDraft(item: item, set: set, loadKg: prescription.loadKg, reps: prescription.targetReps))]
     }
     #endif
+}
+
+/// The sauna or steam room in a session the iPhone runs: the minutes follow the thermometer, which is
+/// read and logged on the phone. The session moves on here once the phone has it.
+struct HeatOnPhoneView: View {
+    @Environment(WatchModel.self) private var model
+    let item: Int
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                Image(systemName: "thermometer.sun.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
+                Text(model.exercise(item).name)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                Text("Log it on your iPhone: the thermometer's reading sets the minutes.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Skip", systemImage: "forward.end") { model.skip(item: item) }
+                    .buttonStyle(.glass)
+            }
+        }
+    }
 }
 
 /// A short confirmation from the model, such as heart rate ending a rest early.

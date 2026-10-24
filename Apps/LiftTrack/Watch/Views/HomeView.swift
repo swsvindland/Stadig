@@ -13,7 +13,7 @@ struct HomeView: View {
                 if let context = model.context {
                     if let upNext = context.upNext {
                         restDay(upNext: upNext, plan: context.plan)
-                    } else if let plan = context.plan {
+                    } else if let plan = model.upcoming {
                         today(plan)
                     } else {
                         message("calendar", "Nothing planned today.", "Open Lift Track on your iPhone to plan your week.")
@@ -56,7 +56,12 @@ struct HomeView: View {
             }
             .buttonStyle(.glassProminent)
             .handGestureShortcut(.primaryAction)
-            if model.isStale {
+            if model.offersFollowing {
+                Text("Next in your program, after the session you did on your Watch. Open Lift Track on your iPhone to update it.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if model.isStale {
                 Text("Planned \(plan.day.date().formatted(.dateTime.weekday(.wide))). Open Lift Track on your iPhone to update it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

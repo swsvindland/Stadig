@@ -13,6 +13,8 @@ public final class WorkoutMirror: NSObject {
     public private(set) var isConnected = false
     /// Data the Watch sent.
     @ObservationIgnored public var onData: (([Data]) -> Void)?
+    /// A mirrored workout has connected: the Watch is ready to hear from the phone.
+    @ObservationIgnored public var onConnected: (() -> Void)?
     @ObservationIgnored private var session: HKWorkoutSession?
 
     /// Picks up mirrored workouts. Call once at launch, before the Watch might start one.
@@ -51,6 +53,7 @@ public final class WorkoutMirror: NSObject {
         self.session = session
         session.delegate = self
         isConnected = true
+        onConnected?()
     }
 
     private func detach(_ source: HKWorkoutSession) {
