@@ -12,13 +12,15 @@ struct PortionRequest: Identifiable, Hashable {
 }
 
 /// Every way to log, in one sheet that opens straight on the way chosen. Logging keeps the sheet
-/// open (with Undo) so a meal of several foods is a few taps; Done closes it.
+/// open (with Undo) so a meal of several foods is a few taps, with the meal so far in sight under
+/// the search; Done closes it.
 struct LoggerSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var mode: LogMode
     @State private var query = ""
     @State private var portion: PortionRequest?
+    @State private var openMeal: SavedMeal.ID?
 
     init(start: LogMode) { _mode = State(initialValue: start) }
 
@@ -52,8 +54,16 @@ struct LoggerSheet: View {
                         if closeAfter || request.closeAfterAdd { dismiss() }
                     }
                 }
+                .navigationDestination(item: $openMeal) { id in
+                    SavedMealView(mealID: id) {
+                        openMeal = nil
+                        query = ""
+                    }
+                }
         }
-        .toastOverlay(bottomPadding: mode == .search ? 150 : 24)
+        // Just above the search's time bar, and the meal over it once there is one, where the eye
+        // already is after a tap on +.
+        .toastOverlay(bottomPadding: mode == .search ? (model.mealBeingLogged() == nil ? 64 : 116) : 24)
         .onAppear { model.ai.prewarm() }
     }
 
@@ -61,7 +71,7 @@ struct LoggerSheet: View {
     var content: some View {
         switch mode {
         case .search:
-            SearchLogView(query: $query, mode: $mode, portion: $portion)
+            SearchLogView(query: $query, mode: $mode, portion: $portion, openMeal: $openMeal)
         case .scan:
             BarcodeLogView(portion: $portion, mode: $mode)
         case .camera, .photoLibrary:
@@ -239,12 +249,14 @@ struct TimePickerSheet: View {
     }
 }
 
-/// Search as you type: personal foods first, the last portion pre-filled, + logs in one tap.
+/// Search as you type: saved meals and personal foods first, the last portion pre-filled, + logs in
+/// one tap.
 struct SearchLogView: View {
     @Environment(AppModel.self) private var model
     @Binding var query: String
     @Binding var mode: LogMode
     @Binding var portion: PortionRequest?
+    @Binding var openMeal: SavedMeal.ID?
     @State private var results: [FoodMatch] = []
     @State private var searching = false
     @FocusState private var focused: Bool
@@ -255,6 +267,13 @@ struct SearchLogView: View {
                 Section {
                     ModeShortcuts(mode: $mode)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                }
+                if !model.mealSuggestions.isEmpty {
+                    Section("My meals") {
+                        ForEach(model.mealSuggestions.prefix(20)) { suggestion in
+                            mealRow(suggestion.meal)
+                        }
+                    }
                 }
                 if !model.logAgain.isEmpty {
                     Section("Log again") {
@@ -279,7 +298,7 @@ struct SearchLogView: View {
                         }
                     }
                 }
-            } else if results.isEmpty && !searching {
+            } else if results.isEmpty && meals.isEmpty && !searching {
                 ContentUnavailableView {
                     Label("No matches", systemImage: "magnifyingglass")
                 } description: {
@@ -289,12 +308,13 @@ struct SearchLogView: View {
                     Button("Quick add calories") { mode = .quickAdd }.accessibilityIdentifier("logger.noMatchesQuickAdd")
                 }
                 .listRowBackground(Color.clear)
+            } else if meals.isEmpty {
+                foodResults
             } else {
-                ForEach(results) { match in
-                    FoodRow(
-                        food: match.food, personal: model.personalFood(match.food.id), add: { quickAdd(match.food) },
-                        open: { open(match.food) })
+                Section("My meals") {
+                    ForEach(meals) { mealRow($0) }
                 }
+                Section("Foods") { foodResults }
             }
         }
         .insetGroupedList()
@@ -306,11 +326,45 @@ struct SearchLogView: View {
         .autocorrectionDisabled()
         .noAutocapitalization()
         .safeAreaInset(edge: .bottom) {
-            LogTimeBar().padding(.horizontal).padding(.bottom, 8)
+            VStack(spacing: 8) {
+                MealTray()
+                LogTimeBar()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
         }
         .task(id: query) { await search() }
         .onAppear { if portion == nil { focused = true } }
         .onChange(of: portion) { _, request in if request == nil { focused = true } }
+        .onChange(of: openMeal) { _, meal in if meal == nil { focused = true } }
+    }
+
+    /// Saved meals with what's typed: the person's own handful, so no need to wait for the catalog,
+    /// and read afresh each time, so a meal changed or deleted on its screen isn't logged as it was.
+    var meals: [SavedMeal] {
+        let text = query.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? [] : SavedMeals.matching(text, in: model.mealSuggestions.map(\.meal))
+    }
+
+    var foodResults: some View {
+        ForEach(results) { match in
+            FoodRow(
+                food: match.food, personal: model.personalFood(match.food.id), add: { quickAdd(match.food) }, open: { open(match.food) })
+        }
+    }
+
+    func mealRow(_ meal: SavedMeal) -> some View {
+        SavedMealRow(
+            meal: meal,
+            add: {
+                model.log(meal)
+                query = ""
+                focused = true
+            },
+            open: {
+                focused = false
+                openMeal = meal.id
+            })
     }
 
     func search() async {

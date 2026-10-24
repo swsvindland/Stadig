@@ -27,6 +27,24 @@ nonisolated final class RegularWidthUITests: XCTestCase {
     }
 
     @MainActor
+    func testFoodsListsSavedMealsAndLogsOneFromItsInspector() {
+        continueAfterFailure = false
+        // The sample saves its breakfast and lunch as meals.
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "foods"])
+
+        app.element("foods.scope").waitToAppear().buttons["Meals"].tap()
+        app.element("foods.meal", labelContaining: "Chicken and rice").waitToAppear().tap()
+        let log = app.element("savedMeal.log").waitToAppear()
+        XCTAssertTrue(log.label.contains("3 foods"), log.label)
+        // One food left out for this time.
+        app.element("savedMeal.include").tap()
+        XCTAssertTrue(app.element("savedMeal.log", labelContaining: "2 of 3").waitToAppear().exists)
+        log.tap()
+
+        app.element("toast.message", labelContaining: "Logged Chicken and rice, 2 of 3").waitToAppear()
+    }
+
+    @MainActor
     func testTodaysLogIsATableEditedBesideIt() {
         continueAfterFailure = false
         // Yesterday has the sample's meals in it.

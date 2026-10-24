@@ -7,11 +7,14 @@ import SystemCore
 /// food into a table, sorted by any column at the portion it would log, with that portion and its
 /// nutrients in an inspector. Return logs the selected food (or, straight after typing, the best
 /// match once the rows for what was typed arrive), and the search field has the cursor on arrival
-/// (⌘F puts it back).
+/// (⌘F puts it back). Meals lists the saved meals instead, each opened in the inspector.
 struct FoodsView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
     @State private var scope: FoodScope = .all
+    /// The saved meals in place of the foods, and the one selected.
+    @State private var showingMeals = false
+    @State private var mealSelection: SavedMeal.ID?
     /// The search's or the scope's rows in their own order, and as the table sorts them.
     @State private var listings: [FoodListing] = []
     @State private var shown: [FoodListing] = []
@@ -31,18 +34,19 @@ struct FoodsView: View {
 
     var body: some View {
         NavigationStack {
-            table
-                .overlay { empty }
-                .navigationTitle("Foods")
-                .searchable(text: $query, prompt: "Search foods")
-                .searchFocused($searchFocused)
-                .autocorrectionDisabled()
-                .noAutocapitalization()
-                .onSubmit(of: .search) { returnPressed() }
-                .toolbar { toolbar }
-                .sideInspector(isPresented: $inspecting, min: 300, ideal: 340, max: 440) { inspector }
+            Group {
+                if showingMeals { mealList } else { table.overlay { empty } }
+            }
+            .navigationTitle("Foods")
+            .searchable(text: $query, prompt: "Search foods")
+            .searchFocused($searchFocused)
+            .autocorrectionDisabled()
+            .noAutocapitalization()
+            .onSubmit(of: .search) { returnPressed() }
+            .toolbar { toolbar }
+            .sideInspector(isPresented: $inspecting, min: 300, ideal: 340, max: 440) { inspector }
         }
-        .task(id: SearchKey(query: query, scope: scope, personal: model.personalVersion)) { await search() }
+        .task(id: SearchKey(query: query, scope: scope, personal: model.personalVersion, meals: showingMeals)) { await search() }
         .onChange(of: sortOrder) { _, order in shown = listings.sorted(using: order) }
         .onChange(of: currentQuery) { _, query in searchReturn.typed(query) }
         .onChange(of: selection) { _, _ in resetAmount() }
@@ -135,6 +139,61 @@ struct FoodsView: View {
         }
     }
 
+    // MARK: Meals
+
+    /// The saved meals, best for now first, or those matching the search.
+    var meals: [SavedMeal] {
+        let all = model.mealSuggestions.map(\.meal)
+        let text = query.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? all : SavedMeals.matching(text, in: all)
+    }
+
+    var mealList: some View {
+        let meals = meals
+        return List(selection: $mealSelection) {
+            ForEach(meals) { meal in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(meal.name).lineLimit(1)
+                    Text(SavedMealRow.detail(meal)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                .tag(meal.id)
+                .accessibilityIdentifier("foods.meal")
+            }
+        }
+        #if os(macOS)
+        // A double-click logs it, as in the table.
+        .contextMenu(forSelectionType: SavedMeal.ID.self) { ids in
+            mealMenu(ids)
+        } primaryAction: { ids in
+            if let id = ids.first, let meal = model.savedMeal(id) { model.log(meal, at: eaten.date(model)) }
+        }
+        #else
+        // A tap selects, to open the meal beside the list.
+        .contextMenu(forSelectionType: SavedMeal.ID.self) { ids in mealMenu(ids) }
+        #endif
+        .overlay {
+            if meals.isEmpty {
+                if model.savedMeals.isEmpty {
+                    ContentUnavailableView(
+                        "No meals yet", systemImage: "fork.knife",
+                        description: Text("Foods eaten together can be saved as a meal from Today, or from the meal under the logger's search."))
+                } else {
+                    ContentUnavailableView.search(text: query)
+                }
+            }
+        }
+        .onChange(of: mealSelection) { _, _ in eaten = .now }
+        .accessibilityIdentifier("foods.meals")
+    }
+
+    @ViewBuilder
+    func mealMenu(_ ids: Set<SavedMeal.ID>) -> some View {
+        if let id = ids.first, let meal = model.savedMeal(id) {
+            Button("Log \(meal.name)", systemImage: "plus.circle") { model.log(meal, at: eaten.date(model)) }
+            Button("Delete Meal", systemImage: "trash", role: .destructive) { model.delete(meal: meal) }
+        }
+    }
+
     @ViewBuilder
     var empty: some View {
         if shown.isEmpty && !searching {
@@ -176,8 +235,9 @@ struct FoodsView: View {
     @ToolbarContentBuilder
     var toolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Picker("Show", selection: $scope) {
-                ForEach(FoodScope.allCases) { Text($0.label).tag($0) }
+            Picker("Show", selection: showChoice) {
+                ForEach(FoodScope.allCases) { Text($0.label).tag($0.rawValue) }
+                Text("Meals").tag(Self.mealsChoice)
             }
             .pickerStyle(.segmented)
             .fixedSize()
@@ -204,6 +264,18 @@ struct FoodsView: View {
         }
     }
 
+    static let mealsChoice = "meals"
+
+    /// The picker's choice: a scope of foods, or the saved meals.
+    var showChoice: Binding<String> {
+        Binding(
+            get: { showingMeals ? Self.mealsChoice : scope.rawValue },
+            set: { choice in
+                showingMeals = choice == Self.mealsChoice
+                if let picked = FoodScope(rawValue: choice) { scope = picked }
+            })
+    }
+
     func columnToggle(_ title: String, _ id: String) -> some View {
         Toggle(title, isOn: Binding(get: { columns[visibility: id] == .visible }, set: { columns[visibility: id] = $0 ? .visible : .hidden }))
     }
@@ -212,7 +284,14 @@ struct FoodsView: View {
 
     @ViewBuilder
     var inspector: some View {
-        if let row = selected {
+        if showingMeals {
+            if let id = mealSelection, model.savedMeal(id) != nil {
+                // Its own stack, so changing a food's amount pushes there rather than over the list.
+                NavigationStack { SavedMealView(mealID: id, eaten: $eaten) }.id(id)
+            } else {
+                ContentUnavailableView("No meal selected", systemImage: "fork.knife", description: Text("Select a meal to see its foods and log it."))
+            }
+        } else if let row = selected {
             FoodInspector(listing: row, amount: $amount, eaten: $eaten, log: logSelected)
         } else {
             ContentUnavailableView("No food selected", systemImage: "carrot", description: Text("Select a food to see its portion and nutrients."))
@@ -226,6 +305,9 @@ struct FoodsView: View {
     // MARK: Actions
 
     func search() async {
+        // Among the meals, the foods wait: rows arriving would move the selection and reset the
+        // time picked for the meal. Back on the foods, the search runs again.
+        guard !showingMeals else { return }
         let asked = currentQuery
         let text = asked.text
         let scope = asked.scope
@@ -264,8 +346,17 @@ struct FoodsView: View {
     }
 
     /// Return in the search field: log the selected food, or pick the first match to log next. Rows
-    /// still from an earlier query aren't what was typed, so then it waits for the new ones.
+    /// still from an earlier query aren't what was typed, so then it waits for the new ones. Among
+    /// the meals, the same, at once: they're the person's own, found as they type.
     func returnPressed() {
+        if showingMeals {
+            if let id = mealSelection, let meal = meals.first(where: { $0.id == id }) {
+                model.log(meal, at: eaten.date(model))
+            } else {
+                mealSelection = meals.first?.id
+            }
+            return
+        }
         switch searchReturn.pressed(currentQuery, hasSelection: selected != nil) {
         case .log: logSelected()
         case .select: selection = shown.first?.id
@@ -287,6 +378,7 @@ struct FoodsView: View {
         var query: String
         var scope: FoodScope
         var personal: Int
+        var meals: Bool
     }
 }
 
@@ -383,15 +475,19 @@ struct FoodInspector: View {
         }
         .formStyle(.grouped)
         .safeAreaInset(edge: .bottom) {
-            Button(action: log) {
-                Text("Log\(eatenLabel) · \(Format.kcal(n.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+            VStack(spacing: 10) {
+                // The meal this food joins, with what's gone into it so far.
+                MealTray(date: eaten.date(model))
+                Button(action: log) {
+                    Text("Log\(eatenLabel) · \(Format.kcal(n.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+                }
+                .primaryAction()
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(unit == nil || amount.count <= 0)
+                .help("Log it (⌘Return, or Return in the list)")
+                .accessibilityIdentifier("foods.log")
             }
-            .primaryAction()
-            .keyboardShortcut(.return, modifiers: .command)
-            .disabled(unit == nil || amount.count <= 0)
             .padding()
-            .help("Log it (⌘Return, or Return in the list)")
-            .accessibilityIdentifier("foods.log")
         }
     }
 
