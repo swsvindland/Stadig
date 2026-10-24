@@ -80,7 +80,7 @@ private struct LanguageWords: View {
                 TableColumn("Meaning", value: \.meaning)
                 TableColumn("Memory", value: \.state) { row in WordState(state: row.state) }
                 TableColumn("Next review", value: \.dueOrder) { row in
-                    Text(row.due.map { Format.day(Day($0)) } ?? "—").foregroundStyle(.secondary)
+                    Text(row.due.map { Format.day(model.studyDay($0)) } ?? "—").foregroundStyle(.secondary)
                 }
                 TableColumn("Recall", value: \.recallOrder) { row in
                     Text(row.recall.map(Format.percent) ?? "—").monospacedDigit().foregroundStyle(.secondary)
@@ -139,11 +139,11 @@ private struct LanguageWords: View {
                 }
             }
         }
-        // Again when the cards change, and at midnight, when what's due moves on.
-        .task(id: CoursesRefresh(revision: model.cardsRevision, today: model.today)) {
+        // Again when the cards change, and when the day moves on and what's due with it.
+        .task(id: CoursesRefresh(revision: model.cardsRevision, today: model.today, dayStart: model.dayStart)) {
             let cards = model.state?.cards ?? [:]
             guard let deck = model.catalogs.deck(language) else { return }
-            rows = await Self.rows(language, cards: cards, deck: deck, today: model.today, now: model.now())
+            rows = await Self.rows(language, cards: cards, deck: deck, today: model.today, dayStart: model.dayStart, now: model.now())
             counts = CourseWord.counts(rows)
             refilter()
             loaded = true
@@ -193,10 +193,10 @@ private struct LanguageWords: View {
     }
 
     /// Thousands of cards matched to their words: off the main actor.
-    @concurrent nonisolated static func rows(_ language: Language, cards: [CardKey: MemoryCard], deck: LanguageDeck, today: Day, now: Date) async
-        -> [CourseWord]
-    {
-        CourseWord.rows(language, cards: cards, deck: deck, today: today, now: now)
+    @concurrent nonisolated static func rows(
+        _ language: Language, cards: [CardKey: MemoryCard], deck: LanguageDeck, today: Day, dayStart: Int, now: Date
+    ) async -> [CourseWord] {
+        CourseWord.rows(language, cards: cards, deck: deck, today: today, dayStart: dayStart, now: now)
     }
 }
 
@@ -205,6 +205,7 @@ private struct LanguageWords: View {
 private struct CoursesRefresh: Equatable {
     var revision: Int
     var today: Day
+    var dayStart: Int
 }
 
 /// Where a word's memory stands, in a colour.

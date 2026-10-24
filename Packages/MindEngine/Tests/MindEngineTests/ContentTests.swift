@@ -110,16 +110,16 @@ struct ContentTests {
         // Tested at 5: the next book is a tier 4, just below; a just-right 4 moves it up half a tier.
         let day = Fixtures.monday
         let test = TestResult(test: .readingTest, date: day.date(), score: 0.8, detail: ["tier": 5])
-        #expect(ReadingPlan.targetTier(books: [], tests: [test], on: day) == 4)
+        #expect(ReadingPlan.targetTier(books: [], tests: [test], on: day, dayStart: 0) == 4)
         var read = try #require(ladder.books.first { $0.tier == 4 && $0.genres.contains(.fantasy) }).book(status: .finished)
         read.feel = .right
         read.finished = day
-        #expect(ReadingPlan.target(books: [read], tests: [test], on: day) == 4.5)
-        let picks = ReadingPlan.suggestions(shelf: [read], tests: [test], genres: [.fantasy, .sciFi], on: day, ladder: ladder)
+        #expect(ReadingPlan.target(books: [read], tests: [test], on: day, dayStart: 0) == 4.5)
+        let picks = ReadingPlan.suggestions(shelf: [read], tests: [test], genres: [.fantasy, .sciFi], on: day, dayStart: 0, ladder: ladder)
         #expect(picks.count == 3)
         #expect(picks.allSatisfy { abs(Double($0.tier) - 4.5) <= 1.5 })
         #expect(!picks.contains { $0.id == read.ladderID })
-        #expect(ReadingPlan.targetTier(books: [], tests: [], on: day) == ReadingPlan.startingTier)
+        #expect(ReadingPlan.targetTier(books: [], tests: [], on: day, dayStart: 0) == ReadingPlan.startingTier)
     }
 
     @Test("kana: hiragana and katakana in teaching order, with lookalikes as wrong answers")

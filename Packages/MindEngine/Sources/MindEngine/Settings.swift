@@ -8,6 +8,11 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000317D")!
     /// Heavy Main courses (languages and maths) past this spread the week too thin.
     public static let focusCap = 3
+    /// Days start at 4 a.m. unless changed, as Anki's do: late enough for a late night, early
+    /// enough for an early morning.
+    public static let standardDayStart = 4
+    /// The hours a day can start at: midnight, or a little after it.
+    public static let dayStarts = 0...6
 
     public var id: UUID
     /// Every active course and how hard it's pushed. Courses not here are off.
@@ -35,6 +40,9 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public var autoPrioritise: Bool
     /// Reminders at the usual study time when the day's session hasn't happened.
     public var reminders: Bool
+    /// The hour on the clock a study day begins. A session between midnight and then counts for
+    /// the evening before, so a lesson done late on Friday night is Friday's.
+    public var dayStart: Int
     public var updatedAt: Date
     /// Values a newer version wrote that this one can't read.
     private var unrecognised = Unrecognised()
@@ -62,7 +70,8 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         schedule: StudySchedule = StudySchedule(), onboardedAt: Date? = nil, readsKana: Bool? = nil,
         mathsBackground: MathsBackground = .algebra, mathsStrands: [MathsStrand] = MathsStrand.allCases,
         writingKinds: [WritingKind] = [.creative], genres: [Genre] = [], speaking: Bool = true, allowCloudAI: Bool = true,
-        autoPrioritise: Bool = true, reminders: Bool = false, updatedAt: Date = Date(), earlierSchedules: [EarlierSchedule] = []
+        autoPrioritise: Bool = true, reminders: Bool = false, dayStart: Int = standardDayStart, updatedAt: Date = Date(),
+        earlierSchedules: [EarlierSchedule] = []
     ) {
         id = Self.singletonID
         self.courses = courses
@@ -78,6 +87,7 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         self.allowCloudAI = allowCloudAI
         self.autoPrioritise = autoPrioritise
         self.reminders = reminders
+        self.dayStart = Self.clampedDayStart(dayStart)
         self.updatedAt = updatedAt
     }
 
@@ -110,8 +120,10 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, courses, domains, schedule, earlierSchedules, onboardedAt, readsKana, mathsBackground, mathsStrands, writingKinds, genres,
-            speaking, allowCloudAI, autoPrioritise, reminders, updatedAt
+            speaking, allowCloudAI, autoPrioritise, reminders, dayStart, updatedAt
     }
+
+    private static func clampedDayStart(_ hour: Int) -> Int { min(max(hour, dayStarts.lowerBound), dayStarts.upperBound) }
 
     /// The values that parse, in order, and the raw ones that don't.
     private static func split<T: RawRepresentable>(_ raw: [String]) -> (known: [T], unknown: [String]) where T.RawValue == String {
@@ -160,6 +172,9 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         allowCloudAI = try c.decodeIfPresent(Bool.self, forKey: .allowCloudAI) ?? true
         autoPrioritise = try c.decodeIfPresent(Bool.self, forKey: .autoPrioritise) ?? true
         reminders = try c.decodeIfPresent(Bool.self, forKey: .reminders) ?? false
+        // Saved before there was a choice: 4 a.m., which files the late nights already studied
+        // under the evenings they belong to.
+        dayStart = Self.clampedDayStart(try c.decodeIfPresent(Int.self, forKey: .dayStart) ?? Self.standardDayStart)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? .distantPast
     }
 
@@ -180,6 +195,7 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
         try c.encode(allowCloudAI, forKey: .allowCloudAI)
         try c.encode(autoPrioritise, forKey: .autoPrioritise)
         try c.encode(reminders, forKey: .reminders)
+        try c.encode(dayStart, forKey: .dayStart)
         try c.encode(updatedAt, forKey: .updatedAt)
     }
 }

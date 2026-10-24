@@ -72,6 +72,7 @@ public struct StudyRun: Sendable {
     let tests: [TestResult]
     let pieces: [WritingPiece]
     let today: Day
+    var dayStart: Int { settings.dayStart }
 
     /// Gaps longer than this (the phone put down) don't count as study, except while reading.
     static let idleCap = 90.0
@@ -339,7 +340,7 @@ public struct StudyRun: Sendable {
         let domains = Set(plan.domains.filter { $0 != .reading })
         let ahead = cards.values.filter { card in
             guard domains.contains(card.domain), let memory = card.memory, !changedCards.contains(card.key) else { return false }
-            return Day(memory.lastReview) != today && !card.isDue(on: today) && usable(card.key)
+            return Day(memory.lastReview, dayStartsAt: dayStart) != today && !card.isDue(on: today, dayStart: dayStart) && usable(card.key)
         }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
         guard !ahead.isEmpty else { return }
         addedExtraPractice = true

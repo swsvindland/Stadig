@@ -39,6 +39,14 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
         self.init(ordinal: abs(days) < Day.ordinalLimit ? Int(days) : 0)
     }
 
+    /// The day a moment counts for when days turn over at `hour` on the clock instead of at
+    /// midnight: with days starting at 4, half past one on Saturday morning is still Friday. By the
+    /// clock, so the night the clocks change still turns over at 4.
+    public init(_ date: Date, dayStartsAt hour: Int, timeZone: TimeZone = .current) {
+        let wallClock = date.addingTimeInterval(Double(timeZone.secondsFromGMT(for: date) - hour * 3600))
+        self.init(wallClock, timeZone: .gmt)
+    }
+
     public static var today: Day { Day(Date()) }
 
     public var components: (year: Int, month: Int, day: Int) {

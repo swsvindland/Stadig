@@ -44,8 +44,8 @@ public enum WritingSchedule {
     }
 
     /// Notes ready to be rewritten today.
-    public static func franklinDue(_ pieces: [WritingPiece], today: Day, library: WritingLibrary = .standard) -> WritingPiece? {
-        waitingNotes(pieces, library: library).flatMap { $0.day.days(until: today) >= franklinGap ? $0 : nil }
+    public static func franklinDue(_ pieces: [WritingPiece], today: Day, dayStart: Int, library: WritingLibrary = .standard) -> WritingPiece? {
+        waitingNotes(pieces, library: library).flatMap { $0.day(startingAt: dayStart).days(until: today) >= franklinGap ? $0 : nil }
     }
 
     /// The passage notes were taken on: the person's own page, or the library's.
@@ -68,7 +68,7 @@ public enum WritingSchedule {
     /// The writing task for a session's composition part: a waiting Franklin rewrite, or the next
     /// exercise in the rotation.
     public static func task(_ state: StudyState, minutes: Int, library: WritingLibrary) -> WritingTask? {
-        if let notes = franklinDue(state.pieces, today: state.today, library: library),
+        if let notes = franklinDue(state.pieces, today: state.today, dayStart: state.dayStart, library: library),
             let task = rewriteTask(notes, minutes: minutes, library: library)
         {
             return task
@@ -118,7 +118,8 @@ public enum WritingSchedule {
 
     /// Passages near the tier being read, the current book's first.
     static func passages(_ kind: WritingKind, state: StudyState, library: WritingLibrary) -> [WritingPassage] {
-        let target = state.currentBook?.tier ?? ReadingPlan.targetTier(books: state.books, tests: state.tests, on: state.today)
+        let target =
+            state.currentBook?.tier ?? ReadingPlan.targetTier(books: state.books, tests: state.tests, on: state.today, dayStart: state.dayStart)
         let matching = library.passages.filter { $0.kinds.contains(kind) }
         let pool = matching.isEmpty ? library.passages : matching
         let near = pool.filter { abs($0.tier - target) <= 2 }
@@ -189,12 +190,12 @@ public enum WritingSchedule {
     /// At a check-in: once a term, or now if there's never been one.
     public static func benchmarkDue(_ state: StudyState) -> Bool {
         guard let last = lastBenchmark(state.pieces) else { return true }
-        return last.day.days(until: state.today) >= benchmarkGap
+        return last.day(startingAt: state.dayStart).days(until: state.today) >= benchmarkGap
     }
 
     /// When the next benchmark comes: the first check-in a term after the last.
     public static func nextBenchmark(_ state: StudyState) -> Day? {
-        lastBenchmark(state.pieces).map { $0.day.adding(days: benchmarkGap) }
+        lastBenchmark(state.pieces).map { $0.day(startingAt: state.dayStart).adding(days: benchmarkGap) }
     }
 
     // MARK: Blind comparisons
@@ -209,9 +210,10 @@ public enum WritingSchedule {
     /// one a term before it, then recent pieces against one of the same exercise and kind from at
     /// least five weeks earlier. No pair twice, and no piece judged as the newer one twice.
     public static func pairs(
-        _ pieces: [WritingPiece], comparisons: [BlindComparison], today: Day,
+        _ pieces: [WritingPiece], comparisons: [BlindComparison], today: Day, dayStart: Int,
         limit: Int = pairsPerCheckIn
     ) -> [BlindPair] {
+        func day(_ piece: WritingPiece) -> Day { piece.day(startingAt: dayStart) }
         let eligible = comparable(pieces)
         let done = Set(comparisons.map { "\($0.older).\($0.newer)" })
         let judged = Set(comparisons.map(\.newer))
@@ -226,14 +228,14 @@ public enum WritingSchedule {
 
         let benchmarks = eligible.filter { $0.exercise == .benchmark }
         if let newest = benchmarks.last, !judged.contains(newest.id),
-            let previous = benchmarks.last(where: { $0.taskID == newest.taskID && $0.day.days(until: newest.day) >= pairGap })
+            let previous = benchmarks.last(where: { $0.taskID == newest.taskID && day($0).days(until: day(newest)) >= pairGap })
         {
             add(previous, newest)
         }
-        let recent = eligible.filter { $0.exercise != .benchmark && $0.day.days(until: today) <= pairGap && !judged.contains($0.id) }
+        let recent = eligible.filter { $0.exercise != .benchmark && day($0).days(until: today) <= pairGap && !judged.contains($0.id) }
         for newer in recent.reversed() where out.count < limit && !used.contains(newer.id) {
             let older = eligible.last {
-                $0.exercise == newer.exercise && $0.writingKind == newer.writingKind && $0.day.days(until: newer.day) >= pairGap
+                $0.exercise == newer.exercise && $0.writingKind == newer.writingKind && day($0).days(until: day(newer)) >= pairGap
                     && !used.contains($0.id) && !done.contains("\($0.id).\(newer.id)")
             }
             if let older { add(older, newer) }
@@ -255,7 +257,7 @@ public enum WritingSchedule {
     /// How many pairs a check-in will have: those there now, plus one for a benchmark about to be
     /// written when there's an earlier one to set it beside.
     static func plannedPairs(_ state: StudyState, benchmark: WritingPrompt?) -> Int {
-        var count = pairs(state.pieces, comparisons: state.comparisons, today: state.today).count
+        var count = pairs(state.pieces, comparisons: state.comparisons, today: state.today, dayStart: state.dayStart).count
         if let benchmark, comparable(state.pieces).contains(where: { $0.exercise == .benchmark && $0.taskID == benchmark.id }) {
             count += 1
         }

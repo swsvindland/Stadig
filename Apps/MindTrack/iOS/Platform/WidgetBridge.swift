@@ -25,6 +25,7 @@ enum WidgetBridge {
         let today = model.today
         var snapshot = MindSnapshot(status: .rest, headline: "Rest day", phase: analysis.phase.label)
         snapshot.day = today
+        snapshot.dayStart = model.dayStart
         snapshot.dueReviews = analysis.dueToday
         let studyDays = analysis.week.filter { $0.status != .rest && $0.status != .paused }
         snapshot.plannedThisWeek = studyDays.count

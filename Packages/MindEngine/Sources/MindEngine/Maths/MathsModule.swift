@@ -147,7 +147,8 @@ enum MathsModule: SubjectModule {
             guard let strand = MathsStrand(test: test.test), let score = score(test) else { continue }
             latest[strand] = score
             let mean = latest.values.reduce(0, +) / Double(latest.count)
-            if out.last?.day == test.day { out[out.count - 1].score = mean } else { out.append((test.day, mean)) }
+            let day = test.day(startingAt: state.dayStart)
+            if out.last?.day == day { out[out.count - 1].score = mean } else { out.append((day, mean)) }
         }
         return out
     }

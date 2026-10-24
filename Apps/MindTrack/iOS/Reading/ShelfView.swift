@@ -114,7 +114,8 @@ enum Shelf {
     @MainActor
     static func suggestions(_ model: AppModel) -> [LadderBook] {
         ReadingPlan.suggestions(
-            shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today, ladder: model.catalogs.ladder)
+            shelf: model.books, tests: model.tests, genres: model.settings?.genres ?? [], on: model.today, dayStart: model.dayStart,
+            ladder: model.catalogs.ladder)
     }
 
     /// `-findBook <title, author or ISBN>` opens the finder already searching for it.
@@ -195,6 +196,7 @@ struct AddBookSheet: ViewModifier {
 
 /// Level and focus side by side: two separate measures, and the next tier and block they set.
 struct LevelRows: View {
+    @Environment(AppModel.self) private var model
     let reading: ReadingSummary
 
     var body: some View {
@@ -203,7 +205,9 @@ struct LevelRows: View {
         }
         if let test = reading.test, let tested = reading.testedLevel {
             LabeledContent("Reading test") {
-                Text("Tier \(ReadingPlan.format(tested)) · \(Format.day(test.day, style: .dateTime.month(.abbreviated).day()))")
+                Text(
+                    "Tier \(ReadingPlan.format(tested)) · \(Format.day(test.day(startingAt: model.dayStart), style: .dateTime.month(.abbreviated).day()))"
+                )
             }
         }
         LabeledContent("Next book", value: "Tier \(reading.targetTier)")

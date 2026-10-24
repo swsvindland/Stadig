@@ -22,16 +22,16 @@ struct SnapshotProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        // The app reloads the timeline when the day's plan changes. The entry at midnight reads the
-        // snapshot for the new day, so yesterday's session doesn't sit there with the app closed.
-        let calendar = Calendar.current
+        // The app reloads the timeline when the day's plan changes. The entry when the next study
+        // day starts (4 a.m. unless changed in the app) reads the snapshot for the new day, so
+        // yesterday's session doesn't sit there with the app closed.
         let now = Date()
-        let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
         let snapshot = MindSnapshot.load()
+        let next = snapshot.nextDayStart(after: now)
         completion(
             Timeline(
-                entries: [SnapshotEntry(date: now, snapshot: snapshot), SnapshotEntry(date: midnight, snapshot: snapshot)],
-                policy: .after(midnight)))
+                entries: [SnapshotEntry(date: now, snapshot: snapshot), SnapshotEntry(date: next, snapshot: snapshot)],
+                policy: .after(next)))
     }
 }
 
@@ -39,7 +39,7 @@ struct SnapshotProvider: TimelineProvider {
 struct TodayStudyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "today-study", provider: SnapshotProvider()) { entry in
-            let snapshot = entry.snapshot.reading(on: Day(entry.date))
+            let snapshot = entry.snapshot.reading(on: entry.snapshot.studyDay(entry.date))
             TodayStudyView(snapshot: snapshot)
                 .widgetURL(snapshot.link)
                 .containerBackground(.fill.tertiary, for: .widget)

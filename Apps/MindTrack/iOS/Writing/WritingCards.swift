@@ -32,7 +32,7 @@ struct WritingPlanCard: View {
                 LabeledContent("Next piece", value: WritingSchedule.detail(task))
             }
             if let notes = WritingSchedule.waitingNotes(state.pieces, library: library) {
-                let ready = notes.day.adding(days: WritingSchedule.franklinGap)
+                let ready = notes.day(startingAt: state.dayStart).adding(days: WritingSchedule.franklinGap)
                 let credit = WritingSchedule.original(of: notes, library: library)?.credit
                 Label(
                     "Your notes on \(credit.map { "the passage (\($0))" } ?? "a page of your book") are waiting. The rewrite comes \(ready <= state.today ? "in the next writing session" : "from \(Format.day(ready))"), from the notes alone.",

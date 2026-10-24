@@ -32,6 +32,22 @@ nonisolated final class SettingsUITests: XCTestCase {
         app.element("today.settings").waitToAppear(timeout: 10)
     }
 
+    /// The hour the day turns over: 4 a.m. to begin with, and kept once changed.
+    @MainActor
+    func testTheDayStartsAtFourUntilChanged() {
+        let app = XCUIApplication.launched(["-seedSampleData", "-showSettings"])
+        app.buttons["settings.done"].waitToAppear()
+        let picker = app.scroll(to: app.buttons["settings.dayStart"])
+        XCTAssertTrue(picker.spoken.contains("4"), picker.spoken)
+        picker.tap()
+        app.buttons["Midnight"].firstMatch.waitToAppear(timeout: 5).tap()
+        // The choice shows on the row (in its label or its value), once the menu has closed.
+        let row = app.buttons["settings.dayStart"]
+        let deadline = Date().addingTimeInterval(5)
+        while !row.spoken.contains("Midnight") && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
+        XCTAssertTrue(row.spoken.contains("Midnight"), row.spoken)
+    }
+
     @MainActor
     func testIllnessCanRunUntilItsBetter() {
         let app = XCUIApplication.launched(["-seedSampleData", "-showSettings"])

@@ -205,14 +205,16 @@ struct ReadingTests {
                 finished: day.adding(days: days), feel: feel, tierConfidence: 1)
         }
         var shelf: [Book] = []
-        func target() -> Double { ReadingPlan.target(books: shelf, tests: [test], on: day.adding(days: 100)) }
-        func tier() -> Int { ReadingPlan.targetTier(books: shelf, tests: [test], on: day.adding(days: 100)) }
+        func target() -> Double { ReadingPlan.target(books: shelf, tests: [test], on: day.adding(days: 100), dayStart: 0) }
+        func tier() -> Int { ReadingPlan.targetTier(books: shelf, tests: [test], on: day.adding(days: 100), dayStart: 0) }
         #expect(target() == 5, "just below the tested 6")
         shelf.append(book(5, .finished, .right, after: 10))
         #expect(target() == 5.5)
         shelf.append(book(6, .finished, .easy, after: 30))
         #expect(tier() == 7, "an easy 6: up a tier")
-        #expect(target() <= (ReadingPlan.level(books: shelf, tests: [test], on: day.adding(days: 100)) ?? 0) + 1, "never past a tier above the level")
+        #expect(
+            target() <= (ReadingPlan.level(books: shelf, tests: [test], on: day.adding(days: 100), dayStart: 0) ?? 0) + 1,
+            "never past a tier above the level")
         shelf.append(book(7, .finished, .hard, after: 50))
         #expect(tier() == 7, "a slog holds it")
         shelf.append(book(7, .abandoned, .hard, after: 60))
@@ -221,16 +223,16 @@ struct ReadingTests {
         #expect(target() == 6, "given up on as too easy is taste, not difficulty")
 
         // Without a test, recent reading places the start; without either, the ladder's start.
-        #expect(ReadingPlan.target(books: [], tests: [], on: day) == Double(ReadingPlan.startingTier))
+        #expect(ReadingPlan.target(books: [], tests: [], on: day, dayStart: 0) == Double(ReadingPlan.startingTier))
         let recent = [
             Book(
                 ladderID: "x", title: "Recent", author: "A", tier: 5, pages: 300, genres: [], status: .readBefore, finished: day,
                 feel: .right)
         ]
-        #expect(ReadingPlan.target(books: recent, tests: [], on: day) == 4)
+        #expect(ReadingPlan.target(books: recent, tests: [], on: day, dayStart: 0) == 4)
 
         // Suggestions sit at the next tier, in liked genres, by different authors, none owned.
-        let picks = ReadingPlan.suggestions(shelf: shelf, tests: [test], genres: [.fantasy, .sciFi], on: day.adding(days: 100))
+        let picks = ReadingPlan.suggestions(shelf: shelf, tests: [test], genres: [.fantasy, .sciFi], on: day.adding(days: 100), dayStart: 0)
         #expect(picks.count == 3)
         #expect(picks.allSatisfy { abs($0.tier - 6) <= 1 }, "\(picks.map(\.tier))")
         #expect(Set(picks.map(\.author)).count == 3)
@@ -241,28 +243,28 @@ struct ReadingTests {
     func level() throws {
         let day = Fixtures.monday
         let test = TestResult(test: .readingTest, date: day.date(), score: 0.8, detail: ["tier": 5])
-        #expect(ReadingPlan.level(books: [], tests: [test], on: day) == 5)
-        #expect(ReadingPlan.level(books: [], tests: [], on: day) == nil)
+        #expect(ReadingPlan.level(books: [], tests: [test], on: day, dayStart: 0) == 5)
+        #expect(ReadingPlan.level(books: [], tests: [], on: day, dayStart: 0) == nil)
         var easy = Book(
             ladderID: "x", title: "Easy", author: "A", tier: 7, pages: 300, genres: [], status: .finished,
             finished: day.adding(days: 20), feel: .easy, tierConfidence: 1)
-        let lifted = try #require(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30)))
+        let lifted = try #require(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30), dayStart: 0))
         #expect(lifted > 5.5 && lifted < 6.5, "\(lifted)")
         // An easy book far below the level says nothing new.
         easy.tier = 2
-        #expect(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30)) == 5)
+        #expect(ReadingPlan.level(books: [easy], tests: [test], on: day.adding(days: 30), dayStart: 0) == 5)
         // An audiobook counts for half; one's own book with a guessed tier counts for less still.
         var audio = Book(
             title: "Heard", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
             feel: .right, format: .audiobook, tierConfidence: 1)
-        let heard = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30)))
+        let heard = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30), dayStart: 0))
         audio.format = .print
-        let read = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30)))
+        let read = try #require(ReadingPlan.level(books: [audio], tests: [test], on: day.adding(days: 30), dayStart: 0))
         #expect(heard < read && heard > 5)
         let guessed = Book(
             title: "Own", author: "A", tier: 8, pages: 300, genres: [], status: .finished, finished: day.adding(days: 20),
             feel: .right)
-        #expect(try #require(ReadingPlan.level(books: [guessed], tests: [test], on: day.adding(days: 30))) < heard)
+        #expect(try #require(ReadingPlan.level(books: [guessed], tests: [test], on: day.adding(days: 30), dayStart: 0)) < heard)
     }
 
     @Test("Wisdom moves on the reading test and finished books, never on time read")
@@ -321,7 +323,7 @@ struct ReadingTests {
                 purpose: .regular, start: day.adding(days: index).date(), plannedMinutes: 25, domains: [.reading], planned: true,
                 reading: ReadingLog(bookID: book.id, fromPage: 0, toPage: 20, minutes: 40, planned: 20, focus: .held))
         }
-        #expect(ReadingPlan.blocks(sessions, books: [print, audio]).count == 2, "the audiobook block is left out")
+        #expect(ReadingPlan.blocks(sessions, books: [print, audio], dayStart: 0).count == 2, "the audiobook block is left out")
     }
 
     @Test("a reading day's block is as long as stamina allows, and the timer runs for it")

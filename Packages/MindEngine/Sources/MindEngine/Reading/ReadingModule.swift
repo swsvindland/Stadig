@@ -23,7 +23,7 @@ enum ReadingModule: SubjectModule {
     ) -> [PlanPart] {
         let reviewWeek = kind == .review
         let book = state.currentBook
-        let stamina = ReadingPlan.nextBlock(ReadingPlan.blocks(state.sessions, books: state.books))
+        let stamina = ReadingPlan.nextBlock(ReadingPlan.blocks(state.sessions, books: state.books, dayStart: state.dayStart))
         // Audiobooks are listening: they don't build reading stamina, so the block is the time there is.
         let block = book?.format == .audiobook ? minutes : max(1, min(minutes, stamina))
         let detail: String
@@ -32,7 +32,8 @@ enum ReadingModule: SubjectModule {
         } else if reviewWeek {
             detail = "Read anything you enjoy"
         } else {
-            detail = "Pick your next book: tier \(ReadingPlan.targetTier(books: state.books, tests: state.tests, on: state.today))"
+            detail =
+                "Pick your next book: tier \(ReadingPlan.targetTier(books: state.books, tests: state.tests, on: state.today, dayStart: state.dayStart))"
         }
         if block < minutes {
             notes.append("Reading is a \(block)-minute block: as long as focus has held so far. It grows as focus keeps holding.")
@@ -53,10 +54,10 @@ enum ReadingModule: SubjectModule {
         switch part.kind {
         case .placement:
             // Recent reading hints where to begin; the passages decide.
-            let hint = ReadingPlan.level(books: state.books, tests: [], on: state.today) ?? 4.5
+            let hint = ReadingPlan.level(books: state.books, tests: [], on: state.today, dayStart: state.dayStart) ?? 4.5
             return ReadingTestRunner(placement: true, start: clamp(Int(hint.rounded()) - 1, 2, 6))
         case .test(.readingTest):
-            let level = ReadingPlan.level(books: state.books, tests: state.tests, on: state.today) ?? 4
+            let level = ReadingPlan.level(books: state.books, tests: state.tests, on: state.today, dayStart: state.dayStart) ?? 4
             return ReadingTestRunner(placement: false, start: Int(level.rounded()))
         case .read:
             let book = state.currentBook
@@ -75,7 +76,9 @@ enum ReadingModule: SubjectModule {
     static func recent(_ domain: Domain, state: StudyState, count: Int) -> [(day: Day, score: Double)] { ReadingPlan.series(state, last: count) }
 
     static func label(_ domain: Domain, state: StudyState) -> String {
-        ReadingPlan.level(books: state.books, tests: state.tests, on: state.today).map { "Reading tier \(ReadingPlan.format($0))" } ?? ""
+        ReadingPlan.level(books: state.books, tests: state.tests, on: state.today, dayStart: state.dayStart).map {
+            "Reading tier \(ReadingPlan.format($0))"
+        } ?? ""
     }
 }
 
@@ -93,7 +96,7 @@ struct ReadingRunner: PartRunner {
         case .pick:
             return .pickBook(
                 ReadingPlan.suggestions(
-                    shelf: run.books, tests: run.tests, genres: run.settings.genres, on: run.today,
+                    shelf: run.books, tests: run.tests, genres: run.settings.genres, on: run.today, dayStart: run.dayStart,
                     ladder: run.catalogs.ladder))
         case .read:
             guard let book = run.books.first(where: { $0.id == bookID }) else { return nil }

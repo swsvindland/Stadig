@@ -160,7 +160,7 @@ public enum WritingProgress {
 
     /// Writing's 0–100 reading, one point per day it changed: half the grammar check's accuracy,
     /// half craft from the blind comparisons. Time spent and pieces written never move it.
-    public static func series(tests: [TestResult], comparisons: [BlindComparison]) -> [(day: Day, score: Double)] {
+    public static func series(tests: [TestResult], comparisons: [BlindComparison], dayStart: Int) -> [(day: Day, score: Double)] {
         enum Event { case grammar(Double), comparison(Double) }
         var events: [(date: Date, event: Event)] = tests.filter { $0.test == .writing }.map { ($0.date, .grammar($0.score)) }
         events += comparisons.compactMap { c in outcome(c).map { (c.date, .comparison($0)) } }
@@ -173,7 +173,7 @@ public enum WritingProgress {
             case .comparison(let outcome): craft = clamp(craft + craftStep * (2 * outcome - 1), 0, 100)
             }
             guard let grammar else { continue }
-            let point = (day: Day(date), score: 50 * grammar + 0.5 * craft)
+            let point = (day: Day(date, dayStartsAt: dayStart), score: 50 * grammar + 0.5 * craft)
             if out.last?.day == point.day { out[out.count - 1] = point } else { out.append(point) }
         }
         return out

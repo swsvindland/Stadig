@@ -90,7 +90,8 @@ public struct MemoryCard: Hashable, Codable, Sendable, Identifiable {
     public var domain: Domain { key.domain }
     public var learning: Bool { memory == nil }
 
-    public func isDue(on day: Day) -> Bool { memory.map { Day($0.due) <= day } ?? false }
+    /// Due by the end of a study day, for days that start at `dayStart` on the clock.
+    public func isDue(on day: Day, dayStart: Int) -> Bool { memory.map { Day($0.due, dayStartsAt: dayStart) <= day } ?? false }
 }
 
 /// What kind of question an attempt was.
@@ -217,7 +218,8 @@ public struct StudySession: Hashable, Codable, Sendable, Identifiable {
         self.updatedAt = updatedAt
     }
 
-    public var day: Day { Day(start) }
+    /// The study day it began on, for days that start at `dayStart` on the clock.
+    public func day(startingAt dayStart: Int) -> Day { Day(start, dayStartsAt: dayStart) }
     public var minutes: Double { activeSeconds / 60 }
     public var finished: Bool { end != nil }
 
@@ -351,7 +353,8 @@ public struct TestResult: Hashable, Codable, Sendable, Identifiable {
         self.updatedAt = updatedAt
     }
 
-    public var day: Day { Day(date) }
+    /// The study day it was taken on, for days that start at `dayStart` on the clock.
+    public func day(startingAt dayStart: Int) -> Day { Day(date, dayStartsAt: dayStart) }
 
     /// The course this result counts toward.
     public var domain: Domain { language?.domain ?? test.domain }

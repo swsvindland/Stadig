@@ -1,5 +1,12 @@
 # Decisions to check
 
+- **Mind Track's day start and voice.** On 2026-10-24 you said a lesson done after midnight counted for the next day, and that the voice, Japanese especially, was short, fast and clipped. Calls made:
+  - **Day start:** a setting, 4 a.m. by default (Anki's default), from midnight to 6 a.m., rather than a fuzzy rule. Every moment (sessions, tests, writing, card due dates, setup) is filed by the setting as it is now rather than keeping the day it was filed under, so Friday night's lesson moves back to Friday with this build, and changing the hour later moves past late nights too.
+  - **The hub:** Mind Track's published sessions still carry their start times, not their study days, so a hub that files them by date would put a 1 a.m. session on the next day. Changing that is a schema bump.
+  - **Voice pace:** half speed for a lone kana, 80% for a word, 90% for a sentence; Slower at 30%, 55% and 65%. The old 92% was no slower than the voice's own speed. A kana still lasts only about 0.15 s of sound: even at the slowest rate the compact voice won't stretch it further, and `あー` would teach a long vowel.
+  - **Lead-in:** about 150–200 ms of silence before each word, which delays every Hear It by that much, for an onset the speaker or headphones don't swallow. Bluetooth headphones waking from idle can take longer than that.
+  - **Voices:** the Eloquence voices (Eddy, Flo, Grandma and the rest) and novelty voices are passed over whenever a natural one is installed. The enhanced and premium Japanese voices are much better than the compact Kyoko and are still only a download in Settings away; the app doesn't prompt for one beyond what Settings already says.
+
 - **Food search by brand.** On 2026-10-22 you searched "Papa John's 14-inch pepperoni" and got nothing useful, though USDA has the pizza, and asked whether a model should split the brand from the food. The calls made are under "Calls made for food search" below.
 - **Mind Track's course tiers and kana.** On 2026-10-21 you asked for three course tiers (main focus, secondary focus, maintenance), for Maintenance not to leave a course with nothing learned empty, and for words from the start beside kana. Calls made building it:
   - **Names:** Main, Secondary, Maintenance. Main keeps Focus's stored name (`focus`), so older builds read it unchanged; an older build treats a Secondary course as one it doesn't know (off there, kept and written back).

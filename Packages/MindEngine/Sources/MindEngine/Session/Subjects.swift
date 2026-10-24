@@ -71,7 +71,8 @@ enum Subjects {
             guard let domain = part.domain else { return EmptyRunner() }
             let ahead = state.cards.values.filter { card in
                 guard card.domain == domain, let memory = card.memory else { return false }
-                return Day(memory.lastReview) != state.today && !card.isDue(on: state.today) && module(domain).usable(card.key, catalogs: catalogs)
+                return state.day(memory.lastReview) != state.today && !card.isDue(on: state.today, dayStart: state.dayStart)
+                    && module(domain).usable(card.key, catalogs: catalogs)
             }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
             return ReviewsRunner(queue: Array(ahead.prefix(60)).map(\.key))
         default:

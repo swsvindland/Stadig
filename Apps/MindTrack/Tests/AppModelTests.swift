@@ -20,6 +20,33 @@ struct AppModelTests {
         #expect(model.today == Day(TestApp.wednesday))
     }
 
+    /// Days start at 4 a.m.: half past midnight on Thursday is still Wednesday, a session then is
+    /// Wednesday's, and Thursday begins at 4. With days starting at midnight it's Thursday's.
+    @Test func aSessionAfterMidnightCountsForTheEvening() throws {
+        let wednesday = Day(year: 2026, month: 10, day: 14)
+        let clock = TestClock(wednesday.adding(days: 1).at(hour: 0, minute: 30))
+        let model = TestApp.onboardedModel(clock: clock)
+        #expect(model.dayStart == MindSettings.standardDayStart)
+        #expect(model.today == wednesday)
+        model.startToday()
+        Student.answer(model, steps: 12, clock: clock)
+        model.endSession()
+        let session = try #require(model.sessions.last)
+        #expect(session.day(startingAt: model.dayStart) == wednesday)
+        #expect(model.analysis?.doneToday.map(\.id) == [session.id])
+
+        clock.advance(4 * 3600)
+        model.refreshDay()
+        #expect(model.today == wednesday.adding(days: 1))
+        #expect(model.analysis?.doneToday.isEmpty == true, "Thursday's own session hasn't happened")
+
+        var settings = try #require(model.settings)
+        settings.dayStart = 0
+        model.save(settings: settings)
+        #expect(model.today == wednesday.adding(days: 1))
+        #expect(model.analysis?.doneToday.map(\.id) == [session.id], "by the calendar it was Thursday's")
+    }
+
     @Test func theAppAsLaunchedForTestsKeepsNothing() {
         // The unit-test host counts as a test launch: memory only, a shared folder of its own.
         let launch = LaunchOptions(arguments: ["MindTrack"], environment: ["XCTestConfigurationFilePath": "/tmp/x.xctestconfiguration"])

@@ -69,7 +69,7 @@ struct BlindComparisonRunner: PartRunner {
         for piece in run.newPieces { pieces[piece.id] = piece }
         guard
             let pair = WritingSchedule.pairs(
-                Array(pieces.values), comparisons: earlier + run.newComparisons, today: run.today,
+                Array(pieces.values), comparisons: earlier + run.newComparisons, today: run.today, dayStart: run.dayStart,
                 limit: 1
             ).first
         else { return nil }
@@ -90,7 +90,7 @@ struct BlindComparisonRunner: PartRunner {
             run.newTests.append(
                 TestResult(
                     test: .blindComparison, date: run.now, score: newer ? 1 : 0,
-                    detail: ["days": Double(pair.older.day.days(until: pair.newer.day))]))
+                    detail: ["days": Double(pair.older.day(startingAt: run.dayStart).days(until: pair.newer.day(startingAt: run.dayStart)))]))
             shown += 1
             current = nil
             return true
