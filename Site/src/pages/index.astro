@@ -24,7 +24,7 @@ const jsonLd = [
 ---
 <Base title={`${brand.name}: ${brand.tagline}`} description={brand.description} jsonLd={jsonLd} titleSuffix={false}>
   <section class="hero wrap">
-    <p class="eyebrow">Lift Track · Macro Track · Mind Track</p>
+    <p class="eyebrow">{apps.map((a) => a.name).join(" · ")}</p>
     <h1>Apps that tell you<br/>what to do next.</h1>
     <p class="lede">Training, nutrition and study, prescribed from your own data. Every set, target and lesson adjusted to how the last one went. Offline, private, and yours for one payment each.</p>
     <div class="ctas">

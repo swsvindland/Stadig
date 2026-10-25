@@ -1,5 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/lift-track", "destination": "/lift", "permanent": true },
+    { "source": "/macro-track", "destination": "/macro", "permanent": true },
+    { "source": "/mind-track", "destination": "/mind", "permanent": true },
+    { "source": "/og-lift-track.png", "destination": "/og-lift.png", "permanent": true },
+    { "source": "/og-macro-track.png", "destination": "/og-macro.png", "permanent": true },
+    { "source": "/og-mind-track.png", "destination": "/og-mind.png", "permanent": true }
+  ],
   "headers": [
     {
       "source": "/(.*)",

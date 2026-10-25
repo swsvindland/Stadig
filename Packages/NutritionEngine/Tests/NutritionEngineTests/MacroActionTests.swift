@@ -90,7 +90,7 @@ struct MacroActionTests {
         #expect(!kinds(state()).contains(.whoosh))
     }
 
-    @Test("a finished plan says so without Lift Track's calendar")
+    @Test("a finished plan says so without Stadig Lift's calendar")
     func planEnded() throws {
         let short = PhasePlan(
             phases: [PlannedPhase(kind: .cut, weeks: 4, start: start.adding(days: 7))], headline: "", reasons: [],

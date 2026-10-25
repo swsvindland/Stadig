@@ -257,7 +257,7 @@ private struct ComposeEditor: View {
                     .frame(minHeight: 180)
                     .scrollContentBackground(.hidden)
                 Text("Read from your page. Trim it to a paragraph or two.").font(.caption).foregroundStyle(.secondary)
-                Button("Use the passage Mind Track chose", systemImage: "arrow.uturn.backward") { self.ownPage = nil }
+                Button("Use the passage Stadig Mind chose", systemImage: "arrow.uturn.backward") { self.ownPage = nil }
                     .font(.subheadline)
                     .accessibilityIdentifier("compose.useChosenPassage")
             } else {

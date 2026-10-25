@@ -15,7 +15,7 @@ public struct LabelCheck: Sendable, Equatable {
     public var servingGrams: Double?
 }
 
-/// The same for a Supplement Facts panel: only the lines Macro Track tracks, with printed amounts.
+/// The same for a Supplement Facts panel: only the lines Stadig Macro tracks, with printed amounts.
 public struct SupplementCheck: Sendable {
     public var name: String?
     public var brand: String?

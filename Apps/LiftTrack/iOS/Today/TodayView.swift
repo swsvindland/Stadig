@@ -455,7 +455,7 @@ struct StepsWaitingCard: View {
                 .font(.subheadline).foregroundStyle(.secondary)
             } else {
                 Text(
-                    "Lift Track sets a daily step aim from your usual count, read from Apple Health. Already connected? Turn on Steps for Lift Track in the Health app, under Profile → Apps."
+                    "Stadig Lift sets a daily step aim from your usual count, read from Apple Health. Already connected? Turn on Steps for Stadig Lift in the Health app, under Profile → Apps."
                 )
                 .font(.subheadline).foregroundStyle(.secondary)
                 Button("Connect Apple Health", action: connect).secondaryAction().controlSize(.small)

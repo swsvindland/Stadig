@@ -62,7 +62,7 @@ enum AppSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// The app's state: records from Lift Track's own synced store, what other apps published to the
+/// The app's state: records from Stadig Lift's own synced store, what other apps published to the
 /// shared container, what Health knows, and the analysis computed from all of it.
 @MainActor @Observable
 final class AppModel {
@@ -111,7 +111,7 @@ final class AppModel {
     // From the other apps and the hub.
     private(set) var nutrition: NutritionSummary?
     private(set) var recommendations: [Recommendation] = []
-    /// A profile another app wrote before Lift Track was set up: onboarding reuses it.
+    /// A profile another app wrote before Stadig Lift was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
 
     // Derived.
@@ -152,7 +152,7 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
-    /// On a launch that found Lift Track not set up: the person's training on its way from iCloud,
+    /// On a launch that found Stadig Lift not set up: the person's training on its way from iCloud,
     /// which onboarding waits for. Nil when there was nothing to look for.
     private(set) var arrival: ICloudArrival?
     @ObservationIgnored private var sharedObserver: AnyObject?
@@ -165,7 +165,7 @@ final class AppModel {
     /// The store's `revision(of:)` for each kind when it was last read, so a save re-reads only its kind.
     @ObservationIgnored private var readRevisions: [String: Int] = [:]
 
-    /// Lift Track's own synced store and the App Group, or, when nothing is to be kept (tests, UI
+    /// Stadig Lift's own synced store and the App Group, or, when nothing is to be kept (tests, UI
     /// tests, `-inMemoryStore`), an in-memory store and a fresh folder for the shared files and the
     /// session in progress, so a test or a sample run never writes where the other apps read and
     /// never picks up a real session left open.
@@ -592,7 +592,7 @@ final class AppModel {
 
     // MARK: Onboarding
 
-    /// Saves the shared setup answers and Lift Track's own, then starts the assessment. On a second
+    /// Saves the shared setup answers and Stadig Lift's own, then starts the assessment. On a second
     /// device or after a reinstall, the person's settings, gym and block can sync in while they
     /// answer: those are kept, rather than replaced on every device by a new assessment, and only the
     /// answers just given are saved.
@@ -1336,7 +1336,7 @@ final class AppModel {
     /// CSV files in a fresh folder, ready to share.
     func exportCSV() throws -> [URL] {
         guard let state else { return [] }
-        let folder = URL.temporaryDirectory.appending(path: "Lift Track Export \(Day.today.iso)")
+        let folder = URL.temporaryDirectory.appending(path: "Stadig Lift Export \(Day.today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return try Export.tables(state).map { table in
@@ -1348,7 +1348,7 @@ final class AppModel {
         }
     }
 
-    private var backupURL: URL { URL.temporaryDirectory.appending(path: "Lift Track \(today.iso).liftbackup") }
+    private var backupURL: URL { URL.temporaryDirectory.appending(path: "Stadig Lift \(today.iso).liftbackup") }
 
     /// Every record and shared file in one `.liftbackup` file, encoded and written off the main
     /// actor: with years of records and photos the JSON takes seconds.
@@ -1359,7 +1359,7 @@ final class AppModel {
         return url
     }
 
-    /// Merges a Lift Track backup in, read and decoded off the main actor; another app's backup is
+    /// Merges a Stadig Lift backup in, read and decoded off the main actor; another app's backup is
     /// refused before anything is written.
     @discardableResult
     func importBackup(from url: URL) async throws -> BackupSummary {

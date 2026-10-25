@@ -1,4 +1,4 @@
-// Draws Macro Track's app icon set (iOS light/dark/tinted, macOS, visionOS, and the Watch).
+// Draws Stadig Macro's app icon set (iOS light/dark/tinted, macOS, visionOS, and the Watch).
 // Run from the repo root: swift Scripts/make-macro-icons.swift
 // The glyph is drawn by hand: SF Symbols may not be used in app icons.
 import AppKit

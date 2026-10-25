@@ -277,7 +277,7 @@ public final class RecordStore {
                 schemaVersion: T.schemaVersion, payload: payload, deleted: false)
             if let current = Self.newest(rows).map(RecordVersion.init) {
                 // A save in a deletion's own millisecond wins, unlike in `precedes`: it was made after
-                // the delete (an edit made before it is stamped earlier), as when Macro Track's
+                // the delete (an edit made before it is stamped earlier), as when Stadig Macro's
                 // `setState` deletes a day's status and saves it again under the same id. Writing it
                 // into every row of the record replaces the tombstone, so other devices agree.
                 if incoming.updatedAt.wholeMilliseconds < current.updatedAt.wholeMilliseconds {

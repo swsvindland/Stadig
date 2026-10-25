@@ -1,6 +1,6 @@
 ---
 name: run-app
-description: Launch Lift Track, Macro Track or Mind Track in the iOS Simulator with seeded data or on a specific screen, take screenshots and drive it, without touching anyone's stored data. Use to see a change working in the real app, check a screen, or reproduce a bug.
+description: Launch Stadig Lift, Stadig Macro or Stadig Mind in the iOS Simulator with seeded data or on a specific screen, take screenshots and drive it, without touching anyone's stored data. Use to see a change working in the real app, check a screen, or reproduce a bug.
 ---
 
 # Run an app in the simulator (or on the Mac)
@@ -37,14 +37,14 @@ xcrun simctl launch --terminate-running-process $UDID dev.svindland.stadig.lift 
 - Fatal errors and logs: `xcrun simctl launch --console-pty $UDID <bundle id> <args>`, or `xcrun simctl spawn $UDID log stream --predicate 'subsystem BEGINSWITH "dev.svindland.stadig"'`.
 - Deep links: `xcrun simctl openurl $UDID 'macrotrack://log'` (the schemes are in the README's identifiers table).
 - With the simulator tool: SwiftUI toggles need a held tap (`duration: 0.15`); screenshots lag taps by a second or two, so take a second one before deciding a tap failed.
-- No camera in the simulator: Macro Track's `-liveScanDemo` and `-photo <file in Documents>`, and Mind Track's `-readImage <file>`, stand in for it.
+- No camera in the simulator: Stadig Macro's `-liveScanDemo` and `-photo <file in Documents>`, and Stadig Mind's `-readImage <file>`, stand in for it.
 
 ## On the Mac
 
 ```sh
 Scripts/build.sh mac lift     # signed ad hoc: runs on this Mac, keeps its data here ("This device only")
 open -g -n "$(Scripts/build.sh products mac)/LiftTrack.app" --args -inMemoryStore -seedSampleData
-swift Scripts/window-shot.swift "Lift Track" /tmp/mac.png    # just the app's window
+swift Scripts/window-shot.swift "Stadig Lift" /tmp/mac.png    # just the app's window
 osascript -e 'quit app id "dev.svindland.stadig.lift"'   # by bundle id: the app's name doesn't reach a debug build
 ```
 

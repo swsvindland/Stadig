@@ -1,7 +1,7 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-/// Macro Track's engine: the weight trend, maintenance estimated from intake and weigh-ins, the
+/// Stadig Macro's engine: the weight trend, maintenance estimated from intake and weigh-ins, the
 /// assessment, phase planning, adaptive targets and the analysis behind every "do this next".
 /// Pure Swift over SystemCore, so `swift test` runs it on a Mac.
 let package = Package(

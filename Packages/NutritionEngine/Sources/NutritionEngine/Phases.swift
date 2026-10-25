@@ -80,10 +80,10 @@ public struct PlannerInput: Sendable {
     public var maintenance: MaintenanceEstimate
     public var waistCm: Double?
     public var bodyFatPercent: Double?
-    /// Lift Track's overall strength score and its direction, when it's installed.
+    /// Stadig Lift's overall strength score and its direction, when it's installed.
     public var strengthScore: Double?
     public var strengthTrend: Trajectory?
-    /// Lift Track's read on whether fat loss or building would do more for proportions.
+    /// Stadig Lift's read on whether fat loss or building would do more for proportions.
     public var physique: PhysiqueDirection?
 
     public init(
@@ -109,8 +109,8 @@ public struct PlannerInput: Sendable {
         return waistCm / h
     }
 
-    /// Leanness from the best signal available: waist-to-height first, then body fat. At Lift
-    /// Track's lean floor (10% body fat for men, 20% for women) it's lean whatever the waist says,
+    /// Leanness from the best signal available: waist-to-height first, then body fat. At Stadig
+    /// Lift's lean floor (10% body fat for men, 20% for women) it's lean whatever the waist says,
     /// so nothing plans a cut below it.
     public var leanness: Leanness {
         if physique?.atLeanFloor == true { return .lean }
@@ -157,7 +157,7 @@ public enum PhasePlanner {
         }
 
         let leanness = input.leanness
-        // Lift Track's proportions count only for the goals they serve.
+        // Stadig Lift's proportions count only for the goals they serve.
         let proportions = goals.isDisjoint(with: [.leaner, .biggerAndStronger, .healthier]) ? nil : input.physique
         // The waist is what holds the ratios back: lose fat before any gain.
         let fatFirst = (proportions.map { $0.fatLoss >= 0.3 && !$0.atLeanFloor } ?? false) && leanness != .lean && leanness != .unknown
@@ -250,14 +250,14 @@ public enum PhasePlanner {
                     wantsLean
                     ? "A gentle cut for 4 weeks while we learn more."
                     : (wantsSize ? "A slow gain for 4 weeks while we learn more." : "Maintenance for 4 weeks while we learn more.")
-                reasons.append("A waist measurement (in Lift Track or here) would make this recommendation much sharper.")
+                reasons.append("A waist measurement (in Stadig Lift or here) would make this recommendation much sharper.")
             }
         }
 
         if fatFirst, let proportions {
             if proportions.fatLossReasons.isEmpty {
                 reasons.append(
-                    "Lift Track's measurements show the waist holds your proportions back more than muscle does, so fat loss comes before any gain.")
+                    "Stadig Lift's measurements show the waist holds your proportions back more than muscle does, so fat loss comes before any gain.")
             } else {
                 let named = proportions.fatLossReasons.prefix(2)
                 reasons.append(contentsOf: named)
@@ -292,7 +292,7 @@ public enum PhasePlanner {
             "Maintenance is about \(Int(input.maintenance.kcal)) kcal (\(Int(input.maintenance.low))–\(Int(input.maintenance.high))). Targets adjust each week as the estimate sharpens."
         )
         if input.strengthScore != nil, phases.first?.kind.energy == .deficit {
-            reasons.append("Lift Track holds volume and protects heavy lifts during the cut; a strength drop ends it early.")
+            reasons.append("Stadig Lift holds volume and protects heavy lifts during the cut; a strength drop ends it early.")
         }
         let confidence: String? = thin ? "Early read: the first phase is kept short and conservative until the data firms up." : nil
         let arc: String =

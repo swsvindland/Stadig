@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Levels public-domain classics from their Project Gutenberg text, for Mind Track's reading ladder.
+"""Levels public-domain classics from their Project Gutenberg text, for Stadig Mind's reading ladder.
 
     python3 -I Scripts/level-gutenberg.py            # download what's missing, measure, fit, write
     python3 -I Scripts/level-gutenberg.py --offline  # measure and fit what's already downloaded

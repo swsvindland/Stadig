@@ -116,7 +116,7 @@ struct SummaryView: View {
                     Label("Average \(Int(bpm.rounded())) bpm", systemImage: "heart.fill")
                         .font(.footnote)
                 }
-                Text(summary.savedOnPhone ? "Saved in Lift Track on your iPhone." : "Sent to Lift Track on your iPhone.")
+                Text(summary.savedOnPhone ? "Saved in Stadig Lift on your iPhone." : "Sent to Stadig Lift on your iPhone.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button {

@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-// Macro Track's own records. Each is stored whole and synced; trends, estimates, targets and
+// Stadig Macro's own records. Each is stored whole and synced; trends, estimates, targets and
 // scores are recomputed from them, so two devices can never disagree.
 
 /// How an entry got into the log, which says how far its numbers can be trusted.
@@ -147,7 +147,7 @@ public enum DietHistory: String, CaseIterable, Codable, Sendable, Identifiable {
     }
 }
 
-/// Macro Track's settings. Shared setup answers live in ``SharedProfile``.
+/// Stadig Macro's settings. Shared setup answers live in ``SharedProfile``.
 public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     public var id: UUID
     public var onboardedAt: Date?

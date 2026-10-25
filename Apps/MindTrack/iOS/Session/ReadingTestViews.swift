@@ -50,6 +50,6 @@ struct PassageView: View {
     }
 
     var credit: String {
-        passage.author == "Mind Track" ? "Written for Mind Track" : "From \(passage.title), \(passage.author)"
+        passage.author == "Stadig Mind" ? "Written for Stadig Mind" : "From \(passage.title), \(passage.author)"
     }
 }

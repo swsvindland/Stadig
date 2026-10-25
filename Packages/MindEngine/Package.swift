@@ -1,7 +1,7 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-/// Mind Track's engine: Lift Track for the mind. Spaced repetition, the weekly split across
+/// Stadig Mind's engine: Stadig Lift for the mind. Spaced repetition, the weekly split across
 /// domains, the assessment that finds a level in each, mastery-gated progression, review weeks,
 /// and the honest tests behind Intelligence and Wisdom. Japanese words and sentences come from
 /// the bundled catalog; maths problems are generated; grammar items and the reading ladder ship as

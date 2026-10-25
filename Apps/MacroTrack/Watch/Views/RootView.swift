@@ -57,7 +57,7 @@ struct RootView: View {
     }
 }
 
-/// Before Macro Track is set up on a phone, iPad or Mac, or before that setup has synced here.
+/// Before Stadig Macro is set up on a phone, iPad or Mac, or before that setup has synced here.
 struct SetUpView: View {
     var body: some View {
         ScrollView {
@@ -66,7 +66,7 @@ struct SetUpView: View {
                     .font(.title2)
                     .foregroundStyle(.tint)
                     .accessibilityHidden(true)
-                Text("Set up Macro Track on your iPhone")
+                Text("Set up Stadig Macro on your iPhone")
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Your targets and usual foods appear here once it syncs over iCloud.")
@@ -78,7 +78,7 @@ struct SetUpView: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("setUp.message")
         }
-        .navigationTitle("Macro Track")
+        .navigationTitle("Stadig Macro")
     }
 }
 

@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-/// Everything Macro Track knows, as plain values.
+/// Everything Stadig Macro knows, as plain values.
 public struct MacroState: Sendable {
     public var profile: SharedProfile
     public var settings: MacroSettings
@@ -10,9 +10,9 @@ public struct MacroState: Sendable {
     public var dayStatus: [DayStatus]
     public var plan: PhasePlan?
     public var lifeModes: [LifeModePeriod]
-    /// The training calendar Lift Track publishes, for system-wide deloads.
+    /// The training calendar Stadig Lift publishes, for system-wide deloads.
     public var calendar: SystemCalendar?
-    /// Lift Track's summary, when it's installed: strength, measurements, training days.
+    /// Stadig Lift's summary, when it's installed: strength, measurements, training days.
     public var lift: AppSummary?
     /// Weekly check-ins, oldest first: the targets in force from each day on.
     public var checkIns: [CheckIn]
@@ -183,7 +183,7 @@ public enum MacroAnalyst {
             state.lift.map { summary in
                 Int((Double(summary.sessions.filter { $0.kind == .strength && $0.day > today.adding(days: -28) }.count) / 4).rounded())
             } ?? state.profile.schedule.daysPerWeek
-        // Lift Track's steps, when it has them, stand in for everyday movement; walks are already in them.
+        // Stadig Lift's steps, when it has them, stand in for everyday movement; walks are already in them.
         let dailySteps = state.lift?.steps.flatMap { summary in
             Steps.average(summary.days, in: DayRange(today.adding(days: -28), today.adding(days: -1)), minimumDays: 14)
         }.map(Double.init)
@@ -266,7 +266,7 @@ public enum MacroAnalyst {
             }
         }
 
-        // Planner input, from this app and Lift Track.
+        // Planner input, from this app and Stadig Lift.
         let liftMeasurements = state.lift?.measurements
         let input = PlannerInput(
             profile: state.profile, history: state.settings.dietHistory, today: today, weightKg: weight,
@@ -431,7 +431,7 @@ public enum MacroAnalyst {
                     action: "Weigh in as usual: these days stay out of the trend, and the check-in waits for it to settle.", priority: 2))
         }
         if let plan = a.plan, let last = plan.phases.last, today > last.end {
-            // Targets hold the last phase after a plan ends; without this, only Lift Track's block
+            // Targets hold the last phase after a plan ends; without this, only Stadig Lift's block
             // ending or a visit to the Plan tab would say so.
             list.append(
                 MacroAction(
@@ -450,7 +450,7 @@ public enum MacroAnalyst {
 
     // MARK: Publishing
 
-    /// What Lift Track and the hub read: the phase, maintenance, and day-by-day logging and targets.
+    /// What Stadig Lift and the hub read: the phase, maintenance, and day-by-day logging and targets.
     public static func nutritionSummary(_ state: MacroState, _ a: MacroAnalysis) -> NutritionSummary {
         let phase = a.phase.map {
             NutritionPhase(kind: $0.kind, ratePerWeek: $0.ratePerWeek, plannedWeeks: $0.weeks, start: $0.start, source: .macroTrack)
@@ -466,7 +466,7 @@ public enum MacroAnalyst {
             let hit = a.dayTargets[day]?.hits(n)
             days.append(NutritionDay(day: day, logged: true, proteinHit: hit?.protein, caloriesHit: hit?.calories))
         }
-        // Lift Track hears about a fast only while meal timing is on, as the person sees it here.
+        // Stadig Lift hears about a fast only while meal timing is on, as the person sees it here.
         let fast = state.settings.mealTiming ? a.fast.map { PublishedFast(start: $0.fast.start, goalHours: $0.fast.goalHours) } : nil
         return NutritionSummary(
             phase: phase, maintenanceKcal: a.assessment == nil || a.maintenance.basis != .formula ? a.maintenance.kcal : nil,

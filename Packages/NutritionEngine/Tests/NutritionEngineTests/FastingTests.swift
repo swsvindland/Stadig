@@ -305,7 +305,7 @@ struct FastingTests {
             }?.status == .fasting)
     }
 
-    @Test("Lift Track hears about a running fast only while meal timing is on")
+    @Test("Stadig Lift hears about a running fast only while meal timing is on")
     func publishedToLiftTrack() {
         let today = monday.adding(days: 35)
         let fast = Fast(start: at(today.adding(days: -1), 20), goalHours: 36)

@@ -227,7 +227,7 @@ struct LanguagePlanCardTests {
     }
 
     @Test func aReviewWeekPromisesNothingNew() throws {
-        // Set up and placed 50 days ago, with no Lift Track calendar: the sixth week after the
+        // Set up and placed 50 days ago, with no Stadig Lift calendar: the sixth week after the
         // two-week assessment is a review week.
         let clock = TestClock(TestApp.wednesday.addingTimeInterval(-50 * 86_400))
         let model = TestApp.model(clock: clock)

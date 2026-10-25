@@ -74,7 +74,7 @@ struct MacSettings: View {
             if model.onboarded {
                 Form { content() }.formStyle(.grouped)
             } else {
-                ContentUnavailableView("Set up Mind Track first", systemImage: "gearshape", description: Text("Settings open once setup is done."))
+                ContentUnavailableView("Set up Stadig Mind first", systemImage: "gearshape", description: Text("Settings open once setup is done."))
             }
         }
     }
@@ -253,7 +253,7 @@ struct LifeSettings: View {
             Text("Life")
         } footer: {
             Text(
-                "Shared with Lift Track and Macro Track. Vacation, illness and crunch pause Mind Track: nothing is expected and the days never count against you."
+                "Shared with Stadig Lift and Stadig Macro. Vacation, illness and crunch pause Stadig Mind: nothing is expected and the days never count against you."
             )
         }
     }
@@ -391,7 +391,7 @@ struct SourceSettings: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Maths, writing and the reading ladder").font(.subheadline.weight(.medium))
                 Text(
-                    "\(MathCurriculum.topics.count) maths topics, \(WritingBank.standard.items.count) writing items and \(ReadingLadder.standard.books.count) books, written for Mind Track."
+                    "\(MathCurriculum.topics.count) maths topics, \(WritingBank.standard.items.count) writing items and \(ReadingLadder.standard.books.count) books, written for Stadig Mind."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -417,7 +417,7 @@ struct PurchaseSettings: View {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Mind Track", systemImage: "lock.open") { unlock() }
+                    Button("Unlock Stadig Mind", systemImage: "lock.open") { unlock() }
                         .accessibilityIdentifier("settings.unlock")
                     Button("Restore purchase") { Task { await purchases.restore() } }
                         .accessibilityIdentifier("settings.restorePurchase")
@@ -473,7 +473,7 @@ struct AISettings: View {
     }
 }
 
-/// Start, adjust or end a vacation, illness or crunch. Works as Lift Track's editor does, with
+/// Start, adjust or end a vacation, illness or crunch. Works as Stadig Lift's editor does, with
 /// SystemCore's editing rules: only an illness (or injury) can be open-ended, one without an end
 /// yet is offered a week, the end shown is the end saved, and it's never before the start.
 struct LifeModeEditor: View {

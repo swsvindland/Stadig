@@ -37,7 +37,7 @@ public struct WritingPassage: Hashable, Codable, Sendable, Identifiable {
     public var words: Int { text.split { $0.isWhitespace || $0.isNewline }.count }
 }
 
-/// A prompt or task written for Mind Track: a creative prompt, an argument, a practical rewrite
+/// A prompt or task written for Stadig Mind: a creative prompt, an argument, a practical rewrite
 /// (with the text to rewrite) or a term's benchmark.
 public struct WritingPrompt: Hashable, Codable, Sendable, Identifiable {
     public var id: String

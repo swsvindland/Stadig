@@ -1,6 +1,6 @@
 ---
 name: add-feature
-description: The end-to-end way to add or change a feature in Lift Track, Macro Track or Mind Track: engine logic and tests in the package first, then the SwiftUI screen, identifiers and UI test, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
+description: The end-to-end way to add or change a feature in Stadig Lift, Stadig Macro or Stadig Mind: engine logic and tests in the package first, then the SwiftUI screen, identifiers and UI test, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
 ---
 
 # Add or change a feature

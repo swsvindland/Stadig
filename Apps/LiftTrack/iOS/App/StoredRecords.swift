@@ -3,7 +3,7 @@ import LiftEngine
 import SystemCore
 import SystemStore
 
-// Lift Track's records in its own CloudKit-synced database. Kinds never change once shipped;
+// Stadig Lift's records in its own CloudKit-synced database. Kinds never change once shipped;
 // bump a schemaVersion (and teach `migrate`) when a record's shape changes.
 //
 // SessionRecord also lives unversioned in the Watch's outbox.json, and LiveSession in its

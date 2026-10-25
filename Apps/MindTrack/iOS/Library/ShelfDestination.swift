@@ -54,7 +54,7 @@ struct ShelfDestination: View {
                     }
                     section("Finished", shelf.finished, level: reading?.level)
                     section("Set aside", shelf.setAside, level: nil)
-                    section("Read in the year before Mind Track", shelf.readBefore, level: nil)
+                    section("Read in the year before Stadig Mind", shelf.readBefore, level: nil)
                 }
                 .frame(minWidth: 280, idealWidth: 340, maxWidth: 380)
                 .overlay {
@@ -263,7 +263,7 @@ private struct BookDetail: View {
         case .reading: "Reading now"
         case .finished: "Finished"
         case .abandoned: "Set aside"
-        case .readBefore: "Read before Mind Track"
+        case .readBefore: "Read before Stadig Mind"
         }
     }
 

@@ -1,5 +1,5 @@
 // Captures one app's frontmost window to a PNG, for checking the Mac app's layouts by eye without
-// capturing anything else on the screen. Run: swift Scripts/window-shot.swift "Lift Track" out.png
+// capturing anything else on the screen. Run: swift Scripts/window-shot.swift "Stadig Lift" out.png
 // (the app's name as the menu bar shows it). Needs Screen Recording permission for the terminal.
 import CoreGraphics
 import Foundation

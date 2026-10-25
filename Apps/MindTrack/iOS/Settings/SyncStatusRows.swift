@@ -1,7 +1,7 @@
 import SwiftUI
 import SystemStore
 
-/// Settings' sync rows: how iCloud is going for Mind Track's own records, with the reason in words
+/// Settings' sync rows: how iCloud is going for Stadig Mind's own records, with the reason in words
 /// when it isn't, and the setup shared with the other apps when that's the part failing.
 struct SyncStatusRows: View {
     let records: SyncState

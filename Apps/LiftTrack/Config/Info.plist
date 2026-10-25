@@ -25,7 +25,7 @@
 				<string>public.json</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Lift Track Backup</string>
+			<string>Stadig Lift Backup</string>
 			<key>UTTypeIdentifier</key>
 			<string>dev.svindland.stadig.lift-backup</string>
 			<key>UTTypeTagSpecification</key>

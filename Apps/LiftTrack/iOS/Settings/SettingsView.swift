@@ -82,7 +82,7 @@ struct TrainingSections: View {
                     ForEach(SelfReportedPhase.allCases) { Text($0.label).tag(SelfReportedPhase?.some($0)) }
                 }
             } else if let phase = model.nutrition?.phase {
-                LabeledContent("Phase from Macro Track", value: phase.kind.label)
+                LabeledContent("Phase from Stadig Macro", value: phase.kind.label)
             }
         } header: {
             Text("Training")
@@ -199,7 +199,7 @@ private struct DataPromptsPresenter: ViewModifier {
     }
 }
 
-/// Export, backup and restore, the purchase, and what Lift Track is part of. What they show over
+/// Export, backup and restore, the purchase, and what Stadig Lift is part of. What they show over
 /// the form is in `prompts`, which the form presents.
 struct DataSections: View {
     @Environment(AppModel.self) private var model
@@ -246,18 +246,18 @@ struct DataSections: View {
             )
         }
         if Purchases.enabled {
-            Section("Lift Track") {
+            Section("Stadig Lift") {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Lift Track") { prompts.paywall = true }
+                    Button("Unlock Stadig Lift") { prompts.paywall = true }
                     Button("Restore purchase") { Task { await purchases.restore() } }
                 }
             }
         }
         Section {
             Text(
-                "Lift Track is one of The System's apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for skills, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
+                "Stadig Lift is one of the Stadig apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for study, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
             )
             .font(.footnote).foregroundStyle(.secondary)
         }
@@ -268,7 +268,7 @@ struct DataSections: View {
         #endif
     }
 
-    /// Lift Track's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
+    /// Stadig Lift's backups (Info.plist exports the type), and plain JSON for one renamed on the way.
     /// Another app's backup is refused when it's read.
     static let backupTypes = [UTType(exportedAs: "dev.svindland.stadig.lift-backup"), .json]
 
@@ -424,7 +424,7 @@ struct RecurringScreen: View {
         ScrollView {
             OutsideActivitiesEditor(
                 recurring: $edit.value.recurring, title: "Outside the gym",
-                detail: "Lift Track plans around these; they spend the same recovery."
+                detail: "Stadig Lift plans around these; they spend the same recovery."
             )
             .padding()
         }

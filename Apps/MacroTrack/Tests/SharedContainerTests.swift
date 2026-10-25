@@ -6,8 +6,8 @@ import Testing
 
 @testable import MacroTrack
 
-/// What Macro Track publishes to the shared container and what it takes from it: the nutrition
-/// summary, its app summary, the profile, Lift Track's summary, and life modes from any app.
+/// What Stadig Macro publishes to the shared container and what it takes from it: the nutrition
+/// summary, its app summary, the profile, Stadig Lift's summary, and life modes from any app.
 @MainActor
 struct SharedContainerTests {
     @Test func aLaunchThatKeepsNothingSharesThroughAFolderOfItsOwn() throws {
@@ -138,7 +138,7 @@ struct SharedContainerTests {
         model.save(lifeMode: trip)
         let saved = try #require(environment.shared.read(.lifeModes)?.first)
 
-        // Lift Track deletes it: a tombstone in the file.
+        // Stadig Lift deletes it: a tombstone in the file.
         try environment.shared.write([saved.deleted(at: Date().addingTimeInterval(5))], to: .lifeModes, by: .liftTrack)
         model.readShared()
 
@@ -175,7 +175,7 @@ struct SharedContainerTests {
         model.save(lifeMode: trip)
         let saved = try #require(model.lifeModes.first)
 
-        // Lift Track has an older copy with another end: this app's newer one stays, and goes back to the file.
+        // Stadig Lift has an older copy with another end: this app's newer one stays, and goes back to the file.
         var older = saved
         older.end = model.today.adding(days: 2)
         older.updatedAt = saved.updatedAt.addingTimeInterval(-60)

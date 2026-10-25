@@ -23,7 +23,7 @@ public enum Limb: String, CaseIterable, Codable, Sendable, Identifiable {
     }
 }
 
-/// Tape measurements, owned by Lift Track (weight belongs to Macro Track and Health). All in cm and
+/// Tape measurements, owned by Stadig Lift (weight belongs to Stadig Macro and Health). All in cm and
 /// kg; any field may be missing.
 public struct BodyMeasurements: Hashable, Codable, Sendable, Identifiable {
     public var id: UUID
@@ -256,7 +256,7 @@ public struct PhysiqueAnalysis: Hashable, Sendable {
     public var targets: ProportionTargets
     /// Every rule in the set, flagged or not.
     public var proportions: [ProportionReading]
-    /// Whether fat loss or building would do more, for Macro Track.
+    /// Whether fat loss or building would do more, for Stadig Macro.
     public var direction: PhysiqueDirection
     /// Proportion gaps that training closes.
     public var gaps: [PhysiqueGap]

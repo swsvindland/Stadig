@@ -1,6 +1,6 @@
 ---
 name: ui-tests
-description: Write, run and debug the XCUITest end-to-end tests in Apps/<App>/UITests for Lift Track, Macro Track and Mind Track. Use when adding a UI test for a flow, when a UI test fails or is flaky, or when adding accessibility identifiers for tests.
+description: Write, run and debug the XCUITest end-to-end tests in Apps/<App>/UITests for Stadig Lift, Stadig Macro and Stadig Mind. Use when adding a UI test for a flow, when a UI test fails or is flaky, or when adding accessibility identifiers for tests.
 ---
 
 # UI tests

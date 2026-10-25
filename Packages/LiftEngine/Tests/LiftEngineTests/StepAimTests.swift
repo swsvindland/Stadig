@@ -89,7 +89,7 @@ struct StepAimTests {
         state.settings.selfReportedPhaseSince = nil
         #expect(state.phaseStart == today.adding(days: -60))
         #expect(state.stepsNeededSince == today.adding(days: -88))
-        // Macro Track's phase start wins.
+        // Stadig Macro's phase start wins.
         state.nutrition = NutritionSummary(
             phase: NutritionPhase(kind: .cut, start: today.adding(days: -7), source: .macroTrack),
             maintenanceKcal: 2600, days: [])

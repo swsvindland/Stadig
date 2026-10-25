@@ -211,7 +211,7 @@ struct SetLogger: View {
             }
             // Only an iPhone streams a Watch's heart rate into the session.
             if model.currentHeartRate == nil && Platform.canPairWatch {
-                Text("Wear your Apple Watch with Lift Track on it and heart rate and zones are logged automatically.")
+                Text("Wear your Apple Watch with Stadig Lift on it and heart rate and zones are logged automatically.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

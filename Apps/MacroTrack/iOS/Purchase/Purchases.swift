@@ -104,7 +104,7 @@ struct PaywallView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
                 Image(systemName: "lock.open.fill").font(.system(size: 44)).foregroundStyle(.tint)
-                Text("Macro Track, for good").font(.largeTitle.bold())
+                Text("Stadig Macro, for good").font(.largeTitle.bold())
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Your phase plan: cut, bulk or maintain, chosen from your data", systemImage: "map")
                     Label("Targets that adapt every week to your real maintenance", systemImage: "arrow.triangle.2.circlepath")
@@ -127,7 +127,7 @@ struct PaywallView: View {
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
                     .accessibilityIdentifier("paywall.restore")
                 if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of The System bundle on the App Store, with \(AppID.liftTrack.displayName) and \(AppID.knowledge.displayName).")
+                Text("Part of the Stadig bundle on the App Store, with \(AppID.liftTrack.displayName) and \(AppID.knowledge.displayName).")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)

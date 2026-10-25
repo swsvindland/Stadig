@@ -7,7 +7,7 @@ public struct Catalogs: Sendable {
     public var decks: [Language: LanguageDeck]
     public var writing: WritingBank
     public var ladder: ReadingLadder
-    /// Steps, training and food from Lift Track and Macro Track; empty when they aren't installed.
+    /// Steps, training and food from Stadig Lift and Stadig Macro; empty when they aren't installed.
     public var systemData: SystemData
 
     public init(

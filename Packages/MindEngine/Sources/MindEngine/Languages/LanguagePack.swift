@@ -1,6 +1,6 @@
 import Foundation
 
-/// A language Mind Track teaches. One engine; languages are content.
+/// A language Stadig Mind teaches. One engine; languages are content.
 public enum Language: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable {
     case japanese = "ja"
     case spanish = "es"

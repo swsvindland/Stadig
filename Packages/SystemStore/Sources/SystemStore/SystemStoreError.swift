@@ -25,7 +25,7 @@ public enum SystemStoreError: Error, LocalizedError, Sendable, Equatable {
         case .storeUnavailable:
             "The database couldn't be opened."
         case .notABackup:
-            "This file isn't a backup from The System."
+            "This file isn't a Stadig backup."
         case .backupFromNewerVersion:
             "This backup was made by a newer version of the app. Update the app, then restore it."
         case .backupFromOtherApp(let app):

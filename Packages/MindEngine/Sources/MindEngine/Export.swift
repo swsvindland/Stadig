@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-/// Mind Track's data as plain tables for CSV export: your data, portable.
+/// Stadig Mind's data as plain tables for CSV export: your data, portable.
 public enum MindExport {
     public struct Table: Sendable {
         public var name: String

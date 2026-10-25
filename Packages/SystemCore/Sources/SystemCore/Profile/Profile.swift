@@ -8,11 +8,11 @@ public enum AppID: String, CaseIterable, Codable, CodingKeyRepresentable, Sendab
 
     public var displayName: String {
         switch self {
-        case .liftTrack: "Lift Track"
-        case .macroTrack: "Macro Track"
-        // The design doc's "Knowledge" app; people know it as Mind Track.
-        case .knowledge: "Mind Track"
-        case .hub: "The System"
+        case .liftTrack: "Stadig Lift"
+        case .macroTrack: "Stadig Macro"
+        // The design doc's "Knowledge" app; people know it as Stadig Mind.
+        case .knowledge: "Stadig Mind"
+        case .hub: "Stadig"
         }
     }
 }
@@ -117,7 +117,7 @@ public enum TrainingExperience: String, CaseIterable, Codable, Sendable, Identif
         }
     }
 
-    /// Lift Track's solo assessment, in weeks. Experienced lifters can stop early once their
+    /// Stadig Lift's solo assessment, in weeks. Experienced lifters can stop early once their
     /// ratings have proven accurate.
     public var assessmentWeeks: Int {
         switch self {

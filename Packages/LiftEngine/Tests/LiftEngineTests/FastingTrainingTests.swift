@@ -5,7 +5,7 @@ import Testing
 
 @testable import LiftEngine
 
-/// A word before a heavy session on a long fast that Macro Track published: a day or more in by now
+/// A word before a heavy session on a long fast that Stadig Macro published: a day or more in by now
 /// or by the usual start, not in a deload, and not once the session's done.
 @Suite("Fasting and training")
 struct FastingTrainingTests {

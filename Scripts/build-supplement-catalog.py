@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Macro Track's offline supplement catalog from the NIH Dietary Supplement Label Database.
+"""Build Stadig Macro's offline supplement catalog from the NIH Dietary Supplement Label Database.
 Python standard library only.
 
 Usage: python3 Scripts/build-supplement-catalog.py [--dsld /path/DSLD-full-database-CSV.zip]

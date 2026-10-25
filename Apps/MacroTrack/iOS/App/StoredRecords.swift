@@ -6,7 +6,7 @@ import NutritionEngine
 import SystemCore
 import SystemStore
 
-// Macro Track's records of foods (its own, and starred catalog foods) and of meal plans, which
+// Stadig Macro's records of foods (its own, and starred catalog foods) and of meal plans, which
 // only this app has. The rest, which the Watch app reads and writes too, are in
 // Records/MacroRecords.swift. Kinds never change once shipped; bump a schemaVersion (and teach
 // `migrate`) when a record's shape changes.

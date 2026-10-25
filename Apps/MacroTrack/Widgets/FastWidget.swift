@@ -127,7 +127,7 @@ struct FastWidgetView: View {
     var off: some View {
         VStack(spacing: 4) {
             Image(systemName: "timer").font(.title3)
-            Text(snapshot.tracksMealTiming == true ? "Log a meal to start the clock" : "Turn on meal timing in Macro Track")
+            Text(snapshot.tracksMealTiming == true ? "Log a meal to start the clock" : "Turn on meal timing in Stadig Macro")
                 .font(.caption2).multilineTextAlignment(.center).foregroundStyle(.secondary)
         }
     }

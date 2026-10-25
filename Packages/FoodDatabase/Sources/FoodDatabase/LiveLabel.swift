@@ -82,7 +82,7 @@ struct Tally<Value: Hashable & Sendable>: Sendable {
 /// panel it shows; a value is trusted once two frames agree on it and most frames that read it do,
 /// so a misread in one frame is outvoted and the top and bottom of a tall label can come from
 /// different moments. Frames that aren't of a panel (the package's front) are ignored, and only
-/// what Macro Track tracks is kept. A model's reading of the text (`check`) counts as two votes.
+/// what Stadig Macro tracks is kept. A model's reading of the text (`check`) counts as two votes.
 public struct LiveLabel: Sendable {
     private var values: [String: Tally<Double>] = [:]
     private var grams = Tally<Double>()
@@ -127,7 +127,7 @@ public struct LiveLabel: Sendable {
         isChecked = true
     }
 
-    /// The panel's lines Macro Track keeps: the macros, fiber, sugar, sodium, saturated fat, and the
+    /// The panel's lines Stadig Macro keeps: the macros, fiber, sugar, sodium, saturated fat, and the
     /// vitamins and minerals. Cholesterol, trans fat and added sugars are read but not kept.
     static func kept(_ key: String) -> Bool { key == "kcal" || SupplementIngredients.tracked.contains(key) }
 
@@ -278,7 +278,7 @@ public struct LiveSupplementLabel: Sendable {
     public var ready: Bool { lockedCount >= 2 || (lockedCount >= 1 && servings.checked(checkedServing).best != nil) }
 
     /// The panel as read so far; its name is left for the person or the model. A panel seen twice
-    /// with nothing Macro Track tracks on it (melatonin, ashwagandha) is still a supplement.
+    /// with nothing Stadig Macro tracks on it (melatonin, ashwagandha) is still a supplement.
     public var facts: SupplementFacts? {
         let read = readLines.map(\.ingredient)
         guard !read.isEmpty || panelFrames >= 2 else { return nil }

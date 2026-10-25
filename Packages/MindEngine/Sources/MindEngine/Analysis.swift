@@ -325,7 +325,7 @@ public enum Analyst {
                 out.append(
                     MindAction(
                         id: "extra", command: .extraReview(minutes: 5), title: "A five-minute review, if you want it",
-                        detail: "Crunch mode pauses Mind Track. \(due) reviews are waiting; nothing is expected.", priority: 1))
+                        detail: "Crunch mode pauses Stadig Mind. \(due) reviews are waiting; nothing is expected.", priority: 1))
             }
             return out
         }
@@ -400,7 +400,7 @@ public enum Analyst {
             out.append(
                 Quest(
                     id: "mind.reviews.\(state.today.iso)", title: "Clear \(min(analysis.dueToday, 60)) reviews",
-                    detail: "About ten minutes in Mind Track", stat: .intelligence, source: .knowledge, minutes: 10, day: state.today,
+                    detail: "About ten minutes in Stadig Mind", stat: .intelligence, source: .knowledge, minutes: 10, day: state.today,
                     priority: 1))
         }
         if let book = analysis.reading.current, analysis.today?.domains.contains(.reading) != true {
@@ -422,7 +422,7 @@ public enum Analyst {
 
     // MARK: Publishing
 
-    /// What Mind Track publishes for the hub: stats, the last four weeks of sessions in the shared
+    /// What Stadig Mind publishes for the hub: stats, the last four weeks of sessions in the shared
     /// format, discipline and quests.
     public static func appSummary(_ state: StudyState, _ analysis: MindAnalysis) -> AppSummary {
         let since = state.today.adding(days: -27)

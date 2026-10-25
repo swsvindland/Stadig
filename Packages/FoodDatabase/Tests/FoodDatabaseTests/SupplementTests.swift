@@ -141,7 +141,7 @@ struct SupplementTests {
         ]
         let facts = try #require(SupplementLabel.parse(lines: lines))
         #expect(facts.servingLabel == "1 tablet")
-        // Lutein isn't a nutrient Macro Track tracks, so it isn't kept.
+        // Lutein isn't a nutrient Stadig Macro tracks, so it isn't kept.
         #expect(facts.ingredients.count == 9)
         let amounts = facts.amounts
         #expect(amounts["vitaminA"] == 750)

@@ -615,7 +615,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
@@ -749,7 +749,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -784,9 +784,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Watch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Lift shows your heart rate during a session and uses it to time rests.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Lift saves sessions you run on your Watch to Apple Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
@@ -825,13 +825,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Stadig Lift can take progress photos for your own comparison.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Lift reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Lift saves your sessions as strength workouts, and your waist and body-fat measurements.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Stadig Lift saves progress photos you choose, for your own comparison.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -875,7 +875,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -949,13 +949,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Lift Track can take progress photos for your own comparison.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lift Track saves progress photos you choose, for your own comparison.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Stadig Lift can take progress photos for your own comparison.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Lift reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Lift saves your sessions as strength workouts, and your waist and body-fat measurements.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Stadig Lift saves progress photos you choose, for your own comparison.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1065,9 +1065,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Watch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Lift Track shows your heart rate during a session and uses it to time rests.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Lift Track saves sessions you run on your Watch to Apple Health.";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Lift shows your heart rate during a session and uses it to time rests.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Lift saves sessions you run on your Watch to Apple Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.lift;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
@@ -1104,7 +1104,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Lift Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Lift";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",

@@ -16,16 +16,16 @@ struct HomeView: View {
                     } else if let plan = model.upcoming {
                         today(plan)
                     } else {
-                        message("calendar", "Nothing planned today.", "Open Lift Track on your iPhone to plan your week.")
+                        message("calendar", "Nothing planned today.", "Open Stadig Lift on your iPhone to plan your week.")
                     }
                 } else {
-                    message("iphone", "Open Lift Track on your iPhone to set up.", "Your sessions appear here once it's done.")
+                    message("iphone", "Open Stadig Lift on your iPhone to set up.", "Your sessions appear here once it's done.")
                     Button("Try Again", systemImage: "arrow.clockwise") { model.requestContext() }
                         .buttonStyle(.glass)
                 }
             }
         }
-        .navigationTitle("Lift Track")
+        .navigationTitle("Stadig Lift")
     }
 
     private func today(_ plan: SessionPlan) -> some View {
@@ -57,12 +57,12 @@ struct HomeView: View {
             .buttonStyle(.glassProminent)
             .handGestureShortcut(.primaryAction)
             if model.offersFollowing {
-                Text("Next in your program, after the session you did on your Watch. Open Lift Track on your iPhone to update it.")
+                Text("Next in your program, after the session you did on your Watch. Open Stadig Lift on your iPhone to update it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else if model.isStale {
-                Text("Planned \(plan.day.date().formatted(.dateTime.weekday(.wide))). Open Lift Track on your iPhone to update it.")
+                Text("Planned \(plan.day.date().formatted(.dateTime.weekday(.wide))). Open Stadig Lift on your iPhone to update it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

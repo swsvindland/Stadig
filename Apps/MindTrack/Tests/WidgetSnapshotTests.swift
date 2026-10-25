@@ -76,12 +76,12 @@ struct WidgetSnapshotTests {
         #expect(snapshot.reading(on: written) == snapshot, "on its own day it reads as written")
 
         let tomorrow = snapshot.reading(on: written.adding(days: 1))
-        #expect(tomorrow.headline == "Study day: open Mind Track")
+        #expect(tomorrow.headline == "Study day: open Stadig Mind")
         #expect(tomorrow.parts.isEmpty)
         #expect(tomorrow.doneThisWeek == snapshot.doneThisWeek, "same week")
 
         let nextWeek = snapshot.reading(on: written.startOfWeek.adding(days: 8))
-        #expect(nextWeek.headline == "Open Mind Track for today's plan")
+        #expect(nextWeek.headline == "Open Stadig Mind for today's plan")
         #expect(nextWeek.doneThisWeek == 0, "a new week counts from zero")
     }
 
@@ -102,10 +102,10 @@ struct WidgetSnapshotTests {
         #expect(thursday.phase == snapshot.phase, "the week's phase still holds")
         #expect(thursday.link == URL(string: "mindtrack://today"), "a rest day opens Today, not a session")
         let friday = done.reading(on: written.adding(days: 2))
-        #expect(friday.status == .today && friday.headline == "Study day: open Mind Track")
+        #expect(friday.status == .today && friday.headline == "Study day: open Stadig Mind")
         #expect(friday.link == URL(string: "mindtrack://start"))
         let monday = done.reading(on: written.adding(days: 5))
-        #expect(monday.status == .today && monday.headline == "Open Mind Track for today's plan")
+        #expect(monday.status == .today && monday.headline == "Open Stadig Mind for today's plan")
         #expect(monday.phase == MindSnapshot.empty.phase, "the phase ended on Sunday")
 
         // A vacation to Sunday is still one on Friday; by Monday it's over, and only the app knows what's next.
@@ -118,7 +118,7 @@ struct WidgetSnapshotTests {
         #expect(stillAway.status == .paused && stillAway.headline == "Vacation" && stillAway.phase == "Vacation")
         #expect(stillAway.link == URL(string: "mindtrack://today"))
         let back = paused.reading(on: written.adding(days: 5))
-        #expect(back.status == .today && back.headline == "Open Mind Track for today's plan")
+        #expect(back.status == .today && back.headline == "Open Stadig Mind for today's plan")
 
         // An illness with no end set holds until the app says otherwise.
         var ill = paused

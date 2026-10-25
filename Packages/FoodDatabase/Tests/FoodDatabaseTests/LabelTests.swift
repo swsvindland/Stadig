@@ -51,7 +51,7 @@ struct LabelTests {
         #expect(read.found)
         let reading = read.reading
         #expect(reading.nutrients == Nutrients(kcal: 230, protein: 3, carbs: 37, fat: 8, fiber: 4, sugar: 12, saturatedFat: 1, sodium: 160))
-        // Read for the checks, but not kept: Macro Track doesn't track them.
+        // Read for the checks, but not kept: Stadig Macro doesn't track them.
         #expect(reading.extras.isEmpty)
         #expect(reading.servingLabel == "2/3 cup" && reading.servingGrams == 55 && reading.servingMilliliters == nil)
         #expect(reading.fieldsRead == 11)

@@ -1,4 +1,4 @@
-// Draws Mind Track's app icon set (iOS light/dark/tinted, macOS, and visionOS).
+// Draws Stadig Mind's app icon set (iOS light/dark/tinted, macOS, and visionOS).
 // Run from the repo root: swift Scripts/make-mind-icons.swift
 // The glyph is drawn by hand: SF Symbols may not be used in app icons.
 import AppKit

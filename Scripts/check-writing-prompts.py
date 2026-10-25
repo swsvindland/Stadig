@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks Mind Track's writing prompts against their schema and house style.
+"""Checks Stadig Mind's writing prompts against their schema and house style.
 
     python3 Scripts/check-writing-prompts.py              # checks the bundled writing-prompts.json
     python3 Scripts/check-writing-prompts.py other.json

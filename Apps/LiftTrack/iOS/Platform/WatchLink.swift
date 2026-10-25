@@ -24,7 +24,7 @@ final class WatchLink: NSObject {
         session.activate()
     }
 
-    /// A paired Watch with Lift Track on it.
+    /// A paired Watch with Stadig Lift on it.
     var watchAppInstalled: Bool {
         guard let session, session.activationState == .activated else { return false }
         return session.isPaired && session.isWatchAppInstalled

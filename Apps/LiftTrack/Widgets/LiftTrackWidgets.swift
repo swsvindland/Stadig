@@ -38,7 +38,7 @@ struct SnapshotProvider: TimelineProvider {
     }
 }
 
-/// The next session at a glance; tapping it opens Lift Track ready to start.
+/// The next session at a glance; tapping it opens Stadig Lift ready to start.
 struct NextSessionWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "next-session", provider: SnapshotProvider()) { entry in

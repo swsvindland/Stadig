@@ -52,7 +52,7 @@ struct PlanTests {
                 on: monday.adding(days: 57), start: monday, calendar: nil, lifeModes: [],
                 lastCheckIn: monday.adding(days: 55)))
 
-        // Lift Track's deload is the review week.
+        // Stadig Lift's deload is the review week.
         let deload = DayRange(monday.adding(days: 20), monday.adding(days: 26))
         let lift = SystemCalendar(
             currentBlock: DayRange(monday.adding(days: -15), monday.adding(days: 26)), deloads: [deload], checkIns: [deload.end],

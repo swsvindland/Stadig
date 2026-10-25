@@ -8,13 +8,13 @@
       "internalID" : "4E3F57D1",
       "localizations" : [
         {
-          "description" : "Mind Track, unlocked for good. No subscription.",
-          "displayName" : "Mind Track",
+          "description" : "Stadig Mind, unlocked for good. No subscription.",
+          "displayName" : "Stadig Mind",
           "locale" : "en_US"
         }
       ],
       "productID" : "dev.svindland.stadig.mind.unlock",
-      "referenceName" : "Mind Track unlock",
+      "referenceName" : "Stadig Mind unlock",
       "type" : "NonConsumable"
     }
   ],

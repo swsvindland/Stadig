@@ -3,7 +3,7 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// A minute of setup. Answers already given in Lift Track are reused, not asked again.
+/// A minute of setup. Answers already given in Stadig Lift are reused, not asked again.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step = Step.welcome
@@ -50,7 +50,7 @@ struct OnboardingView: View {
     var welcome: some View {
         VStack(alignment: .leading, spacing: 24) {
             Spacer()
-            Text("Macro Track").font(.largeTitle.weight(.bold))
+            Text("Stadig Macro").font(.largeTitle.weight(.bold))
             VStack(alignment: .leading, spacing: 18) {
                 point("bolt.fill", "Log in seconds", "Search, scan, snap a photo or just say what you ate. Usual foods are one tap.")
                 point("waveform.path.ecg", "Learns your real maintenance", "Two to three weeks of normal eating and morning weigh-ins. No diet yet.")
@@ -58,7 +58,7 @@ struct OnboardingView: View {
             }
             if reused {
                 Label(
-                    "Using your setup from \(model.sharedProfile?.createdBy.displayName ?? "the System"): goals, height and age.",
+                    "Using your setup from \(model.sharedProfile?.createdBy.displayName ?? "another Stadig app"): goals, height and age.",
                     systemImage: "checkmark.circle.fill"
                 )
                 .font(.subheadline)
@@ -201,7 +201,7 @@ struct OnboardingView: View {
             Image(systemName: "heart.text.square.fill").font(.system(size: 56)).foregroundStyle(.pink)
             Text("Connect Apple Health").font(.title.weight(.bold))
             Text(
-                "Weigh-ins from a smart scale arrive on their own, and what you log is saved to Health. Lift Track's measurements and training are read through the System, not Health."
+                "Weigh-ins from a smart scale arrive on their own, and what you log is saved to Health. Stadig Lift's measurements and training come straight from Stadig Lift, not through Health."
             )
             .foregroundStyle(.secondary)
             Spacer()

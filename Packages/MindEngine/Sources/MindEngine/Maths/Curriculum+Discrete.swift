@@ -29,7 +29,7 @@ extension MathCurriculum {
             let values = week.map { Int($0.value) }
             let labels = week.map(\.day.weekday.short)
             return ChartQuestions.problem(
-                week.figure("Your steps, the last seven days", unit: "steps", source: "From Lift Track"), unit: "steps",
+                week.figure("Your steps, the last seven days", unit: "steps", source: "From Stadig Lift"), unit: "steps",
                 values: values, labels: labels, rng: &rng)
         },
         MathTopic(
@@ -84,7 +84,7 @@ extension MathCurriculum {
                 let five = Array(values.suffix(5))
                 let mean = Rational(five.reduce(0, +), 5)
                 return .number(
-                    #"Lift Track counted your steps on the last five days: \#(five.map(Numeracy.grouped).joined(separator: ", ")) (to the nearest hundred). What was the mean?"#,
+                    #"Stadig Lift counted your steps on the last five days: \#(five.map(Numeracy.grouped).joined(separator: ", ")) (to the nearest hundred). What was the mean?"#,
                     mean, steps: [#"Total $\#(Numeracy.grouped(five.reduce(0, +)))$, divided by $5$: $\#(Numeracy.decimal(mean))$."#])
             }
             let odd = values.count % 2 == 1 ? values : Array(values.suffix(values.count - 1))
@@ -97,7 +97,7 @@ extension MathCurriculum {
                     "The middle one: \(Numeracy.grouped(sorted[sorted.count / 2])).",
                 ]
             )
-            .with(Array(days).figure("Your steps", unit: "steps", source: "From Lift Track"))
+            .with(Array(days).figure("Your steps", unit: "steps", source: "From Stadig Lift"))
         },
         MathTopic(
             id: "sets", title: "Sets and Venn diagrams", level: 2, prerequisites: ["logic-and-or"],
@@ -141,7 +141,7 @@ extension MathCurriculum {
             guard trained.count >= 3, logged.count >= 5 else { return nil }
             let either = trained.count + logged.count - both
             return .number(
-                "In the last 28 days you trained on \(trained.count) days (Lift Track) and logged food on \(logged.count) (Macro Track); \(both) days had both. On how many days did you do neither?",
+                "In the last 28 days you trained on \(trained.count) days (Stadig Lift) and logged food on \(logged.count) (Stadig Macro); \(both) days had both. On how many days did you do neither?",
                 28 - either,
                 steps: [
                     #"At least one: $\#(trained.count) + \#(logged.count) - \#(both) = \#(either)$."#, "Neither: $28 - \(either) = \(28 - either)$.",
@@ -209,7 +209,7 @@ extension MathCurriculum {
                 "What was the range of your steps over these days?", high - low,
                 steps: ["Most \(Numeracy.grouped(high)), fewest \(Numeracy.grouped(low)): \(Numeracy.grouped(high - low))."]
             )
-            .with(week.figure("Your steps", unit: "steps", source: "From Lift Track"))
+            .with(week.figure("Your steps", unit: "steps", source: "From Stadig Lift"))
         },
         MathTopic(
             id: "if-then", title: "If–then reasoning", level: 3, prerequisites: ["logic-and-or"],
@@ -297,7 +297,7 @@ extension MathCurriculum {
             guard let t = data.trainingAndProtein else { return nil }
             let days = t.trainedHit + t.trainedMissed + t.restHit + t.restMissed
             return .number(
-                "Over \(days) days of Macro Track logging: training days, \(t.trainedHit) hit your protein target and \(t.trainedMissed) missed; rest days, \(t.restHit) hit and \(t.restMissed) missed. On what fraction of training days did you hit protein?",
+                "Over \(days) days of Stadig Macro logging: training days, \(t.trainedHit) hit your protein target and \(t.trainedMissed) missed; rest days, \(t.restHit) hit and \(t.restMissed) missed. On what fraction of training days did you hit protein?",
                 Rational(t.trainedHit, t.trainedHit + t.trainedMissed),
                 steps: [
                     #"Training days only: $\frac{\#(t.trainedHit)}{\#(t.trainedHit) + \#(t.trainedMissed)} = \#(Rational(t.trainedHit, t.trainedHit + t.trainedMissed).tex)$."#

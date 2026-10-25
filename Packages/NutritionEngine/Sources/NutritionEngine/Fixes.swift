@@ -77,7 +77,7 @@ public enum QualitySwap {
     }
 }
 
-/// The rules behind Macro Track's one-tap fixes: a food that closes a nutrient gap, or something
+/// The rules behind Stadig Macro's one-tap fixes: a food that closes a nutrient gap, or something
 /// fermented for a week short of it, at a portion people eat. The app finds the foods and works out
 /// their portions from the catalog; these say which to offer.
 public enum FoodFix {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds writing-passages.json for Mind Track: short prose passages to imitate, offline.
+"""Builds writing-passages.json for Stadig Mind: short prose passages to imitate, offline.
 
     python3 Scripts/build-writing-passages.py            # writes Packages/MindEngine/.../Resources/writing-passages.json
     python3 Scripts/build-writing-passages.py --cache DIR --out x.json

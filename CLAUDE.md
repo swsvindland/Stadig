@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-Stadig ("The System"): three apps (Lift Track, Macro Track, Mind Track), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (Lift Track and Macro Track also have Watch apps), as thin shells over eleven local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+Stadig ("The System"): three apps (Stadig Lift, Stadig Macro, Stadig Mind), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (Stadig Lift and Stadig Macro also have Watch apps), as thin shells over eleven local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+
+Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift, Stadig Macro and Stadig Mind, never "Lift Track", "Macro Track", "Mind Track" or "The System"; the family, the hub and the App Store bundle are Stadig. Code keeps its old names (`Apps/LiftTrack`, `LiftEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
 
 ## Commands
 

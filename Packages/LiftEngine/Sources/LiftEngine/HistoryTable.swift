@@ -2,7 +2,7 @@ import ExerciseLibrary
 import Foundation
 import SystemCore
 
-/// One row of the History table: a Lift Track session or an outside activity, with plain sort keys
+/// One row of the History table: a Stadig Lift session or an outside activity, with plain sort keys
 /// for every column (a missing value sorts as the least).
 public struct HistoryRow: Identifiable, Hashable, Sendable {
     public enum Kind: Hashable, Sendable {

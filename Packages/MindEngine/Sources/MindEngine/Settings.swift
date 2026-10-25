@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-/// Mind Track's own settings. One record. Decoding fills anything missing with its default, so a
+/// Stadig Mind's own settings. One record. Decoding fills anything missing with its default, so a
 /// field added later never breaks a record saved before it, and keeps values it doesn't know (a
 /// course or genre from a newer version on another device) aside and writes them back unchanged.
 public struct MindSettings: Hashable, Codable, Sendable, Identifiable {

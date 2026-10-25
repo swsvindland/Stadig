@@ -2,7 +2,7 @@ import Foundation
 
 /// A passage for the reading test: real prose at a known difficulty, read silently and timed in
 /// the background, then a few comprehension questions. Public domain (from Project Gutenberg) or
-/// written for Mind Track.
+/// written for Stadig Mind.
 public struct Passage: Hashable, Sendable, Identifiable, Decodable {
     public var id: String
     public var title: String
@@ -11,13 +11,13 @@ public struct Passage: Hashable, Sendable, Identifiable, Decodable {
     /// The ladder tier this passage reads at.
     public var tier: Int
     public var language: Language?
-    /// Where it's from: "Project Gutenberg #1342", or "Written for Mind Track".
+    /// Where it's from: "Project Gutenberg #1342", or "Written for Stadig Mind".
     public var source: String
     public var questions: [PassageQuestion]
 
     public init(
         id: String, title: String, author: String, text: String, tier: Int, language: Language? = nil,
-        source: String = "Written for Mind Track", questions: [PassageQuestion] = []
+        source: String = "Written for Stadig Mind", questions: [PassageQuestion] = []
     ) {
         self.id = id
         self.title = title

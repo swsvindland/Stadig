@@ -161,7 +161,7 @@ struct SharedContainerTests {
         }
     }
 
-    /// Macro Track's summary as it was before fasts, to read a file the way an older Lift Track does.
+    /// Stadig Macro's summary as it was before fasts, to read a file the way an older Stadig Lift does.
     struct NutritionBeforeFasts: Codable, Sendable, Equatable {
         var phase: NutritionPhase?
         var maintenanceKcal: Double?

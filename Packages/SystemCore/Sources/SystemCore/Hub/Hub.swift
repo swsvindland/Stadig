@@ -240,7 +240,7 @@ public struct SystemCalendar: Hashable, Codable, Sendable {
     public func isDeload(_ day: Day) -> Bool { deloads.contains { $0.contains(day) } }
 }
 
-/// What Macro Track publishes, read by Lift Track when present.
+/// What Stadig Macro publishes, read by Stadig Lift when present.
 public struct NutritionDay: Hashable, Codable, Sendable {
     public var day: Day
     public var logged: Bool
@@ -263,7 +263,7 @@ public struct NutritionSummary: Hashable, Codable, Sendable {
     public var phase: NutritionPhase?
     public var maintenanceKcal: Double?
     public var days: [NutritionDay]
-    /// The fast running in Macro Track, while meal timing is on; nil otherwise, and in files written
+    /// The fast running in Stadig Macro, while meal timing is on; nil otherwise, and in files written
     /// before fasts.
     public var fast: PublishedFast?
     public var updated: Date
@@ -283,7 +283,7 @@ public struct NutritionSummary: Hashable, Codable, Sendable {
     }
 }
 
-/// A fast someone is running, as Macro Track publishes it: when it began and its goal.
+/// A fast someone is running, as Stadig Macro publishes it: when it began and its goal.
 public struct PublishedFast: Hashable, Codable, Sendable {
     public var start: Date
     public var goalHours: Double
@@ -314,14 +314,14 @@ public struct AppSummary: Hashable, Codable, Sendable {
     public var fatigue: FatigueStatus?
     public var discipline: DisciplineScore?
     public var measurements: BodyMeasurements?
-    /// Whether fat loss or building would do more for proportions (Lift Track), for the phase planner.
+    /// Whether fat loss or building would do more for proportions (Stadig Lift), for the phase planner.
     public var physique: PhysiqueDirection?
     public var mobility: [MobilityResult]
     public var benchmarks: [BenchmarkResult]
     public var stalls: [StallReport]
     /// The nutrition phase the app planned around, and where it came from.
     public var phaseUsed: NutritionPhase?
-    /// Daily steps and the step aim (Lift Track).
+    /// Daily steps and the step aim (Stadig Lift).
     public var steps: StepSummary?
 
     public init(

@@ -2,7 +2,7 @@ import Foundation
 import SystemCore
 
 /// The passages the reading test draws on: several at each tier, public domain or written for
-/// Mind Track, each with its comprehension questions.
+/// Stadig Mind, each with its comprehension questions.
 public struct PassageBank: Sendable {
     public var passages: [Passage]
 

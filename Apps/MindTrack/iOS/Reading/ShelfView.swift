@@ -85,7 +85,7 @@ struct ShelfView: View {
                 }
             }
             if !shelf.readBefore.isEmpty {
-                Section("Read in the year before Mind Track") {
+                Section("Read in the year before Stadig Mind") {
                     ForEach(shelf.readBefore) { book in FinishedRow(book: book, level: nil) }
                 }
             }

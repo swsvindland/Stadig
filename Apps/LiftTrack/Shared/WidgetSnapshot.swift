@@ -20,7 +20,7 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     var updated = Date()
 
     static let groupID = "group.dev.svindland.stadig"
-    static let empty = WidgetSnapshot(title: "Lift Track", detail: "Open Lift Track to set up")
+    static let empty = WidgetSnapshot(title: "Stadig Lift", detail: "Open Stadig Lift to set up")
     static let sample = WidgetSnapshot(
         title: "Upper A", detail: "Week 2 · 2 reps in reserve",
         exercises: ["Barbell Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown"],
@@ -64,7 +64,7 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
             } else if day > today {
                 snapshot.detail = "Next: \(day.date().formatted(.dateTime.weekday(.wide)))"
             } else {
-                snapshot.detail = "Open Lift Track for today's plan"
+                snapshot.detail = "Open Stadig Lift for today's plan"
                 snapshot.minutes = nil
             }
         }
@@ -78,7 +78,7 @@ nonisolated struct WidgetSnapshot: Codable, Hashable, Sendable {
     func shown(on today: Day) -> WidgetSnapshot {
         guard let day, day < today else { return self }
         var snapshot = self
-        snapshot.detail = "Open Lift Track on iPhone"
+        snapshot.detail = "Open Stadig Lift on iPhone"
         snapshot.minutes = nil
         snapshot.exercises = []
         snapshot.badge = nil

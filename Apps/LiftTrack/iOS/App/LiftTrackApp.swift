@@ -50,7 +50,7 @@ struct LiftTrackApp: App {
         #if os(macOS)
         // One main window, sized for the program beside the sidebar; the session gets its own window
         // and Settings the app menu's (⌘,).
-        Window("Lift Track", id: Self.mainWindow) {
+        Window("Stadig Lift", id: Self.mainWindow) {
             if let model {
                 AppRoot(model: model)
                     .frame(minWidth: 820, minHeight: 560)

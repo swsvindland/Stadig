@@ -55,7 +55,7 @@ struct DataTests {
                     kind: MealPlan.kind, uuid: plan.id, updatedAt: plan.updatedAt, schemaVersion: 1,
                     payload: try JSONSerialization.data(withJSONObject: json), deleted: false)
             ])
-        let url = TestEnvironment().folder.appending(path: "Macro Track.macrobackup")
+        let url = TestEnvironment().folder.appending(path: "Stadig Macro.macrobackup")
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try SystemJSON.encoder().encode(file).write(to: url)
 
@@ -70,13 +70,13 @@ struct DataTests {
     @Test func anotherAppsBackupIsRefusedBeforeAnythingIsWritten() throws {
         let lift = RecordStore(name: "LiftTrackTests-\(UUID().uuidString)", cloudKitContainer: nil, inMemory: true)
         lift.save(ProfileRecord(.sample(createdBy: .liftTrack)))
-        let url = TestEnvironment().folder.appending(path: "Lift Track.liftbackup")
+        let url = TestEnvironment().folder.appending(path: "Stadig Lift.liftbackup")
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try lift.exportBackup(app: .liftTrack, shared: nil).write(to: url)
 
         let model = TestEnvironment().model()
         let error = #expect(throws: SystemStoreError.self) { try model.restore(from: url) }
-        #expect(error?.localizedDescription == "This backup is from Lift Track. Restore it there.")
+        #expect(error?.localizedDescription == "This backup is from Stadig Lift. Restore it there.")
         #expect(!model.onboarded)
         #expect(model.store.all(ProfileRecord.self).isEmpty)
     }

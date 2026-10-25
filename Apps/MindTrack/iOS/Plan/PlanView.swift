@@ -62,7 +62,7 @@ private struct BlockCard: View {
                 .font(.caption).foregroundStyle(.secondary)
             }
             if state.calendar != nil {
-                Label("Review weeks follow Lift Track's deloads", systemImage: "link").font(.caption).foregroundStyle(.secondary)
+                Label("Review weeks follow Stadig Lift's deloads", systemImage: "link").font(.caption).foregroundStyle(.secondary)
             }
         }
         .card()

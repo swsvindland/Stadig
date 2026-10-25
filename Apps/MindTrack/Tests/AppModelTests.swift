@@ -334,7 +334,7 @@ struct AppModelTests {
         #expect(model.books.first?.status == .reading, "not finished behind the session's back")
         #expect(model.store.all(Book.self).map(\.status) == [.reading])
         // Refused before the file is read: any backup would be.
-        let backup = TestApp.folder().appending(path: "Mind Track.mindbackup")
+        let backup = TestApp.folder().appending(path: "Stadig Mind.mindbackup")
         await #expect(throws: AppModel.SessionOpenError.self) { try await model.restore(from: backup) }
 
         model.endSession()

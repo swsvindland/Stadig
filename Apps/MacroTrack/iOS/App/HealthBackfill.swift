@@ -102,7 +102,7 @@ final class HealthBackfill {
         defer { keep(since: since) }
         guard !pending.isEmpty || !gone.isEmpty else { return }
 
-        // Someone who doesn't write to Health from Macro Track wants none of this: what's here now
+        // Someone who doesn't write to Health from Stadig Macro wants none of this: what's here now
         // counts as handled, so turning it on later doesn't pour in the past.
         guard settings?.saveToHealth ?? true else {
             for item in pending { ledger[item.id] = HealthLedgerEntry(item, written: false) }

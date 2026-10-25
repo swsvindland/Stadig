@@ -33,7 +33,7 @@ const jsonLd = [
   },
 ];
 ---
-<Base title={`${app.name}: ${app.oneLiner}`} description={app.description} jsonLd={jsonLd} ogImage={`/og-${app.slug}.png`}>
+<Base title={`${app.name}: ${app.oneLiner}`} description={app.description} jsonLd={jsonLd} ogImage={`/og-${app.slug}.png`} titleSuffix={false}>
   <article class={`accent-${app.accent}`}>
     <section class="hero wrap">
       <p class="eyebrow"><span class="dot"></span> {app.name} · {app.platforms.join(", ")}</p>
@@ -67,7 +67,7 @@ const jsonLd = [
     </section>
 
     <section class="wrap">
-      <p class="eyebrow">Also by {brand.name}</p>
+      <p class="eyebrow">The other {brand.name} apps</p>
       <div class="grid two">
         {others.map((o) => <a class={`card link accent-${o.accent}`} href={`/${o.slug}`}><span class="dot"></span><h3>{o.name}</h3><p>{o.oneLiner}</p></a>)}
       </div>

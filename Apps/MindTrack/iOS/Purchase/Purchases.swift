@@ -88,7 +88,7 @@ final class Purchases {
                 self.error = "The App Store couldn't confirm the purchase: \(failure.localizedDescription)"
             case .pending:
                 // Ask to Buy: it arrives through `Transaction.updates` once it's approved.
-                self.error = "Waiting for approval. Mind Track unlocks as soon as it's given."
+                self.error = "Waiting for approval. Stadig Mind unlocks as soon as it's given."
             case .userCancelled:
                 break
             @unknown default:
@@ -122,7 +122,7 @@ struct PaywallView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
                 Image(systemName: "lock.open.fill").font(.system(size: 44)).foregroundStyle(.tint)
-                Text("Mind Track, for good").font(.largeTitle.bold())
+                Text("Stadig Mind, for good").font(.largeTitle.bold())
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Sessions that find your level and train it, in every subject", systemImage: "brain.head.profile")
                     Label("Spaced repetition that brings things back just before you forget", systemImage: "arrow.triangle.2.circlepath")
@@ -144,7 +144,7 @@ struct PaywallView: View {
                 .disabled(purchases.product == nil || purchases.purchasing)
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
                 if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of The System bundle on the App Store, with Lift Track and Macro Track.").font(.footnote).foregroundStyle(.secondary)
+                Text("Part of the Stadig bundle on the App Store, with Stadig Lift and Stadig Macro.").font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }

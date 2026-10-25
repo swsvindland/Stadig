@@ -6,7 +6,7 @@ import Testing
 
 @testable import MindTrack
 
-/// What Mind Track publishes to the shared container and reads from it: the hub summary, life modes
+/// What Stadig Mind publishes to the shared container and reads from it: the hub summary, life modes
 /// set in any app (deletes included), and backups.
 @MainActor
 struct SharedContainerTests {
@@ -22,7 +22,7 @@ struct SharedContainerTests {
         let trip = LifeModePeriod(kind: .vacation, start: today, end: today.adding(days: 4), createdBy: .knowledge)
         #expect(mind.save(lifeMode: trip))
         #expect(mind.lifeModes.map(\.id) == [trip.id])
-        #expect(mind.analysis?.phase == .paused(.vacation), "a vacation pauses Mind Track")
+        #expect(mind.analysis?.phase == .paused(.vacation), "a vacation pauses Stadig Mind")
         let file = try #require(shared.read(.lifeModes))
         #expect(file.map(\.id) == [trip.id])
 
@@ -91,7 +91,7 @@ struct SharedContainerTests {
         var trip = LifeModePeriod(kind: .vacation, start: today, end: today.adding(days: 2), createdBy: .knowledge)
         model.save(lifeMode: trip)
 
-        // Lift Track still has the first version and writes it back with its own change elsewhere.
+        // Stadig Lift still has the first version and writes it back with its own change elsewhere.
         let stale = try #require(shared.read(.lifeModes))
         clock.advance(60)
         trip.end = today.adding(days: 6)
