@@ -205,7 +205,7 @@ private struct PausedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Mind Track is paused", systemImage: kind.symbol).font(.title3.bold())
+            Label("Stadig Mind is paused", systemImage: kind.symbol).font(.title3.bold())
                 .accessibilityIdentifier("today.paused")
             Text(detail).foregroundStyle(.secondary)
         }

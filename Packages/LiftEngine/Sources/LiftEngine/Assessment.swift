@@ -69,18 +69,18 @@ public enum Assessment {
             scoredLifts: scored.count, learned: learned, complete: complete, canFinishEarly: canFinishEarly)
     }
 
-    /// After the assessment: a standard block when the phase is known (from Macro Track, or the
-    /// person's one-tap answer); a neutral block while Macro Track is still deciding.
+    /// After the assessment: a standard block when the phase is known (from Stadig Macro, or the
+    /// person's one-tap answer); a neutral block while Stadig Macro is still deciding.
     public static func nextBlock(nutrition: NutritionSummary?, selfReported: SelfReportedPhase?) -> NextBlockDecision {
         if let phase = nutrition?.phase {
             return NextBlockDecision(
-                kind: .standard, phase: phase, reason: "Macro Track has set your phase: \(phase.kind.label.lowercased()).", askPhase: false)
+                kind: .standard, phase: phase, reason: "Stadig Macro has set your phase: \(phase.kind.label.lowercased()).", askPhase: false)
         }
         if nutrition != nil {
             return NextBlockDecision(
                 kind: .neutral, phase: .assumedMaintenance,
                 reason:
-                    "Macro Track is still learning your maintenance, so this block is general strength and size that works in any phase. Volume adjusts at the next boundary.",
+                    "Stadig Macro is still learning your maintenance, so this block is general strength and size that works in any phase. Volume adjusts at the next boundary.",
                 askPhase: false)
         }
         if let selfReported {

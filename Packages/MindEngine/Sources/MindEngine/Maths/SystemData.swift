@@ -20,7 +20,7 @@ public struct DataFigure: Hashable, Sendable {
     public var unit: String
     public var style: Style
     public var points: [Point]
-    /// Where the numbers came from, when they're the person's own: "From Lift Track".
+    /// Where the numbers came from, when they're the person's own: "From Stadig Lift".
     public var source: String?
 
     public init(title: String, unit: String, style: Style = .bars, points: [Point], source: String? = nil) {
@@ -33,7 +33,7 @@ public struct DataFigure: Hashable, Sendable {
 }
 
 /// Numbers the other System apps publish, so a statistics problem can be about the person's own
-/// weeks: steps and strength sessions from Lift Track, protein and calories from Macro Track. The
+/// weeks: steps and strength sessions from Stadig Lift, protein and calories from Stadig Macro. The
 /// app reads the shared container and passes this in through the catalogs; the engine never reads
 /// it itself, and every problem that uses it has a made-up version for when it's empty.
 public struct SystemData: Hashable, Sendable {
@@ -67,7 +67,7 @@ public struct SystemData: Hashable, Sendable {
         self.proteinHits = proteinHits
     }
 
-    /// From what Lift Track and Macro Track published.
+    /// From what Stadig Lift and Stadig Macro published.
     public init(lift: AppSummary?, macro: AppSummary?, nutrition: NutritionSummary?) {
         let steps = (lift?.steps?.days ?? []).filter { $0.steps >= Steps.carriedMinimum }.map { Point(day: $0.day, value: Double($0.steps)) }
         var minutes: [Day: Double] = [:]
@@ -95,7 +95,7 @@ public struct SystemData: Hashable, Sendable {
         return week.count >= 5 ? week : nil
     }
 
-    /// Days in the last four weeks of Macro Track data, split by whether Lift Track logged a
+    /// Days in the last four weeks of Stadig Macro data, split by whether Stadig Lift logged a
     /// strength session and whether protein was hit. Nil without enough of both.
     var trainingAndProtein: (trainedHit: Int, trainedMissed: Int, restHit: Int, restMissed: Int)? {
         guard let last = proteinHits.keys.max(), !training.isEmpty else { return nil }

@@ -52,7 +52,7 @@ struct MacroTrackApp: App {
 
     var body: some Scene {
         #if os(macOS)
-        Window("Macro Track", id: Self.mainWindow) {
+        Window("Stadig Macro", id: Self.mainWindow) {
             if let model { root(model).frame(minWidth: 900, minHeight: 580) }
         }
         .defaultSize(width: 1280, height: 820)

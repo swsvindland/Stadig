@@ -1,7 +1,7 @@
 import SwiftUI
 import SystemStore
 
-/// A launch that finds Macro Track not set up while the person's iCloud has their log (a second
+/// A launch that finds Stadig Macro not set up while the person's iCloud has their log (a second
 /// device, a reinstall): the wait for it, rather than onboarding over it. The data arriving takes the
 /// app straight to Today; iCloud turning out to hold nothing, to onboarding.
 struct ICloudWaitView: View {

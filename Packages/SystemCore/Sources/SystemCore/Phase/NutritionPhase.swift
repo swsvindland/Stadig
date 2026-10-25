@@ -1,7 +1,7 @@
 import Foundation
 
-/// Nutrition phases are parameterised: a kind, a rate and a planned length. Macro Track decides
-/// and publishes the current one; Lift Track uses it when present, and otherwise asks a one-tap
+/// Nutrition phases are parameterised: a kind, a rate and a planned length. Stadig Macro decides
+/// and publishes the current one; Stadig Lift uses it when present, and otherwise asks a one-tap
 /// question it trusts less.
 public enum PhaseKind: String, CaseIterable, Codable, Sendable, Identifiable {
     case cut, miniCut, maintenance, dietBreak, reverseDiet, recomp, leanBulk
@@ -43,9 +43,9 @@ public enum PhaseKind: String, CaseIterable, Codable, Sendable, Identifiable {
 }
 
 public enum PhaseSource: String, Codable, Sendable {
-    /// Decided by Macro Track from intake and weigh-ins.
+    /// Decided by Stadig Macro from intake and weigh-ins.
     case macroTrack
-    /// The one-tap question in Lift Track.
+    /// The one-tap question in Stadig Lift.
     case selfReported
     /// Nothing known: maintenance assumptions.
     case assumed
@@ -109,7 +109,7 @@ public struct PhaseEffects: Hashable, Codable, Sendable {
     public var blockLengthAdjustment: Int
 }
 
-/// Lift Track's one-tap question when Macro Track isn't there to say.
+/// Stadig Lift's one-tap question when Stadig Macro isn't there to say.
 public enum SelfReportedPhase: String, CaseIterable, Codable, Sendable, Identifiable {
     case cutting, maintaining, bulking, notSure
 
@@ -135,7 +135,7 @@ public enum SelfReportedPhase: String, CaseIterable, Codable, Sendable, Identifi
 }
 
 public enum PhaseResolver {
-    /// Macro Track's phase wins; then the person's answer; then maintenance assumptions.
+    /// Stadig Macro's phase wins; then the person's answer; then maintenance assumptions.
     public static func current(published: NutritionPhase?, selfReported: SelfReportedPhase?) -> NutritionPhase {
         if let published { return published }
         return selfReported?.phase ?? .assumedMaintenance

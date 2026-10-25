@@ -64,7 +64,7 @@ struct SettingsView: View {
                         let summary = try await model.restore(from: url)
                         message = "Restored \(summary.records) records."
                     } catch {
-                        // Another app's backup is refused by name ("This backup is from Mind Track").
+                        // Another app's backup is refused by name ("This backup is from Stadig Mind").
                         message = error.localizedDescription
                     }
                 }
@@ -252,7 +252,7 @@ struct SettingsView: View {
             Text("Life")
         } footer: {
             Text(
-                "Shared with Lift Track. Vacation and illness expect no logging and don't count against you; the first days back aren't read as fat gain. Crunch asks only for protein and maintenance calories."
+                "Shared with Stadig Lift. Vacation and illness expect no logging and don't count against you; the first days back aren't read as fat gain. Crunch asks only for protein and maintenance calories."
             )
         }
 
@@ -321,11 +321,11 @@ struct SettingsView: View {
         }
 
         if Purchases.enabled {
-            Section("Macro Track") {
+            Section("Stadig Macro") {
                 if purchases.unlocked {
                     Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
                 } else {
-                    Button("Unlock Macro Track", systemImage: "lock.open") { unlocking = true }
+                    Button("Unlock Stadig Macro", systemImage: "lock.open") { unlocking = true }
                         .accessibilityIdentifier("settings.unlock")
                     Button("Restore purchase") { Task { await purchases.restore() } }
                         .accessibilityIdentifier("settings.restorePurchase")
@@ -350,7 +350,7 @@ struct SettingsView: View {
     }
 }
 
-/// Start, adjust or end a vacation, illness or crunch. Works as Lift Track's editor does: only an
+/// Start, adjust or end a vacation, illness or crunch. Works as Stadig Lift's editor does: only an
 /// illness (or injury) can be open-ended, the end shown is the end saved, and it's never before
 /// the start.
 struct LifeModeEditor: View {

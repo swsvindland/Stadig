@@ -51,7 +51,7 @@ struct WeighInControl: ControlWidget {
             }
         }
         .displayName("Weigh In")
-        .description("Opens Macro Track ready to record this morning's weight.")
+        .description("Opens Stadig Macro ready to record this morning's weight.")
     }
 }
 
@@ -62,7 +62,7 @@ func logControl(kind: String, entry: LoggerEntryPoint, title: LocalizedStringRes
         }
     }
     .displayName(title)
-    .description("Opens Macro Track ready to log.")
+    .description("Opens Stadig Macro ready to log.")
 }
 
 #endif

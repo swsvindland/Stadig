@@ -166,7 +166,7 @@ struct SessionWindow: View {
     }
 }
 
-/// Lift Track's settings as a Mac settings window: a pane for each part.
+/// Stadig Lift's settings as a Mac settings window: a pane for each part.
 struct MacSettings: View {
     let model: AppModel
 
@@ -184,7 +184,7 @@ struct MacSettings: View {
                     Tab("Data", systemImage: "externaldrive") { DataSettings().formStyle(.grouped) }
                 }
             } else {
-                ContentUnavailableView("Set up Lift Track first", systemImage: "gearshape", description: Text("Settings open once setup is done."))
+                ContentUnavailableView("Set up Stadig Lift first", systemImage: "gearshape", description: Text("Settings open once setup is done."))
             }
         }
         .environment(model)

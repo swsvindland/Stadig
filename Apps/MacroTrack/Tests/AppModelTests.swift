@@ -33,7 +33,7 @@ struct AppModelTests {
         #expect(model.settings.assessmentStart == model.today)
         #expect(model.settings.id == MacroSettings.singletonID)
         #expect(model.weighIns.map(\.kg) == [82.4])
-        // Shared, so Lift Track and the Knowledge app don't ask again.
+        // Shared, so Stadig Lift and the Knowledge app don't ask again.
         #expect(environment.shared.read(.profile)?.goals == [.leaner])
         // The assessment starts: it asks for protein, not a calorie target.
         let analysis = try #require(model.analysis)

@@ -7,7 +7,7 @@ import Testing
 
 @testable import LiftTrack
 
-/// What Lift Track publishes to the App Group and what it reads from the other apps, life modes most
+/// What Stadig Lift publishes to the App Group and what it reads from the other apps, life modes most
 /// of all: they apply across every app, so an edit or a delete in one has to reach the others.
 @MainActor
 @Suite("Shared container")
@@ -29,7 +29,7 @@ struct SharedContainerTests {
         #expect(app.shared.envelope(.calendar)?.writtenAt == calendar.writtenAt)
     }
 
-    @Test("Macro Track's phase and the hub's recommendations for Lift Track are read")
+    @Test("Stadig Macro's phase and the hub's recommendations for Stadig Lift are read")
     func readsOtherApps() throws {
         let app = TestApp()
         let model = app.onboarded()
@@ -37,7 +37,7 @@ struct SharedContainerTests {
         let phase = NutritionPhase(kind: .cut, ratePerWeek: -0.5, start: Day.today.adding(days: -10), source: .macroTrack)
         try other.write(NutritionSummary(phase: phase, maintenanceKcal: 2_600, days: []), to: .nutrition, by: .macroTrack)
         let mine = Recommendation(to: .liftTrack, kind: .deloadNow, subject: nil, reason: "Sleep has been short")
-        let theirs = Recommendation(to: .macroTrack, kind: .deloadNow, subject: nil, reason: "Not for Lift Track")
+        let theirs = Recommendation(to: .macroTrack, kind: .deloadNow, subject: nil, reason: "Not for Stadig Lift")
         let expired = Recommendation(to: .liftTrack, kind: .deloadNow, subject: nil, reason: "Old", expires: Date().addingTimeInterval(-60))
         try other.write([mine, theirs, expired], to: .recommendations, by: .hub)
         model.readShared()
@@ -46,7 +46,7 @@ struct SharedContainerTests {
         #expect(model.analysis?.phase.kind == .cut)
     }
 
-    @Test("A fast running in Macro Track is read, and a day into one, a session still to do today gets a word")
+    @Test("A fast running in Stadig Macro is read, and a day into one, a session still to do today gets a word")
     func readsMacroTracksFast() throws {
         let app = TestApp()
         let model = app.onboarded()
@@ -68,7 +68,7 @@ struct SharedContainerTests {
         LifeModePeriod(kind: .vacation, start: Day.today.adding(days: 3), end: Day.today.adding(days: 9), createdBy: app, updatedAt: updatedAt)
     }
 
-    @Test("A life mode another app shared is used here and kept in Lift Track's own store")
+    @Test("A life mode another app shared is used here and kept in Stadig Lift's own store")
     func lifeModeFromAnotherApp() throws {
         let app = TestApp()
         let model = app.onboarded()
@@ -77,7 +77,7 @@ struct SharedContainerTests {
         try other.write([trip], to: .lifeModes, by: .macroTrack)
         model.readShared()
         #expect(model.lifeModes.map(\.id) == [trip.id])
-        // Kept in the synced store, so it reaches Lift Track on the person's other devices too.
+        // Kept in the synced store, so it reaches Stadig Lift on the person's other devices too.
         #expect(app.store.all(LifeModeRecord.self).map(\.period.id) == [trip.id])
     }
 
@@ -129,7 +129,7 @@ struct SharedContainerTests {
         let model = app.onboarded()
         var trip = vacation(by: .liftTrack)
         model.save(lifeMode: trip)
-        // Macro Track moves the end a day later, after Lift Track's save (edits are compared to the
+        // Stadig Macro moves the end a day later, after Stadig Lift's save (edits are compared to the
         // millisecond, so each waits a little).
         try await Task.sleep(for: .milliseconds(20))
         let other = TestApp.container(in: app.folder)

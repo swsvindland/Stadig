@@ -34,7 +34,7 @@ public enum StatKind: String, CaseIterable, Codable, CodingKeyRepresentable, Sen
     }
 }
 
-/// Training that happens outside Lift Track: imported from Health, declared on a schedule, or
+/// Training that happens outside Stadig Lift: imported from Health, declared on a schedule, or
 /// logged by hand. Each kind has a default fatigue cost, refined from feedback over time.
 public enum ActivityType: String, CaseIterable, Codable, Sendable, Identifiable {
     case running, cycling, spin, swimming, rowing, walking, hiking, stairs

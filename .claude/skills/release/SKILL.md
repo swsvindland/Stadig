@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release of Lift Track, Macro Track or Mind Track to TestFlight and the App Store: version bump, release branch, pre-release checks and what Xcode Cloud does. Use when asked to ship, release, submit for review, bump a version, or prepare a TestFlight build for external testers.
+description: Cut a release of Stadig Lift, Stadig Macro or Stadig Mind to TestFlight and the App Store: version bump, release branch, pre-release checks and what Xcode Cloud does. Use when asked to ship, release, submit for review, bump a version, or prepare a TestFlight build for external testers.
 ---
 
 # Release an app
@@ -23,7 +23,7 @@ git switch -c release/lift-1.1 main          # macro-…, mind-…
 # Scripts/generate-project.py: VERSIONS["LiftTrack"] = "1.1"
 python3 Scripts/generate-project.py
 Scripts/build.sh lint && Scripts/build.sh unit lift && Scripts/build.sh ui lift
-git commit -am "Lift Track 1.1"              # in a worktree; in the shared checkout use the commit skill
+git commit -am "Stadig Lift 1.1"              # in a worktree; in the shared checkout use the commit skill
 ```
 
 Then on `main`, bump `VERSIONS["LiftTrack"]` to the next version ("1.2") and commit: TestFlight rejects builds of an already-approved version, so `main`'s internal builds must always be ahead of what shipped.

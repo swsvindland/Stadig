@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-/// A course Mind Track runs: one per language, plus maths, writing and reading. Languages, maths
+/// A course Stadig Mind runs: one per language, plus maths, writing and reading. Languages, maths
 /// and writing are Intelligence (active skill learning); reading is Wisdom. Piano comes later.
 public enum Domain: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable, Comparable {
     case japanese, spanish, maths, writing, reading

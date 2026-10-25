@@ -27,7 +27,7 @@ struct OnboardingView: View {
     private var steps: [Step] {
         Step.allCases.filter { step in
             if step == .phase { return model.nutrition == nil }
-            // The focus is Lift Track's own, so it's asked even when the shared setup is reused.
+            // The focus is Stadig Lift's own, so it's asked even when the shared setup is reused.
             if reusedProfile { return [.welcome, .focus, .equipment, .phase, .health, .ready].contains(step) }
             return true
         }
@@ -36,7 +36,7 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             if step != .welcome {
-                // By order, so a step that dropped out of the list (Macro Track took the phase) still has a place.
+                // By order, so a step that dropped out of the list (Stadig Macro took the phase) still has a place.
                 ProgressView(value: Double(steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0), total: Double(steps.count - 1))
                     .padding(.horizontal)
                     .padding(.top, 8)
@@ -73,7 +73,7 @@ struct OnboardingView: View {
         case .outside:
             OutsideActivitiesEditor(
                 recurring: $profile.recurring, title: "Training outside the gym",
-                detail: "Classes and sport you do regularly. Lift Track plans around them, because they spend the same recovery.")
+                detail: "Classes and sport you do regularly. Stadig Lift plans around them, because they spend the same recovery.")
         case .body: bodyBasics
         case .phase: phase
         case .health: health
@@ -107,8 +107,8 @@ struct OnboardingView: View {
         }
     }
 
-    /// By step order, not position in the list: the list can change under the current step (Macro
-    /// Track set up meanwhile drops the phase question), and that step still needs a way on.
+    /// By step order, not position in the list: the list can change under the current step (Stadig
+    /// Macro set up meanwhile drops the phase question), and that step still needs a way on.
     private func move(_ direction: Int) {
         let next = direction > 0 ? steps.first { $0.rawValue > step.rawValue } : steps.last { $0.rawValue < step.rawValue }
         if let next { step = next }
@@ -122,7 +122,7 @@ struct OnboardingView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.tint)
                 .padding(.top, 40)
-            Text("Lift Track").font(.largeTitle.bold())
+            Text("Stadig Lift").font(.largeTitle.bold())
             Text("Every session prescribed, every set adjusted to how it went, and a plan that tells you what to do next.")
                 .font(.title3)
             VStack(alignment: .leading, spacing: 14) {
@@ -142,7 +142,7 @@ struct OnboardingView: View {
 
     private var goals: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("What are you after?", "Outcomes only. Lift Track picks the program, and Macro Track (if you use it) picks the diet phase.")
+            header("What are you after?", "Outcomes only. Stadig Lift picks the program, and Stadig Macro (if you use it) picks the diet phase.")
             ForEach(OutcomeGoal.allCases) { goal in
                 let selected = profile.goals.contains(goal)
                 ChoiceCard(
@@ -180,7 +180,7 @@ struct OnboardingView: View {
 
     private var schedule: some View {
         VStack(alignment: .leading, spacing: 20) {
-            header("When can you train?", "Lift Track fits every session into the time you have.")
+            header("When can you train?", "Stadig Lift fits every session into the time you have.")
             VStack(alignment: .leading, spacing: 10) {
                 Text("Days a week").font(.headline)
                 Picker("Days a week", selection: $profile.schedule.daysPerWeek) {
@@ -260,7 +260,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             header(
                 "How long have you been lifting?",
-                "Newer lifters tend to underestimate how many reps they have left, so Lift Track checks more often at first. Accurate ratings earn trust, whatever your experience."
+                "Newer lifters tend to underestimate how many reps they have left, so Stadig Lift checks more often at first. Accurate ratings earn trust, whatever your experience."
             )
             ForEach(TrainingExperience.allCases) { level in
                 ChoiceCard(
@@ -294,13 +294,13 @@ struct OnboardingView: View {
                 MeasureField(label: "Shoulders", value: $shoulders, unit: profile.units.length)
             }
             .card()
-            Text("Daily weigh-ins to Apple Health help Macro Track later, if you add it.").font(.footnote).foregroundStyle(.secondary)
+            Text("Daily weigh-ins to Apple Health help Stadig Macro later, if you add it.").font(.footnote).foregroundStyle(.secondary)
         }
     }
 
     private var phase: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("Right now, are you…", "One tap. With Macro Track this is decided from your data instead.")
+            header("Right now, are you…", "One tap. With Stadig Macro this is decided from your data instead.")
             ForEach(SelfReportedPhase.allCases) { answer in
                 ChoiceCard(
                     title: answer.label, selected: settings.selfReportedPhase == answer,
@@ -322,7 +322,7 @@ struct OnboardingView: View {
             )
             if Platform.isMac {
                 Text(
-                    "Apple Health lives on your iPhone, iPad, Apple Watch and Vision Pro, not this Mac. Connect it from Lift Track on one of those; what it brings in reaches this Mac through iCloud."
+                    "Apple Health lives on your iPhone, iPad, Apple Watch and Vision Pro, not this Mac. Connect it from Stadig Lift on one of those; what it brings in reaches this Mac through iCloud."
                 )
                 .font(.footnote).foregroundStyle(.secondary)
             } else {
@@ -349,7 +349,7 @@ struct OnboardingView: View {
     private var ready: some View {
         let weeks = profile.experience.assessmentWeeks
         return VStack(alignment: .leading, spacing: 16) {
-            header("Your first \(weeks) weeks", "Useful from day one: good workouts and fast logging while Lift Track learns.")
+            header("Your first \(weeks) weeks", "Useful from day one: good workouts and fast logging while Stadig Lift learns.")
             VStack(alignment: .leading, spacing: 14) {
                 Label(
                     "Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for 10 and rate it.",
@@ -419,8 +419,8 @@ struct ChoiceCard: View {
 }
 
 /// A birth year that only reaches the profile when it's a plausible one. A two-digit or future year
-/// would otherwise become an age of 1936 or -4, which the heart-rate zones, the step floor and Macro
-/// Track's energy estimate all take at face value; out of range, the age stays unknown.
+/// would otherwise become an age of 1936 or -4, which the heart-rate zones, the step floor and Stadig
+/// Macro's energy estimate all take at face value; out of range, the age stays unknown.
 struct BirthYearField: View {
     @Binding var year: Int?
     let placeholder: String

@@ -3,11 +3,11 @@
 #   lint           swift-format lint, strict (what CI runs)
 #   format         swift-format every Swift file in place
 #   test           swift test in every package (or name one: Scripts/build.sh test LiftEngine)
-#   ios            Lift Track for iPhone/iPad with its widgets and Watch app
-#   watch          Lift Track's Watch app and its complications (generic watchOS simulator)
-#   macro          Macro Track for iPhone/iPad with its widgets
-#   macro-watch    Macro Track's Watch app and its complications (generic watchOS simulator)
-#   mind           Mind Track for iPhone/iPad
+#   ios            Stadig Lift for iPhone/iPad with its widgets and Watch app
+#   watch          Stadig Lift's Watch app and its complications (generic watchOS simulator)
+#   macro          Stadig Macro for iPhone/iPad with its widgets
+#   macro-watch    Stadig Macro's Watch app and its complications (generic watchOS simulator)
+#   mind           Stadig Mind for iPhone/iPad
 #   mac <app>      the app for the Mac, signed to run on this Mac (see mac_build below)
 #   vision <app>   the app for Apple Vision Pro (generic visionOS simulator)
 #   unit <app> [device]  an app's unit and integration tests (its default test plan); device is

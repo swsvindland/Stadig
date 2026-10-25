@@ -62,7 +62,7 @@ struct MindTrackApp: App {
 
         // The unlock in a window of its own: asked for from the menu bar or Settings, the main
         // window may be closed or behind, and a sheet on it would go unseen.
-        Window("Unlock Mind Track", id: PaywallView.windowID) {
+        Window("Unlock Stadig Mind", id: PaywallView.windowID) {
             PaywallView()
                 .environment(model.purchases)
         }

@@ -310,7 +310,7 @@ struct LiveLabelScanner: View {
             if denied {
                 ContentUnavailableView(
                     "Camera access is off", systemImage: "camera",
-                    description: Text("Allow the camera for Macro Track in Settings to scan labels.")
+                    description: Text("Allow the camera for Stadig Macro in Settings to scan labels.")
                 )
                 .background(.background)
             }

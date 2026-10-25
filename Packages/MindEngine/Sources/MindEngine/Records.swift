@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import SystemCore
 
-// Mind Track's records. Each is synced whole, newest wins, so anything two devices might both
+// Stadig Mind's records. Each is synced whole, newest wins, so anything two devices might both
 // change at once (a card's memory, a book's page) is its own record.
 
 /// What a card is about: "jp.word.1358280", "es.word.4021", "jp.kana.あ", "maths.fractions-add",
@@ -380,11 +380,11 @@ public enum Genre: String, CaseIterable, Codable, Sendable, Identifiable {
 
 public enum BookStatus: String, Codable, Sendable {
     case reading, finished, abandoned
-    /// Read before Mind Track: places the ladder.
+    /// Read before Stadig Mind: places the ladder.
     case readBefore
 }
 
-/// How a book felt: the same three-tap colour rating as a set in Lift Track. It moves both the
+/// How a book felt: the same three-tap colour rating as a set in Stadig Lift. It moves both the
 /// book's level estimate and the reader's level.
 public enum BookFeel: String, CaseIterable, Codable, Sendable, Identifiable {
     case easy, right, hard

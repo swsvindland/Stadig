@@ -106,7 +106,7 @@ struct LiveLabelTests {
         live.add(SupplementLabel.parse(lines: ["Nature Made", "Fish Oil", "Heart health"]))
         #expect(live.frames == 6 && live.panelFrames == 5)
         let lines = live.readLines
-        // "Fish Oil 2,400 mg" isn't a nutrient Macro Track tracks, so it never shows up.
+        // "Fish Oil 2,400 mg" isn't a nutrient Stadig Macro tracks, so it never shows up.
         #expect(
             lines.map(\.ingredient.name) == [
                 "Calories", "Total Fat", "Vitamin D3 (as cholecalciferol)",

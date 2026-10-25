@@ -48,7 +48,7 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     var updated = Date()
 
     static let groupID = "group.dev.svindland.stadig"
-    static let empty = MindSnapshot(status: .setUp, headline: "Open Mind Track to set up", phase: "Mind Track")
+    static let empty = MindSnapshot(status: .setUp, headline: "Open Stadig Mind to set up", phase: "Stadig Mind")
     static let sample = MindSnapshot(
         status: .today, headline: "Japanese and maths · 25 min", phase: "Week 2 of 5",
         parts: [
@@ -116,10 +116,10 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
             snapshot.headline = "Rest day"
         } else if nextDay == today {
             snapshot.status = .today
-            snapshot.headline = "Study day: open Mind Track"
+            snapshot.headline = "Study day: open Stadig Mind"
         } else {
             snapshot.status = .today
-            snapshot.headline = "Open Mind Track for today's plan"
+            snapshot.headline = "Open Stadig Mind for today's plan"
         }
         return snapshot
     }

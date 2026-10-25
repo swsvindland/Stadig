@@ -631,7 +631,7 @@ struct MeasurementEditor: View {
                         Text("%").foregroundStyle(.secondary)
                     }
                 } footer: {
-                    Text("Weight usually comes from Apple Health or Macro Track.")
+                    Text("Weight usually comes from Apple Health or Stadig Macro.")
                 }
                 if model.measurements.contains(where: { $0.id == measurements.id }) {
                     Button("Delete", role: .destructive) {

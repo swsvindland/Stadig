@@ -14,7 +14,7 @@ Also: on Mondays GitHub runs every package's tests under the thread and address 
 
 Until the Xcode Cloud workflows below exist, nothing compiles the apps on push: GitHub only lints and runs the package tests. Creating them is the one manual step left.
 
-"Touches" comes from each Xcode Cloud workflow's file filter (below), so a Mind Track change doesn't rebuild Lift Track.
+"Touches" comes from each Xcode Cloud workflow's file filter (below), so a Stadig Mind change doesn't rebuild Stadig Lift.
 
 ## Branches
 
@@ -53,23 +53,23 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 
 **The app's folders** (the file filter: start if any file here changes):
 
-- Lift Track: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/LiftEngine`
-- Macro Track: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Scripts/catalogs.manifest`
-- Mind Track: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemAI`, `Packages/MindEngine`, `Scripts/catalogs.manifest`
+- Stadig Lift: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/LiftEngine`
+- Stadig Macro: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Scripts/catalogs.manifest`
+- Stadig Mind: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemAI`, `Packages/MindEngine`, `Scripts/catalogs.manifest`
 
 (`python3 Scripts/generate-project.py --packages <App>` prints each app's packages; keep these lists in step when an app gains one.)
 
-**Environment variables**: Macro Track's and Mind Track's workflows need the secret `CATALOG_TOKEN`, a fine-grained GitHub token with read-only Contents access to this repo, so `ci_post_clone.sh` can download the catalogs. Optional: `RUN_PACKAGE_TESTS=0` on a workflow skips the package tests (GitHub runs them anyway).
+**Environment variables**: Stadig Macro's and Stadig Mind's workflows need the secret `CATALOG_TOKEN`, a fine-grained GitHub token with read-only Contents access to this repo, so `ci_post_clone.sh` can download the catalogs. Optional: `RUN_PACKAGE_TESTS=0` on a workflow skips the package tests (GitHub runs them anyway).
 
 **What the scripts do** (`Apps/<App>/ci_scripts/`, each one line calling `Scripts/xcode-cloud.sh`):
 
-- `ci_post_clone.sh` fetches the app's catalogs, or does nothing for Lift Track.
+- `ci_post_clone.sh` fetches the app's catalogs, or does nothing for Stadig Lift.
 - `ci_pre_xcodebuild.sh` runs the tests of the packages the app links before a Test action builds, so a failing engine test stops the build.
 - `ci_post_xcodebuild.sh` writes TestFlight's "What to Test" for each archive from the recent commits that touched the app.
 
 **Every platform from one target**: each app is one multiplatform target (iPhone, iPad, the Mac and Apple Vision Pro, `SDKROOT = auto`), so one bundle id, one App Store Connect record and one purchase cover every device (universal purchase). Xcode Cloud archives once per platform: add an Archive action for iOS, one for macOS and one for visionOS to the Main and Release workflows. In App Store Connect, add the macOS and visionOS platforms to each app's record (the app page → **Add Platform**) before the first upload of those archives. The Mac archive is sandboxed and signed with `Config/<App>-macOS.entitlements` (no HealthKit: Health isn't on the Mac).
 
-**Watch apps**: the iOS archives of Lift Track and Macro Track include their Watch apps and complications; no separate workflow. The Mac and visionOS archives leave them out. Xcode Cloud's automatic signing can't register a bundle id or turn on a capability, so a new target's id (`….watchkitapp`, `….watchkitapp.widgets`) and any new capability (iCloud, App Groups) must exist on developer.apple.com first. Archive once in Xcode with the team signed in, or register them by hand. Otherwise the export fails with "Automatic signing cannot register bundle identifier". A Watch app's background modes go in `UIBackgroundModes` (`remote-notification` for CloudKit's pushes). `WKBackgroundModes` takes only session types such as `workout-processing`, and App Store Connect rejects anything else there (ITMS-90362, shown in Xcode Cloud only as "Preparing build for App Store Connect failed").
+**Watch apps**: the iOS archives of Stadig Lift and Stadig Macro include their Watch apps and complications; no separate workflow. The Mac and visionOS archives leave them out. Xcode Cloud's automatic signing can't register a bundle id or turn on a capability, so a new target's id (`….watchkitapp`, `….watchkitapp.widgets`) and any new capability (iCloud, App Groups) must exist on developer.apple.com first. Archive once in Xcode with the team signed in, or register them by hand. Otherwise the export fails with "Automatic signing cannot register bundle identifier". A Watch app's background modes go in `UIBackgroundModes` (`remote-notification` for CloudKit's pushes). `WKBackgroundModes` takes only session types such as `workout-processing`, and App Store Connect rejects anything else there (ITMS-90362, shown in Xcode Cloud only as "Preparing build for App Store Connect failed").
 
 **iCloud, once, before the first device build**: every app lists its own container (`iCloud.dev.svindland.stadig.lift`, `.macro`, `.mind`) and the family's, `iCloud.dev.svindland.stadig`, which carries the shared files (profile, calendar, summaries) between devices (`SystemStore`'s `FamilySync`). Xcode's automatic signing offers to create the family container the first time an app builds for a device with it; or create it in the developer portal (Identifiers → iCloud Containers) and tick it for each app id. After a development build has synced once, deploy each container's schema to production in the CloudKit Console (Schema → Deploy Schema Changes), or TestFlight and App Store builds can't sync. The symptom: every device keeps its data to itself, a second device opens on onboarding, and Settings says "Not syncing" with "iCloud's schema has no CD_RecordRow yet, so changes stay on this device" (or "iCloud turned down some changes" when iCloud couldn't be asked why). The server's own words, "Cannot create new type CD_RecordRow in production schema", are only in Console, or on a Mac: `/usr/bin/log show --last 1h --predicate 'process == "MindTrack" AND eventMessage CONTAINS "production schema"'` (zsh's own `log` command shadows the tool, so give its path).
 

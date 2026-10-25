@@ -8,13 +8,13 @@
       "internalID" : "4C1F57D1",
       "localizations" : [
         {
-          "description" : "Lift Track, unlocked for good. No subscription.",
-          "displayName" : "Lift Track",
+          "description" : "Stadig Lift, unlocked for good. No subscription.",
+          "displayName" : "Stadig Lift",
           "locale" : "en_US"
         }
       ],
       "productID" : "dev.svindland.stadig.lift.unlock",
-      "referenceName" : "Lift Track unlock",
+      "referenceName" : "Stadig Lift unlock",
       "type" : "NonConsumable"
     }
   ],

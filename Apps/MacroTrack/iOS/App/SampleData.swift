@@ -186,7 +186,7 @@ enum SampleData {
     }
 
     /// Meal timing on, with an overnight fast pushed to 16 hours earlier in the week (-seedMealTiming); with
-    /// `fast`, a 24-hour fast running from last night's dinner too (-seedFast). Needs Macro Track set
+    /// `fast`, a 24-hour fast running from last night's dinner too (-seedFast). Needs Stadig Macro set
     /// up, which -seedSampleData does.
     @MainActor
     static func seedMealTiming(_ model: AppModel, fast: Bool) {

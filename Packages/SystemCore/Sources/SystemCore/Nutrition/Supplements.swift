@@ -35,14 +35,14 @@ public enum SupplementForm: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// One line of a Supplement Facts panel, as printed, and what Macro Track counts it as.
+/// One line of a Supplement Facts panel, as printed, and what Stadig Macro counts it as.
 public struct SupplementIngredient: Hashable, Codable, Sendable {
     public var name: String
     public var amount: Double?
     /// As printed, tidied: "mg", "mcg", "g", "IU", "mcg DFE", "mcg RAE", "CFU", "ml", "kcal".
     public var unit: String
     /// The nutrient it counts as ("vitaminD", "caffeine", "epa"), and its amount in that nutrient's
-    /// unit; nil when it isn't one Macro Track follows (ashwagandha, probiotics, enzymes).
+    /// unit; nil when it isn't one Stadig Macro follows (ashwagandha, probiotics, enzymes).
     public var key: String?
     public var value: Double?
 
@@ -56,7 +56,7 @@ public struct SupplementIngredient: Hashable, Codable, Sendable {
         }
     }
 
-    /// A nutrient Macro Track follows; herbs, enzymes, probiotics and the like aren't.
+    /// A nutrient Stadig Macro follows; herbs, enzymes, probiotics and the like aren't.
     public var isTracked: Bool { key != nil }
 
     /// "1,000 mg", "25 mcg", "5 billion CFU".
@@ -152,7 +152,7 @@ public struct SupplementFacts: Hashable, Codable, Sendable, Identifiable {
     /// "2 softgels", "1 scoop", "10 g", "1 gummy".
     public func amountLabel(_ count: Double) -> String { SupplementServing.label(count, unit) }
 
-    /// The label with only the lines Macro Track counts. A bottle's herbs, extracts and "fish oil
+    /// The label with only the lines Stadig Macro counts. A bottle's herbs, extracts and "fish oil
     /// concentrate" add nothing it tracks, so they aren't kept.
     public var tracked: SupplementFacts {
         var facts = self
@@ -264,7 +264,7 @@ public enum SupplementServing {
     }
 }
 
-/// Reads Supplement Facts lines into the nutrients Macro Track follows: names as the NIH database
+/// Reads Supplement Facts lines into the nutrients Stadig Macro follows: names as the NIH database
 /// and labels print them ("Vitamin D3", "Eicosapentaenoic Acid", "Caffeine Anhydrous"), in any of
 /// the units labels use, converted to each nutrient's unit (IU of vitamin D to µg, folic acid to
 /// µg DFE).
@@ -274,7 +274,7 @@ public enum SupplementIngredients {
     /// The omega-3s a label may list instead of a total.
     public static let omega3Parts = ["epa", "dha", "dpa", "ala", "otherOmega3"]
 
-    /// Every key Macro Track follows on a label: the macros, fiber, the vitamins and minerals,
+    /// Every key Stadig Macro follows on a label: the macros, fiber, the vitamins and minerals,
     /// omega-3 and its parts, and caffeine. Anything else (cholesterol, trans fat, added sugars,
     /// herbs) isn't kept.
     public static let tracked: Set<String> = Set(units.keys)

@@ -17,7 +17,7 @@ public struct GeneratorInput: Sendable {
     public var agility: AgilityAnalysis?
     public var endurance: EnduranceAnalysis?
     public var fatigue: FatigueAssessment?
-    /// The hub's recommendations addressed to Lift Track.
+    /// The hub's recommendations addressed to Stadig Lift.
     public var recommendations: [Recommendation]
     public var injuries: [Injury]
     public var previous: Mesocycle?
@@ -940,7 +940,7 @@ struct Builder {
             }
             if input.phase.source != .macroTrack {
                 list.append(
-                    "Phase: \(input.phase.source == .selfReported ? "your answer (\(input.phase.kind.label.lowercased()))" : "not known, so maintenance is assumed"). Macro Track would make this more precise."
+                    "Phase: \(input.phase.source == .selfReported ? "your answer (\(input.phase.kind.label.lowercased()))" : "not known, so maintenance is assumed"). Stadig Macro would make this more precise."
                 )
             }
         }

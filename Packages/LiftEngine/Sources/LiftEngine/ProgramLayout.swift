@@ -41,7 +41,7 @@ public enum ProgramLayout {
         public var week: BlockWeek
         /// One of the person's training days, inside the block.
         public var training: Bool
-        /// A Lift Track session was done that day.
+        /// A Stadig Lift session was done that day.
         public var trained: Bool
         public var vacation: Bool
         /// The deload's check-in: tests and rep-outs land then.

@@ -100,7 +100,7 @@ public final class SupplementCatalog: Sendable {
             return SupplementIngredient(name: name, amount: parts[1].number, unit: parts[2].string ?? "")
         }
         let brand = row.string(2)
-        // Only the lines Macro Track tracks: a label's herbs and blends add nothing it counts.
+        // Only the lines Stadig Macro tracks: a label's herbs and blends add nothing it counts.
         return SupplementFacts(
             id: "dsld:\(row.int(0))", name: name, brand: brand?.isEmpty == false ? brand : nil,
             barcode: row.isNull(3) ? nil : barcodeKey(String(row.int(3))), servingCount: serving.count,

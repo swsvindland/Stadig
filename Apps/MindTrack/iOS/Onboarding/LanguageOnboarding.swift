@@ -182,7 +182,7 @@ struct LanguageSettings: View {
             Text("Languages")
         } footer: {
             Text(
-                "Speaking is checked by on-device speech recognition, leniently: being understood is the bar. Turn it off for a while if you're often somewhere you can't talk; nothing is missed. Help under new words fades as each one is mastered. The dialogues and the list of graded readers were written for Mind Track."
+                "Speaking is checked by on-device speech recognition, leniently: being understood is the bar. Turn it off for a while if you're often somewhere you can't talk; nothing is missed. Help under new words fades as each one is mastered. The dialogues and the list of graded readers were written for Stadig Mind."
             )
         }
         // Again when a language is turned on, which keeps this section on screen.

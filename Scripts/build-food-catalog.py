@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build source-separated, indexed offline catalogs for Macro Track. Python standard library only.
+"""Build source-separated, indexed offline catalogs for Stadig Macro. Python standard library only.
 
 Usage: python3 Scripts/build-food-catalog.py [--usda /path/sr.zip --fndds /path/fndds.zip] [--off /path/off.jsonl[.gz]]
 

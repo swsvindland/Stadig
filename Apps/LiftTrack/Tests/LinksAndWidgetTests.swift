@@ -122,7 +122,7 @@ struct LinksAndWidgetTests {
         #expect(snapshot.reading(on: monday).detail == "Next: Wednesday")
         #expect(snapshot.reading(on: monday.adding(days: 2)).detail == "Today")
         let late = snapshot.reading(on: monday.adding(days: 3))
-        #expect(late.detail == "Open Lift Track for today's plan")
+        #expect(late.detail == "Open Stadig Lift for today's plan")
         #expect(late.minutes == nil)
         #expect(late.doneThisWeek == 2)
         // A new week starts the count again.
@@ -137,7 +137,7 @@ struct LinksAndWidgetTests {
         snapshot.day = monday
         #expect(snapshot.shown(on: monday) == snapshot)
         let tuesday = snapshot.shown(on: monday.adding(days: 1))
-        #expect(tuesday.detail == "Open Lift Track on iPhone")
+        #expect(tuesday.detail == "Open Stadig Lift on iPhone")
         #expect(tuesday.exercises.isEmpty)
         #expect(tuesday.minutes == nil)
         #expect(tuesday.badge == nil)

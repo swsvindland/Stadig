@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-/// Everything Mind Track knows, for planning and analysis.
+/// Everything Stadig Mind knows, for planning and analysis.
 public struct StudyState: Sendable {
     public var settings: MindSettings
     public var cards: [CardKey: MemoryCard]

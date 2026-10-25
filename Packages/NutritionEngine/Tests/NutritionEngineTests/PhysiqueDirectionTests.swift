@@ -4,7 +4,7 @@ import Testing
 
 @testable import NutritionEngine
 
-/// The phase planner reading Lift Track's proportions: fat loss first where the waist holds a ratio
+/// The phase planner reading Stadig Lift's proportions: fat loss first where the waist holds a ratio
 /// back, building where muscle does, and never a cut at the lean floor.
 @Suite("Phases and proportions")
 struct PhysiqueDirectionTests {

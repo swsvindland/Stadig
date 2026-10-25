@@ -127,7 +127,7 @@ private struct SafetySection: View {
         } header: {
             Text("Before a fast over a day")
         } footer: {
-            Text("Macro Track can't know your medicines or history. If any of these apply, talk to your doctor first.")
+            Text("Stadig Macro can't know your medicines or history. If any of these apply, talk to your doctor first.")
         }
     }
 }

@@ -12,7 +12,8 @@ interface Props {
   titleSuffix?: boolean;
 }
 const { title, description, jsonLd = [], ogImage = "/og.png", titleSuffix = true } = Astro.props;
-const canonical = new URL(Astro.url.pathname.replace(/\/$/, "") || "/", Astro.site);
+// With build.format "file" the path ends in .html, which cleanUrls redirects away from.
+const canonical = new URL(Astro.url.pathname.replace(/(\/index)?\.html$/, "").replace(/\/$/, "") || "/", Astro.site);
 const fullTitle = titleSuffix ? `${title} · ${brand.name}` : title;
 
 const organization = {

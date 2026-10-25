@@ -8,7 +8,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Mind Track"
+            "value" : "Stadig Mind"
           }
         }
       }
@@ -20,12 +20,12 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mind Track"
+            "value" : "Stadig Mind"
           }
         }
       }
     },
-    "Mind Track Backup" : {
+    "Stadig Mind Backup" : {
 
     },
     "NSCameraUsageDescription" : {
@@ -35,7 +35,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Mind Track uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand."
+            "value" : "Stadig Mind uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand."
           }
         }
       }
@@ -47,7 +47,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Mind Track listens when you answer a speaking exercise out loud, so it can check what you said."
+            "value" : "Stadig Mind listens when you answer a speaking exercise out loud, so it can check what you said."
           }
         }
       }

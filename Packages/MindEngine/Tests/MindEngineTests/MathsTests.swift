@@ -89,20 +89,20 @@ struct MathsTests {
             for seed in 0..<40 {
                 let problem = try #require(topic.personalProblem(seed: "\(seed)", data: data), "\(topic.id) has data to use")
                 let text = (problem.prompt + (problem.figure?.source ?? "")).lowercased()
-                #expect(text.contains("you") || text.contains("lift track") || text.contains("macro track"), "\(topic.id): \(problem.prompt)")
+                #expect(text.contains("you") || text.contains("stadig lift") || text.contains("stadig macro"), "\(topic.id): \(problem.prompt)")
                 #expect(balanced(problem.prompt) && !problem.steps.isEmpty, "\(topic.id): \(problem.prompt)")
                 if case .number(let value, let tolerance) = problem.answer {
                     #expect(
                         problem.question(kind: .learn, id: "t").check(typed: tolerance > 0 ? String(format: "%.2f", value.double) : value.description)
                     )
                 }
-                if let figure = problem.figure { #expect(figure.points.count >= 5 && figure.source == "From Lift Track") }
+                if let figure = problem.figure { #expect(figure.points.count >= 5 && figure.source == "From Stadig Lift") }
             }
             #expect(topic.personalProblem(seed: "x", data: .none) == nil)
             let mixed = (0..<40).map { topic.problem(seed: "\($0)", data: data) }
             #expect(mixed.contains { $0.figure?.source != nil || $0.prompt.lowercased().contains("you") }, "\(topic.id) sometimes uses the data")
             #expect(
-                (0..<40).map { topic.problem(seed: "\($0)") }.allSatisfy { $0.figure?.source == nil && !$0.prompt.contains("Lift Track") },
+                (0..<40).map { topic.problem(seed: "\($0)") }.allSatisfy { $0.figure?.source == nil && !$0.prompt.contains("Stadig Lift") },
                 "never without it")
         }
         // The mean of five step days is worked out from the chart's own rounded values.
@@ -110,7 +110,7 @@ struct MathsTests {
         #expect(week.allSatisfy { $0.value.truncatingRemainder(dividingBy: 100) == 0 } && week.count == 7)
     }
 
-    @Test("System data comes from what Lift Track and Macro Track publish, phone-on-a-desk days left out")
+    @Test("System data comes from what Stadig Lift and Stadig Macro publish, phone-on-a-desk days left out")
     func systemDataFromSummaries() {
         let days = (0..<14).map { monday.adding(days: $0) }
         let lift = AppSummary(

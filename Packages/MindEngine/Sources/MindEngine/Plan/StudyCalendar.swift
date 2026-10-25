@@ -26,8 +26,8 @@ public enum StudyPhase: Hashable, Sendable {
     public var isAssessment: Bool { if case .assessment = self { true } else { false } }
 }
 
-/// The study calendar. With Lift Track installed, review weeks are the system deloads it
-/// publishes; on its own, Mind Track runs five weeks then a review week.
+/// The study calendar. With Stadig Lift installed, review weeks are the system deloads it
+/// publishes; on its own, Stadig Mind runs five weeks then a review week.
 public enum StudyCalendar {
     public static let assessmentDays = 14
     public static let loadingWeeks = 5
@@ -80,7 +80,7 @@ public enum StudyCalendar {
         return nil
     }
 
-    /// Vacation, illness and crunch mode pause Mind Track (a five-minute review is offered in
+    /// Vacation, illness and crunch mode pause Stadig Mind (a five-minute review is offered in
     /// crunch, never expected). An injury doesn't touch study.
     public static func pause(on day: Day, lifeModes: [LifeModePeriod]) -> LifeModeKind? {
         for period in lifeModes where period.contains(day) && !period.isDeleted {

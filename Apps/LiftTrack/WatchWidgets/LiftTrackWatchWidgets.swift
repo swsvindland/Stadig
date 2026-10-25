@@ -17,7 +17,7 @@ struct NextSessionWidget: Widget {
                 .containerBackground(for: .widget) { Color.clear }
         }
         .configurationDisplayName("Next Session")
-        .description("Today's Lift Track session, or what's next.")
+        .description("Today's Stadig Lift session, or what's next.")
         .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryInline, .accessoryCorner])
     }
 }

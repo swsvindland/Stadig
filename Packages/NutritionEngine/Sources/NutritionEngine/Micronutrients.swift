@@ -27,7 +27,7 @@ public struct NutrientInfo: Hashable, Sendable, Identifiable {
     public var id: String { key }
 }
 
-/// The nutrients Macro Track follows and each person's daily targets: the US National Academies'
+/// The nutrients Stadig Macro follows and each person's daily targets: the US National Academies'
 /// Dietary Reference Intakes for adults (RDA or AI; the CDRR for sodium), fibre at 14 g per
 /// 1,000 kcal, and saturated fat under 10% of calories.
 public enum Micronutrients {

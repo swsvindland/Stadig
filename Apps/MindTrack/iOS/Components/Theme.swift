@@ -3,7 +3,7 @@ import SwiftUI
 import SystemCore
 
 // Liquid Glass belongs to the controls that float over content. Content sits on quiet grouped
-// surfaces, as in Lift Track and Macro Track.
+// surfaces, as in Stadig Lift and Stadig Macro.
 
 extension ShapeStyle where Self == Color {
     static var pageBackground: Color { .groupedBackground }

@@ -2,11 +2,11 @@ import ExerciseLibrary
 import Foundation
 import SystemCore
 
-// Lift Track's own records. Each is stored whole (one payload per record) and synced; derived
+// Stadig Lift's own records. Each is stored whole (one payload per record) and synced; derived
 // things like trust, scores and fatigue are recomputed from them rather than stored, so two
 // devices can never disagree about them.
 
-/// Lift Track's settings. Shared setup answers live in ``SharedProfile``; these are the app's own.
+/// Stadig Lift's settings. Shared setup answers live in ``SharedProfile``; these are the app's own.
 public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
     /// One settings record per person, under one id on every device, so two devices that each set
     /// up the app converge on the newest rather than keeping two. Settings saved before it have an
@@ -15,7 +15,7 @@ public struct LiftSettings: Codable, Hashable, Sendable, Identifiable {
 
     public var id: UUID
     public var gymID: UUID?
-    /// The one-tap phase answer, used only when Macro Track hasn't published a phase.
+    /// The one-tap phase answer, used only when Stadig Macro hasn't published a phase.
     public var selfReportedPhase: SelfReportedPhase?
     /// When that answer last changed: the step aim's usual count is from the weeks before.
     public var selfReportedPhaseSince: Day?
@@ -373,7 +373,7 @@ public struct HeatLog: Codable, Hashable, Sendable {
     }
 }
 
-/// A finished Lift Track session.
+/// A finished Stadig Lift session.
 public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var start: Date
@@ -434,7 +434,7 @@ public struct SessionRecord: Codable, Hashable, Sendable, Identifiable {
     public var hasContent: Bool { !exercises.isEmpty || !conditioning.isEmpty || !mobility.isEmpty || !(heat ?? []).isEmpty }
 }
 
-/// An outside activity, as Lift Track stores it.
+/// An outside activity, as Stadig Lift stores it.
 public struct ActivityRecord: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var log: ActivityLog

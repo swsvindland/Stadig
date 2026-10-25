@@ -136,7 +136,7 @@ struct ReadingSettings: View {
             Text("Reading")
         } footer: {
             Text(
-                "Reading-test passages are public-domain excerpts from Project Gutenberg, and a few written for Mind Track. Book details come from Open Library, with Google Books as a backup; covers are read on your \(Platform.deviceName)."
+                "Reading-test passages are public-domain excerpts from Project Gutenberg, and a few written for Stadig Mind. Book details come from Open Library, with Google Books as a backup; covers are read on your \(Platform.deviceName)."
             )
         }
     }

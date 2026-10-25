@@ -52,9 +52,9 @@ struct HealthReads {
     }
 }
 
-/// What to say where there's no Apple Health (the Mac), honestly: only what Macro Track keeps in its
+/// What to say where there's no Apple Health (the Mac), honestly: only what Stadig Macro keeps in its
 /// own synced records reaches it.
 enum HealthWords {
     static let notOnThisDevice =
-        "Apple Health lives on iPhone, iPad, Apple Watch and Apple Vision Pro. Weigh-ins Macro Track reads from Health there reach this Mac with the rest of your log. Food you log here is saved to Health only from a device that has it: it stays in Macro Track and syncs to your other devices."
+        "Apple Health lives on iPhone, iPad, Apple Watch and Apple Vision Pro. Weigh-ins Stadig Macro reads from Health there reach this Mac with the rest of your log. Food you log here is saved to Health only from a device that has it: it stays in Stadig Macro and syncs to your other devices."
 }

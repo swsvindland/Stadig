@@ -1,7 +1,7 @@
 import Foundation
 
 /// A short exchange to practise: they say a line (heard, then understood), you answer (said out
-/// loud, or picked while speaking is off). Written for Mind Track, levelled by how much of the
+/// loud, or picked while speaking is off). Written for Stadig Mind, levelled by how much of the
 /// language it takes.
 public struct Dialogue: Hashable, Sendable, Identifiable {
     public struct Line: Hashable, Sendable {

@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Clones the Open Food Facts catalog from the React Native macro-track repo into
-# Apps/MacroTrack/Catalogs, where the Macro Track app bundles it. APFS clone: instant, no extra space.
+# Apps/MacroTrack/Catalogs, where the Stadig Macro app bundles it. APFS clone: instant, no extra space.
 # That catalog predates processing and fermented data; Scripts/build-food-catalog.py builds one with it.
 set -eu
 cd "${0:A:h}/.."

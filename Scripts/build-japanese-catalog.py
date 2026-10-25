@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds japanese.db for Mind Track: words, kanji and example sentences, offline.
+"""Builds japanese.db for Stadig Mind: words, kanji and example sentences, offline.
 
     python3 Scripts/build-japanese-catalog.py            # writes Apps/MindTrack/Catalogs/japanese.db
     python3 Scripts/build-japanese-catalog.py --out x.db

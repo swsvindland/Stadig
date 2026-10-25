@@ -35,7 +35,7 @@ struct SnapshotProvider: TimelineProvider {
     }
 }
 
-/// Today's study at a glance; tapping it opens Mind Track ready to start.
+/// Today's study at a glance; tapping it opens Stadig Mind ready to start.
 struct TodayStudyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "today-study", provider: SnapshotProvider()) { entry in

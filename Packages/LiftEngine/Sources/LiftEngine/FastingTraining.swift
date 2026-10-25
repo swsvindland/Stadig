@@ -1,7 +1,7 @@
 import Foundation
 import SystemCore
 
-// Lifting on a long fast. Macro Track publishes a fast while one runs. A strength session a day or
+// Lifting on a long fast. Stadig Macro publishes a fast while one runs. A strength session a day or
 // more into one starts with the liver's glycogen spent and muscle's low, so heavy sets feel harder,
 // and there's no protein around it to recover with. Today says so before the session, while
 // there's time to eat or go lighter. A deload's lighter sessions are left alone.
@@ -44,7 +44,7 @@ public enum FastingTraining {
         return NextAction(
             id: "fasting-\(Int(fast.start.timeIntervalSince1970))", kind: .fasting, stat: .vitality, title: "Lifting on a long fast",
             detail:
-                "\(into) (Macro Track). Glycogen is low by now, so heavy sets feel harder, and there's no protein around the session to recover with.",
+                "\(into) (Stadig Macro). Glycogen is low by now, so heavy sets feel harder, and there's no protein around the session to recover with.",
             action: "Eat a meal with protein an hour or two before, or keep today light: the same lifts, fewer sets.", priority: 8)
     }
 }

@@ -90,9 +90,9 @@ struct OnboardingView: View {
     var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: "brain.head.profile").font(.system(size: 56)).foregroundStyle(.tint)
-            Text("Mind Track").font(.largeTitle.bold())
+            Text("Stadig Mind").font(.largeTitle.bold())
                 .accessibilityIdentifier("onboarding.welcomeTitle")
-            Text("Lift Track for the mind: focused 25-minute sessions that find your level, then train it.").font(.title3)
+            Text("Focused 25-minute sessions that find your level, then train it, the way Stadig Lift trains the body.").font(.title3)
             VStack(alignment: .leading, spacing: 12) {
                 Label("The first sessions find where you are in each subject", systemImage: "scope")
                 Label("Something new only once the last thing has stuck", systemImage: "stairs")

@@ -62,7 +62,7 @@ public enum ReadingPlan {
             let tier = Double(book.tier)
             var weight = confidence(book) * decay(days: finished.days(until: day), halfLife: 365)
             if book.format == .audiobook { weight *= 0.5 }
-            // Read before Mind Track: the last year's books, said rather than seen.
+            // Read before Stadig Mind: the last year's books, said rather than seen.
             if book.status == .readBefore { weight *= 0.5 }
             switch book.feel {
             case .easy: out.append(Evidence(low: tier + 0.5, high: .infinity, weight: weight))

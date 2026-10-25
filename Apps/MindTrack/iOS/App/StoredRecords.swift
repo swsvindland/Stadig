@@ -3,7 +3,7 @@ import MindEngine
 import SystemCore
 import SystemStore
 
-// Mind Track's records in its own CloudKit-synced database. Kinds never change once shipped;
+// Stadig Mind's records in its own CloudKit-synced database. Kinds never change once shipped;
 // bump a schemaVersion (and teach `migrate`) when a record's shape changes.
 
 nonisolated extension MindSettings: @retroactive StoredRecord {

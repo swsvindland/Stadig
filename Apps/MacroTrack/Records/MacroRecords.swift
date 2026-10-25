@@ -3,7 +3,7 @@ import NutritionEngine
 import SystemCore
 import SystemStore
 
-// The records every Macro Track device reads and writes, compiled into the iPhone, iPad, Mac and
+// The records every Stadig Macro device reads and writes, compiled into the iPhone, iPad, Mac and
 // Vision Pro app and the Watch app alike, so they agree on kinds and versions. Records that need the
 // food catalog or the meal planner stay in the app (StoredRecords.swift). Kinds never change once
 // shipped; bump a schemaVersion (and teach `migrate`) when a record's shape changes.

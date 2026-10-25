@@ -660,7 +660,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Watch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.macro;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
@@ -757,7 +757,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -795,13 +795,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Stadig Macro uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Macro reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Macro saves the food you log and the weigh-ins you enter to Apple Health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Stadig Macro can log a meal from a photo you choose.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -847,7 +847,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
@@ -892,7 +892,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
@@ -974,13 +974,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Macro Track can log a meal from a photo you choose.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Stadig Macro uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Stadig Macro reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Stadig Macro saves the food you log and the weigh-ins you enter to Apple Health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Stadig Macro can log a meal from a photo you choose.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1025,7 +1025,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Watch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = dev.svindland.stadig.macro;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
@@ -1060,7 +1060,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Widgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Macro Track";
+				INFOPLIST_KEY_CFBundleDisplayName = "Stadig Macro";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",

@@ -180,7 +180,7 @@ struct GeneratorTests {
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(), physique: physique))
         #expect(m.rationale.reasons.contains { $0.contains("fat loss closes it") })
         #expect(!m.days.flatMap(\.strengthSlots).contains { ($0.reason ?? "").contains("side-delt") })
-        // Macro Track reads the same answer from Lift Track's summary.
+        // Stadig Macro reads the same answer from Stadig Lift's summary.
         let state = LiftState(
             profile: Fixture.profile(), settings: LiftSettings(), gym: Gym.preset(.fullGym, unit: .kg),
             catalog: Fixture.catalog, measurements: measurements, today: Fixture.start)

@@ -342,7 +342,7 @@ extension SharedKey where T == [Quest] {
 }
 
 extension SharedKey where T == NutritionSummary {
-    /// Published by Macro Track.
+    /// Published by Stadig Macro.
     public static var nutrition: SharedKey<NutritionSummary> {
         SharedKey(path: "apps/\(AppID.macroTrack.rawValue)/nutrition.json", schemaVersion: NutritionSummary.schemaVersion)
     }

@@ -2,7 +2,7 @@ import Foundation
 import SystemCore
 
 /// Maths in three strands, each with its own level. Every maths session opens with a few minutes
-/// of timed numeracy, like Lift Track's limiter slot, whatever the main topic; the rest works on
+/// of timed numeracy, like Stadig Lift's limiter slot, whatever the main topic; the rest works on
 /// one strand, the person's first choice two sessions in three. One short adaptive test places
 /// every strand at the start, and a strand switched on later places itself in its first session.
 enum MathsModule: SubjectModule {

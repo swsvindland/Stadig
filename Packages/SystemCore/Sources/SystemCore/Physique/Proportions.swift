@@ -182,8 +182,8 @@ public struct ProportionReading: Hashable, Codable, Sendable, Identifiable {
     public var id: ProportionRule { rule }
 }
 
-/// Lift Track's read on whether fat loss or building would do more for proportions, published for
-/// Macro Track's phase planner. It never asks for a cut at or below the floors.
+/// Stadig Lift's read on whether fat loss or building would do more for proportions, published for
+/// Stadig Macro's phase planner. It never asks for a cut at or below the floors.
 public struct PhysiqueDirection: Hashable, Codable, Sendable {
     public var targets: ProportionTargets
     /// 0–1: how much fat loss would close the gaps.

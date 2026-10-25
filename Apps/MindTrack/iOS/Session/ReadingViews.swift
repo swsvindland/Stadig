@@ -160,7 +160,7 @@ struct ReadingTimerView: View {
     }
 }
 
-/// The three-tap colour rating, as after a set in Lift Track: green, orange or red.
+/// The three-tap colour rating, as after a set in Stadig Lift: green, orange or red.
 struct ColourRating<Value: Hashable>: View {
     struct Option {
         var value: Value

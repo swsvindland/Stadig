@@ -20,7 +20,7 @@ public enum LibrarySearch {
 }
 
 /// The English shelf by where each book stands: the one on the go, finished (newest first; a book
-/// with no date counts as today's), set aside the same way, and read in the year before Mind Track
+/// with no date counts as today's), set aside the same way, and read in the year before Stadig Mind
 /// (in the order they were entered). Graded readers in other languages live with their language.
 public struct ShelfSections: Equatable, Sendable {
     public var current: Book?

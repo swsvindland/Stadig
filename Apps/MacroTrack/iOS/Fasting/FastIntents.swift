@@ -8,7 +8,7 @@ import SystemCore
 extension AppModel {
     /// "18 h 20 m into your 24 h fast: fat burning. Ketosis from 8:05 PM." Or the time since the last meal.
     var fastSentence: String {
-        guard tracksMealTiming else { return "Turn on meal timing in Macro Track's settings to track fasts." }
+        guard tracksMealTiming else { return "Turn on meal timing in Stadig Macro's settings to track fasts." }
         guard let analysis else { return "" }
         let now = Date()
         if let status = analysis.fast {
@@ -40,7 +40,7 @@ struct StartFastIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         // Longer fasts start in the app, where the safety notes are.
         if !model.tracksMealTiming { model.setTracksMealTiming(true) }
         guard model.startFast(goalHours: Double(hours)) else {

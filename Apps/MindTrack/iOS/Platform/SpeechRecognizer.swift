@@ -80,7 +80,7 @@ final class SpeechRecognizer {
         guard attempt == mine else { return }
         guard authorised else {
             let settings = Platform.isMac ? "System Settings, under Privacy & Security" : "Settings"
-            status = .unavailable("Allow the microphone and speech recognition for Mind Track in \(settings) to answer out loud.")
+            status = .unavailable("Allow the microphone and speech recognition for Stadig Mind in \(settings) to answer out loud.")
             return
         }
         let name = language.pack.name

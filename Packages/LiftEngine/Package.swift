@@ -1,7 +1,7 @@
 // swift-tools-version: 6.2
 import PackageDescription
 
-/// Lift Track's own engine: gyms and loads, the assessment block, the program generator with its
+/// Stadig Lift's own engine: gyms and loads, the assessment block, the program generator with its
 /// elastic time budget, session planning, the live session, and the analysis behind every
 /// "do this next". Pure Swift over SystemCore and ExerciseLibrary, shared by iPhone and Watch.
 let package = Package(

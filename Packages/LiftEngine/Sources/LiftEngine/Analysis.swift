@@ -2,7 +2,7 @@ import ExerciseLibrary
 import Foundation
 import SystemCore
 
-/// Everything Lift Track knows, as plain values.
+/// Everything Stadig Lift knows, as plain values.
 public struct LiftState: Sendable {
     public var profile: SharedProfile
     public var settings: LiftSettings
@@ -26,7 +26,7 @@ public struct LiftState: Sendable {
     public var bodyFatPercent: Double?
     public var vo2Max: Double?
     public var restingHeartRate: Double?
-    /// Macro Track's summary, when it's installed.
+    /// Stadig Macro's summary, when it's installed.
     public var nutrition: NutritionSummary?
     public var recommendations: [Recommendation]
     public var today: Day
@@ -81,7 +81,7 @@ public struct LiftState: Sendable {
 
     public var phase: NutritionPhase { PhaseResolver.current(published: nutrition?.phase, selfReported: settings.selfReportedPhase) }
 
-    /// When the current phase began, for the step aim's usual count: Macro Track's phase start, else
+    /// When the current phase began, for the step aim's usual count: Stadig Macro's phase start, else
     /// when the phase answer last changed, else when training here began.
     public var phaseStart: Day? {
         if let published = nutrition?.phase {

@@ -28,14 +28,14 @@ struct WristToast: Identifiable, Equatable {
     var undo: Undo
 }
 
-/// The Watch's state: Macro Track's own synced records, the family's shared files (Lift Track's
+/// The Watch's state: Stadig Macro's own synced records, the family's shared files (Stadig Lift's
 /// calendar and summary, the life modes), and today as the phone's analysis sees it.
 ///
 /// The Watch opens the same CloudKit database as the phone, the iPad and the Mac, so what it logs
 /// syncs to them and works with no phone nearby. It writes nothing to Apple Health: the iPhone puts
 /// what arrives from the Watch (and the Mac) into Health once (`HealthBackfill`), so a food never
 /// lands there twice under two sources. It never applies the weekly check-in either: that's the
-/// phone's, which reads Health and Lift Track first; until it has, the Watch shows the check-in the
+/// phone's, which reads Health and Stadig Lift first; until it has, the Watch shows the check-in the
 /// analysis says is due, as the phone would.
 @MainActor @Observable
 final class WristModel {
@@ -85,7 +85,7 @@ final class WristModel {
     /// Bumped by every recompute, so an analysis that finishes after a newer one started is dropped.
     @ObservationIgnored private var generation = 0
 
-    /// Macro Track's synced store and the App Group, or, when nothing is to be kept (UI tests,
+    /// Stadig Macro's synced store and the App Group, or, when nothing is to be kept (UI tests,
     /// `-inMemoryStore`), an in-memory store and a fresh folder for the shared files and the snapshot.
     convenience init(launch: LaunchOptions) {
         let memory = launch.usesInMemoryStore
@@ -118,7 +118,7 @@ final class WristModel {
         reload()
         // The phone's, the iPad's and the Mac's changes, as CloudKit imports them.
         storeObserver = store.observeChanges { [weak self] in self?.reloadIfChanged() }
-        // Lift Track's calendar and summary and the life modes, as the family's database brings them.
+        // Stadig Lift's calendar and summary and the life modes, as the family's database brings them.
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
     }
 
@@ -185,7 +185,7 @@ final class WristModel {
         if again { recompute() }
     }
 
-    /// The setup answers in force: this app's own, or a newer copy edited in Lift Track (which the
+    /// The setup answers in force: this app's own, or a newer copy edited in Stadig Lift (which the
     /// phone takes up into the store; the Watch just reads it).
     private var currentProfile: SharedProfile? {
         guard let profile else { return nil }

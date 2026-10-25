@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds spanish.db for Mind Track: words and example sentences, offline, in the same schema as
+"""Builds spanish.db for Stadig Mind: words and example sentences, offline, in the same schema as
 japanese.db (Scripts/build-japanese-catalog.py), so one engine reads both.
 
     python3 Scripts/build-spanish-catalog.py            # writes Apps/MindTrack/Catalogs/spanish.db

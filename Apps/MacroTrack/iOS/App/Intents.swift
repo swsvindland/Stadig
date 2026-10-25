@@ -32,7 +32,7 @@ extension AppModel {
                 logged.append(entry(for: food, count: s.count, unit: s.unit, source: .shortcut, date: now))
             }
         }
-        guard !logged.isEmpty else { return "Couldn't find “\(text)”. Open Macro Track to search for it." }
+        guard !logged.isEmpty else { return "Couldn't find “\(text)”. Open Stadig Macro to search for it." }
         log(logged)
         let kcal = logged.map(\.nutrients.kcal).reduce(0, +)
         let names = logged.map { "\($0.amountLabel) \($0.name)" }.joined(separator: ", ")
@@ -68,7 +68,7 @@ struct LogMealIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         return .result(dialog: IntentDialog(stringLiteral: await model.logDescribed(meal)))
     }
 }
@@ -86,7 +86,7 @@ struct LogWeightIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         let unit = model.units.weight
         let kg = unit.toKilograms(weight)
         guard Weight.isPlausible(kg: kg) else {
@@ -114,7 +114,7 @@ struct QuickAddIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         model.selectedDay = model.today
         // Now, whatever time an open logger has picked.
         model.quickAdd(name: "Quick add", nutrients: Nutrients(kcal: Double(kcal), protein: Double(protein), carbs: 0, fat: 0), date: Date())
@@ -143,7 +143,7 @@ struct TakeSupplementsIntent: AppIntent {
         let model = AppModel.shared
         // Siri runs this in the background, and the scene never becomes active: after midnight `today` can still be yesterday.
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         let day = model.today
         let time = model.currentDoseTime
         let open = model.doses(on: day).filter(\.open)
@@ -169,7 +169,7 @@ struct LogWaterIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded, ml > 0 else { return .result(dialog: "Open Macro Track to set it up first.") }
+        guard model.onboarded, ml > 0 else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         model.selectedDay = model.today
         model.addWater(ml: Double(ml))
         let total = model.analysis?.hydration?.total ?? Double(ml)

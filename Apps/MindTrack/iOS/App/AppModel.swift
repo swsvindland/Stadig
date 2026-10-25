@@ -35,7 +35,7 @@ struct StepScreen: Hashable {
     let step: Int
 }
 
-/// The app's state: Mind Track's own synced records, what Lift Track and the hub published, the
+/// The app's state: Stadig Mind's own synced records, what Stadig Lift and the hub published, the
 /// analysis computed from all of it, and the session in progress.
 @MainActor @Observable
 final class AppModel {
@@ -48,7 +48,7 @@ final class AppModel {
     /// The time now: `Date()`, or a fixed clock in tests.
     let now: () -> Date
     /// The language packs the build ships, the writing bank and the reading ladder, with the
-    /// numbers Lift Track and Macro Track publish for statistics problems.
+    /// numbers Stadig Lift and Stadig Macro publish for statistics problems.
     private(set) var catalogs: Catalogs
     let purchases = Purchases()
     let speech = Speech()
@@ -110,7 +110,7 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
-    /// On a launch that found Mind Track not set up: the person's courses and progress on its way from iCloud,
+    /// On a launch that found Stadig Mind not set up: the person's courses and progress on its way from iCloud,
     /// which onboarding waits for. Nil when there was nothing to look for.
     private(set) var arrival: ICloudArrival?
     @ObservationIgnored private var sharedObserver: AnyObject?
@@ -268,7 +268,7 @@ final class AppModel {
         }
     }
 
-    /// What Lift Track, Macro Track and the hub published, and life modes set anywhere.
+    /// What Stadig Lift, Stadig Macro and the hub published, and life modes set anywhere.
     func readShared(recompute again: Bool = true) {
         let calendar = shared.read(.calendar)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .knowledge }
@@ -291,7 +291,7 @@ final class AppModel {
 
     /// Life modes from every app: the shared file and this app's synced copies merged, the newest
     /// edit or delete of each winning (deletes are kept as tombstones so they keep spreading). What
-    /// came from elsewhere is kept here too, so it reaches Mind Track on the person's other devices,
+    /// came from elsewhere is kept here too, so it reaches Stadig Mind on the person's other devices,
     /// and the merged list goes back to the file, so the other apps hear about this app's changes and
     /// what iCloud brought. The file goes first so that on a tie its copy wins and no app rewrites it.
     private func syncLifeModes() -> [LifeModePeriod] {
@@ -336,7 +336,7 @@ final class AppModel {
         publish(state, analysis)
     }
 
-    /// Mind Track's summary for the hub, written only when it changes. A stat keeps the date it
+    /// Stadig Mind's summary for the hub, written only when it changes. A stat keeps the date it
     /// last changed; the summary's own date moves whenever anything in it does.
     private func publish(_ state: StudyState, _ analysis: MindAnalysis) {
         var summary = Analyst.appSummary(state, analysis)
@@ -582,7 +582,7 @@ final class AppModel {
     // MARK: Your data
 
     func exportCSV() throws -> [URL] {
-        let folder = URL.temporaryDirectory.appending(path: "Mind Track Export \(today.iso)")
+        let folder = URL.temporaryDirectory.appending(path: "Stadig Mind Export \(today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return try MindExport.tables(
@@ -600,7 +600,7 @@ final class AppModel {
     /// The JSON is built off the main actor: years of sessions take a while.
     func backupFile() async throws -> URL {
         let data = try await store.exportBackup(app: .knowledge, shared: shared)
-        let url = URL.temporaryDirectory.appending(path: "Mind Track \(today.iso).mindbackup")
+        let url = URL.temporaryDirectory.appending(path: "Stadig Mind \(today.iso).mindbackup")
         try data.write(to: url, options: .atomic)
         return url
     }

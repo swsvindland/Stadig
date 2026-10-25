@@ -8,13 +8,13 @@
       "internalID" : "4D2E57D1",
       "localizations" : [
         {
-          "description" : "Macro Track, unlocked for good. No subscription.",
-          "displayName" : "Macro Track",
+          "description" : "Stadig Macro, unlocked for good. No subscription.",
+          "displayName" : "Stadig Macro",
           "locale" : "en_US"
         }
       ],
       "productID" : "dev.svindland.stadig.macro.unlock",
-      "referenceName" : "Macro Track unlock",
+      "referenceName" : "Stadig Macro unlock",
       "type" : "NonConsumable"
     }
   ],

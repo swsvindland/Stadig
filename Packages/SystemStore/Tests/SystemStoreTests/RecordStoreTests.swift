@@ -591,7 +591,7 @@ struct RecordStoreCacheTests {
         }
         #expect(store.revision == 0)
         #expect(store.rows(kind: Lift.kind).isEmpty, "no foreign row reaches this app's database")
-        #expect(SystemStoreError.backupFromOtherApp(.macroTrack).errorDescription == "This backup is from Macro Track. Restore it there.")
+        #expect(SystemStoreError.backupFromOtherApp(.macroTrack).errorDescription == "This backup is from Stadig Macro. Restore it there.")
         #expect(try store.importBackup(macroBackup, app: .macroTrack, shared: shared).records == 1)
     }
 
@@ -688,7 +688,7 @@ struct RecordStoreCacheTests {
         #expect(store.get(Lift.self, id: ahead.id) == nil)
         #expect(store.revision == revision)
         // One in the deletion's own millisecond was made after it (delete, then save under the same
-        // id, as Macro Track's day status does): it comes back, in every row, so no device keeps the tombstone.
+        // id, as Stadig Macro's day status does): it comes back, in every row, so no device keeps the tombstone.
         var sameInstant = ahead
         sameInstant.updatedAt = tombstone.updatedAt
         store.save(sameInstant)
@@ -697,7 +697,7 @@ struct RecordStoreCacheTests {
     }
 
     @Test func deleteThenSaveUnderTheSameIDKeepsTheSave() {
-        // Macro Track's setState deletes a day's status and at once saves the new one under the same
+        // Stadig Macro's setState deletes a day's status and at once saves the new one under the same
         // id, usually in the deletion's own millisecond.
         let store = memoryStore()
         let ids = (0..<25).map { _ in UUID() }

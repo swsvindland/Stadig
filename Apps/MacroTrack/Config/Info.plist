@@ -25,7 +25,7 @@
 				<string>public.json</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Macro Track Backup</string>
+			<string>Stadig Macro Backup</string>
 			<key>UTTypeIdentifier</key>
 			<string>dev.svindland.stadig.macro-backup</string>
 			<key>UTTypeTagSpecification</key>

@@ -10,9 +10,9 @@ public struct HealthAccess: OptionSet, Sendable {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
 
-    /// Lift Track: workouts, recovery, body composition.
+    /// Stadig Lift: workouts, recovery, body composition.
     public static let training = HealthAccess(rawValue: 1)
-    /// Macro Track: body mass and food.
+    /// Stadig Macro: body mass and food.
     public static let nutrition = HealthAccess(rawValue: 2)
 }
 

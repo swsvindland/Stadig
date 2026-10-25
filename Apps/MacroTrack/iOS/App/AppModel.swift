@@ -66,7 +66,7 @@ struct Toast: Identifiable, Equatable {
     var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil }
 }
 
-/// The app's state: Macro Track's own synced records, what Lift Track and the hub published, what
+/// The app's state: Stadig Macro's own synced records, what Stadig Lift and the hub published, what
 /// Health knows, and the analysis computed from all of it.
 @MainActor @Observable
 final class AppModel {
@@ -116,7 +116,7 @@ final class AppModel {
     // From the other apps and the hub.
     private(set) var lift: AppSummary?
     private(set) var calendar: SystemCalendar?
-    /// A profile another app wrote before Macro Track was set up: onboarding reuses it.
+    /// A profile another app wrote before Stadig Macro was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
 
     // Derived.
@@ -188,7 +188,7 @@ final class AppModel {
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
     @ObservationIgnored private(set) var family: FamilySync?
-    /// On a launch that found Macro Track not set up: the person's log and targets on its way from iCloud,
+    /// On a launch that found Stadig Macro not set up: the person's log and targets on its way from iCloud,
     /// which onboarding waits for. Nil when there was nothing to look for.
     private(set) var arrival: ICloudArrival?
     /// Puts what the Watch and the Mac logged into Health, once, as it syncs in (HealthBackfill.swift);
@@ -215,7 +215,7 @@ final class AppModel {
     /// Bumped by "another plan", so each shuffle is a different week.
     @ObservationIgnored var planVariation = 0
 
-    /// Macro Track's own synced store and the App Group, or, when nothing is to be kept (tests, UI
+    /// Stadig Macro's own synced store and the App Group, or, when nothing is to be kept (tests, UI
     /// tests, `-inMemoryStore`), an in-memory store and a fresh folder for the shared files and the
     /// widgets' snapshot, so a test or a sample run never writes where the other apps and the
     /// widgets read.
@@ -367,7 +367,7 @@ final class AppModel {
     }
 
     /// Takes up a newer shared profile once set up: units, sex, birth year, height and training days
-    /// are edited in Lift Track, which writes them to the shared file. Onboarding reads the shared
+    /// are edited in Stadig Lift, which writes them to the shared file. Onboarding reads the shared
     /// one itself.
     private func adopt(_ newer: SharedProfile?) -> Bool {
         guard onboarded, let newer, let profile, Self.milliseconds(newer.updatedAt) > Self.milliseconds(profile.updatedAt) else { return false }
@@ -493,7 +493,7 @@ final class AppModel {
 
     @ObservationIgnored private var lastPublished: (nutrition: NutritionSummary, summary: AppSummary)?
 
-    /// The phase and day-by-day nutrition for Lift Track and the hub, written only when they change.
+    /// The phase and day-by-day nutrition for Stadig Lift and the hub, written only when they change.
     private func publish() {
         guard let state, let analysis else { return }
         var nutrition = MacroAnalyst.nutritionSummary(state, analysis)
@@ -937,7 +937,7 @@ final class AppModel {
         }
     }
 
-    /// Saves the shared setup answers and Macro Track's own, and starts the assessment. Read from
+    /// Saves the shared setup answers and Stadig Macro's own, and starts the assessment. Read from
     /// the store, not the copies in memory: when setup was already done on another device and has
     /// just synced in, it's kept as it is (its profile, settings and assessment), not started again.
     func completeOnboarding(profile: SharedProfile, history: DietHistory, weightKg: Double?) {
@@ -1072,7 +1072,7 @@ final class AppModel {
         }
     }
 
-    /// The newer of this app's profile and the shared one, so an edit made in Lift Track isn't
+    /// The newer of this app's profile and the shared one, so an edit made in Stadig Lift isn't
     /// written over with an older copy. Nil before setup.
     private var newestProfile: SharedProfile? {
         guard let own = profile else { return nil }
@@ -1111,7 +1111,7 @@ final class AppModel {
     // MARK: Data
 
     func exportCSV() throws -> [URL] {
-        let folder = URL.temporaryDirectory.appending(path: "Macro Track Export \(Day.today.iso)")
+        let folder = URL.temporaryDirectory.appending(path: "Stadig Macro Export \(Day.today.iso)")
         try? FileManager.default.removeItem(at: folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return try NutritionExport.tables(
@@ -1142,7 +1142,7 @@ final class AppModel {
     }
 
     private static func backupURL() -> URL {
-        URL.temporaryDirectory.appending(path: "Macro Track \(Day.today.iso).macrobackup")
+        URL.temporaryDirectory.appending(path: "Stadig Macro \(Day.today.iso).macrobackup")
     }
 
     /// Merges a backup in. Refuses another app's backup before writing anything.

@@ -207,16 +207,16 @@ def test_targets(app, bundle_id):
     ]
 
 
-# MARK: - Lift Track
+# MARK: - Stadig Lift
 
 lift_app = dict(swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/LiftTrack.entitlements",
     "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/LiftTrack-macOS.entitlements",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
-    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.",
-    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves your sessions as strength workouts, and your waist and body-fat measurements.",
-    "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Lift Track saves progress photos you choose, for your own comparison.",
-    "INFOPLIST_KEY_NSCameraUsageDescription": "Lift Track can take progress photos for your own comparison.",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Lift",
+    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Stadig Lift reads body weight, sleep, heart rate, HRV, steps and workouts from other apps, so your training plan accounts for recovery and everything you do outside the gym.",
+    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Stadig Lift saves your sessions as strength workouts, and your waist and body-fat measurements.",
+    "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Stadig Lift saves progress photos you choose, for your own comparison.",
+    "INFOPLIST_KEY_NSCameraUsageDescription": "Stadig Lift can take progress photos for your own comparison.",
     "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
     # Xcode moved these two out of Config/Info.plist into build settings.
     "INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates": "NO",
@@ -225,16 +225,16 @@ lift_app = dict(swift_common, **ios_app_common, **{
 })
 
 lift_widgets = dict(swift_common, **ios_widgets_common, **{
-    "INFOPLIST_KEY_CFBundleDisplayName": "Lift Track",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Lift",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.lift.widgets",
 })
 
-lift_watch = watch_app("Lift Track", "dev.svindland.stadig.lift.watchkitapp", "dev.svindland.stadig.lift", {
-    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Lift Track shows your heart rate during a session and uses it to time rests.",
-    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Lift Track saves sessions you run on your Watch to Apple Health.",
+lift_watch = watch_app("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp", "dev.svindland.stadig.lift", {
+    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Stadig Lift shows your heart rate during a session and uses it to time rests.",
+    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Stadig Lift saves sessions you run on your Watch to Apple Health.",
 })
 
-lift_watch_widgets = watch_widgets("Lift Track", "dev.svindland.stadig.lift.watchkitapp.widgets")
+lift_watch_widgets = watch_widgets("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp.widgets")
 
 LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "HealthBridge", "LiftEngine"]
 lift_embeds = [
@@ -276,26 +276,26 @@ LIFT = {
     "schemes": [("LiftTrack", "LiftTrack", "LiftTrack.app", True), ("LiftTrackWatch", "LiftTrackWatch", "LiftTrackWatch.app", False)],
 }
 
-# MARK: - Macro Track
+# MARK: - Stadig Macro
 
 macro_app = dict(swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MacroTrack.entitlements",
     "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/MacroTrack-macOS.entitlements",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Macro Track",
-    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Macro Track reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.",
-    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Macro Track saves the food you log and the weigh-ins you enter to Apple Health.",
-    "INFOPLIST_KEY_NSCameraUsageDescription": "Macro Track uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.",
-    "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Macro Track can log a meal from a photo you choose.",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Macro",
+    "INFOPLIST_KEY_NSHealthShareUsageDescription": "Stadig Macro reads your weight, height and body composition, so targets adapt to your real trend without retyping anything.",
+    "INFOPLIST_KEY_NSHealthUpdateUsageDescription": "Stadig Macro saves the food you log and the weigh-ins you enter to Apple Health.",
+    "INFOPLIST_KEY_NSCameraUsageDescription": "Stadig Macro uses the camera to scan barcodes and nutrition labels, and to log a meal from a photo. Photos are read on your device or with Private Cloud Compute and never stored.",
+    "INFOPLIST_KEY_NSPhotoLibraryUsageDescription": "Stadig Macro can log a meal from a photo you choose.",
     # A running fast on the Lock Screen and in the Dynamic Island.
     "INFOPLIST_KEY_NSSupportsLiveActivities": "YES",
     "INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates": "NO",
-    # Xcode moved this out of Config/Info.plist into build settings, as it did for Lift Track.
+    # Xcode moved this out of Config/Info.plist into build settings, as it did for Stadig Lift.
     "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro",
 })
 
 macro_widgets = dict(swift_common, **ios_widgets_common, **{
-    "INFOPLIST_KEY_CFBundleDisplayName": "Macro Track",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Macro",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro.widgets",
 })
 
@@ -304,9 +304,9 @@ MACRO_PACKAGES = ["SystemCore", "SystemStore", "HealthBridge", "NutritionEngine"
 # The Watch app reads and writes the same CloudKit records as the phone (Records/), with no food
 # catalog: an entry carries its own numbers, and FoodIntelligence and MealPlanner don't build for
 # watchOS. It writes nothing to Health (the iPhone does, once), so it needs no HealthKit.
-macro_watch = watch_app("Macro Track", "dev.svindland.stadig.macro.watchkitapp", "dev.svindland.stadig.macro", {})
+macro_watch = watch_app("Stadig Macro", "dev.svindland.stadig.macro.watchkitapp", "dev.svindland.stadig.macro", {})
 
-macro_watch_widgets = watch_widgets("Macro Track", "dev.svindland.stadig.macro.watchkitapp.widgets")
+macro_watch_widgets = watch_widgets("Stadig Macro", "dev.svindland.stadig.macro.watchkitapp.widgets")
 
 macro_embeds = [
     # (host, embedded, phase name, dstSubfolderSpec, dstPath, platform filter or None for every platform)
@@ -342,24 +342,24 @@ MACRO = {
     "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True), ("MacroTrackWatch", "MacroTrackWatch", "MacroTrackWatch.app", False)],
 }
 
-# MARK: - Mind Track
+# MARK: - Stadig Mind
 
 mind_app = {**swift_common, **ios_app_common, **{
     "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
     "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/MindTrack-macOS.entitlements",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Mind",
     "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
     # Xcode moved this out of Config/Info.plist into build settings.
     "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
     # Speaking exercises, ISBN and cover scans, and handwritten pages.
-    "INFOPLIST_KEY_NSMicrophoneUsageDescription": "Mind Track listens when you answer a speaking exercise out loud, so it can check what you said.",
+    "INFOPLIST_KEY_NSMicrophoneUsageDescription": "Stadig Mind listens when you answer a speaking exercise out loud, so it can check what you said.",
     "INFOPLIST_KEY_NSSpeechRecognitionUsageDescription": "Speaking exercises are checked by on-device speech recognition. What you say stays on this device.",
-    "INFOPLIST_KEY_NSCameraUsageDescription": "Mind Track uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand.",
+    "INFOPLIST_KEY_NSCameraUsageDescription": "Stadig Mind uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand.",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
 }}
 
 mind_widgets = dict(swift_common, **ios_widgets_common, **{
-    "INFOPLIST_KEY_CFBundleDisplayName": "Mind Track",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Mind",
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind.widgets",
 })
 

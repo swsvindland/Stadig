@@ -5,8 +5,8 @@ import OSLog
 /// Carries the shared container between a person's devices. The App Group only reaches the apps on
 /// one device, so each app also mirrors every file in it into the family's own CloudKit database
 /// (`cloudKitContainer`, which all of them are entitled to) and writes the newer copies other devices
-/// put there back into the App Group. Then Mind Track on the Mac reads the training calendar Lift
-/// Track wrote on the iPhone, and Macro Track on the iPad the measurements, as if they shared a device.
+/// put there back into the App Group. Then Stadig Mind on the Mac reads the training calendar Stadig
+/// Lift wrote on the iPhone, and Stadig Macro on the iPad the measurements, as if they shared a device.
 ///
 /// Newest wins, by the envelope's `writtenAt`, in both directions, and a file on disk at a newer
 /// schema than the incoming copy is never replaced (`SharedContainer.merge`). Any app may upload any

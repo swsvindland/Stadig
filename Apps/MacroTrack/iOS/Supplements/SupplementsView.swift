@@ -178,7 +178,7 @@ struct RemindersSection: View {
 
     var note: String {
         denied
-            ? "Notifications are off for Macro Track in Settings."
+            ? "Notifications are off for Stadig Macro in Settings."
             : "One reminder per time of day with doses still open, with a Taken button that ticks them all off without opening the app."
     }
 }

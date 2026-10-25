@@ -20,7 +20,7 @@ nonisolated enum LoggerEntryPoint: String, AppEnum {
 /// the app.
 struct OpenLoggerIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Food Logger"
-    static let description = IntentDescription("Opens Macro Track on search, the camera, the barcode scanner or a description.")
+    static let description = IntentDescription("Opens Stadig Macro on search, the camera, the barcode scanner or a description.")
     static let supportedModes: IntentModes = .foreground
 
     @Parameter(title: "Start with", default: .camera)

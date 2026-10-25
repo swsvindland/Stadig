@@ -9,7 +9,7 @@ import SystemCore
 import UIKit
 
 /// The back camera watching for a book's barcode: its ISBN, an EAN-13 starting 978 or 979. The
-/// same pattern as Macro Track's scanner (the camera's own barcode detector, on its own queue),
+/// same pattern as Stadig Macro's scanner (the camera's own barcode detector, on its own queue),
 /// cut down to books.
 nonisolated final class ISBNCamera: NSObject, @unchecked Sendable, AVCaptureMetadataOutputObjectsDelegate {
     let session = AVCaptureSession()
@@ -211,7 +211,7 @@ struct BookScannerView: View {
             } footer: {
                 Text(
                     denied
-                        ? "Camera access is off for Mind Track. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
+                        ? "Camera access is off for Stadig Mind. Type the 13 digits under the barcode instead, or turn the camera on in Settings."
                         : "Type or paste the 13 digits under the barcode (978 or 979 at the start), or the 10-digit ISBN inside the cover.")
             }
         }

@@ -176,7 +176,7 @@ enum SampleData {
         }
     }
 
-    /// Eight weeks of what Lift Track and Macro Track would publish: steps most days, strength
+    /// Eight weeks of what Stadig Lift and Stadig Macro would publish: steps most days, strength
     /// three days a week, and food logged on most days with protein hit on about two in three.
     static func systemData(ending today: Day) -> SystemData {
         var rng = SeededRandom(seed: 314)

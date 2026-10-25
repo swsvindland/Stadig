@@ -55,7 +55,7 @@ struct NextBlockView: View {
     private var phaseQuestion: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Right now, are you…").font(.title2.bold())
-            Text("One tap. With Macro Track this is decided from your data instead.").foregroundStyle(.secondary)
+            Text("One tap. With Stadig Macro this is decided from your data instead.").foregroundStyle(.secondary)
             ForEach(SelfReportedPhase.allCases) { option in
                 Button {
                     answer = option
@@ -90,7 +90,7 @@ struct NextBlockView: View {
                     Button {
                         showPaywall = true
                     } label: {
-                        Text("Unlock Lift Track").frame(maxWidth: .infinity)
+                        Text("Unlock Stadig Lift").frame(maxWidth: .infinity)
                     }.primaryAction()
                 }
                 .card()
@@ -122,7 +122,7 @@ struct PaywallView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
                 Image(systemName: "lock.open.fill").font(.system(size: 44)).foregroundStyle(.tint)
-                Text("Lift Track, for good").font(.largeTitle.bold())
+                Text("Stadig Lift, for good").font(.largeTitle.bold())
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Every training block after the assessment, built from your data", systemImage: "calendar")
                     Label("Deloads, vacations, crunch, injury and illness modes", systemImage: "airplane")
@@ -143,7 +143,7 @@ struct PaywallView: View {
                 .disabled(purchases.product == nil || purchases.purchasing)
                 Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
                 if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of The System bundle on the App Store, with \(AppID.macroTrack.displayName) and \(AppID.knowledge.displayName).")
+                Text("Part of the Stadig bundle on the App Store, with \(AppID.macroTrack.displayName) and \(AppID.knowledge.displayName).")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             .padding(24)

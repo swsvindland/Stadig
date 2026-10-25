@@ -128,7 +128,7 @@ struct FastingAppTests {
         let snapshot = MacroSnapshot.load(from: environment.widgetURL)
         #expect(snapshot.tracksMealTiming == true && same(snapshot.fastStart, banana.date) && snapshot.fastGoalHours == 16)
         #expect(same(snapshot.lastMealEnd, banana.date))
-        // And Lift Track's copy of the summary carries it.
+        // And Stadig Lift's copy of the summary carries it.
         #expect(same(environment.shared.read(.nutrition)?.fast?.start, banana.date))
         model.endFast()
         let files = try model.exportCSV()

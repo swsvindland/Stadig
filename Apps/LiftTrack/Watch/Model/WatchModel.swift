@@ -809,7 +809,7 @@ final class WatchModel {
                 snapshot.detail = "In progress"
                 snapshot.minutes = stored.live.plan.estimatedMinutes
             } else if isStale {
-                snapshot.detail = "Open Lift Track on iPhone"
+                snapshot.detail = "Open Stadig Lift on iPhone"
             } else if let plan = context.plan, context.upNext == nil {
                 snapshot.day = plan.day
                 snapshot.title = plan.title

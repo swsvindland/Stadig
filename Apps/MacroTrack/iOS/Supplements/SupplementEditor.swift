@@ -113,7 +113,7 @@ struct SupplementEditor: View {
         }
     }
 
-    /// Each line read again in case its name or unit changed, and only the ones Macro Track tracks
+    /// Each line read again in case its name or unit changed, and only the ones Stadig Macro tracks
     /// kept: nothing else would count for anything.
     var tidied: Supplement {
         var s = supplement
@@ -139,7 +139,7 @@ struct SupplementEditor: View {
         }
         let kcal = tidied.facts.nutrients.map { $0.kcal >= 1 ? ["\(Format.whole($0.kcal)) kcal"] : [] } ?? []
         guard !counted.isEmpty || !kcal.isEmpty else {
-            return "Nothing on this label is a nutrient Macro Track tracks, so doses are ticked off but add no numbers."
+            return "Nothing on this label is a nutrient Stadig Macro tracks, so doses are ticked off but add no numbers."
         }
         return "Each serving counts as " + (kcal + counted).joined(separator: ", ") + "."
     }
@@ -164,7 +164,7 @@ struct SupplementEditor: View {
             Text("When you take it")
         } footer: {
             if supplement.doses.contains(where: { $0.days == .trainingDays || $0.days == .restDays }) {
-                Text("Training days are the days your shared schedule trains, and any day Lift Track logs a session.")
+                Text("Training days are the days your shared schedule trains, and any day Stadig Lift logs a session.")
             }
         }
     }
@@ -255,7 +255,7 @@ private struct WeekdayPicker: View {
     }
 }
 
-/// A Supplement Facts line: its name, amount and unit, and what Macro Track counts it as.
+/// A Supplement Facts line: its name, amount and unit, and what Stadig Macro counts it as.
 private struct LineEditor: View {
     @Binding var ingredient: SupplementIngredient
     let units: [String]
@@ -278,7 +278,7 @@ private struct LineEditor: View {
             if let read {
                 if let note = note(read) { Text(note).font(.caption2).foregroundStyle(.secondary) }
             } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {
-                Text("Not something Macro Track tracks, so it won't be kept").font(.caption2).foregroundStyle(.orange)
+                Text("Not something Stadig Macro tracks, so it won't be kept").font(.caption2).foregroundStyle(.orange)
             }
         }
     }
