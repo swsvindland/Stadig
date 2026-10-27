@@ -2,6 +2,8 @@
 
 **Verified**
 
+- **App Store screenshots** (2026-10-25). `Scripts/store-screenshots.sh` captured every screen in `Store/` on iOS 27.0 simulators (an iPhone 18 Pro Max, a 13-inch iPad Pro (M5)) and watchOS 27.0 (an Apple Watch Ultra 3), and every capture and framed screenshot was looked at: the right screen, filled with sample data, no stray back link or system tip, the iPad screens the iPad's own layout. `storeassets validate` passes every project (sizes App Store Connect takes, no alpha, 1–10 a size). Not uploaded to App Store Connect, so its own checks haven't run.
+
 - **The Stadig names** (2026-10-25). On an iPhone 18 Pro simulator at the default text size, "Stadig Lift", "Stadig Macro" and "Stadig Mind" fit under their Home Screen icons untruncated; "Stadig Macro" is the tightest. Not checked on a smaller iPhone, at larger text sizes, on the Watch or in the Mac's menu bar. The site built and was looked at in a browser at desktop width and 375 px: the nav wraps without sideways scrolling, `/lift`, `/macro` and `/mind` serve, and canonical URLs no longer end in `.html`. The Vercel redirects from the old paths only run on Vercel, so they're untested.
 
 - **Package tests.** All 11 packages pass `swift test` from a clean build with warnings as errors: 700 tests in 116 suites, zero warnings. ExerciseLibrary 31, FoodDatabase 86, FoodIntelligence 80, HealthBridge 20, LiftEngine 74, MealPlanner 22, MindEngine 144, NutritionEngine 83, SystemAI 8, SystemCore 112, SystemStore 40. All of them ran clean under the thread and address sanitizers.

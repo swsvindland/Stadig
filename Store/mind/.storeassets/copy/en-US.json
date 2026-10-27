@@ -1,0 +1,27 @@
+{
+  "slots": {
+    "japanese": {
+      "headline": "Japanese from **20,000** words",
+      "subhead": "Taught in the order people use them"
+    },
+    "maths": {
+      "headline": "Maths with **endless** problems",
+      "subhead": "A lesson, a worked example, fresh practice"
+    },
+    "plan": {
+      "headline": "A study split, **like training**",
+      "subhead": "25-minute sessions, subjects in rotation"
+    },
+    "progress": {
+      "headline": "Measured only on **tests**",
+      "subhead": "Time spent counts for nothing"
+    },
+    "shelf": {
+      "headline": "A reading ladder, **one tier up**",
+      "subhead": "112 books ranked by real difficulty"
+    }
+  },
+  "store": {
+    "name": "Stadig Mind"
+  }
+}

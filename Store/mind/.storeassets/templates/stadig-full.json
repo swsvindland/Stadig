@@ -1,0 +1,269 @@
+{
+  "id": "stadig-full",
+  "name": "Stadig, whole phone",
+  "description": "centered on phones (the whole device shows, for screens whose point is at the bottom), and Stadig's large-device layout on tablets.",
+  "version": 1,
+  "tags": [
+    "classic"
+  ],
+  "safeArea": 0.055,
+  "background": "radial(0.5, 0.45, 0.75, $primary+15, $primary-35)",
+  "layouts": [
+    {
+      "name": "tall",
+      "maxAspect": 0.62,
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.0,
+            0.0,
+            1.0,
+            0.12
+          ],
+          "size": [
+            0.06,
+            0.105
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "center",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.1,
+            0.14,
+            0.8,
+            0.72
+          ],
+          "anchor": "center",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.04,
+            0.885,
+            0.92,
+            0.1
+          ],
+          "size": [
+            0.034,
+            0.047
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "center",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        }
+      ]
+    },
+    {
+      "name": "portrait",
+      "maxAspect": 0.95,
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.04,
+            0.025,
+            0.92,
+            0.085
+          ],
+          "size": [
+            0.045,
+            0.08
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "bottom",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.08,
+            0.117,
+            0.84,
+            0.04
+          ],
+          "size": [
+            0.025,
+            0.035
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "top",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.035,
+            0.172,
+            0.93,
+            1.0
+          ],
+          "anchor": "top",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
+          "bleed": false
+        }
+      ]
+    },
+    {
+      "name": "square",
+      "maxAspect": 1.3,
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.0,
+            0.0,
+            1.0,
+            0.13
+          ],
+          "size": [
+            0.05,
+            0.088
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "center",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.15,
+            0.15,
+            0.7,
+            0.7
+          ],
+          "anchor": "center",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.05,
+            0.88,
+            0.9,
+            0.11
+          ],
+          "size": [
+            0.03,
+            0.042
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "center",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        }
+      ]
+    },
+    {
+      "name": "wide",
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.0,
+            0.0,
+            1.0,
+            0.15
+          ],
+          "size": [
+            0.05,
+            0.092
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "center",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.12,
+            0.18,
+            0.76,
+            0.66
+          ],
+          "anchor": "center",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.1,
+            0.87,
+            0.8,
+            0.12
+          ],
+          "size": [
+            0.027,
+            0.04
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "center",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        }
+      ]
+    }
+  ],
+  "origin": "builtin"
+}

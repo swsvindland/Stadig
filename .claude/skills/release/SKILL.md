@@ -15,6 +15,7 @@ Internal TestFlight builds need nothing: every push to `main` that touches an ap
 - First release only: `Purchases.enabled = true` in `Apps/<App>/iOS/Purchase/Purchases.swift`; the StoreKit price set in App Store Connect (the `.storekit` file holds a placeholder); the App Store Connect record exists for the bundle id.
 - Catalogs: the manifest's release holds the catalogs this version should ship (`Scripts/catalogs.manifest`).
 - Privacy strings: every Info.plist usage description (in the generator) still says truthfully what the app does.
+- Screenshots: if a screen in the store set changed, `Scripts/store-screenshots.sh <app>`, then `storeassets -C Store/<app> validate` and `export` (and `Store/<app>-watch` for Stadig Lift and Stadig Macro); the owner uploads them in App Store Connect. `Store/README.md`.
 
 ## Cut it
 

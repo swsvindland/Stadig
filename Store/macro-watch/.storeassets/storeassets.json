@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/swsvindland/screenshot/main/schemas/manifest.schema.json",
+  "schema": 1,
+  "id": "c2929d69-f2f8-4def-ba89-f7a113a94396",
+  "name": "Stadig Macro",
+  "baseLocale": "en-US",
+  "locales": [
+    "en-US"
+  ],
+  "stores": {
+    "apple": {
+      "enabled": true,
+      "appId": "dev.svindland.stadig.macro",
+      "assets": [
+        "watch"
+      ]
+    }
+  },
+  "brand": {
+    "icon": "brand/icon.png",
+    "colors": {
+      "primary": "#1CA366",
+      "secondary": "#0D6B44",
+      "accent": "#FFE08A",
+      "background": "#07160F",
+      "text": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter",
+      "headingWeight": 800,
+      "bodyWeight": 500
+    }
+  },
+  "slots": [
+    {
+      "id": "today",
+      "uuid": "4e40fe14-39fe-4561-9516-7b18add34779",
+      "template": "headline-top",
+      "captures": {
+        "watch": "today.png"
+      }
+    },
+    {
+      "id": "log-again",
+      "uuid": "3b8bba5b-fe01-4e5e-9a30-9b97d39fd37f",
+      "template": "headline-top",
+      "captures": {
+        "watch": "log-again.png"
+      }
+    },
+    {
+      "id": "water",
+      "uuid": "deb1efea-6408-4428-906d-4a48b34e3d63",
+      "template": "headline-top",
+      "captures": {
+        "watch": "water.png"
+      }
+    },
+    {
+      "id": "supplements",
+      "uuid": "18b85df7-f334-4641-a418-f0054834eb55",
+      "template": "headline-top",
+      "captures": {
+        "watch": "supplements.png"
+      }
+    },
+    {
+      "id": "weigh",
+      "uuid": "c2048c61-80c4-44be-a555-403f9caaa452",
+      "template": "headline-top",
+      "captures": {
+        "watch": "weigh.png"
+      }
+    }
+  ],
+  "output": {
+    "format": "png",
+    "jpegQuality": 92
+  }
+}

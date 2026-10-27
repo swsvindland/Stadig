@@ -43,6 +43,7 @@ Scripts/              build.sh (build, lint, test), generate-project.py, xcode-c
                       and fetch/publish scripts, the icon drawers
 docs/                 How each app maps to the design doc, testing, CI/CD, decisions to check, what's verified
 Site/                 stadig.dev, the marketing site (Astro; its own README)
+Store/                The App Store screenshots: a storeassets project per app and Watch app (its own README)
 .github/workflows/    GitHub Actions: lint and package tests on every push, the site build
 ```
 
@@ -72,6 +73,7 @@ Scripts/build.sh ios|watch|macro|macro-watch|mind   # build one app for the iOS 
 Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build
 Scripts/leaks.sh lift               # after building an app: run `leaks` on its seeded screens
+Scripts/store-screenshots.sh lift   # recapture an app's App Store screenshots into Store/ (then storeassets; Store/README.md)
 python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
 swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons, make-mind-icons for the others)
 Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest

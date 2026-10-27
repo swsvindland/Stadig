@@ -16,6 +16,7 @@ Scripts/build.sh ui lift|macro|mind [ipad|vision]        # an app's UI tests
 Scripts/build.sh ios|watch|macro|macro-watch|mind        # build an app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift|macro|mind              # build an app for the Mac (runs on this Mac) or Vision Pro
 Scripts/leaks.sh lift|macro|mind       # after a build: `leaks` on the app's seeded screens
+Scripts/store-screenshots.sh [lift|macro|mind]  # recapture App Store screenshots into Store/ (Store/README.md)
 python3 Scripts/generate-project.py    # after changing targets, settings, Info.plist keys or packages
 ```
 

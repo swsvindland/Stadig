@@ -1,0 +1,27 @@
+{
+  "slots": {
+    "body": {
+      "headline": "Your physique, **measured**",
+      "subhead": "Ratios and symmetry from a tape"
+    },
+    "plan": {
+      "headline": "A program that **bends** around life",
+      "subhead": "Blocks, deloads, trips and injuries"
+    },
+    "progress": {
+      "headline": "Stats that move only on **real lifts**",
+      "subhead": "Strength scored against bodyweight"
+    },
+    "session": {
+      "headline": "Every set adjusts to **how it went**",
+      "subhead": "Rate it Easy, Just right or Missed"
+    },
+    "today": {
+      "headline": "Your next session, **written for you**",
+      "subhead": "Exercises, weights, sets and rest"
+    }
+  },
+  "store": {
+    "name": "Stadig Lift"
+  }
+}

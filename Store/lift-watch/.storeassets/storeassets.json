@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/swsvindland/screenshot/main/schemas/manifest.schema.json",
+  "schema": 1,
+  "id": "34361b3d-4478-4fe7-b657-104bdb0f6de7",
+  "name": "Stadig Lift",
+  "baseLocale": "en-US",
+  "locales": [
+    "en-US"
+  ],
+  "stores": {
+    "apple": {
+      "enabled": true,
+      "appId": "dev.svindland.stadig.lift",
+      "assets": [
+        "watch"
+      ]
+    }
+  },
+  "brand": {
+    "icon": "brand/icon.png",
+    "colors": {
+      "primary": "#3D5AFE",
+      "secondary": "#2433B8",
+      "accent": "#FFD166",
+      "background": "#0B1030",
+      "text": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter",
+      "headingWeight": 800,
+      "bodyWeight": 500
+    }
+  },
+  "slots": [
+    {
+      "id": "set",
+      "uuid": "8f169a6e-5a30-4872-a9e4-12a9d05de645",
+      "template": "headline-top",
+      "captures": {
+        "watch": "set.png"
+      }
+    },
+    {
+      "id": "rating",
+      "uuid": "9608e05d-e02c-4e46-a131-1ef79f06aa3e",
+      "template": "headline-top",
+      "captures": {
+        "watch": "rating.png"
+      }
+    },
+    {
+      "id": "rest",
+      "uuid": "37b5aae8-25eb-4e16-9668-aa8411ca0ac9",
+      "template": "headline-top",
+      "captures": {
+        "watch": "rest.png"
+      }
+    },
+    {
+      "id": "conditioning",
+      "uuid": "2d58dfbc-304e-4c51-a270-48260026fa5a",
+      "template": "headline-top",
+      "captures": {
+        "watch": "conditioning.png"
+      }
+    },
+    {
+      "id": "home",
+      "uuid": "a4d707ef-5667-431b-8f87-0516dec5fca0",
+      "template": "headline-top",
+      "captures": {
+        "watch": "home.png"
+      }
+    }
+  ],
+  "output": {
+    "format": "png",
+    "jpegQuality": 92
+  }
+}

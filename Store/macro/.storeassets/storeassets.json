@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/swsvindland/screenshot/main/schemas/manifest.schema.json",
+  "schema": 1,
+  "id": "52ae27b9-8522-41f9-99af-a7f9949065bb",
+  "name": "Stadig Macro",
+  "baseLocale": "en-US",
+  "locales": [
+    "en-US"
+  ],
+  "platforms": [
+    "ios"
+  ],
+  "stores": {
+    "apple": {
+      "enabled": true,
+      "appId": "dev.svindland.stadig.macro",
+      "assets": [
+        "iphone-6.9",
+        "ipad-13"
+      ]
+    }
+  },
+  "brand": {
+    "icon": "brand/icon.png",
+    "colors": {
+      "primary": "#1CA366",
+      "secondary": "#0D6B44",
+      "accent": "#FFE08A",
+      "background": "#07160F",
+      "text": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter",
+      "headingWeight": 800,
+      "bodyWeight": 500
+    }
+  },
+  "slots": [
+    {
+      "id": "today",
+      "uuid": "8382b06e-1089-4aa4-84f4-7182f5d0ab88",
+      "template": "stadig",
+      "captures": {
+        "phone": "today.png",
+        "tablet": "today.png"
+      }
+    },
+    {
+      "id": "search",
+      "uuid": "65177b0f-87d7-4cc4-9098-bfceeae14650",
+      "template": "stadig",
+      "captures": {
+        "phone": "search.png",
+        "tablet": "search.png"
+      }
+    },
+    {
+      "id": "scan",
+      "uuid": "36431445-a902-45a1-ac41-7e4c2f657bf8",
+      "template": "stadig-full",
+      "captures": {
+        "phone": "scan.png",
+        "tablet": "scan.png"
+      }
+    },
+    {
+      "id": "plan",
+      "uuid": "e721a2b4-715e-46c9-adf8-bbb8261031d7",
+      "template": "stadig",
+      "captures": {
+        "phone": "plan.png",
+        "tablet": "plan.png"
+      }
+    },
+    {
+      "id": "progress",
+      "uuid": "8b4945fc-166b-4124-9a9b-2e25814b2ebe",
+      "template": "stadig",
+      "captures": {
+        "phone": "progress.png",
+        "tablet": "progress.png"
+      }
+    },
+    {
+      "id": "meal-prep",
+      "uuid": "42d3302d-4900-479f-ab57-d84c37f2b489",
+      "template": "stadig",
+      "captures": {
+        "phone": "meal-prep.png",
+        "tablet": "meal-prep.png"
+      }
+    }
+  ],
+  "output": {
+    "format": "png",
+    "jpegQuality": 92
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "slots": {
+    "meal-prep": {
+      "headline": "A week of meals in **one afternoon**",
+      "subhead": "Sized to your targets, with the groceries"
+    },
+    "plan": {
+      "headline": "One phase, **with its reasons**",
+      "subhead": "Targets adjusted at each weekly check-in"
+    },
+    "progress": {
+      "headline": "Follow the **trend**, not the scale",
+      "subhead": "A smoothed weight against what you ate"
+    },
+    "scan": {
+      "headline": "Scan a label like **filming** it",
+      "subhead": "Every value read and checked as you pan"
+    },
+    "search": {
+      "headline": "3.2 million foods, **offline**",
+      "subhead": "Search is instant, with or without signal"
+    },
+    "today": {
+      "headline": "Calories left, **at a glance**",
+      "subhead": "Log again in one tap"
+    }
+  },
+  "store": {
+    "name": "Stadig Macro"
+  }
+}
