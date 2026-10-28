@@ -2,6 +2,7 @@
 """Build source-separated, indexed offline catalogs for Stadig Macro. Python standard library only.
 
 Usage: python3 Scripts/build-food-catalog.py [--usda /path/sr.zip --fndds /path/fndds.zip] [--off /path/off.jsonl[.gz]]
+       python3 Scripts/build-food-catalog.py --check   # only how sample serving labels are read
 
 Writes usda.db (SR Legacy, and FNDDS's fast-food and restaurant foods) into
 Packages/FoodDatabase/Sources/FoodDatabase/Resources (bundled, in git) and off.db
@@ -327,15 +328,88 @@ def product_name(raw):
     return " ".join(html.unescape(name).split())
 
 
+def served_quantity(raw, basis):
+    """
+    OFF's own reading of the serving in the basis, and where it is: serving_quantity, or in newer
+    records, which leave that out, the amount their per-serving values were entered for, when
+    every set agrees. A set for exactly 100 is the per-100 values entered as a serving ("0.5 tsp"
+    of 100 g).
+    """
+    if raw.get("serving_quantity_unit") == basis and (served := number(raw.get("serving_quantity"))):
+        return served, "servingFromQuantity"
+    entered = {number(given.get("per_quantity")) for given in (raw.get("nutrition") or {}).get("input_sets") or []
+               if given.get("per") == "serving" and given.get("preparation") == "as_sold"
+               and given.get("source") != "estimate" and given.get("per_unit") == basis} - {None, 0, 100}
+    return (entered.pop(), "servingFromNutrition") if len(entered) == 1 else (None, None)
+
+
 def serving_portion(raw, basis):
-    """The serving the label prints, in the basis: "8 fl oz (240 ml)" is 240 ml."""
+    """
+    The serving the label prints, in the basis: "8 fl oz (240 ml)" is 240 ml. And how its amount
+    was read, when it wasn't from the label itself.
+    """
     label = (raw.get("serving_size") or "").strip()
     found = label_amounts(label)
     amount = amount_in(found, basis)
-    # OFF's own reading only for a label that prints no amount it could contradict ("1 bar").
-    if amount is None and not found and raw.get("serving_quantity_unit") == basis:
-        amount = number(raw.get("serving_quantity"))
-    return [{"label": label or "1 serving", "amount": amount}] if amount else []
+    if amount:
+        return [{"label": label, "amount": amount}], None
+    # OFF's own reading only for a label that prints no amount it could contradict ("1 bar"), and
+    # a label that is only a number ("28") only where that's OFF's amount.
+    served, source = (None, None) if found else served_quantity(raw, basis)
+    if served and re.fullmatch(r"\d+(?:[.,]\d+)?", label):
+        if abs(float(label.replace(",", ".")) - served) <= max(0.5, served * 0.01):
+            return [{"label": f"{label} {basis}", "amount": served}], source
+    elif served:
+        return [{"label": label or "1 serving", "amount": served}], source
+    # Else the label as first imported from the producer or USDA's branded foods, where edits
+    # since have lost it ("0g", or "1 portion (175 g)" of olive oil sold per 100 ml), when it
+    # measures the serving in the basis alone ("5 DROPS PER 8 oz. OF LIQUID (0.208 ml)" is no
+    # 8 oz) and isn't the basis' own 100 ("100 g (100 g)").
+    imported = (raw.get("serving_size_imported") or "").strip()
+    kind, amount = serving_basis(imported)
+    if kind == basis and amount and amount != 100:
+        return [{"label": imported, "amount": amount}], "servingFromImport"
+    return [], None
+
+
+def per_serving(quantity, unit, source="packaging"):
+    """A newer record's nutrition as entered for one serving, for SERVING_SAMPLES."""
+    return {"nutrition": {"input_sets": [{"per": "serving", "per_quantity": quantity, "per_unit": unit,
+                                          "preparation": "as_sold", "source": source}]}}
+
+
+# Real products' serving fields and the portion each must get, checked before every build.
+SERVING_SAMPLES = [
+    ({"serving_size": "8 fl oz (240 ml)"}, "ml", [("8 fl oz (240 ml)", 240)]),
+    ({"serving_size": "1 bar", "serving_quantity": "40", "serving_quantity_unit": "g"}, "g", [("1 bar", 40)]),
+    # OFF's reading never overrides the label's own amount: "1 cup (55 g)" is no 55 ml.
+    ({"serving_size": "1 cup (55 g)", "serving_quantity": 55, "serving_quantity_unit": "ml"}, "ml", []),
+    # Newer records keep OFF's reading only with the per-serving values (Monster Ultra Vice Guava,
+    # Pacific Foods' soup).
+    ({"serving_size": "1 can", **per_serving(473, "ml")}, "ml", [("1 can", 473)]),
+    ({"serving_size": "1 portion (1 cup)", **per_serving(240, "ml")}, "ml", [("1 portion (1 cup)", 240)]),
+    ({**per_serving(56, "g")}, "g", [("1 serving", 56)]),
+    # A label that is only a number is OFF's amount or nothing (a sharp cheddar; Nutella, whose
+    # producer's 15 g is in the label first imported).
+    ({"serving_size": "28", **per_serving(28, "g")}, "g", [("28 g", 28)]),
+    ({"serving_size": "33", "serving_size_imported": "15 g (NUTELLA)", **per_serving(15, "g", "manufacturer")}, "g",
+     [("15 g (NUTELLA)", 15)]),
+    # The imported label where edits lost the serving: olive oil sold per 100 ml, and "0g".
+    ({"serving_size": "1 portion (175 g)", "serving_size_imported": "1 Tbsp (15 ml)"}, "ml", [("1 Tbsp (15 ml)", 15)]),
+    ({"serving_size": "0g", "serving_size_imported": "1/2 ONZ (14 g)"}, "g", [("1/2 ONZ (14 g)", 14)]),
+    # Not servings: the per-100 values entered as one, and an imported label measuring something else.
+    ({"serving_size": "0.5 tsp (0.5 tsp)", **per_serving(100, "g")}, "g", []),
+    ({"serving_size": "1.0 cracker", "serving_size_imported": "100 g (100 g)"}, "g", []),
+    ({"serving_size": "1", "serving_size_imported": "5 DROPS PER 8 oz. OF LIQUID (0.208 ml)"}, "g", []),
+]
+
+
+def check_servings():
+    for fields, basis, expected in SERVING_SAMPLES:
+        portions, _ = serving_portion(fields, basis)
+        found = [(p["label"], p["amount"]) for p in portions]
+        if found != expected:
+            raise SystemExit(f"serving_portion({fields}, {basis!r}) gives {found}, not {expected}")
 
 
 def number(value):
@@ -713,6 +787,10 @@ def off_food(raw, limits, stats):
         stats["basisFromServingQuantity"] += 1
     elif source == "package":
         stats["basisFromPackage"] += 1
+    # And how many servings were read past the label's own amount (see serving_portion).
+    portions, read = serving_portion(raw, basis)
+    if read:
+        stats[read] += 1
     micros = {}
     for key, _, columns, factor in MICROS:
         value = next((number(v.get(f"{c}_100g")) for c in columns
@@ -728,7 +806,7 @@ def off_food(raw, limits, stats):
             "markets": " ".join(sorted(markets - {None})),
             "basis": basis, "nutrients": nutrients,
             "micros": checked_micros(nutrients, micros, limits, stats),
-            "portions": serving_portion(raw, basis), "popularity": round(math.log1p(scans), 2),
+            "portions": portions, "popularity": round(math.log1p(scans), 2),
             "nova": off_processing(raw), "traits": TRAIT_FERMENTED if off_fermented(raw, name) else 0}
 
 
@@ -836,6 +914,7 @@ def build(source, path, destination, limits=None, fndds=None):
             stats["included"] += 1
             stats["microValues"] += len(food["micros"])
             stats["withMicros"] += bool(food["micros"])
+            stats["withPortions"] += bool(food["portions"])
             if food["nova"] is not None:
                 stats[f"nova{food['nova']}"] += 1
             else:
@@ -921,7 +1000,11 @@ if __name__ == "__main__":
                         help="USDA FNDDS (Survey Foods) JSON zip, whose fast-food and restaurant foods "
                              "join SR Legacy's in usda.db. Needed with --usda.")
     parser.add_argument("--off", type=Path, help="Open Food Facts export. Without it only usda.db is rebuilt.")
+    parser.add_argument("--check", action="store_true", help="Only check how sample labels' servings are read.")
     args = parser.parse_args()
+    check_servings()
+    if args.check:
+        raise SystemExit
     if not args.usda and not args.off:
         parser.error("give --usda and --fndds, --off, or all three")
     if args.usda and not args.fndds:

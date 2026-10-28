@@ -90,6 +90,18 @@
   - Stadig Mind: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
 
+## Calls made for packaged foods' servings (2026-10-28)
+
+`serving_portion` in `Scripts/build-food-catalog.py`, after a quarter of US packaged foods (200,556 of 745,612) turned out to have no portion, so they could only be logged by weight.
+
+- **Most have none to give.** 198,718 of them have no serving anywhere in the Open Food Facts export: no serving size, quantity, per-serving values or imported label. Nearly all (198,337) were added through apps, 176,652 through Yuka, which sends values per 100 g only. They stay weighed. Only 1,676 have a serving size at all.
+- **Open Food Facts' own reading, where newer records keep it.** A label that prints no amount ("1 can", "2 tbsp (2 tbsp)") already took `serving_quantity`; newer records leave that out and keep the amount with the per-serving values instead, which is now read too. Where a food has both a label amount and that one, they agree in 108,120 of 108,138. A label that's only a number ("28") counts only where it is that amount.
+- **The label first imported**, from the producer or USDA's branded foods (`serving_size_imported`), where edits since lost the serving ("0g", or "1 portion (175 g)" of olive oil sold per 100 ml), when it measures in the food's own kind alone. It agrees with the current label in 98% of the foods that have both.
+- **Not servings:** a recovered amount of exactly 100 g or ml, which is the per-100 values entered as a serving ("0.5 tsp" of 100 g, "100 g (100 g)").
+- **Not built:** reading a household measure as the volume of a per-100 ml food whose label gives only grams ("1 Tbsp (14 g)" as 14.8 ml; 69 US foods). Where labels print both, the measure is more than 5% off the printed ml one time in twenty ("8 ml (1 cup)"), too often to trust alone.
+
+Together these give 655 more packaged foods their label's serving, 475 of them sold in the US; nothing else in the catalog changed.
+
 ## Calls made for logging on the Watch (2026-10-24)
 
 Stadig Lift's Watch app, `LiveSession`'s `SessionChange` and `MirroredSession`, and the phone's `AppModel`.
