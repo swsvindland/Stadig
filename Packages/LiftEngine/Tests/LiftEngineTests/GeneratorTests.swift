@@ -275,6 +275,71 @@ struct GeneratorTests {
         if ProcessInfo.processInfo.environment["PRINT_PROGRAMS"] != nil { print(Fixture.describe(m)) }
     }
 
+    @Test("goals that want both take turns: a size block, then a strength block, then size again")
+    func mixedGoalsAlternateTheFocus() {
+        let profile = Fixture.profile()
+        let assessment = ProgramGenerator.generate(Fixture.input(profile, kind: .assessment))
+        var input = Fixture.input(profile)
+        input.previous = assessment
+        let size = ProgramGenerator.generate(input)
+        input.previous = size
+        let strength = ProgramGenerator.generate(input)
+        input.previous = strength
+        #expect(
+            [assessment.focus, size.focus, strength.focus, ProgramGenerator.generate(input).focus] == [.mixed, .hypertrophy, .strength, .hypertrophy])
+        // A block planned before blocks had a focus is followed by a size block.
+        var unmarked = strength
+        unmarked.focus = nil
+        input.previous = unmarked
+        #expect(ProgramGenerator.generate(input).focus == .hypertrophy)
+
+        func slots(_ m: Mesocycle, _ kind: SessionBlockKind) -> [(slot: SlotPlan, exercise: Exercise)] {
+            m.days.flatMap { $0.blocks.filter { $0.kind == kind }.flatMap(\.slots) }.map { ($0, Fixture.catalog.resolve($0.exerciseID)) }
+        }
+        #expect(!slots(strength, .main).isEmpty)
+        for (slot, exercise) in slots(size, .main) {
+            #expect(slot.repRange == exercise.reps.hypertrophy && slot.restSeconds == exercise.rest.hypertrophy, "\(exercise.name)")
+        }
+        for (slot, exercise) in slots(strength, .main) {
+            #expect(slot.repRange == exercise.reps.strength && slot.restSeconds == exercise.rest.strength, "\(exercise.name)")
+        }
+        // Accessories keep their hypertrophy ranges either way.
+        for (slot, exercise) in slots(size, .accessory) + slots(strength, .accessory) {
+            #expect(slot.repRange == exercise.reps.hypertrophy, "\(exercise.name)")
+        }
+        // The bench: in between for the assessment, 6–10 for size and 3–6 for strength.
+        func bench(_ m: Mesocycle) -> RepRange? { m.days.flatMap(\.strengthSlots).first { $0.exerciseID == "barbell-bench-press" }?.repRange }
+        #expect([bench(assessment), bench(size), bench(strength)] == [RepRange(5, 8), RepRange(6, 10), RepRange(3, 6)])
+        #expect(size.rationale.reasons.contains { $0.hasPrefix("A size block") })
+        #expect(strength.rationale.reasons.contains { $0.hasPrefix("A strength block") })
+        #expect(!assessment.rationale.reasons.contains { $0.contains("block: the main lifts") })
+    }
+
+    @Test("goals that lean one way keep that focus every block, and which goals take turns")
+    func leaningGoalsKeepTheirFocus() {
+        for (goals, focus) in [([OutcomeGoal.stronger], BlockFocus.strength), ([.leaner], .hypertrophy)] {
+            var input = Fixture.input(Fixture.profile(goals: goals))
+            var previous = ProgramGenerator.generate(Fixture.input(Fixture.profile(goals: goals), kind: .assessment))
+            #expect(previous.focus == focus, "\(goals) assessment")
+            for before in [BlockFocus.strength, .hypertrophy, nil] {
+                previous.focus = before
+                input.previous = previous
+                let m = ProgramGenerator.generate(input)
+                #expect(m.focus == focus, "\(goals) after \(String(describing: before))")
+                #expect(!m.rationale.reasons.contains { $0.contains("block: the main lifts") })
+            }
+        }
+        for goals in [[OutcomeGoal.fitter], [.stronger, .leaner]] {
+            #expect(Builder.leaning(GoalEmphasis.combined(goals)) == .strength, "\(goals)")
+        }
+        // Goals that want strength and size about equally take turns.
+        for goals in [[OutcomeGoal.biggerAndStronger], [.healthier], [.moreMobile], [], [.biggerAndStronger, .leaner]] {
+            let emphasis = GoalEmphasis.combined(goals)
+            #expect(Builder.focus(for: emphasis, kind: .standard, after: .hypertrophy) == .strength, "\(goals)")
+            #expect(Builder.focus(for: emphasis, kind: .minimumEffective, after: .strength) == .hypertrophy, "\(goals)")
+        }
+    }
+
     @Test func declaredClassesSpendTheBudget() {
         let bjj = RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 90, intensity: 8)
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(recurring: [bjj])))

@@ -64,7 +64,7 @@ struct SimulatedLifter {
     var growth: Double
     /// Reps of reserve they fail to perceive: +4 is a sandbagger, −2 is overconfident.
     var perceptionBias: Double
-    /// Reps in reserve they leave when picking a weight to find "a weight for 10".
+    /// Reps in reserve they leave when picking a weight to find "a weight for 7".
     var guessReserve: Double
     /// The share of their 1RM each set takes from the sets after it in the same exercise.
     var setFatigue = 0.02
@@ -130,6 +130,10 @@ struct TrainingSimulation {
         var increments: any LoadIncrements
         var sets: Int
         var repRange: RepRange
+        /// Block by block, for blocks that take turns between strength and size; empty keeps `repRange`.
+        var blockRanges: [RepRange] = []
+
+        func range(inBlock block: Int) -> RepRange { blockRanges.isEmpty ? repRange : blockRanges[block % blockRanges.count] }
     }
 
     var lifter: SimulatedLifter
@@ -156,6 +160,7 @@ struct TrainingSimulation {
 
     mutating func run(weeks: Int, from first: Int = 0) {
         for week in first..<(first + weeks) {
+            let block = week / (loadingWeeks + 1)
             let blockWeek = week % (loadingWeeks + 1)
             let deload = blockWeek == loadingWeeks
             let assessment = week < assessmentWeeks
@@ -171,10 +176,11 @@ struct TrainingSimulation {
                         && FailurePolicy.allowsRepOut(slot.exercise, trust: trust, experience: lifter.experience, hasSafeties: true)
                         && repOutsLeft > 0 && (!deload || checkIn)
                     if wantsRepOut { repOutsLeft -= 1 }
+                    let repRange = slot.range(inBlock: block)
                     let target = SlotTarget(
-                        sets: slot.sets, repRange: slot.repRange,
+                        sets: slot.sets, repRange: repRange,
                         targetRIR: Progression.targetRIR(week: min(blockWeek, loadingWeeks - 1), of: loadingWeeks),
-                        deload: deload, repOut: wantsRepOut)
+                        deload: deload, repOut: wantsRepOut, firstWeek: blockWeek == 0)
                     let context = ProgressionContext(
                         exercise: slot.exercise, increments: slot.increments, trust: trust, phase: phase,
                         bodyweightKg: 80, history: history[slot.exercise.id] ?? [])
@@ -193,7 +199,7 @@ struct TrainingSimulation {
                         let adjustment = Autoregulation.next(
                             after: set, planned: plan[index + 1],
                             context: Autoregulation.Context(
-                                exercise: slot.exercise, increments: slot.increments, trust: trust, repRange: slot.repRange,
+                                exercise: slot.exercise, increments: slot.increments, trust: trust, repRange: repRange,
                                 verifiedAlready: verified, hasSafeties: true, restSeconds: Int(Self.rest)))
                         adjustments.append(adjustment.kind)
                         if adjustment.kind == .verify { verified = true }

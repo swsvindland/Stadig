@@ -251,6 +251,17 @@ public struct Rationale: Codable, Hashable, Sendable {
     }
 }
 
+/// What a block's main lifts train for, which sets their rep ranges and rests. Accessories use
+/// hypertrophy ranges whatever the focus.
+public enum BlockFocus: String, Codable, Sendable {
+    /// Heavier, with fewer reps and longer rests: bench 3–6.
+    case strength
+    /// More reps: bench 6–10.
+    case hypertrophy
+    /// In between (bench 5–8): the assessment's, when goals want both, so either focus can start from its weights.
+    case mixed
+}
+
 /// A mesocycle: a block on the calendar and the days that fill it.
 public struct Mesocycle: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
@@ -261,12 +272,15 @@ public struct Mesocycle: Codable, Hashable, Sendable, Identifiable {
     public var rationale: Rationale
     public var minutesPerSession: Int
     public var phase: NutritionPhase
+    /// Nil for blocks planned before blocks had one; those used the in-between ranges.
+    public var focus: BlockFocus?
     public var createdAt: Date
     public var updatedAt: Date
 
     public init(
         id: UUID = UUID(), block: TrainingBlock, split: SplitKind, days: [PlannedDay], priorities: [TrainingPriority],
-        rationale: Rationale, minutesPerSession: Int, phase: NutritionPhase, createdAt: Date = Date(), updatedAt: Date = Date()
+        rationale: Rationale, minutesPerSession: Int, phase: NutritionPhase, focus: BlockFocus? = nil, createdAt: Date = Date(),
+        updatedAt: Date = Date()
     ) {
         self.id = id
         self.block = block
@@ -276,6 +290,7 @@ public struct Mesocycle: Codable, Hashable, Sendable, Identifiable {
         self.rationale = rationale
         self.minutesPerSession = minutesPerSession
         self.phase = phase
+        self.focus = focus
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

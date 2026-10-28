@@ -60,7 +60,7 @@ public enum SetKind: String, Codable, Sendable, CaseIterable {
     /// Ramp-up sets; they double as the warm-up in short sessions and never count as work.
     case warmup
     case working
-    /// Week one: "pick a weight you think you can do for 10", rated, adjusted until it's right.
+    /// Week one: "pick a weight you think you can do for 7", rated, adjusted until it's right.
     case findingWeight
     /// A controlled rep-out to genuine (or, for free weights, technical) failure.
     case repOut

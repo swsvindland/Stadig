@@ -471,6 +471,32 @@ struct ProgressionTests {
         let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(8, 12), targetRIR: 2), context)
         #expect(p.mode == .findingWeight)
         #expect(p.sets.allSatisfy { $0.loadKg == nil && $0.targetReps == 10 })
+        // At the middle of the range, where the sessions after aim: not 10 whatever the range.
+        for (range, reps) in [(RepRange(3, 6), 5), (RepRange(5, 8), 7), (RepRange(6, 10), 8), (RepRange(10, 15), 13), (RepRange(12, 20), 16)] {
+            let finding = Progression.prescribe(SlotTarget(sets: 3, repRange: range, targetRIR: 2), context)
+            #expect(finding.sets.allSatisfy { $0.targetReps == reps }, "\(range.label)")
+            #expect(finding.reason.contains("for \(reps)"))
+        }
+    }
+
+    @Test("A block's first week comes down to its target, not within a step of the last block's heaviest")
+    func aBlocksFirstWeekStartsLighter() {
+        // The end of a strength block: bench 100 × 5, just right.
+        let history = (0..<3).map { index in
+            LoggedSet(
+                exerciseID: "barbell-bench-press", date: Self.night.addingTimeInterval(Double(index) * 180), kind: .working, loadKg: 100,
+                reps: 5, rating: .orange, restBeforeSeconds: index == 0 ? nil : 180)
+        }
+        // A size block's first week: 6–10 reps, aiming for 8 with 3 in reserve, about 88 kg.
+        let size = SlotTarget(sets: 3, repRange: RepRange(6, 10), targetRIR: 3, firstWeek: true)
+        let first = Progression.prescribe(size, context(.bench, step: 2.5, history: history))
+        #expect(first.sets.allSatisfy { $0.targetReps == 8 })
+        let load = first.sets.first?.loadKg ?? 0
+        #expect(load > 80 && load <= 90, "\(load)")
+        // Later in a block the same session is an off day at most, and the weight holds within a step.
+        var later = size
+        later.firstWeek = false
+        #expect(Progression.prescribe(later, context(.bench, step: 2.5, history: history)).sets.allSatisfy { $0.loadKg == 97.5 })
     }
 
     @Test func deloadHalvesSetsAndLightens() {

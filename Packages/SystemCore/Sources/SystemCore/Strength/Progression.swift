@@ -17,7 +17,7 @@ public struct RepRange: Hashable, Codable, Sendable {
 /// One set to do.
 public struct SetPrescription: Hashable, Codable, Sendable {
     public var kind: SetKind
-    /// Nil when the person picks: "a weight you think you can do for 10".
+    /// Nil when the person picks: "a weight you think you can do for 7".
     public var loadKg: Double?
     public var targetReps: Int
     public var targetRIR: Double
@@ -71,13 +71,18 @@ public struct SlotTarget: Hashable, Codable, Sendable {
     public var deload: Bool
     /// Make the last set a controlled rep-out.
     public var repOut: Bool
+    /// A block's first loading week. It starts easier than the last block ended (more in reserve,
+    /// and more reps when a size block follows a strength one), so the weight comes down to the
+    /// target instead of holding within a step of the last block's heaviest.
+    public var firstWeek: Bool
 
-    public init(sets: Int, repRange: RepRange, targetRIR: Double, deload: Bool = false, repOut: Bool = false) {
+    public init(sets: Int, repRange: RepRange, targetRIR: Double, deload: Bool = false, repOut: Bool = false, firstWeek: Bool = false) {
         self.sets = max(1, sets)
         self.repRange = repRange
         self.targetRIR = targetRIR
         self.deload = deload
         self.repOut = repOut
+        self.firstWeek = firstWeek
     }
 }
 
@@ -350,8 +355,6 @@ public enum Autoregulation {
 // MARK: - Session to session
 
 public enum Progression {
-    static let findingReps = 10
-
     public static func prescribe(_ target: SlotTarget, _ context: ProgressionContext) -> ExercisePrescription {
         let exercise = context.exercise
         let basis = exercise.loadBasis
@@ -359,8 +362,8 @@ public enum Progression {
         // Deload sessions never anchor progression: the next block builds on the last real one.
         let work = Progression.anchoringWork(context.history)
         guard let last = StrengthEstimator.sessions(work).last, let top = topSet(last, basis: basis) else {
-            // Finding working weights.
-            let reps = clamp(findingReps, target.repRange.lower, max(target.repRange.upper, target.repRange.lower))
+            // Finding working weights, at the reps the sessions after will aim for.
+            let reps = target.repRange.middle
             let sets = (0..<target.sets).map { _ in SetPrescription(kind: .findingWeight, loadKg: nil, targetReps: reps, targetRIR: 2) }
             return ExercisePrescription(
                 exerciseID: exercise.id, sets: sets, mode: .findingWeight, e1rm: nil,
@@ -428,8 +431,9 @@ public enum Progression {
             let steps = missed ? 0 : context.phase.maxLoadStepsPerSession
             for _ in 0..<steps { cap = LoadMath.step(cap, 1, basis: basis, increments: context.increments) }
             if LoadMath.harder(load, cap, basis: basis) { load = cap }
-            if context.loadFactor >= 1, !missed {
-                // Don't slide back more than a step on a single off day.
+            if context.loadFactor >= 1, !missed, !target.firstWeek {
+                // Don't slide back more than a step on a single off day. A block's first week is
+                // meant to be lighter, and the estimate stays within 3% of the recent best anyway.
                 let floor = LoadMath.step(lastLoad, -1, basis: basis, increments: context.increments)
                 if LoadMath.harder(floor, load, basis: basis) { load = floor }
             }
