@@ -340,6 +340,78 @@ struct GeneratorTests {
         }
     }
 
+    @Test("every scored lift is trained each week at 45, 60 and 75 minutes on 3–6 days, strength blocks and size blocks")
+    func everyScoredLiftFitsTheWeek() {
+        // Goals that lean to strength, and goals that take turns in each of their blocks.
+        let cases: [([OutcomeGoal], BlockFocus?)] = [
+            ([.stronger], nil), ([.fitter], nil), ([.biggerAndStronger], .hypertrophy), ([.biggerAndStronger], .strength),
+            ([.healthier], .hypertrophy), ([.healthier], .strength), ([.moreMobile], .hypertrophy), ([.moreMobile], .strength),
+        ]
+        for (goals, before) in cases {
+            for days in 3...6 {
+                for minutes in [45, 60, 75] {
+                    var input = Fixture.input(Fixture.profile(days: days, minutes: minutes, goals: goals))
+                    if let before {
+                        var previous = ProgramGenerator.generate(input)
+                        previous.focus = before
+                        input.previous = previous
+                    }
+                    let m = ProgramGenerator.generate(input)
+                    let label = "\(goals) \(days) days, \(minutes) min, \(String(describing: m.focus))"
+                    let trained = Set(m.days.flatMap(\.strengthSlots).compactMap { Fixture.catalog.resolve($0.exerciseID).strength?.category })
+                    #expect(trained == Set(StrengthCategory.allCases), "\(label) misses \(Set(StrengthCategory.allCases).subtracting(trained))")
+                    for day in m.days { #expect(day.minutes <= minutes, "\(label): \(day.name) is \(day.minutes) min") }
+                }
+            }
+        }
+    }
+
+    @Test("a lift the week would go without: its sets with Zone 2's spare minutes, else two sets, else Zone 2 is a quest")
+    func theDroppedLiftsLadder() throws {
+        func upperA(_ m: Mesocycle) throws -> PlannedDay { try #require(m.days.first { $0.name == "Upper A" }) }
+        func press(_ day: PlannedDay) -> SlotPlan? {
+            day.strengthSlots.first { Fixture.catalog.resolve($0.exerciseID).strength?.category == .verticalPress }
+        }
+        func quest(_ day: PlannedDay) -> Bool { day.overflow.contains { $0.kind == .conditioning } }
+
+        // An hour of a strength block: the press at two sets, Zone 2 untouched.
+        let hour = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 4, minutes: 60, goals: [.stronger])))
+        let hourPress = try #require(press(try upperA(hour)))
+        #expect(hourPress.sets(week: 0) == 2)
+        #expect(hourPress.reason == "Two sets, so every scored lift is trained each week.")
+        #expect(try upperA(hour).blocks.contains { $0.kind == .conditioning } && !quest(try upperA(hour)))
+        #expect(hour.rationale.reasons.contains("Overhead Press has two sets on Upper A, so every scored lift is trained each week."))
+
+        // 45 minutes: Zone 2 leaves the day for a quest, and the main lifts keep their three sets.
+        let short = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 4, minutes: 45, goals: [.stronger])))
+        let shortDay = try upperA(short)
+        #expect(press(shortDay)?.sets(week: 0) == 2)
+        #expect(quest(shortDay) && !shortDay.blocks.contains { $0.kind == .conditioning })
+        #expect(shortDay.blocks.first { $0.kind == .main }?.slots.allSatisfy { $0.sets(week: 0) == 3 } == true)
+        #expect(
+            short.rationale.reasons.contains { $0.hasPrefix("Upper A's conditioning is a quest for a free block, to make room for Overhead Press") })
+        // Only that day: the others keep their Zone 2.
+        #expect(short.days.filter(quest).count == 1)
+
+        // Fitter at 90 minutes: Zone 2's minutes above its minimum make room for all three sets.
+        let long = ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 4, minutes: 90, goals: [.fitter])))
+        let longPress = try #require(press(try upperA(long)))
+        #expect(longPress.sets(week: 0) == 3)
+        #expect(longPress.reason == "Kept so every scored lift is trained each week.")
+        #expect((try upperA(long).blocks.first { $0.kind == .conditioning }?.minutes ?? 0) >= 20)
+
+        // A plan that already trains every scored lift doesn't change.
+        for m in [ProgramGenerator.generate(Fixture.input(Fixture.profile())), ProgramGenerator.generate(Fixture.input(Fixture.profile(days: 6)))] {
+            #expect(!m.days.flatMap(\.strengthSlots).contains { ($0.reason ?? "").contains("every scored lift") })
+            #expect(!m.rationale.reasons.contains { $0.contains("every scored lift") })
+        }
+
+        // "Short on time?" for one day doesn't move its Zone 2 to keep a lift: one day isn't the week.
+        let refit = ProgramGenerator.refit(
+            try upperA(hour), minutes: 45, input: Fixture.input(Fixture.profile(days: 4, minutes: 45, goals: [.stronger])))
+        #expect(!quest(refit) && refit.blocks.contains { $0.kind == .conditioning })
+    }
+
     @Test func declaredClassesSpendTheBudget() {
         let bjj = RecurringActivity(activity: .bjj, weekdays: [.tuesday, .thursday], minutes: 90, intensity: 8)
         let m = ProgramGenerator.generate(Fixture.input(Fixture.profile(recurring: [bjj])))

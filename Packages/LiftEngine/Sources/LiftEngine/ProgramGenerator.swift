@@ -457,7 +457,9 @@ struct Builder {
         applyFatigueBudget(&days)
         // Spare time can only add sets the recovery budget has room for, shared across the week.
         let allowance = fatigueHeadroom / Double(max(1, days.count))
+        let unfitted = days
         days = days.map { fitTime($0, minutes: minutes, allowance: allowance) }
+        keepEveryScoredLift(&days, unfitted: unfitted, minutes: minutes, allowance: allowance)
 
         let block = TrainingBlock(
             kind: input.kind, start: input.start, loadingWeeks: input.loadingWeeks,
@@ -707,7 +709,8 @@ struct Builder {
 
     /// Fits a day into the time available. Every block has a minimum, a desired length and a
     /// priority; goals reorder the priorities. Blocks that don't fit become quests for a free block.
-    func fitTime(_ day: PlannedDay, minutes: Int, allowance: Double = .infinity) -> PlannedDay {
+    /// `keeping` names accessory slots the week would otherwise go without (`keepEveryScoredLift`).
+    func fitTime(_ day: PlannedDay, minutes: Int, allowance: Double = .infinity, keeping: Set<UUID> = []) -> PlannedDay {
         var day = day
         let short = minutes <= 35
         // Supersets and a drill in the rests are a short session's, decided again for this length: a
@@ -771,7 +774,7 @@ struct Builder {
                 main[1].supersetGroup = 1
             }
         }
-        let liftingBudget = ((allocation[.main] ?? 0) + (allocation[.accessory] ?? 0)) * 60
+        var liftingBudget = ((allocation[.main] ?? 0) + (allocation[.accessory] ?? 0)) * 60
         func seconds(_ slots: [SlotPlan]) -> Int {
             slots.map { slot in
                 let s = Self.seconds(for: slot, exercise: resolve(slot))
@@ -779,6 +782,7 @@ struct Builder {
                 return slot.supersetGroup != nil ? s - slot.sets(week: 0) * slot.restSeconds / 2 : s
             }.reduce(0, +)
         }
+        let unthinned = main
         var thinning = 0
         while seconds(main) > liftingBudget, thinning < 20 {
             thinning += 1
@@ -790,8 +794,41 @@ struct Builder {
                 break
             }
         }
+        // A lift the week would otherwise go without keeps its place in the order, ahead of the
+        // cheaper accessories after it (a priority put first stays first): at its sets if
+        // conditioning's minutes above its minimum make room, else at two sets. Failing that,
+        // conditioning leaves the day for a quest and the lift has two sets, so the time it frees
+        // gives the main lifts their sets back first.
         var kept: [SlotPlan] = []
-        for slot in accessory where seconds(main + kept + [slot]) <= liftingBudget { kept.append(slot) }
+        let conditioningFloor = specs.first { $0.kind == .conditioning }?.minimum ?? 0
+        for slot in accessory {
+            guard keeping.contains(slot.id) else {
+                if seconds(main + kept + [slot]) <= liftingBudget { kept.append(slot) }
+                continue
+            }
+            var twoSets = slot
+            twoSets.sets = slot.sets.map { min(2, $0) }
+            // Whole minutes the lifting would run over its share.
+            let over = { (slot: SlotPlan) in max(0, (seconds(main + kept + [slot]) - liftingBudget + 59) / 60) }
+            let conditioning = allocation[.conditioning] ?? 0
+            if let pick = [slot, twoSets].first(where: { over($0) <= max(0, conditioning - conditioningFloor) }) {
+                let borrowed = over(pick)
+                if borrowed > 0 { allocation[.conditioning] = conditioning - borrowed }
+                liftingBudget += borrowed * 60
+                kept.append(pick)
+            } else if conditioning > 0, over(twoSets) <= conditioning {
+                allocation[.conditioning] = nil
+                liftingBudget += conditioning * 60
+                kept.append(twoSets)
+                // The main lifts get back the sets the shorter share cut, before other accessories.
+                for i in main.indices {
+                    guard let whole = unthinned.first(where: { $0.id == main[i].id }) else { continue }
+                    var restored = main
+                    restored[i].sets = whole.sets
+                    if seconds(restored + kept) <= liftingBudget { main = restored }
+                }
+            }
+        }
         accessory = kept
         // Time the lifting doesn't use goes to more sets before conditioning gets it: the main lifts
         // up to four work sets, then accessories up to three, in order of importance, while the
@@ -904,6 +941,62 @@ struct Builder {
         day.blocks = blocks.sorted { $0.kind < $1.kind }
         day.overflow = overflow
         return day
+    }
+
+    /// A scored lift the time budget leaves out of the whole week (the third on a day, behind two
+    /// main lifts at strength rests) is fitted again on the first day that had it, ahead of the
+    /// cheaper accessories that took its place. Plans that train every scored lift don't change, and
+    /// a refit for a short day doesn't do this: one day without it isn't a week.
+    mutating func keepEveryScoredLift(_ days: inout [PlannedDay], unfitted: [PlannedDay], minutes: Int, allowance: Double) {
+        let catalog = input.catalog
+        let category = { (slot: SlotPlan) in catalog.resolve(slot.exerciseID).strength?.category }
+        let accessories = { (day: PlannedDay) in day.blocks.first { $0.kind == .accessory }?.slots ?? [] }
+        var trained = Set(days.flatMap(\.strengthSlots).compactMap(category))
+        var missing: [Int: Set<UUID>] = [:]
+        for lift in StrengthCategory.allCases where !trained.contains(lift) {
+            guard let d = unfitted.indices.first(where: { accessories(unfitted[$0]).contains { category($0) == lift } }),
+                let slot = accessories(unfitted[d]).first(where: { category($0) == lift })
+            else { continue }
+            missing[d, default: []].insert(slot.id)
+        }
+        for (d, ids) in missing.sorted(by: { $0.key < $1.key }) {
+            // The day's scored lifts that are the week's only one of their kind keep their place too,
+            // so making room for one doesn't push out another.
+            let elsewhere = Set(days.indices.filter { $0 != d }.flatMap { days[$0].strengthSlots }.compactMap(category))
+            let sole = accessories(days[d]).filter { category($0).map { !elsewhere.contains($0) } ?? false }.map(\.id)
+            let keeping = ids.union(sole)
+            var day = fitTime(unfitted[d], minutes: minutes, allowance: allowance, keeping: keeping)
+            let now = elsewhere.union(day.strengthSlots.compactMap(category))
+            guard now.isStrictSuperset(of: trained) else { continue }
+            trained = now
+            var names: [String] = []
+            var cut: [String] = []
+            for b in day.blocks.indices where day.blocks[b].kind == .accessory {
+                for s in day.blocks[b].slots.indices where keeping.contains(day.blocks[b].slots[s].id) {
+                    let slot = day.blocks[b].slots[s]
+                    let name = catalog.resolve(slot.exerciseID).name
+                    let planned = unfitted[d].strengthSlots.first { $0.id == slot.id }?.sets(week: 0) ?? 0
+                    if slot.sets(week: 0) < planned {
+                        cut.append(name)
+                        day.blocks[b].slots[s].reason = "Two sets, so every scored lift is trained each week."
+                    } else if ids.contains(slot.id) {
+                        day.blocks[b].slots[s].reason = "Kept so every scored lift is trained each week."
+                    }
+                    if ids.contains(slot.id) { names.append(name) }
+                }
+            }
+            let quest = { (day: PlannedDay) in day.overflow.contains { $0.kind == .conditioning } }
+            if quest(day), !quest(days[d]) {
+                reasons.append(
+                    "\(day.name)'s conditioning is a quest for a free block, to make room for \(names.joined(separator: " and ")): every scored lift is trained each week."
+                )
+            } else if !cut.isEmpty {
+                reasons.append(
+                    "\(cut.joined(separator: " and ")) \(cut.count == 1 ? "has" : "have") two sets on \(day.name), so every scored lift is trained each week."
+                )
+            }
+            days[d] = day
+        }
     }
 
     /// The slots fitting adds (warm-up, mobility, conditioning, cool-down) take ids from the day, so
