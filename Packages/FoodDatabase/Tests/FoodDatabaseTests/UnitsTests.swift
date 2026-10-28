@@ -87,6 +87,39 @@ struct UnitsTests {
         #expect(suggested(Self.with([("1 oz (28 g)", 28)])) == ["oz", "1"])
     }
 
+    @Test("a packaged food can always be logged by the serving its label prints")
+    func packagedServing() throws {
+        func packaged(_ label: String, _ amount: Double) -> Food {
+            var food = Self.with([(label, amount)])
+            food.source = .off
+            return food
+        }
+        // A serving given as a measure is also a serving, and still opens as the label says it.
+        let yogurt = packaged("0.75 cup (170 g)", 170)
+        #expect(labels(yogurt) == ["g", "oz", "lb", "ml", "fl oz", "cup", "tbsp", "tsp", "serving", "kcal"])
+        let serving = try unit(yogurt, "serving")
+        #expect(serving.amount == 170 && serving.kind == .serving)
+        #expect(suggested(yogurt) == ["cup", "¾"])
+        #expect(FoodUnits.convert(0.75, from: try unit(yogurt, "cup"), to: serving) == 1)
+        #expect(FoodUnits.entryLabel(for: yogurt, count: 2, unit: serving) == "2 servings · 340 g")
+        #expect(FoodUnits.logged(for: yogurt, unitID: "serving", count: 1, amount: 170).unit == serving)
+        // So is a bare weight, a label ounce and a count of pieces.
+        let chips = packaged("28g", 28)
+        #expect(labels(chips) == ["g", "oz", "lb", "serving", "kcal"])
+        #expect(suggested(chips) == ["g", "28"])
+        #expect(labels(packaged("1 oz (28 g)", 28)) == ["g", "oz", "lb", "serving", "kcal"])
+        let pieces = packaged("21 pieces (28 g)", 28)
+        #expect(labels(pieces) == ["g", "oz", "lb", "serving", "piece", "kcal"])
+        #expect(try unit(pieces, "serving").amount == 28)
+        #expect(suggested(pieces) == ["portion:0", "21"])
+        // A label that names the serving, or one container of it, already is one.
+        #expect(labels(packaged("1 container (150 g)", 150)) == ["g", "oz", "lb", "container", "kcal"])
+        #expect(labels(packaged("1 serving (42 g)", 42)) == ["g", "oz", "lb", "serving", "kcal"])
+        #expect(try unit(packaged("1 serving (42 g)", 42), "portion:0").label == "serving")
+        // A generic food's first portion is one measure among several, not a serving.
+        #expect(!labels(Self.with([("1 cup", 158)])).contains("serving"))
+    }
+
     @Test("amount labels count units, keep the estimate mark and never say serving(s)")
     func amountLabels() throws {
         let bread = Self.bread

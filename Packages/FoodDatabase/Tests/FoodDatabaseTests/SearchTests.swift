@@ -344,6 +344,29 @@ struct SearchTests {
     }
 
     @Test(
+        "a brand of two or three words searched for alone is all of its foods",
+        arguments: [
+            ("trader joes", "(?i)trader jo"), ("trader joe’s", "(?i)trader jo"), ("trader joes c", "(?i)trader jo"),
+            ("great value", "(?i)great value"), ("kirkland signature", "(?i)kirkland"), ("ben and jerrys", "(?i)ben.*jerry"),
+        ])
+    func brandAlone(query: String, brand: String) {
+        // Not "trader" and a food called "joes", which was Trader Joe's foods with "Joe" in the name,
+        // then German Joghurt and Sloppy Joe sauce.
+        let found = catalog.search(query).prefix(20)
+        #expect(found.count == 20)
+        for match in found { #expect(matches(brand, match.food.brand ?? ""), "\(query): \(match.food.name) [\(match.food.brand ?? "")]") }
+        #expect(catalog.searchCatalog(query, known: [:]).brand.count == 2)
+    }
+
+    @Test("a brand's own foods come before the foods named after them")
+    func brandsFoodsBeforeOthersNamedAfterThem() {
+        // Trader Joe's cakes, not its cake pretzels, cake fries, cake bites and coffee cake muffins.
+        let cakes = catalog.names("trader joes cake", 12)
+        #expect(cakes.allSatisfy { matches(#"\[Trader Joe"#, $0) }, "\(cakes)")
+        #expect(!cakes.contains { matches("(?i)cake (pretzels|fries|bites|muffins|cookies)", $0) }, "\(cakes)")
+    }
+
+    @Test(
         "a chain's menu item comes first, however the chain and its size are typed",
         arguments: [
             ("papa johns 14 inch pepperoni", #"^PAPA JOHN'S 14" Pepperoni Pizza"#),

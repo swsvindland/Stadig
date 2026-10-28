@@ -285,12 +285,13 @@ extension FoodCatalog {
 
     /// The words at the start or end of a search that name a brand, the most words first: "trader
     /// joes" in "trader joes mini wheats" or "mini wheats trader joes", and "little caesars" before
-    /// "little". At least one word is left to name the food; a search for a brand alone ("kirkland",
-    /// or "pop" on its way to Pop-Tarts) is searched as any other.
+    /// "little". A search of two or three words that is a brand as a whole ("trader joes", "great
+    /// value") is that brand, not "trader" and a food called "joes"; a brand of one word alone
+    /// ("kirkland", or "pop" on its way to Pop-Tarts) is searched as any other.
     private func findBrand(_ words: [String], _ fixes: Fixes) -> Range<Int>? {
         guard words.count > 1 else { return nil }
         let catalog = branded.first
-        for size in stride(from: min(words.count - 1, 3), through: 1, by: -1) {
+        for size in stride(from: min(words.count, 3), through: 1, by: -1) {
             for start in Set([0, words.count - size]).sorted() {
                 let span = words[start..<(start + size)]
                 // A letter on its own is a size or a variety ("k cup"), whatever brands start with it.
@@ -305,10 +306,11 @@ extension FoodCatalog {
     /// A typed search, best match first. Each word is a stemmed prefix and a word the catalogs
     /// barely know is also searched as what it probably meant. A search that names a brand also
     /// finds the brand's foods that share a word with the rest ("Shredded Bite Size Wheats" for
-    /// "trader joes mini wheats") and the foods the rest names under any brand; a longer search that
-    /// finds little also finds foods missing one of its words; and a search that finds nothing
-    /// falls back to the word that names the food. The person's own foods in `known` rank higher,
-    /// and packaged foods people scan more rank higher among themselves.
+    /// "trader joes mini wheats") and the foods the rest names under any brand, and a brand alone
+    /// finds all of its foods ("trader joes"); a longer search that finds little also finds foods
+    /// missing one of its words; and a search that finds nothing falls back to the word that names
+    /// the food. The person's own foods in `known` rank higher, and packaged foods people scan more
+    /// rank higher among themselves.
     func searchCatalog(_ query: String, known: [String: Double]) -> CatalogSearch {
         let reading = readQuery(query)
         // A single letter matches most of the catalog, so the search waits for a second one.
@@ -333,17 +335,18 @@ extension FoodCatalog {
         let named = span.map { span in searched.indices.filter { !span.contains($0) }.map { searched[$0] } } ?? []
         let product = named.filter { !isNumber($0) }
         // With a brand, also the brand's foods with any of the other words (packaged foods by their
-        // brand, a chain USDA names by its name), and those words' foods by any brand.
+        // brand, a chain USDA names by its name), and those words' foods by any brand. A brand alone
+        // is all of its foods, the most scanned first.
         let brandTerms = "(\(brand.map(term).joined(separator: " AND ")))"
-        let anyWord = "(\(named.map(term).joined(separator: " OR ")))"
+        let anyWord = product.isEmpty ? "" : " AND (\(named.map(term).joined(separator: " OR ")))"
         let found = run([
             product.isEmpty ? [] : jobs(catalogs, named.map(term).joined(separator: " AND "), .typed),
             phrases.isEmpty ? [] : jobs(catalogs, (phrases + [expression]).joined(separator: " AND ")),
             jobs(catalogs, expression, .typed, lead: lead(foods[0])),
-            product.isEmpty
+            brand.isEmpty
                 ? []
-                : jobs(branded, "{brand}: \(brandTerms) AND \(anyWord)", .typed)
-                    + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms) AND \(anyWord)", .typed),
+                : jobs(branded, "{brand}: \(brandTerms)\(anyWord)", .typed)
+                    + jobs(catalogs.filter { $0.kind == .generic }, "{name}: \(brandTerms)\(anyWord)", .typed),
         ])
         let anyBrand = found[0]
         var pool = found[1] + found[2] + found[3] + anyBrand

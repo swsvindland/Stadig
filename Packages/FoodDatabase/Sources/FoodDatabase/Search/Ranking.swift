@@ -45,6 +45,20 @@ private let variationWords = stems(
         + "unsweetened blend spread flavored feet giblets liver gizzard heart neck back skin kidney tongue tripe glutinous "
         + "sprouted instant parboiled precooked turkey stewed babyfood product brain evaporated condensed")
 
+/// Kinds of food named after what they're made with or taste of, which follow it in a packaged
+/// food's name: cake pretzels, peanut butter cups, cheese crackers, chocolate milk. Forms already
+/// in `variationWords` (oil, juice, powder) aren't repeated; words that also say what a food is like
+/// ("thin", "strips", "balls") are left out.
+private let formWords = stems(
+    "bar bite chip crisp cracker pretzel fries fry cup pop puff roll muffin cookie cake bread sandwich wafer cluster "
+        + "nugget crumb snack tender pie dip sauce dressing seasoning candy cereal granola drink shake smoothie creamer "
+        + "popcorn ice gelato frosting filling pudding jam jelly butter batter yogurt milk water flour syrup bagel waffle "
+        + "pancake biscuit brownie donut doughnut tart latte tea coffee salad burger wrap burrito taco pizza crust dough "
+        + "noodle pasta broth sausage meatball dumpling bowl kit")
+
+/// Words after which a name goes on to another part of the food: "cake with chocolate filling".
+private let partWords: Set<String> = ["with", "and", "or", "in", "on", "filled", "topped", "dipped", "covered", "coated", "stuffed"]
+
 /// How the catalog words the fat level a search names with a number: "2%" is reduced fat.
 private let fatWords = stems("fat milkfat lowfat low reduced nonfat lean")
 
@@ -155,6 +169,8 @@ struct FoodText {
     let own: [String]
     /// The name's words outside brackets and the brand, stemmed.
     let said: [String]
+    /// Which run of `said` each word is in: a comma, "&" or "with" starts another.
+    let runs: [Int]
     /// Words in brackets, stemmed, except "(Includes …)".
     let noted: [String]
     /// The words before the name's first comma, after a USDA group ("Fish, salmon"), stemmed.
@@ -173,11 +189,12 @@ struct FoodText {
         let scalars = plainScalars(name)
         let found = scanTokens(scalars)
         let close = scalars.lastIndex(of: ")") ?? -1
-        // Each token's bracket (none, a note, or an "(Includes …)" note) and comma-separated part.
-        var placed: [(bracket: Int, part: Int)] = []
+        // Each token's bracket (none, a note, or an "(Includes …)" note), comma-separated part and run.
+        var placed: [(bracket: Int, part: Int, run: Int)] = []
         placed.reserveCapacity(found.count)
         var bracket = 0
         var part = 0
+        var run = 0
         var next = 0
         var commas: [Int] = []
         for (i, scalar) in scalars.enumerated() {
@@ -187,21 +204,31 @@ struct FoodText {
                 bracket = 0
             } else if scalar == "," {
                 part += 1
+                run += 1
                 commas.append(i)
+            } else if scalar == "&" || scalar == "+" || scalar == "/" {
+                run += 1
             }
             while next < found.count && found[next].start == i {
-                placed.append((bracket, part))
+                if partWords.contains(found[next].word) { run += 1 }
+                placed.append((bracket, part, run))
                 next += 1
             }
         }
         let stems = found.map { stopWords.contains($0.word) ? "" : stem($0.word) }
         var titled: [String] = []
         var said: [String] = []
+        var runs: [Int] = []
         var noted: [String] = []
         var parts: [[String]] = [[], [], []]
         for (i, token) in found.enumerated() where !stems[i].isEmpty {
             titled.append(stems[i])
-            if placed[i].bracket == 0 { said.append(stems[i]) } else if placed[i].bracket == 1 { noted.append(stems[i]) }
+            if placed[i].bracket == 0 {
+                said.append(stems[i])
+                runs.append(placed[i].run)
+            } else if placed[i].bracket == 1 {
+                noted.append(stems[i])
+            }
             if !isNumber(token.word) {
                 if placed[i].part < 3 { parts[placed[i].part].append(stems[i]) }
             }
@@ -220,7 +247,9 @@ struct FoodText {
         all = titled + brandWords.map(stem)
         self.ownWords = ownWords
         self.own = own
-        self.said = own.isEmpty ? said : said.filter { !own.contains($0) }
+        let kept = own.isEmpty ? Array(said.indices) : said.indices.filter { !own.contains(said[$0]) }
+        self.said = kept.map { said[$0] }
+        self.runs = kept.map { runs[$0] }
         self.noted = noted
         // USDA files some foods under a group: "Fish, salmon".
         let head = makeString(scalars[..<(commas.first ?? scalars.count)]).trimmingCharacters(in: .whitespaces)
@@ -389,6 +418,9 @@ struct Coverage {
     var named: Bool
     var partial: Int
     var head: Bool
+    /// The word naming the food is in the name only to name another food after it: "cake" in
+    /// Celebration Cake Pretzels, "peanut butter" in Peanut Butter Cups.
+    var modifies: Bool
     var fixed: Int
     var usual: Bool
     var typical: Bool
@@ -500,6 +532,13 @@ struct CoverageQuery {
             if variationWords.contains(w) { variations += 1 } else if !neutral.contains(w) { others += 1 }
         }
         let notes = text.noted.filter { w in !neutral.contains(w) && !mentioned.contains { fits(w, $0) } }.count
+        var modifies = false
+        if let last = target.last, let at = text.said.firstIndex(where: { w in last.options.contains { fits(w, $0) } }) {
+            modifies = text.said.indices[(at + 1)...].contains { i in
+                let w = text.said[i]
+                return text.runs[i] == text.runs[at] && formWords.contains(w) && !mentioned.contains { fits(w, $0) }
+            }
+        }
         // USDA's inverted name for exactly what was said: "Oil, olive" for olive oil, "Rice, white"
         // for white rice; not "Oil, corn, peanut, and olive", nor "Chicken breast, roll".
         var named = false
@@ -520,6 +559,7 @@ struct CoverageQuery {
             named: named,
             partial: partial,
             head: head,
+            modifies: modifies,
             fixed: fixedCount,
             usual: usual,
             typical: found.contains(where: typicalWords.contains),
@@ -643,6 +683,8 @@ func scoreFoods(
     // With a brand named, the other words describe the product, and only its name is read for them.
     let asked = search && !brand.isEmpty
     let named = asked ? target.filter { !brand.contains($0) } : target
+    // A brand alone names none of its foods over another, so how often each is scanned orders them.
+    let alone = asked && named.isEmpty
     // A typed search and a food a model saw both mean the cooked form of what's usually eaten
     // cooked; a model asked for raw salmon says so.
     let cooked =
@@ -713,7 +755,7 @@ func scoreFoods(
             mine = match.brand == true
         }
         // A search for a brand alone matches all of its foods.
-        let name = asked && named.isEmpty && mine ? 1 : match.name
+        let name = alone && mine ? 1 : match.name
         rows.append(
             Row(
                 food: food, text: text, match: match, other: other, mine: mine, exact: exact, name: name,
@@ -741,6 +783,12 @@ func scoreFoods(
             - 0.25 * Double(match.others) - 0.05 * Double(match.notes)
             // A food found by another name ranks a little below one its own name matches as well.
             - (row.other == nil ? 0 : 0.5)
+            // A food named after the one asked for: cake pretzels and cake fries for "cake". Not a
+            // brand's own food by those words when it makes nothing like the food: Papa John's
+            // pepperoni is its pepperoni pizza.
+            - (match.modifies && !theirs ? 1 : 0)
+        // Every food of a brand searched for alone answers it as well as any other.
+        if alone && row.mine { score = 3 }
         if asked {
             // The brand asked for; then other brands' products, among them the one the search is
             // usually named after ("Kellogg's Mini-Wheats"); then plain foods.

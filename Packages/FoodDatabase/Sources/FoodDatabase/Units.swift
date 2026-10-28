@@ -421,6 +421,7 @@ struct UnitTable {
         let offered = Set(units.map(\.id))
         for i in placed.indices where placed[i].map({ !offered.contains($0) }) ?? false { placed[i] = nil }
         var labels = Set(units.map(\.label))
+        let measured = units.count
         for (unit, index, full) in natural {
             // Two "slice" portions read as "slice" and "slice (thin)".
             let label = labels.contains(unit.label) && !full ? fullName(food.portions[index]) : unit.label
@@ -428,6 +429,15 @@ struct UnitTable {
             labels.insert(label)
             units.append(PortionUnit(id: unit.id, label: label, kind: unit.kind, amount: unit.amount))
             placed[index] = unit.id
+        }
+        // A packaged food's one portion is the serving its label prints, so it can always be logged
+        // by the serving, whether the label gives it as a measure ("¾ cup (170 g)"), a bare weight
+        // ("28g") or pieces ("21 pieces (28 g)"). One that names a serving or a single container
+        // ("1 container (150 g)") already is one.
+        if food.source == .off, food.basis != .serving, let serving = food.portions.first, serving.amount > 0, serving.amount.isFinite,
+            !labels.contains("serving"), !(placed[0]?.hasPrefix("portion:") == true && parsePortion(serving)?.count == 1)
+        {
+            units.insert(PortionUnit(id: "serving", label: "serving", kind: .serving, amount: serving.amount), at: measured)
         }
         if food.nutrients.kcal > 0 { add("kcal", (food.basis == .serving ? 1 : 100) / food.nutrients.kcal, .energy) }
         self.units = units
