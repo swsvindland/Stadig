@@ -375,6 +375,78 @@ struct AutoregulationTests {
         #expect(found.kind == .found)
         #expect(found.next.kind == .working)
         #expect(found.next.loadKg == 45)
+        #expect(found.next.targetReps < 10, "the set after a just-right one expects a rep or so fewer")
+    }
+
+    /// 225 lb (102.5 kg) squats in a 5–8 range, with the 150 s the plan gives a heavy compound.
+    let squat = Autoregulation.Context(
+        exercise: TestExercise.squat, increments: FixedIncrements(stepKg: 2.5), trust: TrustState(prior: 0.8),
+        repRange: RepRange(5, 8), restSeconds: 150)
+    let squatSet = SetPrescription(kind: .working, loadKg: 102.5, targetReps: 8, targetRIR: 2)
+
+    func squats(_ reps: Int, _ rating: SetRating) -> LoggedSet {
+        LoggedSet(exerciseID: "barbell-back-squat", kind: .working, loadKg: 102.5, reps: reps, targetReps: 8, rating: rating)
+    }
+
+    @Test("Just right keeps the weight and aims for the reps the rest gives back, not the same again")
+    func justRightExpectsRepsToFall() {
+        let adjustment = Autoregulation.next(after: squats(8, .orange), planned: squatSet, context: squat)
+        #expect(adjustment.kind == .hold)
+        #expect(adjustment.next.loadKg == 102.5)
+        #expect((6...7).contains(adjustment.next.targetReps), "\(adjustment.next.targetReps)")
+        #expect(adjustment.message.contains("aim for \(adjustment.next.targetReps)"))
+        #expect(adjustment.fatigue?.reps() == adjustment.next.targetReps)
+        // A short rest leaves fewer reps; a long one gives more of them back.
+        var short = squat
+        short.restSeconds = 45
+        #expect(Autoregulation.next(after: squats(8, .orange), planned: squatSet, context: short).next.targetReps < adjustment.next.targetReps)
+        var long = squat
+        long.restSeconds = 300
+        #expect(Autoregulation.next(after: squats(8, .orange), planned: squatSet, context: long).next.targetReps > adjustment.next.targetReps)
+    }
+
+    @Test("A miss keeps the weight while the reps stay in the range, and comes down below it")
+    func missHoldsInTheRange() {
+        let held = Autoregulation.next(after: squats(7, .red), planned: squatSet, context: squat)
+        #expect(held.kind == .hold)
+        #expect(held.next.loadKg == 102.5)
+        #expect(held.next.targetReps == 5)
+        #expect(held.message.contains("just data"))
+        let dropped = Autoregulation.next(after: squats(5, .red), planned: squatSet, context: squat)
+        #expect(dropped.kind == .drop)
+        #expect((dropped.next.loadKg ?? 999) < 102.5)
+        #expect(dropped.next.targetReps == 5)
+        #expect(dropped.fatigue == nil)
+    }
+
+    @Test("Just right at the bottom of the range lightens the next set to stay in it")
+    func justRightAtTheBottomLightens() {
+        let adjustment = Autoregulation.next(after: squats(5, .orange), planned: squatSet, context: squat)
+        #expect(adjustment.kind == .drop)
+        #expect((adjustment.next.loadKg ?? 999) < 102.5)
+        #expect(adjustment.next.targetReps == 5)
+        #expect(adjustment.message.contains("5–8"))
+    }
+
+    @Test("A check on a just-right set asks for the reps the rest gives back, one step up")
+    func verificationAllowsForFatigue() {
+        var low = squat
+        low.trust = TrustState(prior: 0.2)
+        low.hasSafeties = true
+        let adjustment = Autoregulation.next(after: squats(8, .orange), planned: squatSet, context: low)
+        #expect(adjustment.kind == .verify)
+        #expect(adjustment.next.loadKg == 105)
+        #expect(adjustment.next.targetReps < 8)
+    }
+
+    @Test("A shorter rest than planned works the next set out again")
+    func shorterRestLowersTheTarget() throws {
+        let basis = try #require(Autoregulation.next(after: squats(8, .orange), planned: squatSet, context: squat).fatigue)
+        #expect(basis.reps(restSeconds: 45) < basis.reps())
+        #expect(basis.reps(restSeconds: 300) >= basis.reps())
+        // The set after carries on as if this one comes out as aimed.
+        #expect(basis.following.reps() <= basis.reps())
+        #expect(basis.following.capacity == Double(basis.reps()) + basis.aim)
     }
 
     @Test func assistedGetsHarderByRemovingAssistance() {
@@ -442,6 +514,22 @@ struct ProgressionTests {
         ramp.loadFactor = 0.7
         let target = SlotTarget(sets: 3, repRange: RepRange(5, 8), targetRIR: 2)
         #expect((Progression.prescribe(target, ramp).sets.first?.loadKg ?? 999) < (Progression.prescribe(target, full).sets.first?.loadKg ?? 0))
+    }
+
+    @Test("Reps falling set to set as fatigue says aren't misses that hold progression back")
+    func fatigueIsNotAMiss() {
+        func session(_ sets: [(Int, SetRating)]) -> [LoggedSet] {
+            sets.enumerated().map { index, set in
+                LoggedSet(
+                    exerciseID: "barbell-back-squat", date: Self.night.addingTimeInterval(Double(index) * 180), kind: .working,
+                    loadKg: 102.5, reps: set.0, targetReps: 8, rating: set.1, restBeforeSeconds: index == 0 ? nil : 180)
+            }
+        }
+        let trust = TrustState(prior: 0.8)
+        let fatigue = session([(8, .orange), (7, .red), (6, .red)])
+        #expect(Progression.shortfalls(fatigue, at: 102.5, exercise: TestExercise.squat, trust: trust) == 0)
+        let short = session([(8, .orange), (5, .red), (2, .red)])
+        #expect(Progression.shortfalls(short, at: 102.5, exercise: TestExercise.squat, trust: trust) == 2)
     }
 
     @Test func rirFallsAcrossTheBlock() {

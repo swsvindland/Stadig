@@ -125,8 +125,6 @@ public struct TrustState: Hashable, Codable, Sendable {
 public enum Calibration {
     /// Reps of slack before a rating counts as wrong: Epley is only good to about a rep.
     static let tolerance = 1.0
-    /// Reps of capacity a set loses to each earlier hard set in the same exercise.
-    static let fatiguePerSet = 0.75
 
     /// Evidence from one exercise's sets in one session, in the order they were done.
     public static func observations(sets: [LoggedSet], exercise: some ExerciseTraits) -> [CalibrationObservation] {
@@ -139,15 +137,28 @@ public enum Calibration {
             guard loadI > 0 else { continue }
             var exact: Double?
             var lowerBound: Double?
+            var slack = tolerance
             var source = CalibrationObservation.Source.laterSet
             for j in work.indices where j > i {
                 let later = work[j]
                 let loadJ = OneRepMax.effectiveLoad(later.loadKg, basis: exercise.loadBasis, bodyweightKg: later.bodyweightKg)
                 guard loadJ >= loadI * 0.85, later.reps <= StrengthEstimator.maxUsefulReps else { continue }
                 let capacityAtI = OneRepMax.repsToFailure(e1rm: OneRepMax.epley(loadJ, reps: later.reps), at: loadI)
-                let fresher = fatiguePerSet * Double(j - i)
                 if later.reachedFailure, j - i <= 2, abs(loadJ / loadI - 1) <= 0.12 {
-                    exact = capacityAtI + fresher - Double(set.reps)
+                    // The later set was tired by the ones between: each took its share, by how hard
+                    // it was (as rated) and the rest after it.
+                    var kept = 1.0
+                    for k in (i + 1)...j {
+                        let before = work[k - 1]
+                        let reserve = before.rating?.nominalRIR ?? (before.reachedFailure ? 0 : 1)
+                        kept *= 1 - SetFatigue.loss(reserve: reserve, restSeconds: SetFatigue.rest(before: work[k]), exercise: exercise)
+                    }
+                    exact = capacityAtI / kept - Double(set.reps)
+                    // How much people tire varies, and tiring more looks just like overrating: a
+                    // fifth of the fatigue reckoned is the benefit of the doubt, either way. More
+                    // and an overconfident lifter is caught too slowly; none and someone who tires
+                    // quickly is read as overconfident (the simulated users pin both sides).
+                    slack = tolerance + (capacityAtI / kept - capacityAtI) / 5
                     source = later.kind == .repOut ? .repOut : .verification
                     break
                 }
@@ -160,9 +171,9 @@ public enum Calibration {
             let claim = rating.claimedReserve
             var error: Double?
             if let exact {
-                if exact < claim.lowerBound - tolerance {
+                if exact < claim.lowerBound - slack {
                     error = exact - claim.lowerBound
-                } else if exact > claim.upperBound + tolerance {
+                } else if exact > claim.upperBound + slack {
                     error = exact - claim.upperBound
                 } else {
                     error = 0

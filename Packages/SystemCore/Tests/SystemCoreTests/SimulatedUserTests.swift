@@ -110,6 +110,38 @@ struct SimulatedUserTests {
         #expect(stall == nil, "\(String(describing: stall))")
     }
 
+    @Test("Reps that fall set to set at the same weight are fatigue, not misses or overconfidence")
+    func fallingRepsStillProgress() {
+        // The leg extension's 10 kg steps are coarse at its weight, so it climbs reps instead.
+        let slots = [
+            Self.slots[0], Self.slots[1],
+            TrainingSimulation.Slot(exercise: .legExtension, increments: FixedIncrements(stepKg: 10), sets: 3, repRange: RepRange(10, 15)),
+        ]
+        var sim = TrainingSimulation(lifter: .realFatigue, slots: slots)
+        sim.run(weeks: 12)
+        let lifter = SimulatedLifter.realFatigue
+        // Holding the weight with every set the same reps made about a third of all sets misses,
+        // and read this honest lifter as overconfident (bias −0.7, trust barely above where it started).
+        let sets = slots.flatMap { sim.history[$0.exercise.id] ?? [] }
+        let misses = sets.filter { $0.rating == .red }.count
+        #expect(Double(misses) < Double(sets.count) * 0.25, "\(misses) misses in \(sets.count) sets")
+        #expect(sim.trust.score > lifter.experience.startingTrust + 0.15, "trust \(sim.trust.score)")
+        #expect(abs(sim.trust.bias) < 0.5, "bias \(sim.trust.bias)")
+        for slot in slots {
+            let truth = lifter.trueE1RM(slot.exercise.id, week: 12)
+            let estimate = sim.estimate(slot.exercise) ?? 0
+            #expect(abs(estimate / truth - 1) < 0.12, "\(slot.exercise.name): estimate \(estimate) vs true \(truth)")
+        }
+        // Fine steps raise the weight; the coarse leg extension raises the weight or the reps.
+        for exercise in [TestExercise.chestPress, .bench] {
+            #expect((sim.lastWorkingLoad(exercise) ?? 0) > (sim.firstWorkingLoad(exercise) ?? .infinity), "\(exercise.name) loads should rise")
+        }
+        let legs = (sim.history[TestExercise.legExtension.id] ?? []).filter { $0.kind == .working }
+        let early = legs.prefix(6).map { OneRepMax.epley($0.loadKg, reps: $0.reps) }.max() ?? 0
+        let late = legs.suffix(6).map { OneRepMax.epley($0.loadKg, reps: $0.reps) }.max() ?? 0
+        #expect(late > early * 1.05, "leg extension \(early) → \(late)")
+    }
+
     @Test("Free-weight rep-outs are only offered to lifters who've earned them")
     func failureTiers() {
         let novice = TrustState(experience: .novice)

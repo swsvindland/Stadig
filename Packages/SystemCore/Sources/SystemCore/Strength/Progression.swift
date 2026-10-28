@@ -165,10 +165,15 @@ public struct SetAdjustment: Hashable, Sendable {
     public var next: SetPrescription
     /// Plain words: "Easy — up to 85 kg." Loads are formatted by the app.
     public var message: String
+    /// How the next set's reps were worked out when it keeps the weight, so a shorter rest than
+    /// planned can work them out again.
+    public var fatigue: FatigueBasis? = nil
 }
 
 /// The next set adapts immediately to the rating. Green bumps the weight or reps to test the claim,
-/// orange holds, red drops the load slightly. A miss is no big deal, just data.
+/// orange holds the weight, red holds it while the reps stay in the range and drops it slightly
+/// below. Held weights aim for the reps the rest gives back (``SetFatigue``), so reps falling set to
+/// set isn't a miss. A miss is no big deal, just data.
 public enum Autoregulation {
     public struct Context: Sendable {
         public var exercise: any ExerciseTraits
@@ -179,10 +184,12 @@ public enum Autoregulation {
         public var verifiedAlready: Bool
         /// A rack with pins or safety arms, so racked barbell lifts are a safe setup too.
         public var hasSafeties: Bool
+        /// The rest planned before the next set.
+        public var restSeconds: Int
 
         public init(
             exercise: any ExerciseTraits, increments: any LoadIncrements, trust: TrustState, repRange: RepRange,
-            verifiedAlready: Bool = false, hasSafeties: Bool = false
+            verifiedAlready: Bool = false, hasSafeties: Bool = false, restSeconds: Int = SetFatigue.typicalRest
         ) {
             self.exercise = exercise
             self.increments = increments
@@ -190,6 +197,7 @@ public enum Autoregulation {
             self.repRange = repRange
             self.verifiedAlready = verifiedAlready
             self.hasSafeties = hasSafeties
+            self.restSeconds = restSeconds
         }
 
         /// Verification pushes use controlled increments on safe setups only: machines, or a rack
@@ -232,45 +240,80 @@ public enum Autoregulation {
                 && LoadMath.coarse(
                     current, basis: basis, bodyweight: bw, increments: context.increments,
                     setToSet: true))
+        let scale = SetFatigue.scale(of: context.exercise)
+        // The next set at this weight, leaving `aim` in hand after a set that left `reserve`.
+        func holding(reserve: Double, aim: Double) -> FatigueBasis {
+            FatigueBasis(capacity: Double(done.reps) + reserve, reserve: reserve, aim: aim, scale: scale, restSeconds: context.restSeconds)
+        }
+        // Coarse steps are a big change in weight, so the reps may run a little under the range first.
+        let fewest = coarse ? max(1, context.repRange.lower - 2) : context.repRange.lower
+        let doneEffective = LoadMath.effective(current, basis: basis, bodyweight: bw)
+        // Lighter for `reps`, from what the set says is left after the rest: never less than a step off.
+        func lighter(_ hold: FatigueBasis, reps: Int) {
+            guard !coarse, done.reps > 0, doneEffective > 0 else {
+                next.loadKg = LoadMath.step(current, -1, basis: basis, increments: context.increments)
+                return
+            }
+            let left = hold.capacity * (1 - SetFatigue.loss(reserve: hold.reserve, restSeconds: context.restSeconds, scale: scale))
+            let effective = OneRepMax.load(e1rm: SetFatigue.e1rm(load: doneEffective, capacity: left), reps: reps, rir: hold.aim)
+            var load = LoadMath.logged(forEffective: effective, basis: basis, bodyweight: bw, increments: context.increments)
+            let oneDown = LoadMath.step(current, -1, basis: basis, increments: context.increments)
+            if LoadMath.harder(load, oneDown, basis: basis) { load = oneDown }
+            next.loadKg = load
+            next.targetReps = reps
+        }
+
         switch rating {
         case .red:
-            // What they managed, to failure, sets the load for the target with a rep in hand.
-            let doneEffective = LoadMath.effective(current, basis: basis, bodyweight: bw)
-            let target = max(1, next.targetReps)
-            if done.reps > 0, doneEffective > 0, !coarse {
-                let e1rm = OneRepMax.epley(doneEffective, reps: done.reps)
-                let effective = OneRepMax.load(e1rm: e1rm, reps: target, rir: 1)
-                var load = LoadMath.logged(forEffective: effective, basis: basis, bodyweight: bw, increments: context.increments)
-                let oneDown = LoadMath.step(current, -1, basis: basis, increments: context.increments)
-                if basis == .assisted ? load < oneDown : load > oneDown { load = oneDown }
-                next.loadKg = load
-            } else if coarse, done.reps >= max(1, target - 2) {
-                // Coarse jumps: keep the load and aim for what was actually done.
-                next.targetReps = max(1, done.reps)
-            } else {
-                next.loadKg = LoadMath.step(current, -1, basis: basis, increments: context.increments)
+            // Failure: what they managed, less what the rest won't give back, with a rep in hand.
+            // While that stays in the range the weight holds; below it, or while a weight is still
+            // being found, the weight comes down instead.
+            let hold = holding(reserve: 0, aim: 1)
+            if done.reps > 0, fixedLoad || (!finding && hold.reps() >= fewest) {
+                next.targetReps = hold.reps()
+                return SetAdjustment(
+                    kind: .hold, next: next, message: "Missed reps are just data. Same weight, aim for \(next.targetReps).", fatigue: hold)
             }
-            if planned.kind == .findingWeight { next.kind = .findingWeight }
+            lighter(hold, reps: finding ? max(1, next.targetReps) : max(1, min(next.targetReps, max(context.repRange.lower, done.reps))))
             return SetAdjustment(kind: .drop, next: next, message: "Missed reps are just data. Next set is a little lighter.")
 
         case .orange:
+            let reserve = context.trust.reserve(for: .orange)
+            let hold = holding(reserve: reserve, aim: reserve)
             if finding {
                 next.kind = .working
-                return SetAdjustment(kind: .found, next: next, message: "That's your working weight. Same again.")
+                next.targetReps = hold.reps()
+                let message =
+                    next.targetReps < done.reps
+                    ? "That's your working weight. Same weight, aim for \(next.targetReps): reps fall a bit as the sets add up."
+                    : "That's your working weight. Same again."
+                return SetAdjustment(kind: .found, next: next, message: message, fatigue: hold)
             }
             let canVerify = context.trust.isLow && context.safeSetup && !context.verifiedAlready
             if canVerify {
+                // The reps the weight should give after the rest, with more weight or more reps:
+                // an accurate "just right" makes this a near miss.
                 if coarse {
-                    next.targetReps = done.reps + 2
+                    next.targetReps = hold.reps() + 2
                 } else {
                     next.loadKg = LoadMath.step(current, 1, basis: basis, increments: context.increments)
-                    next.targetReps = done.reps
+                    next.targetReps = hold.reps()
                 }
+                let check = coarse ? "\(next.targetReps) reps this time" : "one step up, for \(next.targetReps)"
                 return SetAdjustment(
                     kind: .verify, next: next,
-                    message: "You rated that just right. Let's check: same reps, one step up. If it's a miss, that's useful too.")
+                    message: "You rated that just right. Let's check: \(check). If it's a miss, that's useful too.")
             }
-            return SetAdjustment(kind: .hold, next: next, message: "Just right. Same again.")
+            if fixedLoad || hold.reps() >= fewest {
+                next.targetReps = hold.reps()
+                let message =
+                    next.targetReps < done.reps
+                    ? "Just right. Same weight, aim for \(next.targetReps): reps fall a bit as the sets add up." : "Just right. Same again."
+                return SetAdjustment(kind: .hold, next: next, message: message, fatigue: hold)
+            }
+            lighter(hold, reps: context.repRange.lower)
+            return SetAdjustment(
+                kind: .drop, next: next, message: "Just right. A little lighter now, to keep the reps in the \(context.repRange.label) range.")
 
         case .green:
             if coarse {
@@ -278,11 +321,12 @@ public enum Autoregulation {
                 if planned.kind == .findingWeight { next.kind = .findingWeight }
                 return SetAdjustment(kind: .bump, next: next, message: "Easy, so aim for \(next.targetReps) reps this time.")
             }
-            let effective = LoadMath.effective(current, basis: basis, bodyweight: bw)
+            let effective = doneEffective
             let reserve = context.trust.reserve(for: .green)
-            let floor = OneRepMax.epley(effective, reps: done.reps)
-            let claimed = OneRepMax.epley(effective, reps: done.reps, rir: reserve)
-            let e1rm = floor + max(context.trust.score, 0.5) * (claimed - floor)
+            // What was done, and as much of the claim as trust allows, less what the rest won't give back.
+            let claimed = Double(done.reps) + max(context.trust.score, 0.5) * reserve
+            let left = claimed * (1 - SetFatigue.loss(reserve: reserve, restSeconds: context.restSeconds, scale: scale))
+            let e1rm = SetFatigue.e1rm(load: effective, capacity: left)
             let rir = planned.kind == .findingWeight ? 2 : max(1, planned.targetRIR)
             var load = LoadMath.logged(
                 forEffective: OneRepMax.load(e1rm: e1rm, reps: max(1, next.targetReps), rir: rir),
@@ -325,9 +369,9 @@ public enum Progression {
 
         let lastLoad = top.loadKg
         let topSets = last.filter { abs($0.loadKg - lastLoad) < 0.01 }
-        // A miss that matters: the first top set fell short, or more than one did. A last set a
-        // rep short through fatigue doesn't hold progression back.
-        let missed = topSets.first?.rating == .red || topSets.filter { $0.rating == .red }.count >= 2
+        // A miss that matters: the first top set fell short, or more than one fell shorter than
+        // the sets before them and their rests explain. Reps falling set to set is fatigue.
+        let missed = topSets.first?.rating == .red || shortfalls(last, at: lastLoad, exercise: exercise, trust: context.trust) >= 2
         let allGreen = !topSets.isEmpty && topSets.allSatisfy { $0.rating == .green }
         let bestReps = topSets.map(\.reps).max() ?? top.reps
 
@@ -448,6 +492,20 @@ public enum Progression {
     /// The sets that anchor progression: work with reps, never warm-ups or deload sets.
     static func anchoringWork(_ history: [LoggedSet]) -> [LoggedSet] {
         history.filter { $0.kind.countsAsWork && $0.kind != .deload && $0.reps > 0 }
+    }
+
+    /// Missed sets at a weight that fatigue doesn't explain: a miss after a set at another weight,
+    /// or more than a rep short of what the set before at the same weight left after its rest.
+    static func shortfalls(_ session: [LoggedSet], at load: Double, exercise: some ExerciseTraits, trust: TrustState) -> Int {
+        session.indices.filter { k in
+            let set = session[k]
+            guard set.rating == .red, abs(set.loadKg - load) < 0.01 else { return false }
+            guard k > 0, abs(session[k - 1].loadKg - set.loadKg) < 0.01 else { return true }
+            let before = session[k - 1]
+            let reserve = before.rating.map { trust.reserve(for: $0) } ?? (before.reachedFailure ? 0 : 1)
+            let left = SetFatigue.capacity(after: before.reps, reserve: reserve, restSeconds: SetFatigue.rest(before: set), exercise: exercise)
+            return Double(set.reps) < left - Calibration.tolerance
+        }.count
     }
 
     /// The heaviest set of a session, by effective load.

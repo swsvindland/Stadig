@@ -27,6 +27,13 @@ struct TestExercise: ExerciseTraits {
         fatigue: FatigueProfile(systemic: 0.55, local: 0.45, stimulus: 0.85, failureMultiplier: 1.5), safetyTier: .failWithSetup,
         strength: StrengthMapping(.horizontalPress))
 
+    static let squat = TestExercise(
+        id: "barbell-back-squat", name: "Back Squat", pattern: .squat, equipment: .barbell,
+        muscles: [MuscleShare(.quads, 1), MuscleShare(.glutes, 1)],
+        joints: [JointLoad(.knee, .high), JointLoad(.hip, .high), JointLoad(.lowerBack, .moderate)],
+        fatigue: FatigueProfile(systemic: 0.85, local: 0.6, stimulus: 0.9, failureMultiplier: 1.6), safetyTier: .failWithSetup,
+        strength: StrengthMapping(.squat))
+
     static let deadlift = TestExercise(
         id: "conventional-deadlift", name: "Deadlift", pattern: .hinge, equipment: .barbell,
         muscles: [MuscleShare(.hamstrings, 1), MuscleShare(.glutes, 1), MuscleShare(.lowerBack, 1)],
@@ -59,6 +66,8 @@ struct SimulatedLifter {
     var perceptionBias: Double
     /// Reps in reserve they leave when picking a weight to find "a weight for 10".
     var guessReserve: Double
+    /// The share of their 1RM each set takes from the sets after it in the same exercise.
+    var setFatigue = 0.02
 
     func trueE1RM(_ exercise: String, week: Double) -> Double {
         (start[exercise] ?? 50) * pow(1 + growth, week)
@@ -70,7 +79,7 @@ struct SimulatedLifter {
         date: Date, increments: any LoadIncrements
     ) -> LoggedSet {
         let fresh = trueE1RM(exercise.id, week: week)
-        let e1rm = fresh * (1 - 0.02 * Double(setIndex))
+        let e1rm = fresh * (1 - setFatigue * Double(setIndex))
         let load = prescription.loadKg ?? increments.round(OneRepMax.load(e1rm: fresh, reps: prescription.targetReps, rir: guessReserve), down: true)
         let capacity = Int(OneRepMax.repsToFailure(e1rm: e1rm, at: load).rounded(.down))
         if prescription.kind == .repOut {
@@ -101,6 +110,12 @@ struct SimulatedLifter {
         name: "Overconfident veteran", experience: .experienced,
         start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
         growth: 0.005, perceptionBias: -2.5, guessReserve: 1)
+    /// Reps fall set to set the way they do on the big lifts with a couple of minutes' rest: after
+    /// eight with a rep left, about seven on the second set and six on the third.
+    static let realFatigue = SimulatedLifter(
+        name: "Honest lifter whose reps fall", experience: .intermediate,
+        start: ["machine-chest-press": 100, "barbell-bench-press": 90, "leg-extension": 80],
+        growth: 0.01, perceptionBias: 0, guessReserve: 2, setFatigue: 0.045)
     static let plateaued = SimulatedLifter(
         name: "Plateaued veteran", experience: .experienced,
         start: ["machine-chest-press": 120, "barbell-bench-press": 110, "leg-extension": 90],
@@ -129,6 +144,9 @@ struct TrainingSimulation {
     private(set) var history: [String: [LoggedSet]] = [:]
     private(set) var prescriptions: [String: [ExercisePrescription]] = [:]
     private(set) var adjustments: [AdjustmentKind] = []
+
+    /// Seconds from one set to the next.
+    static let rest: TimeInterval = 180
 
     init(lifter: SimulatedLifter, slots: [Slot]) {
         self.lifter = lifter
@@ -166,22 +184,29 @@ struct TrainingSimulation {
                     var done: [LoggedSet] = []
                     var verified = false
                     for index in plan.indices {
-                        let set = lifter.perform(
+                        var set = lifter.perform(
                             plan[index], exercise: slot.exercise, week: weekFraction, setIndex: index,
-                            date: date.addingTimeInterval(Double(index) * 180), increments: slot.increments)
+                            date: date.addingTimeInterval(Double(index) * Self.rest), increments: slot.increments)
+                        if index > 0 { set.restBeforeSeconds = Int(Self.rest) }
                         done.append(set)
                         guard index + 1 < plan.count else { break }
                         let adjustment = Autoregulation.next(
                             after: set, planned: plan[index + 1],
                             context: Autoregulation.Context(
                                 exercise: slot.exercise, increments: slot.increments, trust: trust, repRange: slot.repRange,
-                                verifiedAlready: verified,
-                                hasSafeties: true))
+                                verifiedAlready: verified, hasSafeties: true, restSeconds: Int(Self.rest)))
                         adjustments.append(adjustment.kind)
                         if adjustment.kind == .verify { verified = true }
+                        // As the live session does: later sets carry on from the next one, as if it comes out as aimed.
+                        var basis = adjustment.fatigue
+                        var next = adjustment.next
                         for later in (index + 1)..<plan.count {
+                            if later > index + 1, let held = basis?.following {
+                                basis = held
+                                next.targetReps = held.reps()
+                            }
                             let kind = plan[later].kind
-                            plan[later] = adjustment.next
+                            plan[later] = next
                             if kind == .repOut { plan[later].kind = .repOut }
                         }
                     }

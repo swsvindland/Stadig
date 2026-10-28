@@ -41,6 +41,9 @@ public struct LiveSet: Codable, Hashable, Sendable, Identifiable {
     public var note: String?
     /// The set as first prescribed, before any rating adjusted it: where a correction starts from.
     public var planned: SetPrescription?
+    /// How its reps were worked out from the set before at the same weight, so a rest cut short can
+    /// work them out again.
+    public var fatigue: FatigueBasis?
 
     public init(id: UUID = UUID(), prescription: SetPrescription, logged: LoggedSet? = nil, skipped: Bool = false, note: String? = nil) {
         self.id = id
@@ -67,6 +70,7 @@ extension LiveSet {
         skipped = try c.decodeIfPresent(Bool.self, forKey: .skipped) ?? false
         note = try c.decodeIfPresent(String.self, forKey: .note)
         planned = try c.decodeIfPresent(SetPrescription.self, forKey: .planned)
+        fatigue = try c.decodeIfPresent(FatigueBasis.self, forKey: .fatigue)
     }
 }
 
@@ -99,27 +103,53 @@ public struct LiveItem: Codable, Hashable, Sendable, Identifiable {
     public var takesMoreSets: Bool { plan.conditioning == nil && plan.role != .conditioning && plan.role != .recovery }
 
     /// Adapts the exercise's open work sets to a rated set: the next one gets the adjustment and its
-    /// message, and every later one the same numbers; a rep-out keeps its kind. Nil when no open
-    /// work set is left after it.
+    /// message, and every later one the same weight, its reps falling on from the next one's as
+    /// fatigue says; a rep-out keeps its kind. Nil when no open work set is left after it.
     mutating func adjustOpenSets(after logged: LoggedSet, at index: Int, environment: SessionEnvironment) -> SetAdjustment? {
         guard let next = sets.indices.first(where: { $0 > index && sets[$0].isOpen && sets[$0].prescription.kind != .warmup }) else { return nil }
         let exercise = environment.catalog.resolve(exerciseID)
         let context = Autoregulation.Context(
             exercise: exercise, increments: environment.increments(for: exercise), trust: environment.trust,
-            repRange: plan.repRange, verifiedAlready: verified, hasSafeties: environment.gym.hasSafeties)
+            repRange: plan.repRange, verifiedAlready: verified, hasSafeties: environment.gym.hasSafeties,
+            restSeconds: plan.rest.target > 0 ? plan.rest.target : SetFatigue.typicalRest)
         let result = Autoregulation.next(after: logged, planned: sets[next].prescription, context: context)
         if result.kind == .verify { verified = true }
+        var updated = result.next
+        var basis = result.fatigue
         for later in sets.indices where later >= next && sets[later].isOpen {
-            var updated = result.next
-            if sets[later].prescription.kind == .repOut {
-                updated.kind = .repOut
-                updated.targetRIR = 0
-                updated.stopAtFormBreakdown = sets[later].prescription.stopAtFormBreakdown
+            // Each later set as if the one before it comes out as aimed; they're worked out again
+            // as each is logged, lighter by then if the reps would fall below the range.
+            if later > next, let following = basis?.following {
+                basis = following
+                updated.targetReps = min(updated.targetReps, max(plan.repRange.lower, following.reps()))
             }
-            sets[later].prescription = updated
+            var set = updated
+            if sets[later].prescription.kind == .repOut {
+                set.kind = .repOut
+                set.targetRIR = 0
+                set.stopAtFormBreakdown = sets[later].prescription.stopAtFormBreakdown
+            }
+            sets[later].prescription = set
             sets[later].note = later == next ? result.message : nil
+            sets[later].fatigue = later == next ? result.fatigue : nil
         }
         return result
+    }
+
+    /// A rest cut short (skipped, or ended by a recovered heart rate) leaves less in the next set:
+    /// its reps are worked out again for the rest taken, and the sets after it follow on.
+    mutating func retarget(next index: Int, restTaken seconds: Int) {
+        guard let basis = sets[index].fatigue, seconds < basis.restSeconds else { return }
+        let reps = basis.reps(restSeconds: seconds)
+        guard reps < sets[index].prescription.targetReps else { return }
+        sets[index].prescription.targetReps = reps
+        sets[index].note = "A shorter rest, so aim for \(reps)."
+        var following = FatigueBasis(
+            capacity: Double(reps) + basis.aim, reserve: basis.aim, aim: basis.aim, scale: basis.scale, restSeconds: basis.restSeconds)
+        for later in sets.indices where later > index && sets[later].isOpen && sets[later].prescription.kind != .warmup {
+            sets[later].prescription.targetReps = min(sets[later].prescription.targetReps, max(plan.repRange.lower, following.reps()))
+            following = following.following
+        }
     }
 
     /// A finding-weight set with no load yet takes the weight just used.
@@ -248,7 +278,10 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return nil }
         var item = items[index]
         let prescription = item.sets[setIndex].prescription
-        let restBefore = rest.map { Int(now.timeIntervalSince($0.started)) }
+        // From the exercise's last set when there is one, so a skipped rest still counts, and in a
+        // superset it's the time this exercise had, its partner's set included.
+        let previous = item.sets.compactMap { $0.logged?.date }.max()
+        let restBefore = (previous ?? rest?.started).map { Int(now.timeIntervalSince($0)) }
         let logged = LoggedSet(
             exerciseID: item.exerciseID, date: now, kind: prescription.kind, loadKg: loadKg ?? prescription.loadKg ?? 0,
             reps: reps, targetReps: prescription.targetReps, rating: prescription.kind == .warmup ? nil : rating,
@@ -304,6 +337,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         for i in item.sets.indices where item.sets[i].isOpen {
             if let planned = item.sets[i].planned { item.sets[i].prescription = planned }
             item.sets[i].note = nil
+            item.sets[i].fatigue = nil
         }
         item.verified = false
         var last: SetAdjustment?
@@ -477,7 +511,12 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
             preSetHeartRate: preSet, filler: item.plan.restFiller)
     }
 
+    /// Ends the rest: skipped, recovered, or the next exercise taken first. When the next set is the
+    /// same exercise's and the rest was shorter than its reps assumed, they're worked out again.
     public mutating func endRest(now: Date = Date()) {
+        if let rest, let current, items[current.item].id == rest.itemID, items[current.item].plan.supersetGroup == nil {
+            items[current.item].retarget(next: current.set, restTaken: Int(now.timeIntervalSince(rest.started)))
+        }
         rest = nil
         updatedAt = now
     }

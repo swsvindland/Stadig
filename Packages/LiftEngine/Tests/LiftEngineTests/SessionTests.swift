@@ -347,6 +347,39 @@ struct SessionTests {
             heartRateGuidedRest: true)
     }
 
+    @Test("after a just-right set the weight holds and the reps fall set to set, and a rest cut short lowers them")
+    func repsFallAndShortRestsCount() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        // 225 lb squats, 4 × 8 in a 5–8 range, with the 150 s a heavy compound gets.
+        var squat = lift("barbell-back-squat", load: 102.5, rest: RestPlan(target: 150, minimum: 150, heartRateGuided: false))
+        squat.repRange = RepRange(5, 8)
+        squat.sets = (0..<4).map { _ in SetPrescription(kind: .working, loadKg: 102.5, targetReps: 8, targetRIR: 2) }
+        var live = session([squat], at: start)
+        live.log(item: 0, set: 0, reps: 8, loadKg: 102.5, rating: .orange, environment: environment, now: start.addingTimeInterval(30))
+        let sets = live.items[0].sets
+        #expect(sets.allSatisfy { $0.prescription.loadKg == 102.5 })
+        let targets = sets.map(\.prescription.targetReps)
+        #expect((6...7).contains(targets[1]), "\(targets)")
+        #expect(targets[2] < targets[1] && targets[3] <= targets[2] && targets[3] >= 5, "\(targets)")
+        #expect(sets[1].fatigue != nil && sets[2].fatigue == nil)
+        // Skipped 40 seconds in: fewer reps for the next set, and for the ones after it.
+        live.endRest(now: start.addingTimeInterval(70))
+        let shorter = live.items[0].sets
+        #expect(shorter[1].prescription.targetReps < targets[1])
+        #expect(shorter[1].note == "A shorter rest, so aim for \(shorter[1].prescription.targetReps).")
+        #expect(shorter[2].prescription.targetReps <= shorter[1].prescription.targetReps)
+        // The rest is counted from the last set, though the timer was skipped.
+        live.log(item: 0, set: 1, reps: 5, loadKg: 102.5, rating: .orange, environment: environment, now: start.addingTimeInterval(120))
+        #expect(live.items[0].sets[1].logged?.restBeforeSeconds == 90)
+        // A rest that runs its course changes nothing.
+        let before = live.items[0].sets[2].prescription
+        live.endRest(now: start.addingTimeInterval(120 + 150))
+        #expect(live.items[0].sets[2].prescription == before)
+        // Five just right at the bottom of the range: the third set comes down a little to stay in it.
+        #expect((live.items[0].sets[2].prescription.loadKg ?? 999) < 102.5)
+        #expect(live.items[0].sets[2].prescription.targetReps == 5)
+    }
+
     @Test("a superset done ahead of an open lift alternates, with the 20-second changeover")
     func supersetDoneNext() throws {
         let start = Fixture.start.date().addingTimeInterval(18 * 3600)
