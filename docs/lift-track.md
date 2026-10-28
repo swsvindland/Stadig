@@ -16,18 +16,23 @@ Everything the hub and every app must agree on lives here, so scores are identic
   - Imbalances become priorities, e.g. "legs are well ahead of upper body, so upper body comes first".
 - **RPE trust calibration** (`TrustState`, `Calibration`)
   - Trust starts from experience: novices 0.3, 1–3 years 0.5, 3+ years 0.7.
-  - It moves only on evidence. A rep-out right after a rated set reveals the true reserve, and a heavier later set proves more was left.
+  - It moves only on evidence. A rep-out right after a rated set reveals the true reserve, and a heavier later set proves more was left. The sets in between are allowed for by `SetFatigue` (how hard each was and the rest after it), with a fifth of that fatigue as the benefit of the doubt, since tiring more looks just like overrating.
   - Contradictions count more than confirmations, because "0–2 left" is often right by chance.
   - Machines (safe to fail) calibrate it. Free-weight ratings use the result.
   - Trust is rebuilt from the session history every time, so devices never disagree.
-- **Set-to-set autoregulation** (`Autoregulation`)
-  - Easy bumps the weight, or the reps when load steps are coarse.
-  - Just right holds. Missed drops slightly ("missed reps are just data").
-  - Finding-weight sets keep moving until a set rates Just right.
-  - With low trust, verification pushes run on safe setups only: machines, or a rack with safeties.
+- **Set-to-set autoregulation** (`Autoregulation`, `SetFatigue`)
+  - Reps fall from set to set at the same weight, and that still builds muscle, so it's planned for rather than called a miss. `SetFatigue` says how much a set takes from the next: more after a set near failure, after a short rest, and on lifts with a high systemic cost (squats and deadlifts more than a machine press). 225 lb squats for 8 rated Just right, with 150 s of rest, expect 6 next and 7 after three minutes.
+  - Easy bumps the weight, or the reps when load steps are coarse, from what's left after the rest.
+  - Just right holds the weight and aims for the reps the rest gives back ("Same weight, aim for 6: reps fall a bit as the sets add up"). At the bottom of the range it takes a little off instead, to stay in the range.
+  - Missed holds the weight while the reps, with a rep in hand, stay in the range ("Missed reps are just data. Same weight, aim for 5"), and drops slightly below it.
+  - The sets after the next one carry on falling as if each comes out as aimed, never shown below the range; each is worked out again as the one before is logged.
+  - A rest cut short (skipped, or ended by a recovered heart rate) works the next set out again for the rest taken ("A shorter rest, so aim for 5."). A rest that runs long changes nothing. The rest before a set is counted from the exercise's last set, so a skipped timer still records it.
+  - Finding-weight sets keep moving until a set rates Just right; the next one then holds that weight with the reps falling.
+  - With low trust, verification pushes run on safe setups only: machines, or a rack with safeties. They ask for the reps the rest gives back, one step up.
 - **Progression and stalls** (`Progression`, `Stalls`)
   - The target reps in reserve fall across the block, RP-style.
   - Fine increments progress by load. Coarse ones (dumbbells, stacks, bodyweight) use double progression.
+  - A missed first set holds the next session back, and so do two later misses that fatigue doesn't explain (more than a rep short of what the set before left after its rest). Reps falling set to set don't.
   - Deloads and injury ramps adjust the targets. A deload during a ramp scales the load actually lifted, so an assisted lift gets more help, not less, and loads stay on the gym's steps.
   - A session is the sets logged with no gap of more than three hours, so a workout that runs past midnight is one session.
   - A stall is three or more weeks without a new best. It's read by phase: expected in a cut, a recovery problem when beat up, a programming problem otherwise. Each reading comes with a progressive-overload prompt, built on the top set of the last session that wasn't a deload.
