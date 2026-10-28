@@ -203,6 +203,8 @@ public enum ProgramGenerator {
 struct Builder {
     let input: GeneratorInput
     let emphasis: GoalEmphasis
+    /// The new block's. A refit's `previous` is the block it refits, so a refit never chooses ranges.
+    let focus: BlockFocus
     let availability: Availability
     var reasons: [String] = []
     var priorities: [TrainingPriority] = []
@@ -213,7 +215,24 @@ struct Builder {
     init(input: GeneratorInput) {
         self.input = input
         emphasis = GoalEmphasis.combined(input.profile.goals)
+        focus = Self.focus(for: emphasis, kind: input.kind, after: input.previous?.focus)
         availability = input.gym.availability
+    }
+
+    /// Goals that lean one way get that focus every block. Goals that want both alternate, a size
+    /// block and then a strength block, so each block trains one well and the next builds on it.
+    /// The assessment sits in between, so either can start from the weights it finds.
+    static func focus(for emphasis: GoalEmphasis, kind: BlockKind, after previous: BlockFocus?) -> BlockFocus {
+        if let leaning = leaning(emphasis) { return leaning }
+        if kind == .assessment { return .mixed }
+        return previous == .hypertrophy ? .strength : .hypertrophy
+    }
+
+    /// The focus goals lean to, if they lean one way.
+    static func leaning(_ emphasis: GoalEmphasis) -> BlockFocus? {
+        if emphasis.strength > emphasis.hypertrophy + 0.1 { return .strength }
+        if emphasis.hypertrophy > emphasis.strength + 0.1 { return .hypertrophy }
+        return nil
     }
 
     // MARK: Priorities
@@ -362,18 +381,20 @@ struct Builder {
 
     // MARK: Volume
 
-    /// Main lifts lean on the goal: strength ranges for strength, hypertrophy ranges for size, and
-    /// in between when both matter.
+    /// Main lifts follow the block's focus: strength ranges, hypertrophy ranges, or in between.
     func repRange(for exercise: Exercise, role: SlotRole) -> RepRange {
         guard role == .main else { return exercise.reps.hypertrophy }
-        if emphasis.strength > emphasis.hypertrophy + 0.1 { return exercise.reps.strength }
-        if emphasis.hypertrophy > emphasis.strength + 0.1 { return exercise.reps.hypertrophy }
-        let lower = max(exercise.reps.strength.lower, min(5, exercise.reps.hypertrophy.lower))
-        return RepRange(lower, max(lower + 2, min(exercise.reps.hypertrophy.upper, lower + 3)))
+        switch focus {
+        case .strength: return exercise.reps.strength
+        case .hypertrophy: return exercise.reps.hypertrophy
+        case .mixed:
+            let lower = max(exercise.reps.strength.lower, min(5, exercise.reps.hypertrophy.lower))
+            return RepRange(lower, max(lower + 2, min(exercise.reps.hypertrophy.upper, lower + 3)))
+        }
     }
 
     func rest(for exercise: Exercise, role: SlotRole) -> Int {
-        role == .main && emphasis.strength > emphasis.hypertrophy + 0.1 ? exercise.rest.strength : exercise.rest.hypertrophy
+        role == .main && focus == .strength ? exercise.rest.strength : exercise.rest.hypertrophy
     }
 
     func weeklySets(base: Int, emphasis e: Double, role: SlotRole) -> [Int] {
@@ -443,7 +464,7 @@ struct Builder {
             deloadWeeks: input.kind == .assessment ? 0 : 1)
         return Mesocycle(
             block: block, split: split, days: days, priorities: priorities, rationale: rationale(split: split, days: days),
-            minutesPerSession: minutes, phase: input.phase)
+            minutesPerSession: minutes, phase: input.phase, focus: focus)
     }
 
     func slotReason(_ exercise: Exercise, emphasis e: Double, request: SlotRequest) -> String? {
@@ -899,6 +920,16 @@ struct Builder {
 
     // MARK: Why
 
+    /// Why the main lifts use the ranges they do, when the goals want both and the blocks take turns.
+    var focusReason: String? {
+        guard input.kind != .assessment, Self.leaning(emphasis) == nil else { return nil }
+        return switch focus {
+        case .strength: "A strength block: the main lifts go heavier for fewer reps, with longer rests. The next block turns to size."
+        case .hypertrophy: "A size block: the main lifts use higher reps, for muscle. The next block turns to strength."
+        case .mixed: nil
+        }
+    }
+
     func rationale(split: SplitKind, days: [PlannedDay]) -> Rationale {
         var list: [String] = []
         let headline: String
@@ -922,6 +953,7 @@ struct Builder {
         }
         list.append(
             "\(split.label), \(days.count) day\(days.count == 1 ? "" : "s") a week, about \(input.profile.schedule.minutesPerSession) minutes each.")
+        if let reason = focusReason { list.append(reason) }
         for priority in priorities where priority.emphasis != 0 { list.append(priority.reason) }
         // Gaps the waist drives get no extra volume; say why.
         if input.settings.autoPrioritise, input.kind == .standard {

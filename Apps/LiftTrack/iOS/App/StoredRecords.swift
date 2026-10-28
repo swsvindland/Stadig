@@ -28,7 +28,9 @@ nonisolated extension Gym: @retroactive StoredRecord {
 
 nonisolated extension Mesocycle: @retroactive StoredRecord {
     public static var kind: String { "mesocycle" }
-    public static var schemaVersion: Int { 1 }
+    /// 2 added the block's focus, which the next block takes turns from: a version that only knows
+    /// 1 would drop it when it saved the block, so it leaves these out. 1 reads as no focus.
+    public static var schemaVersion: Int { 2 }
 }
 
 nonisolated extension SessionRecord: @retroactive StoredRecord {

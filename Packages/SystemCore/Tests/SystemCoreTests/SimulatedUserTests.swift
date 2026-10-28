@@ -142,6 +142,57 @@ struct SimulatedUserTests {
         #expect(late > early * 1.05, "leg extension \(early) → \(late)")
     }
 
+    @Test("Strength and size blocks take turns: the reps change block to block and the lifter still progresses")
+    func alternatingBlocks() {
+        // The assessment's in-between range, then size, strength and size again, on the bench only:
+        // accessories keep their hypertrophy ranges whatever the block.
+        func slots(_ bench: [RepRange]) -> [TrainingSimulation.Slot] {
+            [
+                Self.slots[0],
+                TrainingSimulation.Slot(
+                    exercise: .bench, increments: FixedIncrements(stepKg: 2.5), sets: 3, repRange: RepRange(5, 8), blockRanges: bench),
+                Self.slots[2],
+            ]
+        }
+        var sim = TrainingSimulation(lifter: .realFatigue, slots: slots([RepRange(5, 8), RepRange(6, 10), RepRange(3, 6), RepRange(6, 10)]))
+        sim.run(weeks: 24)
+        let lifter = SimulatedLifter.realFatigue
+        let bench = sim.history[TestExercise.bench.id] ?? []
+        let sessions = Dictionary(grouping: bench) { sim.startDate.days(until: Day($0.date)) / 7 }
+        func block(_ week: Int) -> Int { week / (sim.loadingWeeks + 1) }
+        let loading = sessions.filter { $0.key % (sim.loadingWeeks + 1) != sim.loadingWeeks }
+
+        // Every session aims for the middle of its block's range: 7, then 8, 5 and 8.
+        for (week, sets) in loading {
+            let first = sets.first { $0.kind == .working || $0.kind == .findingWeight }
+            #expect(first?.targetReps == [7, 8, 5, 8][block(week)], "week \(week): \(String(describing: first))")
+        }
+        func peak(_ index: Int) -> Double {
+            loading.filter { block($0.key) == index }.flatMap(\.value).filter { $0.kind == .working }.map(\.loadKg).max() ?? 0
+        }
+        // The strength block goes heavier than the size block before it, and the next size block
+        // starts lighter instead of within a step of the strength block's heaviest, without a miss.
+        #expect(peak(2) > peak(1) + 5, "strength \(peak(2)) vs size \(peak(1))")
+        let restart = (sessions[18] ?? []).first { $0.kind == .working }
+        #expect((restart?.loadKg ?? .infinity) < peak(2) - 2.5 * 2, "\(String(describing: restart)) after \(peak(2))")
+        #expect(restart?.rating != .red)
+        // Size block to size block, the weights still climb.
+        #expect(peak(3) > peak(1), "\(peak(1)) → \(peak(3))")
+        let truth = lifter.trueE1RM(TestExercise.bench.id, week: 24)
+        let estimate = sim.estimate(.bench) ?? 0
+        #expect(abs(estimate / truth - 1) < 0.12, "estimate \(estimate) vs true \(truth)")
+
+        // Taking turns leaves calibration where a size range throughout does. (At size reps this
+        // lifter's bench pushes after an easy set come up a little short, so both read slightly
+        // overconfident; trust still rises.)
+        var size = TrainingSimulation(lifter: .realFatigue, slots: slots([RepRange(5, 8), RepRange(6, 10)]))
+        size.run(weeks: 24)
+        #expect(sim.trust.score > lifter.experience.startingTrust + 0.1, "trust \(sim.trust.score)")
+        #expect(abs(sim.trust.bias - size.trust.bias) < 0.15, "bias \(sim.trust.bias) vs \(size.trust.bias) at size reps throughout")
+        let sets = sim.slots.flatMap { sim.history[$0.exercise.id] ?? [] }
+        #expect(Double(sets.filter { $0.rating == .red }.count) < Double(sets.count) * 0.2)
+    }
+
     @Test("Free-weight rep-outs are only offered to lifters who've earned them")
     func failureTiers() {
         let novice = TrustState(experience: .novice)

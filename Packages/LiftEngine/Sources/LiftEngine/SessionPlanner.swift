@@ -207,6 +207,7 @@ public enum SessionPlanner {
             case .before: 0
             case .after, .deload: block.loadingWeeks - 1
             }
+        let firstWeek = !deload && (blockWeek == .loading(0) || blockWeek == .before)
         let gym = context.todaysGym
         let availability = gym.availability
         let catalog = context.catalog
@@ -216,7 +217,7 @@ public enum SessionPlanner {
         if assessment {
             notes.append(
                 week < 2
-                    ? "Assessment week \(week + 1): for anything new, pick a weight you think you can do for 10 and rate it. The next set adjusts."
+                    ? "Assessment week \(week + 1): for anything new, pick a weight you think you can do for the reps shown, and rate it. The next set adjusts."
                     : "Assessment week \(week + 1): progressive sets to check your ratings and spot imbalances.")
         }
         if blockWeek == .deload && !light { notes.append("Deload: fewer sets, lighter, nowhere near failure. Mobility and Zone 2 stay.") }
@@ -256,7 +257,7 @@ public enum SessionPlanner {
                 if life.reentry { sets = max(slot.role == .main ? 2 : 1, sets - 1) }
                 let target = SlotTarget(
                     sets: sets, repRange: slot.repRange, targetRIR: rir, deload: deload,
-                    repOut: repOutSlots.contains(slot.id))
+                    repOut: repOutSlots.contains(slot.id), firstWeek: firstWeek)
                 let progression = ProgressionContext(
                     exercise: exercise, increments: gym.increments(for: exercise.equipment), trust: context.trust,
                     phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),

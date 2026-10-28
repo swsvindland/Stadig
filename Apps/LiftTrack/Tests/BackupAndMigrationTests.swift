@@ -84,6 +84,22 @@ struct BackupAndMigrationTests {
         #expect(model.lifeModes.map(\.id) == [trip.id])
     }
 
+    @Test("A block stored before blocks had a focus reads as none, with its days intact")
+    func mesocycleVersion1() async throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        var block = try #require(model.mesocycles.first)
+        block.id = UUID()
+        var json = try object(block)
+        json.removeValue(forKey: "focus")
+        try await model.importBackup(
+            from: write(BackupFile(app: .liftTrack, records: [try record(Mesocycle.kind, id: block.id, version: 1, json)]), in: app))
+        let restored = try #require(model.mesocycles.first { $0.id == block.id })
+        #expect(restored.focus == nil)
+        #expect(restored.days == block.days)
+        #expect(restored.block == block.block)
+    }
+
     @Test("A backup brings everything back on a fresh install")
     func backupRoundTrip() async throws {
         let first = TestApp()

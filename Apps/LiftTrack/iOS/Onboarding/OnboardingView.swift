@@ -352,7 +352,7 @@ struct OnboardingView: View {
             header("Your first \(weeks) weeks", "Useful from day one: good workouts and fast logging while Stadig Lift learns.")
             VStack(alignment: .leading, spacing: 14) {
                 Label(
-                    "Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for 10 and rate it.",
+                    "Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for the reps shown, and rate it.",
                     systemImage: "1.circle.fill")
                 Label(
                     "Machines get the occasional all-out set. They're safe to fail, and they show how well your ratings match reality.",

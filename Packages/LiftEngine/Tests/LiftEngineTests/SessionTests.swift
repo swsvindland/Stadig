@@ -76,11 +76,40 @@ struct SessionTests {
         let strength = plan.items.filter(\.isStrength)
         #expect(!strength.isEmpty)
         #expect(strength.allSatisfy { $0.workSets.allSatisfy { $0.kind == .findingWeight && $0.loadKg == nil } })
+        // Each weight is found at the middle of its range, where the blocks after aim.
+        #expect(strength.allSatisfy { item in item.workSets.allSatisfy { $0.targetReps == item.repRange.middle } })
         // Heavy lifts still warm up, toward a guess at the working weight.
         let squat = strength.first { Fixture.catalog.resolve($0.exerciseID).equipment == .barbell && $0.role == .main }
         #expect(squat.map { $0.sets.contains { $0.kind == .warmup && ($0.loadKg ?? 0) > 0 } } ?? true)
         #expect(plan.assessment)
         #expect(plan.notes.first?.contains("pick a weight") == true)
+    }
+
+    @Test("a size block's first week comes down to its reps after a strength block; later weeks hold within a step")
+    func aBlocksFirstWeekStartsLighter() throws {
+        let profile = Fixture.profile()
+        let bench = "barbell-bench-press"
+        let slot = SlotPlan(exerciseID: bench, role: .main, sets: [3], repRange: RepRange(6, 10), restSeconds: 150)
+        let day = PlannedDay(name: "Upper A", focus: .upper, blocks: [SessionBlockPlan(kind: .main, minutes: 20, slots: [slot])])
+        let m = Mesocycle(
+            block: TrainingBlock(kind: .standard, start: Fixture.start, loadingWeeks: 5), split: .upperLower, days: [day], priorities: [],
+            rationale: Rationale(headline: ""), minutesPerSession: 60, phase: .assumedMaintenance, focus: .hypertrophy)
+        // The strength block's last bench session: 100 × 5, just right.
+        let last = Fixture.start.adding(days: -5).date().addingTimeInterval(18 * 3600)
+        let history = [
+            bench: (0..<3).map {
+                LoggedSet(
+                    exerciseID: bench, date: last.addingTimeInterval(Double($0) * 180), loadKg: 100, reps: 5, rating: .orange,
+                    restBeforeSeconds: $0 == 0 ? nil : 180)
+            }
+        ]
+        func working(on date: Day) throws -> SetPrescription {
+            try #require(SessionPlanner.plan(day, of: m, on: date, context: context(profile, history: history)).items.first?.workSets.first)
+        }
+        let first = try working(on: Fixture.start)
+        #expect(first.targetReps == 8)
+        #expect((first.loadKg ?? 0) <= 90, "\(String(describing: first.loadKg))")
+        #expect(try working(on: Fixture.start.adding(weeks: 1)).loadKg == 97.5)
     }
 
     @Test func crunchModeIsTheMinimumEffectiveDose() {
@@ -538,6 +567,8 @@ struct JourneyTests {
         input.trust = analysis.trust
         let block = ProgramGenerator.generate(input)
         #expect(block.rationale.headline.contains("comes first"))
+        // Bigger and stronger: the assessment's weights lead into a size block.
+        #expect(assessment.focus == .mixed && block.focus == .hypertrophy)
         #expect(block.block.loadingWeeks == 5)
         let summary = Analyst.summary(state, analysis)
         #expect(summary.strength != nil)
