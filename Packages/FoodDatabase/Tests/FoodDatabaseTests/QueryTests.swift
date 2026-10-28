@@ -158,6 +158,22 @@ struct QueryTests {
         #expect(profile([food(360, 9, 82, 2), food(350, 8, 85, 2), food(370, 10, 80, 2)]) == nil)
     }
 
+    @Test("a food named after the one searched for ranks below it")
+    func namedAfter() {
+        func packaged(_ name: String) -> Food { Food(id: "off:\(name)", name: name, brand: "Acme", basis: .g, nutrients: .zero, source: .off) }
+        let cakes = [
+            "Celebration Cake Pretzels", "Cinnamon Coffee Cake Muffins", "Cinnamon Coffee Cake", "Chocolate Cake with Fudge Filling",
+            "Carrot Cake Cookies",
+        ]
+        let ranked = rankSearch("cake", cakes.map(packaged)).map(\.food.name)
+        // Filling after "with" is what's in the cake, not what the cake is made into.
+        #expect(Set(ranked.prefix(2)) == ["Cinnamon Coffee Cake", "Chocolate Cake with Fudge Filling"], "\(ranked)")
+        // Asked for by name, the other food comes first.
+        #expect(rankSearch("cake pretzels", cakes.map(packaged)).first?.food.name == "Celebration Cake Pretzels")
+        let spreads = rankSearch("peanut butter", ["Peanut Butter Cups", "Creamy Peanut Butter"].map(packaged)).map(\.food.name)
+        #expect(spreads == ["Creamy Peanut Butter", "Peanut Butter Cups"])
+    }
+
     @Test("restaurant and packaged foods are recognized as branded")
     func branded() {
         func usda(_ name: String) -> Food { Food(id: "usda:1", name: name, basis: .g, nutrients: .zero, source: .usda) }
