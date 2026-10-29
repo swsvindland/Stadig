@@ -70,6 +70,7 @@ nonisolated final class LoggingUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData", "-log", "quickAdd"])
 
         app.element("quickAdd.kcal").waitToAppear().type("500")
+        app.closeNumberPad()
         app.element("quickAdd.protein").type("30")
         app.closeNumberPad()
         let add = app.element("quickAdd.add")
