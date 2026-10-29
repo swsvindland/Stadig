@@ -137,6 +137,7 @@ The program generator works like this:
   - **60 minutes:** five easy minutes on a bike or rower and three drills, the limiter slot, the main lifts, a few accessories and brief conditioning.
   - **90 minutes:** a fuller warm-up, more sets and a 20–30 minute conditioning finisher.
   - Time the lifting doesn't use goes to more sets first (main lifts up to four work sets, accessories up to three), but only as far as the week's recovery budget allows, then to conditioning; no lift is ever a single set. When the budget is what keeps a session short, it says so ("About 45 minutes today, under your 60…") rather than leaving the hour feeling unfinished.
+  - **Every scored lift each week:** when the budget would leave one out of the whole week (a third scored lift behind two main lifts at strength rests), the first day that had it fits it again, ahead of the cheaper accessories after it but behind a priority put first: at its sets if conditioning's minutes above its minimum make room, else at two sets, else that day's conditioning becomes a quest and the time it frees gives the main lifts their sets back first. The slot and the Why? say so. Plans that already train every scored lift don't change, and "Short on time?" doesn't do this.
 - **"Short on time today?"** refits the day to 30, 45, 60 or 90 minutes. A refit weighs the same fatigue, priorities and recommendations as a new block and gives the same day each time. Lengthening a 30-minute day undoes its supersets and the drills in its rests.
 
 **Session planning** turns a day into exact sets:
