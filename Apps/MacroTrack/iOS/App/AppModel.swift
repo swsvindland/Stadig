@@ -129,6 +129,12 @@ final class AppModel {
     private(set) var logAgain: [LogAgainItem] = []
     /// Every saved meal, best first for now.
     private(set) var mealSuggestions: [MealSuggestion] = []
+    /// Log Again, saved meals and "Same as" for the time the open logger logs at, when that isn't
+    /// now (a picked time, or a past day): lunch for noon, even when caught up at 9 PM.
+    private(set) var timedSuggestions: TimedSuggestions?
+    /// The times of day this person usually eats, on the selected day, with what they last ate at
+    /// each: the past day's catch-up, and times to pick in the logger.
+    private(set) var usualTimes: [UsualMeal] = []
     /// Foods this person logs, for search ranking and last-used portions.
     private(set) var personal: [PersonalFood] = [] {
         didSet { personalVersion &+= 1 }
@@ -151,7 +157,9 @@ final class AppModel {
     /// When a logger's foods were eaten; nil is now (or this time of day, on a past day). Only while
     /// the logger is open: it's cleared when the logger closes or the day changes, so a later one-tap
     /// log doesn't land at a time picked hours (or a day) before.
-    var loggerTime: Date?
+    var loggerTime: Date? {
+        didSet { if loggerTime != oldValue { refreshTimedSuggestions() } }
+    }
     var showSettings = false
     var showPaywall = false
     var showWeighIn = false
@@ -182,7 +190,11 @@ final class AppModel {
     var today: Day = .today
     /// The day Today shows and logs to: today, or a day being caught up.
     var selectedDay: Day = .today {
-        didSet { if selectedDay != oldValue { loggerTime = nil } }
+        didSet {
+            guard selectedDay != oldValue else { return }
+            loggerTime = nil
+            refreshCatchUp()
+        }
     }
 
     /// The shared container mirrored to the person's other devices through the family's CloudKit
@@ -417,6 +429,7 @@ final class AppModel {
         let now = Date()
         logAgain = LogAgain.rank(entries, now: now)
         mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
+        refreshCatchUp()
         guard let state else {
             analysis = nil
             return
@@ -801,6 +814,27 @@ final class AppModel {
         let now = Date()
         let nearby = Timeline.moments(entries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
         return nearby ? nil : LogAgain.usualMoment(near: now, entries: entries)
+    }
+
+    /// Reads the selected day's usual times again, then the logger's suggestions for its time.
+    func refreshCatchUp() {
+        usualTimes = UsualMeals.on(selectedDay, entries: entries, today: today)
+        refreshTimedSuggestions()
+    }
+
+    /// Ranks the logger's suggestions for the time it logs at; nil while that's now, when the
+    /// clock's own (`logAgain`, `mealSuggestions`, `usualNow`) are the same thing.
+    func refreshTimedSuggestions() {
+        guard loggerTime != nil || selectedDay != today else {
+            timedSuggestions = nil
+            return
+        }
+        let now = Date()
+        let time = logDate()
+        timedSuggestions = TimedSuggestions(
+            time: time, logAgain: LogAgain.rank(entries, now: now, at: time),
+            meals: SavedMeals.rank(savedMeals, entries: entries, now: now, at: time),
+            usual: LogAgain.usual(at: time, entries: entries, today: today))
     }
 
     func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {

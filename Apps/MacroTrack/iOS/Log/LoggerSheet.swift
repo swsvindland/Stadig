@@ -134,6 +134,14 @@ struct TimeMenu: View {
                     Button(LogTime.ago(minutes)) { model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60) }
                 }
             }
+            let usual = model.usualLogTimes()
+            if !usual.isEmpty {
+                Section("Usually") {
+                    ForEach(usual, id: \.self) { time in
+                        Button(Format.time(time)) { model.loggerTime = time }
+                    }
+                }
+            }
             Button("Pick a time…", systemImage: "clock") { picking = true }
         } label: {
             HStack(spacing: 4) {
@@ -163,9 +171,21 @@ struct LogTimeBar: View {
                         model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60)
                     }
                 }
-            } else {
+            } else if usual.isEmpty {
                 Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.medium)).padding(.leading, 8)
                 Spacer(minLength: 0)
+            } else {
+                // Catching up a day: the times this person usually eats, so "noon, then 3, then 7"
+                // is a tap each, with the search's suggestions following.
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(usual, id: \.self) { time in
+                            chip(Format.time(time), selected: model.loggerTime == time) { model.loggerTime = time }
+                                .accessibilityIdentifier("logger.usualTime")
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
             }
             Button {
                 picking = true
@@ -194,9 +214,13 @@ struct LogTimeBar: View {
         .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
     }
 
+    /// A past day's usual times, as chips.
+    var usual: [Date] { model.selectedDay == model.today ? [] : model.usualLogTimes() }
+
     /// A time picked on the wheel rather than with a chip.
     var custom: String? {
         guard model.loggerTime != nil || model.selectedDay != model.today else { return nil }
+        if let picked = model.loggerTime, usual.contains(picked) { return nil }
         let label = LogTime.label(model)
         return LogTime.recent.map(LogTime.ago).contains(label) ? nil : LogTime.time(model)
     }
@@ -213,6 +237,7 @@ struct LogTimeBar: View {
         }
         .buttonStyle(.plain)
         .hoverHighlight()
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -223,28 +248,50 @@ struct TimePickerSheet: View {
     @State private var time = Date()
 
     var body: some View {
+        let usual = model.usualLogTimes()
         NavigationStack {
-            DatePicker("Eaten at", selection: $time, displayedComponents: .hourAndMinute)
-                .timeOfDayPickerStyle()
-                .labelsHidden()
-                .frame(maxWidth: .infinity)
-                .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
-                .inlineTitle()
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.accessibilityIdentifier("timePicker.cancel")
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            let picked = model.onSelectedDay(time)
-                            model.loggerTime = model.selectedDay == model.today ? LogTime.nearest(picked) : picked
-                            dismiss()
+            VStack(spacing: 8) {
+                // The times this person usually eats (today's up to now), a tap each: lunch at 12:30
+                // without winding the wheel back from 9 PM.
+                if !usual.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            ForEach(usual, id: \.self) { time in
+                                Button(Format.time(time)) {
+                                    model.loggerTime = time
+                                    dismiss()
+                                }
+                                .buttonStyle(.bordered)
+                                .buttonBorderShape(.capsule)
+                                .accessibilityIdentifier("timePicker.usual")
+                            }
                         }
-                        .accessibilityIdentifier("timePicker.done")
+                        .padding(.horizontal)
                     }
+                    .scrollIndicators(.hidden)
                 }
+                DatePicker("Eaten at", selection: $time, displayedComponents: .hourAndMinute)
+                    .timeOfDayPickerStyle()
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+            }
+            .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
+            .inlineTitle()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("timePicker.cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        let picked = model.onSelectedDay(time)
+                        model.loggerTime = model.selectedDay == model.today ? LogTime.nearest(picked) : picked
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("timePicker.done")
+                }
+            }
         }
-        .presentationDetents([.height(300)])
+        .presentationDetents([.height(usual.isEmpty ? 300 : 352)])
         .onAppear { time = model.logDate() }
     }
 }
@@ -268,16 +315,25 @@ struct SearchLogView: View {
                     ModeShortcuts(mode: $mode)
                         .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 }
-                if !model.mealSuggestions.isEmpty {
+                // Saved meals and Log Again follow the time being logged at: lunch for noon, even
+                // when it's caught up at 9 PM. A usual moment that is a saved meal is in My Meals.
+                if let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
+                    Section("Same as \(Format.relative(Day(usual.start), today: model.today))") {
+                        UsualMomentRow(moment: usual)
+                    }
+                }
+                let suggested = model.loggerMeals
+                if !suggested.isEmpty {
                     Section("My meals") {
-                        ForEach(model.mealSuggestions.prefix(20)) { suggestion in
+                        ForEach(suggested.prefix(20)) { suggestion in
                             mealRow(suggestion.meal)
                         }
                     }
                 }
-                if !model.logAgain.isEmpty {
-                    Section("Log again") {
-                        ForEach(model.logAgain.prefix(12)) { item in
+                let again = model.loggerLogAgain
+                if !again.isEmpty {
+                    Section(model.timedSuggestions == nil ? "Log again" : "Log again for \(LogTime.time(model))") {
+                        ForEach(again.prefix(12)) { item in
                             RecentRow(item: item, open: { open(item) })
                         }
                     }
@@ -318,6 +374,8 @@ struct SearchLogView: View {
             }
         }
         .insetGroupedList()
+        // The time bar's usual times take the weekday's place there on a day being caught up.
+        .navigationTitle(model.selectedDay == model.today ? "" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide)))
         .searchable(text: $query, placement: .alwaysShown, prompt: "Search foods")
         // The search is active whenever the logger is (the keyboard stays up for the next food), and
         // by default an active search hides the bar with Done in it.
@@ -343,7 +401,7 @@ struct SearchLogView: View {
     /// and read afresh each time, so a meal changed or deleted on its screen isn't logged as it was.
     var meals: [SavedMeal] {
         let text = query.trimmingCharacters(in: .whitespaces)
-        return text.isEmpty ? [] : SavedMeals.matching(text, in: model.mealSuggestions.map(\.meal))
+        return text.isEmpty ? [] : SavedMeals.matching(text, in: model.loggerMeals.map(\.meal))
     }
 
     var foodResults: some View {
@@ -516,6 +574,34 @@ struct RecentRow: View {
             .accessibilityLabel("Log \(item.template.name) again")
             .accessibilityIdentifier("logger.logAgain")
         }
+    }
+}
+
+/// What was eaten around the logger's time on another recent day, logged again whole with a tap.
+struct UsualMomentRow: View {
+    @Environment(AppModel.self) private var model
+    let moment: Moment
+
+    var body: some View {
+        let name = model.name(of: moment)
+        Button {
+            model.logAgain(moment)
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name).lineLimit(1)
+                    Text("\(Format.time(moment.start)) · \(moment.entries.count) foods · \(Format.kcal(moment.nutrients.kcal))")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityLabel("Log \(name) again, \(moment.entries.count) foods, \(Format.kcal(moment.nutrients.kcal))")
+        .accessibilityIdentifier("logger.sameAsUsual")
     }
 }
 

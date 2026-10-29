@@ -60,7 +60,7 @@ public struct MealSuggestion: Hashable, Sendable, Identifiable {
     /// Each time it was eaten adds `0.5^(daysAgo/21) × timeFit`, as ``LogAgain/rank(_:now:calendar:limit:)`` scores a food.
     public var score: Double
     /// Eaten within ``SavedMeals/usualWindow`` of this time of day on another day in the last month,
-    /// and not already within that long of now: worth offering on Today.
+    /// and not already within that long of the time ranked for: worth offering on Today.
     public var usualNow: Bool
 
     public var id: UUID { meal.id }
@@ -70,13 +70,19 @@ public enum SavedMeals {
     /// How close to the clock time of an earlier eating counts as "about now".
     public static let usualWindow: TimeInterval = 90 * 60
 
-    /// Saved meals, best first for `now`. A meal counts as eaten in any moment of the last 180 days
-    /// that holds every one of its foods, whether it was logged as the meal or food by food (and
-    /// with a drink beside it). Meals never eaten keep the order they were saved in, newest first.
-    public static func rank(_ meals: [SavedMeal], entries: [FoodEntry], now: Date, calendar: Calendar = .current) -> [MealSuggestion] {
+    /// Saved meals, best first for `time` (now unless given: a time picked in the logger, or one on
+    /// a day being caught up), with days ago counted from now, as Log Again counts them. A meal
+    /// counts as eaten in any moment of the last 180 days that holds every one of its foods, whether
+    /// it was logged as the meal or food by food (and with a drink beside it). Meals never eaten keep
+    /// the order they were saved in, newest first.
+    public static func rank(
+        _ meals: [SavedMeal], entries: [FoodEntry], now: Date, at time: Date? = nil, calendar: Calendar = .current
+    ) -> [MealSuggestion] {
         guard !meals.isEmpty else { return [] }
         let today = Day(now, calendar: calendar)
-        let hourNow = LogAgain.hourOfDay(now, calendar)
+        let time = time ?? now
+        let timeDay = Day(time, calendar: calendar)
+        let hourNow = LogAgain.hourOfDay(time, calendar)
         // By day, as Log Again reads them: a meal's foods go in a second apart, so the last of one
         // just logged is still a moment ahead of the clock.
         let recent = entries.filter { $0.day <= today && $0.day > today.adding(days: -180) }
@@ -94,9 +100,9 @@ public enum SavedMeals {
                 diff = min(diff, 24 - diff)
                 let fit = max(0.1, exp(-(diff * diff) / (2 * LogAgain.hourSpread * LogAgain.hourSpread)))
                 score += pow(0.5, days / LogAgain.halfLife) * fit
-                if days >= 1, days <= 30, diff * 3600 <= usualWindow { usual = true }
+                if moment.day != timeDay, days <= 30, diff * 3600 <= usualWindow { usual = true }
                 // By the clock, not the day: dinner logged at 11:30 PM is still just eaten at 12:15 AM.
-                if moment.end >= now.addingTimeInterval(-usualWindow), moment.start <= now.addingTimeInterval(usualWindow) { eatenNow = true }
+                if moment.end >= time.addingTimeInterval(-usualWindow), moment.start <= time.addingTimeInterval(usualWindow) { eatenNow = true }
             }
             // Already eaten around now: lunch isn't offered again once it's logged.
             return MealSuggestion(meal: meal, score: score, usualNow: usual && !eatenNow)

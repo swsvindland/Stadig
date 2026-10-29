@@ -19,11 +19,15 @@ public enum LogAgain {
         entry.foodID ?? "\(entry.name.lowercased())|\(entry.brand?.lowercased() ?? "")"
     }
 
-    /// Foods to log again now, best first: each past entry adds `0.5^(daysAgo/21) × timeFit`,
-    /// where timeFit is a Gaussian on time of day. Quick adds and estimates aren't suggested.
-    public static func rank(_ entries: [FoodEntry], now: Date, calendar: Calendar = .current, limit: Int = 12) -> [LogAgainItem] {
+    /// Foods to log again at `time` (now unless given), best first: each past entry adds
+    /// `0.5^(daysAgo/21) × timeFit`, where timeFit is a Gaussian on time of day. Days ago count
+    /// from now and the time of day from `time`, so lunch is what's offered for noon when catching
+    /// up at 9 PM. Quick adds and estimates aren't suggested.
+    public static func rank(
+        _ entries: [FoodEntry], now: Date, at time: Date? = nil, calendar: Calendar = .current, limit: Int = 12
+    ) -> [LogAgainItem] {
         let today = Day(now, calendar: calendar)
-        let hourNow = hourOfDay(now, calendar)
+        let hourNow = hourOfDay(time ?? now, calendar)
         var scores: [String: (score: Double, count: Int, latest: FoodEntry)] = [:]
         for entry in entries where entry.source != .quickAdd && entry.day <= today && entry.day > today.adding(days: -180) {
             let days = Double(entry.day.days(until: today))
@@ -45,15 +49,17 @@ public enum LogAgain {
     }
 
     /// What was eaten around this time of day most recently, for a one-tap "Same as yesterday":
-    /// the latest earlier day's moment of two or more foods starting within `window` of the
-    /// clock time of `now`, from the last week.
+    /// the latest other day's moment of two or more foods starting within `window` of the clock
+    /// time of `now`, from the week before its day. Days after it count too, up to `through`, when
+    /// a past day is being caught up: the same lunch eaten today is the likeliest one yesterday.
     public static func usualMoment(
         near now: Date, entries: [FoodEntry], calendar: Calendar = .current,
-        window: TimeInterval = 90 * 60
+        window: TimeInterval = 90 * 60, through last: Day? = nil
     ) -> Moment? {
         let today = Day(now, calendar: calendar)
         let hourNow = hourOfDay(now, calendar)
-        let recent = entries.filter { $0.day < today && $0.day >= today.adding(days: -7) }
+        let latest = max(last ?? today, today)
+        let recent = entries.filter { $0.day != today && $0.day >= today.adding(days: -7) && $0.day <= latest }
         for day in Set(recent.map(\.day)).sorted(by: >) {
             let moments = Timeline.moments(recent.filter { $0.day == day }).filter { $0.entries.count >= 2 }
             let near = moments.map { moment -> (Moment, Double) in
@@ -69,9 +75,15 @@ public enum LogAgain {
     /// "Same as yesterday" for right now: what was eaten around this time on a recent day, while
     /// nothing logged today ended within 90 minutes of `now`.
     public static func usualNow(entries: [FoodEntry], now: Date, calendar: Calendar = .current) -> Moment? {
-        let today = Day(now, calendar: calendar)
-        let nearby = Timeline.moments(entries.filter { $0.day == today }).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
-        return nearby ? nil : usualMoment(near: now, entries: entries, calendar: calendar)
+        usual(at: now, entries: entries, today: Day(now, calendar: calendar), calendar: calendar)
+    }
+
+    /// "Same as yesterday" for a time being logged at, on any day to `today`: what was eaten around
+    /// then on another recent day, while nothing logged that day ended within 90 minutes of it.
+    public static func usual(at time: Date, entries: [FoodEntry], today: Day, calendar: Calendar = .current) -> Moment? {
+        let day = Day(time, calendar: calendar)
+        let nearby = Timeline.moments(entries.filter { $0.day == day }).contains { abs($0.end.timeIntervalSince(time)) < 90 * 60 }
+        return nearby ? nil : usualMoment(near: time, entries: entries, calendar: calendar, through: today)
     }
 
     /// Copies of a moment's entries at `date`, a second apart so they keep their order.

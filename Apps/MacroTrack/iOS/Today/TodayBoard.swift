@@ -78,13 +78,7 @@ struct TodayBoard: View {
                 DrinksSection(day: model.selectedDay)
                 if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
             } else {
-                Section {
-                    Label(
-                        "Catching up \(Format.relative(model.selectedDay, today: model.today)). New entries land on that day.",
-                        systemImage: "clock.arrow.circlepath"
-                    )
-                    .font(.subheadline)
-                }
+                CatchUpSection(day: model.selectedDay)
                 PlannedMealsSection(day: model.selectedDay)
                 SupplementsSection(day: model.selectedDay)
                 DrinksSection(day: model.selectedDay)
