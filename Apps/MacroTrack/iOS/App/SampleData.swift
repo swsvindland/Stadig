@@ -47,6 +47,8 @@ enum SampleData {
         }
 
         var rng = SampleRandom(seed: 2_600)
+        // -sampleEmptyYesterday leaves yesterday's food out, for Today's "Catch up".
+        let skipped = LaunchOptions.current.has("-sampleEmptyYesterday") ? start.adding(days: days - 1) : nil
         var kg = 84.0
         var entries: [FoodEntry] = []
         var weighIns: [WeighIn] = []
@@ -58,7 +60,8 @@ enum SampleData {
                 weighIns.append(WeighIn(date: day.at(hour: 7, minute: 0), kg: kg + water + Double.random(in: -0.5...0.5, using: &rng)))
             }
             var eaten = 0.0
-            if Double.random(in: 0...1, using: &rng) < 0.85 {
+            // The draw is made either way, so the other days stay the same person's.
+            if Double.random(in: 0...1, using: &rng) < 0.85, day != skipped {
                 for (query, grams, hour) in menu where Double.random(in: 0...1, using: &rng) < 0.85 {
                     let date = day.at(minutes: Int((hour * 60).rounded()))
                     let scale = Double.random(in: 0.8...1.25, using: &rng)
