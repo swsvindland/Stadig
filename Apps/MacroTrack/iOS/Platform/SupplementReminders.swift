@@ -112,36 +112,32 @@ enum SupplementReminders {
     }
 }
 
-/// Handles a reminder's Taken button (in the background) and a tap on it or on a fast's
-/// notification (opens Today).
+/// Handles a reminder's Taken button (in the background) and a tap on it (Today, at that day's
+/// supplements) or on a fast's notification (Today).
 final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate, Sendable {
     static let shared = NotificationHandler()
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        let info = response.notification.request.content.userInfo
-        if response.notification.request.content.categoryIdentifier == FastReminders.category {
-            await MainActor.run {
-                let model = AppModel.shared
-                model.refreshDay()
-                model.selectedDay = model.today
-                model.tab = .today
-            }
+    /// On the main actor (the app's default), not nonisolated: the system's completion handler is
+    /// called wherever this returns, and UIKit stops the app when a response's handler is called
+    /// off the main thread. Nonisolated, every tap on a reminder crashed the app.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let content = response.notification.request.content
+        let model = AppModel.shared
+        // Opened, or woken for the Taken button, on a later day than the app last ran.
+        model.refreshDay()
+        if content.categoryIdentifier == FastReminders.category {
+            model.selectedDay = model.today
+            model.tab = .today
             return
         }
-        guard response.notification.request.content.categoryIdentifier == SupplementReminders.category,
-            let iso = info["day"] as? String, let day = Day(iso: iso),
-            let raw = info["time"] as? String, let time = DoseTime(rawValue: raw)
+        guard content.categoryIdentifier == SupplementReminders.category,
+            let iso = content.userInfo["day"] as? String, let day = Day(iso: iso),
+            let raw = content.userInfo["time"] as? String, let time = DoseTime(rawValue: raw)
         else { return }
-        let taken = response.actionIdentifier == SupplementReminders.takenAction
-        await MainActor.run {
-            let model = AppModel.shared
-            if taken {
-                model.refreshDay()
-                _ = model.takeAll(at: time, on: day)
-            } else {
-                model.selectedDay = day
-                model.tab = .today
-            }
+        if response.actionIdentifier == SupplementReminders.takenAction {
+            _ = model.takeAll(at: time, on: day)
+        } else {
+            model.showDoses(on: day)
         }
     }
 

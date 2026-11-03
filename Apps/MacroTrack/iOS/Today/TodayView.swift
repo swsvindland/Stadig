@@ -14,38 +14,35 @@ struct TodayView: View {
     }
 }
 
-/// Today as one list: the phone's, and a narrow iPad window's.
+/// Today as one list: the phone's, and a narrow iPad window's. The food comes first, since logging
+/// is what most visits are for: what's left, the weight, anything the plan asks, then the ways to
+/// log in a tap and the day's log. Meal timing, supplements, drinks and the week's food-quality
+/// suggestions follow it.
 struct TodayList: View {
     @Environment(AppModel.self) private var model
     @State private var editing: FoodEntry?
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    SummaryCard(day: model.selectedDay)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
+            ScrollViewReader { proxy in
+                List {
+                    Section {
+                        SummaryCard(day: model.selectedDay)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                    WeightSection(day: model.selectedDay)
+                    TodayFood(day: model.selectedDay)
+                    TimelineSections(day: model.selectedDay, editing: $editing)
+                    DayStateSection(day: model.selectedDay)
+                    TodayMore(day: model.selectedDay)
                 }
-                WeightSection(day: model.selectedDay)
-                MealTimingSection(day: model.selectedDay)
-                if model.selectedDay == model.today {
-                    ActionsSection()
-                    PlannedMealsSection(day: model.selectedDay)
-                    SupplementsSection(day: model.selectedDay)
-                    DrinksSection(day: model.selectedDay)
-                    if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
-                } else {
-                    CatchUpSection(day: model.selectedDay)
-                    PlannedMealsSection(day: model.selectedDay)
-                    SupplementsSection(day: model.selectedDay)
-                    DrinksSection(day: model.selectedDay)
+                .insetGroupedList()
+                .sectionSpacing(14)
+                .onChange(of: model.supplementsScrollRequest) { _, _ in
+                    withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
                 }
-                TimelineSections(day: model.selectedDay, editing: $editing)
-                DayStateSection(day: model.selectedDay)
             }
-            .insetGroupedList()
-            .sectionSpacing(14)
             .navigationTitle(
                 model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
             )
@@ -84,6 +81,38 @@ struct TodayList: View {
             }
             SettingsButton(identifier: "today.settings")
         }
+    }
+}
+
+/// Above the day's log: what the plan asks for today, then the ways to log in a tap (planned
+/// meals and Log again), or, on a past day, its catch-up.
+struct TodayFood: View {
+    @Environment(AppModel.self) private var model
+    let day: Day
+
+    var body: some View {
+        if day == model.today {
+            ActionsSection()
+            PlannedMealsSection(day: day)
+            if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
+        } else {
+            CatchUpSection(day: day)
+            PlannedMealsSection(day: day)
+        }
+    }
+}
+
+/// Below the day's log: meal timing, the supplements (where a reminder's tap scrolls to), drinks,
+/// and today's food-quality suggestions.
+struct TodayMore: View {
+    @Environment(AppModel.self) private var model
+    let day: Day
+
+    var body: some View {
+        MealTimingSection(day: day)
+        SupplementsSection(day: day).id(SupplementsSection.scrollID)
+        DrinksSection(day: day)
+        if day == model.today { FoodSuggestionsSection() }
     }
 }
 
@@ -181,30 +210,34 @@ struct ModeLine: View {
     }
 }
 
-/// The prescriptive cards: what was seen, and the one thing to do.
+/// The prescriptive cards: what was seen, and the one thing to do. Above the food: the check-in,
+/// the plan's actions, and a nutrient over its safe upper limit, which is about safety, not food
+/// quality. The rest of what the week's food calls for is `FoodSuggestionsSection`, below the log.
 struct ActionsSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         if let analysis = model.analysis {
-            let actions = analysis.actions.filter { $0.kind != .weighIn }.prefix(2)
+            let actions = Self.actions(analysis)
             let checkIn = recentCheckIn
-            let food = foodActions(analysis, room: actions.isEmpty ? 2 : (actions.count < 2 ? 1 : 0))
-            if !actions.isEmpty || checkIn != nil || !food.isEmpty {
+            let urgent = Self.foodActions(analysis, model: model).filter(\.isUrgent)
+            if !actions.isEmpty || checkIn != nil || !urgent.isEmpty {
                 Section {
                     if let checkIn { CheckInRow(checkIn: checkIn, previous: model.checkIns.last { $0.day < checkIn.day }) }
                     ForEach(Array(actions)) { action in
                         ActionRow(action: action)
                     }
-                    ForEach(food) { action in
-                        switch action {
-                        case .nutrient(let reading): NutrientActionRow(reading: reading)
-                        case .quality(let kind): QualityActionRow(kind: kind, report: analysis.quality)
-                        }
+                    ForEach(urgent) { action in
+                        FoodActionRow(action: action, report: analysis.quality)
                     }
                 }
             }
         }
+    }
+
+    /// The analysis's own actions, two at most. The weigh-in has its own row.
+    static func actions(_ analysis: MacroAnalysis) -> ArraySlice<MacroAction> {
+        analysis.actions.filter { $0.kind != .weighIn }.prefix(2)
     }
 
     enum FoodAction: Identifiable {
@@ -217,11 +250,20 @@ struct ActionsSection: View {
             case .quality(let kind): QualityActionRow.hideKey(kind)
             }
         }
+
+        /// Over a safe upper limit: said above the food rather than among the suggestions.
+        var isUrgent: Bool {
+            if case .nutrient(let reading) = self { return reading.overUpper }
+            return false
+        }
     }
 
-    /// What the week's food calls for, while there's room among the day's actions: a lot of
-    /// ultra-processed food first, then the shortest nutrient, then fermented foods.
-    func foodActions(_ analysis: MacroAnalysis, room: Int) -> [FoodAction] {
+    /// What the week's food calls for, while there's room among the day's actions (two things
+    /// worth doing at most, wherever on Today they sit): a lot of ultra-processed food first, then
+    /// the shortest nutrient, then fermented foods.
+    static func foodActions(_ analysis: MacroAnalysis, model: AppModel) -> [FoodAction] {
+        let taken = actions(analysis).count
+        let room = taken == 0 ? 2 : (taken < 2 ? 1 : 0)
         guard room > 0 else { return [] }
         let todays = model.entries(on: model.today)
         var list: [FoodAction] = []
@@ -246,6 +288,40 @@ struct ActionsSection: View {
     var recentCheckIn: CheckIn? {
         guard let last = model.checkIns.last, last.day.days(until: model.today) <= 2, model.checkIns.count > 1 else { return nil }
         return last
+    }
+}
+
+/// What the week's food calls for, below the day's log: the ultra-processed swap, the shortest
+/// nutrient's fix and a fermented food, in the room `ActionsSection` leaves.
+struct FoodSuggestionsSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let analysis = model.analysis {
+            let suggestions = ActionsSection.foodActions(analysis, model: model).filter { !$0.isUrgent }
+            if !suggestions.isEmpty {
+                Section {
+                    ForEach(suggestions) { action in
+                        FoodActionRow(action: action, report: analysis.quality)
+                    }
+                } header: {
+                    Text("This week's food")
+                }
+            }
+        }
+    }
+}
+
+/// One of the week's food actions, as its row.
+struct FoodActionRow: View {
+    let action: ActionsSection.FoodAction
+    let report: QualityReport
+
+    var body: some View {
+        switch action {
+        case .nutrient(let reading): NutrientActionRow(reading: reading)
+        case .quality(let kind): QualityActionRow(kind: kind, report: report)
+        }
     }
 }
 

@@ -22,6 +22,9 @@ struct SupplementsSection: View {
     @State private var expanded = false
     @State private var editing: Supplement?
 
+    /// Where Today scrolls to when a reminder is tapped.
+    static let scrollID = "today.supplements"
+
     var body: some View {
         let doses = model.doses(on: day)
         let extras = SupplementPlan.extras(on: day, logs: model.supplementLogs)

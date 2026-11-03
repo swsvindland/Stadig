@@ -50,6 +50,15 @@ extension AppModel {
 
     // MARK: Doses
 
+    /// A tap on a reminder: Today on its day (not past today, for a model whose day has gone stale),
+    /// in place of any sheet that's up, scrolled to the supplements, which sit below the food.
+    func showDoses(on day: Day) {
+        dismissSheets()
+        selectedDay = min(day, today)
+        tab = .today
+        supplementsScrollRequest &+= 1
+    }
+
     /// The doses due on a day, with whether each was taken.
     func doses(on day: Day) -> [DueDose] {
         let training = profile.map { SupplementPlan.isTrainingDay(day, profile: $0, lift: lift) } ?? false

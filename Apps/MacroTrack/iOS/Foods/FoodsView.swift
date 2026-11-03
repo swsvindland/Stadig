@@ -320,9 +320,11 @@ struct FoodsView: View {
         let catalog = model.catalog
         let personal = model.personal
         let custom = model.customFoods.map(\.food)
+        let corrections = model.corrections
         let found = await Task.detached(priority: .userInitiated) {
             if scope == .all, !text.isEmpty {
-                return FoodBrowser.listings(catalog.search(text, personal: personal, limit: 100), personal: personal, custom: custom)
+                let matches = AppModel.corrected(catalog.search(text, personal: personal, limit: 100), by: corrections)
+                return FoodBrowser.listings(matches, personal: personal, custom: custom)
             }
             return FoodBrowser.listings(scope, query: text, personal: personal, custom: custom)
         }.value
@@ -440,13 +442,15 @@ struct NumberCell: View {
     }
 }
 
-/// The selected food: its amount, every nutrient for that amount, when it was eaten and Log.
+/// The selected food: its amount, every nutrient for that amount, when it was eaten and Log. The
+/// pencil corrects its numbers to its package's.
 struct FoodInspector: View {
     @Environment(AppModel.self) private var model
     let listing: FoodListing
     @Binding var amount: PortionAmount
     @Binding var eaten: EatenAt
     let log: () -> Void
+    @State private var editing = false
 
     var body: some View {
         let food = listing.food
@@ -455,8 +459,9 @@ struct FoodInspector: View {
         Form {
             Section {
                 HStack(alignment: .top) {
-                    FoodHeader(food: food)
+                    FoodHeader(food: food, corrected: model.isCorrected(food.id))
                     Spacer(minLength: 8)
+                    if unit != nil { EditFoodButton { editing = true }.buttonStyle(.borderless).font(.title3) }
                     FavoriteButton(foodID: food.id).buttonStyle(.borderless).font(.title3)
                 }
             }
@@ -474,6 +479,11 @@ struct FoodInspector: View {
             }
         }
         .formStyle(.grouped)
+        // The search runs again once it's saved (the personal foods change) and lists the food as
+        // corrected, at the same amount.
+        .sheet(isPresented: $editing) {
+            if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { _ in } }
+        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 10) {
                 // The meal this food joins, with what's gone into it so far.

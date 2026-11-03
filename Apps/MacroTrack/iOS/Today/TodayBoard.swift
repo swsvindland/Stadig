@@ -61,33 +61,28 @@ struct TodayBoard: View {
         model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
     }
 
-    /// The ring, the weight, the day's actions and quick logs: the phone's Today, without its log.
+    /// The ring, the weight, the day's actions and quick logs: the phone's Today, in its order,
+    /// without its log.
     var summary: some View {
-        List {
-            Section {
-                SummaryCard(day: model.selectedDay)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+        ScrollViewReader { proxy in
+            List {
+                Section {
+                    SummaryCard(day: model.selectedDay)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                WeightSection(day: model.selectedDay)
+                TodayFood(day: model.selectedDay)
+                DayStateSection(day: model.selectedDay)
+                TodayMore(day: model.selectedDay)
             }
-            WeightSection(day: model.selectedDay)
-            MealTimingSection(day: model.selectedDay)
-            if model.selectedDay == model.today {
-                ActionsSection()
-                PlannedMealsSection(day: model.selectedDay)
-                SupplementsSection(day: model.selectedDay)
-                DrinksSection(day: model.selectedDay)
-                if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
-            } else {
-                CatchUpSection(day: model.selectedDay)
-                PlannedMealsSection(day: model.selectedDay)
-                SupplementsSection(day: model.selectedDay)
-                DrinksSection(day: model.selectedDay)
+            .insetGroupedList()
+            .sectionSpacing(14)
+            .refreshable { await model.refreshHealth() }
+            .onChange(of: model.supplementsScrollRequest) { _, _ in
+                withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
             }
-            DayStateSection(day: model.selectedDay)
         }
-        .insetGroupedList()
-        .sectionSpacing(14)
-        .refreshable { await model.refreshHealth() }
     }
 
     /// Sorted by time, the log keeps its moments (foods eaten together, with their time and total);

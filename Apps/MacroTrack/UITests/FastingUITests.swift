@@ -51,6 +51,7 @@ nonisolated final class FastingUITests: XCTestCase {
         app.scrollTo(app.element("fast.phase.3")).waitToAppear()
         XCTAssertTrue(app.element("fast.phase.3").label.contains("Ketosis"))
         app.element("fast.done").waitToAppear().tap()
-        app.element("today.fast").waitToAppear()
+        // Back on Today, below the day's food.
+        app.scrollTo(app.element("today.fast"), beside: XCUIApplication.isPad ? app.element("today.calories") : nil).waitToAppear()
     }
 }

@@ -100,6 +100,9 @@ final class AppModel {
     private(set) var plan: PhasePlan?
     private(set) var checkIns: [CheckIn] = []
     private(set) var customFoods: [CustomFoodRecord] = []
+    /// The person's numbers for catalog foods whose packages said otherwise, by the catalog's id
+    /// (which the corrected food keeps).
+    private(set) var corrections: [String: Food] = [:]
     private(set) var favorites: Set<String> = []
     private(set) var lifeModes: [LifeModePeriod] = []
     /// Meal plans, oldest first: the current or next one is the one shown.
@@ -184,6 +187,9 @@ final class AppModel {
     var usesSidebar = false
     /// Asks the Foods screen to put the cursor in its search field (⌘F, Log Food, a widget's search).
     private(set) var foodSearchRequest = 0
+    /// Asks Today to scroll to the day's supplements (a tap on a reminder): by evening the food
+    /// above them can be a long way down.
+    var supplementsScrollRequest = 0
     var toast: Toast?
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
@@ -307,6 +313,10 @@ final class AppModel {
         if needsReading(CheckIn.self) { checkIns = Self.ordered(store.all(CheckIn.self)) }
         let customChanged = needsReading(CustomFoodRecord.self)
         if customChanged { customFoods = store.all(CustomFoodRecord.self) }
+        let correctionsChanged = needsReading(FoodCorrection.self)
+        if correctionsChanged {
+            corrections = Dictionary(store.all(FoodCorrection.self).map { ($0.food.id, $0.food) }, uniquingKeysWith: { first, _ in first })
+        }
         let favoritesChanged = needsReading(FavoriteRecord.self)
         if favoritesChanged { favorites = Set(store.all(FavoriteRecord.self).map(\.foodID)) }
         if needsReading(Supplement.self) {
@@ -320,7 +330,7 @@ final class AppModel {
         applyAISetting()
         readShared(recompute: false)
         recompute()
-        if entriesChanged || customChanged || favoritesChanged { refreshPersonal() }
+        if entriesChanged || customChanged || favoritesChanged || correctionsChanged { refreshPersonal() }
         lastRevision = store.revision
     }
 
@@ -427,7 +437,7 @@ final class AppModel {
             today = .today
         }
         let now = Date()
-        logAgain = LogAgain.rank(entries, now: now)
+        logAgain = LogAgain.rank(suggestionEntries, now: now)
         mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
         refreshCatchUp()
         guard let state else {
@@ -531,10 +541,13 @@ final class AppModel {
 
     // MARK: Foods
 
-    /// A food by id from the catalogs or the person's own foods.
+    /// A food by id: the person's correction or own food first, as the store has it now (an edit on
+    /// another device included), else the catalogs', which are cached.
     func food(id: String) -> Food? {
+        if let corrected = corrections[id] { return corrected }
+        if let own = customFoods.first(where: { $0.food.id == id }) { return own.food }
         if let cached = foodCache[id] { return cached }
-        let found = customFoods.first { $0.food.id == id }?.food ?? catalog.food(id: id)
+        let found = catalog.food(id: id)
         if let found { foodCache[id] = found }
         return found
     }
@@ -546,8 +559,69 @@ final class AppModel {
         }) {
             return own.food
         }
-        return catalog.food(barcode: barcode, symbology: symbology)
+        return catalog.food(barcode: barcode, symbology: symbology).map { corrected($0) }
     }
+
+    // MARK: Corrections
+
+    /// The person's numbers for a catalog food, when they corrected it; else the food as it is.
+    func corrected(_ food: Food) -> Food { corrections[food.id] ?? food }
+
+    /// Search results with the person's numbers in place of the catalog's.
+    func corrected(_ matches: [FoodMatch]) -> [FoodMatch] { Self.corrected(matches, by: corrections) }
+
+    /// The same, off the main thread, with the corrections as they were when the search began.
+    nonisolated static func corrected(_ matches: [FoodMatch], by corrections: [String: Food]) -> [FoodMatch] {
+        guard !corrections.isEmpty else { return matches }
+        return matches.map { match in
+            var match = match
+            match.food = corrections[match.food.id] ?? match.food
+            return match
+        }
+    }
+
+    func isCorrected(_ foodID: String) -> Bool { corrections[foodID] != nil }
+
+    /// Saves a food's numbers as the person corrected them: one of their own foods is changed in
+    /// place, and a catalog food gets a correction under its own id, which its barcode, searches
+    /// and Log Again use from now on. Entries already logged keep their numbers.
+    @discardableResult
+    func saveCorrection(_ food: Food) -> Food {
+        if let id = CustomFoodRecord.recordID(fromFoodID: food.id) { return save(customFood: food, replacing: id) }
+        let correction = FoodCorrection(food: food)
+        store.save(correction)
+        reload()
+        return correction.food
+    }
+
+    /// Takes a correction away, so the catalog's numbers are used again; returns the catalog's food.
+    @discardableResult
+    func removeCorrection(of foodID: String) -> Food? {
+        store.delete(FoodCorrection.self, id: FoodCorrection.id(for: foodID))
+        reload()
+        return food(id: foodID)
+    }
+
+    /// An entry with the person's numbers for its food, when they've corrected it since the entry
+    /// was made: a copy logged again (Log Again, a moment, a saved meal, Same as yesterday) or a
+    /// catalog match (a description, a photo) gets the same amount at their numbers. An entry
+    /// whose amount isn't known keeps its own.
+    func withCorrection(_ entry: FoodEntry) -> FoodEntry {
+        guard let id = entry.foodID, let food = corrections[id], entry.grams != nil || entry.count != nil else { return entry }
+        let amount = FoodUnits.logged(for: food, unitID: entry.unitID, count: entry.count, amount: entry.grams)
+        var fresh = self.entry(
+            for: food, count: amount.count, unit: amount.unit, source: entry.source, confidence: entry.confidence, date: entry.date)
+        guard fresh.nutrients != entry.nutrients || fresh.name != entry.name || fresh.brand != entry.brand else { return entry }
+        fresh.id = entry.id
+        fresh.day = entry.day
+        fresh.updatedAt = entry.updatedAt
+        return fresh
+    }
+
+    /// The log as the suggestions read it: entries of a food corrected since carry the person's
+    /// numbers, so a Log Again chip or "Same as yesterday" says what a tap logs. The analysis and
+    /// the timeline keep the entries as logged.
+    private var suggestionEntries: [FoodEntry] { corrections.isEmpty ? entries : entries.map(withCorrection) }
 
     /// Rebuilds the personal foods off the main thread: logged foods by frequency and recency,
     /// with the last portion used, plus favourites and the person's own foods.
@@ -556,6 +630,7 @@ final class AppModel {
         let entries = entries.filter { $0.foodID != nil }
         let favorites = favorites
         let custom = customFoods.map(\.food)
+        let corrected = corrections
         let catalog = catalog
         let known = foodCache
         personalTask = Task.detached(priority: .utility) { [weak self] in
@@ -570,10 +645,12 @@ final class AppModel {
                 if entry.date > current.last.date { current.last = entry }
                 byFood[id] = current
             }
-            var foods: [String: Food] = [:]
+            // The person's corrections stand in for the catalog's foods, and count as their own
+            // even before they're logged, so a search finds them first.
+            var foods = corrected
             for food in custom { foods[food.id] = food }
             var result: [PersonalFood] = []
-            let ids = Set(byFood.keys).union(favorites).union(custom.map(\.id))
+            let ids = Set(byFood.keys).union(favorites).union(custom.map(\.id)).union(corrected.keys)
             for id in ids.sorted(by: { (byFood[$0]?.score ?? 0) > (byFood[$1]?.score ?? 0) }).prefix(400) {
                 if Task.isCancelled { return }
                 guard let food = foods[id] ?? known[id] ?? catalog.food(id: id) else { continue }
@@ -585,7 +662,8 @@ final class AppModel {
                         lastCount: usage?.last.count, lastUnitID: usage?.last.unitID, lastAmount: usage?.last.grams,
                         lastLogged: usage?.last.date))
             }
-            let found = foods
+            // Only the catalog's foods are cached: a correction taken away gives the catalog's back.
+            let found = foods.filter { corrected[$0.key] == nil }
             await MainActor.run {
                 guard let self, !Task.isCancelled else { return }
                 let before = self.personal.map(Self.fixInput)
@@ -626,7 +704,6 @@ final class AppModel {
     func save(customFood food: Food, replacing id: UUID? = nil) -> Food {
         let record = CustomFoodRecord(id: id ?? UUID(), food: food)
         store.save(record)
-        foodCache[record.food.id] = record.food
         reload()
         return record.food
     }
@@ -736,6 +813,8 @@ final class AppModel {
     /// Saves entries, shows "Logged … Undo", and writes them to Health. A meal logged during a fast
     /// ends it, and says so: the Undo puts the fast back with the food.
     func log(_ new: [FoodEntry], message: String? = nil) {
+        // A food the person corrected is logged at their numbers, however it was found.
+        let new = corrections.isEmpty ? new : new.map(withCorrection)
         guard !new.isEmpty else { return }
         let fasting = analysis?.fast
         store.save(new)
@@ -813,12 +892,12 @@ final class AppModel {
         guard selectedDay == today else { return nil }
         let now = Date()
         let nearby = Timeline.moments(entries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
-        return nearby ? nil : LogAgain.usualMoment(near: now, entries: entries)
+        return nearby ? nil : LogAgain.usualMoment(near: now, entries: suggestionEntries)
     }
 
     /// Reads the selected day's usual times again, then the logger's suggestions for its time.
     func refreshCatchUp() {
-        usualTimes = UsualMeals.on(selectedDay, entries: entries, today: today)
+        usualTimes = UsualMeals.on(selectedDay, entries: suggestionEntries, today: today)
         refreshTimedSuggestions()
     }
 
@@ -832,9 +911,9 @@ final class AppModel {
         let now = Date()
         let time = logDate()
         timedSuggestions = TimedSuggestions(
-            time: time, logAgain: LogAgain.rank(entries, now: now, at: time),
+            time: time, logAgain: LogAgain.rank(suggestionEntries, now: now, at: time),
             meals: SavedMeals.rank(savedMeals, entries: entries, now: now, at: time),
-            usual: LogAgain.usual(at: time, entries: entries, today: today))
+            usual: LogAgain.usual(at: time, entries: suggestionEntries, today: today))
     }
 
     func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {

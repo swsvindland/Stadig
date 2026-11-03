@@ -313,8 +313,9 @@ struct MealReviewView: View {
         }
         .onAppear {
             guard items.isEmpty else { return }
+            // A catalog match the person corrected shows (and logs) their numbers.
             items = guess.items.map { g in
-                ReviewItem(id: g.id, seen: g, food: g.match?.food, unit: g.unit, count: g.count, included: g.match != nil)
+                ReviewItem(id: g.id, seen: g, food: g.match.map { model.corrected($0.food) }, unit: g.unit, count: g.count, included: g.match != nil)
             }
         }
     }
