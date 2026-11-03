@@ -56,20 +56,6 @@ public enum Warmup {
         }
     }
 
-    /// The time fitting a day sets aside for the warm-ups, before any weight is known. A main
-    /// compound keeps the 2½ minutes it always had. Anything else gets about half a minute for each
-    /// set it usually has (a bar or plate climb three, a lift tried once one): less than the minute
-    /// each takes at the gym, so the accessories a day was built around still fit (the owner's call).
-    public static func estimatedSeconds(for exercise: Exercise, role: SlotRole) -> Int {
-        if role == .main, exercise.isCompound { return 150 }
-        switch style(for: exercise, role: role) {
-        case .bar, .plates: return 90
-        case .ramp: return 60
-        case .test: return 30
-        case .none: return 0
-        }
-    }
-
     /// The empty bar, then up to three even jumps of about 30 kg at most, then the working weight
     /// for a few reps. Work with the bar alone is tried once with it.
     static func barRamp(to workingKg: Double, reps: Int, targetRIR: Double, increments: GymIncrements) -> [SetPrescription] {

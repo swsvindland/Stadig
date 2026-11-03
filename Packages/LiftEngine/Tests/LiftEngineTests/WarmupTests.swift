@@ -129,11 +129,5 @@ struct WarmupTests {
         #expect(style("db-bench-press", .main) == .ramp && style("db-bench-press", .accessory) == .test)
         #expect(style("barbell-curl", .accessory) == .test && style("db-curl", .main) == .test)
         #expect(style("pull-up", .main) == .none && style("farmers-carry", .accessory) == .none)
-        // The time a day sets aside: a main compound's as before, half a minute a set for the rest.
-        let seconds = { (id: String, role: SlotRole) in Warmup.estimatedSeconds(for: Fixture.catalog.resolve(id), role: role) }
-        #expect(seconds("barbell-back-squat", .main) == 150 && seconds("db-bench-press", .main) == 150)
-        #expect(seconds("barbell-row", .accessory) == 90 && seconds("leg-press", .accessory) == 90)
-        #expect(seconds("db-curl", .accessory) == 30 && seconds("lat-pulldown", .accessory) == 30)
-        #expect(seconds("pull-up", .accessory) == 0 && seconds("farmers-carry", .accessory) == 0)
     }
 }
