@@ -132,7 +132,7 @@ The program generator works like this:
   - It spends the systemic budget on high-SFR options, swapping the costliest lifts before trimming sets.
   - Declared classes spend the same budget.
   - Cheap local volume is added for lagging physique areas.
-- **Elastic time budget**: each block has a minimum, a desired length and a priority, and goals reorder the priorities. Each lift's warm-ups count toward its time (about four minutes for a main lift on a bar, three for a bar or plate-loaded accessory, two and a half for a leading dumbbell or machine lift, one for a lift tried once at its weight).
+- **Elastic time budget**: each block has a minimum, a desired length and a priority, and goals reorder the priorities.
   - **30 minutes:** ramp-up sets are the warm-up, the limiter drill happens in the rests, two compounds are supersetted, and conditioning becomes a quest.
   - **60 minutes:** five easy minutes on a bike or rower and three drills, the limiter slot, the main lifts, a few accessories and brief conditioning.
   - **90 minutes:** a fuller warm-up, more sets and a 20–30 minute conditioning finisher.
@@ -148,6 +148,7 @@ The program generator works like this:
   - **Isolation work, and the accessories on dumbbells, cables and machines:** one set of two to four reps at the working weight, to see that it feels right. Dumbbell, cable and machine lifts that lead a day climb at about half and three quarters of the work (45, 65 and 82% from 60 kg).
   - Bodyweight, assisted and timed work warm up by doing. With no working weight yet, the lifts that climb climb toward a guess at it, on the light side, and the rest go straight to finding it.
   - Fewer reps the nearer a set gets to the work (8, 5, 3), never more than the work asks. Warm-ups aren't rated, rest 45 seconds, and the last one before the work rests half the work's rest (at least 45 seconds). A swap before anything of the exercise is done or skipped warms the new exercise up its own way.
+  - The elastic time budget doesn't count them yet (a main compound still gets 2½ minutes, an accessory none), so a day's estimate runs over its minutes by about a minute for each warm-up it didn't have before; see `decisions.md`.
 - rep-outs placed on safe-to-fail anchors first, judged on the exercise actually done after any swap, so a stand-in that isn't safe to fail gets none
 - deloads keep Zone 2 and mobility
 - check-ins land at the end of the deload
