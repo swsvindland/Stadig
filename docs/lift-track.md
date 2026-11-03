@@ -148,7 +148,7 @@ The program generator works like this:
   - **Isolation work, and the accessories on dumbbells, cables and machines:** one set of two to four reps at the working weight, to see that it feels right. Dumbbell, cable and machine lifts that lead a day climb at about half and three quarters of the work (45, 65 and 82% from 60 kg).
   - Bodyweight, assisted and timed work warm up by doing. With no working weight yet, the lifts that climb climb toward a guess at it, on the light side, and the rest go straight to finding it.
   - Fewer reps the nearer a set gets to the work (8, 5, 3), never more than the work asks. Warm-ups aren't rated, rest 45 seconds, and the last one before the work rests half the work's rest (at least 45 seconds). A swap before anything of the exercise is done or skipped warms the new exercise up its own way.
-  - The elastic time budget doesn't count them yet (a main compound still gets 2½ minutes, an accessory none), so a day's estimate runs over its minutes by about a minute for each warm-up it didn't have before; see `decisions.md`.
+  - The elastic time budget counts them for less than they take (your call): a main compound keeps its 2½ minutes and anything else gets about half a minute a warm-up set (1½ minutes for a bar or plate-loaded accessory, half a minute for one tried once), so the accessories a day was built around still fit. The day's estimate counts about a minute each, so it can run a few minutes over its time.
 - rep-outs placed on safe-to-fail anchors first, judged on the exercise actually done after any swap, so a stand-in that isn't safe to fail gets none
 - deloads keep Zone 2 and mobility
 - check-ins land at the end of the deload

@@ -703,8 +703,7 @@ struct Builder {
     static func seconds(for slot: SlotPlan, exercise: Exercise, week: Int = 0) -> Int {
         let sets = slot.sets(week: week)
         let work = slot.seconds ?? (slot.repRange.middle * 3 + 15)
-        let ramp = slot.role == .main && exercise.isCompound ? 150 : 0
-        return sets * (work + slot.restSeconds) + 60 + ramp
+        return sets * (work + slot.restSeconds) + 60 + Warmup.estimatedSeconds(for: exercise, role: slot.role)
     }
 
     /// Fits a day into the time available. Every block has a minimum, a desired length and a

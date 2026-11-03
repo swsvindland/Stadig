@@ -56,15 +56,17 @@ public enum Warmup {
         }
     }
 
-    /// About how long the warm-up takes, for fitting a day into its time before any weight is
-    /// known: a short set and a short rest for each set it usually has.
+    /// The time fitting a day sets aside for the warm-ups, before any weight is known. A main
+    /// compound keeps the 2½ minutes it always had. Anything else gets about half a minute for each
+    /// set it usually has (a bar or plate climb three, a lift tried once one): less than the minute
+    /// each takes at the gym, so the accessories a day was built around still fit (the owner's call).
     public static func estimatedSeconds(for exercise: Exercise, role: SlotRole) -> Int {
+        if role == .main, exercise.isCompound { return 150 }
         switch style(for: exercise, role: role) {
-        case .bar: role == .main ? 240 : 180
-        case .plates: 180
-        case .ramp: 150
-        case .test: 60
-        case .none: 0
+        case .bar, .plates: return 90
+        case .ramp: return 60
+        case .test: return 30
+        case .none: return 0
         }
     }
 
