@@ -466,22 +466,6 @@ public enum Progression {
         return ExercisePrescription(exerciseID: exercise.id, sets: sets, mode: mode, e1rm: e1rm, reason: reason)
     }
 
-    /// Ramp-up sets to a working load. In short sessions they double as the warm-up.
-    public static func rampUp(
-        to workingKg: Double, reps: Int, exercise: some ExerciseTraits, increments: any LoadIncrements,
-        bodyweightKg: Double?
-    ) -> [SetPrescription] {
-        guard exercise.isCompound, exercise.loadBasis == .external || exercise.loadBasis == .perHand, workingKg > 0 else { return [] }
-        let steps: [(Double, Int)] = workingKg >= 60 ? [(0.45, 8), (0.65, 5), (0.82, 3)] : [(0.5, 8), (0.75, 4)]
-        var seen: Set<Double> = []
-        return steps.compactMap { fraction, r in
-            let load = increments.round(workingKg * fraction, down: true)
-            guard load > 0, load < workingKg, !seen.contains(load) else { return nil }
-            seen.insert(load)
-            return SetPrescription(kind: .warmup, loadKg: load, targetReps: min(r, max(reps, 3)), targetRIR: 5)
-        }
-    }
-
     /// Reps in reserve to aim for across a loading block: start comfortable, finish close to
     /// failure. RP-style.
     public static func targetRIR(week: Int, of loadingWeeks: Int) -> Double {

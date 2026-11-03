@@ -1,5 +1,6 @@
 # Decisions to check
 
+- **Warm-up sets.** On 2026-11-03 you said that on a barbell lift the first warm-up should pretty much always be the empty bar and the last one before the work should be at the working weight for 2–4 reps; that accessories should warm up too; that on the leg press you add a plate at a time up to the working weight (three or four warm-ups); and that on a curl you just try the weight for 2–4 reps. Only main compounds had warm-ups (45, 65 and 82% of the work, never the bar or the working weight), and no accessory had any. The calls made are under "Calls made for warm-ups" below.
 - **Catching up a day in Stadig Macro.** On 2026-10-29 you said that after a day not logged as you ate, there was no good way at the end of it to say "at noon I ate this, at 2 this, at 4 this" and have the app remember what you usually eat then: the logger offered dinner for noon, and Today's "Catch up" (whose card promised "Copy a typical day") only switched to yesterday. The logger ranked My Meals and Log Again for the clock, whatever time was picked. Calls made:
   - **Suggestions follow the logger's time.** My Meals, Log Again and "Same as yesterday" rank for the time being logged at (a picked time, or a past day's), with recency still counted from today. Log Again's header says so ("Log again for 12:30 PM"). Open: ranking by the day being caught up's own past (recency from that day).
   - **Usual times come from the log.** A time with a meal (50 kcal or more) within an hour of it on a quarter of the days with a meal in the last four weeks, two at least, at the middle of those meals to 5 minutes; picked most-eaten first, each day's nearest meal taken, so a lunch and snacks two hours apart stay three times. Open: the hour, the quarter and the four weeks; times by weekday (weekend brunch).
@@ -96,6 +97,22 @@
   - the hub
   - Stadig Mind: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
+
+## Calls made for warm-ups (2026-11-03)
+
+Stadig Lift's warm-up sets, in LiftEngine's `Warmup`, used by `SessionPlanner` and `LiveSession`.
+
+- **Bar first, the working weight last** (your call) for every compound on a barbell, trap bar or EZ bar, main lift or accessory: a barbell row after the bench warms up from the bar too. Open: a shorter ramp for a second lift on the same muscles.
+- **The jumps in between.** Even steps from the bar, at most about 30 kg each and three at most, rounded down to loads the gym makes, so a heavy squat has five warm-ups (20, 50, 80, 110, 140 × 3) and a light press two (the bar, then the work for a few). In pounds they often land on plates (45, 135, 225, 315 for a 405 deadlift). Open: plate-a-side jumps on a bar as well.
+- **Reps.** The bar for 5 to 10 (the work's reps, within that), then 8, 5 or 3 by how near the set is to the work, never more than the work asks; the set at the working weight is half the work's reps, between two and four (3 before a set of 5, 4 before 8 or more).
+- **A plate a side at a time** (your call) for plate-loaded machines, and for a Smith machine, whose bar isn't counted in its loads: the biggest plate that goes on at least once under the work, at most four sets spread evenly (eight 25s a side warm up at 100, 200, 300 and 350 kg), and no set at the working weight; the work follows the last plate. Work lighter than the smallest pair is tried once at its weight instead.
+- **Tried once** (your call for curls) for every isolation lift, a barbell curl included, and for the compound accessories on dumbbells, cables and machines (a pulldown, a dumbbell press): one set of two to four reps at the working weight. Open: a lighter set first on a compound accessory that leads its muscles that day.
+- **Dumbbell, cable and machine lifts that lead a day** keep the climb they had (about half and three quarters, or 45, 65 and 82% from 60 kg), without a set at the working weight: picking up the working dumbbells twice is awkward. Open: ending their climb at the working weight too.
+- **None** for bodyweight, loaded bodyweight, assisted and timed work, as before. Open: a bodyweight set before a weighted pull-up or dip.
+- **Still finding the weight**, the lifts that climb (bars, plates, the leading lifts) climb toward a guess at it on the light side, accessories included now, and those that would only be tried go straight to finding it.
+- **The rest after the last warm-up** is half the work's (at least 45 s), so 90 s before a squat's 180 s; the others keep 45 s. Open: the full rest.
+- **A swap** made before any set of the exercise is done or skipped warms the new exercise up its own way; after one, it adds none (the old exercise's warm-ups did the job). Open: warm-ups after a swap partway through.
+- **Not changed:** warm-ups are never rated, adjust nothing and count as no work; crunch mode, a deload and a head cold warm up the same way toward their lighter work.
 
 ## Calls made for packaged foods' servings (2026-10-28)
 

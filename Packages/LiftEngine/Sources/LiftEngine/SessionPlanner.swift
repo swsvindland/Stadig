@@ -9,7 +9,7 @@ public struct PlannedItem: Codable, Hashable, Sendable, Identifiable {
     public var block: SessionBlockKind
     public var exerciseID: String
     public var role: SlotRole
-    /// Ramp-up sets first, then the work.
+    /// Warm-up sets first (`Warmup`), then the work.
     public var sets: [SetPrescription]
     public var repRange: RepRange
     public var rest: RestPlan
@@ -263,24 +263,23 @@ public enum SessionPlanner {
                     phase: context.phase.effects, loadFactor: life.loadFactor(for: exercise) * (life.reentry ? 0.92 : 1),
                     bodyweightKg: context.bodyweightKg, history: context.history[exercise.id] ?? [])
                 let prescription = Progression.prescribe(target, progression)
-                var all = prescription.sets
                 let increments = gym.increments(for: exercise.equipment)
-                if slot.role == .main, let first = all.first, let load = first.loadKg, first.kind != .findingWeight {
-                    all =
-                        Progression.rampUp(
-                            to: load, reps: first.targetReps, exercise: exercise, increments: increments,
-                            bodyweightKg: context.bodyweightKg) + all
-                } else if slot.role == .main, let first = all.first, first.kind == .findingWeight,
+                var warmups: [SetPrescription] = []
+                if let first = prescription.sets.first, first.kind != .findingWeight, let load = first.loadKg {
+                    warmups = Warmup.sets(
+                        to: load, reps: first.targetReps, targetRIR: first.targetRIR, exercise: exercise, role: slot.role,
+                        increments: increments)
+                } else if let first = prescription.sets.first, first.kind == .findingWeight,
                     let guess = StartingLoad.estimate(
                         exercise, reps: first.targetReps, bodyweightKg: context.bodyweightKg,
                         sex: context.profile.sex, experience: context.profile.experience)
                 {
-                    // No working weight yet, but still a heavy lift: warm up toward a guess at it, on the light side.
-                    all =
-                        Progression.rampUp(
-                            to: increments.round(guess * 0.9, down: true), reps: first.targetReps, exercise: exercise,
-                            increments: increments, bodyweightKg: context.bodyweightKg) + all
+                    // No working weight yet: the lifts that climb still warm up, toward a guess at it, on the light side.
+                    warmups = Warmup.sets(
+                        to: increments.round(guess * 0.9, down: true), reps: first.targetReps, targetRIR: first.targetRIR,
+                        exercise: exercise, role: slot.role, increments: increments, findingWeight: true)
                 }
+                let all = warmups + prescription.sets
                 let rest = Rest.plan(
                     role: exercise.restRole, reps: prescription.sets.first?.targetReps ?? slot.repRange.middle,
                     defaultSeconds: slot.restSeconds, enduranceScore: context.enduranceScore,

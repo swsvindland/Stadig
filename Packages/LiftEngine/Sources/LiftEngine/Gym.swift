@@ -161,6 +161,9 @@ public struct GymIncrements: LoadIncrements, Hashable {
         }
     }
 
+    /// The empty bar, in kg; nothing for equipment loaded without one (a Smith machine's bar isn't counted).
+    public var barKg: Double { gym.unit.toKilograms(base) }
+
     static func cents(_ value: Double) -> Int { Int((value * 100).rounded()) }
 
     /// Past anything anyone lifts. A typed load over it is a slip (a few extra digits) and isn't
