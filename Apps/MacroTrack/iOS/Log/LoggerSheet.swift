@@ -439,7 +439,7 @@ struct SearchLogView: View {
         let personal = model.personal
         let found = await Task.detached(priority: .userInitiated) { catalog.search(text, personal: personal, limit: 60) }.value
         guard !Task.isCancelled else { return }
-        results = found
+        results = model.corrected(found)
         searching = false
     }
 
@@ -605,20 +605,26 @@ struct UsualMomentRow: View {
     }
 }
 
-/// How much: a count and a unit, with the numbers updating as they change.
+/// How much: a count and a unit, with the numbers updating as they change. The pencil corrects
+/// the food's numbers to its package's, for this time and the next.
 struct PortionView: View {
     @Environment(AppModel.self) private var model
     let request: PortionRequest
     let done: (_ closeLogger: Bool) -> Void
     @State private var amount = PortionAmount()
+    @State private var filled = false
+    /// The food as the person just corrected it, in place of the one asked for.
+    @State private var edited: Food?
+    @State private var editing = false
+
+    var food: Food { edited ?? request.food }
 
     var body: some View {
-        let food = request.food
         let current = amount.unit(for: food)
         let n = amount.nutrients(food)
         Form {
             Section {
-                FoodHeader(food: food)
+                FoodHeader(food: food, corrected: model.isCorrected(food.id))
             }
             Section("Amount") {
                 AmountFields(food: food, amount: $amount)
@@ -644,11 +650,27 @@ struct PortionView: View {
         }
         .navigationTitle("Amount")
         .toolbar {
-            ToolbarItem(placement: .barTrailing) {
+            ToolbarItemGroup(placement: .barTrailing) {
+                if current != nil { EditFoodButton { editing = true } }
                 FavoriteButton(foodID: food.id)
             }
         }
-        .onAppear { amount = PortionAmount(suggestedFor: food, personal: model.personalFood(food.id)) }
+        .sheet(isPresented: $editing) {
+            if let current { FoodEditor(food: food, count: amount.count, unit: current) { use($0) } }
+        }
+        .onAppear {
+            // Once: it appears again when the food editor closes, and the amount chosen stays.
+            guard !filled else { return }
+            filled = true
+            amount = PortionAmount(suggestedFor: food, personal: model.personalFood(food.id))
+        }
+    }
+
+    /// The food as corrected (or the catalog's again), at the same amount: its units are the same,
+    /// but one counted in calories holds a different amount now.
+    func use(_ food: Food) {
+        edited = food
+        if let id = amount.unit?.id, let unit = FoodUnits.units(for: food).first(where: { $0.id == id }) { amount.unit = unit }
     }
 
     /// Half, one, one and a half and two of the usual amount, each rounded the way that unit is
@@ -765,6 +787,8 @@ struct AmountFields: View {
 /// A food's name, brand, where its numbers come from and how processed it is.
 struct FoodHeader: View {
     let food: Food
+    /// The numbers are the person's correction of the catalog's.
+    var corrected = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -772,7 +796,9 @@ struct FoodHeader: View {
             if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
                 Text(brand).font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(PortionView.sourceLabel(food)).font(.caption).foregroundStyle(.tertiary)
+            Text(corrected ? "Your numbers, corrected from \(PortionView.sourceLabel(food))" : PortionView.sourceLabel(food))
+                .font(.caption).foregroundStyle(.tertiary)
+                .accessibilityIdentifier("food.source")
             FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
         }
     }

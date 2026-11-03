@@ -80,6 +80,23 @@ public struct Food: Hashable, Codable, Sendable, Identifiable {
     public var title: String { brand.map { "\(name) · \($0)" } ?? name }
 
     public var isPackaged: Bool { source == .off || barcode != nil }
+
+    /// The food with its calories and macros as the package in front of the person gives them for
+    /// `count` of `unit`: "1 slice (28 g) is 70 kcal" makes it 250 kcal per 100 g. Everything else
+    /// (fiber, sodium, vitamins, portions, barcode, processing) stays as it was. Nil for an amount
+    /// nothing can be worked out from: none, or one counted in calories, which are what's changing.
+    public func correcting(kcal: Double, protein: Double, carbs: Double, fat: Double, count: Double, unit: PortionUnit) -> Food? {
+        guard unit.kind != .energy else { return nil }
+        let amount = FoodUnits.amount(count, unit)
+        guard amount > 0, amount.isFinite, [kcal, protein, carbs, fat].allSatisfy({ $0 >= 0 && $0.isFinite }) else { return nil }
+        let factor = basis == .serving ? 1 / amount : 100 / amount
+        var food = self
+        food.nutrients.kcal = kcal * factor
+        food.nutrients.protein = protein * factor
+        food.nutrients.carbs = carbs * factor
+        food.nutrients.fat = fat * factor
+        return food
+    }
 }
 
 /// One of the person's own foods (custom, recipe, favorite or recently logged), with how strongly
