@@ -564,15 +564,6 @@ struct ProgressionTests {
         #expect(Progression.targetRIR(week: 2, of: 5) > Progression.targetRIR(week: 3, of: 5))
     }
 
-    @Test func rampUpSetsLeadToTheWorkingLoad() {
-        let sets = Progression.rampUp(to: 100, reps: 5, exercise: TestExercise.bench, increments: FixedIncrements(stepKg: 2.5), bodyweightKg: 80)
-        #expect(sets.count == 3)
-        #expect(sets.allSatisfy { $0.kind == .warmup && ($0.loadKg ?? 0) < 100 })
-        #expect(
-            Progression.rampUp(to: 40, reps: 10, exercise: TestExercise.legExtension, increments: FixedIncrements(stepKg: 5), bodyweightKg: 80)
-                .isEmpty)
-    }
-
     /// Midnight on a fixed summer day, in this machine's time zone (sets are grouped by its days).
     static let night = Day(year: 2026, month: 6, day: 10).date()
 

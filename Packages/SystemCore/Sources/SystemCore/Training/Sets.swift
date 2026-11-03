@@ -57,7 +57,8 @@ public enum SetRating: String, CaseIterable, Codable, Sendable, Identifiable {
 }
 
 public enum SetKind: String, Codable, Sendable, CaseIterable {
-    /// Ramp-up sets; they double as the warm-up in short sessions and never count as work.
+    /// The sets before the work (LiftEngine's `Warmup`), up to and sometimes at its weight; they
+    /// double as the warm-up in short sessions, are never rated and never count as work.
     case warmup
     case working
     /// Week one: "pick a weight you think you can do for 7", rated, adjusted until it's right.

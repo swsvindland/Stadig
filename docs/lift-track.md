@@ -142,7 +142,14 @@ The program generator works like this:
 
 **Session planning** turns a day into exact sets:
 
-- ramp-up sets, and rep-outs placed on safe-to-fail anchors first, judged on the exercise actually done after any swap, so a stand-in that isn't safe to fail gets none
+- warm-ups before every lift, main or accessory, the way it's loaded (`Warmup`):
+  - **On a bar** (barbell, trap bar, EZ bar): the empty bar first, then up to three even jumps of about 30 kg at most, then the working weight for two to four reps (about half the work's). 140 kg squats for 5 go 20 × 5, 50 × 5, 80 × 5, 110 × 3, 140 × 3; a 405 lb deadlift warms up at 45, 135, 225 and 315 lb; work with the bar alone is tried once with it.
+  - **Plate-loaded and Smith machines** (leg press, hack squat): a plate a side more each set, the biggest plate that goes on at least once under the work, up to four sets spread evenly, every one lighter than the work. A 360 lb leg press goes 90, 180, 270, then the work.
+  - **Isolation work, and the accessories on dumbbells, cables and machines:** one set of two to four reps at the working weight, to see that it feels right. Dumbbell, cable and machine lifts that lead a day climb at about half and three quarters of the work (45, 65 and 82% from 60 kg).
+  - Bodyweight, assisted and timed work warm up by doing. With no working weight yet, the lifts that climb climb toward a guess at it, on the light side, and the rest go straight to finding it.
+  - Fewer reps the nearer a set gets to the work (8, 5, 3), never more than the work asks. Warm-ups aren't rated, rest 45 seconds, and the last one before the work rests half the work's rest (at least 45 seconds). A swap before anything of the exercise is done or skipped warms the new exercise up its own way.
+  - The elastic time budget doesn't count them yet (a main compound still gets 2½ minutes, an accessory none), so a day's estimate runs over its minutes by about a minute for each warm-up it didn't have before; see `decisions.md`.
+- rep-outs placed on safe-to-fail anchors first, judged on the exercise actually done after any swap, so a stand-in that isn't safe to fail gets none
 - deloads keep Zone 2 and mobility
 - check-ins land at the end of the deload
 - crunch mode gives the minimum effective dose, with equipment stand-ins

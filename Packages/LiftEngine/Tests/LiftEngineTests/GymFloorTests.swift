@@ -87,18 +87,21 @@ struct GymFloorTests {
         let ctx = context(profile)
         var live = LiveSession(plan: SessionPlanner.plan(m.days[0], of: m, on: Fixture.start, context: ctx), device: "Test")
         let env = environment(ctx)
-        let index = try #require(live.items.firstIndex { $0.plan.isStrength && $0.sets.first?.prescription.kind == .findingWeight })
+        let finding = { (item: LiveItem) in item.sets.filter { $0.prescription.kind == .findingWeight }.count >= 2 }
+        let index = try #require(live.items.firstIndex { $0.plan.isStrength && finding($0) })
+        // After any warm-ups toward a guess at the weight.
+        let first = try #require(live.items[index].sets.firstIndex { $0.prescription.kind == .findingWeight })
         // 30 kg typed instead of 100, rated easy: the next set builds on 30.
-        live.log(item: index, set: 0, reps: 10, loadKg: 30, rating: .green, environment: env)
-        let fromTypo = try #require(live.items[index].sets[1].prescription.loadKg)
+        live.log(item: index, set: first, reps: 10, loadKg: 30, rating: .green, environment: env)
+        let fromTypo = try #require(live.items[index].sets[first + 1].prescription.loadKg)
         #expect(fromTypo < 50)
-        live.edit(item: index, set: 0, reps: 10, loadKg: 100, rating: .green, environment: env)
-        #expect(live.items[index].sets[0].logged?.loadKg == 100)
-        let corrected = try #require(live.items[index].sets[1].prescription.loadKg)
+        live.edit(item: index, set: first, reps: 10, loadKg: 100, rating: .green, environment: env)
+        #expect(live.items[index].sets[first].logged?.loadKg == 100)
+        let corrected = try #require(live.items[index].sets[first + 1].prescription.loadKg)
         #expect(corrected >= 100, "\(corrected)")
         // A rating tapped too fast: red to orange holds the weight instead of dropping it.
-        live.edit(item: index, set: 0, reps: 10, loadKg: 100, rating: .orange, environment: env)
-        #expect(live.items[index].sets[1].prescription.loadKg == 100)
+        live.edit(item: index, set: first, reps: 10, loadKg: 100, rating: .orange, environment: env)
+        #expect(live.items[index].sets[first + 1].prescription.loadKg == 100)
     }
 
     @Test("starting weights land near what people lift, not an empty bar")

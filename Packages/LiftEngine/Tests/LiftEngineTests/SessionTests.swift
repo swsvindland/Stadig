@@ -171,6 +171,105 @@ struct SessionTests {
         #expect(live.items[index].plan.substitutedFor == original)
     }
 
+    @Test("a planned day warms each lift up its own way: the bar first, a curl tried once, the work after")
+    func warmupsInThePlan() {
+        let profile = Fixture.profile()
+        let m = ProgramGenerator.generate(Fixture.input(profile))
+        let lastWeek = Fixture.start.adding(days: -7).date().addingTimeInterval(18 * 3600)
+        var history: [String: [LoggedSet]] = [:]
+        for slot in m.days.flatMap(\.strengthSlots) {
+            let exercise = Fixture.catalog.resolve(slot.exerciseID)
+            let load: Double =
+                switch exercise.loadBasis {
+                case .perHand: 20
+                case .external: exercise.isCompound ? 100 : 30
+                default: 0
+                }
+            history[exercise.id] = (0..<3).map {
+                LoggedSet(
+                    exerciseID: exercise.id, date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: load,
+                    reps: slot.repRange.middle, rating: .orange, bodyweightKg: 80)
+            }
+        }
+        let ctx = context(profile, history: history)
+        var styles: [Warmup.Style] = []
+        for day in m.days {
+            for item in SessionPlanner.plan(day, of: m, on: Fixture.start, context: ctx).items where item.isStrength {
+                let exercise = Fixture.catalog.resolve(item.exerciseID)
+                let warmups = Array(item.sets.prefix { $0.kind == .warmup })
+                let label = "\(exercise.id): \(item.sets.map { "\($0.kind.label) \($0.loadKg ?? 0) × \($0.targetReps)" })"
+                #expect(!item.sets.dropFirst(warmups.count).contains { $0.kind == .warmup }, "warm-ups come first: \(label)")
+                guard let work = item.workSets.first, work.kind != .findingWeight, let load = work.loadKg else { continue }
+                let style = Warmup.style(for: exercise, role: item.role)
+                styles.append(style)
+                switch style {
+                case .bar:
+                    #expect(warmups.first?.loadKg == ctx.gym.increments(for: exercise.equipment).barKg, "\(label)")
+                    #expect(warmups.last?.loadKg == load && (1...4).contains(warmups.last?.targetReps ?? 0), "\(label)")
+                case .plates, .ramp:
+                    #expect(!warmups.isEmpty && warmups.count <= 4 && warmups.allSatisfy { ($0.loadKg ?? 0) < load }, "\(label)")
+                case .test:
+                    #expect(warmups.count == 1 && warmups.first?.loadKg == load, "\(label)")
+                    #expect((1...4).contains(warmups.first?.targetReps ?? 0), "\(label)")
+                case .none:
+                    #expect(warmups.isEmpty, "\(label)")
+                }
+            }
+        }
+        #expect(styles.contains(.bar) && styles.contains(.test), "\(styles)")
+    }
+
+    @Test("warm-ups rest 45 seconds, and the last one, at the working weight, half the work's rest")
+    func warmupRests() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var squat = lift("barbell-back-squat", load: 140, rest: RestPlan(target: 180, minimum: 120, heartRateGuided: false))
+        let exercise = Fixture.catalog.resolve(squat.exerciseID)
+        let ramp = Warmup.sets(
+            to: 140, reps: 10, targetRIR: 2, exercise: exercise, role: .main, increments: environment.increments(for: exercise))
+        squat.sets = ramp + squat.sets
+        var live = session([squat], at: start)
+        let warmups = live.items[0].sets.filter { $0.prescription.kind == .warmup }.count
+        #expect(warmups == 5)
+        var clock = start
+        for set in 0..<warmups {
+            clock = clock.addingTimeInterval(60)
+            live.log(
+                item: 0, set: set, reps: live.items[0].sets[set].prescription.targetReps, loadKg: nil, rating: nil,
+                environment: environment, now: clock)
+            let rest = try #require(live.rest)
+            #expect(rest.plan.target == (set == warmups - 1 ? 90 : 45), "after warm-up \(set + 1)")
+            #expect(rest.endsAt == clock.addingTimeInterval(TimeInterval(rest.plan.target)))
+        }
+        // The work keeps its own rest.
+        live.log(item: 0, set: warmups, reps: 10, loadKg: 140, rating: .orange, environment: environment, now: clock.addingTimeInterval(90))
+        #expect(live.rest?.plan.target == 180)
+    }
+
+    @Test("a swap before anything's done warms the new exercise up its own way; one after a logged set adds none")
+    func swapWarmsUp() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        let lastWeek = Fixture.start.adding(days: -7).date().addingTimeInterval(18 * 3600)
+        var env = environment
+        env.history["leg-press"] = (0..<3).map {
+            LoggedSet(
+                exerciseID: "leg-press", date: lastWeek.addingTimeInterval(Double($0) * 180), loadKg: 200, reps: 10, rating: .orange,
+                bodyweightKg: 80)
+        }
+        let legPress = Fixture.catalog.resolve("leg-press")
+        var fresh = session([lift("barbell-back-squat", load: 100)], at: start)
+        fresh.swap(item: 0, to: legPress, environment: env, now: start)
+        let sets = fresh.items[0].sets.map(\.prescription)
+        let warmups = sets.prefix { $0.kind == .warmup }
+        let work = try #require(sets.first { $0.kind != .warmup }?.loadKg)
+        #expect(!warmups.isEmpty && warmups.count <= 4 && warmups.allSatisfy { ($0.loadKg ?? 0) < work }, "\(sets)")
+        #expect(!sets.dropFirst(warmups.count).contains { $0.kind == .warmup })
+
+        var started = session([lift("barbell-back-squat", load: 100)], at: start)
+        started.log(item: 0, set: 0, reps: 10, loadKg: 100, rating: .orange, environment: env, now: start.addingTimeInterval(60))
+        started.swap(item: 0, to: legPress, environment: env, now: start.addingTimeInterval(120))
+        #expect(!started.items[0].sets.contains { $0.prescription.kind == .warmup })
+    }
+
     @Test("a swap partway through an exercise keeps each exercise's sets its own")
     func swapAfterLoggedSets() throws {
         let profile = Fixture.profile()

@@ -302,11 +302,17 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         items[index] = item
         if !item.plan.isStrength, item.isDone, !mobilityDone.contains(item.exerciseID) { mobilityDone.append(item.exerciseID) }
         startRest(after: index, environment: environment, now: now)
-        // Ramp-up sets need only a short breather.
-        if prescription.kind == .warmup, var state = rest, state.plan.target > 45 {
-            state.plan = RestPlan(target: 45, minimum: 0, heartRateGuided: false)
-            state.endsAt = now.addingTimeInterval(45)
-            rest = state
+        // Warm-ups need only a short breather. The last one, at or near the working weight, gets
+        // half the work's rest, so the first work set doesn't start tired from it.
+        if prescription.kind == .warmup, var state = rest {
+            let next = item.sets.indices.first { $0 > setIndex && item.sets[$0].isOpen }
+            let beforeWork = next.map { item.sets[$0].prescription.kind != .warmup } ?? false
+            let breather = beforeWork ? max(45, item.plan.rest.target / 2) : 45
+            if state.plan.target > breather {
+                state.plan = RestPlan(target: breather, minimum: 0, heartRateGuided: false)
+                state.endsAt = now.addingTimeInterval(TimeInterval(breather))
+                rest = state
+            }
         }
         updatedAt = now
         return adjustment
@@ -446,7 +452,14 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         item.plan.substitutedFor = item.plan.substitutedFor ?? item.exerciseID
         item.exerciseID = exercise.id
         item.sets.removeAll { $0.isOpen }
-        item.sets += prescription.sets.map { LiveSet(prescription: $0) }
+        // Swapped before anything was done or skipped: the new exercise warms up its own way.
+        var warmups: [SetPrescription] = []
+        if item.sets.isEmpty, let first = prescription.sets.first, first.kind != .findingWeight, let load = first.loadKg {
+            warmups = Warmup.sets(
+                to: load, reps: first.targetReps, targetRIR: first.targetRIR, exercise: exercise, role: item.plan.role,
+                increments: environment.increments(for: exercise))
+        }
+        item.sets += (warmups + prescription.sets).map { LiveSet(prescription: $0) }
         item.plan.note = prescription.reason
         item.verified = false
         items[index] = item
