@@ -108,6 +108,9 @@ struct WarmupTests {
         #expect(warmups("farmers-carry", 30, reps: 1).isEmpty)
         #expect(warmups("barbell-back-squat", 100, reps: 5, role: .mobility).isEmpty)
         #expect(warmups("barbell-back-squat", 0, reps: 5).isEmpty)
+        // A slipped load warms up nothing rather than climbing for ever.
+        #expect(warmups("leg-press", 82_500_000, reps: 10, role: .accessory).isEmpty)
+        #expect(warmups("leg-press", .infinity, reps: 10, role: .accessory).isEmpty)
     }
 
     @Test("still finding the weight: the lifts that climb climb toward the guess, the rest go straight to finding it")

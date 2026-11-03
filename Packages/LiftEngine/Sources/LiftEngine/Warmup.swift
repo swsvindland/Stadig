@@ -44,7 +44,8 @@ public enum Warmup {
         to workingKg: Double, reps: Int, targetRIR: Double, exercise: Exercise, role: SlotRole, increments: GymIncrements,
         findingWeight: Bool = false
     ) -> [SetPrescription] {
-        guard workingKg > 0, reps > 0 else { return [] }
+        // Past the most anyone lifts is a slipped digit (or infinity) and would climb for ever.
+        guard workingKg > 0, workingKg <= GymIncrements.maximumLoadKg, reps > 0 else { return [] }
         let tried: [SetPrescription] = findingWeight ? [] : [test(at: workingKg, reps: reps, targetRIR: targetRIR)]
         switch style(for: exercise, role: role) {
         case .bar: return barRamp(to: workingKg, reps: reps, targetRIR: targetRIR, increments: increments)
