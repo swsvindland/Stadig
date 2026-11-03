@@ -112,6 +112,7 @@ Stadig Lift's warm-up sets, in LiftEngine's `Warmup`, used by `SessionPlanner` a
 - **Still finding the weight**, the lifts that climb (bars, plates, the leading lifts) climb toward a guess at it on the light side, accessories included now, and those that would only be tried go straight to finding it.
 - **The rest after the last warm-up** is half the work's (at least 45 s), so 90 s before a squat's 180 s; the others keep 45 s. Open: the full rest.
 - **A swap** made before any set of the exercise is done or skipped warms the new exercise up its own way; after one, it adds none (the old exercise's warm-ups did the job). Open: warm-ups after a swap partway through.
+- **The time budget counts them.** Fitting a day gives each lift its warm-ups' time before any weight is known: 4 minutes for a main lift on a bar, 3 for a bar or plate-loaded accessory, 2½ for a leading dumbbell or machine lift, 1 for one tried once (main compounds had 2½ and accessories none). So a day with several accessories fits one fewer, or fewer sets, where the warm-ups would otherwise have run it over. Open: the minutes, and letting the warm-ups run over instead.
 - **Not changed:** warm-ups are never rated, adjust nothing and count as no work; crunch mode, a deload and a head cold warm up the same way toward their lighter work.
 
 ## Calls made for packaged foods' servings (2026-10-28)

@@ -132,7 +132,7 @@ The program generator works like this:
   - It spends the systemic budget on high-SFR options, swapping the costliest lifts before trimming sets.
   - Declared classes spend the same budget.
   - Cheap local volume is added for lagging physique areas.
-- **Elastic time budget**: each block has a minimum, a desired length and a priority, and goals reorder the priorities.
+- **Elastic time budget**: each block has a minimum, a desired length and a priority, and goals reorder the priorities. Each lift's warm-ups count toward its time (about four minutes for a main lift on a bar, three for a bar or plate-loaded accessory, two and a half for a leading dumbbell or machine lift, one for a lift tried once at its weight).
   - **30 minutes:** ramp-up sets are the warm-up, the limiter drill happens in the rests, two compounds are supersetted, and conditioning becomes a quest.
   - **60 minutes:** five easy minutes on a bike or rower and three drills, the limiter slot, the main lifts, a few accessories and brief conditioning.
   - **90 minutes:** a fuller warm-up, more sets and a 20–30 minute conditioning finisher.
