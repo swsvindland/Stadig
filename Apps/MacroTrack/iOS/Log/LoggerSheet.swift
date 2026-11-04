@@ -92,10 +92,15 @@ struct LoggerAmount: View {
 /// to it. It has its own search field, since a pane isn't where a window's search field goes.
 struct LoggerPane: View {
     @Environment(AppModel.self) private var model
+    /// A food's being changed over it. It stays alive under there, out of sight and out of reach.
+    let covered: Bool
     @State private var session: LoggerSession
     @FocusState private var searchFocused: Bool
 
-    init(start: LogMode) { _session = State(initialValue: LoggerSession(mode: start)) }
+    init(start: LogMode, covered: Bool = false) {
+        self.covered = covered
+        _session = State(initialValue: LoggerSession(mode: start))
+    }
 
     var body: some View {
         @Bindable var session = session
@@ -106,7 +111,7 @@ struct LoggerPane: View {
                 } else {
                     VStack(spacing: 0) {
                         if session.mode == .search { searchField }
-                        LoggerContent(session: session, done: { model.logger = nil })
+                        LoggerContent(session: session, covered: covered, done: { model.logger = nil })
                     }
                 }
             }
@@ -118,10 +123,14 @@ struct LoggerPane: View {
                 }
             }
         }
+        .opacity(covered ? 0 : 1)
+        .disabled(covered)
+        .accessibilityHidden(covered)
         .onAppear {
             model.ai.prewarm()
             searchFocused = true
         }
+        .onChange(of: covered) { _, covered in searchFocused = !covered && session.portion == nil }
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.portion) { _, request in if request == nil { searchFocused = true } }
@@ -163,6 +172,8 @@ struct LoggerPane: View {
 struct LoggerContent: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
+    /// A food's being changed over it: a toast's few seconds would run out unseen.
+    var covered = false
     let done: () -> Void
 
     var body: some View {
@@ -188,7 +199,7 @@ struct LoggerContent: View {
     var bottom: some View {
         VStack(spacing: 8) {
             // Over the meal it just changed, where the eye already is after a tap on +.
-            ToastSlot()
+            if !covered { ToastSlot() }
             VStack(spacing: 8) {
                 MealTray()
                 LogTimeBar()

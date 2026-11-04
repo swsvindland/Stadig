@@ -81,6 +81,97 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// A food opened from the hours is a look, not a change of plan: the logger under it comes back
+    /// as it was, with the cursor in its search. A review is kept the same way, and a simulator
+    /// can't run the model to make one, so what's typed stands in for it.
+    @MainActor
+    func testAFoodOpenedBesideTheLoggerLeavesItAsItWas() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1", "-log", "search"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear()
+
+        app.scrollTo(app.element("log.entry"), beside: app.element("log.list")).waitToAppear().tap()
+        let cancel = app.element("entryEditor.cancel").waitToAppear()
+        for hidden in ["logger.done", "logger.search", "logger.pickTime"] {
+            XCTAssertFalse(app.element(hidden).isEnabled, "\(hidden) can't be reached under the food")
+        }
+
+        cancel.tap()
+        cancel.waitToDisappear()
+        XCTAssertEqual(search.waitToAppear().value as? String, "banana")
+        app.typeText(" raw")
+        XCTAssertEqual(search.value as? String, "banana raw", "the cursor came back to the search")
+    }
+
+    /// The same with an amount open in the pane: it's back, with what was typed.
+    @MainActor
+    func testAnAmountComesBackFromUnderAFood() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1", "-log", "search"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear().tap()
+        let add = app.element("portion.add").waitToAppear()
+        app.element("amount.key.7").tap()
+
+        app.scrollTo(app.element("log.entry"), beside: app.element("log.list")).waitToAppear().tap()
+        let cancel = app.element("entryEditor.cancel").waitToAppear()
+        cancel.tap()
+        cancel.waitToDisappear()
+
+        add.waitToAppear()
+        XCTAssertEqual(app.element("amount.quantity").value as? String, "7 nlea serving", "as it was left")
+    }
+
+    /// An hour's + or ⌘L asks for the logger: it shows at once, rather than under the food open.
+    @MainActor
+    func testAskingForTheLoggerShowsItOverAFoodsAmount() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        app.element("log.list").waitToAppear()
+        let food = app.scrollTo(app.element("log.entry"), beside: app.element("log.list")).waitToAppear()
+        let save = app.element("entryEditor.save")
+        let done = app.element("logger.done")
+
+        food.tap()
+        save.waitToAppear()
+        app.scrollTo(app.element("log.add.20"), beside: app.element("log.list")).waitToAppear().tap()
+        save.waitToDisappear()
+        done.waitToAppear()
+
+        // Over a logger already open, where nothing about `logger` changes.
+        app.scrollTo(food, beside: app.element("log.list")).waitToAppear().tap()
+        save.waitToAppear()
+        app.typeKey("l", modifierFlags: .command)
+        save.waitToDisappear()
+        done.waitToAppear()
+    }
+
+    /// While a food is open over the logger there's nowhere to show a toast, so its few seconds
+    /// don't run under there: Undo comes back with the logger.
+    @MainActor
+    func testUndoOutlastsAFoodOpenedOverTheLogger() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1", "-log", "search", "-toastSeconds", "5"])
+        let food = app.scrollTo(app.element("log.entry"), beside: app.element("log.list")).waitToAppear()
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        food.tap()
+        let cancel = app.element("entryEditor.cancel").waitToAppear()
+        Thread.sleep(forTimeInterval: 7)
+        cancel.tap()
+
+        app.element("toast.undo").waitToAppear()
+    }
+
     /// The toolbar's button for the way the pane opened with, once it's gone back to its search.
     @MainActor
     func testTheToolbarFindsTheWayThePaneOpenedWith() {

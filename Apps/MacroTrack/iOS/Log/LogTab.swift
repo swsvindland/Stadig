@@ -106,11 +106,13 @@ struct LogTab: View {
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
             // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
             .onChange(of: current == nil) { _, gone in if gone { editing = nil } }
+            // Asked for, the logger shows at once, rather than waiting under a food open beside it.
+            .onChange(of: model.loggerRequest) { _, _ in if wide { editing = nil } }
         }
     }
 
-    /// A food's amount where there's no pane to put it in, and otherwise in the pane, in place of
-    /// the logger.
+    /// A food's amount where there's no pane to put it in, and otherwise in the pane, over the
+    /// logger.
     var editingFood: Binding<FoodEntry?> { $editing }
 
     /// The food being changed as the log has it now, and nil once it's been moved or deleted beside
@@ -130,13 +132,20 @@ struct LogTab: View {
 
     @ViewBuilder
     var pane: some View {
-        if let current {
-            // A new panel for a new version: its amount and time are read once, as it opens.
-            EntryEditor(entry: current, close: { editing = nil }).padding(.top, 8).id(FoodVersion(id: current.id, updatedAt: current.updatedAt))
-        } else if let mode = model.logger {
-            // The same one however it's asked for again: it goes where it's asked, and keeps what
-            // it can, so a request for the way it's on doesn't lose a review.
-            LoggerPane(start: mode)
+        ZStack {
+            if let mode = model.logger {
+                // The same one however it's asked for again: it goes where it's asked, and keeps
+                // what it can, so a request for the way it's on doesn't lose a review. Under a food
+                // being changed rather than in place of it: what's typed, a review and a read under
+                // way all come back as they were, and nothing opens the camera again.
+                LoggerPane(start: mode, covered: current != nil)
+            }
+            if let current {
+                // A new panel for a new version: its amount and time are read once, as it opens.
+                EntryEditor(entry: current, close: { editing = nil })
+                    .padding(.top, 8)
+                    .id(FoodVersion(id: current.id, updatedAt: current.updatedAt))
+            }
         }
     }
 
