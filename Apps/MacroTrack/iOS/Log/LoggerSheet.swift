@@ -83,6 +83,7 @@ struct LoggerAmount: View {
                 session.review?.items[index].count = count
                 session.review?.items[index].unit = unit
             },
+            foodCorrected: { session.useCorrection($0) },
             finished: {
                 guard case .add = request.purpose else { return }
                 session.backToSearch()

@@ -221,6 +221,53 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertFalse(app.element("review.log").waitForExistence(timeout: 2), "logging it ended it")
     }
 
+    /// From the review, the pencil on its food's amount: 300 kcal corrected to 360.
+    @MainActor
+    func correctTheFoodInTheReview(_ app: XCUIApplication) {
+        app.element("review.amount").waitToAppear().tap()
+        app.element("portion.editFood").waitToAppear().tap()
+        let kcal = app.element("foodEditor.kcal").waitToAppear()
+        // The number sits at the field's right edge, so a tap there leaves the cursor after it.
+        kcal.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        kcal.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3) + "360")
+        app.closeNumberPad()
+        let save = app.element("foodEditor.save").waitToAppear()
+        save.tap()
+        save.waitToDisappear()
+    }
+
+    /// A correction made from the review's amount reaches the review: its total, and what's logged.
+    @MainActor
+    func testACorrectionMadeFromTheReviewReachesIt() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedReview", "-log", "describe", "-toastSeconds", "30"])
+        let log = app.element("review.log").waitToAppear()
+        XCTAssertEqual(log.label, "Log 1 food · 300 kcal")
+
+        correctTheFoodInTheReview(app)
+
+        let use = app.element("portion.add").waitToAppear()
+        XCTAssertEqual(use.label, "Use · 360 kcal")
+        use.tap()
+        log.waitForLabel(toEqual: "Log 1 food · 360 kcal")
+        app.shot("logger-review-corrected")
+        log.tap()
+        XCTAssertEqual(app.element("toast.message").waitToAppear().label, "Logged Beef stew · 360 kcal", "the total the button said")
+    }
+
+    /// The correction is saved by then, so closing the amount without using it doesn't undo it.
+    @MainActor
+    func testACorrectionStandsWhenItsAmountIsClosed() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedReview", "-log", "describe"])
+        let log = app.element("review.log").waitToAppear()
+
+        correctTheFoodInTheReview(app)
+
+        app.element("portion.close").waitToAppear().tap()
+        log.waitForLabel(toEqual: "Log 1 food · 360 kcal")
+    }
+
     /// A scanned supplement already in the stack: Take ends there, back at the search for the next
     /// thing with its Undo over the meal, in a sheet and in the pane. The simulator has no camera,
     /// so it's typed.

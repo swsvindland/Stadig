@@ -13,6 +13,8 @@ struct AmountPanel: View {
     var saveTo: ((FoodEntry) -> Void)?
     /// Takes the amount chosen for a `.pick`.
     var picked: ((Double, PortionUnit) -> Void)?
+    /// The food's numbers were corrected here, for whoever holds a copy of it.
+    var foodCorrected: ((Food) -> Void)?
     /// A food was added or an entry saved.
     var finished: () -> Void = {}
     let close: () -> Void
@@ -374,6 +376,7 @@ struct AmountPanel: View {
     func use(_ corrected: Food) {
         food = corrected
         if let id = amount.unit?.id, let unit = FoodUnits.units(for: corrected).first(where: { $0.id == id }) { amount.change(to: unit) }
+        foodCorrected?(corrected)
     }
 }
 

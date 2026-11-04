@@ -121,6 +121,13 @@ final class LoggerSession {
         backToSearch()
     }
 
+    /// A food corrected from an amount. The correction is saved whether or not that amount is then
+    /// used, so wherever the review has the food, it shows and logs the new numbers.
+    func useCorrection(_ food: Food) {
+        guard let items = review?.items else { return }
+        for index in items.indices where items[index].food?.id == food.id { review?.items[index].correct(to: food) }
+    }
+
     /// Off to the search for one of the review's foods, keeping the review to come back to.
     func find(_ text: String, for item: UUID) {
         finding = item
@@ -185,6 +192,13 @@ struct MealReview {
             }
             self.food = food
             included = true
+        }
+
+        /// The same food with the person's numbers, at the same amount. Its units are the same, but
+        /// one counted in calories holds a different amount now.
+        mutating func correct(to corrected: Food) {
+            food = corrected
+            if let id = unit?.id, let same = FoodUnits.units(for: corrected).first(where: { $0.id == id }) { unit = same }
         }
     }
 
