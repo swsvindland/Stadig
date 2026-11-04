@@ -31,8 +31,8 @@ case $STAGE in
       NO_VISION_OCR=1 STRICT=1 Scripts/build.sh test $PACKAGES
     fi
     if [[ $action == archive && ${CI_BRANCH:-} == release/* ]] \
-      && grep -q 'static let enabled = false' Apps/$APP/iOS/Purchase/Purchases.swift; then
-      print -u2 "error: $APP's Purchases.enabled is false on ${CI_BRANCH}: the release would ship unlocked. Set it to true (see docs/ci-cd.md)."
+      && grep -q 'enabled: false' Apps/$APP/iOS/Purchase/Purchases.swift; then
+      print -u2 "error: $APP's purchases are switched off (enabled: false) on ${CI_BRANCH}: the release would ship unlocked. Set it to true (see docs/ci-cd.md)."
       exit 1
     fi
     ;;

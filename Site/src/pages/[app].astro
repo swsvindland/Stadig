@@ -20,7 +20,7 @@ const jsonLd = [
     operatingSystem: os,
     description: app.description,
     author: { "@id": `${brand.domain}/#org` },
-    offers: { "@type": "Offer", description: "One-time purchase. Logging, export and backup are free.", category: "one-time" },
+    offers: { "@type": "Offer", price: "29.99", priceCurrency: "USD", description: "Free for 21 days, then $29.99 once or $2.99 a month. Logging, export and backup are free." },
     featureList: app.features.map((f) => f.title),
   },
   {

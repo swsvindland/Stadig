@@ -25,6 +25,6 @@ Import the repo, set **Root Directory** to `Site`, framework preset Astro. `verc
 
 - Register `stadig.dev` (and `stadig.io` as a defensive backup). Both were free on 17 October 2026. `stadig.com` has been held by the same registrant since 2000.
 - Fill in `appStoreUrl` for each app in `src/content/site.ts` once they're live; the buttons switch from "coming to the App Store" to real links on their own.
-- Prices are deliberately not on the site (the StoreKit files still hold placeholders). Add them to the Pricing section when set.
+- Prices are on the site in words ($29.99 once, $2.99 a month, 21 days free): `src/content/site.ts` and the JSON-LD in `src/pages/[app].astro`. They're set in App Store Connect, and the site doesn't read them from anywhere, so change both together.
 - Set up `hello@stadig.dev`.
 - Replace the type-only OG images with screenshots when the apps are ready to show.

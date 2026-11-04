@@ -7,7 +7,7 @@ export const GET: APIRoute = () => {
     ``,
     `> ${brand.description}`,
     ``,
-    `${brand.name} (pronounced ${brand.pronunciation}) is ${brand.meaning} The apps follow seven principles: prescribe don't describe; real-world tests over in-app activity; no XP, streaks or levels; offline first; private by construction; one purchase and no subscription; no third-party code. Made by ${brand.publisher}.`,
+    `${brand.name} (pronounced ${brand.pronunciation}) is ${brand.meaning} The apps follow seven principles: prescribe don't describe; real-world tests over in-app activity; no XP, streaks or levels; offline first; private by construction; free for 21 days, then pay once or by the month; no third-party code. Made by ${brand.publisher}.`,
     ``,
     `## Apps`,
     ``,

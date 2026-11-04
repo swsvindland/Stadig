@@ -3,6 +3,7 @@ import HealthBridge
 import LiftEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 
 @main
 struct LiftTrackApp: App {
@@ -116,9 +117,10 @@ private struct AppRoot: View {
         .task { if LaunchOptions.current.has("-openSettings") { openSettings() } }
             #endif
             .task {
-                // Tests and UI tests ask StoreKit and Health nothing.
-                guard !LaunchOptions.current.isQuiet else { return }
                 await model.purchases.start()
+                model.askForPurchaseIfDue()
+                // Tests and UI tests ask Health nothing.
+                guard !LaunchOptions.current.isQuiet else { return }
                 await HealthBridge.shared.requestAddedTypes()
                 // Observing first: the read after it stands for the observer's first call.
                 model.startHealthObserving()
@@ -130,6 +132,10 @@ private struct AppRoot: View {
                     if model.today != .today { model.recompute() }
                     // Sleep, weigh-ins, steps and outside workouts came in while the app was away.
                     Task { await model.refreshHealthIfStale() }
+                    Task {
+                        await model.purchases.refresh()
+                        model.askForPurchaseIfDue()
+                    }
                 }
             }
     }

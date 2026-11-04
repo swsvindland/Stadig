@@ -1,6 +1,7 @@
 import MindEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 
 @main
 struct MindTrackApp: App {
@@ -26,14 +27,17 @@ struct MindTrackApp: App {
                 .environment(model.purchases)
                 .onOpenURL { url in DeepLink.open(url, model: model) }
                 .task {
-                    // Tests and UI tests never ask StoreKit.
-                    guard !LaunchOptions.current.isQuiet else { return }
                     await model.purchases.start()
+                    model.askForPurchaseIfDue()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         model.reloadIfChanged()
                         model.refreshDay()
+                        Task {
+                            await model.purchases.refresh()
+                            model.askForPurchaseIfDue()
+                        }
                     }
                 }
         }

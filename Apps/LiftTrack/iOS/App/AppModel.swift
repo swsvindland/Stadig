@@ -5,6 +5,7 @@ import LiftEngine
 import OSLog
 import Observation
 import SystemCore
+import SystemPurchases
 import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.lift", category: "app")
@@ -57,7 +58,7 @@ enum SessionRequest: Hashable {
 
 /// A sheet the menu bar (or a shortcut) asks for, shown over whichever destination is open.
 enum AppSheet: String, Identifiable {
-    case logActivity, checkIn, measurements, nextBlock
+    case logActivity, checkIn, measurements, nextBlock, paywall
 
     var id: String { rawValue }
 }
@@ -74,7 +75,7 @@ final class AppModel {
     let store: RecordStore
     let shared: SharedContainer
     let catalog = ExerciseCatalog()
-    let purchases = Purchases()
+    let purchases: Purchases
     /// Where a session in progress is kept, so it survives the app being closed.
     let liveURL: URL
     /// Where the widgets' snapshot is written: the App Group, or a scratch folder when nothing is kept.
@@ -196,6 +197,7 @@ final class AppModel {
         self.shared = shared
         self.liveURL = liveURL
         self.widgetURL = widgetURL
+        purchases = Purchases(.lift, store: store)
         reload()
         // A second device or a reinstall: onboarding waits while the person's data comes down.
         if !onboarded { arrival = ICloudArrival.start(for: store) }
@@ -627,6 +629,13 @@ final class AppModel {
 
     /// Whether the person may generate a block now: the assessment is free, real blocks need the unlock.
     var canPlanNextBlock: Bool { purchases.unlocked }
+
+    /// Brings the offer up if it's due, on opening the app. Never over a session, or over a sheet
+    /// someone is in the middle of: it waits for the next time they open the app.
+    func askForPurchaseIfDue() {
+        guard onboarded, purchases.offerDue, live == nil, sheet == nil, finished == nil, !showSettings else { return }
+        sheet = .paywall
+    }
 
     /// Builds a mesocycle from everything known right now. Not saved until accepted.
     func generate(kind: BlockKind, start: Day, phase: NutritionPhase? = nil) -> Mesocycle {

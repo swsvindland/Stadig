@@ -3,6 +3,7 @@ import HealthBridge
 import LiftEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 import SystemStore
 import UniformTypeIdentifiers
 
@@ -203,7 +204,6 @@ private struct DataPromptsPresenter: ViewModifier {
 /// the form is in `prompts`, which the form presents.
 struct DataSections: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Binding var prompts: DataPrompts
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
@@ -245,16 +245,7 @@ struct DataSections: View {
                 "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
             )
         }
-        if Purchases.enabled {
-            Section("Stadig Lift") {
-                if purchases.unlocked {
-                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                } else {
-                    Button("Unlock Stadig Lift") { prompts.paywall = true }
-                    Button("Restore purchase") { Task { await purchases.restore() } }
-                }
-            }
-        }
+        PurchaseSection { prompts.paywall = true }
         Section {
             Text(
                 "Stadig Lift is one of the Stadig apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for study, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."

@@ -1,5 +1,6 @@
 import MindEngine
 import SwiftUI
+import SystemPurchases
 
 /// The menu bar on the Mac (and an iPad's, and its list of shortcuts when ⌘ is held): study,
 /// the shelf, a handwritten page while writing, and the destinations by number. There's one

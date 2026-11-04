@@ -1,5 +1,6 @@
 import NutritionEngine
 import SwiftUI
+import SystemPurchases
 import SystemStore
 
 /// Today to log, Plan for the phase and targets, Progress for the trend. Logging is one tap away
@@ -20,7 +21,8 @@ struct RootView: View {
         @Bindable var model = model
         Group {
             if model.onboarded {
-                tabs
+                // The offer ends onboarding: the app opens once it's answered.
+                if model.purchases.firstChoiceDue { PaywallView() } else { tabs }
             } else if let arrival = model.arrival, arrival.isWaiting {
                 ICloudWaitView(arrival: arrival)
             } else {
@@ -47,7 +49,7 @@ struct RootView: View {
         }
         #endif
         .sheet(isPresented: $model.showPaywall) {
-            PaywallView().macSheetSize(width: 480, height: 560)
+            PaywallView()
         }
         .onChange(of: wide, initial: true) { _, wide in
             model.usesSidebar = wide

@@ -3,6 +3,7 @@ import OSLog
 import SwiftUI
 import SystemAI
 import SystemCore
+import SystemPurchases
 import SystemStore
 import UniformTypeIdentifiers
 
@@ -403,27 +404,15 @@ struct SourceSettings: View {
     }
 }
 
-/// The unlock (hidden while the app is in testing), and in DEBUG builds a way to start again.
+/// The purchase, and in DEBUG builds a way to start again.
 struct PurchaseSettings: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
 
     var body: some View {
-        if Purchases.enabled {
-            Section {
-                if purchases.unlocked {
-                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                } else {
-                    Button("Unlock Stadig Mind", systemImage: "lock.open") { unlock() }
-                        .accessibilityIdentifier("settings.unlock")
-                    Button("Restore purchase") { Task { await purchases.restore() } }
-                        .accessibilityIdentifier("settings.restorePurchase")
-                }
-            }
-        }
+        PurchaseSection { unlock() }
         #if DEBUG
         Section("Debug") {
             Button("Erase everything", role: .destructive) { model.eraseEverything() }

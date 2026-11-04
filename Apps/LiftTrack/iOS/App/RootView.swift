@@ -2,6 +2,7 @@ import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 import SystemStore
 
 /// Today to train, Plan for the block, Progress for the stats, Body for physique. The sidebar on the
@@ -17,7 +18,8 @@ struct RootView: View {
         @Bindable var model = model
         ZStack {
             if model.onboarded {
-                tabs
+                // The offer ends onboarding: the app opens once it's answered.
+                if model.purchases.firstChoiceDue { PaywallView() } else { tabs }
             } else if let arrival = model.arrival, arrival.isWaiting {
                 ICloudWaitView(arrival: arrival)
             } else {
@@ -48,6 +50,7 @@ struct RootView: View {
             case .checkIn: CheckInView()
             case .measurements: MeasurementEditor(measurements: BodyMeasurements(day: .today))
             case .nextBlock: NextBlockView()
+            case .paywall: PaywallView()
             }
         }
     }

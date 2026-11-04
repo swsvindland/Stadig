@@ -12,6 +12,7 @@
 		4D2E1525EA15F9491EA57C77 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */; };
 		4D2E1ED9378130DDB303097C /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2EFA86AE2AEC56B6ADB3E5 /* SystemStore */; };
 		4D2E22AA17019F2869123254 /* MacroTrackWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E2A5EE8DEE5CA4E17BDC2 /* MacroTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E2CF8F7D0D20B168CDCD6 /* SystemPurchases in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2ECE4C71CC74A289B3073F /* SystemPurchases */; };
 		4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E6E52F11BBD748D232B06 /* NutritionEngine */; };
 		4D2E4D1A1867C53AAE0D6790 /* MacroTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D2E7143E63B462A1161303B /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E536DEE702E24FA5C993E /* NutritionEngine */; };
@@ -202,6 +203,7 @@
 			files = (
 				4D2EEB0D911012BD08D627FC /* SystemCore in Frameworks */,
 				4D2E1525EA15F9491EA57C77 /* SystemStore in Frameworks */,
+				4D2E2CF8F7D0D20B168CDCD6 /* SystemPurchases in Frameworks */,
 				4D2EB6DD5B16FE37CE25BED1 /* HealthBridge in Frameworks */,
 				4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */,
 				4D2E13E4859256E882D4008A /* FoodDatabase in Frameworks */,
@@ -375,6 +377,7 @@
 			packageProductDependencies = (
 				4D2EDB9BE16BD8647B1BCD2D /* SystemCore */,
 				4D2E74F0BB0208A0EBD8D8C0 /* SystemStore */,
+				4D2ECE4C71CC74A289B3073F /* SystemPurchases */,
 				4D2EEC29F2C791444BB6AEBD /* HealthBridge */,
 				4D2E6E52F11BBD748D232B06 /* NutritionEngine */,
 				4D2ED4A06E193F96A0389D8C /* FoodDatabase */,
@@ -506,6 +509,7 @@
 			packageReferences = (
 				4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
 				4D2E8BC130B698F82D8B0E95 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4D2E50DBDDFA51C3876B1B83 /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */,
 				4D2E74DFE55C3B76930CB026 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
 				4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */,
 				4D2EA4925F43231E360002E4 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
@@ -1246,6 +1250,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4D2E50DBDDFA51C3876B1B83 /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemPurchases;
+		};
 		4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
@@ -1316,6 +1324,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2E592776DDA448378B3504 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */;
 			productName = SystemCore;
+		};
+		4D2ECE4C71CC74A289B3073F /* SystemPurchases */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2E50DBDDFA51C3876B1B83 /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */;
+			productName = SystemPurchases;
 		};
 		4D2ED4A06E193F96A0389D8C /* FoodDatabase */ = {
 			isa = XCSwiftPackageProductDependency;

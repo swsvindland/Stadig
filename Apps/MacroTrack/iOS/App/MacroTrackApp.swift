@@ -4,6 +4,7 @@ import HealthBridge
 import NutritionEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 
 #if canImport(UIKit)
 import UIKit
@@ -83,7 +84,10 @@ struct MacroTrackApp: App {
             .environment(model)
             .environment(model.purchases)
             .onOpenURL { url in DeepLink.open(url, model: model) }
-            .task { await model.purchases.start() }
+            .task {
+                await model.purchases.start()
+                model.askForPurchaseIfDue()
+            }
             // Not after StoreKit, which can take its time on a slow network: a scale's weigh-in
             // would go unheard until it answered.
             .task {
@@ -103,6 +107,10 @@ struct MacroTrackApp: App {
                     model.healthBackfill?.run()
                     // The system ends a fast's Live Activity after about 8 hours; opening the app starts it again.
                     if model.usesSystemServices { FastActivityBridge.update(model) }
+                    Task {
+                        await model.purchases.refresh()
+                        model.askForPurchaseIfDue()
+                    }
                 case .background:
                     releaseCatalogMemory(model)
                 default:

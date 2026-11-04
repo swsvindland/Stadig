@@ -4,6 +4,7 @@ import OSLog
 import Observation
 import SystemAI
 import SystemCore
+import SystemPurchases
 import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.mind", category: "app")
@@ -50,7 +51,7 @@ final class AppModel {
     /// The language packs the build ships, the writing bank and the reading ladder, with the
     /// numbers Stadig Lift and Stadig Macro publish for statistics problems.
     private(set) var catalogs: Catalogs
-    let purchases = Purchases()
+    let purchases: Purchases
     let speech = Speech()
 
     // Records.
@@ -175,6 +176,7 @@ final class AppModel {
         self.shared = shared
         self.drafts = drafts
         self.now = now
+        purchases = Purchases(.mind, store: store, now: now)
         today = Day(now(), dayStartsAt: MindSettings.standardDayStart)
         catalogs = Catalogs(decks: LanguageDeck.bundled())
         reload()
@@ -407,6 +409,13 @@ final class AppModel {
         var plan = SessionPlanner.plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, catalogs: catalogs)
         plan.planned = analysis?.today.map { Set($0.domains) == Set(domains) } ?? false
         start(plan)
+    }
+
+    /// Brings the offer up if it's due, on opening the app. Never over a session, or over a sheet
+    /// someone is in the middle of: it waits for the next time they open the app.
+    func askForPurchaseIfDue() {
+        guard onboarded, purchases.offerDue, !sessionOpen, !showSettings, !showShelf, !addingBook, episodeLanguage == nil else { return }
+        showPaywall = true
     }
 
     /// Nothing starts over a session that's running: on the Mac, Today and the menus stay usable

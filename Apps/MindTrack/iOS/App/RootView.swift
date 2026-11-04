@@ -1,5 +1,6 @@
 import MindEngine
 import SwiftUI
+import SystemPurchases
 import SystemStore
 
 /// Today for the session, Plan for the week and what's next, Progress for the honest measures. In a
@@ -17,7 +18,11 @@ struct RootView: View {
     var body: some View {
         @Bindable var model = model
         Group {
-            if model.onboarded {
+            // The offer ends onboarding, after the first session it runs into: the app opens once
+            // it's answered.
+            if model.onboarded, model.purchases.firstChoiceDue {
+                PaywallView()
+            } else if model.onboarded {
                 TabView(selection: selection) {
                     Tab("Today", systemImage: "sun.max", value: AppTab.today) { TodayView() }
                     Tab("Plan", systemImage: "calendar", value: AppTab.plan) { PlanView() }
