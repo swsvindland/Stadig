@@ -56,7 +56,7 @@ extension AppModel {
         dismissSheets()
         selectedDay = min(day, today)
         tab = .today
-        supplementsScrollRequest &+= 1
+        pendingSupplementsScroll = true
     }
 
     /// The doses due on a day, with whether each was taken.

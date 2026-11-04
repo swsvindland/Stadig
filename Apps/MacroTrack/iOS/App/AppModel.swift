@@ -232,9 +232,9 @@ final class AppModel {
     var selection = LogSelection()
     /// Asks the Log tab to go to the hour a day opens on: back from a while away, or a tap on today.
     private(set) var logAnchorRequest = 0
-    /// Asks Today to scroll to the day's supplements (a tap on a reminder): by evening the food
-    /// above them can be a long way down.
-    var supplementsScrollRequest = 0
+    /// Today is to scroll to the day's supplements (a tap on a reminder), once it's there to: they're
+    /// a long way down, and a reminder can open an app that hasn't built Today yet.
+    var pendingSupplementsScroll = false
     var toast: Toast?
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?

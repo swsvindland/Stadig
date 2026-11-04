@@ -3,23 +3,17 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// What's left today, the one or two things worth doing, and the day's log. Built so a visit can
-/// be a glance and a tap. With room (iPad, the Mac, Vision Pro) the log is a table beside the
-/// summary, edited in an inspector.
+/// Today at a glance, always today: what's left, the weight, anything the plan asks, the ways to
+/// log in a tap, then meal timing, supplements, drinks and the week's food-quality suggestions. The
+/// day's food is on the Log tab.
 struct TodayView: View {
+    @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    var body: some View {
-        if sizeClass == .compact { TodayList() } else { TodayBoard() }
-    }
-}
+    @State private var width: CGFloat = 0
 
-/// Today as one list: the phone's, and a narrow iPad window's, always today. What's left, the
-/// weight, anything the plan asks, then the ways to log in a tap and the day's log. Meal timing,
-/// supplements, drinks and the week's food-quality suggestions follow it.
-struct TodayList: View {
-    @Environment(AppModel.self) private var model
-    @State private var editing: FoodEntry?
+    /// The Mac reports no size class: it always has room.
+    var wide: Bool { sizeClass != .compact }
 
     var body: some View {
         NavigationStack {
@@ -32,28 +26,39 @@ struct TodayList: View {
                     }
                     WeightSection(day: model.today)
                     TodayFood(day: model.today)
-                    TimelineSections(day: model.today, editing: $editing)
                     DayStateSection(day: model.today)
                     TodayMore(day: model.today)
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
-                .onChange(of: model.supplementsScrollRequest) { _, _ in
+                // A readable column, in margins of the list's own background.
+                .contentMargins(.horizontal, max(0, (width - 760) / 2), for: .scrollContent)
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: {
+                    width = $0
+                }
+                // A reminder can be tapped with Today not built yet: the request waits for it.
+                .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
+                    guard pending else { return }
+                    model.pendingSupplementsScroll = false
                     withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
                 }
             }
             .navigationTitle("Today")
-            .toolbar { ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "today.settings") } }
-            .sheet(item: $editing) { entry in
-                EntryEditor(entry: entry)
+            .toolbar {
+                if wide {
+                    LogToolbar()
+                } else {
+                    ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "today.settings") }
+                }
             }
             .refreshable { await model.refreshHealth() }
         }
     }
 }
 
-/// Above the day's log: what the plan asks for today, then the ways to log in a tap (planned
-/// meals and Log again).
+/// What the plan asks for today, then the ways to log in a tap (planned meals and Log again).
 struct TodayFood: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -65,8 +70,8 @@ struct TodayFood: View {
     }
 }
 
-/// Below the day's log: meal timing, the supplements (where a reminder's tap scrolls to), drinks,
-/// and today's food-quality suggestions.
+/// Meal timing, the supplements (where a reminder's tap scrolls to), drinks, and today's
+/// food-quality suggestions.
 struct TodayMore: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -90,9 +95,9 @@ struct SettingsButton: View {
             Button {
                 model.showSettings = true
             } label: {
-                Image(systemName: "gearshape")
+                // A title, for when a full toolbar folds it into its menu.
+                Label("Settings", systemImage: "gearshape")
             }
-            .accessibilityLabel("Settings")
             .accessibilityIdentifier(identifier)
         }
     }
@@ -505,91 +510,6 @@ struct LogAgainSection: View {
         }
         .buttonStyle(.plain)
         .hoverHighlight()
-    }
-}
-
-/// The day as a timeline: each moment (foods eaten together) with its time and total.
-struct TimelineSections: View {
-    @Environment(AppModel.self) private var model
-    let day: Day
-    @Binding var editing: FoodEntry?
-
-    var body: some View {
-        let moments = Timeline.moments(model.allEntries(on: day))
-        let gaps = model.gapsBefore(on: day)
-        if moments.isEmpty {
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(day == model.today ? "Nothing logged yet today" : "Nothing logged on this day").font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("today.nothingLogged")
-                    Text("Search, scan, snap or describe below. Foods eaten together are kept together, however many times you eat.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            }
-        }
-        ForEach(moments) { moment in
-            MomentSection(moment: moment, gap: gaps[moment.id], editing: $editing)
-        }
-    }
-}
-
-/// Foods eaten together: their time, their total, and quick ways to add to them or eat them again.
-struct MomentSection: View {
-    @Environment(AppModel.self) private var model
-    let moment: Moment
-    /// Since the meal before, when meal timing is on.
-    var gap: MealGap?
-    @Binding var editing: FoodEntry?
-    @State private var naming = false
-
-    var body: some View {
-        Section {
-            ForEach(moment.entries) { entry in
-                Button {
-                    editing = entry
-                } label: {
-                    EntryRow(entry: entry)
-                }
-                .buttonStyle(.plain)
-                .hoverHighlight()
-                .accessibilityIdentifier("today.entry")
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
-                }
-                .swipeActions(edge: .leading) {
-                    Button("Again", systemImage: "arrow.clockwise") {
-                        model.log([LogAgain.copy(entry, to: model.logDate(), source: .copied)])
-                    }
-                    .tint(.accentColor)
-                }
-            }
-        } header: {
-            HStack(spacing: 10) {
-                Text(Format.time(moment.start)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                if let gap { GapBadge(gap: gap) }
-                Spacer()
-                Text(Format.kcal(moment.nutrients.kcal)).monospacedDigit()
-                Menu {
-                    Button("Log all again", systemImage: "arrow.clockwise") { model.logAgain(moment) }
-                    MomentMealButton(moment: moment) { naming = true }
-                    Button("Delete all", systemImage: "trash", role: .destructive) { model.delete(entries: moment.entries.map(\.id)) }
-                } label: {
-                    Image(systemName: "ellipsis.circle").font(.title3)
-                }
-                .accessibilityLabel("More for \(Format.time(moment.start))")
-                .accessibilityIdentifier("today.momentMenu")
-                Button {
-                    // Added foods join this moment.
-                    model.openLogger(.search, at: moment.end.addingTimeInterval(60))
-                } label: {
-                    Image(systemName: "plus.circle.fill").font(.title3)
-                }
-                .accessibilityLabel("Add to \(Format.time(moment.start))")
-                .accessibilityIdentifier("today.addToMoment")
-            }
-            .saveMealPrompt(isPresented: $naming, entries: moment.entries)
-        }
     }
 }
 

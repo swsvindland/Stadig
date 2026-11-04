@@ -118,6 +118,14 @@ struct LogTabTests {
         #expect(!AppTab.log.isSidebarOnly)
     }
 
+    @Test func aReminderWaitsForTodayToBeThere() {
+        let model = model()
+        model.tab = .log
+        model.showDoses(on: model.today)
+        #expect(model.tab == .today)
+        #expect(model.pendingSupplementsScroll, "Today may not exist yet: it takes this up when it does")
+    }
+
     @Test func theMenusKeepToTheirOrder() {
         #expect(AppTab.allCases.firstIndex(of: .log) == 1, "⌘2")
         #expect(AppTab.allCases.firstIndex(of: .foods) == 2, "⌘3")

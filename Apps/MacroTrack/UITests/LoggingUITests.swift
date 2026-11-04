@@ -90,7 +90,8 @@ nonisolated final class LoggingUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
         app.element("today.calories").waitToAppear()
-        let entry = app.scrollTo(app.element("today.entry")).waitToAppear()
+        app.openTab("Log")
+        let entry = app.scrollTo(app.element("log.entry")).waitToAppear()
         let before = entry.label
         entry.tap()
 
@@ -103,7 +104,7 @@ nonisolated final class LoggingUITests: XCTestCase {
 
         app.element("amount.panel").waitToDisappear()
         // The entry, not today's total: it depends on the time of day whether a seeded food has happened.
-        app.element("today.entry").waitForLabel(toChangeFrom: before)
+        app.element("log.entry").waitForLabel(toChangeFrom: before)
     }
 
     @MainActor
@@ -119,7 +120,8 @@ nonisolated final class LoggingUITests: XCTestCase {
         leaveSearch(app)
 
         calories.waitForLabel(toChangeFrom: before)
-        XCTAssertTrue(app.scrollTo(app.todayEntry(containing: "banana")).waitToAppear().exists)
+        app.openTab("Log")
+        XCTAssertTrue(app.scrollTo(app.logEntry(containing: "banana")).waitToAppear().exists)
     }
 
     @MainActor
@@ -137,9 +139,10 @@ nonisolated final class LoggingUITests: XCTestCase {
         app.element("toast.message").waitToDisappear()
         leaveSearch(app)
 
-        calories.waitToAppear()
-        XCTAssertEqual(calories.label, before)
-        XCTAssertTrue(app.scrollTo(app.element("today.nothingLogged")).waitToAppear().exists)
+        calories.waitForLabel(toEqual: before)
+        app.openTab("Log")
+        app.element("log.list").waitToAppear()
+        XCTAssertFalse(app.element("log.entry").exists, "the sample weeks end yesterday")
     }
 
     @MainActor
@@ -160,9 +163,9 @@ nonisolated final class LoggingUITests: XCTestCase {
         app.shot("logger-after-quick-add")
         XCTAssertTrue(app.element("logger.meal").waitToAppear().exists)
         app.element("logger.done").waitToAppear().tap()
-        let entry = app.scrollTo(app.todayEntry(containing: "Quick add")).waitToAppear()
-        // An iPad's table has the calories in a column of their own.
-        XCTAssertTrue(XCUIApplication.isPad ? entry.staticTexts["500"].exists : entry.label.contains("500"), entry.debugDescription)
+        app.openTab("Log")
+        let entry = app.scrollTo(app.logEntry(containing: "Quick add")).waitToAppear()
+        XCTAssertTrue(entry.label.contains("500"), entry.debugDescription)
     }
 
     @MainActor
@@ -201,27 +204,22 @@ nonisolated final class LoggingUITests: XCTestCase {
     }
 
     @MainActor
-    func testAWidgetLinkClosesASheetTodayOpened() throws {
-        try XCTSkipIf(
-            XCUIApplication.isPad,
-            "An iPad's Today edits an entry in its inspector, not a sheet (RegularWidthUITests.testTodaysLogIsATableEditedBesideIt)")
+    func testAWidgetLinkClosesASheetTheLogOpened() throws {
         continueAfterFailure = false
-        // The supplement sample logs this morning's coffee, so Today has an entry to open.
-        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
-        app.element("today.calories").waitToAppear()
-
-        app.scrollTo(app.element("today.entry")).waitToAppear().tap()
+        // The supplement sample logs this morning's coffee, so the Log tab has an entry to open.
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements", "-tab", "log"])
+        app.scrollTo(app.element("log.entry")).waitToAppear().tap()
         let save = app.element("entryEditor.save").waitToAppear()
 
-        // Today's own sheet, not one of the root's: the link still lands on its step, in its place
-        // rather than over it, so closing the weigh-in goes back to Today.
+        // The Log tab's own sheet, not one of the root's: the link still lands on its step, in its
+        // place rather than over it, so closing the weigh-in goes back to the log.
         try app.openLink("macrotrack://weigh")
         app.textFields["weighIn.value"].waitToAppear()
         save.waitToDisappear()
         app.element("weighIn.cancel").tap()
         app.textFields["weighIn.value"].waitToDisappear()
-        // Today as it was left, scrolled to the entry: the link was opened in the running app.
-        XCTAssertTrue(app.element("today.entry").waitToAppear().isHittable, "Today, not the editor the link replaced")
+        // The log as it was left, scrolled to the entry: the link was opened in the running app.
+        XCTAssertTrue(app.element("log.entry").waitToAppear().isHittable, "the log, not the editor the link replaced")
         XCTAssertFalse(save.exists)
     }
 }
