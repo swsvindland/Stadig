@@ -227,6 +227,24 @@ nonisolated final class LoggingUITests: XCTestCase {
         app.textFields["weighIn.value"].waitToDisappear()
     }
 
+    /// A logger that's gone back to its search, asked again for the way it opened with: the control
+    /// lands on that step, as it does with no logger up.
+    @MainActor
+    func testAWidgetLinkFindsTheWayTheLoggerOpenedWith() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData"])
+        app.element("today.calories").waitToAppear()
+
+        try app.openLink("macrotrack://quickadd")
+        let kcal = app.element("quickAdd.kcal").waitToAppear()
+        kcal.type("250")
+        app.element("quickAdd.add").waitToAppear().tap()
+        kcal.waitToDisappear()
+
+        try app.openLink("macrotrack://quickadd")
+        kcal.waitToAppear()
+    }
+
     @MainActor
     func testAWidgetLinkClosesASheetTheLogOpened() throws {
         try XCTSkipIf(XCUIApplication.isPad, "An iPad edits an entry in a pane, which a sheet leaves where it is")

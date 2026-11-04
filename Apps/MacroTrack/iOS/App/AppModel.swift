@@ -60,6 +60,13 @@ enum LogMode: String, Identifiable, Hashable {
     var id: String { rawValue }
 }
 
+/// An ask for the logger, which may be open already.
+struct LoggerRequest: Equatable {
+    var serial = 0
+    /// The way of logging asked for; nil asks only for the logger to show, at a new time.
+    var mode: LogMode?
+}
+
 /// What a day adds up to so far, and what's logged for later.
 struct DayIntake: Equatable {
     var eaten: Nutrients
@@ -203,6 +210,10 @@ final class AppModel {
     var logger: LogMode? {
         didSet { if logger == nil { loggerTime = nil } }
     }
+    /// The last ask for a logger, which what's showing one follows. `logger` is the way it opened
+    /// with: it doesn't change when a logger that's since gone back to its search is asked for that
+    /// way again, and it can't follow the logger's own moves, or the sheet would present again.
+    private(set) var loggerRequest = LoggerRequest()
     /// When a logger's foods were eaten; nil is now (or this time of day, on a past day). Only while
     /// the logger is open: it's cleared when the logger closes or the day changes, so a later one-tap
     /// log doesn't land at a time picked hours (or a day) before.
@@ -894,11 +905,20 @@ final class AppModel {
 
     /// Opens a logger, its foods eaten at `time` (nil is now). The time lasts while the logger is open.
     /// Where there's room it's a pane beside the Log tab, so that's where this goes, and each food
-    /// added lands in sight. An hour's + with it open aims it at that hour.
+    /// added lands in sight. Asked for with one open, it goes to that way of logging.
     func openLogger(_ mode: LogMode, at time: Date? = nil) {
         if usesSidebar { tab = .log }
         loggerTime = time
         logger = mode
+        loggerRequest = LoggerRequest(serial: loggerRequest.serial &+ 1, mode: mode)
+    }
+
+    /// An hour's +, or a usual time to catch up on. A pane already open stays as it is, on whichever
+    /// way of logging, with what's typed and any review, and only its time changes.
+    func aimLogger(at time: Date) {
+        guard usesSidebar, logger != nil else { return openLogger(.search, at: time) }
+        loggerTime = time
+        loggerRequest = LoggerRequest(serial: loggerRequest.serial &+ 1, mode: nil)
     }
 
     /// A day in the Log tab, where a day other than today is looked at.

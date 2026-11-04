@@ -57,11 +57,11 @@ struct PhotoLogView: View {
             analyze { await PhotoInput.prepare(data, maxDimension: 1280) }
         }
         .onAppear {
-            if let dropped = model.takeDroppedPhoto(), session.review == nil, model.ai.canSeePhotos {
-                analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
-            } else if useCamera, Camera.isAvailable, session.review == nil, image == nil, model.ai.canSeePhotos {
-                showCamera = true
-            }
+            if !readDroppedPhoto(), useCamera, image == nil { openCamera() }
+        }
+        // Asked again while this is showing, when nothing appears.
+        .onChange(of: model.loggerRequest) { _, request in
+            if !readDroppedPhoto(), request.mode == .camera { openCamera() }
         }
         #if DEBUG
         .task {
@@ -109,6 +109,20 @@ struct PhotoLogView: View {
                 Section { Text(error).foregroundStyle(.secondary) }
             }
         }
+    }
+
+    /// Reads a photo dropped on the window, if there is one: once, and in place of a review, as it
+    /// does on any other way of logging. Not over a read under way, which would race it.
+    func readDroppedPhoto() -> Bool {
+        guard let dropped = model.takeDroppedPhoto(), model.ai.canSeePhotos, !working else { return false }
+        session.review = nil
+        analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
+        return true
+    }
+
+    func openCamera() {
+        guard Camera.isAvailable, session.review == nil, !working, model.ai.canSeePhotos else { return }
+        showCamera = true
     }
 
     /// Reads a photo: loaded and downsampled off the main thread, then named by the model.

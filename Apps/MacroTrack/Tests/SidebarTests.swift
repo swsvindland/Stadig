@@ -67,6 +67,70 @@ struct SidebarTests {
         #expect(model.loggerTime == dinner)
     }
 
+    /// `logger` is the way it opened with, so asking for that again changes nothing there: this is
+    /// how a logger that's gone back to its search hears it.
+    @Test func askingForAWayAgainIsHeard() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.openLogger(.scan)
+        let first = model.loggerRequest
+        #expect(first.mode == .scan)
+
+        // As a widget's link and the menu ask, in place of any sheet up.
+        model.dismissSheets()
+        model.openLogger(.scan)
+
+        #expect(model.logger == .scan)
+        #expect(model.loggerRequest != first)
+        #expect(model.loggerRequest.mode == .scan)
+    }
+
+    @Test func aPhotoDroppedOnAPhotoLoggerIsHeard() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.photoLibrary)
+        let first = model.loggerRequest
+
+        model.logDroppedPhoto(Data([0xFF, 0xD8, 0xFF]))
+
+        #expect(model.loggerRequest != first, "nothing appears for it to read the photo on")
+        #expect(model.loggerRequest.mode == .photoLibrary)
+    }
+
+    /// With a pane open an hour's + leaves it on whichever way it's on, or a review goes with it.
+    @Test func anHourAimsAnOpenPaneWithoutChangingIt() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.camera)
+        let first = model.loggerRequest
+        let dinner = model.today.at(hour: 19, minute: 0)
+
+        model.aimLogger(at: dinner)
+
+        #expect(model.logger == .camera)
+        #expect(model.loggerTime == dinner)
+        #expect(model.loggerRequest != first, "it still has to show, over a food's amount")
+        #expect(model.loggerRequest.mode == nil, "with no way of logging to go to")
+    }
+
+    @Test func anHourOpensTheSearchWithNothingOpen() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        let dinner = model.today.at(hour: 19, minute: 0)
+        model.aimLogger(at: dinner)
+        #expect(model.logger == .search && model.loggerTime == dinner)
+        #expect(model.tab == .log)
+
+        // Without a pane there's a sheet, which nothing reaches an hour past.
+        let phone = TestEnvironment().model()
+        phone.onboard()
+        phone.aimLogger(at: dinner)
+        #expect(phone.logger == .search && phone.loggerTime == dinner)
+    }
+
     @Test func foodsStaysTheScreenForComparing() {
         let model = TestEnvironment().model()
         model.onboard()

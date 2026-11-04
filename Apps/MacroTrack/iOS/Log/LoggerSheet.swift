@@ -8,10 +8,14 @@ import SystemCore
 struct LoggerSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    let start: LogMode
     @State private var session: LoggerSession
     @FocusState private var searchFocused: Bool
 
-    init(start: LogMode) { _session = State(initialValue: LoggerSession(mode: start)) }
+    init(start: LogMode) {
+        self.start = start
+        _session = State(initialValue: LoggerSession(mode: start))
+    }
 
     var body: some View {
         @Bindable var session = session
@@ -46,6 +50,9 @@ struct LoggerSheet: View {
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.openMeal) { _, meal in if meal == nil { searchFocused = true } }
+        // Asked for another way, the root presents that one's sheet in this one's place, and a
+        // camera opening here would land on a sheet on its way out.
+        .onChange(of: model.loggerRequest) { _, request in if request.mode == start { session.go(to: start) } }
     }
 
     var content: some View { LoggerContent(session: session, done: { dismiss() }) }
@@ -118,6 +125,7 @@ struct LoggerPane: View {
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.portion) { _, request in if request == nil { searchFocused = true } }
+        .onChange(of: model.loggerRequest) { _, request in if let mode = request.mode { session.go(to: mode) } }
     }
 
     var searchField: some View {

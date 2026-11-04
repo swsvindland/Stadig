@@ -79,6 +79,24 @@ final class LoggerSession {
         focusSearch()
     }
 
+    /// Asked from outside for a way of logging: a widget, a control, a link, the menu or the toolbar.
+    /// An amount or a saved meal over it closes, so the ask shows. Asked for the way it's on, what's
+    /// there stays. Asked for the way a review is on, it's back at the review. Asked for another,
+    /// it starts on that one, without the review.
+    func go(to target: LogMode) {
+        portion = nil
+        openMeal = nil
+        if review?.mode == target, mode != target {
+            stopFinding()
+        } else if mode != target {
+            review = nil
+            finding = nil
+            query = ""
+            mode = target
+        }
+        focusSearch()
+    }
+
     /// Back to the search for the next food: every way of logging ends here, until Done.
     func backToSearch() {
         review = nil

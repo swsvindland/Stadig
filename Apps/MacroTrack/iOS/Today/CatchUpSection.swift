@@ -14,7 +14,7 @@ struct CatchUpRow: View {
         let when = Format.relative(Day(usual.latest.start), today: model.today)
         HStack(spacing: 12) {
             Button {
-                model.openLogger(.search, at: usual.time)
+                model.aimLogger(at: usual.time)
             } label: {
                 HStack(spacing: 12) {
                     Text(time).font(.subheadline.weight(.semibold).monospacedDigit()).frame(minWidth: 76, alignment: .leading)

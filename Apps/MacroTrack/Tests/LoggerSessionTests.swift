@@ -83,6 +83,77 @@ struct LoggerSessionTests {
         #expect(session.finding == nil)
     }
 
+    /// The Scan control, pressed again with the logger back at its search.
+    @Test func askedForAnotherWayItGoesThere() {
+        let session = LoggerSession(mode: .search)
+        session.query = "ban"
+
+        session.go(to: .scan)
+
+        #expect(session.mode == .scan)
+        #expect(session.query.isEmpty)
+    }
+
+    @Test func askedForAnotherWayItDropsTheReview() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+
+        session.go(to: .scan)
+
+        #expect(session.review == nil)
+        #expect(session.mode == .scan)
+    }
+
+    @Test func askedForTheWayItsOnEverythingStays() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+
+        session.go(to: .describe)
+        #expect(session.review != nil, "a request for the way it's on doesn't lose the review")
+
+        session.mode = .search
+        session.query = "ban"
+        session.go(to: .search)
+        #expect(session.query == "ban")
+    }
+
+    /// Off finding a food for the review: the way the review is on goes back to it.
+    @Test func askedForTheWayTheReviewIsOnItGoesBackToTheReview() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .camera)
+        session.review = try review(model, mode: .camera)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("banana", for: unmatched.id)
+
+        session.go(to: .camera)
+
+        #expect(session.mode == .camera)
+        #expect(session.review != nil)
+        #expect(session.finding == nil)
+        #expect(session.query.isEmpty)
+    }
+
+    /// In the pane an amount takes the logger's place, so left open it would hide what was asked for.
+    @Test func anAmountOpenGivesWayToTheAsk() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.portion = .add(try model.requireFood(Foods.bananaID), source: .search)
+        session.openMeal = UUID()
+        let focus = session.focusRequest
+
+        session.go(to: .search)
+
+        #expect(session.portion == nil)
+        #expect(session.openMeal == nil)
+        #expect(session.focusRequest == focus + 1)
+    }
+
     func logged(_ model: AppModel) -> [String] { model.entries(on: model.today).map(\.name) }
 
     func toast(_ model: AppModel) -> String { model.toast?.message ?? "" }

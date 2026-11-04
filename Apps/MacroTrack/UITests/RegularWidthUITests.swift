@@ -81,6 +81,38 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// The toolbar's button for the way the pane opened with, once it's gone back to its search.
+    @MainActor
+    func testTheToolbarFindsTheWayThePaneOpenedWith() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log"])
+        app.logButton("quickAdd").tap()
+        let kcal = app.element("quickAdd.kcal").waitToAppear()
+        kcal.type("250")
+        app.closeNumberPad()
+        app.element("quickAdd.add").waitToAppear().tap()
+        kcal.waitToDisappear()
+
+        app.logButton("quickAdd").tap()
+        kcal.waitToAppear()
+    }
+
+    /// An hour's + aims the pane at that hour and leaves it as it is, on any way of logging: an AI
+    /// review would otherwise go with it.
+    @MainActor
+    func testAnHoursPlusLeavesThePaneAsItIs() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        app.logButton("quickAdd").tap()
+        let kcal = app.element("quickAdd.kcal").waitToAppear()
+        kcal.type("250")
+        app.closeNumberPad()
+
+        app.scrollTo(app.element("log.add.20")).waitToAppear().tap()
+
+        XCTAssertEqual(kcal.waitToAppear().value as? String, "250")
+    }
+
     /// Return straight after typing, before the rows for what was typed are in, waits for them.
     @MainActor
     func testReturnInThePaneLogsTheBestMatchOfWhatsTyped() {

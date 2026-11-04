@@ -134,8 +134,9 @@ struct LogTab: View {
             // A new panel for a new version: its amount and time are read once, as it opens.
             EntryEditor(entry: current, close: { editing = nil }).padding(.top, 8).id(FoodVersion(id: current.id, updatedAt: current.updatedAt))
         } else if let mode = model.logger {
-            // A new one for a new way of logging; the same one for another hour's +.
-            LoggerPane(start: mode).id(mode)
+            // The same one however it's asked for again: it goes where it's asked, and keeps what
+            // it can, so a request for the way it's on doesn't lose a review.
+            LoggerPane(start: mode)
         }
     }
 
@@ -448,7 +449,7 @@ struct HourHeader: View {
     func add() {
         let time = DayHours.addTime(group, now: Date())
         if model.selection.isEmpty {
-            model.openLogger(.search, at: time)
+            model.aimLogger(at: time)
         } else {
             model.placeSelection(.starting(time), named: "\(model.dayName(Day(time))), \(Format.time(time))")
         }
