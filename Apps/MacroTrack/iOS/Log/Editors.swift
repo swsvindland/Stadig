@@ -67,187 +67,22 @@ struct QuickAddView: View {
     }
 }
 
-/// Change an entry's amount, meal or time; or delete it. With `saveTo` it edits a food of a saved
-/// meal instead: only its amount, handed back rather than logged.
+/// Change an entry's amount or time, or delete it, on the amount panel. With `saveTo` it edits a
+/// food of a saved meal instead: only its amount, handed back rather than logged.
 struct EntryEditor: View {
-    @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State var entry: FoodEntry
-    @State private var count: Double = 1
-    @State private var countText = "1"
-    @State private var unit: PortionUnit?
-    @State private var food: Food?
-    /// The amount as it reopened, so a change of time alone saves the entry's own numbers.
-    @State private var original: (unitID: String?, count: Double)?
+    let entry: FoodEntry
     /// Set where the editor sits beside the log (an inspector) rather than in a sheet: what closes it.
     var close: (() -> Void)?
     var saveTo: ((FoodEntry) -> Void)?
 
     var body: some View {
         if let close {
-            form
-                .formStyle(.grouped)
-                .safeAreaInset(edge: .bottom) {
-                    HStack {
-                        Button("Done", action: close)
-                            .keyboardShortcut(.cancelAction)
-                            .accessibilityIdentifier("entryEditor.cancel")
-                        Spacer()
-                        Button("Save") {
-                            save()
-                            close()
-                        }
-                        .keyboardShortcut("s")
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("entryEditor.save")
-                    }
-                    .padding()
-                }
-                .onAppear(perform: load)
+            AmountPanel(request: .edit(entry), saveTo: saveTo, close: close)
         } else {
-            NavigationStack {
-                form
-                    .navigationTitle("Edit")
-                    .inlineTitle()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }.accessibilityIdentifier("entryEditor.cancel")
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") {
-                                save()
-                                dismiss()
-                            }
-                            .accessibilityIdentifier("entryEditor.save")
-                        }
-                    }
-                    .onAppear(perform: load)
-            }
-            .presentationDetents([.medium, .large])
+            AmountPanel(request: .edit(entry), saveTo: saveTo, close: { dismiss() })
+                .amountSheet(editing: true)
         }
-    }
-
-    var form: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.name).font(.headline)
-                    if let brand = entry.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary) }
-                }
-            }
-            Section("Amount") {
-                HStack {
-                    TextField("Amount", text: $countText)
-                        .fieldKeyboard(.decimal)
-                        .font(.title3.weight(.semibold).monospacedDigit())
-                        .accessibilityIdentifier("entryEditor.amount")
-                        .onChange(of: countText) { _, text in
-                            // Text this view wrote already says the count; reading it back would round it.
-                            guard text != self.text(for: count), let v = Format.parse(text), v > 0 else { return }
-                            count = v
-                        }
-                    if let food {
-                        let units = FoodUnits.units(for: food)
-                        Picker(
-                            "Unit",
-                            selection: Binding(
-                                get: { unit?.id ?? units.first?.id ?? "" },
-                                set: { id in
-                                    guard let next = units.first(where: { $0.id == id }) else { return }
-                                    // Keep the amount: 150 g becomes 5.3 oz, not 150 oz.
-                                    if let old = unit, old.id != next.id {
-                                        let converted = FoodUnits.convert(count, from: old, to: next)
-                                        if converted.isFinite { count = converted }
-                                    }
-                                    unit = next
-                                    countText = text(for: count)
-                                })
-                        ) {
-                            ForEach(units) { Text($0.label).tag($0.id) }
-                        }
-                        .labelsHidden()
-                        .accessibilityIdentifier("entryEditor.unit")
-                    } else {
-                        Text("× \(entry.amountLabel)").foregroundStyle(.secondary)
-                    }
-                }
-            }
-            Section {
-                NutrientSummary(nutrients: nutrients)
-            }
-            if saveTo == nil {
-                Section {
-                    DatePicker("Eaten", selection: $entry.date).accessibilityIdentifier("entryEditor.eaten")
-                }
-                Section {
-                    Button("Delete", role: .destructive) {
-                        model.delete(entries: [entry.id])
-                        if let close { close() } else { dismiss() }
-                    }
-                    .accessibilityIdentifier("entryEditor.delete")
-                }
-            }
-        }
-    }
-
-    var nutrients: Nutrients {
-        if let food, let unit { return FoodUnits.nutrients(food, count: count, unit: unit) }
-        return entry.nutrients.scaled(count)
-    }
-
-    func load() {
-        guard original == nil else { return }
-        if let id = entry.foodID, let found = model.food(id: id) {
-            food = found
-            // In the unit it was logged in while that still holds the amount logged, else the
-            // food's basis counting that amount: a catalog update can reorder or reword portions.
-            let reopened = FoodUnits.logged(for: found, unitID: entry.unitID, count: entry.count, amount: entry.grams)
-            unit = reopened.unit
-            count = reopened.count
-        } else {
-            count = 1
-        }
-        countText = text(for: count)
-        original = (unit?.id, count)
-    }
-
-    /// A count as the amount field shows it: "1½" slices, "1500" ml, never grouped.
-    func text(for count: Double) -> String { unit.map { FoodUnits.format(count, $0) } ?? Format.editable(count) }
-
-    /// Whether the amount was changed, rather than only the time.
-    var amountChanged: Bool {
-        guard let original else { return true }
-        return unit?.id != original.unitID || abs(count - original.count) > 1e-9
-    }
-
-    func save() {
-        var updated = entry
-        guard amountChanged else {
-            if saveTo == nil { model.update(updated) }
-            return
-        }
-        if let food, let unit {
-            let amount = FoodUnits.amount(count, unit)
-            var micros = FoodUnits.micros(food, count: count, unit: unit)
-            // What the entry knew beyond the food scales with the amount: a drink's typical
-            // caffeine (the catalog didn't list it) and its fluid.
-            let ratio = entry.grams.flatMap { $0 > 0 ? amount / $0 : nil }
-            if micros["caffeine"] == nil, let mg = entry.micros?["caffeine"], let ratio { micros["caffeine"] = mg * ratio }
-            updated.nutrients = FoodUnits.nutrients(food, count: count, unit: unit)
-            updated.micros = micros
-            updated.fluid = entry.fluid.map { fluid in ratio.map { fluid * $0 } ?? fluid }
-            updated.amountLabel = FoodUnits.entryLabel(for: food, count: count, unit: unit, estimate: entry.isEstimate)
-            updated.grams = amount
-            updated.unitID = unit.id
-            updated.count = count
-        } else if count != 1 {
-            updated.nutrients = entry.nutrients.scaled(count)
-            updated.micros = entry.micros?.mapValues { $0 * count }
-            updated.fluid = entry.fluid.map { $0 * count }
-            updated.amountLabel = "\(Format.number(count, digits: 2)) × \(entry.amountLabel)"
-            updated.grams = entry.grams.map { $0 * count }
-        }
-        if let saveTo { saveTo(updated) } else { model.update(updated) }
     }
 }
 

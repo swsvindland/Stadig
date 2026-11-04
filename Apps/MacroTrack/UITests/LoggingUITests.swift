@@ -31,6 +31,52 @@ nonisolated final class LoggingUITests: XCTestCase {
         }
     }
 
+    /// The amount panel: it opens on the food's usual amount, selected, so the first key replaces it.
+    @MainActor
+    func testAnAmountIsTypedOnThePanelAndTheKeyboardComesBack() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "An iPad's search is the Foods destination, with its own amount")
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear().tap()
+
+        app.element("amount.panel").waitToAppear()
+        app.shot("amount-add")
+        app.element("amount.key.2").tap()
+        app.element("amount.key.5").tap()
+        XCTAssertEqual((app.element("amount.quantity").value as? String)?.hasPrefix("25 "), true, "typed over what was offered")
+        app.element("portion.add").tap()
+
+        app.element("amount.panel").waitToDisappear()
+        XCTAssertTrue(app.element("toast.message").waitToAppear().label.hasPrefix("Logged "))
+        // The search takes the keyboard back for the next food, with no tap on its field.
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "the keyboard came back")
+        search.typeText("oats")
+        XCTAssertTrue(app.element("logger.food").waitToAppear().exists)
+    }
+
+    @MainActor
+    func testAnEntrysAmountChangesOnThePanel() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "An iPad's Today edits an entry beside the table (RegularWidthUITests)")
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
+        let calories = app.element("today.calories").waitToAppear()
+        let before = calories.label
+        app.scrollTo(app.element("today.entry")).waitToAppear().tap()
+
+        app.element("amount.panel").waitToAppear()
+        app.shot("amount-edit")
+        app.element("amount.key.9").tap()
+        app.element("amount.key.0").tap()
+        app.element("amount.key.0").tap()
+        app.element("entryEditor.save").tap()
+
+        app.element("amount.panel").waitToDisappear()
+        calories.waitForLabel(toChangeFrom: before)
+    }
+
     @MainActor
     func testLoggingAFoodFromSearchUpdatesToday() {
         continueAfterFailure = false

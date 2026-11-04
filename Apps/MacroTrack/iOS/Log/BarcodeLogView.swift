@@ -9,7 +9,7 @@ import SystemCore
 /// photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
-    @Binding var portion: PortionRequest?
+    @Binding var portion: AmountRequest?
     @Binding var mode: LogMode
     @State private var scanning = true
     @State private var manual = ""
@@ -32,7 +32,7 @@ struct BarcodeLogView: View {
                 }
             } else if let label {
                 LabelReviewView(result: label, barcode: missing) { food in
-                    portion = PortionRequest(food: food, source: .label, closeAfterAdd: true)
+                    portion = .add(food, source: .label, closeAfterAdd: true)
                 }
             } else if readingLabel {
                 ProgressView("Reading the label…").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,7 +152,7 @@ struct BarcodeLogView: View {
     func finish(_ outcome: LiveScanOutcome) {
         switch outcome {
         case .food(let food):
-            portion = PortionRequest(food: food, source: .barcode, closeAfterAdd: true)
+            portion = .add(food, source: .barcode, closeAfterAdd: true)
         case .supplement(let found):
             supplement = found
         case .label(let result, let barcode):

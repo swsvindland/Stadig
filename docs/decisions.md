@@ -142,6 +142,9 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Widgets and complications hold what's coming through tomorrow**, with one timeline entry a food today. A meal among it (50 kcal or more) ends a fast on the widget at its time; a black coffee doesn't.
 - **The Live Activity can't end itself when a planned meal comes** with the app closed. It goes stale at that time and the next open ends it. Fast notifications stop at the first planned meal instead.
 - **Launch stays on the main thread.** The first read, and DEBUG's seeds, run as they always did, so the first frame has its numbers; background analysis starts once launch is done. Siri waits up to 3 seconds for the analysis before it speaks, rather than saying stale numbers.
+- **The amount panel's keypad.** Digits, a point, delete, and ½ ¼ ¾ ⅓. Fractions turn off for weights and volumes in metric, since "½ g" isn't how anyone measures. ⅔ didn't fit the grid; "0.66" types it, or the unit chips reach it. A hardware keyboard's digits, point, delete and Return work on it on an iPad.
+- **The 0.5–2× chips show amounts, not multipliers**, as they already did ("119 g, 237 g…"). An entry with no food behind it (a quick add, an estimate) shows multiples instead ("0.5×").
+- **Editing an entry keeps the full date and time on the panel**, with Delete beside it. Move and Copy wait for stage 8.
 
 ## Calls made for warm-ups (2026-11-03)
 

@@ -3,14 +3,6 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// A food and portion to confirm, and whether the logger closes after adding it.
-struct PortionRequest: Identifiable, Hashable {
-    var food: Food
-    var source: EntrySource
-    var closeAfterAdd = false
-    var id: String { food.id }
-}
-
 /// Every way to log, in one sheet that opens straight on the way chosen. Logging keeps the sheet
 /// open (with Undo) so a meal of several foods is a few taps, with the meal so far in sight under
 /// the search; Done closes it.
@@ -19,7 +11,9 @@ struct LoggerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var mode: LogMode
     @State private var query = ""
-    @State private var portion: PortionRequest?
+    @State private var portion: AmountRequest?
+    /// Bumped as the amount sheet goes, when the search can take the keyboard back.
+    @State private var refocus = 0
     @State private var openMeal: SavedMeal.ID?
 
     init(start: LogMode) { _mode = State(initialValue: start) }
@@ -47,12 +41,16 @@ struct LoggerSheet: View {
                         Button("Done") { dismiss() }.accessibilityIdentifier("logger.done")
                     }
                 }
-                .navigationDestination(item: $portion) { request in
-                    PortionView(request: request) { closeAfter in
-                        portion = nil
-                        query = ""
-                        if closeAfter || request.closeAfterAdd { dismiss() }
-                    }
+                .sheet(item: $portion, onDismiss: { refocus += 1 }) { request in
+                    AmountPanel(
+                        request: request,
+                        finished: {
+                            query = ""
+                            if request.closeAfterAdd { dismiss() }
+                        },
+                        close: { portion = nil }
+                    )
+                    .amountSheet(editing: false)
                 }
                 .navigationDestination(item: $openMeal) { id in
                     SavedMealView(mealID: id) {
@@ -71,7 +69,7 @@ struct LoggerSheet: View {
     var content: some View {
         switch mode {
         case .search:
-            SearchLogView(query: $query, mode: $mode, portion: $portion, openMeal: $openMeal)
+            SearchLogView(query: $query, mode: $mode, portion: $portion, openMeal: $openMeal, refocus: refocus)
         case .scan:
             BarcodeLogView(portion: $portion, mode: $mode)
         case .camera, .photoLibrary:
@@ -306,8 +304,9 @@ struct SearchLogView: View {
     @Environment(AppModel.self) private var model
     @Binding var query: String
     @Binding var mode: LogMode
-    @Binding var portion: PortionRequest?
+    @Binding var portion: AmountRequest?
     @Binding var openMeal: SavedMeal.ID?
+    var refocus = 0
     @State private var results: [FoodMatch] = []
     @State private var searching = false
     @FocusState private var focused: Bool
@@ -397,7 +396,8 @@ struct SearchLogView: View {
         }
         .task(id: query) { await search() }
         .onAppear { if portion == nil { focused = true } }
-        .onChange(of: portion) { _, request in if request == nil { focused = true } }
+        // Once the amount sheet has gone: a sheet leaving takes the keyboard's first responder with it.
+        .onChange(of: refocus) { _, _ in focused = true }
         .onChange(of: openMeal) { _, meal in if meal == nil { focused = true } }
     }
 
@@ -459,7 +459,7 @@ struct SearchLogView: View {
 
     func open(_ food: Food) {
         focused = false
-        portion = PortionRequest(food: food, source: .search)
+        portion = .add(food, source: .search)
     }
 
     func open(_ item: LogAgainItem) {
@@ -609,98 +609,6 @@ struct UsualMomentRow: View {
     }
 }
 
-/// How much: a count and a unit, with the numbers updating as they change. The pencil corrects
-/// the food's numbers to its package's, for this time and the next.
-struct PortionView: View {
-    @Environment(AppModel.self) private var model
-    let request: PortionRequest
-    let done: (_ closeLogger: Bool) -> Void
-    @State private var amount = PortionAmount()
-    @State private var filled = false
-    /// The food as the person just corrected it, in place of the one asked for.
-    @State private var edited: Food?
-    @State private var editing = false
-
-    var food: Food { edited ?? request.food }
-
-    var body: some View {
-        let current = amount.unit(for: food)
-        let n = amount.nutrients(food)
-        Form {
-            Section {
-                FoodHeader(food: food, corrected: model.isCorrected(food.id))
-            }
-            Section("Amount") {
-                AmountFields(food: food, amount: $amount)
-            }
-            Section {
-                NutrientSummary(nutrients: n)
-                if let current { PortionNutrients(food: food, count: amount.count, unit: current) }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                guard let current else { return }
-                model.log([model.entry(for: food, count: amount.count, unit: current, source: request.source)])
-                done(false)
-            } label: {
-                Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))") · \(Format.kcal(n.kcal))")
-                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
-            }
-            .primaryAction()
-            .accessibilityIdentifier("portion.add")
-            .padding()
-            .disabled(current == nil || amount.count <= 0)
-        }
-        .navigationTitle("Amount")
-        .toolbar {
-            ToolbarItemGroup(placement: .barTrailing) {
-                if current != nil { EditFoodButton { editing = true } }
-                FavoriteButton(foodID: food.id)
-            }
-        }
-        .sheet(isPresented: $editing) {
-            if let current { FoodEditor(food: food, count: amount.count, unit: current) { use($0) } }
-        }
-        .onAppear {
-            // Once: it appears again when the food editor closes, and the amount chosen stays.
-            guard !filled else { return }
-            filled = true
-            amount = PortionAmount(suggestedFor: food, personal: model.personalFood(food.id))
-        }
-    }
-
-    /// The food as corrected (or the catalog's again), at the same amount: its units are the same,
-    /// but one counted in calories holds a different amount now.
-    func use(_ food: Food) {
-        edited = food
-        if let id = amount.unit?.id, let unit = FoodUnits.units(for: food).first(where: { $0.id == id }) { amount.unit = unit }
-    }
-
-    /// Half, one, one and a half and two of the usual amount, each rounded the way that unit is
-    /// measured (quarters of a cup or a portion, tenths of an ounce or a pound, whole grams),
-    /// without repeats.
-    static func quickChoices(base: Double, unit: PortionUnit) -> [Double] {
-        var seen = Set<Double>()
-        return [0.5, 1, 1.5, 2].map { FoodUnits.convert(base * $0, from: unit, to: unit) }.filter { $0.isFinite && seen.insert($0).inserted }
-    }
-
-    /// A weight or volume with its unit ("0.5 lb", "150 g"), a count of portions on its own.
-    static func quickChoiceLabel(_ value: Double, unit: PortionUnit) -> String {
-        unit.kind == .mass || unit.kind == .volume ? FoodUnits.label(count: value, unit: unit) : Format.number(value, digits: 2)
-    }
-
-    static func sourceLabel(_ food: Food) -> String {
-        switch food.source {
-        case .usda: "USDA FoodData Central"
-        case .off: "Open Food Facts"
-        case .custom: "My food"
-        case .recipe: "Recipe"
-        case .label: "From its label"
-        }
-    }
-}
-
 /// An amount being chosen: the count, its unit, the text being typed and the usual amount the quick
 /// choices are halves and multiples of.
 struct PortionAmount: Equatable {
@@ -773,8 +681,8 @@ struct AmountFields: View {
         }
         if let current {
             HStack(spacing: 8) {
-                ForEach(PortionView.quickChoices(base: amount.base, unit: current), id: \.self) { value in
-                    Button(PortionView.quickChoiceLabel(value, unit: current)) {
+                ForEach(AmountChoices.quick(base: amount.base, unit: current), id: \.self) { value in
+                    Button(AmountChoices.label(value, unit: current)) {
                         amount.count = value
                         amount.text = FoodUnits.format(value, current)
                     }
@@ -794,13 +702,23 @@ struct FoodHeader: View {
     /// The numbers are the person's correction of the catalog's.
     var corrected = false
 
+    static func sourceLabel(_ food: Food) -> String {
+        switch food.source {
+        case .usda: "USDA FoodData Central"
+        case .off: "Open Food Facts"
+        case .custom: "My food"
+        case .recipe: "Recipe"
+        case .label: "From its label"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(food.name).font(.title3.weight(.semibold))
             if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
                 Text(brand).font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(corrected ? "Your numbers, corrected from \(PortionView.sourceLabel(food))" : PortionView.sourceLabel(food))
+            Text(corrected ? "Your numbers, corrected from \(Self.sourceLabel(food))" : Self.sourceLabel(food))
                 .font(.caption).foregroundStyle(.tertiary)
                 .accessibilityIdentifier("food.source")
             FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))

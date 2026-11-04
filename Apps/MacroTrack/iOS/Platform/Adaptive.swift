@@ -32,6 +32,10 @@ enum Platform {
         #endif
     }
 
+    /// Whether an amount is typed on the panel's own keypad. The Mac has a real keyboard and a
+    /// focused, selected field instead.
+    static var usesAmountKeypad: Bool { !isMac }
+
     /// iPhone or iPad: a camera the app can drive, Live Activities and a paired Watch. The Mac and
     /// Vision Pro import photos and files instead.
     static var isPhoneOrPad: Bool {
