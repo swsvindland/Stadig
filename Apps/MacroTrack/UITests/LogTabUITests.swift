@@ -104,6 +104,26 @@ nonisolated final class LogTabUITests: XCTestCase {
         app.element("toast.message").waitToDisappear()
     }
 
+    /// A delete's Undo goes with the person into the logger, rather than ending as it opens.
+    @MainActor
+    func testUndoOfADeleteFollowsIntoTheLogger() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedPlan", "-tab", "log", "-daysAgo", "1", "-toastSeconds", "30"])
+        let entry = app.scrollTo(app.element("log.entry")).waitToAppear()
+        let plus = app.scrollTo(app.element("log.add.10")).waitToAppear()
+        entry.swipeLeft()
+        app.buttons["Delete"].firstMatch.waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Deleted").waitToAppear()
+
+        plus.tap()
+
+        app.element("logger.done").waitToAppear()
+        let undo = app.element("toast.undo").waitToAppear()
+        XCTAssertTrue(undo.isHittable, "behind the sheet, nobody can reach it")
+        undo.tap()
+        app.element("toast.message").waitToDisappear()
+    }
+
     @MainActor
     func testCopyingToChosenDatesKeepsTheSelection() throws {
         continueAfterFailure = false

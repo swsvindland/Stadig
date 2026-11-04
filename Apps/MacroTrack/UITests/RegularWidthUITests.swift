@@ -60,6 +60,27 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("entryEditor.save").waitToDisappear()
     }
 
+    /// A food's amount takes the pane, and the toast its place in it: the toast is back with the
+    /// search, with its Undo, rather than lost to the amount opening.
+    @MainActor
+    func testUndoComesBackWithThePaneAfterAnAmount() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search", "-toastSeconds", "30"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        search.typeText("apple")
+        app.element("logger.food").waitToAppear().tap()
+        let close = app.element("portion.close").waitToAppear()
+        close.tap()
+        close.waitToDisappear()
+
+        app.element("toast.undo").waitToAppear()
+    }
+
     @MainActor
     func testTheDaySortsFromItsMenu() {
         continueAfterFailure = false

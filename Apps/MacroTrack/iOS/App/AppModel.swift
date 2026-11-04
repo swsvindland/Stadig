@@ -238,6 +238,8 @@ final class AppModel {
     /// a long way down, and a reminder can open an app that hasn't built Today yet.
     var pendingSupplementsScroll = false
     var toast: Toast?
+    /// How long a toast stays up.
+    var toastTime: Duration = .seconds(4)
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
@@ -1118,6 +1120,15 @@ final class AppModel {
         if !removed.isEmpty {
             toast = Toast(message: removed.count == 1 ? "Deleted \(removed[0].name)" : "Deleted \(removed.count) foods", deleted: removed)
         }
+    }
+
+    /// Takes a toast down after its few seconds on screen. A slot leaving the screen cancels this,
+    /// and a cancelled wait isn't those seconds up: the toast stays for the next slot to show, with
+    /// its few seconds starting again.
+    func expire(_ toast: Toast) async {
+        try? await Task.sleep(for: toastTime)
+        guard !Task.isCancelled, self.toast?.id == toast.id else { return }
+        self.toast = nil
     }
 
     func undo(_ toast: Toast) {

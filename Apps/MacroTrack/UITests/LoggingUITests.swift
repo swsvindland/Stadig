@@ -133,6 +133,42 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertFalse(app.element("log.entry").exists, "the sample weeks end yesterday")
     }
 
+    /// Closing the logger hands Undo over to the screen behind it.
+    @MainActor
+    func testUndoOutlastsTheLoggerClosing() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-toastSeconds", "30"])
+        logABanana(app)
+        app.element("toast.undo").waitToAppear()
+        let done = app.element("logger.done")
+        done.tap()
+        done.waitToDisappear()
+
+        // A moment after the sheet has gone, which is when the toast went with it.
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(app.element("toast.undo").exists, "Undo went with the logger")
+        app.element("toast.undo").tap()
+        app.element("toast.message").waitToDisappear()
+        XCTAssertFalse(app.element("log.entry").exists, "the sample weeks end yesterday")
+    }
+
+    /// Changing the way of logging keeps the Undo of the food just added.
+    @MainActor
+    func testUndoOutlastsAChangeOfMethod() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search", "-toastSeconds", "30"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        app.element("logger.mode.quickAdd").waitToAppear().tap()
+
+        app.element("quickAdd.kcal").waitToAppear()
+        XCTAssertTrue(app.element("toast.undo").exists, "Undo went with the search")
+    }
+
     @MainActor
     func testQuickAddLogsCaloriesToToday() {
         continueAfterFailure = false

@@ -204,10 +204,7 @@ struct ToastSlot: View {
         if let toast = model.toast {
             ToastView(toast: toast) { model.undo(toast) }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .task(id: toast.id) {
-                    try? await Task.sleep(for: .seconds(4))
-                    if model.toast?.id == toast.id { model.toast = nil }
-                }
+                .task(id: toast.id) { await model.expire(toast) }
         }
     }
 }
