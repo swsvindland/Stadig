@@ -5,7 +5,7 @@ description: Write, run and debug the XCUITest end-to-end tests in Apps/<App>/UI
 
 # UI tests
 
-Each app has `Apps/<App>/UITests` (XCTest; Swift Testing can't drive UI) in the `<App>UI` test plan, which retries a failed test once. Run with `Scripts/build.sh ui lift|macro|mind`.
+Each app has `Apps/<App>/UITests` (XCTest; Swift Testing can't drive UI) in the `<App>UI` test plan, which retries a failed test once. Run one class with `ONLY=<TestClass> Scripts/build.sh ui lift|macro|mind` while working on a flow; leave off `ONLY` for the full suite, which is for releases.
 
 ## Launching
 

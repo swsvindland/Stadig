@@ -69,6 +69,7 @@ Scripts/build.sh format             # fix formatting in place
 Scripts/build.sh test [Package]     # package tests (all, or one)
 Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift, macro, mind)
 Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
+ONLY=SessionUITests Scripts/build.sh ui lift    # one class of them
 Scripts/build.sh ios|watch|macro|macro-watch|mind   # build one app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build

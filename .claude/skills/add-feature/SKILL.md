@@ -33,7 +33,7 @@ Work in this order. Each step is small and checked before the next.
 
 - Wiring worth checking (the model publishes the right thing to the shared container, a deep link lands on the right step): `Apps/<App>/Tests`.
 - The user-visible flow: a UI test in `Apps/<App>/UITests` (see the `ui-tests` skill).
-- `Scripts/build.sh unit <app>` and `Scripts/build.sh ui <app>`.
+- `Scripts/build.sh unit <app>` and `ONLY=<TestClass> Scripts/build.sh ui <app>` for the flow you changed.
 
 ## 5. Finish
 

@@ -24,8 +24,11 @@ Scripts/build.sh unit lift                # Stadig Lift's app tests (lift, macro
 Scripts/build.sh unit lift mac            # the same tests, hosted in the Mac app
 Scripts/build.sh ui macro                 # Stadig Macro's UI tests
 Scripts/build.sh ui macro ipad            # on the iPad, where the desktop layout runs
+ONLY=FastingUITests Scripts/build.sh ui macro   # one class (or Class/testName; separate several with commas)
 SANITIZE=thread Scripts/build.sh test SystemStore
 ```
+
+A change runs the UI tests for the flow it touched, with `ONLY`. The full UI suites run before a release, on the iPhone and the iPad: they take longer than every package test, build and unit test together, and nothing runs them on a push.
 
 App tests run on a simulator of the checkout's own, "Stadig Tests <checkout>" (an iPhone Pro, created the first time; `Scripts/build.sh simulator` prints its UDID), with a DerivedData folder of its own, so they never take over a simulator or build another session is using. A device after the app picks another of the checkout's own: `ipad` ("Stadig iPad", a 13-inch iPad Pro, for the regular-width layouts), `vision` ("Stadig Vision") or `mac` (this Mac, with the app signed ad hoc; see [ci-cd.md](ci-cd.md)). `SIMULATOR=<udid>` and `DERIVED_DATA=<path>` override them. Every UI test runs on both: the regular-width suites skip themselves on an iPhone (`XCTSkipUnless` on the idiom), and the iPhone's run on the iPad too, through the same helpers, unless they test something only the iPhone has (see below). Failures print the path of the full log and leave an `.xcresult` next to it (open it in Xcode for screenshots of UI test failures).
 

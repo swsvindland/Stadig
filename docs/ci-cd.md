@@ -10,6 +10,8 @@ Two systems share the work. **GitHub Actions** checks every push cheaply: format
 | `main` | the same | **Main** workflow: packages, unit plan and UI plan, then an archive to TestFlight (internal testers) |
 | `release/<app>-<version>` | the same | **Release** workflow: the same tests, then an archive to TestFlight (external testers), ready to submit for review |
 
+Xcode Cloud's column is the design, not what runs yet. On 2026-11-03 the checks on `main` showed each app's `Default` workflow with `Archive - iOS` and nothing else, so the unit and UI plans don't run there. Adding `Test <App>` and `Test <App>UI` to that workflow in App Store Connect would close the gap. Until then the app tests only run from `Scripts/build.sh unit` and `ui`, and the full UI suites only before a release.
+
 Also: on Mondays GitHub runs every package's tests under the thread and address sanitizers, and `CI` can be started by hand with **apps** ticked to build all three apps for every platform and run their unit (iPhone and Mac) and UI tests on GitHub (useful when Xcode Cloud's hours run low; about 25 macOS minutes per app, which a private repo on the free plan bills at ten times). `Site` builds the marketing site on pushes that touch `Site/`.
 
 Until the Xcode Cloud workflows below exist, nothing compiles the apps on push: GitHub only lints and runs the package tests. Creating them is the one manual step left.
