@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import FoodDatabase
+import FoodIntelligence
 import MealPlanner
 import NutritionEngine
 import SystemCore
@@ -156,6 +157,31 @@ enum SampleData {
         model.store.save(history.fasts)
         model.store.save(history.savedMeals)
         model.reload()
+    }
+
+    /// A meal as if the model had read it, ready to check, since a simulator may have no model.
+    /// Debug builds only (-seedReview, with -log describe): one of the person's own foods at 300
+    /// kcal, and something it couldn't match.
+    @MainActor
+    static func seedReview(_ session: LoggerSession, _ model: AppModel) {
+        guard LaunchOptions.current.has("-seedReview"), session.review == nil else { return }
+        let name = "Beef stew"
+        let stew =
+            model.customFoods.first { $0.food.name == name }?.food
+            ?? model.save(
+                customFood: Food(
+                    id: "seed-stew", name: name, basis: .serving, nutrients: Nutrients(kcal: 300, protein: 25, carbs: 20, fat: 13), source: .custom))
+        guard let serving = FoodUnits.units(for: stew).first else { return }
+        let seen = [
+            GuessedItem(
+                seenName: name, seenBrand: nil, match: FoodMatch(food: stew, score: 1, personal: true), alternatives: [], unit: serving, count: 1,
+                nutrients: stew.nutrients, sure: true, approximate: false),
+            GuessedItem(
+                seenName: "Mystery sauce", seenBrand: nil, match: nil, alternatives: [], unit: nil, count: 1, nutrients: .zero, sure: false,
+                approximate: true),
+        ]
+        let guess = MealGuess(scene: nil, isFood: true, items: seen, engine: .onDevice, seconds: 1)
+        session.review = MealReview(guess: guess, source: .description, mode: session.mode, corrected: model.corrected)
     }
 
     /// The stack from the design brief, two weeks of it taken, and drinks: fish oil and a

@@ -29,8 +29,8 @@ struct MacroTrackApp: App {
         #if DEBUG
         // -seedSampleData fills an empty store; -tab plan|progress (or foods|mealplan|supplements|history,
         // the sidebar's) opens a tab; -daysAgo 1 opens Today on an earlier day; -log search|describe|quickAdd
-        // opens a logger; -toastSeconds 30 holds a toast, where a UI test's steps take longer than its
-        // few seconds. For checking screens quickly, and for the UI tests.
+        // opens a logger, and -seedReview gives it a meal to check; -toastSeconds 30 holds a toast, where a
+        // UI test's steps take longer than its few seconds. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }

@@ -46,7 +46,12 @@ struct LoggerSheet: View {
                 LoggerAmount(session: session, request: request)
             }
         }
-        .onAppear { model.ai.prewarm() }
+        .onAppear {
+            model.ai.prewarm()
+            #if DEBUG
+            SampleData.seedReview(session, model)
+            #endif
+        }
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.openMeal) { _, meal in if meal == nil { searchFocused = true } }
@@ -128,6 +133,9 @@ struct LoggerPane: View {
         .accessibilityHidden(covered)
         .onAppear {
             model.ai.prewarm()
+            #if DEBUG
+            SampleData.seedReview(session, model)
+            #endif
             searchFocused = true
         }
         .onChange(of: covered) { _, covered in searchFocused = !covered && session.portion == nil }
@@ -236,8 +244,8 @@ struct MethodRibbon: View {
         HStack(spacing: 4) {
             chip("Search", "magnifyingglass", .search)
             chip("Scan", "barcode.viewfinder", .scan)
-            if model.ai.canSeePhotos { chip("Photo", "camera", .camera) }
-            if model.ai.canDescribe { chip("Describe", "text.bubble", .describe) }
+            if model.ai.canSeePhotos || waiting(on: .camera, .photoLibrary) { chip("Photo", "camera", .camera) }
+            if model.ai.canDescribe || waiting(on: .describe) { chip("Describe", "text.bubble", .describe) }
             chip("Quick add", "plus.forwardslash.minus", .quickAdd)
         }
         .padding(2)
@@ -245,6 +253,9 @@ struct MethodRibbon: View {
         .background(Color.cardBackground.opacity(0.75), in: .capsule)
         .floatingGlass(in: .capsule)
     }
+
+    /// A review left unlogged is reached through its way of logging, even if the model has gone.
+    func waiting(on ways: LogMode...) -> Bool { session.review.map { ways.contains($0.mode) } ?? false }
 
     func chip(_ title: String, _ symbol: String, _ target: LogMode) -> some View {
         let current = session.mode == target || (target == .camera && session.mode == .photoLibrary)

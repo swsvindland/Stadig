@@ -192,6 +192,35 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertTrue(entry.label.contains("500"), entry.debugDescription)
     }
 
+    /// The AI's review, left through the ribbon to add what it missed, is still there after the food
+    /// is added from its amount, and only logging it ends it. (-seedReview: a simulator may have no
+    /// model to read a meal with.)
+    @MainActor
+    func testAReviewOutlastsAFoodAddedAwayFromIt() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedReview", "-log", "describe"])
+        app.element("review.log").waitToAppear()
+
+        app.element("logger.mode.search").waitToAppear().tap()
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear().tap()
+        app.element("portion.add").waitToAppear().tap()
+        app.element("logger.done").waitToAppear()
+
+        app.element("logger.mode.describe").waitToAppear().tap()
+        let log = app.element("review.log").waitToAppear()
+        app.shot("logger-review-kept")
+
+        log.tap()
+        _ = app.foodSearchField()
+        // With no model and no review, the ribbon has no Describe to go back to.
+        let describe = app.element("logger.mode.describe")
+        if describe.exists { describe.tap() }
+        XCTAssertFalse(app.element("review.log").waitForExistence(timeout: 2), "logging it ended it")
+    }
+
     /// A scanned supplement already in the stack: Take ends there, back at the search for the next
     /// thing with its Undo over the meal, in a sheet and in the pane. The simulator has no camera,
     /// so it's typed.

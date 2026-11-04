@@ -17,7 +17,8 @@ final class LoggerSession {
     private(set) var searching = false
     var portion: AmountRequest?
     var openMeal: SavedMeal.ID?
-    /// What the model saw, being checked.
+    /// What the model saw, being checked. It lasts until it's logged, however many other foods go
+    /// in meanwhile: one the model missed is often why the person left it.
     var review: MealReview?
     /// The item of the review a search is finding a food for.
     private(set) var finding: UUID?
@@ -97,13 +98,27 @@ final class LoggerSession {
         focusSearch()
     }
 
-    /// Back to the search for the next food: every way of logging ends here, until Done.
+    /// Back to the search for the next food: every way of logging ends here, until Done. A review
+    /// stays, a tap on its way of logging away.
     func backToSearch() {
-        review = nil
         finding = nil
         query = ""
         mode = .search
         focusSearch()
+    }
+
+    /// Logs what's ticked in the review, which ends it, and goes on to the next food. If it didn't
+    /// save, the toast says so and the review is still there to try again.
+    func logReview(_ model: AppModel) {
+        guard let review else { return }
+        let entries = review.chosen.compactMap { item -> FoodEntry? in
+            guard let food = item.food, let unit = item.unit else { return nil }
+            return model.entry(
+                for: food, count: item.count, unit: unit, source: review.source, confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
+        }
+        guard model.log(entries) else { return }
+        self.review = nil
+        backToSearch()
     }
 
     /// Off to the search for one of the review's foods, keeping the review to come back to.
@@ -139,6 +154,9 @@ struct MealReview {
     /// Where the review is shown, to come back to.
     var mode: LogMode
     var items: [Item]
+
+    /// What Log would log: ticked, and matched to a food.
+    var chosen: [Item] { items.filter { $0.included && $0.food != nil } }
 
     struct Item: Identifiable {
         var id: UUID

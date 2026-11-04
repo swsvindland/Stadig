@@ -258,7 +258,7 @@ struct MealReviewView: View {
     var items: Binding<[MealReview.Item]> { Binding(get: { session.review?.items ?? [] }, set: { session.review?.items = $0 }) }
 
     var body: some View {
-        let chosen = items.wrappedValue.filter { $0.included && $0.food != nil }
+        let chosen = session.review?.chosen ?? []
         let total = Nutrients.sum(chosen.map(\.nutrients))
         List {
             if let scene = session.review?.guess.scene, !scene.isEmpty {
@@ -278,15 +278,7 @@ struct MealReviewView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                let source = session.review?.source ?? .photo
-                let entries = chosen.compactMap { item -> FoodEntry? in
-                    guard let food = item.food, let unit = item.unit else { return nil }
-                    return model.entry(
-                        for: food, count: item.count, unit: unit, source: source,
-                        confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
-                }
-                model.log(entries)
-                session.backToSearch()
+                session.logReview(model)
             } label: {
                 Text(chosen.isEmpty ? "Nothing to log" : "Log \(chosen.count) \(chosen.count == 1 ? "food" : "foods") · \(Format.kcal(total.kcal))")
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -294,6 +286,7 @@ struct MealReviewView: View {
             .primaryAction()
             .padding()
             .disabled(chosen.isEmpty)
+            .accessibilityIdentifier("review.log")
         }
     }
 }

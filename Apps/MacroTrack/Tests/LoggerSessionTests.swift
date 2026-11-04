@@ -6,9 +6,10 @@ import SystemCore
 import Testing
 
 @testable import MacroTrack
+@testable import SystemStore
 
-/// One logger, however it's logging: every way returns to the search, and the AI's review survives
-/// a trip to search for one of its foods.
+/// One logger, however it's logging: every way returns to the search, and the AI's review lasts
+/// until it's logged.
 @MainActor
 struct LoggerSessionTests {
     func review(_ model: AppModel, mode: LogMode = .describe) throws -> MealReview {
@@ -40,8 +41,75 @@ struct LoggerSessionTests {
         session.backToSearch()
 
         #expect(session.mode == .search)
-        #expect(session.review == nil)
         #expect(session.query.isEmpty)
+    }
+
+    /// Off the ribbon to add what the review missed, and that food's amount (or a quick add, or a
+    /// scan) ends back at the search: the review is still there.
+    @Test func aFoodAddedAwayFromTheReviewLeavesIt() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        session.review?.items[0].count = 200
+        session.mode = .quickAdd
+
+        session.backToSearch()
+
+        #expect(session.review?.items[0].count == 200, "the 5 foods aren't gone, nor what was changed in them")
+        session.mode = .describe
+        #expect(session.review != nil)
+    }
+
+    @Test func leavingASearchForOneOfItsFoodsLeavesTheReviewToo() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("banana", for: unmatched.id)
+        session.mode = .quickAdd
+
+        session.backToSearch()
+
+        #expect(session.finding == nil, "the next food is logged, not given to the review")
+        #expect(session.review?.items.count == 2)
+    }
+
+    @Test func loggingTheReviewEndsIt() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.query = "banana"
+        session.review = try review(model)
+
+        session.logReview(model)
+
+        #expect(logged(model).count == 1, "the matched food, not the one with no match")
+        #expect(session.review == nil)
+        #expect(session.mode == .search)
+        #expect(session.query.isEmpty)
+    }
+
+    /// The review is the only copy of what the model saw, so a failed save leaves it to try again.
+    @Test func aReviewThatDidntSaveIsThereToTryAgain() throws {
+        let environment = TestEnvironment()
+        let model = environment.model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        environment.store.nextSaveFailure = CocoaError(.fileWriteOutOfSpace)
+
+        session.logReview(model)
+
+        #expect(model.toast?.failed == true)
+        #expect(session.review != nil)
+        #expect(session.mode == .describe)
+
+        session.logReview(model)
+
+        #expect(logged(model).count == 1)
+        #expect(session.review == nil)
     }
 
     @Test func goingOffToSearchKeepsTheReview() throws {
