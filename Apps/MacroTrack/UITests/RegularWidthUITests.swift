@@ -81,6 +81,43 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// The pane stays open beside the selection bar, so what it opened can go from under it. Save
+    /// would put the food back where it was, or bring it back, with no toast and no Undo.
+    @MainActor
+    func testMovingAFoodClosesItsPane() {
+        continueAfterFailure = false
+        let (app, food) = openFoodInThePane()
+
+        food.press(forDuration: 0.8)
+        app.element("selection.to.tomorrow").waitToAppear().tap()
+
+        app.element("entryEditor.save").waitToDisappear()
+        app.element("toast.message", labelContaining: "Moved").waitToAppear()
+    }
+
+    @MainActor
+    func testDeletingAFoodClosesItsPane() {
+        continueAfterFailure = false
+        let (app, food) = openFoodInThePane()
+
+        food.press(forDuration: 0.8)
+        app.element("selection.delete").waitToAppear().tap()
+
+        app.element("entryEditor.save").waitToDisappear()
+        app.element("toast.message", labelContaining: "Deleted").waitToAppear()
+    }
+
+    /// Yesterday, which has the sample's meals in it, with its first food open beside the hours.
+    @MainActor
+    private func openFoodInThePane() -> (XCUIApplication, XCUIElement) {
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1", "-toastSeconds", "30"])
+        app.element("log.list").waitToAppear()
+        let food = app.scrollTo(app.element("log.entry")).waitToAppear()
+        food.tap()
+        app.element("entryEditor.save").waitToAppear()
+        return (app, food)
+    }
+
     /// The pane is part of the Log tab: leaving it closes the pane, so a food logged on another tab
     /// says so there, with its Undo, rather than in a pane out of sight.
     @MainActor

@@ -1236,6 +1236,12 @@ final class AppModel {
     /// A day's whole log, eaten and still to come: what its rows show.
     func allEntries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
 
+    /// A food as the log has it now, or nil once it's been moved or deleted. A panel left open on one
+    /// reads it here, because saving the copy it opened with would undo that.
+    func current(_ entry: FoodEntry) -> FoodEntry? {
+        allEntries(on: entry.day).first { $0.id == entry.id && $0.date == entry.date }
+    }
+
     /// A day's targets as they stood that day, for the Log tab's line. Kept until the analysis
     /// moves on: working one out reads the plan and every check-in.
     func targets(on day: Day) -> DailyTargets? {

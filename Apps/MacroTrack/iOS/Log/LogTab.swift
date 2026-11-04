@@ -104,6 +104,8 @@ struct LogTab: View {
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
+            // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
+            .onChange(of: current == nil) { _, gone in if gone { editing = nil } }
         }
     }
 
@@ -111,10 +113,14 @@ struct LogTab: View {
     /// the logger.
     var editingFood: Binding<FoodEntry?> { $editing }
 
+    /// The food being changed as the log has it now, and nil once it's been moved or deleted beside
+    /// the pane or on another device: Save would put back the copy that was opened.
+    var current: FoodEntry? { editing.flatMap(model.current) }
+
     /// What's beside the day, where there's room: a food being changed, or the logger.
     var paneOpen: Binding<Bool> {
         Binding(
-            get: { wide && (editing != nil || model.logger != nil) },
+            get: { wide && (current != nil || model.logger != nil) },
             set: { open in
                 guard !open else { return }
                 editing = nil
@@ -124,8 +130,9 @@ struct LogTab: View {
 
     @ViewBuilder
     var pane: some View {
-        if let editing {
-            EntryEditor(entry: editing, close: { self.editing = nil }).padding(.top, 8).id(editing.id)
+        if let current {
+            // A new panel for a new version: its amount and time are read once, as it opens.
+            EntryEditor(entry: current, close: { editing = nil }).padding(.top, 8).id(FoodVersion(id: current.id, updatedAt: current.updatedAt))
         } else if let mode = model.logger {
             // A new one for a new way of logging; the same one for another hour's +.
             LoggerPane(start: mode).id(mode)
@@ -193,6 +200,12 @@ extension DayOrder {
         case .fat: "Fat"
         }
     }
+}
+
+/// A food as it stood when a panel opened it.
+private struct FoodVersion: Hashable {
+    var id: UUID
+    var updatedAt: Date
 }
 
 /// What moves the list to a day's opening hour.

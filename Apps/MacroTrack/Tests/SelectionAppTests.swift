@@ -32,6 +32,40 @@ struct SelectionAppTests {
         DayHours.groups(on: day, entries: model.allEntries(on: day)).first { $0.hour == hour } ?? HourGroup(start: Date(), end: Date(), hour: hour)
     }
 
+    /// A wide pane stays open beside the selection bar and every row's swipe, so what it opened can
+    /// change under it. Saving the copy it opened with would undo a move or bring back a delete.
+    @Test func aMovedFoodIsNoLongerTheOneOpened() throws {
+        let (model, day) = model()
+        let opened = try #require(model.allEntries(on: day).first)
+        #expect(model.current(opened) == opened)
+
+        model.select(opened, intent: .move)
+        model.placeSelection(.sameTimes(on: model.today.adding(days: 1)), named: "tomorrow")
+
+        #expect(model.current(opened) == nil)
+    }
+
+    @Test func aDeletedFoodIsNoLongerTheOneOpened() throws {
+        let (model, day) = model()
+        let opened = try #require(model.allEntries(on: day).first)
+
+        model.delete(entries: [opened.id])
+
+        #expect(model.current(opened) == nil)
+    }
+
+    /// Changed where it stands, from another device, it's the same food with the new numbers.
+    @Test func aFoodChangedInPlaceIsReadAgain() throws {
+        let (model, day) = model()
+        let opened = try #require(model.allEntries(on: day).first)
+        var changed = opened
+        changed.nutrients = Nutrients(kcal: 999, protein: 1, carbs: 1, fat: 1)
+
+        model.update(changed)
+
+        #expect(model.current(opened)?.nutrients.kcal == 999)
+    }
+
     @Test func anHoursNameSelectsItAndAPartlySelectedHourSelectsTheRest() {
         let (model, day) = model()
         let noon = hour(model, day, 12)
