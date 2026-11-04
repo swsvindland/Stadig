@@ -123,6 +123,8 @@ struct MacroTrackApp: App {
                     break
                 }
             }
+            // Hidden or minimized, both this and the scene phase fire. The model takes the first.
+            .onMacAppSwitch(left: { model.wentToBackground() }, returned: { model.cameToFront() })
             #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
             releaseCatalogMemory(model)

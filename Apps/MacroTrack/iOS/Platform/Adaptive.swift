@@ -286,6 +286,18 @@ extension View {
         return datePickerStyle(.wheel)
         #endif
     }
+
+    /// Someone going to another app and coming back. On the Mac a window stays `.active` behind
+    /// another app's, so the scene phase only changes if it's hidden or minimized, and the app's own
+    /// activation has to say. On iPhone, iPad and Vision Pro the scene phase already does.
+    func onMacAppSwitch(left: @escaping () -> Void, returned: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        return onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in left() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in returned() }
+        #else
+        return self
+        #endif
+    }
 }
 
 extension SearchFieldPlacement {

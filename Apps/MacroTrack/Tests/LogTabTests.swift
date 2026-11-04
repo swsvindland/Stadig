@@ -78,6 +78,37 @@ struct LogTabTests {
         #expect(model.selectedDay == yesterdayIn(model))
     }
 
+    /// The Mac says so twice when it's behind another app and then gets hidden: the time away runs
+    /// from the first.
+    @Test func aWhileAwayRunsFromTheFirstSignOfLeaving() {
+        let model = model()
+        model.show(day: yesterdayIn(model))
+        let left = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        model.wentToBackground(at: left)
+        model.wentToBackground(at: left.addingTimeInterval(AppModel.awayLimit - 1))
+        model.cameToFront(at: left.addingTimeInterval(AppModel.awayLimit))
+
+        #expect(model.selectedDay == model.today)
+    }
+
+    /// Coming back says so twice too, on the Mac: the second is for the same return, not a new one.
+    @Test func comingBackOnceMovesTheDayOnce() {
+        let model = model()
+        model.show(day: yesterdayIn(model))
+        let left = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let back = left.addingTimeInterval(AppModel.awayLimit)
+        model.wentToBackground(at: left)
+        model.cameToFront(at: back)
+        let anchors = model.logAnchorRequest
+
+        model.show(day: yesterdayIn(model))
+        model.cameToFront(at: back)
+
+        #expect(model.selectedDay == yesterdayIn(model))
+        #expect(model.logAnchorRequest == anchors)
+    }
+
     @Test func comingToTheFrontWithoutHavingLeftDoesNothing() {
         let model = model()
         model.show(day: yesterdayIn(model))

@@ -906,7 +906,10 @@ final class AppModel {
     /// How long away counts as a new visit: long enough that the day being looked at was for then.
     static let awayLimit: TimeInterval = 10 * 60
 
-    func wentToBackground(at date: Date = Date()) { wentAway = date }
+    /// Keeps the first time, since leaving can say so twice (the Mac: behind another app, then hidden).
+    func wentToBackground(at date: Date = Date()) {
+        if wentAway == nil { wentAway = date }
+    }
 
     /// After a while away the Log tab is back on today at the hour it is, unless something's open
     /// that's mid-way through a day.
