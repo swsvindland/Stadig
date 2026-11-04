@@ -66,3 +66,29 @@ public enum DayHours {
         return min(last.date.addingTimeInterval(60), group.end.addingTimeInterval(-60))
     }
 }
+
+/// How a day's foods are listed where there's room for their numbers: in their hours, or as one
+/// list with the most first.
+public enum DayOrder: String, CaseIterable, Hashable, Sendable {
+    case time, calories, protein, carbs, fat
+
+    /// The day's foods as one list, most first and ties in date order. Nil keeps the hours: by time,
+    /// or with nothing to list, when the hours are still the way to add something.
+    public func listed(_ entries: [FoodEntry]) -> [FoodEntry]? {
+        guard self != .time, !entries.isEmpty else { return nil }
+        return entries.sorted { first, second in
+            let (a, b) = (amount(of: first), amount(of: second))
+            return a != b ? a > b : first.date < second.date
+        }
+    }
+
+    private func amount(of entry: FoodEntry) -> Double {
+        switch self {
+        case .time: 0
+        case .calories: entry.nutrients.kcal
+        case .protein: entry.nutrients.protein
+        case .carbs: entry.nutrients.carbs
+        case .fat: entry.nutrients.fat
+        }
+    }
+}

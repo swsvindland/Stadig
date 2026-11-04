@@ -107,7 +107,7 @@ struct HistoryView: View {
             if let day = days.first { show(day) }
         }
         #else
-        // A tap selects; the day's log beside it has Show in Today.
+        // A tap selects; the day's log beside it has Show in Log.
         .contextMenu(forSelectionType: Day.self) { days in dayMenu(days) }
         #endif
         .accessibilityIdentifier("history.table")
@@ -134,7 +134,7 @@ struct HistoryView: View {
     @ViewBuilder
     func dayMenu(_ days: Set<Day>) -> some View {
         if let day = days.first {
-            Button("Show in Today", systemImage: "fork.knife") { show(day) }
+            Button("Show in Log", systemImage: "list.bullet.clipboard") { show(day) }
             if day < model.today {
                 Menu("Mark As") {
                     ForEach([DayState.complete, .partial, .fasting], id: \.self) { state in

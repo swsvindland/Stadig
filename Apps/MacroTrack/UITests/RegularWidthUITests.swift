@@ -61,6 +61,24 @@ nonisolated final class RegularWidthUITests: XCTestCase {
     }
 
     @MainActor
+    func testTheDaySortsFromItsMenu() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        let hour = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'log.hour.'")).firstMatch
+        hour.waitToAppear()
+
+        app.toolbarItem("log.sort", title: "Sort").tap()
+        app.buttons["Calories"].waitToAppear().tap()
+        hour.waitToDisappear()
+        app.element("log.entry").waitToAppear()
+        app.shot("log-sorted")
+
+        app.toolbarItem("log.sort", title: "Sort").tap()
+        app.buttons["Time"].waitToAppear().tap()
+        hour.waitToAppear()
+    }
+
+    @MainActor
     func testHistoryShowsEveryDayAndTheSelectedDaysLog() {
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-tab", "history"])

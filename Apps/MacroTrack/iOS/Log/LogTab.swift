@@ -23,6 +23,7 @@ struct LogTab: View {
     /// the list where it was.
     @State private var anchored = false
     @State private var listWidth: CGFloat = .infinity
+    @State private var order = DayOrder.time
 
     /// The Mac reports no size class: it always has room.
     var wide: Bool { sizeClass != .compact }
@@ -32,14 +33,19 @@ struct LogTab: View {
 
     var body: some View {
         let groups = DayHours.groups(on: day, entries: model.allEntries(on: day))
+        let listed = showsColumns ? order.listed(model.allEntries(on: day)) : nil
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     // A section's header: it pins, and it's laid out with the rows, so its columns
                     // are theirs on every platform.
                     Section {
-                        ForEach(groups) { group in
-                            HourRows(group: group, wide: showsColumns, editing: editingFood)
+                        if let listed {
+                            ForEach(listed) { LogEntryRow(entry: $0, wide: true, showsTime: true, editing: editingFood) }
+                        } else {
+                            ForEach(groups) { group in
+                                HourRows(group: group, wide: showsColumns, editing: editingFood)
+                            }
                         }
                     } header: {
                         LogHeader(wide: showsColumns).textCase(nil)
@@ -68,6 +74,16 @@ struct LogTab: View {
                     Task {
                         await Task.yield()
                         anchor(proxy, DayHours.groups(on: key.day, entries: model.allEntries(on: key.day)))
+                    }
+                }
+                .onChange(of: order) { _, order in
+                    Task {
+                        await Task.yield()
+                        if let first = order.listed(model.allEntries(on: day))?.first {
+                            proxy.scrollTo(first.id, anchor: .top)
+                        } else {
+                            anchor(proxy, DayHours.groups(on: day, entries: model.allEntries(on: day)))
+                        }
                     }
                 }
             }
@@ -138,12 +154,39 @@ struct LogTab: View {
                     .help("Back to today (⌘T)")
                     .accessibilityIdentifier("log.backToToday")
             }
+            if showsColumns { sortMenu }
             if !wide { SettingsButton(identifier: "log.settings") }
         }
         if wide { LogToolbar() }
     }
 
+    /// What the column headers did when the log was a table, which can't be headers over hours.
+    var sortMenu: some View {
+        Menu {
+            Picker("Sort By", selection: $order) {
+                ForEach(DayOrder.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label("Sort", systemImage: "arrow.up.arrow.down")
+        }
+        .help("Sort the day's food")
+        .accessibilityIdentifier("log.sort")
+    }
+
     var title: String { day == model.today ? "Today" : Format.day(day, style: .dateTime.weekday(.wide).month().day()) }
+}
+
+extension DayOrder {
+    var title: String {
+        switch self {
+        case .time: "Time"
+        case .calories: "Calories"
+        case .protein: "Protein"
+        case .carbs: "Carbs"
+        case .fat: "Fat"
+        }
+    }
 }
 
 /// What moves the list to a day's opening hour.
@@ -402,6 +445,8 @@ struct LogEntryRow: View {
     @Environment(AppModel.self) private var model
     let entry: FoodEntry
     let wide: Bool
+    /// Out of its hour, in a sorted list, a food says when it was.
+    var showsTime = false
     @Binding var editing: FoodEntry?
     /// When a hold picked this out: the tap that lands with its release is swallowed.
     @State private var held: Date?
@@ -472,7 +517,9 @@ struct LogEntryRow: View {
             if later { LaterMark() }
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.name).lineLimit(1)
-                Text([entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                Text([showsTime ? Format.time(entry.date) : nil, entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · ")).font(
+                    .caption
+                ).foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 4)

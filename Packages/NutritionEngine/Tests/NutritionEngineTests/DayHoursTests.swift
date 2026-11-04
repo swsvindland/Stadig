@@ -17,6 +17,29 @@ extension Calendar {
     }
 }
 
+struct DayOrderTests {
+    let day = Day(year: 2027, month: 6, day: 15)
+
+    func food(_ name: String, at hour: Int, kcal: Double, protein: Double) -> FoodEntry {
+        FoodEntry(
+            date: day.at(hour: hour, minute: 0, calendar: .gregorian(.newYork)), day: day, name: name, amountLabel: "1",
+            nutrients: Nutrients(kcal: kcal, protein: protein, carbs: 1, fat: 1), source: .search)
+    }
+
+    @Test func aListHasTheMostFirstAndTiesInDateOrder() throws {
+        let foods = [
+            food("Oats", at: 8, kcal: 300, protein: 10), food("Pasta", at: 19, kcal: 800, protein: 20), food("Soup", at: 12, kcal: 300, protein: 30),
+        ]
+        #expect(try #require(DayOrder.calories.listed(foods)).map(\.name) == ["Pasta", "Oats", "Soup"])
+        #expect(try #require(DayOrder.protein.listed(foods)).map(\.name) == ["Soup", "Pasta", "Oats"])
+    }
+
+    @Test func timeAndAnEmptyDayKeepTheHours() {
+        #expect(DayOrder.time.listed([food("Oats", at: 8, kcal: 300, protein: 10)]) == nil)
+        #expect(DayOrder.fat.listed([]) == nil)
+    }
+}
+
 struct DayHoursTests {
     let calendar = Calendar.gregorian(.newYork)
     let day = Day(year: 2027, month: 6, day: 15)
