@@ -349,6 +349,193 @@ struct LoggerSessionTests {
         #expect(session.mode == .describe)
     }
 
+    /// Holds a read open until the test lets it go, whether or not it's been stopped: the model may
+    /// be slow to notice.
+    final class Gate {
+        private var opened = false
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+
+        func wait() async {
+            guard !opened else { return }
+            await withCheckedContinuation { waiting.append($0) }
+        }
+
+        func open() {
+            opened = true
+            for read in waiting { read.resume() }
+            waiting = []
+        }
+    }
+
+    func guess(_ name: String) -> MealGuess {
+        let seen = GuessedItem(
+            id: UUID(), seenName: name, seenBrand: nil, match: nil, alternatives: [], unit: nil, count: 1, nutrients: .zero, sure: false,
+            approximate: true)
+        return MealGuess(scene: nil, isFood: true, items: [seen], engine: .onDevice, seconds: 1)
+    }
+
+    @Test func aReadLandsAsAReviewOfTheWayItStartedOn() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .describe)
+        let found = guess("toast")
+
+        session.startRead(.description, model) { .foods(found) }
+
+        #expect(session.reading)
+        await session.read?.value
+        #expect(!session.reading)
+        #expect(session.read == nil)
+        #expect(session.review?.mode == .describe)
+        #expect(session.review?.source == .description)
+        #expect(session.review?.items.first?.seen.seenName == "toast")
+    }
+
+    /// A photo being read, then Describe on the ribbon, a description read and foods unticked: the
+    /// photo's read finishes, and changes nothing.
+    @Test func aReadLeftForAnotherWayDoesntReplaceTheReviewThere() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .camera)
+        let gate = Gate()
+        let seen = guess("photo's foods")
+        session.startRead(.photo, model) {
+            await gate.wait()
+            return .foods(seen)
+        }
+        let photo = try #require(session.read)
+
+        session.mode = .describe
+
+        #expect(photo.isCancelled, "the model is stopped, and the quota with it")
+        #expect(!session.reading)
+        let described = guess("description's foods")
+        session.startRead(.description, model) { .foods(described) }
+        await session.read?.value
+        session.review?.items[0].included = false
+
+        gate.open()
+        await photo.value
+
+        #expect(session.review?.source == .description)
+        #expect(session.review?.items.first?.seen.seenName == "description's foods")
+        #expect(session.review?.items.first?.included == false, "the person's changes stand")
+    }
+
+    /// Find foods, then the ribbon's Search: the meal given up on doesn't turn up later, in place of
+    /// Photo's or Describe's own screen, on a review that thinks it belongs to the search.
+    @Test func aReadLeftForTheSearchLeavesNoReview() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .describe)
+        let gate = Gate()
+        let seen = guess("toast")
+        session.startRead(.description, model) {
+            await gate.wait()
+            return .foods(seen)
+        }
+        let read = try #require(session.read)
+
+        session.mode = .search
+        gate.open()
+        await read.value
+
+        #expect(read.isCancelled)
+        #expect(session.review == nil)
+    }
+
+    @Test func everyWayBackToTheSearchStopsARead() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .describe)
+        session.startRead(.description, model) { .nothing("") }
+        let read = try #require(session.read)
+
+        session.backToSearch()
+
+        #expect(read.isCancelled)
+    }
+
+    /// Done while it's looking: the host stops it as it goes.
+    @Test func closingTheLoggerStopsARead() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .camera)
+        let gate = Gate()
+        let seen = guess("toast")
+        session.startRead(.photo, model) {
+            await gate.wait()
+            return .foods(seen)
+        }
+        let read = try #require(session.read)
+
+        session.stopRead()
+        gate.open()
+        await read.value
+
+        #expect(read.isCancelled)
+        #expect(session.review == nil)
+        #expect(!session.reading)
+    }
+
+    @Test func aSecondReadTakesTheFirstsPlace() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .camera)
+        let gate = Gate()
+        let first = guess("first")
+        let second = guess("second")
+        session.startRead(.photo, model) {
+            await gate.wait()
+            return .foods(first)
+        }
+        let earlier = try #require(session.read)
+
+        session.startRead(.photo, model) { .foods(second) }
+        await session.read?.value
+        gate.open()
+        await earlier.value
+
+        #expect(earlier.isCancelled)
+        #expect(session.review?.items.first?.seen.seenName == "second")
+    }
+
+    /// A question of which door, not of leaving: a picked photo being read, and the Photo chip tapped.
+    @Test func goingBetweenTheCameraAndThePhotoLibraryDoesntStopARead() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .photoLibrary)
+        let found = guess("toast")
+        session.startRead(.photo, model) { .foods(found) }
+
+        session.mode = .camera
+
+        #expect(session.reading)
+        await session.read?.value
+        #expect(session.review != nil)
+    }
+
+    /// Asked for the way it's on from outside, as a widget can: what's there stays, a read included.
+    @Test func askedForTheWayItsOnAReadCarriesOn() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .describe)
+        let found = guess("toast")
+        session.startRead(.description, model) { .foods(found) }
+
+        session.go(to: .describe)
+
+        #expect(session.reading)
+        await session.read?.value
+        #expect(session.review != nil)
+    }
+
+    @Test func aReadsProblemShowsUntilItsWayIsLeft() async throws {
+        let model = TestEnvironment().model()
+        let session = LoggerSession(mode: .camera)
+        session.startRead(.photo, model) { .nothing("That looks like a dog, not food.") }
+        await session.read?.value
+        #expect(session.readProblem == "That looks like a dog, not food.")
+        #expect(session.review == nil)
+        #expect(!session.reading)
+
+        session.mode = .describe
+
+        #expect(session.readProblem == nil, "not shown under Describe")
+    }
+
     /// A review with two rows of the food, as a meal can have, the second unticked.
     func twoRows(of food: Food, unit: PortionUnit, count: Double) -> MealReview {
         func seen() -> GuessedItem {

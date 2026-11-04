@@ -52,6 +52,8 @@ struct LoggerSheet: View {
             SampleData.seedReview(session, model)
             #endif
         }
+        // Done, or a swipe down: nobody's left to read for.
+        .onDisappear { session.stopRead() }
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.openMeal) { _, meal in if meal == nil { searchFocused = true } }
@@ -139,6 +141,7 @@ struct LoggerPane: View {
             #endif
             searchFocused = true
         }
+        .onDisappear { session.stopRead() }
         .onChange(of: covered) { _, covered in searchFocused = !covered && session.portion == nil }
         .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }

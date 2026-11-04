@@ -33,14 +33,12 @@ struct PhotoLogView: View {
     @State private var showCamera = false
     @State private var image: CGImage?
     @State private var note = ""
-    @State private var working = false
-    @State private var error: String?
 
     var body: some View {
         Group {
             if session.review != nil {
                 MealReviewView(session: session)
-            } else if working {
+            } else if session.reading {
                 AnalyzingView(
                     image: image, engine: model.ai.availability.onDeviceVision ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
@@ -52,7 +50,7 @@ struct PhotoLogView: View {
             if let photo { analyze { await photo.prepared(maxDimension: 1280) } }
         }
         // A photo dropped on the window, or on this screen, is read like one chosen.
-        .dropDestination(for: DroppedImage.self, isEnabled: session.review == nil && !working && model.ai.canSeePhotos) { images, _ in
+        .dropDestination(for: DroppedImage.self, isEnabled: session.review == nil && !session.reading && model.ai.canSeePhotos) { images, _ in
             guard let data = images.first?.data else { return }
             analyze { await PhotoInput.prepare(data, maxDimension: 1280) }
         }
@@ -105,8 +103,8 @@ struct PhotoLogView: View {
                     TextField("Optional: \"large\", \"no dressing\", \"half eaten\"", text: $note)
                 }
             }
-            if let error {
-                Section { Text(error).foregroundStyle(.secondary) }
+            if let problem = session.readProblem {
+                Section { Text(problem).foregroundStyle(.secondary) }
             }
         }
     }
@@ -114,45 +112,37 @@ struct PhotoLogView: View {
     /// Reads a photo dropped on the window, if there is one: once, and in place of a review, as it
     /// does on any other way of logging. Not over a read under way, which would race it.
     func readDroppedPhoto() -> Bool {
-        guard let dropped = model.takeDroppedPhoto(), model.ai.canSeePhotos, !working else { return false }
+        guard let dropped = model.takeDroppedPhoto(), model.ai.canSeePhotos, !session.reading else { return false }
         session.review = nil
         analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
         return true
     }
 
     func openCamera() {
-        guard Camera.isAvailable, session.review == nil, !working, model.ai.canSeePhotos else { return }
+        guard Camera.isAvailable, session.review == nil, !session.reading, model.ai.canSeePhotos else { return }
         showCamera = true
     }
 
     /// Reads a photo: loaded and downsampled off the main thread, then named by the model.
     func analyze(_ photo: @escaping () async throws -> CGImage?) {
-        working = true
-        error = nil
         image = nil
-        Task {
-            defer { working = false }
+        session.startRead(.photo, model) {
             let prepared: CGImage?
             do {
                 prepared = try await photo()
             } catch {
-                self.error = "Couldn't load that photo. If it's in iCloud, check your connection and try again."
-                return
+                return .nothing("Couldn't load that photo. If it's in iCloud, check your connection and try again.")
             }
-            guard let cg = prepared else {
-                error = "Couldn't open that photo. Try another."
-                return
-            }
+            guard let cg = prepared else { return .nothing("Couldn't open that photo. Try another.") }
             image = cg
             do {
                 let result = try await model.ai.recognize(photo: cg, note: note.isEmpty ? nil : note, personal: model.personal)
                 if !result.isFood || result.items.isEmpty {
-                    error = result.scene.map { "That looks like \($0), not food." } ?? "Couldn't see any food in that photo."
-                } else {
-                    session.review = MealReview(guess: result, source: .photo, mode: session.mode, corrected: model.corrected)
+                    return .nothing(result.scene.map { "That looks like \($0), not food." } ?? "Couldn't see any food in that photo.")
                 }
+                return .foods(result)
             } catch {
-                self.error = MealAIMessages.text(for: error)
+                return .nothing(MealAIMessages.text(for: error))
             }
         }
     }
@@ -163,15 +153,13 @@ struct DescribeLogView: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
     @State private var text = ""
-    @State private var working = false
-    @State private var error: String?
     @FocusState private var focused: Bool
 
     var body: some View {
         Group {
             if session.review != nil {
                 MealReviewView(session: session)
-            } else if working {
+            } else if session.reading {
                 AnalyzingView(image: nil, engine: model.ai.availability.onDevice ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
                 Form {
@@ -194,8 +182,8 @@ struct DescribeLogView: View {
                             "Type or dictate with the keyboard's microphone. Brands and amounts help: \"a Big Mac and medium fries\", \"a plate of spaghetti bolognese\"."
                         )
                     }
-                    if let error {
-                        Section { Text(error).foregroundStyle(.secondary) }
+                    if let problem = session.readProblem {
+                        Section { Text(problem).foregroundStyle(.secondary) }
                     }
                 }
                 .safeAreaInset(edge: .bottom) {
@@ -215,19 +203,12 @@ struct DescribeLogView: View {
     func analyze() {
         let description = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !description.isEmpty else { return }
-        working = true
-        error = nil
-        Task {
-            defer { working = false }
+        session.startRead(.description, model) {
             do {
                 let result = try await model.ai.recognize(description: description, personal: model.personal)
-                if result.items.isEmpty {
-                    error = "Couldn't find foods in that. Try naming each one."
-                } else {
-                    session.review = MealReview(guess: result, source: .description, mode: session.mode, corrected: model.corrected)
-                }
+                return result.items.isEmpty ? .nothing("Couldn't find foods in that. Try naming each one.") : .foods(result)
             } catch {
-                self.error = MealAIMessages.text(for: error)
+                return .nothing(MealAIMessages.text(for: error))
             }
         }
     }

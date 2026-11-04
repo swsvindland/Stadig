@@ -9,7 +9,10 @@ import SystemCore
 /// saw, which a host owns so that going off to search for one of its foods doesn't lose it.
 @MainActor @Observable
 final class LoggerSession {
-    var mode: LogMode
+    var mode: LogMode {
+        // The camera and the photo library are two doors to one way of logging.
+        didSet { if mode != oldValue, !(mode.isPhoto && oldValue.isPhoto) { stopRead() } }
+    }
     var query = ""
     private(set) var results: [FoodMatch] = []
     /// Which query `results` were found for, and a Return waiting for its rows.
@@ -20,6 +23,13 @@ final class LoggerSession {
     /// What the model saw, being checked. It lasts until it's logged, however many other foods go
     /// in meanwhile: one the model missed is often why the person left it.
     var review: MealReview?
+    /// The model reading a photo or a description: one at a time, and only while its way of logging
+    /// is on. Left running it would spend Private Cloud Compute's quota on nothing, and land over
+    /// whatever the person went on to.
+    @ObservationIgnored private(set) var read: Task<Void, Never>?
+    private(set) var reading = false
+    /// Why the last read came to nothing, in words.
+    private(set) var readProblem: String?
     /// The item of the review a search is finding a food for.
     private(set) var finding: UUID?
     /// Asks the host to give the search the keyboard, or take it away.
@@ -98,6 +108,33 @@ final class LoggerSession {
         focusSearch()
     }
 
+    /// Reads a photo or a description, in place of any read under way, into a review on this way
+    /// of logging.
+    func startRead(_ source: EntrySource, _ model: AppModel, _ work: @escaping @MainActor () async -> MealRead) {
+        stopRead()
+        let startedOn = mode
+        reading = true
+        read = Task { [weak self] in
+            let outcome = await work()
+            guard let self, !Task.isCancelled else { return }
+            read = nil
+            reading = false
+            switch outcome {
+            case .foods(let guess): review = MealReview(guess: guess, source: source, mode: startedOn, corrected: model.corrected)
+            case .nothing(let why): readProblem = why
+            }
+        }
+    }
+
+    /// Stops a read, and the model with it, whatever it would have said: its way of logging was
+    /// left, or the logger closed.
+    func stopRead() {
+        read?.cancel()
+        read = nil
+        reading = false
+        readProblem = nil
+    }
+
     /// Back to the search for the next food: every way of logging ends here, until Done. A review
     /// stays, a tap on its way of logging away.
     func backToSearch() {
@@ -152,6 +189,18 @@ final class LoggerSession {
         query = ""
         mode = review.mode
     }
+}
+
+extension LogMode {
+    var isPhoto: Bool { self == .camera || self == .photoLibrary }
+}
+
+/// What a read of a photo or a description came to.
+enum MealRead {
+    /// Foods to check.
+    case foods(MealGuess)
+    /// Why there's nothing to check, in words.
+    case nothing(String)
 }
 
 /// What the model saw in a photo or a description, as it's being checked.
