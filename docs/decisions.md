@@ -151,7 +151,7 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **The day stays between the Log tab and Foods**, and goes back to today on leaving the pair. The plan says leaving either; hopping between them to find a food for Monday shouldn't lose Monday.
 - **Foods falls back to the Log tab on a window too narrow for the sidebar**, Supplements to Today, as before for the rest.
 - **Tomorrow is on the week strip but off until future days** (stage 10), and the calendar in the title stops at today until then.
-- **A reminder for another day's doses** still shows Today, as it did; Today only ever shows today now, so that day's doses are in the Log tab's day until the next move.
+- **A reminder for another day's doses** shows Today, on today, as anything from outside the app does. That changes 2026-11-03's "opens Today at that day's supplements": Today only shows today now, and leaving the day on the reminder's date sent the next one-tap log there with nothing on screen to say so.
 - **The Mac's scroll to an hour stops an hour early**, because the pinned line sits over the list's top row there. The spike found it; nothing else needed it.
 - **The hour label is the clock's** ("8 AM"), and two hours read the same when the clocks go back.
 - **The pane has its own search field**, not the window's: a pane isn't where a window's search goes, and on the Mac that placement couldn't be checked overnight. Return logs the best match, as the Foods screen's does.

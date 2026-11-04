@@ -121,9 +121,23 @@ struct LogTabTests {
     @Test func aReminderWaitsForTodayToBeThere() {
         let model = model()
         model.tab = .log
-        model.showDoses(on: model.today)
+        model.showDoses()
         #expect(model.tab == .today)
         #expect(model.pendingSupplementsScroll, "Today may not exist yet: it takes this up when it does")
+    }
+
+    /// Monday's reminder, tapped on Tuesday with the app already on Today: the tab doesn't change, so
+    /// nothing else brings the day back, and a Log again chip would land on Monday.
+    @Test func aReminderFromAnEarlierDayLeavesNoDayBehindToday() throws {
+        let model = model()
+        model.tab = .today
+        model.selectedDay = yesterdayIn(model)
+
+        model.showDoses()
+
+        #expect(model.tab == .today)
+        #expect(model.selectedDay == model.today)
+        #expect(Day(model.logDate()) == model.today)
     }
 
     @Test func theMenusKeepToTheirOrder() {

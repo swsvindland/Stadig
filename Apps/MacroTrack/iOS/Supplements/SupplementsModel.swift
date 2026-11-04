@@ -50,11 +50,12 @@ extension AppModel {
 
     // MARK: Doses
 
-    /// A tap on a reminder: Today, in place of any sheet that's up, scrolled to the supplements. A
-    /// reminder from another day shows that day's on the Log tab's day, which Today doesn't change.
-    func showDoses(on day: Day) {
+    /// A tap on a reminder: Today, in place of any sheet that's up, scrolled to the supplements. It
+    /// comes from outside the app, so it's for today like any other, whichever day it was for: Today
+    /// only shows today, and a day left behind it would take the next one-tap log.
+    func showDoses() {
         dismissSheets()
-        selectedDay = min(day, today)
+        selectedDay = today
         tab = .today
         pendingSupplementsScroll = true
     }

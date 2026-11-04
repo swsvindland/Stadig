@@ -137,7 +137,7 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate, Sen
         if response.actionIdentifier == SupplementReminders.takenAction {
             _ = model.takeAll(at: time, on: day)
         } else {
-            model.showDoses(on: day)
+            model.showDoses()
         }
     }
 
