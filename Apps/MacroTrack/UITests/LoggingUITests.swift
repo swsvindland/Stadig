@@ -192,6 +192,29 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertTrue(entry.label.contains("500"), entry.debugDescription)
     }
 
+    /// A scanned supplement already in the stack: Take ends there, back at the search for the next
+    /// thing with its Undo over the meal, in a sheet and in the pane. The simulator has no camera,
+    /// so it's typed.
+    @MainActor
+    func testTakingAScannedSupplementGoesBackToTheSearch() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements", "-log", "scan", "-toastSeconds", "30"])
+        let number = app.element("barcode.number").waitToAppear()
+        number.tap()
+        number.typeText("031604010539")
+        app.element("barcode.lookUp").waitToAppear().tap()
+        let take = app.element("supplementFound.take").waitToAppear()
+        app.shot("logger-scanned-supplement")
+
+        take.tap()
+
+        take.waitToDisappear()
+        _ = app.foodSearchField()
+        XCTAssertTrue(app.element("logger.done").exists, "the logger stayed open")
+        XCTAssertTrue(app.element("toast.undo").exists, "with the dose's Undo")
+        app.shot("logger-took-supplement")
+    }
+
     @MainActor
     func testWeighingInFromTheQuickLogBar() {
         continueAfterFailure = false

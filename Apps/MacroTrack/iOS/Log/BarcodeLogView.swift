@@ -25,7 +25,7 @@ struct BarcodeLogView: View {
     var body: some View {
         Group {
             if let supplement {
-                SupplementFoundView(supplement: supplement) {
+                SupplementFoundView(supplement: supplement, took: session.backToSearch) {
                     self.supplement = nil
                     scanning = true
                 }
@@ -312,8 +312,9 @@ struct LabelReviewView: View {
 /// A scanned supplement: one dose now if it's in the stack, or added to it.
 struct SupplementFoundView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let supplement: Supplement
+    /// A dose was taken. The logger goes back to its search, as with a food, whichever host it's in.
+    let took: () -> Void
     let scanAgain: () -> Void
     @State private var adding = false
 
@@ -329,9 +330,10 @@ struct SupplementFoundView: View {
             if own {
                 Button("Take \(supplement.facts.amountLabel(supplement.doses.first?.count ?? supplement.facts.servingCount)) now") {
                     model.takeExtra(supplement)
-                    dismiss()
+                    took()
                 }
                 .primaryAction()
+                .accessibilityIdentifier("supplementFound.take")
                 Button("Edit") { adding = true }
             } else {
                 Button("Add to my supplements") { adding = true }.primaryAction()

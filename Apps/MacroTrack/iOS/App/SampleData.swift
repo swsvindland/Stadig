@@ -173,9 +173,10 @@ enum SampleData {
                 id: "custom:\(name)", name: name, servingCount: count, unit: unit,
                 ingredients: lines.map { SupplementIngredient(name: $0.0, amount: $0.1, unit: $0.2) }, source: .custom)
         }
-        let fish =
-            model.supplementCatalog?.supplement(barcode: "031604010539")
-            ?? custom("Fish Oil 1200 mg", 1, "softgel", [("Calories", 10, "kcal"), ("EPA", 216, "mg"), ("DHA", 144, "mg")])
+        // With its barcode, catalog or not: a UI test scans it.
+        var fishOil = custom("Fish Oil 1200 mg", 1, "softgel", [("Calories", 10, "kcal"), ("EPA", 216, "mg"), ("DHA", 144, "mg")])
+        fishOil.barcode = "00031604010539"
+        let fish = model.supplementCatalog?.supplement(barcode: "031604010539") ?? fishOil
         let multi = label(
             "centrum adults multivitamin",
             fallback: custom(
