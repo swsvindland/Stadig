@@ -1224,10 +1224,8 @@ final class AppModel {
 
     /// A day's food by whether it's happened yet, with the doses taken counted as eaten.
     func dayIntake(on day: Day, now: Date = Date()) -> DayIntake {
-        let all = allEntries(on: day)
-        let eaten = all.filter { $0.date <= now }
-        let later = all.filter { $0.date > now }
-        return DayIntake(eaten: Intake.total(eaten, doses: supplementLogs.filter { $0.day == day }), later: Intake.total(later))
+        let split = FoodLog(allEntries(on: day), now: now)
+        return DayIntake(eaten: Intake.total(split.eaten, doses: supplementLogs.filter { $0.day == day }), later: Intake.total(split.upcoming))
     }
 
     func state(of day: Day) -> DayState? { dayStatus.first { $0.day == day }?.state }

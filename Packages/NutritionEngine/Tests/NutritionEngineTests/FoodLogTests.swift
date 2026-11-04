@@ -44,6 +44,43 @@ struct FoodLogTests {
         #expect(log.nextChange == nil)
     }
 
+    @Test func aFoodLoggedThisInstantHasHappened() {
+        // The store rounds to the millisecond: this came back 0.4 ms ahead of the clock.
+        let now = at(12, 0)
+        var rounded = lunch
+        rounded.date = now.addingTimeInterval(0.0004)
+        for log in [FoodLog([rounded], now: now), FoodLog(sorted: [rounded], now: now)] {
+            #expect(log.eaten.count == 1)
+            #expect(log.upcoming.isEmpty)
+            #expect(!log.isUpcoming(rounded))
+            #expect(log.nextChange == nil)
+        }
+        let state = MacroState(profile: profile(), settings: MacroSettings(), entries: [rounded], today: day, now: now)
+        #expect(MacroAnalyst.analyse(state).todayIntake.kcal == 600)
+    }
+
+    @Test func insertingKeepsDateOrderWithinTheAllowance() {
+        let now = at(12, 0)
+        var first = lunch
+        first.id = UUID()
+        first.date = now
+        var second = lunch
+        second.id = UUID()
+        second.date = now.addingTimeInterval(0.0004)
+        var third = lunch
+        third.id = UUID()
+        third.date = now.addingTimeInterval(0.0002)
+        let log = FoodLog(sorted: [first, second], now: now).inserting([third], now: now)
+        #expect(log.all.map(\.id) == [first.id, third.id, second.id])
+    }
+
+    @Test func aMomentLaterIsStillLater() {
+        let now = at(12, 0)
+        var soon = lunch
+        soon.date = now.addingTimeInterval(0.01)
+        #expect(FoodLog([soon], now: now).upcoming.count == 1)
+    }
+
     @Test func staleOnceAFoodsTimeHasPassed() {
         let log = FoodLog([lunch, dinner], now: at(18, 29))
         #expect(!log.isStale(at: at(18, 29)))
