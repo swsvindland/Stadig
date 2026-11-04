@@ -172,6 +172,23 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// View > Show Inspector with nothing beside the hours: the pane opens on the logger, rather
+    /// than the menu doing nothing, and the same command closes it.
+    @MainActor
+    func testShowInspectorOpensThePane() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log"])
+        app.element("log.list").waitToAppear()
+        let done = app.element("logger.done")
+        XCTAssertFalse(done.exists)
+
+        app.typeKey("i", modifierFlags: [.command, .control])
+        done.waitToAppear()
+
+        app.typeKey("i", modifierFlags: [.command, .control])
+        done.waitToDisappear()
+    }
+
     /// The toolbar's button for the way the pane opened with, once it's gone back to its search.
     @MainActor
     func testTheToolbarFindsTheWayThePaneOpenedWith() {

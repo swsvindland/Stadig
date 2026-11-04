@@ -124,9 +124,14 @@ struct LogTab: View {
         Binding(
             get: { wide && (current != nil || model.logger != nil) },
             set: { open in
-                guard !open else { return }
-                editing = nil
-                model.logger = nil
+                if !open {
+                    editing = nil
+                    model.logger = nil
+                } else if anchored, editing == nil, model.logger == nil {
+                    // View > Show Inspector, with nothing to show. It can say so twice. Before the day
+                    // is on screen this is the inspector setting itself up on launch, not a person.
+                    model.openLogger(.search)
+                }
             })
     }
 
