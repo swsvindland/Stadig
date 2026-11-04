@@ -3,15 +3,16 @@ import OSLog
 
 /// Intervals along the path from a tap to fresh numbers: logging a food and changing day. They show
 /// in Instruments under Points of Interest, and in DEBUG builds `LogPathBenchmarkTests` hears them.
-enum LogPath {
+nonisolated enum LogPath {
     private static let signposter = OSSignposter(subsystem: "dev.svindland.stadig.macro", category: .pointsOfInterest)
 
     #if DEBUG
-    /// Told of each interval as it ends, so a test can report the steps without Instruments.
-    static var onInterval: ((String, Duration) -> Void)?
+    /// Told of each interval that ends on the main thread, the one with a budget, so a test can
+    /// report the steps without Instruments.
+    @MainActor static var onInterval: ((String, Duration) -> Void)?
     #endif
 
-    struct Interval {
+    struct Interval: Sendable {
         fileprivate let name: StaticString
         fileprivate let state: OSSignpostIntervalState
         #if DEBUG
@@ -27,7 +28,8 @@ enum LogPath {
     static func end(_ interval: Interval) {
         signposter.endInterval(interval.name, interval.state)
         #if DEBUG
-        onInterval?("\(interval.name)", ContinuousClock.now - interval.start)
+        let elapsed = ContinuousClock.now - interval.start
+        if Thread.isMainThread { MainActor.assumeIsolated { onInterval?("\(interval.name)", elapsed) } }
         #endif
     }
 }

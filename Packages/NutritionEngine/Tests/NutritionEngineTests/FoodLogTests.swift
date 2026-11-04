@@ -109,6 +109,32 @@ struct FoodLogTests {
         #expect(MacroAnalyst.analyse(after).usable[planned] == 2400)
     }
 
+    @Test func aSortedLogSplitsTheSameWay() {
+        let sorted = FoodLog(sorted: [lunch, dinner], now: at(18, 29))
+        #expect(sorted.eaten.map(\.name) == FoodLog([lunch, dinner], now: at(18, 29)).eaten.map(\.name))
+        #expect(sorted.upcoming.map(\.name) == ["Dinner"])
+        #expect(sorted.at(at(19, 0)).upcoming.isEmpty)
+        #expect(FoodLog(sorted: [], now: at(12, 0)).all.isEmpty)
+    }
+
+    @Test func insertingKeepsDateOrder() {
+        var snack = lunch
+        snack.id = UUID()
+        snack.date = at(15, 0)
+        var late = lunch
+        late.id = UUID()
+        late.date = at(21, 0)
+        let log = FoodLog(sorted: [lunch, dinner], now: at(16, 0)).inserting([snack, late], now: at(16, 0))
+        #expect(log.all.map(\.date) == [at(12, 30), at(15, 0), at(18, 30), at(21, 0)])
+        #expect(log.eaten.count == 2)
+        #expect(log.upcoming.count == 2)
+    }
+
+    @Test func insertingIntoAnUnsortedLogKeepsEverything() {
+        let log = FoodLog([dinner], now: at(19, 0)).inserting([lunch], now: at(19, 0))
+        #expect(log.eaten.count == 2)
+    }
+
     // MARK: later, outside the app
 
     @Test func nextMealSkipsADrink() {

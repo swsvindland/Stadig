@@ -14,9 +14,13 @@ public struct FoodLog: Hashable, Sendable {
     /// Food still to come, in the order given.
     public private(set) var upcoming: [FoodEntry]
 
+    /// Whether `all` is in date order, so a split or an insert can use it.
+    private let isSorted: Bool
+
     public init(_ entries: [FoodEntry], now: Date) {
         all = entries
         self.now = now
+        isSorted = false
         // Nearly always nothing's upcoming: then there's nothing to copy.
         if entries.contains(where: { $0.date > now }) {
             eaten = entries.filter { $0.date <= now }
@@ -27,6 +31,41 @@ public struct FoodLog: Hashable, Sendable {
         }
     }
 
+    /// A log of entries already in date order, which splits without walking them.
+    public init(sorted entries: [FoodEntry], now: Date) {
+        all = entries
+        self.now = now
+        isSorted = true
+        let split = Self.firstIndex(in: entries, after: now)
+        if split == entries.count {
+            eaten = entries
+            upcoming = []
+        } else {
+            eaten = Array(entries[..<split])
+            upcoming = Array(entries[split...])
+        }
+    }
+
+    /// The first entry dated after `date`, in entries in date order.
+    private static func firstIndex(in entries: [FoodEntry], after date: Date) -> Int {
+        var low = 0
+        var high = entries.count
+        while low < high {
+            let middle = (low + high) / 2
+            if entries[middle].date <= date { low = middle + 1 } else { high = middle }
+        }
+        return low
+    }
+
+    /// This log with new entries in their places. What a save of new food costs, rather than a sort
+    /// of years of it, on a log in date order; any other is split afresh.
+    public func inserting(_ new: [FoodEntry], now: Date) -> FoodLog {
+        guard isSorted else { return FoodLog(all + new, now: now) }
+        var all = all
+        for entry in new { all.insert(entry, at: Self.firstIndex(in: all, after: entry.date)) }
+        return FoodLog(sorted: all, now: now)
+    }
+
     /// When the next food's time comes, and with it the next change to `eaten`.
     public var nextChange: Date? { upcoming.map(\.date).min() }
 
@@ -34,7 +73,7 @@ public struct FoodLog: Hashable, Sendable {
     public func isStale(at now: Date) -> Bool { nextChange.map { $0 <= now } ?? false }
 
     /// The same log split at another moment.
-    public func at(_ now: Date) -> FoodLog { FoodLog(all, now: now) }
+    public func at(_ now: Date) -> FoodLog { isSorted ? FoodLog(sorted: all, now: now) : FoodLog(all, now: now) }
 
     public func isUpcoming(_ entry: FoodEntry) -> Bool { entry.date > now }
 

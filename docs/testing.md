@@ -43,7 +43,7 @@ cd Packages/NutritionEngine && BENCHMARKS=1 swift test -Xswiftc -O --filter Anal
 OPTIMIZED=1 TEST_RUNNER_BENCHMARKS=1 ONLY=LogPathBenchmarkTests Scripts/build.sh unit macro          # the app model's steps, in a store on disk
 ```
 
-The report is in the run's log (`/tmp/system-dd-<checkout>-MacroTrack-test.log`). Judge the budget on these optimized builds: a plain Debug build runs several times slower than what ships. Run them with nothing else building, and treat a simulator's numbers as a Mac's: a phone's are slower. `LogPathBenchmarkTests` times the model and what Today reads, not SwiftUI's rendering; `-seedLongHistory` runs the real app over the same history, for Instruments.
+The report is in the run's log (`/tmp/system-dd-<checkout>-MacroTrack-test.log`). Judge the budget on these optimized builds: a plain Debug build runs several times slower than what ships. Run them with nothing else building, and treat a simulator's numbers as a Mac's: a phone's are slower. `LogPathBenchmarkTests` runs as the app does once launched, with the analysis off the main thread: `log` and the steps under it are what a tap holds the main thread for, and "On screen" is until the analysis is back and SwiftUI has updated Today; `-seedLongHistory` runs the real app over the same history, for Instruments.
 
 ## Writing tests
 

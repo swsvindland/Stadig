@@ -40,6 +40,7 @@ struct StartFastIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         // Longer fasts start in the app, where the safety notes are.
         if !model.tracksMealTiming { model.setTracksMealTiming(true) }
@@ -58,6 +59,7 @@ struct EndFastIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         guard let status = model.analysis?.fast else { return .result(dialog: "You're not fasting right now.") }
         let elapsed = Date().timeIntervalSince(status.fast.start)
         model.endFast()
@@ -74,6 +76,7 @@ struct FastStatusIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         return .result(dialog: IntentDialog(stringLiteral: model.fastSentence))
     }
 }

@@ -242,6 +242,13 @@ final class AppModel {
     @ObservationIgnored private var plannerCache: MealPlanner?
     /// Wakes the model when a food's time comes, and when the day or the clock changes.
     @ObservationIgnored private var foodClock: FoodClock?
+    /// Whether the analysis and the suggestions are worked out off the main thread: on, once launch
+    /// is done, so a tap never waits on years of log. Off in tests, where the numbers are there as
+    /// soon as a write returns, and for launch itself, so the first frame has them.
+    @ObservationIgnored var backgroundAnalysis = false
+    /// The analysis running now, and which recompute it was for: a newer one's replaces it.
+    @ObservationIgnored private var analysisTask: Task<Void, Never>?
+    @ObservationIgnored private var analysisGeneration = 0
     /// Where "Not now" on a suggestion is remembered between launches; nil keeps it for this run.
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var hiddenUntil: [String: Date] = [:]
@@ -285,7 +292,8 @@ final class AppModel {
     /// A model over these: what tests build, over an in-memory store and a temporary container.
     init(
         store: RecordStore, shared: SharedContainer, widgetURL: URL?, defaults: UserDefaults? = nil,
-        catalog: FoodCatalog = .standard(), supplementCatalog: SupplementCatalog? = .standard(), usesSystemServices: Bool = false
+        catalog: FoodCatalog = .standard(), supplementCatalog: SupplementCatalog? = .standard(), usesSystemServices: Bool = false,
+        backgroundAnalysis: Bool = false
     ) {
         self.store = store
         self.shared = shared
@@ -298,6 +306,7 @@ final class AppModel {
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
         foodClock = FoodClock { [weak self] in self?.refreshDay() }
         reload()
+        self.backgroundAnalysis = backgroundAnalysis
         // A second device or a reinstall: onboarding waits while the person's data comes down.
         if !onboarded { arrival = ICloudArrival.start(for: store) }
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
@@ -317,7 +326,9 @@ final class AppModel {
     /// Re-reads the kinds of record that changed since the last read, then recomputes. Unchanged
     /// kinds aren't read or sorted again, but the analysis still runs over everything, so it's work
     /// in proportion to the history.
-    func reload() {
+    /// `readingShared` false is for this model's own saves: a change to the shared files arrives by
+    /// its own notification, and `refreshDay` looks again on the way back to the front.
+    func reload(readingShared: Bool = true) {
         let interval = LogPath.begin("reload")
         defer { LogPath.end(interval) }
         if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
@@ -329,7 +340,7 @@ final class AppModel {
             let reading = LogPath.begin("readEntries")
             let all = store.all(FoodEntry.self).sorted { $0.date < $1.date }
             entriesByDay = Dictionary(grouping: all, by: \.day)
-            foodLog = FoodLog(all, now: Date())
+            foodLog = FoodLog(sorted: all, now: Date())
             LogPath.end(reading)
         }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
@@ -353,9 +364,11 @@ final class AppModel {
         if needsReading(SavedMeal.self) { savedMeals = store.all(SavedMeal.self) }
         if needsReading(MealPlan.self) { reloadMealPlans() }
         applyAISetting()
-        let reading = LogPath.begin("readShared")
-        readShared(recompute: false)
-        LogPath.end(reading)
+        if readingShared {
+            let reading = LogPath.begin("readShared")
+            readShared(recompute: false)
+            LogPath.end(reading)
+        }
         recompute()
         if entriesChanged || customChanged || favoritesChanged || correctionsChanged { refreshPersonal() }
         lastRevision = store.revision
@@ -389,7 +402,25 @@ final class AppModel {
     /// (Siri, Shortcuts, a notification's button), where `today` can still be yesterday.
     func refreshDay() {
         reloadIfChanged()
+        readShared()
         if today != .today || foodLog.isStale(at: Date()) { recompute() }
+    }
+
+    /// New food saved and put in its place, as the store holds it (to the millisecond, which a
+    /// fast's start is compared with): years of log aren't sorted and grouped again for one more. A
+    /// big batch is left for `reload` to read whole.
+    private func insert(_ new: [FoodEntry]) {
+        let saving = LogPath.begin("save")
+        let stored = store.insert(new).sorted { $0.date < $1.date }
+        LogPath.end(saving)
+        guard new.count <= 32 else { return }
+        foodLog = foodLog.inserting(stored, now: Date())
+        for entry in stored {
+            var day = entriesByDay[entry.day] ?? []
+            day.insert(entry, at: day.firstIndex { $0.date > entry.date } ?? day.endIndex)
+            entriesByDay[entry.day] = day
+        }
+        readRevisions[FoodEntry.kind] = store.revision(of: FoodEntry.self)
     }
 
     /// Rebuilds the AI engine when the Private Cloud Compute setting changed: on this device, on
@@ -475,26 +506,72 @@ final class AppModel {
             healthBackfill?.run()
         }
         defer { foodClock?.arm(for: foodLog.nextChange) }
-        let rankings = LogPath.begin("rankings")
-        logAgain = LogAgain.rank(suggestionEntries, now: now)
-        mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
-        LogPath.end(rankings)
         refreshCatchUp()
-        guard let state = state(now: now) else {
-            analysis = nil
+        analysisGeneration &+= 1
+        analysisTask?.cancel()
+        analysisTask = nil
+        let state = state(now: now)
+        let suggestions = suggestionEntries
+        let eaten = entries
+        let meals = savedMeals
+        guard backgroundAnalysis, let state else {
+            show(Self.worked(state, suggestions: suggestions, eaten: eaten, meals: meals, now: now))
             return
         }
-        let analysis = analyse(state)
-        self.analysis = analysis
+        let generation = analysisGeneration
+        analysisTask = Task.detached(priority: .userInitiated) { [weak self] in
+            let derived = Self.worked(state, suggestions: suggestions, eaten: eaten, meals: meals, now: now)
+            guard !Task.isCancelled else { return }
+            await self?.show(derived, generation: generation)
+        }
+    }
+
+    /// What a recompute works out from the whole log, which is why it can run off the main thread.
+    private struct Derived: Sendable {
+        var state: MacroState?
+        var analysis: MacroAnalysis?
+        var logAgain: [LogAgainItem]
+        var meals: [MealSuggestion]
+    }
+
+    private nonisolated static func worked(
+        _ state: MacroState?, suggestions: [FoodEntry], eaten: [FoodEntry], meals: [SavedMeal], now: Date
+    ) -> Derived {
+        let rankings = LogPath.begin("rankings")
+        let logAgain = LogAgain.rank(suggestions, now: now)
+        let ranked = SavedMeals.rank(meals, entries: eaten, now: now)
+        LogPath.end(rankings)
+        let interval = LogPath.begin("analyse")
+        defer { LogPath.end(interval) }
+        return Derived(state: state, analysis: state.map(MacroAnalyst.analyse), logAgain: logAgain, meals: ranked)
+    }
+
+    /// A finished analysis, unless a newer recompute has started since.
+    private func show(_ derived: Derived, generation: Int) {
+        guard generation == analysisGeneration else { return }
+        analysisTask = nil
+        show(derived)
+    }
+
+    private func show(_ derived: Derived) {
+        logAgain = derived.logAgain
+        mealSuggestions = derived.meals
+        analysis = derived.analysis
+        guard var state = derived.state, let found = derived.analysis else { return }
         // The weekly check-in applies itself: small, capped steps, explained on Today.
-        if let due = analysis.dueCheckIn, plan != nil, onboarded {
+        if let due = found.dueCheckIn, plan != nil, onboarded {
             store.save(due)
             checkIns = Self.ordered(store.all(CheckIn.self))
             readRevisions[CheckIn.kind] = store.revision(of: CheckIn.self)
             lastRevision = store.revision
-            self.analysis = analyse(self.state(now: now) ?? state)
+            if backgroundAnalysis {
+                recompute()
+                return
+            }
+            state = self.state(now: state.now) ?? state
+            analysis = MacroAnalyst.analyse(state)
         }
-        publish()
+        publish(state)
         refreshMicroFix()
         refreshFermentedFix()
         if usesSystemServices {
@@ -504,10 +581,15 @@ final class AppModel {
         }
     }
 
-    private func analyse(_ state: MacroState) -> MacroAnalysis {
-        let interval = LogPath.begin("analyse")
-        defer { LogPath.end(interval) }
-        return MacroAnalyst.analyse(state)
+    /// Waits until the analysis running now, and any a newer change starts meanwhile, has shown, or
+    /// until `limit` has passed: Siri reads the numbers straight after a write, with nothing on screen
+    /// to catch up.
+    func analysisFinished(within limit: Duration) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + limit
+        while analysisTask != nil, clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
     }
 
     /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
@@ -563,10 +645,10 @@ final class AppModel {
     @ObservationIgnored private var lastPublished: (nutrition: NutritionSummary, summary: AppSummary)?
 
     /// The phase and day-by-day nutrition for Stadig Lift and the hub, written only when they change.
-    private func publish() {
+    private func publish(_ state: MacroState) {
         let interval = LogPath.begin("publish")
         defer { LogPath.end(interval) }
-        guard let state, let analysis else { return }
+        guard let analysis else { return }
         var nutrition = MacroAnalyst.nutritionSummary(state, analysis)
         var summary = MacroAnalyst.appSummary(state, analysis)
         if let last = lastPublished {
@@ -676,7 +758,7 @@ final class AppModel {
     /// with the last portion used, plus favourites and the person's own foods.
     private func refreshPersonal() {
         personalTask?.cancel()
-        let entries = entries.filter { $0.foodID != nil }
+        let entries = entries
         let favorites = favorites
         let custom = customFoods.map(\.food)
         let corrected = corrections
@@ -687,6 +769,7 @@ final class AppModel {
             var byFood: [String: (score: Double, last: FoodEntry)] = [:]
             for entry in entries {
                 guard let id = entry.foodID else { continue }
+                if Task.isCancelled { return }
                 let days = max(0, now.timeIntervalSince(entry.date) / 86400)
                 let weight = pow(0.5, days / 30)
                 var current = byFood[id] ?? (0, entry)
@@ -875,15 +958,19 @@ final class AppModel {
         let new = LogAgain.settled(corrections.isEmpty ? new : new.map(withCorrection), now: Date())
         guard !new.isEmpty else { return }
         let fasting = analysis?.fast
-        let saving = LogPath.begin("save")
-        store.save(new)
-        LogPath.end(saving)
-        reload()
+        insert(new)
+        reload(readingShared: false)
+        refreshPersonal()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
         let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
         let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
-        if let fasting, analysis?.fast == nil, let run = analysis?.fasts.first(where: { $0.id == fasting.fast.id }), let end = run.end {
+        // Worked out here from the fast's own days: the analysis may not be back yet.
+        let run = fasting.flatMap { fasting -> FastRun? in
+            let days = DayRange(Day(fasting.fast.start), today).days.flatMap { entries(on: $0) }
+            return Fasting.runs([fasting.fast], entries: days, now: Date()).first
+        }
+        if let run, !run.isRunning, let end = run.end {
             toast = Toast(message: "\(text) · ended your \(Format.duration(run.duration(at: end))) fast", undo: new.map(\.id))
         } else {
             toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))

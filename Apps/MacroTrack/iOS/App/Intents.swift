@@ -34,6 +34,7 @@ extension AppModel {
         }
         guard !logged.isEmpty else { return "Couldn't find “\(text)”. Open Stadig Macro to search for it." }
         log(logged)
+        await analysisFinished(within: .seconds(3))
         let kcal = logged.map(\.nutrients.kcal).reduce(0, +)
         let names = logged.map { "\($0.amountLabel) \($0.name)" }.joined(separator: ", ")
         return "Logged \(names): \(Format.kcal(kcal)). \(remainingSentence)"
@@ -118,6 +119,7 @@ struct QuickAddIntent: AppIntent {
         model.selectedDay = model.today
         // Now, whatever time an open logger has picked.
         model.quickAdd(name: "Quick add", nutrients: Nutrients(kcal: Double(kcal), protein: Double(protein), carbs: 0, fat: 0), date: Date())
+        await model.analysisFinished(within: .seconds(3))
         return .result(dialog: IntentDialog(stringLiteral: "Added \(Format.kcal(Double(kcal))). \(model.remainingSentence)"))
     }
 }
@@ -130,6 +132,7 @@ struct RemainingIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         return .result(dialog: IntentDialog(stringLiteral: model.remainingSentence))
     }
 }
@@ -172,6 +175,7 @@ struct LogWaterIntent: AppIntent {
         guard model.onboarded, ml > 0 else { return .result(dialog: "Open Stadig Macro to set it up first.") }
         model.selectedDay = model.today
         model.addWater(ml: Double(ml))
+        await model.analysisFinished(within: .seconds(3))
         let total = model.analysis?.hydration?.total ?? Double(ml)
         return .result(
             dialog: IntentDialog(

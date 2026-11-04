@@ -9,8 +9,9 @@ import Testing
 
 /// Reports the main thread's time on the two paths Stadig Macro has to keep fast, over a long
 /// history in a store on disk, as the app's is; never fails on timing. Each line is one signposted
-/// step (`LogPath`), and the steps nest: `log` holds `reload`, which holds `recompute`, which holds
-/// the rest. "On screen" adds SwiftUI: from the change until the main thread is free again with
+/// step (`LogPath`) on the main thread, and the steps nest: `log` holds `reload`, which holds
+/// `recompute`. The analysis runs off the main thread, as it does once the app has launched, and
+/// `publish` follows it. "On screen" is from the tap until those are done and SwiftUI has updated
 /// Today in a window, which is everything but the render server's own work.
 /// BENCHMARKS=1 turns it on, since seeding takes minutes (docs/testing.md has the command, with the
 /// optimized build the budget is judged on).
@@ -98,25 +99,26 @@ struct LogPathBenchmarkTests {
         defer { _ = screen }
         await Self.settled()
 
+        // As the app runs once it's launched.
+        model.backgroundAnalysis = true
         var logging: [String: [Double]] = [:]
-        var reads: [String: [Double]] = [:]
         for _ in 0..<Self.runs {
             var entry = food
             entry.id = UUID()
             entry.date = Date()
             entry.day = model.today
-            Self.measure("log", into: &logging, whole: false) { model.log([entry]) }
-            Self.measure("Today's reads", into: &reads) { Self.todayReads(model, on: model.today) }
-            // A person logs seconds apart: what the log started off the main thread gets to run.
-            try await Task.sleep(for: .milliseconds(5))
-            await Self.settled()
-            model.toast = nil
+            var heard: [(String, Double)] = []
+            LogPath.onInterval = { step, duration in heard.append((step, Self.milliseconds(duration))) }
             let start = clock.now
-            var again = entry
-            again.id = UUID()
-            model.log([again])
+            model.log([entry])
+            await model.analysisFinished(within: .seconds(10))
             await Self.settled()
-            logging["On screen", default: []].append(Self.milliseconds(clock.now - start))
+            let shown = clock.now - start
+            LogPath.onInterval = nil
+            for (step, time) in heard { logging[step, default: []].append(time) }
+            logging["On screen", default: []].append(Self.milliseconds(shown))
+            model.toast = nil
+            // A person logs seconds apart: what the log started off the main thread gets to run.
             try await Task.sleep(for: .milliseconds(5))
             await Self.settled()
         }
@@ -141,7 +143,7 @@ struct LogPathBenchmarkTests {
             ([
                 "Log path over \(years) years: \(model.entries.count) entries, seeded in \(String(format: "%.1f", Self.milliseconds(seeding) / 1000)) s"
             ]
-                + ["Logging a food:"] + Self.lines(logging, order: order) + Self.lines(reads, order: ["Today's reads"])
+                + ["Logging a food:"] + Self.lines(logging, order: order)
                 + ["Changing day:"] + Self.lines(changing, order: ["On screen", "whole change", "refreshCatchUp"])
                 + Self.lines(changedReads, order: ["Today's reads"]))
                 .joined(separator: "\n"))

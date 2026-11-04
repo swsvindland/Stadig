@@ -43,6 +43,8 @@ struct MacroTrackApp: App {
         if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.selectedDay = model.today.adding(days: -days) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
         #endif
+        // From here on, off the main thread: launch and its seeds ran with the numbers ready.
+        model.backgroundAnalysis = true
         MacroShortcuts.updateAppShortcutParameters()
         // Reminders' Taken button; tests and UI tests never schedule any.
         if !launch.isQuiet { SupplementReminders.register() }

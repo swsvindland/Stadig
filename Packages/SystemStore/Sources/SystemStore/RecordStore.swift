@@ -303,6 +303,37 @@ public final class RecordStore {
         commit(changes, kind: T.kind, context, patch: bulk ? nil : { self.patchCache(T.self, with: Array(written.values)) })
     }
 
+    /// Saves records just made, with ids nothing else has, and returns them as stored (dates to the
+    /// millisecond). `save` without looking for an earlier copy: finding one by id reads the whole
+    /// table, which over years of records is most of what a save costs.
+    @discardableResult
+    public func insert<T: StoredRecord>(_ records: [T]) -> [T] {
+        guard let context, !records.isEmpty else { return [] }
+        let encoder = SystemJSON.encoder()
+        let decoder = SystemJSON.decoder()
+        var written: [RecordVersion] = []
+        var stored: [T] = []
+        for record in records {
+            var stamped = record
+            stamped.updatedAt = record.updatedAt.roundedToMilliseconds
+            let payload: Data
+            do {
+                payload = try encoder.encode(stamped)
+            } catch {
+                storeLog.error(
+                    "Couldn't encode \(T.kind, privacy: .public) \(record.id, privacy: .public): \(String(describing: error), privacy: .public)")
+                continue
+            }
+            let version = RecordVersion(
+                kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt, schemaVersion: T.schemaVersion, payload: payload, deleted: false)
+            _ = write(version, into: [], context: context)
+            written.append(version)
+            if let saved = decode(T.self, version, decoder) { stored.append(saved) }
+        }
+        commit(written.count, kind: T.kind, context, patch: written.count > 32 ? nil : { self.patchCache(T.self, with: written) })
+        return stored
+    }
+
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
     /// `updatedAt` moved past the last edit, so the deletion syncs and beats older copies.
     public func delete<T: StoredRecord>(_ type: T.Type, id: UUID) {

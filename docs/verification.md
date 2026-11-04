@@ -2,6 +2,8 @@
 
 **Verified**
 
+- **Stadig Macro's log path after stage 4** (2026-11-03). The same benchmark and build as the baseline below, three runs. Food logged at 5 years: `log` median 6.4–6.6 ms, p95 6.8–7.0 ms (budget 16), of which the save 2.1 ms; `publish` follows as its own main-thread hop at 8.7 ms; on screen, analysis and SwiftUI included, 47–48 ms at the median, 51 ms at p95. 1 year: `log` 4.3 ms. 10 years: 9.4–9.6 ms, p95 10–12 ms. The first save of a run costs about 45 ms at 5 years and 90 at 10, which sets the max. A day change on screen is unchanged at about 36 ms: that's Today's SwiftUI. Simulator on an M1 Max, store on disk, no iCloud; not on a device.
+
 - **Stage 0's baseline on Xcode 27.2** (2026-11-03). Xcode 27.2, Swift 6.4.2, SDK 27.2. Lint clean; every package's tests pass (all 12, 943 tests) with no warning; `unit macro` passes 142 tests on an iPhone 18 Pro simulator (iOS 27.2) and on the Mac; `macro`, `macro-watch`, `mac macro` and `vision macro` build with no warning. Swift 6.4.2 brought no new warnings, so no fixes were needed. `main`'s red CI was Xcode's rewrite of two generated Watch schemes, fixed in `swsvindland/the-system#4` and merged.
 
 - **Stage 0's spike** (2026-11-03). On the local branch `spike/macro-stage0`, never merged, with a throwaway UI test driving the app's own `TabView` setup with animations on. iOS 27.2 on an iPhone 18 Pro and a 13-inch iPad Pro; iOS 27.1 only on the iPhone Duo, the one device type that runtime accepts, whose layout puts the tab bar beside the content; visionOS 27.2 by screenshot; the Mac by screenshot. Screenshots and raw results are in the session notes folder, `stage0-evidence`.
