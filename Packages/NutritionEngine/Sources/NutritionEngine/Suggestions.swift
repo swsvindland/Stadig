@@ -43,7 +43,8 @@ public enum LogAgain {
             scores[k] = current
         }
         return scores.map { LogAgainItem(id: $0.key, template: $0.value.latest, score: $0.value.score, timesLogged: $0.value.count) }
-            .sorted { $0.score > $1.score }
+            // Foods eaten together can tie, and a dictionary's order changes from one call to the next.
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.id < $1.id }
             .prefix(limit)
             .map { $0 }
     }
