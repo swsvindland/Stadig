@@ -22,8 +22,12 @@ public struct PortionUnit: Hashable, Codable, Sendable, Identifiable {
         self.amount = amount
     }
 
-    /// Counted units take fractions ("1½ slices"); weights and energy take plain numbers.
+    /// Counted units read in fractions ("1½ slices"); weights and energy in plain numbers.
     public var isCounted: Bool { kind == .portion || kind == .serving || ["cup", "tbsp", "tsp"].contains(id) }
+
+    /// Grams, millilitres and calories, too small for anyone to halve one. Anything bigger can be
+    /// typed in fractions, weighed or not: "½ lb" is how a pound is measured, though it reads 0.5.
+    public var isFine: Bool { id == "g" || id == "ml" || kind == .energy }
 }
 
 /// Portion units and amounts: which units a food can be logged in, how amounts read and parse.
@@ -141,7 +145,7 @@ public enum FoodUnits {
 
     /// What ± adds: 10 g, ml or kcal, else half a unit.
     public static func step(for unit: PortionUnit) -> Double {
-        unit.id == "g" || unit.id == "ml" || unit.kind == .energy ? 10 : 0.5
+        unit.isFine ? 10 : 0.5
     }
 
     /// The most an amount can count: nobody logs a million of anything, and the bound keeps every

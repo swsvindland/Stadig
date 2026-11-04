@@ -261,7 +261,7 @@ struct AmountPanel: View {
     func digit(_ value: Int) -> some View { key("\(value)", id: "\(value)", key: .digit(value)) }
 
     func fraction(_ glyph: String) -> some View {
-        key(glyph, id: glyph, key: .fraction(glyph)).disabled(!(amount.unit?.isCounted ?? true))
+        key(glyph, id: glyph, key: .fraction(glyph)).disabled(amount.unit?.isFine ?? false)
     }
 
     func key(_ title: String, id: String, key: AmountEntry.Key, label: String? = nil) -> some View {
