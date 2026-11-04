@@ -184,6 +184,30 @@ struct LogTabTests {
         #expect(model.logTargetTitle.hasPrefix("Log to "))
     }
 
+    /// Just after midnight a time picked last night is on another day than the one selected, and
+    /// that's the day the food goes on.
+    @Test func quickAddNamesTheDayItsFoodLandsOn() {
+        let model = model()
+        #expect(model.quickAddNote.contains("toward today"))
+
+        let lastNight = yesterdayIn(model).at(hour: 23, minute: 30)
+        model.openLogger(.quickAdd, at: lastNight)
+        #expect(model.selectedDay == model.today)
+        #expect(model.quickAddNote.contains("toward yesterday"))
+
+        model.quickAdd(name: "Toast", nutrients: Nutrients(kcal: 200, protein: 8, carbs: 30, fat: 4))
+        #expect(model.allEntries(on: yesterdayIn(model)).map(\.name).contains("Toast"))
+    }
+
+    @Test func quickAddNamesASelectedDayToo() {
+        let model = model()
+        model.show(day: yesterdayIn(model))
+        #expect(model.quickAddNote.contains("toward yesterday"))
+        let earlier = model.today.adding(days: -3)
+        model.selectedDay = earlier
+        #expect(model.quickAddNote.contains("toward \(Format.day(earlier))"))
+    }
+
     @Test func aDaysTargetsAreThoseOfThatDay() throws {
         let model = model()
         let plan = try #require(model.recommendation)

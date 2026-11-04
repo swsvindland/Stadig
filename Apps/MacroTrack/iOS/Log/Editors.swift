@@ -22,9 +22,7 @@ struct QuickAddView: View {
                 row("Calories", $kcal, "kcal", .kcal)
                 row("Protein", $protein, "g", .protein)
             } footer: {
-                Text(
-                    "Quick adds count toward \(model.selectedDay == model.today ? "today" : Format.day(model.selectedDay)) but aren't suggested again."
-                )
+                Text(model.quickAddNote)
             }
             Section("Optional") {
                 row("Carbs", $carbs, "g", .carbs)

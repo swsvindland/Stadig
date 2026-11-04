@@ -9,6 +9,12 @@ extension AppModel {
     var logTargetTitle: String {
         selectedDay == today ? "Log food" : "Log to \(Format.day(selectedDay, style: .dateTime.weekday(.abbreviated)))"
     }
+
+    /// Quick add's footer, naming the day the food lands on. That's not always the selected day: just
+    /// after midnight, a time picked last night is on the day before.
+    var quickAddNote: String {
+        "Quick adds count toward \(Format.relative(Day(logDate()), today: today)) but aren't suggested again."
+    }
 }
 
 /// A day hour by hour: every hour has a +, an hour with nothing in it is thin, and the week and
