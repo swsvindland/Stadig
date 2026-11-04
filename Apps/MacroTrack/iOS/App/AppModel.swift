@@ -102,10 +102,11 @@ final class AppModel {
     // Records.
     private(set) var profile: SharedProfile?
     private(set) var settings = MacroSettings()
-    private(set) var entries: [FoodEntry] = [] {
-        didSet { entriesByDay = Dictionary(grouping: entries, by: \.day) }
-    }
-    /// The same entries by day, oldest first within each: a day's log without walking years of them.
+    /// The log, split at the last time the clock was read: what's been eaten and what's for later.
+    private(set) var foodLog = FoodLog([], now: Date())
+    /// What's been eaten, oldest first. Food for later is in `foodLog`, and in `allEntries(on:)`.
+    var entries: [FoodEntry] { foodLog.eaten }
+    /// All the log by day, oldest first within each: a day's log without walking years of them.
     private var entriesByDay: [Day: [FoodEntry]] = [:]
     private(set) var weighIns: [WeighIn] = []
     private(set) var dayStatus: [DayStatus] = []
@@ -239,6 +240,8 @@ final class AppModel {
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
+    /// Wakes the model when a food's time comes, and when the day or the clock changes.
+    @ObservationIgnored private var foodClock: FoodClock?
     /// Where "Not now" on a suggestion is remembered between launches; nil keeps it for this run.
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var hiddenUntil: [String: Date] = [:]
@@ -293,6 +296,7 @@ final class AppModel {
         self.usesSystemServices = usesSystemServices
         purchases = Purchases(.macro, store: store)
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
+        foodClock = FoodClock { [weak self] in self?.refreshDay() }
         reload()
         // A second device or a reinstall: onboarding waits while the person's data comes down.
         if !onboarded { arrival = ICloudArrival.start(for: store) }
@@ -323,7 +327,9 @@ final class AppModel {
         let entriesChanged = needsReading(FoodEntry.self)
         if entriesChanged {
             let reading = LogPath.begin("readEntries")
-            entries = store.all(FoodEntry.self).sorted { $0.date < $1.date }
+            let all = store.all(FoodEntry.self).sorted { $0.date < $1.date }
+            entriesByDay = Dictionary(grouping: all, by: \.day)
+            foodLog = FoodLog(all, now: Date())
             LogPath.end(reading)
         }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
@@ -383,7 +389,7 @@ final class AppModel {
     /// (Siri, Shortcuts, a notification's button), where `today` can still be yesterday.
     func refreshDay() {
         reloadIfChanged()
-        if today != .today { recompute() }
+        if today != .today || foodLog.isStale(at: Date()) { recompute() }
     }
 
     /// Rebuilds the AI engine when the Private Cloud Compute setting changed: on this device, on
@@ -444,12 +450,15 @@ final class AppModel {
     /// Whole milliseconds, the precision the store and the shared container keep.
     private static func milliseconds(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
 
-    var state: MacroState? {
+    var state: MacroState? { state(now: Date()) }
+
+    /// What the analysis reads at a moment. It's given all the log and keeps what's been eaten by then.
+    func state(now: Date) -> MacroState? {
         guard let profile else { return nil }
         return MacroState(
-            profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
+            profile: profile, settings: settings, entries: foodLog.all, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
             lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
-            supplementLogs: supplementLogs, water: water, fasts: fasts, today: today)
+            supplementLogs: supplementLogs, water: water, fasts: fasts, today: today, now: now)
     }
 
     func recompute() {
@@ -460,12 +469,15 @@ final class AppModel {
             today = .today
         }
         let now = Date()
+        // Every recompute reads the clock, so this is where a food's time passing is noticed.
+        if foodLog.isStale(at: now) { foodLog = foodLog.at(now) }
+        defer { foodClock?.arm(for: foodLog.nextChange) }
         let rankings = LogPath.begin("rankings")
         logAgain = LogAgain.rank(suggestionEntries, now: now)
         mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
         LogPath.end(rankings)
         refreshCatchUp()
-        guard let state else {
+        guard let state = state(now: now) else {
             analysis = nil
             return
         }
@@ -477,7 +489,7 @@ final class AppModel {
             checkIns = Self.ordered(store.all(CheckIn.self))
             readRevisions[CheckIn.kind] = store.revision(of: CheckIn.self)
             lastRevision = store.revision
-            self.analysis = analyse(self.state ?? state)
+            self.analysis = analyse(self.state(now: now) ?? state)
         }
         publish()
         refreshMicroFix()
@@ -857,7 +869,7 @@ final class AppModel {
         let interval = LogPath.begin("log")
         defer { LogPath.end(interval) }
         // A food the person corrected is logged at their numbers, however it was found.
-        let new = corrections.isEmpty ? new : new.map(withCorrection)
+        let new = LogAgain.settled(corrections.isEmpty ? new : new.map(withCorrection), now: Date())
         guard !new.isEmpty else { return }
         let fasting = analysis?.fast
         let saving = LogPath.begin("save")
@@ -895,7 +907,7 @@ final class AppModel {
     /// The entries as stored now, by id, of the ones about to be edited.
     private func entriesBefore(_ edits: [FoodEntry]) -> [UUID: FoodEntry] {
         let ids = Set(edits.map(\.id))
-        return Dictionary(entries.lazy.filter { ids.contains($0.id) }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return Dictionary(foodLog.all.lazy.filter { ids.contains($0.id) }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     private func edited(_ edits: [FoodEntry], from before: [UUID: FoodEntry]) -> [FoodEntry] {
@@ -920,7 +932,7 @@ final class AppModel {
     /// Deletes entries (and their Health samples), with "Deleted … Undo": a whole moment goes in two taps.
     func delete(entries ids: [UUID]) {
         let gone = Set(ids)
-        let removed = entries.filter { gone.contains($0.id) }
+        let removed = foodLog.all.filter { gone.contains($0.id) }
         store.delete(FoodEntry.self, ids: ids)
         reload()
         Task { await HealthBridge.shared.deleteFoods(ids: ids) }
@@ -966,7 +978,7 @@ final class AppModel {
     var usualNow: Moment? {
         guard selectedDay == today else { return nil }
         let now = Date()
-        let nearby = Timeline.moments(entries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
+        let nearby = Timeline.moments(allEntries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
         return nearby ? nil : LogAgain.usualMoment(near: now, entries: suggestionEntries)
     }
 
@@ -1022,11 +1034,18 @@ final class AppModel {
             version: dose.updatedAt.healthVersion)
     }
 
-    func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
+    /// What's been eaten on a day.
+    func entries(on day: Day) -> [FoodEntry] {
+        let all = allEntries(on: day)
+        return foodLog.nextChange == nil ? all : all.filter { !foodLog.isUpcoming($0) }
+    }
+
+    /// A day's whole log, eaten and still to come: what its rows show.
+    func allEntries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
 
     /// A day's food by whether it's happened yet, with the doses taken counted as eaten.
     func dayIntake(on day: Day, now: Date = Date()) -> DayIntake {
-        let all = entries(on: day)
+        let all = allEntries(on: day)
         let eaten = all.filter { $0.date <= now }
         let later = all.filter { $0.date > now }
         return DayIntake(eaten: Intake.total(eaten, doses: supplementLogs.filter { $0.day == day }), later: Intake.total(later))

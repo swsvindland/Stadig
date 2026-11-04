@@ -34,7 +34,8 @@ public struct MacroState: Sendable {
     ) {
         self.profile = profile
         self.settings = settings
-        self.entries = entries
+        // Food logged for later hasn't happened: nothing the engine works out sees it until its time.
+        self.entries = FoodLog(entries, now: now).eaten
         self.weighIns = weighIns
         self.dayStatus = dayStatus
         self.plan = plan

@@ -15,7 +15,7 @@ struct TodayBoard: View {
     @State private var savingMeal: Moment?
 
     var body: some View {
-        let entries = model.entries(on: model.selectedDay)
+        let entries = model.allEntries(on: model.selectedDay)
         NavigationStack {
             HStack(spacing: 0) {
                 // Vision Pro's larger type needs more room for the weigh-in's words beside its field.
@@ -93,14 +93,20 @@ struct TodayBoard: View {
         let gaps = byTime ? model.gapsBefore(on: model.selectedDay) : [:]
         let sorted = byTime ? [] : entries.sorted(using: sortOrder)
         return Table(of: FoodEntry.self, selection: $selection, sortOrder: $sortOrder) {
-            TableColumn("Time", value: \.date) { entry in Text(Format.time(entry.date)).monospacedDigit().foregroundStyle(.secondary) }
-                // Room for "12:30 PM", and for the header's sort arrow: the log starts out sorted by time.
-                .width(min: 84, ideal: 92)
+            TableColumn("Time", value: \.date) { entry in
+                HStack(spacing: 4) {
+                    if model.foodLog.isUpcoming(entry) { LaterMark() }
+                    Text(Format.time(entry.date)).monospacedDigit().foregroundStyle(.secondary)
+                }
+            }
+            // Room for "12:30 PM", and for the header's sort arrow: the log starts out sorted by time.
+            .width(min: 84, ideal: 92)
             TableColumn("Food", value: \.name) { entry in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.name).lineLimit(1)
                     if let brand = entry.brand { Text(brand).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                 }
+                .opacity(model.foodLog.isUpcoming(entry) ? 0.55 : 1)
                 .help(entry.name)
             }
             .width(min: 140)
@@ -109,6 +115,7 @@ struct TodayBoard: View {
             TableColumn("kcal", value: \.nutrients.kcal) { entry in
                 Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .opacity(model.foodLog.isUpcoming(entry) ? 0.55 : 1)
             }
             .width(min: 44, ideal: 50)
             TableColumn("Protein", value: \.nutrients.protein) { entry in

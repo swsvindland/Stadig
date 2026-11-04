@@ -268,7 +268,7 @@ struct HistoryDayDetail: View {
     let row: HistoryDay?
 
     var body: some View {
-        let moments = Timeline.moments(model.entries(on: day))
+        let moments = Timeline.moments(model.allEntries(on: day))
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {

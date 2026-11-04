@@ -135,6 +135,9 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Which hour a day opens on.** Today opens on the hour it is. Another day opens on its first food's hour, or 7 AM if it has none.
 - **What an hour's + logs at.** The hour it is now logs at now. An hour with food logs a minute after its last food, staying in the hour. An empty hour logs at the top of the hour.
 - **`Placement` has two forms:** from a moment on keeping the gaps (To Now, an hour's arrow), and each food at its own time of day on a day (To Today, To Tomorrow, To Dates).
+- **How food for later looks.** Rows are dimmed to 55% with a small clock, read aloud as "Later". The Mac and iPad table marks the time and dims the food and calories.
+- **A batch up to 60 seconds ahead of the clock means now.** A meal's foods go in a second apart, so without this the last of them would be later food for a moment. A time picked further ahead stays later.
+- **A food's time is checked by a timer, the day and clock changes, and coming back to the app.** While the app is suspended nothing counts it, and the numbers catch up on the way back, as the plan's "no background task" says.
 
 ## Calls made for warm-ups (2026-11-03)
 

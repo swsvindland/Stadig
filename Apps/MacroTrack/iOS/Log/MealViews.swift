@@ -359,7 +359,7 @@ struct SavedMealView: View {
             Button {
                 editing = food
             } label: {
-                EntryRow(entry: food).opacity(included ? 1 : 0.45)
+                EntryRow(entry: food, isLogged: false).opacity(included ? 1 : 0.45)
             }
             .buttonStyle(.plain)
             .hoverHighlight()

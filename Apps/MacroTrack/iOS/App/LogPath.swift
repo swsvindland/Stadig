@@ -1,3 +1,4 @@
+import Foundation
 import OSLog
 
 /// Intervals along the path from a tap to fresh numbers: logging a food and changing day. They show
@@ -28,5 +29,41 @@ enum LogPath {
         #if DEBUG
         onInterval?("\(interval.name)", ContinuousClock.now - interval.start)
         #endif
+    }
+}
+
+/// Wakes the model when what's been eaten can change: at the time of the next food logged for
+/// later, and when the day, the clock or the time zone does. Going with its owner, it stops all of it.
+nonisolated final class FoodClock {
+    private let fire: @MainActor @Sendable () -> Void
+    private var observers: [NSObjectProtocol] = []
+    private var wake: Task<Void, Never>?
+
+    init(fire: @escaping @MainActor @Sendable () -> Void) {
+        self.fire = fire
+        let center = NotificationCenter.default
+        observers = [Notification.Name.NSCalendarDayChanged, .NSSystemClockDidChange, .NSSystemTimeZoneDidChange].map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { fire() }
+            }
+        }
+    }
+
+    /// One timer for the date given, in place of any before it; nil leaves none.
+    func arm(for date: Date?) {
+        wake?.cancel()
+        wake = nil
+        guard let date else { return }
+        let fire = fire
+        wake = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(max(0, date.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            fire()
+        }
+    }
+
+    deinit {
+        wake?.cancel()
+        observers.forEach(NotificationCenter.default.removeObserver)
     }
 }

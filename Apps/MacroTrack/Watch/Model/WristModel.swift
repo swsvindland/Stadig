@@ -270,7 +270,7 @@ final class WristModel {
 
     private func save(_ new: [FoodEntry], message: String) {
         guard !new.isEmpty else { return }
-        store.save(new)
+        store.save(LogAgain.settled(new, now: Date()))
         reload()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         confirm(WristToast(message: "\(message) · \(WristFormat.kcal(kcal))", undo: .entries(new.map(\.id))))

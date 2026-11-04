@@ -92,6 +92,23 @@ public enum LogAgain {
         moment.entries.enumerated().map { i, e in copy(e, to: date.addingTimeInterval(Double(i)), source: source) }
     }
 
+    /// How far ahead of the clock a batch can end and still mean now.
+    public static let settling: TimeInterval = 60
+
+    /// A batch stamped just ahead of now, moved back so its last food is now. A meal's foods go in
+    /// a second apart to keep their order: without this the last of them would be later food for a
+    /// moment, and the meal would be split across the tick on the ring and in a fast.
+    public static func settled(_ batch: [FoodEntry], now: Date, calendar: Calendar = .current) -> [FoodEntry] {
+        guard let latest = batch.map(\.date).max(), latest > now, latest.timeIntervalSince(now) <= settling else { return batch }
+        let back = latest.timeIntervalSince(now)
+        return batch.map { entry in
+            var entry = entry
+            entry.date = entry.date.addingTimeInterval(-back)
+            entry.day = Day(entry.date, calendar: calendar)
+            return entry
+        }
+    }
+
     /// A copy of an entry for now, keeping the amount and numbers.
     public static func copy(_ entry: FoodEntry, to date: Date, source: EntrySource = .recent) -> FoodEntry {
         FoodEntry(

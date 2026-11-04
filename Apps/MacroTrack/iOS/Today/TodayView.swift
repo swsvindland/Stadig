@@ -552,7 +552,7 @@ struct TimelineSections: View {
     @Binding var editing: FoodEntry?
 
     var body: some View {
-        let moments = Timeline.moments(model.entries(on: day))
+        let moments = Timeline.moments(model.allEntries(on: day))
         let gaps = model.gapsBefore(on: day)
         if moments.isEmpty {
             Section {
@@ -657,10 +657,15 @@ struct MomentMealButton: View {
 }
 
 struct EntryRow: View {
+    @Environment(AppModel.self) private var model
     let entry: FoodEntry
+    /// A food in a saved meal is a template: its date means nothing.
+    var isLogged = true
 
     var body: some View {
+        let later = isLogged && model.foodLog.isUpcoming(entry)
         HStack(alignment: .firstTextBaseline) {
+            if later { LaterMark() }
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name).font(.body).lineLimit(1)
                 Text([entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · "))
@@ -672,8 +677,17 @@ struct EntryRow: View {
                 Text("\(Format.grams(entry.nutrients.protein)) P").font(.caption.monospacedDigit()).foregroundStyle(Macro.protein.color)
             }
         }
+        // Dimmed until its time: it's in the day's log, but it doesn't count yet.
+        .opacity(later ? 0.55 : 1)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The mark on food logged for later, read by the shape as well as the row's dimming.
+struct LaterMark: View {
+    var body: some View {
+        Image(systemName: "clock").font(.caption).foregroundStyle(.secondary).accessibilityLabel("Later")
     }
 }
 
@@ -684,7 +698,7 @@ struct DayStateSection: View {
 
     var body: some View {
         let state = model.state(of: day)
-        let hasEntries = !model.entries(on: day).isEmpty
+        let hasEntries = !model.allEntries(on: day).isEmpty
         if hasEntries || state != nil || day < model.today {
             Section {
                 HStack(spacing: 8) {
