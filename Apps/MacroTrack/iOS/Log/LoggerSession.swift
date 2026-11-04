@@ -12,6 +12,8 @@ final class LoggerSession {
     var mode: LogMode
     var query = ""
     private(set) var results: [FoodMatch] = []
+    /// Which query `results` were found for, and a Return waiting for its rows.
+    @ObservationIgnored private var searchReturn = FoodSearchReturn()
     private(set) var searching = false
     var portion: AmountRequest?
     var openMeal: SavedMeal.ID?
@@ -25,14 +27,21 @@ final class LoggerSession {
 
     init(mode: LogMode) { self.mode = mode }
 
+    private var typedQuery: FoodSearchReturn.Query {
+        FoodSearchReturn.Query(text: query.trimmingCharacters(in: .whitespaces), scope: .all)
+    }
+
     func focusSearch() { focusRequest += 1 }
     func blurSearch() { blurRequest += 1 }
 
     /// Runs the search for what's typed, a beat after the last key.
     func search(_ model: AppModel) async {
-        let text = query.trimmingCharacters(in: .whitespaces)
+        let asked = typedQuery
+        let text = asked.text
+        searchReturn.typed(asked)
         guard !text.isEmpty else {
             results = []
+            _ = searchReturn.arrived(asked, rows: [], selection: nil)
             return
         }
         searching = true
@@ -45,6 +54,29 @@ final class LoggerSession {
         guard !Task.isCancelled else { return }
         results = model.corrected(found)
         searching = false
+        if searchReturn.arrived(asked, rows: results.map(\.food.id), selection: nil).log, let food = results.first?.food { add(food, model) }
+    }
+
+    /// Return in the search: the best match of what's typed. Until those rows are in, the ones on
+    /// screen are the last query's, so it waits for them, and goes if the person types on.
+    func pressedReturn(_ model: AppModel) {
+        let typed = typedQuery
+        guard !typed.text.isEmpty, searchReturn.pressed(typed, hasSelection: !results.isEmpty) == .log, let food = results.first?.food else { return }
+        add(food, model)
+    }
+
+    /// A food at its suggested (or last-used) portion, logged now, and the search cleared for the
+    /// next one. While the AI's review is finding a food, this is the one.
+    func add(_ food: Food, _ model: AppModel) {
+        guard finding == nil else {
+            use(food)
+            return
+        }
+        let p = model.personalFood(food.id)
+        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
+        model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
+        query = ""
+        focusSearch()
     }
 
     /// Back to the search for the next food: every way of logging ends here, until Done.

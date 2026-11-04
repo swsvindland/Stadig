@@ -81,6 +81,19 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// Return straight after typing, before the rows for what was typed are in, waits for them.
+    @MainActor
+    func testReturnInThePaneLogsTheBestMatchOfWhatsTyped() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search", "-toastSeconds", "30"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana raw\n")
+
+        app.element("toast.message", labelContaining: "Logged Bananas").waitToAppear()
+        XCTAssertEqual(search.value as? String, "", "the search is clear for the next one")
+    }
+
     /// The pane stays open beside the selection bar, so what it opened can go from under it. Save
     /// would put the food back where it was, or bring it back, with no toast and no Undo.
     @MainActor

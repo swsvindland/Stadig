@@ -128,7 +128,7 @@ struct LoggerPane: View {
             .noAutocapitalization()
             .focused($searchFocused)
             // Return logs the best match, as the Foods screen's does.
-            .onSubmit(addBestMatch)
+            .onSubmit { session.pressedReturn(model) }
             .accessibilityIdentifier("logger.search")
             .overlay(alignment: .trailing) {
                 if !session.query.isEmpty {
@@ -145,15 +145,6 @@ struct LoggerPane: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-    }
-
-    func addBestMatch() {
-        guard let food = session.results.first?.food else { return }
-        let p = model.personalFood(food.id)
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
-        model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
-        session.query = ""
-        session.focusSearch()
     }
 }
 
@@ -549,19 +540,8 @@ struct SearchLogView: View {
             })
     }
 
-    /// The + button: the suggested (or last-used) portion, logged now, and the search cleared
-    /// for the next food.
-    func quickAdd(_ food: Food) {
-        guard session.finding == nil else {
-            session.use(food)
-            return
-        }
-        let p = model.personalFood(food.id)
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
-        model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
-        session.query = ""
-        session.focusSearch()
-    }
+    /// The + button.
+    func quickAdd(_ food: Food) { session.add(food, model) }
 
     func open(_ food: Food) {
         guard session.finding == nil else {

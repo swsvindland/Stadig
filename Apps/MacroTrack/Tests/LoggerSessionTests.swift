@@ -83,6 +83,133 @@ struct LoggerSessionTests {
         #expect(session.finding == nil)
     }
 
+    func logged(_ model: AppModel) -> [String] { model.entries(on: model.today).map(\.name) }
+
+    func toast(_ model: AppModel) -> String { model.toast?.message ?? "" }
+
+    /// Return before the rows for what's typed are in: the rows on screen are the last query's.
+    @Test func returnWaitsForTheRowsOfWhatsTyped() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "coffee brewed"
+        await session.search(model)
+        #expect(!session.results.isEmpty)
+
+        session.query = "banana raw"
+        session.pressedReturn(model)
+        #expect(model.toast == nil, "not the coffee on screen")
+
+        await session.search(model)
+
+        #expect(toast(model).contains("Bananas"), "the best of what was typed: \(toast(model))")
+        #expect(session.query.isEmpty)
+    }
+
+    @Test func returnOnRowsAlreadyThereLogsTheBestOfThem() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "banana raw"
+        await session.search(model)
+
+        session.pressedReturn(model)
+
+        #expect(toast(model).contains("Bananas"), "\(toast(model))")
+    }
+
+    @Test func aReturnForAQueryTypedPastIsDropped() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "ban"
+        session.pressedReturn(model)
+
+        session.query = "banana raw"
+        await session.search(model)
+
+        #expect(model.toast == nil)
+        #expect(session.query == "banana raw")
+    }
+
+    /// A query cleared and typed again has no rows on screen, whatever it found the first time.
+    @Test func returnAfterTheSameFoodAgainWaitsForItsRows() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "banana raw"
+        await session.search(model)
+        session.pressedReturn(model)
+        await session.search(model)
+        #expect(session.results.isEmpty)
+        model.toast = nil
+
+        session.query = "banana raw"
+        session.pressedReturn(model)
+        await session.search(model)
+
+        #expect(toast(model).contains("Bananas"), "\(toast(model))")
+    }
+
+    @Test func returnWithNothingTypedDoesNothing() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        await session.search(model)
+
+        session.pressedReturn(model)
+
+        #expect(model.toast == nil)
+    }
+
+    @Test func returnWithNoMatchesDoesNothing() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "zzqxv"
+        await session.search(model)
+        #expect(session.results.isEmpty)
+
+        session.pressedReturn(model)
+
+        #expect(model.toast == nil)
+        #expect(session.query == "zzqxv", "left to be corrected")
+    }
+
+    /// While the AI's review is finding a food, Return gives it the food, as + does.
+    @Test func returnWhileFindingAFoodGoesToTheReview() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("banana raw", for: unmatched.id)
+
+        session.pressedReturn(model)
+        await session.search(model)
+
+        #expect(model.toast == nil, "nothing logged")
+        #expect(logged(model).isEmpty)
+        #expect(session.mode == .describe)
+        #expect(session.review?.items[1].food?.name.contains("Bananas") == true)
+    }
+
+    @Test func returnOnRowsThereWhileFindingAFoodGoesToTheReview() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("banana raw", for: unmatched.id)
+        await session.search(model)
+
+        session.pressedReturn(model)
+
+        #expect(model.toast == nil, "nothing logged")
+        #expect(session.review?.items[1].food?.name.contains("Bananas") == true)
+        #expect(session.mode == .describe)
+    }
+
     @Test func aFoodsNewAmountStaysInItsUnit() throws {
         let model = TestEnvironment().model()
         model.onboard()
