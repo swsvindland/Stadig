@@ -112,6 +112,29 @@ enum SampleData {
         }
     }
 
+    /// Years of the same log (`LongHistory`), through the real store, to see the app with a long
+    /// history and measure it. Debug builds only (-seedLongHistory, 5 years unless a number follows).
+    @MainActor
+    static func seedLongHistory(_ model: AppModel, years: Int) {
+        guard model.entries.isEmpty, model.profile == nil else { return }
+        let history = LongHistory(years: years)
+        var settings = history.settings
+        settings.id = MacroSettings.singletonID
+        model.store.save(ProfileRecord(history.profile))
+        model.store.save(settings)
+        model.store.save(history.plan)
+        model.store.save(history.entries)
+        model.store.save(history.weighIns)
+        model.store.save(history.statuses)
+        model.store.save(history.checkIns)
+        model.store.save(history.supplements)
+        model.store.save(history.supplementLogs)
+        model.store.save(history.water)
+        model.store.save(history.fasts)
+        model.store.save(history.savedMeals)
+        model.reload()
+    }
+
     /// The stack from the design brief, two weeks of it taken, and drinks: fish oil and a
     /// multivitamin in the morning, pre-workout in the afternoon on training days, the multi again
     /// in the evening and a sleep gummy at bedtime; coffee most mornings, an energy drink some

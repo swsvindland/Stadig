@@ -303,12 +303,18 @@ final class AppModel {
     /// kinds aren't read or sorted again, but the analysis still runs over everything, so it's work
     /// in proportion to the history.
     func reload() {
+        let interval = LogPath.begin("reload")
+        defer { LogPath.end(interval) }
         if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
         if needsReading(MacroSettings.self) {
             settings = MacroSettings.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID)
         }
         let entriesChanged = needsReading(FoodEntry.self)
-        if entriesChanged { entries = store.all(FoodEntry.self).sorted { $0.date < $1.date } }
+        if entriesChanged {
+            let reading = LogPath.begin("readEntries")
+            entries = store.all(FoodEntry.self).sorted { $0.date < $1.date }
+            LogPath.end(reading)
+        }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
         if needsReading(DayStatus.self) { dayStatus = store.all(DayStatus.self) }
         if needsReading(PhasePlan.self) { plan = store.all(PhasePlan.self).first }
@@ -330,7 +336,9 @@ final class AppModel {
         if needsReading(SavedMeal.self) { savedMeals = store.all(SavedMeal.self) }
         if needsReading(MealPlan.self) { reloadMealPlans() }
         applyAISetting()
+        let reading = LogPath.begin("readShared")
         readShared(recompute: false)
+        LogPath.end(reading)
         recompute()
         if entriesChanged || customChanged || favoritesChanged || correctionsChanged { refreshPersonal() }
         lastRevision = store.revision
@@ -434,19 +442,23 @@ final class AppModel {
     }
 
     func recompute() {
+        let interval = LogPath.begin("recompute")
+        defer { LogPath.end(interval) }
         if today != .today {
             if selectedDay == today { selectedDay = .today }
             today = .today
         }
         let now = Date()
+        let rankings = LogPath.begin("rankings")
         logAgain = LogAgain.rank(suggestionEntries, now: now)
         mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
+        LogPath.end(rankings)
         refreshCatchUp()
         guard let state else {
             analysis = nil
             return
         }
-        let analysis = MacroAnalyst.analyse(state)
+        let analysis = analyse(state)
         self.analysis = analysis
         // The weekly check-in applies itself: small, capped steps, explained on Today.
         if let due = analysis.dueCheckIn, plan != nil, onboarded {
@@ -454,7 +466,7 @@ final class AppModel {
             checkIns = Self.ordered(store.all(CheckIn.self))
             readRevisions[CheckIn.kind] = store.revision(of: CheckIn.self)
             lastRevision = store.revision
-            self.analysis = MacroAnalyst.analyse(self.state ?? state)
+            self.analysis = analyse(self.state ?? state)
         }
         publish()
         refreshMicroFix()
@@ -464,6 +476,12 @@ final class AppModel {
             FastReminders.schedule(self)
             FastActivityBridge.update(self)
         }
+    }
+
+    private func analyse(_ state: MacroState) -> MacroAnalysis {
+        let interval = LogPath.begin("analyse")
+        defer { LogPath.end(interval) }
+        return MacroAnalyst.analyse(state)
     }
 
     /// Finds a fermented food to suggest, off the main thread, once the week is short of them.
@@ -520,6 +538,8 @@ final class AppModel {
 
     /// The phase and day-by-day nutrition for Stadig Lift and the hub, written only when they change.
     private func publish() {
+        let interval = LogPath.begin("publish")
+        defer { LogPath.end(interval) }
         guard let state, let analysis else { return }
         var nutrition = MacroAnalyst.nutritionSummary(state, analysis)
         var summary = MacroAnalyst.appSummary(state, analysis)
@@ -822,11 +842,15 @@ final class AppModel {
     /// Saves entries, shows "Logged … Undo", and writes them to Health. A meal logged during a fast
     /// ends it, and says so: the Undo puts the fast back with the food.
     func log(_ new: [FoodEntry], message: String? = nil) {
+        let interval = LogPath.begin("log")
+        defer { LogPath.end(interval) }
         // A food the person corrected is logged at their numbers, however it was found.
         let new = corrections.isEmpty ? new : new.map(withCorrection)
         guard !new.isEmpty else { return }
         let fasting = analysis?.fast
+        let saving = LogPath.begin("save")
         store.save(new)
+        LogPath.end(saving)
         reload()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
@@ -906,6 +930,8 @@ final class AppModel {
 
     /// Reads the selected day's usual times again, then the logger's suggestions for its time.
     func refreshCatchUp() {
+        let interval = LogPath.begin("refreshCatchUp")
+        defer { LogPath.end(interval) }
         usualTimes = UsualMeals.on(selectedDay, entries: suggestionEntries, today: today)
         refreshTimedSuggestions()
     }

@@ -34,6 +34,17 @@ App tests run on a simulator of the checkout's own, "Stadig Tests <checkout>" (a
 
 Opt-in reports: `SIM_DEBUG=1 swift test --filter simulationReport` (SystemCore), `PRINT_PROGRAMS=1 swift test` (LiftEngine), `PRINT_PLAN=1 swift test --filter SampleWeek` (MealPlanner), `MEAL_AI_EVAL=1 swift test --filter Evaluation` (FoodIntelligence, runs the real models on this Mac).
 
+## The log path's budget
+
+Logging a food and changing day in Stadig Macro should take the main thread no more than a frame: a p95 of 16 ms at 5 years of history (`LongHistory`, 12 foods a day). The steps are signposted (`LogPath`, under Points of Interest in Instruments), and two reports time them over 1, 5 and 10 years. Neither fails on timing, and both are opt-in, since seeding takes a while:
+
+```sh
+cd Packages/NutritionEngine && BENCHMARKS=1 swift test -Xswiftc -O --filter AnalysisBenchmarkTests   # the engine's pieces
+OPTIMIZED=1 TEST_RUNNER_BENCHMARKS=1 ONLY=LogPathBenchmarkTests Scripts/build.sh unit macro          # the app model's steps, in a store on disk
+```
+
+The report is in the run's log (`/tmp/system-dd-<checkout>-MacroTrack-test.log`). Judge the budget on these optimized builds: a plain Debug build runs several times slower than what ships. Run them with nothing else building, and treat a simulator's numbers as a Mac's: a phone's are slower. `LogPathBenchmarkTests` times the model and what Today reads, not SwiftUI's rendering; `-seedLongHistory` runs the real app over the same history, for Instruments.
+
 ## Writing tests
 
 - **New logic goes in a package, with its tests.** If a view model or the app model grows a rule, move the rule into the package and test it there; the app test then only checks the wiring.

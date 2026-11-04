@@ -31,6 +31,7 @@ struct MacroTrackApp: App {
         // the sidebar's) opens a tab; -daysAgo 1 opens Today on an earlier day; -log search|describe|quickAdd
         // opens a logger. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
