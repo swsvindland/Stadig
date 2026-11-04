@@ -44,6 +44,13 @@ enum LogMode: String, Identifiable, Hashable {
     var id: String { rawValue }
 }
 
+/// What a day adds up to so far, and what's logged for later.
+struct DayIntake: Equatable {
+    var eaten: Nutrients
+    var later: Nutrients
+    var all: Nutrients { eaten + later }
+}
+
 /// A short confirmation after logging, with Undo.
 struct Toast: Identifiable, Equatable {
     var id = UUID()
@@ -58,13 +65,17 @@ struct Toast: Identifiable, Equatable {
     var fast: FastUndo?
     /// A saved meal just deleted, which the Undo brings back.
     var deletedMeal: SavedMeal?
+    /// Entries as they were before an edit, which the Undo puts back.
+    var restore: [FoodEntry] = []
 
     enum FastUndo: Equatable {
         case started(UUID)
         case ended(Fast)
     }
 
-    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil }
+    var canUndo: Bool {
+        !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil || !restore.isEmpty
+    }
 }
 
 /// The app's state: Stadig Macro's own synced records, what Stadig Lift and the hub published, what
@@ -637,6 +648,7 @@ final class AppModel {
         fresh.id = entry.id
         fresh.day = entry.day
         fresh.updatedAt = entry.updatedAt
+        fresh.loggedAt = entry.loggedAt
         return fresh
     }
 
@@ -865,19 +877,51 @@ final class AppModel {
     }
 
     func update(_ entry: FoodEntry) {
-        var entry = entry
-        entry.updatedAt = Date()
-        entry.day = Day(entry.date)
-        store.save(entry)
+        update([entry])
+    }
+
+    /// Saves edits together, with one write to Health. A `message` also says so, with an Undo that
+    /// puts every entry back as it was.
+    func update(_ edits: [FoodEntry], message: String? = nil) {
+        guard !edits.isEmpty else { return }
+        let before = entriesBefore(edits)
+        let saved = edited(edits, from: before)
+        store.save(saved)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods([Self.healthFood(entry)]) } }
+        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(saved.map(Self.healthFood)) } }
+        if let message { toast = Toast(message: message, restore: Array(before.values)) }
+    }
+
+    /// The entries as stored now, by id, of the ones about to be edited.
+    private func entriesBefore(_ edits: [FoodEntry]) -> [UUID: FoodEntry] {
+        let ids = Set(edits.map(\.id))
+        return Dictionary(entries.lazy.filter { ids.contains($0.id) }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    private func edited(_ edits: [FoodEntry], from before: [UUID: FoodEntry]) -> [FoodEntry] {
+        let now = Date()
+        return edits.map { edit in (before[edit.id] ?? edit).edited(at: now) { $0 = edit } }
+    }
+
+    /// Entries back as they were before an edit, each on the day it was on, stamped now.
+    private func restore(_ versions: [FoodEntry]) {
+        let before = entriesBefore(versions)
+        let days = Dictionary(versions.map { ($0.id, $0.day) }, uniquingKeysWith: { first, _ in first })
+        let saved = edited(versions, from: before).map { entry in
+            var entry = entry
+            entry.day = days[entry.id] ?? entry.day
+            return entry
+        }
+        store.save(saved)
+        reload()
+        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(saved.map(Self.healthFood)) } }
     }
 
     /// Deletes entries (and their Health samples), with "Deleted … Undo": a whole moment goes in two taps.
     func delete(entries ids: [UUID]) {
         let gone = Set(ids)
         let removed = entries.filter { gone.contains($0.id) }
-        for id in ids { store.delete(FoodEntry.self, id: id) }
+        store.delete(FoodEntry.self, ids: ids)
         reload()
         Task { await HealthBridge.shared.deleteFoods(ids: ids) }
         if !removed.isEmpty {
@@ -892,18 +936,16 @@ final class AppModel {
         if !toast.deleted.isEmpty { bringBack(toast.deleted) }
         if let fast = toast.fast { undo(fast) }
         if let meal = toast.deletedMeal { save(meal) }
+        if !toast.restore.isEmpty { restore(toast.restore) }
         self.toast = nil
     }
 
     /// Deleted entries saved again, stamped now: the store keeps whichever is newer, and the delete
-    /// is newer than the entries as they were.
+    /// is newer than the entries as they were. Each is still as first logged, so a day caught up on
+    /// Monday and undone on Thursday stays a day logged live.
     private func bringBack(_ deleted: [FoodEntry]) {
         let now = Date()
-        let restored = deleted.map { entry in
-            var entry = entry
-            entry.updatedAt = now
-            return entry
-        }
+        let restored = deleted.map { $0.edited(at: now) }
         store.save(restored)
         reload()
         if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(restored.map(Self.healthFood)) } }
@@ -981,6 +1023,14 @@ final class AppModel {
     }
 
     func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
+
+    /// A day's food by whether it's happened yet, with the doses taken counted as eaten.
+    func dayIntake(on day: Day, now: Date = Date()) -> DayIntake {
+        let all = entries(on: day)
+        let eaten = all.filter { $0.date <= now }
+        let later = all.filter { $0.date > now }
+        return DayIntake(eaten: Intake.total(eaten, doses: supplementLogs.filter { $0.day == day }), later: Intake.total(later))
+    }
 
     func state(of day: Day) -> DayState? { dayStatus.first { $0.day == day }?.state }
 

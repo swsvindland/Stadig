@@ -108,11 +108,15 @@ enum LogTime {
         return "\(Format.day(Day(date), style: .dateTime.weekday(.abbreviated))) \(Format.time(date))"
     }
 
-    /// A time picked on the wheel for today, on the day nearest now: 11:30 PM picked just after
-    /// midnight is last night, 7 PM picked at noon is this evening.
+    /// How far back a time picked ahead of the clock can still mean last night.
+    static let lastNight: TimeInterval = 6 * 3600
+
+    /// A time picked on the wheel for today means today, even if that's later on: 7 PM picked at
+    /// noon is this evening, and so is 6:30 PM picked at 6 AM. Only a real last night is yesterday:
+    /// 11:30 PM picked just after midnight.
     static func nearest(_ picked: Date, now: Date = Date(), calendar: Calendar = .current) -> Date {
         guard picked > now, let yesterday = calendar.date(byAdding: .day, value: -1, to: picked) else { return picked }
-        return now.timeIntervalSince(yesterday) < picked.timeIntervalSince(now) ? yesterday : picked
+        return now.timeIntervalSince(yesterday) <= lastNight ? yesterday : picked
     }
 
     static func ago(_ minutes: Int) -> String { minutes < 60 ? "\(minutes) min ago" : "\(minutes / 60) h ago" }

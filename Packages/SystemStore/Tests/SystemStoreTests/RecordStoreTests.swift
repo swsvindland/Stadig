@@ -7,6 +7,41 @@ import Testing
 
 @MainActor
 struct RecordStoreTests {
+    @Test func deletingSeveralIsOneChange() {
+        let store = memoryStore()
+        let lifts = (0..<3).map { Lift(name: "Lift \($0)", reps: 5, updatedAt: t0 + Double($0)) }
+        store.save(lifts)
+        _ = store.all(Lift.self)
+        let revision = store.revision
+
+        store.delete(Lift.self, ids: [lifts[0].id, lifts[2].id, lifts[2].id, UUID()])
+
+        #expect(store.revision == revision + 1)
+        #expect(store.all(Lift.self) == [lifts[1]])
+        #expect(store.deletedIDs(Lift.self) == [lifts[0].id, lifts[2].id])
+    }
+
+    @Test func deletingManyReadsThemAgainInOneGo() {
+        let store = memoryStore()
+        let lifts = (0..<40).map { Lift(name: "Lift \($0)", reps: 5, updatedAt: t0 + Double($0)) }
+        store.save(lifts)
+        _ = store.all(Lift.self)
+
+        store.delete(Lift.self, ids: lifts.dropFirst().map(\.id))
+
+        #expect(store.all(Lift.self) == [lifts[0]])
+        #expect(store.deletedIDs(Lift.self).count == 39)
+    }
+
+    @Test func deletingNothingChangesNothing() {
+        let store = memoryStore()
+        store.save(Lift(name: "Squat", reps: 3, updatedAt: t0))
+        let revision = store.revision
+        store.delete(Lift.self, ids: [])
+        store.delete(Lift.self, ids: [UUID()])
+        #expect(store.revision == revision)
+    }
+
     @Test func saveGetAllRoundTrip() {
         let store = memoryStore()
         #expect(store.syncStatus == "Memory only")

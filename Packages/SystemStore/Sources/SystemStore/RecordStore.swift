@@ -306,18 +306,29 @@ public final class RecordStore {
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
     /// `updatedAt` moved past the last edit, so the deletion syncs and beats older copies.
     public func delete<T: StoredRecord>(_ type: T.Type, id: UUID) {
-        guard let context else { return }
-        let rows = fetchRows(kind: T.kind, uuid: id)
-        guard let current = Self.newest(rows).map(RecordVersion.init),
-            rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty })
-        else { return }
-        let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
-        let tombstone = RecordVersion(
-            kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
-            payload: Data(), deleted: true)
-        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context) {
-            self.patchCache(T.self, with: [tombstone])
+        delete(type, ids: [id])
+    }
+
+    /// `delete` for several records in one save, so a batch is one change to read and to sync.
+    public func delete<T: StoredRecord>(_ type: T.Type, ids: some Collection<UUID>) {
+        guard let context, !ids.isEmpty else { return }
+        let bulk = ids.count > 32
+        let rowsByID: [UUID: [RecordRow]] = bulk ? Dictionary(grouping: fetchRows(kind: T.kind), by: \.uuid) : [:]
+        var tombstones: [RecordVersion] = []
+        var changes = 0
+        for id in Set(ids) {
+            let rows = rowsByID[id] ?? (bulk ? [] : fetchRows(kind: T.kind, uuid: id))
+            guard let current = Self.newest(rows).map(RecordVersion.init),
+                rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty })
+            else { continue }
+            let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
+            let tombstone = RecordVersion(
+                kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
+                payload: Data(), deleted: true)
+            tombstones.append(tombstone)
+            if write(tombstone, into: rows, context: context).changed { changes += 1 }
         }
+        commit(changes, kind: T.kind, context, patch: bulk ? nil : { self.patchCache(T.self, with: tombstones) })
     }
 
     /// Removes every row of every kind. With iCloud on, that erases the data on every device.

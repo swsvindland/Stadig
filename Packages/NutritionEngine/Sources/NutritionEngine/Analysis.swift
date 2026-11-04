@@ -173,10 +173,8 @@ public enum MacroAnalyst {
         var intakeByDay: [Day: Nutrients] = [:]
         for entry in state.entries { intakeByDay[entry.day] = (intakeByDay[entry.day] ?? .zero) + entry.nutrients }
         // A supplement's few calories count on days with food logged; alone, they don't make a day logged.
-        for log in state.supplementLogs where log.taken {
-            if let n = log.nutrients, let day = intakeByDay[log.day] {
-                intakeByDay[log.day] = day + Nutrients(kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat)
-            }
+        for log in state.supplementLogs {
+            if let day = intakeByDay[log.day] { intakeByDay[log.day] = day + Intake.calories(of: log) }
         }
 
         let trainingDays =
@@ -218,7 +216,8 @@ public enum MacroAnalyst {
                     continue
                 }
                 let cutoff = day.adding(days: 1).date(calendar: calendar).addingTimeInterval(4 * 3600)
-                let live = (entriesByDay[day] ?? []).filter { $0.updatedAt <= cutoff }
+                // By when each was first logged: fixing a food later doesn't undo that it was logged live.
+                let live = (entriesByDay[day] ?? []).filter { $0.firstLogged <= cutoff }
                 if live.count >= 3, kcal >= formula * 0.7 { complete[day] = kcal }
             }
         }

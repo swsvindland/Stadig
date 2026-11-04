@@ -45,12 +45,15 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
     /// 0–1 for estimates (a photo, a description); nil when the numbers are exact.
     public var confidence: Double?
     public var updatedAt: Date
+    /// When this entry first went into the log, kept from its first edit on. Nil until then, when
+    /// `updatedAt` still says so: read ``firstLogged``.
+    public var loggedAt: Date?
 
     public init(
         id: UUID = UUID(), date: Date = Date(), day: Day? = nil, name: String, brand: String? = nil,
         foodID: String? = nil, amountLabel: String, grams: Double? = nil, unitID: String? = nil, count: Double? = nil,
         nutrients: Nutrients, micros: [String: Double]? = nil, processing: Processing? = nil, fermented: Bool? = nil,
-        fluid: Double? = nil, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date()
+        fluid: Double? = nil, source: EntrySource, confidence: Double? = nil, updatedAt: Date = Date(), loggedAt: Date? = nil
     ) {
         self.id = id
         self.date = date
@@ -70,9 +73,43 @@ public struct FoodEntry: Hashable, Codable, Sendable, Identifiable {
         self.source = source
         self.confidence = confidence
         self.updatedAt = updatedAt
+        self.loggedAt = loggedAt
     }
 
     public var isEstimate: Bool { confidence != nil }
+
+    /// When this entry first went into the log, whatever's been edited since. An entry from before
+    /// that was kept reads as its last edit, which was as much as anyone could tell.
+    public var firstLogged: Date { loggedAt ?? updatedAt }
+
+    /// This entry with `change` made to it, as every edit has to be saved: it keeps when it was first
+    /// logged, its stamp is past the last one even with a clock behind another device's (the store
+    /// ignores older saves), and its day moves only with its date, so a day logged in another time
+    /// zone stays that day.
+    public func edited(at now: Date, calendar: Calendar = .current, change: (inout FoodEntry) -> Void = { _ in }) -> FoodEntry {
+        var entry = self
+        change(&entry)
+        entry.loggedAt = firstLogged
+        entry.updatedAt = max(now, updatedAt.addingTimeInterval(0.001))
+        entry.day = entry.date == date ? day : Day(entry.date, calendar: calendar)
+        return entry
+    }
+}
+
+/// What a day's food adds up to.
+public enum Intake {
+    /// `entries` with what `doses` of supplements add. Their few calories count on a day with food
+    /// logged; alone, they don't make a day logged, so a day of pills is nothing eaten.
+    public static func total(_ entries: [FoodEntry], doses: [SupplementLog] = []) -> Nutrients {
+        guard !entries.isEmpty else { return .zero }
+        return doses.reduce(Nutrients.sum(entries.map(\.nutrients))) { $0 + calories(of: $1) }
+    }
+
+    /// The part of a dose that counts as intake: macros only, since a label's vitamins are read apart.
+    static func calories(of dose: SupplementLog) -> Nutrients {
+        guard dose.taken, let n = dose.nutrients else { return .zero }
+        return Nutrients(kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat)
+    }
 }
 
 /// A morning weigh-in. Health supplies most of them; manual ones fill the gaps.

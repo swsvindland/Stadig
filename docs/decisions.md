@@ -126,6 +126,16 @@
 - **Today's order.** Summary and weight first, then the plan's actions and the weekly check-in, From your plan, Log again, the day's log and "Done logging today?"; then meal timing, supplements, drinks and "This week's food". Two things stay above the food: the analysis's own actions (a plan to see, a day to catch up, the check-in), which are rare and time-bound, and a nutrient over its safe upper limit, which is about safety. The ultra-processed, short-nutrient and fermented suggestions moved below, under "This week's food", still sharing the two places with the actions. A running fast moved below the food with meal timing: on a fast day the log above it is short. The iPad's, the Mac's and Vision Pro's summary column follows the same order.
 - **A reminder's tap** opens Today at that day's supplements, scrolled to them, in place of any sheet that's up (as a widget's link does), and catches up to today first.
 
+## Calls made for Stadig Macro's UI rework (2026-11-03)
+
+The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emerson.md`. These are the calls it left open, made overnight with the conservative choice. Any of them is one small change to reverse.
+
+- **`loggedAt` is set by an entry's first edit, not when it's logged.** `firstLogged` reads `loggedAt ?? updatedAt`, so old entries and new ones work the same way and nothing needs migrating. An older TestFlight build drops `loggedAt` if it edits an entry, and that day then reads as it did before.
+- **A time picked ahead of the clock means today, unless it's within 6 hours back.** At 5 AM, 11:30 PM is last night; at 6 AM, it's tonight.
+- **Which hour a day opens on.** Today opens on the hour it is. Another day opens on its first food's hour, or 7 AM if it has none.
+- **What an hour's + logs at.** The hour it is now logs at now. An hour with food logs a minute after its last food, staying in the hour. An empty hour logs at the top of the hour.
+- **`Placement` has two forms:** from a moment on keeping the gaps (To Now, an hour's arrow), and each food at its own time of day on a day (To Today, To Tomorrow, To Dates).
+
 ## Calls made for warm-ups (2026-11-03)
 
 Stadig Lift's warm-up sets, in LiftEngine's `Warmup`, used by `SessionPlanner` and `LiveSession`.

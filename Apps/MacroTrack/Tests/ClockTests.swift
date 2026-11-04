@@ -14,6 +14,17 @@ struct LogTimeTests {
         #expect(LogTime.nearest(picked, now: now, calendar: calendar) == date(2027, 3, 14, 23, 30))
     }
 
+    @Test func thisEveningPickedEarlyInTheMorningStaysToday() {
+        let picked = date(2027, 3, 15, 18, 30)
+        #expect(LogTime.nearest(picked, now: date(2027, 3, 15, 6, 0), calendar: calendar) == picked)
+    }
+
+    @Test func lastNightIsWithinSixHoursOfNow() {
+        let picked = date(2027, 3, 15, 23, 30)
+        #expect(LogTime.nearest(picked, now: date(2027, 3, 15, 5, 0), calendar: calendar) == date(2027, 3, 14, 23, 30))
+        #expect(LogTime.nearest(picked, now: date(2027, 3, 15, 6, 0), calendar: calendar) == picked)
+    }
+
     @Test func thisEveningPickedAtNoonStaysToday() {
         let now = date(2027, 3, 15, 12, 0)
         let picked = date(2027, 3, 15, 19, 0)
