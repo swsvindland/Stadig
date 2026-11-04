@@ -123,8 +123,7 @@ extension AppModel {
         // Today, when it's logged; a day being caught up, at the meal's usual time.
         let date = meal.day == today ? logDate() : meal.day.at(minutes: Int((meal.slot.hour * 60).rounded()))
         let entry = Self.entry(for: recipe, date: date)
-        log([entry], message: "Logged \(recipe.title)")
-        guard var plan = mealPlans.first(where: { $0.id == plan.id }) else { return }
+        guard log([entry], message: "Logged \(recipe.title)"), var plan = mealPlans.first(where: { $0.id == plan.id }) else { return }
         plan.logged[meal.id] = [entry.id]
         save(plan)
     }

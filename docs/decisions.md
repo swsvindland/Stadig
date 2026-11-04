@@ -169,6 +169,7 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Leaving the Log tab clears the selection**, as it does the day.
 - **The day's Sort menu** has Time, Calories, Protein, Carbs and Fat, most first, as one list with each food's time, in place of the sortable headers. It's offered only with the columns showing, lasts until the app closes rather than being saved, and an empty day keeps its hours, since they're the way to add something. Hours, catch-up rows and planned meals are hidden while it's sorted.
 - **On a touch screen a food has no context menu**, since a hold selects. Its swipes do what the menu did. The Mac keeps a right-click menu.
+- **Food that can't be saved says so.** On a full disk, a toast reads "Couldn't save Lunch" with a warning sign and no Undo, nothing shows the food, Health doesn't get it, and Siri says it couldn't. It's a toast rather than an alert because logging shouldn't stop anyone mid-meal, and a toast goes by itself: the amount, sheet or tray closes as if logged, so the food is typed again. Edits and deletes still don't report a failed save.
 - **A hold's release is swallowed for 2 seconds** after the hold. A finger that slid off never releases, so without the limit a later tap would be lost.
 
 These reverse or change earlier calls, as the plan said they would:

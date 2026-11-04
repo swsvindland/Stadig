@@ -36,6 +36,26 @@ struct RecordStoreTests {
         #expect(store.all(Lift.self).isEmpty)
     }
 
+    @Test func anInsertThatFailsToSaveStoresAndReturnsNothing() {
+        let store = memoryStore()
+        store.save(Lift(name: "Bench", reps: 5, updatedAt: t0))
+        _ = store.all(Lift.self)
+        let revision = store.revision
+        store.nextSaveFailure = CocoaError(.fileWriteOutOfSpace)
+
+        let stored = store.insert([Lift(name: "Squat", reps: 3, updatedAt: t0 + 60)])
+
+        #expect(stored.isEmpty, "a caller mustn't show what isn't in the store")
+        #expect(store.revision == revision + 1, "the kind is read again")
+        #expect(store.all(Lift.self).map(\.name) == ["Bench"])
+        #expect(store.rows(kind: Lift.kind).count == 1)
+
+        // Rolled back, so the next save doesn't take the failed one with it.
+        let row = Lift(name: "Row", reps: 8, updatedAt: t0 + 120)
+        #expect(store.insert([row]) == [row])
+        #expect(store.all(Lift.self).map(\.name) == ["Row", "Bench"])
+    }
+
     @Test func insertingNothingChangesNothing() {
         let store = memoryStore()
         #expect(store.insert([Lift]()).isEmpty)

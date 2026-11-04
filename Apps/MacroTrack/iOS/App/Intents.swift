@@ -33,7 +33,7 @@ extension AppModel {
             }
         }
         guard !logged.isEmpty else { return "Couldn't find “\(text)”. Open Stadig Macro to search for it." }
-        log(logged)
+        guard log(logged) else { return "Couldn't save that. Open Stadig Macro and try again." }
         await analysisFinished(within: .seconds(3))
         let kcal = logged.map(\.nutrients.kcal).reduce(0, +)
         let names = logged.map { "\($0.amountLabel) \($0.name)" }.joined(separator: ", ")

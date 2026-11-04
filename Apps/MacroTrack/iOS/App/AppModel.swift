@@ -83,6 +83,8 @@ struct Toast: Identifiable, Equatable {
     var deletedMeal: SavedMeal?
     /// Entries as they were before an edit, which the Undo puts back.
     var restore: [FoodEntry] = []
+    /// Says something didn't happen, not that it did.
+    var failed = false
 
     enum FastUndo: Equatable {
         case started(UUID)
@@ -448,12 +450,14 @@ final class AppModel {
 
     /// New food saved and put in its place, as the store holds it (to the millisecond, which a
     /// fast's start is compared with): years of log aren't sorted and grouped again for one more. A
-    /// big batch is left for `reload` to read whole.
-    private func insert(_ new: [FoodEntry]) {
+    /// big batch is left for `reload` to read whole. A save that failed places nothing and says so,
+    /// and marks nothing as read, so `reload` finds what the store really holds.
+    private func insert(_ new: [FoodEntry]) -> Bool {
         let saving = LogPath.begin("save")
         let stored = store.insert(new).sorted { $0.date < $1.date }
         LogPath.end(saving)
-        guard new.count <= 32 else { return }
+        guard !stored.isEmpty else { return false }
+        guard new.count <= 32 else { return true }
         foodLog = foodLog.inserting(stored, now: Date())
         for entry in stored {
             var day = entriesByDay[entry.day] ?? []
@@ -461,6 +465,7 @@ final class AppModel {
             entriesByDay[entry.day] = day
         }
         readRevisions[FoodEntry.kind] = store.revision(of: FoodEntry.self)
+        return true
     }
 
     /// Rebuilds the AI engine when the Private Cloud Compute setting changed: on this device, on
@@ -1015,15 +1020,20 @@ final class AppModel {
     ]
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health. A meal logged during a fast
-    /// ends it, and says so: the Undo puts the fast back with the food.
-    func log(_ new: [FoodEntry], message: String? = nil) {
+    /// ends it, and says so: the Undo puts the fast back with the food. Returns whether they were
+    /// saved: if not, nothing shows them, Health doesn't get them, and a toast says so.
+    @discardableResult
+    func log(_ new: [FoodEntry], message: String? = nil) -> Bool {
         let interval = LogPath.begin("log")
         defer { LogPath.end(interval) }
         // A food the person corrected is logged at their numbers, however it was found.
         let new = LogAgain.settled(corrections.isEmpty ? new : new.map(withCorrection), now: Date())
-        guard !new.isEmpty else { return }
+        guard !new.isEmpty else { return false }
         let fasting = analysis?.fast
-        insert(new)
+        guard insert(new) else {
+            toast = Toast(message: new.count == 1 ? "Couldn't save \(new[0].name)" : "Couldn't save \(new.count) foods", failed: true)
+            return false
+        }
         reload(readingShared: false)
         refreshPersonal()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
@@ -1037,6 +1047,7 @@ final class AppModel {
             toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
         }
         syncHealth(new)
+        return true
     }
 
     /// Health holds what's been eaten and nothing else, so these entries go in if their time has

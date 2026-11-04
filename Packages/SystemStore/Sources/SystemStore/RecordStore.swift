@@ -54,6 +54,8 @@ public final class RecordStore {
     @ObservationIgnored var askWhyRefused: (@Sendable () async -> String?)?
     /// That question, asked once a launch, at the first export turned down.
     @ObservationIgnored private(set) var refusalQuestion: Task<Void, Never>?
+    /// What the next save throws, as a full disk would, rolled back like any failed save. Tests set it.
+    @ObservationIgnored var nextSaveFailure: (any Error)?
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var remoteChangeNoticed: ContinuousClock.Instant?
     /// The newest history transaction already accounted for.
@@ -304,8 +306,9 @@ public final class RecordStore {
     }
 
     /// Saves records just made, with ids nothing else has, and returns them as stored (dates to the
-    /// millisecond). `save` without looking for an earlier copy: finding one by id reads the whole
-    /// table, which over years of records is most of what a save costs.
+    /// millisecond), or nothing when the save failed and none of them are. `save` without looking
+    /// for an earlier copy: finding one by id reads the whole table, which over years of records is
+    /// most of what a save costs.
     @discardableResult
     public func insert<T: StoredRecord>(_ records: [T]) -> [T] {
         guard let context, !records.isEmpty else { return [] }
@@ -330,8 +333,8 @@ public final class RecordStore {
             written.append(version)
             if let saved = decode(T.self, version, decoder) { stored.append(saved) }
         }
-        commit(written.count, kind: T.kind, context, patch: written.count > 32 ? nil : { self.patchCache(T.self, with: written) })
-        return stored
+        let saved = commit(written.count, kind: T.kind, context, patch: written.count > 32 ? nil : { self.patchCache(T.self, with: written) })
+        return saved ? stored : []
     }
 
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
@@ -556,23 +559,27 @@ public final class RecordStore {
         return (rows, changed)
     }
 
-    /// Saves a write to one kind and records the change. `patch` brings the kind's decoded cache up
-    /// to date once the save has gone through; without one, or when the save fails and is rolled
-    /// back, the cache is dropped and read again.
-    private func commit(_ changes: Int, kind: String, _ context: ModelContext, patch: (() -> Void)? = nil) {
-        guard changes > 0 else { return }
-        var patched = false
+    /// Saves a write to one kind, records the change and says whether it was saved. `patch` brings
+    /// the kind's decoded cache up to date once the save has gone through; without one, or when the
+    /// save fails and is rolled back, the cache is dropped and read again.
+    @discardableResult
+    private func commit(_ changes: Int, kind: String, _ context: ModelContext, patch: (() -> Void)? = nil) -> Bool {
+        guard changes > 0 else { return false }
+        var saved = false
         do {
-            try context.save()
-            if let patch {
-                patch()
-                patched = true
+            if let failure = nextSaveFailure {
+                nextSaveFailure = nil
+                throw failure
             }
+            try context.save()
+            saved = true
+            patch?()
         } catch {
             storeLog.error("\(self.name, privacy: .public): save failed: \(String(describing: error), privacy: .public)")
             context.rollback()
         }
-        changed(kinds: [kind], cachePatched: patched)
+        changed(kinds: [kind], cachePatched: saved && patch != nil)
+        return saved
     }
 
     /// Patches a kind's decoded `all`, if it has been read, with versions just saved: each takes its
