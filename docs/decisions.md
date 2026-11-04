@@ -166,8 +166,19 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **To Now is a meal eaten now**: in order, a second apart, ending at now. Keeping an afternoon's gaps would run into the evening.
 - **Moving to several dates at once** moves to the earliest and leaves copies on the rest.
 - **Leaving the Log tab clears the selection**, as it does the day.
+- **The day's Sort menu** has Time, Calories, Protein, Carbs and Fat, most first, as one list with each food's time, in place of the sortable headers. It's offered only with the columns showing, lasts until the app closes rather than being saved, and an empty day keeps its hours, since they're the way to add something. Hours, catch-up rows and planned meals are hidden while it's sorted.
 - **On a touch screen a food has no context menu**, since a hold selects. Its swipes do what the menu did. The Mac keeps a right-click menu.
 - **A hold's release is swallowed for 2 seconds** after the hold. A finger that slid off never releases, so without the limit a later tap would be lost.
+
+These reverse or change earlier calls, as the plan said they would:
+
+- **Catch-up rows** (2026-10-29). They were rows on Today's past day; Today only shows today now, so each is in its hour on the Log tab, with **Log all** on the line of what's left. Only past days get them, as before.
+- **The time bar's chips** (2026-10-29). Usual times now show on any day but today, days ahead included, and a day with none shows its weekday. The bar sits at the bottom of the logger, in every way of logging, and Today's still has Now, 30m, 1h and 2h.
+- **Today's order** (2026-11-03). The day's log is gone from it. The rest keeps its order, so "Done logging today?" now follows Log again directly.
+- **Meals around now** (Today's Log Again). Unchanged on Today. The chips under the current hour on the Log tab are Log again's foods only, so meals are one tab or one logger away from there.
+- **The logger's toast.** It sits just above the meal at the bottom, with the rest of what moved there, not 64 or 116 points over the keyboard.
+- **Logging with a sidebar.** Log Food (⌘L), the widget's link and a search with no time set open the pane beside the Log tab, not Foods. Foods stays the screen for comparing, on ⌘F. Today's toolbar stays, and the same toolbar is on the Log tab.
+- **"7 PM picked at noon"** still goes on this evening, and no longer counts until 7 PM.
 
 ## Calls made for warm-ups (2026-11-03)
 

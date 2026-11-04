@@ -47,6 +47,15 @@
       }
     },
     {
+      "id": "log",
+      "uuid": "0d05590d-1c1f-4424-b493-d38e2dbf51e2",
+      "template": "stadig",
+      "captures": {
+        "phone": "log.png",
+        "tablet": "log.png"
+      }
+    },
+    {
       "id": "search",
       "uuid": "65177b0f-87d7-4cc4-9098-bfceeae14650",
       "template": "stadig",

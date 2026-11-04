@@ -24,7 +24,7 @@ nonisolated final class StoreScreenshots: XCTestCase {
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("\(name).png"))
     }
 
-    /// Today with a saved meal just logged from Log Again, so the ring and the timeline have a meal.
+    /// Today with a saved meal just logged from Log Again, so the ring has a meal in it.
     @MainActor
     func testToday() throws {
         let app = XCUIApplication.launched(Self.seed)
@@ -35,6 +35,14 @@ nonisolated final class StoreScreenshots: XCTestCase {
             app.element("toast.message").waitToAppear().waitToDisappear()
         }
         try save("today")
+    }
+
+    /// The Log tab on yesterday, which has its food whenever this runs: today's depends on the hour.
+    @MainActor
+    func testLog() throws {
+        let app = XCUIApplication.launched(Self.seed + ["-tab", "log", "-daysAgo", "1"])
+        app.element("log.entry").waitToAppear()
+        try save("log")
     }
 
     /// The search's results for a common food, over the offline catalogs: the iPhone's logger, and on
