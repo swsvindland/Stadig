@@ -154,6 +154,8 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **A reminder for another day's doses** still shows Today, as it did; Today only ever shows today now, so that day's doses are in the Log tab's day until the next move.
 - **The Mac's scroll to an hour stops an hour early**, because the pinned line sits over the list's top row there. The spike found it; nothing else needed it.
 - **The hour label is the clock's** ("8 AM"), and two hours read the same when the clocks go back.
+- **Planned days have no limit**: the calendar and ⌘] go as far ahead as you like. On a day to come, a day with no calorie target reads "650 kcal planned".
+- **A day to come refuses what has to have happened**: marking it done or fasted, doses, water and weigh-ins, quietly at the model, and the bar drops its scale there.
 - **Today on iPad, the Mac and Vision Pro is one centered column**, 760 pt, rather than two panes: with the table gone there's nothing to sit beside it, and the sidebar keeps Log a click away. Say if you'd rather use the width.
 - **With a tab bar along the top, an iPad's toolbar folds its later items into a … menu.** That now includes Weigh In and Settings on Today. Weigh In is also on Today's card.
 - **Selection's bar names the targets, and Move or Copy is a toggle in it**, with Move first. With the tab bar minimised the targets fold into a menu, since the bar is 252 pt wide there.

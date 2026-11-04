@@ -112,6 +112,29 @@ enum SampleData {
         }
     }
 
+    /// Food logged ahead: dinner later today if there's a later today, then lunch and dinner on the
+    /// next two days. Debug builds only (-seedUpcoming; it needs -seedSampleData).
+    @MainActor
+    static func seedUpcoming(_ model: AppModel) {
+        func food(_ name: String, kcal: Double, at date: Date) -> FoodEntry {
+            FoodEntry(
+                date: date, name: name, amountLabel: "1 serving",
+                nutrients: Nutrients(kcal: kcal, protein: kcal / 15, carbs: kcal / 9, fat: kcal / 30),
+                source: .search)
+        }
+        let today = model.today
+        var foods: [FoodEntry] = []
+        let dinner = today.at(hour: 19, minute: 0)
+        if dinner > Date() { foods.append(food("Salmon and rice", kcal: 650, at: dinner)) }
+        for offset in 1...2 {
+            let day = today.adding(days: offset)
+            foods.append(food("Chicken salad", kcal: 480, at: day.at(hour: 12, minute: 30)))
+            foods.append(food("Pasta bake", kcal: 720, at: day.at(hour: 19, minute: 0)))
+        }
+        model.store.save(foods)
+        model.reload()
+    }
+
     /// Years of the same log (`LongHistory`), through the real store, to see the app with a long
     /// history and measure it. Debug builds only (-seedLongHistory, 5 years unless a number follows).
     @MainActor

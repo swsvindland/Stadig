@@ -33,6 +33,7 @@ struct MacroTrackApp: App {
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
+        if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
         if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }
@@ -40,7 +41,7 @@ struct MacroTrackApp: App {
         if let tab = launch.value(after: "-tab") {
             model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
-        if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.show(day: model.today.adding(days: -days)) }
+        if let days = launch.number(after: "-daysAgo") { model.show(day: model.today.adding(days: -days)) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.

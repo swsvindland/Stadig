@@ -74,7 +74,7 @@ extension AppModel {
     /// Marks doses taken, replacing a skip. Shows Undo when there's more than one.
     func take(_ doses: [DueDose], on day: Day, message: String? = nil) {
         let open = doses.filter { !$0.taken }
-        guard !open.isEmpty else { return }
+        guard !open.isEmpty, day <= today else { return }
         for dose in open {
             if let log = dose.log { store.delete(SupplementLog.self, id: log.id) }
         }
@@ -110,6 +110,7 @@ extension AppModel {
 
     /// A dose outside the plan: one more, now.
     func takeExtra(_ supplement: Supplement, count: Double? = nil) {
+        guard selectedDay <= today else { return }
         let date = selectedDay == today ? Date() : doseDate(.morning, on: selectedDay)
         let log = SupplementLog(
             supplement: supplement, doseID: nil, date: date, day: selectedDay,

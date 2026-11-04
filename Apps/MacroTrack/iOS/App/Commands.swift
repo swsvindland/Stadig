@@ -45,7 +45,6 @@ struct MacroCommands: Commands {
                     .keyboardShortcut("[")
                 Button("Next Day") { step(1) }
                     .keyboardShortcut("]")
-                    .disabled(model.map { $0.selectedDay >= $0.today } ?? true)
                 Divider()
                 Button("Today") {
                     model?.showToday()
@@ -82,7 +81,7 @@ struct MacroCommands: Commands {
     /// The day before or after, on the Log tab, where the change shows.
     func step(_ days: Int) {
         guard let model else { return }
-        model.show(day: min(model.today, model.selectedDay.adding(days: days)))
+        model.show(day: model.selectedDay.adding(days: days))
     }
 }
 

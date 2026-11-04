@@ -155,8 +155,6 @@ struct WeekStrip: View {
         }
         .buttonStyle(.plain)
         .hoverHighlight()
-        // Tomorrow opens with future days.
-        .disabled(day > model.today)
         .accessibilityLabel(Format.day(day, style: .dateTime.weekday(.wide).month().day()))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("log.day")
@@ -177,13 +175,11 @@ struct DaySummaryLine: View {
             HStack(spacing: 8) {
                 Text(left(intake, targets)).font(.subheadline.weight(.semibold).monospacedDigit())
                 if let protein = targets?.protein {
-                    Text("\(Format.grams(max(0, protein - intake.eaten.protein))) protein left").font(.subheadline.monospacedDigit()).foregroundStyle(
-                        Macro.protein.color)
+                    Text("\(Format.grams(max(0, protein - counted(intake).protein))) protein left").font(.subheadline.monospacedDigit())
+                        .foregroundStyle(
+                            Macro.protein.color)
                 }
                 Spacer(minLength: 0)
-                if intake.later.kcal > 0 {
-                    Text("\(Format.kcal(intake.later.kcal)) later").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("log.left")
@@ -204,10 +200,15 @@ struct DaySummaryLine: View {
         }
     }
 
+    /// What's left is counted from what's been eaten today, with what's coming said beside it, and
+    /// from all of a day's food on any other: a planned day is planned against its whole target.
+    func counted(_ intake: DayIntake) -> Nutrients { day == model.today ? intake.eaten : intake.all }
+
     func left(_ intake: DayIntake, _ targets: DailyTargets?) -> String {
-        guard let kcal = targets?.kcal else { return "\(Format.kcal(intake.eaten.kcal)) eaten" }
-        let left = kcal - intake.eaten.kcal
-        return left >= 0 ? "\(Format.kcal(left)) left" : "\(Format.kcal(-left)) over"
+        let later = day == model.today && intake.later.kcal > 0 ? " · \(Format.whole(intake.later.kcal)) later" : ""
+        guard let kcal = targets?.kcal else { return "\(Format.kcal(counted(intake).kcal)) \(day > model.today ? "planned" : "eaten")\(later)" }
+        let left = kcal - counted(intake).kcal
+        return (left >= 0 ? "\(Format.kcal(left)) left" : "\(Format.kcal(-left)) over") + later
     }
 }
 
@@ -483,10 +484,10 @@ struct DayChooser: View {
                 selection: Binding(
                     get: { model.selectedDay.date() },
                     set: { date in
-                        model.selectedDay = min(Day(date), model.today)
+                        model.selectedDay = Day(date)
                         dismiss()
                     }),
-                in: ...model.today.date(), displayedComponents: .date
+                displayedComponents: .date
             )
             .datePickerStyle(.graphical)
             .labelsHidden()

@@ -1235,6 +1235,8 @@ final class AppModel {
     func state(of day: Day) -> DayState? { dayStatus.first { $0.day == day }?.state }
 
     func setState(_ state: DayState?, for day: Day) {
+        // A day that hasn't happened isn't done, fasted or anything else yet.
+        guard day <= today else { return }
         let existing = dayStatus.filter { $0.day == day }
         for e in existing { store.delete(DayStatus.self, id: e.id) }
         if let state { store.save(DayStatus(id: existing.first?.id ?? UUID(), day: day, state: state)) }
@@ -1269,6 +1271,7 @@ final class AppModel {
     var latestWeighIn: WeighIn? { weighIns.last { !$0.excluded } }
 
     func weighIn(kg: Double, date: Date = Date()) {
+        guard date <= Date() else { return }
         let w = WeighIn(date: date, kg: kg)
         store.save(w)
         reload()

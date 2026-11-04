@@ -35,6 +35,7 @@ extension AppModel {
     }
 
     func addWater(ml: Double) {
+        guard selectedDay <= today else { return }
         let log = WaterLog(date: drinkDate(), ml: ml)
         store.save(log)
         reload()

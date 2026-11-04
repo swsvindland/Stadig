@@ -49,6 +49,32 @@ nonisolated final class LogTabUITests: XCTestCase {
         XCTAssertTrue(app.element("log.title").waitToAppear().label.hasPrefix("Today"))
     }
 
+    /// Tomorrow is a tap away, and food logged there waits for its day.
+    @MainActor
+    func testADayAheadTakesFoodThatDoesntCountYet() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedPlan", "-seedUpcoming", "-tab", "log"])
+        app.element("log.title").waitToAppear()
+        // The strip's last day is tomorrow.
+        let days = app.descendants(matching: .any).matching(identifier: "log.day")
+        days.element(boundBy: days.count - 1).tap()
+        XCTAssertFalse(app.element("log.title").label.hasPrefix("Today"))
+        app.shot("log-tomorrow")
+
+        XCTAssertTrue(app.scrollTo(app.logEntry(containing: "Chicken salad")).waitToAppear().label.contains("Later"), "marked as later")
+        XCTAssertTrue(app.element("log.left").label.contains("left"), app.element("log.left").label)
+        if !XCUIApplication.isPad { XCTAssertFalse(app.element("quickLog.weighIn").exists, "nothing to weigh yet") }
+
+        app.scrollTo(app.element("log.add.20")).waitToAppear().tap()
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.message").waitToAppear()
+        app.element("logger.done").waitToAppear().tap()
+        XCTAssertTrue(app.scrollTo(app.logEntry(containing: "Bananas")).waitToAppear().exists)
+    }
+
     /// A hold picks a food out, and a tap on an hour's name picks out the rest; the bar swaps in, and
     /// an hour's + becomes where they go.
     @MainActor

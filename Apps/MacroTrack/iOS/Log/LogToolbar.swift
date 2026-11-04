@@ -40,6 +40,7 @@ struct LogToolbar: ToolbarContent {
                 Label("Weigh In", systemImage: "scalemass")
             }
             .help("Record a weigh-in")
+            .disabled(model.selectedDay > model.today)
             .accessibilityIdentifier("toolbar.weighIn")
             SettingsButton(identifier: "today.settings")
         }

@@ -140,14 +140,17 @@ struct QuickLogBar: View {
             icon("camera", "Log a photo", .camera)
             icon("barcode.viewfinder", "Scan a barcode", .scan)
             icon("text.bubble", "Describe a meal", .describe)
-            Button {
-                model.showWeighIn = true
-            } label: {
-                Image(systemName: "scalemass").frame(width: 44, height: 40).contentShape(.rect)
+            // Nothing to weigh yet on a day to come.
+            if model.selectedDay <= model.today {
+                Button {
+                    model.showWeighIn = true
+                } label: {
+                    Image(systemName: "scalemass").frame(width: 44, height: 40).contentShape(.rect)
+                }
+                .accessibilityLabel("Weigh in")
+                .accessibilityIdentifier("quickLog.weighIn")
+                .padding(.trailing, 6)
             }
-            .accessibilityLabel("Weigh in")
-            .accessibilityIdentifier("quickLog.weighIn")
-            .padding(.trailing, 6)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
