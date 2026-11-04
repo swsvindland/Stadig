@@ -14,10 +14,9 @@ struct TodayView: View {
     }
 }
 
-/// Today as one list: the phone's, and a narrow iPad window's. The food comes first, since logging
-/// is what most visits are for: what's left, the weight, anything the plan asks, then the ways to
-/// log in a tap and the day's log. Meal timing, supplements, drinks and the week's food-quality
-/// suggestions follow it.
+/// Today as one list: the phone's, and a narrow iPad window's, always today. What's left, the
+/// weight, anything the plan asks, then the ways to log in a tap and the day's log. Meal timing,
+/// supplements, drinks and the week's food-quality suggestions follow it.
 struct TodayList: View {
     @Environment(AppModel.self) private var model
     @State private var editing: FoodEntry?
@@ -27,15 +26,15 @@ struct TodayList: View {
             ScrollViewReader { proxy in
                 List {
                     Section {
-                        SummaryCard(day: model.selectedDay)
+                        SummaryCard(day: model.today)
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                     }
-                    WeightSection(day: model.selectedDay)
-                    TodayFood(day: model.selectedDay)
-                    TimelineSections(day: model.selectedDay, editing: $editing)
-                    DayStateSection(day: model.selectedDay)
-                    TodayMore(day: model.selectedDay)
+                    WeightSection(day: model.today)
+                    TodayFood(day: model.today)
+                    TimelineSections(day: model.today, editing: $editing)
+                    DayStateSection(day: model.today)
+                    TodayMore(day: model.today)
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
@@ -43,62 +42,26 @@ struct TodayList: View {
                     withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
                 }
             }
-            .navigationTitle(
-                model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
-            )
-            .toolbar { toolbar }
+            .navigationTitle("Today")
+            .toolbar { ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "today.settings") } }
             .sheet(item: $editing) { entry in
                 EntryEditor(entry: entry)
             }
             .refreshable { await model.refreshHealth() }
         }
     }
-
-    @ToolbarContentBuilder
-    var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .barLeading) {
-            Button {
-                model.selectedDay = model.selectedDay.adding(days: -1)
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .accessibilityLabel("Previous day")
-            .accessibilityIdentifier("today.previousDay")
-            if model.selectedDay < model.today {
-                Button {
-                    model.selectedDay = model.selectedDay.adding(days: 1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                }
-                .accessibilityLabel("Next day")
-                .accessibilityIdentifier("today.nextDay")
-            }
-        }
-        ToolbarItemGroup(placement: .barTrailing) {
-            if model.selectedDay != model.today {
-                Button("Today") { model.selectedDay = model.today }
-                    .accessibilityIdentifier("today.backToToday")
-            }
-            SettingsButton(identifier: "today.settings")
-        }
-    }
 }
 
 /// Above the day's log: what the plan asks for today, then the ways to log in a tap (planned
-/// meals and Log again), or, on a past day, its catch-up.
+/// meals and Log again).
 struct TodayFood: View {
     @Environment(AppModel.self) private var model
     let day: Day
 
     var body: some View {
-        if day == model.today {
-            ActionsSection()
-            PlannedMealsSection(day: day)
-            if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
-        } else {
-            CatchUpSection(day: day)
-            PlannedMealsSection(day: day)
-        }
+        ActionsSection()
+        PlannedMealsSection(day: day)
+        if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
     }
 }
 
@@ -472,7 +435,7 @@ struct ActionRow: View {
     var button: (String, () -> Void)? {
         switch action.kind {
         case .planReady, .reviewPlan: ("See plan", { model.tab = .plan })
-        case .logYesterday: ("Catch up", { model.selectedDay = model.today.adding(days: -1) })
+        case .logYesterday: ("Catch up", { model.show(day: model.today.adding(days: -1)) })
         case .protein: ("Log", { model.openLogger(.search) })
         default: nil
         }

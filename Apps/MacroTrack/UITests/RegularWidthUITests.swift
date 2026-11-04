@@ -45,18 +45,16 @@ nonisolated final class RegularWidthUITests: XCTestCase {
     }
 
     @MainActor
-    func testTodaysLogIsATableEditedBesideIt() {
+    func testTheLogHasColumnsAndEditsAnEntry() {
         continueAfterFailure = false
         // Yesterday has the sample's meals in it.
-        let app = XCUIApplication.launched(["-seedSampleData", "-daysAgo", "1"])
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
 
-        let log = app.element("today.log").waitToAppear()
-        XCTAssertTrue(app.element("today.calories").exists, "the summary is beside the log")
-        XCTAssertTrue(app.element("today.datePicker").exists)
-        XCTAssertTrue(app.element("toolbar.logFood").exists, "every way to log is in the toolbar")
+        app.element("log.list").waitToAppear()
+        XCTAssertTrue(app.element("toolbar.logFood").waitToAppear().exists, "every way to log is in the toolbar")
+        app.shot("log-wide")
 
-        // An entry's amount ("147 g"): a moment's header reads "302 kcal · P 18 …", never ending in grams.
-        log.staticTexts.matching(NSPredicate(format: "label ENDSWITH ' g'")).firstMatch.waitToAppear().tap()
+        app.scrollTo(app.element("log.entry")).waitToAppear().tap()
         app.element("entryEditor.save").waitToAppear()
         app.element("entryEditor.cancel").tap()
         app.element("entryEditor.save").waitToDisappear()
@@ -69,11 +67,11 @@ nonisolated final class RegularWidthUITests: XCTestCase {
 
         let table = app.element("history.table").waitToAppear()
         XCTAssertGreaterThan(table.cells.count, 20, "three and a half weeks of days")
-        // Show in Today ends the day's log, at the foot of the pane: up from the screen's edge.
+        // Show in Log ends the day's log, at the foot of the pane: up from the screen's edge.
         let day = app.element("history.day").waitToAppear()
         day.swipeUp(velocity: .slow)
-        app.element("history.showInToday").waitToAppear().tap()
-        app.element("today.log").waitToAppear()
+        app.element("history.showInLog").waitToAppear().tap()
+        app.element("log.list").waitToAppear()
     }
 
     @MainActor

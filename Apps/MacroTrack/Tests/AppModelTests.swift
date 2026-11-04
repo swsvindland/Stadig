@@ -103,7 +103,7 @@ struct AppModelTests {
         SampleData.seedSupplements(model)
         #expect(model.supplements.count == 4)
         #expect(model.tracksDrinks)
-        #expect(model.entries(on: model.today).contains { $0.name == "Coffee" }, "this morning's coffee")
+        #expect(model.allEntries(on: model.today).contains { $0.name == "Coffee" }, "this morning's coffee")
         let taken = Set(model.supplementLogs.map(\.day))
         #expect(taken.count > 10 && taken.allSatisfy { $0 < model.today }, "doses on most of the two weeks before today")
     }

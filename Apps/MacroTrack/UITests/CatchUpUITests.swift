@@ -1,9 +1,9 @@
 import XCTest
 
-/// Catching up a day that wasn't logged as it happened: Today's "Catch up" opens yesterday with
-/// each time this person usually eats, logged in a tap from what they last ate then; a time opens
-/// the logger there, its meals ranked for that time and the other usual times a tap away; "Log
-/// all" is the rest of the day at once.
+/// Catching up a day that wasn't logged as it happened: Today's "Catch up" opens yesterday in the
+/// Log tab with each time this person usually eats in its hour, logged in a tap from what they last
+/// ate then; a time opens the logger there, its meals ranked for that time and the other usual
+/// times a tap away; "Log all" is the rest of the day at once.
 nonisolated final class CatchUpUITests: XCTestCase {
     @MainActor
     func testCatchingUpYesterdayFromItsUsualTimes() {
@@ -14,18 +14,20 @@ nonisolated final class CatchUpUITests: XCTestCase {
         let summary = app.element("today.calories").waitToAppear()
         app.scrollTo(app.buttons["Catch up"], beside: summary).tap()
 
+        // A List builds the hours as they come into view, so the hours are walked rather than counted.
         let rows = app.descendants(matching: .any).matching(identifier: "catchUp.log")
-        app.scrollTo(rows.firstMatch, beside: summary)
-        let usual = rows.count
-        XCTAssertEqual(usual, 5)
+        app.element("log.list").waitToAppear()
+        XCTAssertTrue(app.element("catchUp.logAll", labelContaining: "Log all 5").waitToAppear().exists, "five usual times")
+        let usual = 5
+        app.scrollTo(rows.firstMatch)
 
         // Breakfast as last eaten, in one tap.
         rows.firstMatch.tap()
         app.element("toast.message", labelContaining: "Logged").waitToAppear()
-        XCTAssertEqual(rows.count, usual - 1)
+        XCTAssertTrue(app.element("catchUp.logAll", labelContaining: "Log all 4").waitToAppear().exists)
 
         // Lunch's time opens the logger there: lunch comes first, whatever the clock says.
-        app.scrollTo(app.element("catchUp.time"), beside: summary).tap()
+        app.scrollTo(app.element("catchUp.time")).tap()
         XCTAssertTrue(app.element("logger.savedMeal").waitToAppear().label.contains("Chicken and rice"))
         let times = app.descendants(matching: .any).matching(identifier: "logger.usualTime")
         XCTAssertEqual(times.count, usual)
@@ -41,8 +43,7 @@ nonisolated final class CatchUpUITests: XCTestCase {
         app.element("logger.done").tap()
 
         // Back on the day, the rest at once.
-        XCTAssertEqual(rows.count, usual - 2)
-        app.scrollTo(app.element("catchUp.logAll"), beside: summary).tap()
+        app.element("catchUp.logAll", labelContaining: "Log all 3").waitToAppear().tap()
         app.element("toast.message", labelContaining: "Logged 3 meals").waitToAppear()
         XCTAssertEqual(rows.count, 0)
     }

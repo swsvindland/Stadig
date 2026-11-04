@@ -38,8 +38,7 @@ struct TodayBoard: View {
                         }
                     }
             }
-            .navigationTitle(title)
-            .toolbar { DayToolbar() }
+            .navigationTitle("Today")
             .toolbar { LogToolbar() }
             .sideInspector(isPresented: $editing, min: 300, ideal: 340, max: 420) {
                 if let entry = entries.first(where: { $0.id == selection }) {
@@ -55,10 +54,6 @@ struct TodayBoard: View {
         .onChange(of: selection) { _, selected in if selected != nil { editing = true } }
         .onChange(of: editing) { _, open in if !open { selection = nil } }
         .onChange(of: model.selectedDay) { _, _ in selection = nil }
-    }
-
-    var title: String {
-        model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
     }
 
     /// The ring, the weight, the day's actions and quick logs: the phone's Today, in its order,
@@ -183,44 +178,6 @@ struct TodayBoard: View {
                     }
                 }
             }
-    }
-}
-
-/// The day being looked at: back, forward, a calendar, and back to today. ⌘[ and ⌘] (and ⌘T) are
-/// in the Day menu.
-struct DayToolbar: ToolbarContent {
-    @Environment(AppModel.self) private var model
-
-    var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            Button {
-                model.selectedDay = model.selectedDay.adding(days: -1)
-            } label: {
-                Label("Previous Day", systemImage: "chevron.left")
-            }
-            .help("Previous day (⌘[)")
-            .accessibilityIdentifier("today.previousDay")
-            DatePicker(
-                "Day",
-                selection: Binding(get: { model.selectedDay.date() }, set: { model.selectedDay = min(Day($0), model.today) }),
-                in: ...model.today.date(), displayedComponents: .date
-            )
-            .labelsHidden()
-            .accessibilityIdentifier("today.datePicker")
-            Button {
-                model.selectedDay = model.selectedDay.adding(days: 1)
-            } label: {
-                Label("Next Day", systemImage: "chevron.right")
-            }
-            .disabled(model.selectedDay >= model.today)
-            .help("Next day (⌘])")
-            .accessibilityIdentifier("today.nextDay")
-            if model.selectedDay != model.today {
-                Button("Today") { model.selectedDay = model.today }
-                    .help("Back to today (⌘T)")
-                    .accessibilityIdentifier("today.backToToday")
-            }
-        }
     }
 }
 

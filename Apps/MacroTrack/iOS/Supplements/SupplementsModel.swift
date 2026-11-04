@@ -50,8 +50,8 @@ extension AppModel {
 
     // MARK: Doses
 
-    /// A tap on a reminder: Today on its day (not past today, for a model whose day has gone stale),
-    /// in place of any sheet that's up, scrolled to the supplements, which sit below the food.
+    /// A tap on a reminder: Today, in place of any sheet that's up, scrolled to the supplements. A
+    /// reminder from another day shows that day's on the Log tab's day, which Today doesn't change.
     func showDoses(on day: Day) {
         dismissSheets()
         selectedDay = min(day, today)

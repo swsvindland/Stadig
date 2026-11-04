@@ -11,14 +11,15 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
-/// Where the app is. The iPhone's tab bar has Today, Plan and Progress; the sidebar on iPad, the
-/// Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
+/// Where the app is. The iPhone's tab bar has Today, Log, Plan and Progress; the sidebar on iPad,
+/// the Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
 enum AppTab: String, Hashable, CaseIterable {
-    case today, foods, mealPlan, supplements, plan, progress, history
+    case today, log, foods, mealPlan, supplements, plan, progress, history
 
     var title: String {
         switch self {
         case .today: "Today"
+        case .log: "Log"
         case .foods: "Foods"
         case .mealPlan: "Meal Plan"
         case .supplements: "Supplements"
@@ -33,9 +34,24 @@ enum AppTab: String, Hashable, CaseIterable {
     var isSidebarOnly: Bool {
         switch self {
         case .foods, .mealPlan, .supplements, .history: true
-        case .today, .plan, .progress: false
+        case .today, .log, .plan, .progress: false
         }
     }
+
+    /// The nearest thing the tab bar has, for a window narrowed to no room for the sidebar.
+    var compactFallback: AppTab {
+        switch self {
+        case .mealPlan: .plan
+        case .history: .progress
+        case .foods: .log
+        case .supplements: .today
+        case .today, .log, .plan, .progress: self
+        }
+    }
+
+    /// Screens that log to a day other than today. Leaving them goes back to today: the one rule that
+    /// stops a food landing on the wrong day.
+    var keepsDay: Bool { self == .log || self == .foods }
 }
 
 /// The ways into logging. Each opens straight to its first step.
@@ -86,6 +102,7 @@ final class AppModel {
     /// What Health records this app wrote carry as their source: the current id and the one it had
     /// before the 2026-10 rename, so samples saved before it still count as the app's own.
     static let ownBundlePrefixes = ["dev.svindland.stadig.macro", "dev.svindland.macrotrack"]
+    static let tabKey = "app.tab"
 
     let store: RecordStore
     let shared: SharedContainer
@@ -163,7 +180,15 @@ final class AppModel {
     private(set) var fermentedFix: FermentedFix?
 
     // Presentation.
-    var tab: AppTab = .today
+    /// Where the app is, kept for the next launch. Links, widgets, Siri and controls land where they
+    /// always did, whatever this says.
+    var tab: AppTab = .today {
+        didSet {
+            guard tab != oldValue else { return }
+            defaults?.set(tab.rawValue, forKey: Self.tabKey)
+            if oldValue.keepsDay, !tab.keepsDay { selectedDay = today }
+        }
+    }
     /// The logger on screen. Closing it, by Done, a swipe or a link opening something else, drops
     /// its picked time here rather than in the sheet's onDismiss, which runs after the close
     /// animation: a "+" on a moment tapped meanwhile would lose its time to it.
@@ -200,6 +225,8 @@ final class AppModel {
     var usesSidebar = false
     /// Asks the Foods screen to put the cursor in its search field (⌘F, Log Food, a widget's search).
     private(set) var foodSearchRequest = 0
+    /// Asks the Log tab to go to the hour a day opens on: back from a while away, or a tap on today.
+    private(set) var logAnchorRequest = 0
     /// Asks Today to scroll to the day's supplements (a tap on a reminder): by evening the food
     /// above them can be a long way down.
     var supplementsScrollRequest = 0
@@ -207,7 +234,9 @@ final class AppModel {
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
-    /// The day Today shows and logs to: today, or a day being caught up.
+    /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
+    /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
+    /// launch, at midnight, on coming back after a while away, and from anywhere outside the app.
     var selectedDay: Day = .today {
         didSet {
             guard selectedDay != oldValue else { return }
@@ -249,6 +278,9 @@ final class AppModel {
     /// The analysis running now, and which recompute it was for: a newer one's replaces it.
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     @ObservationIgnored private var analysisGeneration = 0
+    /// When the app last left the front, to know a while away from a glance at a message.
+    @ObservationIgnored private var wentAway: Date?
+    @ObservationIgnored private var targetsByDay: (version: Int, targets: [Day: DailyTargets]) = (0, [:])
     /// Where "Not now" on a suggestion is remembered between launches; nil keeps it for this run.
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var hiddenUntil: [String: Date] = [:]
@@ -304,6 +336,7 @@ final class AppModel {
         self.usesSystemServices = usesSystemServices
         purchases = Purchases(.macro, store: store)
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
+        tab = defaults?.string(forKey: Self.tabKey).flatMap(AppTab.init(rawValue:)) ?? .today
         foodClock = FoodClock { [weak self] in self?.refreshDay() }
         reload()
         self.backgroundAnalysis = backgroundAnalysis
@@ -496,7 +529,7 @@ final class AppModel {
         let interval = LogPath.begin("recompute")
         defer { LogPath.end(interval) }
         if today != .today {
-            if selectedDay == today { selectedDay = .today }
+            selectedDay = .today
             today = .today
         }
         let now = Date()
@@ -853,7 +886,32 @@ final class AppModel {
         logger = mode
     }
 
-    /// A destination by name (the Go menu, ⌘1…⌘7). One only the sidebar has, asked for without one
+    /// A day in the Log tab, where a day other than today is looked at.
+    func show(day: Day) {
+        tab = .log
+        selectedDay = day
+    }
+
+    /// Back to today's log, at the hour it is.
+    func showToday() {
+        selectedDay = today
+        logAnchorRequest &+= 1
+    }
+
+    /// How long away counts as a new visit: long enough that the day being looked at was for then.
+    static let awayLimit: TimeInterval = 10 * 60
+
+    func wentToBackground(at date: Date = Date()) { wentAway = date }
+
+    /// After a while away the Log tab is back on today at the hour it is, unless something's open
+    /// that's mid-way through a day.
+    func cameToFront(at date: Date = Date()) {
+        defer { wentAway = nil }
+        guard let wentAway, date.timeIntervalSince(wentAway) >= Self.awayLimit, logger == nil else { return }
+        showToday()
+    }
+
+    /// A destination by name (the Go menu, ⌘1…⌘8). One only the sidebar has, asked for without one
     /// (an iPhone with a keyboard), opens its nearest equivalent instead.
     func go(to destination: AppTab) {
         guard destination.isSidebarOnly, !usesSidebar else {
@@ -863,8 +921,7 @@ final class AppModel {
         switch destination {
         case .foods: openLogger(.search)
         case .supplements: showSupplements = true
-        case .mealPlan: tab = .plan
-        default: tab = .progress
+        default: tab = destination.compactFallback
         }
     }
 
@@ -1143,6 +1200,20 @@ final class AppModel {
 
     /// A day's whole log, eaten and still to come: what its rows show.
     func allEntries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
+
+    /// A day's targets as they stood that day, for the Log tab's line. Kept until the analysis
+    /// moves on: working one out reads the plan and every check-in.
+    func targets(on day: Day) -> DailyTargets? {
+        guard let analysis else { return nil }
+        if day == today { return analysis.targets }
+        if let known = analysis.dayTargets[day] { return known }
+        if targetsByDay.version != analysisVersion { targetsByDay = (analysisVersion, [:]) }
+        if let kept = targetsByDay.targets[day] { return kept }
+        guard let state = state(now: Date()) else { return nil }
+        let targets = MacroAnalyst.targets(on: day, state, analysis)
+        targetsByDay.targets[day] = targets
+        return targets
+    }
 
     /// A day's food by whether it's happened yet, with the doses taken counted as eaten.
     func dayIntake(on day: Day, now: Date = Date()) -> DayIntake {

@@ -313,11 +313,8 @@ struct HistoryDayDetail: View {
             }
             DayStateSection(day: day)
             Section {
-                Button("Show in Today", systemImage: "fork.knife") {
-                    model.selectedDay = day
-                    model.tab = .today
-                }
-                .accessibilityIdentifier("history.showInToday")
+                Button("Show in Log", systemImage: "list.bullet.clipboard") { model.show(day: day) }
+                    .accessibilityIdentifier("history.showInLog")
             }
         }
         .accessibilityIdentifier("history.day")

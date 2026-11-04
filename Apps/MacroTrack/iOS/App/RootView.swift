@@ -3,10 +3,11 @@ import SwiftUI
 import SystemPurchases
 import SystemStore
 
-/// Today to log, Plan for the phase and targets, Progress for the trend. Logging is one tap away
-/// from every tab, in the bar above the tabs. With room for a sidebar (iPad, the Mac, Vision Pro)
-/// the sidebar adds Foods to find and compare, the Meal Plan, Supplements and History, and logging
-/// moves to Today's toolbar, the Foods screen and the menu bar.
+/// Today for the day at a glance, Log for its food hour by hour, Plan for the phase and targets,
+/// Progress for the trend. Logging is one tap away from every tab, in the bar above the tabs. With
+/// room for a sidebar (iPad, the Mac, Vision Pro) the sidebar adds Foods to find and compare, the
+/// Meal Plan, Supplements and History, and logging moves to the toolbars, the Foods screen and the
+/// menu bar.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -55,13 +56,8 @@ struct RootView: View {
             model.usesSidebar = wide
             // Narrowed (an iPad window in Split View) on a screen only the sidebar has: the nearest
             // one the tab bar has.
-            guard !wide, model.tab.isSidebarOnly else { return }
-            model.tab =
-                switch model.tab {
-                case .mealPlan: .plan
-                case .history: .progress
-                default: .today
-                }
+            guard !wide else { return }
+            model.tab = model.tab.compactFallback
         }
         #if os(macOS)
         .onChange(of: model.showSettings, initial: true) { _, show in
@@ -76,6 +72,7 @@ struct RootView: View {
         @Bindable var model = model
         return TabView(selection: $model.tab) {
             Tab("Today", systemImage: "fork.knife", value: AppTab.today) { TodayView() }
+            Tab("Log", systemImage: "list.bullet.clipboard", value: AppTab.log) { LogTab() }
             if wide {
                 TabSection("Food") {
                     Tab("Foods", systemImage: "carrot", value: AppTab.foods) { FoodsView() }
@@ -129,7 +126,7 @@ struct QuickLogBar: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
-                    if placement != .inline { Text("Log food").foregroundStyle(.secondary) }
+                    if placement != .inline { Text(model.logTargetTitle).foregroundStyle(.secondary) }
                     Spacer(minLength: 0)
                 }
                 .padding(.leading, 16)

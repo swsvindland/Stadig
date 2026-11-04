@@ -148,6 +148,12 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Every way to log ends back at the search**, with the meal in sight and Undo over it. Quick add's Next moves between its fields, since a number pad has no key for that. The time bar is now in every way of logging, so the time menu in the title went.
 - **Done, the ways to log and the time sit at the bottom**, the ways to log hidden while something's typed. The toast sits just above the meal there, rather than over the search.
 - **A food searched for from the AI's review goes straight back to the review**, at that item's unit, with no amount step. Its amount is a tap away there.
+- **The day stays between the Log tab and Foods**, and goes back to today on leaving the pair. The plan says leaving either; hopping between them to find a food for Monday shouldn't lose Monday.
+- **Foods falls back to the Log tab on a window too narrow for the sidebar**, Supplements to Today, as before for the rest.
+- **Tomorrow is on the week strip but off until future days** (stage 10), and the calendar in the title stops at today until then.
+- **A reminder for another day's doses** still shows Today, as it did; Today only ever shows today now, so that day's doses are in the Log tab's day until the next move.
+- **The Mac's scroll to an hour stops an hour early**, because the pinned line sits over the list's top row there. The spike found it; nothing else needed it.
+- **The hour label is the clock's** ("8 AM"), and two hours read the same when the clocks go back.
 
 ## Calls made for warm-ups (2026-11-03)
 

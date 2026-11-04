@@ -40,7 +40,7 @@ struct MacroTrackApp: App {
         if let tab = launch.value(after: "-tab") {
             model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
-        if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.selectedDay = model.today.adding(days: -days) }
+        if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.show(day: model.today.adding(days: -days)) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.
@@ -101,6 +101,7 @@ struct MacroTrackApp: App {
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
+                    model.cameToFront()
                     model.refreshDay()
                     // Apple Intelligence may have been turned on, or finished downloading, meanwhile.
                     model.ai.configure(catalog: model.catalog, allowCloud: model.settings.allowCloudAI)
@@ -115,6 +116,7 @@ struct MacroTrackApp: App {
                         model.askForPurchaseIfDue()
                     }
                 case .background:
+                    model.wentToBackground()
                     releaseCatalogMemory(model)
                 default:
                     break
