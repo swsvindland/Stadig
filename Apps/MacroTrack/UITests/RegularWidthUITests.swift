@@ -81,6 +81,28 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("toast.undo").waitToAppear()
     }
 
+    /// The pane is part of the Log tab: leaving it closes the pane, so a food logged on another tab
+    /// says so there, with its Undo, rather than in a pane out of sight.
+    @MainActor
+    func testLeavingTheLogClosesThePane() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-toastSeconds", "30"])
+        app.scrollTo(app.element("log.add.20")).waitToAppear().tap()
+        app.element("logger.done").waitToAppear()
+
+        app.openTab("Foods")
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana raw")
+        app.element("foods.log").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        // ⌘2: the search field has the sidebar's toggle out of reach.
+        app.typeKey("2", modifierFlags: .command)
+        app.element("log.list").waitToAppear()
+        XCTAssertFalse(app.element("logger.done").waitForExistence(timeout: 2), "the pane stayed closed")
+    }
+
     @MainActor
     func testTheDaySortsFromItsMenu() {
         continueAfterFailure = false

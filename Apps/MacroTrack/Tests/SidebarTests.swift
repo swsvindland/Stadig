@@ -33,6 +33,40 @@ struct SidebarTests {
         #expect(model.logger == .search && model.loggerTime == earlier)
     }
 
+    /// The pane is part of the Log tab. Left open behind another tab it would go on logging at its
+    /// picked hour, out of sight, and hold the toast where no one can see it or its Undo.
+    @Test(arguments: [AppTab.today, .foods, .plan])
+    func leavingTheLogClosesItsPane(_ destination: AppTab) {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.search, at: model.today.at(hour: 19, minute: 0))
+
+        model.tab = destination
+
+        #expect(model.logger == nil)
+        #expect(model.loggerTime == nil, "a one-tap log on this tab is for now")
+
+        // Opening one from here goes back to the Log tab, as ever.
+        model.openLogger(.search)
+        #expect(model.tab == .log)
+        #expect(model.logger == .search)
+    }
+
+    /// A sheet sits over whichever tab: a link can change the tab under it without closing it.
+    @Test func withoutTheSidebarTheLoggerOutlastsATabChange() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let dinner = model.today.at(hour: 19, minute: 0)
+        model.tab = .log
+        model.openLogger(.search, at: dinner)
+
+        model.tab = .plan
+
+        #expect(model.logger == .search)
+        #expect(model.loggerTime == dinner)
+    }
+
     @Test func foodsStaysTheScreenForComparing() {
         let model = TestEnvironment().model()
         model.onboard()

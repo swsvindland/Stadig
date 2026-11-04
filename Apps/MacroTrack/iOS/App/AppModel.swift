@@ -188,6 +188,9 @@ final class AppModel {
         didSet {
             guard tab != oldValue else { return }
             defaults?.set(tab.rawValue, forKey: Self.tabKey)
+            // Where it's a pane it's part of the Log tab. Left open behind another tab, it would go
+            // on logging at its picked time, out of sight, and hold the toast where it can't be seen.
+            if usesSidebar, tab != .log { logger = nil }
             if oldValue.keepsDay, !tab.keepsDay {
                 selectedDay = today
                 clearSelection()
