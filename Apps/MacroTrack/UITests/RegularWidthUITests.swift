@@ -92,6 +92,27 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         app.element("log.list").waitToAppear()
     }
 
+    /// The table's own way there: a row's menu, as a right-click has it. The Mac's double-click takes
+    /// the same path, and the Mac has no UI tests.
+    @MainActor
+    func testATableRowsMenuShowsItsDayInTheLog() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "history"])
+
+        // Two cells of headers, then the newest day: this row is yesterday's ("Tue, Nov 3").
+        let row = app.element("history.table").waitToAppear().cells.element(boundBy: 3).waitToAppear()
+        let date = try XCTUnwrap(row.staticTexts.firstMatch.label.split(separator: " ").last)
+        row.press(forDuration: 1.2)
+        // The pane beside the table has a button of this name too.
+        let menuItem = NSPredicate(format: "label == 'Show in Log' AND identifier != 'history.showInLog'")
+        app.buttons.matching(menuItem).firstMatch.waitToAppear().tap()
+
+        // The Log tab, on that day ("Tuesday, November 3. Choose a day").
+        let title = app.element("log.title").waitToAppear().label
+        XCTAssertFalse(title.hasPrefix("Today"), title)
+        XCTAssertTrue(title.contains(" \(date)."), title)
+    }
+
     @MainActor
     func testTheMealPlanShowsTheWeekGroceriesAndPrepTogether() {
         continueAfterFailure = false

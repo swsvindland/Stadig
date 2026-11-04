@@ -100,11 +100,11 @@ struct HistoryView: View {
             .width(min: 60, ideal: 66, max: cap(72))
         }
         #if os(macOS)
-        // A double-click shows the day in Today.
+        // A double-click shows the day in the Log tab.
         .contextMenu(forSelectionType: Day.self) { days in
             dayMenu(days)
         } primaryAction: { days in
-            if let day = days.first { show(day) }
+            if let day = days.first { model.show(day: day) }
         }
         #else
         // A tap selects; the day's log beside it has Show in Log.
@@ -134,7 +134,7 @@ struct HistoryView: View {
     @ViewBuilder
     func dayMenu(_ days: Set<Day>) -> some View {
         if let day = days.first {
-            Button("Show in Log", systemImage: "list.bullet.clipboard") { show(day) }
+            Button("Show in Log", systemImage: "list.bullet.clipboard") { model.show(day: day) }
             if day < model.today {
                 Menu("Mark As") {
                     ForEach([DayState.complete, .partial, .fasting], id: \.self) { state in
@@ -143,11 +143,6 @@ struct HistoryView: View {
                 }
             }
         }
-    }
-
-    func show(_ day: Day) {
-        model.selectedDay = day
-        model.tab = .today
     }
 
     func load() async {
