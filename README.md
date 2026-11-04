@@ -6,7 +6,7 @@
 - **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 - **Stadig Mind** is the doc's Knowledge app, "Stadig Lift for the mind": focused 25-minute sessions in Japanese, maths, writing and reading. Two weeks find a level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before they'd be forgotten, and something new comes only once the last thing has stuck. Intelligence and Wisdom move only on check-in tests and finished books. It's at its best at a desk: on the Mac and an iPad with a keyboard, sessions run full-width and entirely from the keyboard. iPhone, iPad, Mac and Apple Vision Pro, with widgets.
 
-This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. One-time purchases, no subscriptions, and no third-party dependencies.
+This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. Each app is free for 21 days, then a one-time purchase or a monthly subscription (`SystemPurchases`, and [docs/app-store-connect.md](docs/app-store-connect.md) for the store's side). No third-party dependencies.
 
 ## Layout
 
@@ -16,6 +16,7 @@ Packages/             Local Swift packages: all the logic, each with its own tes
   ExerciseLibrary/    332 tagged exercises, substitutions, injury filtering, drills
   SystemStore/        Each app's CloudKit-synced database, the shared App Group container (and FamilySync, which
                       carries it to the person's other devices), backups, CSV
+  SystemPurchases/    How each app is paid for: the free days, StoreKit, and the one paywall they all show
   HealthBridge/       HealthKit read/write, and the Watch's live workout session
   LiftEngine/         Stadig Lift's engine: gyms, generator, assessment, session planner, live session, analysis
   NutritionEngine/    Stadig Macro's engine: weight trend, maintenance, assessment, phase planner, check-ins, targets
@@ -110,7 +111,7 @@ Building the catalogs from source instead of downloading them: `Apps/MacroTrack/
 | Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) |
 | iCloud containers | `iCloud.dev.svindland.stadig.lift`, and the family's `iCloud.dev.svindland.stadig` | `iCloud.dev.svindland.stadig.macro`, and the family's |
 | App Group | `group.dev.svindland.stadig`, shared by the whole family | same |
-| In-app purchase | `dev.svindland.stadig.lift.unlock` (non-consumable) | `dev.svindland.stadig.macro.unlock` (non-consumable) |
+| In-app purchases | `dev.svindland.stadig.lift.unlock` (non-consumable), `dev.svindland.stadig.lift.monthly` (subscription) | `dev.svindland.stadig.macro.unlock` (non-consumable), `dev.svindland.stadig.macro.monthly` (subscription) |
 | URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
 
-Stadig Mind is `dev.svindland.stadig.mind` (`.widgets`), with `iCloud.dev.svindland.stadig.mind` (and the family's) and `dev.svindland.stadig.mind.unlock`. Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
+Stadig Mind is `dev.svindland.stadig.mind` (`.widgets`), with `iCloud.dev.svindland.stadig.mind` (and the family's), `dev.svindland.stadig.mind.unlock` and `dev.svindland.stadig.mind.monthly`. Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).

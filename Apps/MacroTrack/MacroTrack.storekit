@@ -1,14 +1,14 @@
 {
   "identifier" : "4D2E57D0",
-  "nonRenewingSubscriptions" : [ ],
+  "nonRenewingSubscriptions" : [],
   "products" : [
     {
-      "displayPrice" : "24.99",
+      "displayPrice" : "29.99",
       "familyShareable" : true,
       "internalID" : "4D2E57D1",
       "localizations" : [
         {
-          "description" : "Stadig Macro, unlocked for good. No subscription.",
+          "description" : "Stadig Macro, yours for good. Pay once.",
           "displayName" : "Stadig Macro",
           "locale" : "en_US"
         }
@@ -23,10 +23,40 @@
     "_developerTeamID" : "",
     "_failTransactionsEnabled" : false,
     "_locale" : "en_US",
-    "_storefront" : "USA",
-    "_storeKitErrors" : [ ]
+    "_storeKitErrors" : [],
+    "_storefront" : "USA"
   },
-  "subscriptionGroups" : [ ],
+  "subscriptionGroups" : [
+    {
+      "id" : "4C1F58E0",
+      "localizations" : [],
+      "name" : "Stadig Macro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "2.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "4C1F58E1",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "All of Stadig Macro, paid month to month.",
+              "displayName" : "Stadig Macro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "dev.svindland.stadig.macro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Stadig Macro monthly",
+          "subscriptionGroupID" : "4C1F58E0",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
   "version" : {
     "major" : 4,
     "minor" : 0

@@ -26,7 +26,7 @@ Until the Xcode Cloud workflows below exist, nothing compiles the apps on push: 
   1. Branch `release/lift-1.1` (or `macro-…`, `mind-…`) from `main`.
   2. On the release branch, set that app's entry in `VERSIONS` in `Scripts/generate-project.py` to the version you're shipping, run it, commit.
   3. On `main`, bump the same entry to the next version (1.2) straight away: TestFlight refuses builds of a version that's already been approved, so `main` must never build a shipped version.
-  4. Before the first release only: set `Purchases.enabled` to `true` in the app's `Purchase/Purchases.swift` and check the StoreKit price. A release-branch archive with purchases off fails on purpose (`ci_pre_xcodebuild.sh`), since it would ship the paid app unlocked.
+  4. Before the first release only: set up the products in App Store Connect ([app-store-connect.md](app-store-connect.md)). Purchases are on in each app's `Purchase/Purchases.swift`; a release-branch archive with `enabled: false` there fails on purpose (`ci_pre_xcodebuild.sh`), since it would ship the paid app unlocked.
   5. Push the release branch. The Release workflow tests, archives and uploads; submit the build for review in App Store Connect.
   6. Fixes for that release go on the release branch and are merged back to `main`. Tag what shipped (`lift-v1.1`).
 
@@ -55,9 +55,9 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 
 **The app's folders** (the file filter: start if any file here changes):
 
-- Stadig Lift: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/LiftEngine`
-- Stadig Macro: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Scripts/catalogs.manifest`
-- Stadig Mind: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemAI`, `Packages/MindEngine`, `Scripts/catalogs.manifest`
+- Stadig Lift: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/LiftEngine`
+- Stadig Macro: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Scripts/catalogs.manifest`
+- Stadig Mind: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/SystemAI`, `Packages/MindEngine`, `Scripts/catalogs.manifest`
 
 (`python3 Scripts/generate-project.py --packages <App>` prints each app's packages; keep these lists in step when an app gains one.)
 

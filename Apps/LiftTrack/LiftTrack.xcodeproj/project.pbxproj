@@ -11,6 +11,7 @@
 		4C1F086D11F50C2ED43B9779 /* LiftTrackWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4C1F8FF5241EF482F2E80307 /* LiftTrackWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4C1F13F97E8A1004A07BA9C0 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F4D1FEDB602A4856FCECC /* HealthBridge */; };
 		4C1F1C3629994C194D6A0BDE /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F1B7767CCDD2222A06DE6 /* SystemCore */; };
+		4C1F2646B1B0A9D777A993C7 /* SystemPurchases in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1FD635F657E2308541C2E4 /* SystemPurchases */; };
 		4C1F3D5D82663D06861D608E /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1FB666E42381AD215AA508 /* ExerciseLibrary */; };
 		4C1F4B0B49702571024D9A55 /* HealthBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F2908801A952F633063C1 /* HealthBridge */; };
 		4C1F57251A91A276793A443A /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F40C2F68AADFFA39F6663 /* SystemCore */; };
@@ -179,6 +180,7 @@
 				4C1F1C3629994C194D6A0BDE /* SystemCore in Frameworks */,
 				4C1F835F934A900ADAF00E66 /* ExerciseLibrary in Frameworks */,
 				4C1F5FCDACFB001F7DD83488 /* SystemStore in Frameworks */,
+				4C1F2646B1B0A9D777A993C7 /* SystemPurchases in Frameworks */,
 				4C1F4B0B49702571024D9A55 /* HealthBridge in Frameworks */,
 				4C1FF7F19E0EE2376E01A1DC /* LiftEngine in Frameworks */,
 			);
@@ -364,6 +366,7 @@
 				4C1F1B7767CCDD2222A06DE6 /* SystemCore */,
 				4C1F79889302F3CA596230B7 /* ExerciseLibrary */,
 				4C1F7C3A652CBE38F5E1A2FA /* SystemStore */,
+				4C1FD635F657E2308541C2E4 /* SystemPurchases */,
 				4C1F2908801A952F633063C1 /* HealthBridge */,
 				4C1F305888CE3E3240BEC7D3 /* LiftEngine */,
 			);
@@ -463,6 +466,7 @@
 				4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */,
 				4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */,
 				4C1FA07496BCCFCC81C8E8A6 /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */,
+				4C1F91A3752B0AF24DC7E0BC /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */,
 				4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
 				4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */,
 			);
@@ -1208,6 +1212,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
 		};
+		4C1F91A3752B0AF24DC7E0BC /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/SystemPurchases;
+		};
 		4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/LiftEngine;
@@ -1276,6 +1284,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
 			productName = ExerciseLibrary;
+		};
+		4C1FD635F657E2308541C2E4 /* SystemPurchases */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F91A3752B0AF24DC7E0BC /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */;
+			productName = SystemPurchases;
 		};
 		4C1FF8092AAE5CB7705BBE92 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;

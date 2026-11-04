@@ -1,14 +1,14 @@
 {
   "identifier" : "4E3F57D0",
-  "nonRenewingSubscriptions" : [ ],
+  "nonRenewingSubscriptions" : [],
   "products" : [
     {
-      "displayPrice" : "24.99",
+      "displayPrice" : "29.99",
       "familyShareable" : true,
       "internalID" : "4E3F57D1",
       "localizations" : [
         {
-          "description" : "Stadig Mind, unlocked for good. No subscription.",
+          "description" : "Stadig Mind, yours for good. Pay once.",
           "displayName" : "Stadig Mind",
           "locale" : "en_US"
         }
@@ -23,10 +23,40 @@
     "_developerTeamID" : "",
     "_failTransactionsEnabled" : false,
     "_locale" : "en_US",
-    "_storefront" : "USA",
-    "_storeKitErrors" : [ ]
+    "_storeKitErrors" : [],
+    "_storefront" : "USA"
   },
-  "subscriptionGroups" : [ ],
+  "subscriptionGroups" : [
+    {
+      "id" : "4C1F59E0",
+      "localizations" : [],
+      "name" : "Stadig Mind",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "2.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "4C1F59E1",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "All of Stadig Mind, paid month to month.",
+              "displayName" : "Stadig Mind Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "dev.svindland.stadig.mind.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Stadig Mind monthly",
+          "subscriptionGroupID" : "4C1F59E0",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
   "version" : {
     "major" : 4,
     "minor" : 0

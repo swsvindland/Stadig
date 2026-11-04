@@ -116,7 +116,7 @@ Each app owns its own **SwiftData + CloudKit** database: one generic `RecordRow`
 | Apple Health | `AppModel.refreshHealth`: at launch, on each return to the app (at most every ten minutes) and whenever Health reports a new workout or weigh-in. Deleting a measurement takes its samples out of Health. |
 | Widgets | `WidgetBridge` and `Widgets/`: today's session as Today plans it (with the planner's swaps and crunch mode's minutes), "Today" or "Next: <weekday>" for the day the widget draws, and "Open Stadig Lift for today's plan" once that day has gone by. |
 | Export and backup | Settings → Your data: CSV files, a `.liftbackup` file, and restore. Backup and restore run off the main thread with a progress row, and restore takes only a Stadig Lift backup. |
-| Purchase (StoreKit one-time unlock) | `Purchases` and `PaywallView`, with `LiftTrack.storekit` for testing in Xcode. |
+| Purchase | `SystemPurchases`: 21 free days, then one-time or monthly, with one more day on offer (`Purchases`, `PaywallView`). The offer ends onboarding, and comes up on opening once the free days are over, never over a session or a sheet (`AppModel.askForPurchaseIfDue`). `Purchase/Purchases.swift` holds the app's products and pitch; `LiftTrack.storekit` is for testing in Xcode. |
 | Apple Watch app | `Watch/`: see below. |
 | Accessibility | Ratings always show colour, symbol and words together; Dynamic Type throughout; VoiceOver labels on controls. |
 
@@ -211,7 +211,7 @@ Stadig Lift is one app on iPhone, iPad, the Mac and Apple Vision Pro, its record
 - `-inMemoryStore` keeps nothing between launches. The store lives in memory and never syncs, and the shared container, the session in progress and the widget snapshot go to a fresh temporary folder. So a sample run no longer reads or writes what the other apps publish (Stadig Macro's phase, the hub's recommendations), and the home-screen widget doesn't show it. It still uses Health and can ask for permissions.
 - `-uiTesting` is what the UI tests launch with: everything `-inMemoryStore` does, plus no Health, no permission prompts and no animations. There are no rest notifications, Live Activity, Watch connection or StoreKit either. The other arguments work alongside it.
 - `-resetData` erases the store and the session in progress first.
-- `-unlocked` skips the purchase (only matters once purchases are switched back on).
+- `-access undecided|free|lapsed|extended|subscribed|bought` starts the person there, with made-up prices and buying that just works, leaving StoreKit out. `-unlocked` is `bought`, and it's where any run that keeps nothing (tests, UI tests, `-inMemoryStore`) starts unless it passes `-access`.
 - `-gymSauna` gives the gym a sauna, for the recovery screen.
 - `-startSession` starts today's session.
 - `-tab plan|program|library|history|progress|body` opens a destination (program, library and history are the sidebar's; in a narrow window they show the tab that reaches them).
@@ -225,7 +225,7 @@ Stadig Lift is one app on iPhone, iPad, the Mac and Apple Vision Pro, its record
 
 The rules are tested in the packages ([package-tests.md](package-tests.md)). The app's own tests check the wiring: the app model over a real store, the files it writes, links, the widget and the screens.
 
-**Unit and integration tests** (`Apps/LiftTrack/Tests`, Swift Testing, 92 tests in 11 suites; 91 on the Mac, which has no Live Activity) build their own `AppModel` with `init(store:shared:liveURL:widgetURL:)`, over an in-memory store and a temporary shared container (`Tests/Support/TestApp`), and put in their own Watch and Health (`AppModel.WorkoutHandOff`) where a test needs them. A second model over the same install is a relaunch; a second container is another app on the same phone. Under the test host the app builds no model of its own and starts nothing: no Health, Watch connection, StoreKit or notifications.
+**Unit and integration tests** (`Apps/LiftTrack/Tests`, Swift Testing, 99 tests in 12 suites; one fewer on the Mac, which has no Live Activity) build their own `AppModel` with `init(store:shared:liveURL:widgetURL:)`, over an in-memory store and a temporary shared container (`Tests/Support/TestApp`), and put in their own Watch and Health (`AppModel.WorkoutHandOff`) where a test needs them. A second model over the same install is a relaunch; a second container is another app on the same phone. Under the test host the app builds no model of its own and starts nothing: no Health, Watch connection, StoreKit or notifications.
 
 - **App model:** onboarding (fresh, reusing another app's profile, a second device keeping synced settings and block), settings kept under the one id every device uses (and settings saved before it still read), sample data, a session planned, logged, finished and seen after a relaunch, empty, heat-only and discarded sessions, a Watch record saved once, store changes made elsewhere, and the model deallocating.
 - **Session left open:** `live-session.json` across a relaunch, heart-rate-only writes throttled, one left over six hours saved and shown as finished, an empty one dropped, an unreadable one moved aside.

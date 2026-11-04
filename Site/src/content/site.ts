@@ -6,7 +6,7 @@ export const brand = {
   domain: "https://stadig.dev",
   tagline: "Apps that tell you what to do next.",
   description:
-    "Stadig is three fast, offline-first apps for training, nutrition and study on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift, Stadig Macro and Stadig Mind. They prescribe your next session, meal target and lesson from your own data. No subscriptions, no streaks, no account.",
+    "Stadig is three fast, offline-first apps for training, nutrition and study on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift, Stadig Macro and Stadig Mind. They prescribe your next session, meal target and lesson from your own data. No streaks, no account, and a price you can pay once.",
   pronunciation: "STAH-dig",
   meaning: "Norwegian for steady.",
   publisher: "Sam Svindland",
@@ -80,7 +80,7 @@ export const apps: App[] = [
       { title: "One plan, with a why", body: "After the assessment you get one block, not a menu. Stadig Macro's phase sets its direction if you use both." },
       { title: "Train, rate, repeat", body: "Sets autoregulate, stalls get read in context (expected in a cut, a recovery problem when beat up), and check-ins keep the stats honest." },
     ],
-    free: "Logging, the exercise library, CSV export and backups are free. The one-time purchase unlocks programs after the assessment.",
+    free: "Logging, the exercise library, CSV export and backups are free. Buying it or subscribing unlocks programs after the assessment.",
     keywords: ["strength training app", "autoregulation", "RPE", "progressive overload", "workout program generator", "Apple Watch lifting app", "deload", "fatigue management"],
   },
   {
@@ -131,7 +131,7 @@ export const apps: App[] = [
       { title: "Targets adapt each week", body: "Damped and capped, holding on jumps. In a cut, falling steps are read before calories are." },
       { title: "Never open it if you'd rather not", body: "Siri, Shortcuts, widgets with buttons, the Action Button and Controls all log without the app." },
     ],
-    free: "Logging, photo and description logging, the assessment, export and backup are free. The one-time purchase unlocks the phase plan.",
+    free: "Logging, photo and description logging, the assessment, export and backup are free. Buying it or subscribing unlocks the phase plan.",
     keywords: ["calorie tracking app", "macro tracker", "adaptive TDEE", "maintenance calories", "barcode scanner nutrition", "AI food logging", "offline food database", "supplement tracker"],
   },
   {
@@ -182,7 +182,7 @@ export const apps: App[] = [
       { title: "25 minutes, five days", body: "Reviews, new material, practice. Spare time goes to reviews ahead of schedule." },
       { title: "Review weeks and check-ins", body: "Every sixth week, or whenever Stadig Lift deloads: nothing new, reading for pleasure, and a check-in that moves Intelligence and Wisdom." },
     ],
-    free: "Reviews, the catalogs, export and backup are free. The one-time purchase unlocks sessions after the assessment.",
+    free: "Reviews, the catalogs, export and backup are free. Buying it or subscribing unlocks sessions after the assessment.",
     keywords: ["spaced repetition app", "FSRS", "learn Japanese app", "maths practice app", "study planner", "reading ladder", "deliberate practice"],
   },
 ];
@@ -209,8 +209,8 @@ export const principles = [
     body: "No account. No analytics. Your data lives on your devices and in your iCloud. Where an app uses a language model, it's Apple's on-device model, or Private Cloud Compute only when you allow it. Progress photos are never analysed.",
   },
   {
-    title: "One purchase, no subscription",
-    body: "Each app is a one-time unlock. Logging, export and backups are free forever, so your data is never held hostage.",
+    title: "Pay once if you like",
+    body: "Each app is free for 21 days with nothing to sign up for, then $29.99 once or $2.99 a month, your choice. Logging, export and backups are free forever, so your data is never held hostage.",
   },
   {
     title: "No third-party code",
@@ -258,8 +258,8 @@ export const faq = [
     a: "No. Each app works alone. Together they share a profile, life modes and a calendar, so Stadig Macro's phase shapes Stadig Lift's block and Stadig Lift's deloads become Stadig Mind's review weeks.",
   },
   {
-    q: "Is there a subscription?",
-    a: "No. Each app is a one-time purchase. Logging, export and backups are free in every app, so you can use them as a plain tracker without paying and your data is never locked up.",
+    q: "What does it cost?",
+    a: "Each app is free for 21 days, with no account and no card. After that it's $29.99 once, or $2.99 a month if you'd rather not pay up front. Either covers all your devices. Logging, export and backups are free in every app, so you can use them as a plain tracker without paying and your data is never locked up.",
   },
   {
     q: "Do the apps work offline?",
@@ -279,7 +279,7 @@ export const faq = [
   },
   {
     q: "What devices are supported?",
-    a: "All three run on iPhone, iPad, Mac and Apple Vision Pro, and one purchase covers every device. Stadig Lift and Stadig Macro also have Apple Watch apps. On the iPad and the Mac each does more than on the phone: Stadig Lift lays out your program and exercise library, Stadig Macro compares foods and plans the week, and Stadig Mind runs sessions from the keyboard. Your data syncs between your devices through iCloud.",
+    a: "All three run on iPhone, iPad, Mac and Apple Vision Pro, and one purchase or subscription covers every device. Stadig Lift and Stadig Macro also have Apple Watch apps. On the iPad and the Mac each does more than on the phone: Stadig Lift lays out your program and exercise library, Stadig Macro compares foods and plans the week, and Stadig Mind runs sessions from the keyboard. Your data syncs between your devices through iCloud.",
   },
   {
     q: "Which AI models do the apps use?",

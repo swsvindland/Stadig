@@ -1,6 +1,7 @@
 import NutritionEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 
 /// The assessment while it runs, then one recommendation with its reasons, then the plan in force
 /// with its weekly check-ins.

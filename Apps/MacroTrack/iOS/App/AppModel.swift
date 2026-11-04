@@ -6,6 +6,7 @@ import NutritionEngine
 import OSLog
 import Observation
 import SystemCore
+import SystemPurchases
 import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
@@ -82,7 +83,7 @@ final class AppModel {
     /// Whether this model talks to the notification center and WidgetKit: not in tests or UI tests.
     let usesSystemServices: Bool
     let catalog: FoodCatalog
-    let purchases = Purchases()
+    let purchases: Purchases
     let ai = MealAIService()
     /// The NIH supplement labels, when the build ships them.
     let supplementCatalog: SupplementCatalog?
@@ -279,6 +280,7 @@ final class AppModel {
         self.catalog = catalog
         self.supplementCatalog = supplementCatalog
         self.usesSystemServices = usesSystemServices
+        purchases = Purchases(.macro, store: store)
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
         reload()
         // A second device or a reinstall: onboarding waits while the person's data comes down.
@@ -755,6 +757,13 @@ final class AppModel {
     func takeDroppedPhoto() -> Data? {
         defer { droppedPhoto = nil }
         return droppedPhoto
+    }
+
+    /// Brings the offer up if it's due, on opening the app. Never over a sheet someone is in the
+    /// middle of: it waits for the next time they open the app.
+    func askForPurchaseIfDue() {
+        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings else { return }
+        showPaywall = true
     }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can

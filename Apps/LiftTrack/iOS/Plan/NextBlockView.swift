@@ -1,8 +1,8 @@
 import ExerciseLibrary
 import LiftEngine
-import StoreKit
 import SwiftUI
 import SystemCore
+import SystemPurchases
 
 /// One recommendation by default, with "Why?". The person can override the phase answer, but the
 /// default needs no expertise.
@@ -85,7 +85,7 @@ struct NextBlockView: View {
             ForEach(m.days) { day in DayCard(day: day, isNext: false) }
             if !purchases.unlocked {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Training blocks are part of the one-time unlock.").font(.headline)
+                    Text("Training blocks need a purchase or a subscription.").font(.headline)
                     Text("Logging, your history, export and backup stay free either way.").font(.subheadline).foregroundStyle(.secondary)
                     Button {
                         showPaywall = true
@@ -109,46 +109,5 @@ struct NextBlockView: View {
         }
         model.accept(nextBlock: m)
         dismiss()
-    }
-}
-
-/// The one-time unlock. No subscription.
-struct PaywallView: View {
-    @Environment(Purchases.self) private var purchases
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.purchase) private var purchase
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Image(systemName: "lock.open.fill").font(.system(size: 44)).foregroundStyle(.tint)
-                Text("Stadig Lift, for good").font(.largeTitle.bold())
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Every training block after the assessment, built from your data", systemImage: "calendar")
-                    Label("Deloads, vacations, crunch, injury and illness modes", systemImage: "airplane")
-                    Label("One purchase. No subscription. Ever.", systemImage: "checkmark.seal")
-                    Label("Your data is yours: logging, export and backup are always free", systemImage: "square.and.arrow.up")
-                }
-                Spacer()
-                Button {
-                    Task {
-                        await purchases.buy { try await purchase($0) }
-                        if purchases.unlocked { dismiss() }
-                    }
-                } label: {
-                    Text(purchases.product.map { "Unlock for \($0.displayPrice)" } ?? "Unlock").font(.headline).frame(maxWidth: .infinity)
-                }
-                .primaryAction()
-                .controlSize(.large)
-                .disabled(purchases.product == nil || purchases.purchasing)
-                Button("Restore purchase") { Task { await purchases.restore() } }.frame(maxWidth: .infinity)
-                if let error = purchases.error { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                Text("Part of the Stadig bundle on the App Store, with \(AppID.macroTrack.displayName) and \(AppID.knowledge.displayName).")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            .padding(24)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() }.accessibilityIdentifier("paywall.notNow") } }
-        }
-        .sheetFrame()
     }
 }

@@ -4,6 +4,7 @@ import HealthBridge
 import NutritionEngine
 import SwiftUI
 import SystemCore
+import SystemPurchases
 import SystemStore
 import UniformTypeIdentifiers
 
@@ -15,7 +16,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -52,7 +52,7 @@ struct SettingsView: View {
             LifeModeEditor(period: period).macSheetSize(width: 440, height: 380)
         }
         .sheet(isPresented: $unlocking) {
-            PaywallView().macSheetSize(width: 480, height: 560)
+            PaywallView()
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "macrobackup") ?? .json, .json]) { result in
             switch result {
@@ -320,18 +320,7 @@ struct SettingsView: View {
             )
         }
 
-        if Purchases.enabled {
-            Section("Stadig Macro") {
-                if purchases.unlocked {
-                    Label("Unlocked. Thank you.", systemImage: "checkmark.seal.fill")
-                } else {
-                    Button("Unlock Stadig Macro", systemImage: "lock.open") { unlocking = true }
-                        .accessibilityIdentifier("settings.unlock")
-                    Button("Restore purchase") { Task { await purchases.restore() } }
-                        .accessibilityIdentifier("settings.restorePurchase")
-                }
-            }
-        }
+        PurchaseSection { unlocking = true }
 
         #if DEBUG
         Section("Debug") {
