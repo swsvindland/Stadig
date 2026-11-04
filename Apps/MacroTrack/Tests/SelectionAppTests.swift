@@ -127,6 +127,59 @@ struct SelectionAppTests {
         #expect(model.selection.isEmpty)
     }
 
+    @Test func undoAfterAMoveToManyDatesTakesTheCopiesToo() throws {
+        let (model, day) = model()
+        let salmon = hour(model, day, 19).entries[0]
+        model.toggleSelection(salmon)
+        let days = [day.adding(days: -2), day.adding(days: -3), day.adding(days: -4)]
+        model.placeSelection(on: days)
+        let toast = try #require(model.toast)
+        #expect(toast.message.hasPrefix("Moved 1 food to 3 days"))
+
+        model.undo(toast)
+
+        #expect(model.allEntries(on: day).map(\.name) == ["Soup", "Bread", "Salmon"])
+        #expect(model.allEntries(on: day).last?.date == salmon.date)
+        for target in days { #expect(model.allEntries(on: target).isEmpty) }
+        #expect(model.toast == nil)
+    }
+
+    @Test func aMoveToOneDateHasNothingElseToTakeBack() {
+        let (model, day) = model()
+        model.log([food("Old", at: day.at(hour: 8, minute: 0))])
+        model.toggleSelection(hour(model, day, 19))
+        model.placeSelection(on: [day.adding(days: -2)])
+        #expect(model.toast?.undo.isEmpty == true, "not the Undo of the toast before it")
+    }
+
+    /// The copy lands in the running fast, so it's the move as a whole that ended it.
+    @Test func aCopyLeftByAMoveThatEndsAFastSaysSo() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.setTracksMealTiming(true)
+        model.acknowledgeFastingScreen()
+        let now = Date()
+        model.log([food("Dinner", kcal: 700, at: now.addingTimeInterval(-20 * 3600))])
+        model.toast = nil
+        model.startFast(goalHours: 16)
+        model.toast = nil
+        // Earlier today, however early today is.
+        let start = Calendar.current.startOfDay(for: now)
+        let time = start.addingTimeInterval(now.timeIntervalSince(start) / 2)
+        let entry = food("Lunch", kcal: 500, at: model.today.adding(days: -3).at(sameTimeAs: time))
+        model.log([entry])
+        model.toast = nil
+
+        model.toggleSelection(entry)
+        model.placeSelection(on: [model.today.adding(days: -2), model.today])
+
+        let toast = try #require(model.toast)
+        #expect(toast.message.contains("ended your"), "\(toast.message)")
+        model.undo(toast)
+        let fast = try #require(model.fasts.last)
+        #expect(model.fastRun(fast)?.isRunning == true)
+    }
+
     @Test func aFoodDeletedElsewhereLeavesTheSelection() {
         let (model, day) = model()
         let noon = hour(model, day, 12)

@@ -61,6 +61,22 @@ struct FailedSaveTests {
         #expect(model.foodLog.all.isEmpty)
     }
 
+    @Test func aMoveWhoseCopiesDidntSaveMovesNothing() throws {
+        let (model, store) = failing()
+        store.nextSaveFailure = nil
+        let day = model.today.adding(days: -1)
+        let entry = lunch(at: day.at(hour: 12, minute: 0))
+        model.log([entry])
+        model.toggleSelection(entry)
+        store.nextSaveFailure = CocoaError(.fileWriteOutOfSpace)
+
+        model.placeSelection(on: [day.adding(days: -2), day.adding(days: -1)])
+
+        #expect(model.allEntries(on: day).map(\.name) == ["Lunch"])
+        #expect(model.allEntries(on: day.adding(days: -2)).isEmpty)
+        #expect(model.toast?.failed == true)
+    }
+
     @Test func aPlannedMealThatDidntSaveStaysUnlogged() throws {
         let environment = TestEnvironment()
         let model = environment.model()

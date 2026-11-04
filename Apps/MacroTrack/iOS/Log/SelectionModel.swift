@@ -71,8 +71,7 @@ extension AppModel {
         }
         let dates = Placing.dates(for: chosen, .sameTimes(on: first))
         if selection.intent == .move {
-            if !copies.isEmpty { log(copies) }
-            move(chosen, to: dates, message: "Moved \(foods(chosen.count)) to \(name)")
+            move(chosen, to: dates, leaving: copies, message: "Moved \(foods(chosen.count)) to \(name)")
             clearSelection()
         } else {
             copy(chosen, to: dates, also: copies, message: "Copied \(foods(chosen.count)) to \(name)")
@@ -91,15 +90,19 @@ extension AppModel {
 
     private func foods(_ count: Int) -> String { count == 1 ? "1 food" : "\(count) foods" }
 
-    private func move(_ entries: [FoodEntry], to dates: [Date], message: String) {
+    /// Moves foods, leaving `copies` on other days, with one toast for it all: its Undo puts the
+    /// foods back and takes the copies away. If the copies can't be saved, nothing moves.
+    private func move(_ entries: [FoodEntry], to dates: [Date], leaving copies: [FoodEntry] = [], message: String) {
         let fast = fasts.last
         let before = fast.flatMap(fastRun)
+        guard copies.isEmpty || log(copies) else { return }
         let moved = zip(entries, dates).map { entry, date in
             var entry = entry
             entry.date = date
             return entry
         }
         update(moved, message: message)
+        toast?.undo = copies.map(\.id)
         noteFastChange(fast, from: before)
     }
 
