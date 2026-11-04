@@ -145,6 +145,9 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **The amount panel's keypad.** Digits, a point, delete, and ½ ¼ ¾ ⅓. Fractions turn off for weights and volumes in metric, since "½ g" isn't how anyone measures. ⅔ didn't fit the grid; "0.66" types it, or the unit chips reach it. A hardware keyboard's digits, point, delete and Return work on it on an iPad.
 - **The 0.5–2× chips show amounts, not multipliers**, as they already did ("119 g, 237 g…"). An entry with no food behind it (a quick add, an estimate) shows multiples instead ("0.5×").
 - **Editing an entry keeps the full date and time on the panel**, with Delete beside it. Move and Copy wait for stage 8.
+- **Every way to log ends back at the search**, with the meal in sight and Undo over it. Quick add's Next moves between its fields, since a number pad has no key for that. The time bar is now in every way of logging, so the time menu in the title went.
+- **Done, the ways to log and the time sit at the bottom**, the ways to log hidden while something's typed. The toast sits just above the meal there, rather than over the search.
+- **A food searched for from the AI's review goes straight back to the review**, at that item's unit, with no amount step. Its amount is a tap away there.
 
 ## Calls made for warm-ups (2026-11-03)
 

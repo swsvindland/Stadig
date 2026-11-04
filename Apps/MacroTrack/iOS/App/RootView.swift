@@ -105,7 +105,9 @@ struct RootView: View {
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(isEnabled: !wide) { QuickLogBar() }
         #endif
-        .toastOverlay(bottomPadding: wide ? 24 : 130)
+        // The logger shows its own, in with the meal: one behind it would be a second Undo nobody can
+        // reach. It takes over when the logger closes, with its few seconds starting again.
+        .toastOverlay(bottomPadding: wide ? 24 : 130, showing: model.logger == nil)
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }
@@ -171,25 +173,36 @@ struct QuickLogBar: View {
 
 extension View {
     /// Shows the model's toast at the bottom for a few seconds.
-    func toastOverlay(bottomPadding: CGFloat = 24) -> some View { modifier(ToastOverlay(bottomPadding: bottomPadding)) }
+    func toastOverlay(bottomPadding: CGFloat = 24, showing: Bool = true) -> some View {
+        modifier(ToastOverlay(bottomPadding: bottomPadding, showing: showing))
+    }
 }
 
 private struct ToastOverlay: ViewModifier {
     @Environment(AppModel.self) private var model
     let bottomPadding: CGFloat
+    let showing: Bool
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .bottom) {
-            if let toast = model.toast {
-                ToastView(toast: toast) { model.undo(toast) }
-                    .padding(.bottom, bottomPadding)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task(id: toast.id) {
-                        try? await Task.sleep(for: .seconds(4))
-                        if model.toast?.id == toast.id { model.toast = nil }
-                    }
-            }
+            if showing { ToastSlot().padding(.bottom, bottomPadding) }
         }
         .animation(.snappy, value: model.toast)
+    }
+}
+
+/// The model's toast, for a few seconds, where a screen places it.
+struct ToastSlot: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let toast = model.toast {
+            ToastView(toast: toast) { model.undo(toast) }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: toast.id) {
+                    try? await Task.sleep(for: .seconds(4))
+                    if model.toast?.id == toast.id { model.toast = nil }
+                }
+        }
     }
 }

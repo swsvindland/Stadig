@@ -9,22 +9,22 @@ struct AmountRequest: Identifiable, Hashable {
     enum Purpose: Hashable {
         case add(EntrySource)
         case edit(FoodEntry)
+        /// An amount chosen for something else, handed back: a food of the AI's review, by its id.
+        case pick(item: UUID, count: Double, unit: PortionUnit)
     }
 
     var purpose: Purpose
     var food: Food?
-    var closeAfterAdd = false
 
     var id: String {
         switch purpose {
         case .add: "add-\(food?.id ?? "")"
         case .edit(let entry): "edit-\(entry.id)"
+        case .pick(let item, _, _): "pick-\(item)"
         }
     }
 
-    static func add(_ food: Food, source: EntrySource, closeAfterAdd: Bool = false) -> AmountRequest {
-        AmountRequest(purpose: .add(source), food: food, closeAfterAdd: closeAfterAdd)
-    }
+    static func add(_ food: Food, source: EntrySource) -> AmountRequest { AmountRequest(purpose: .add(source), food: food) }
 
     static func edit(_ entry: FoodEntry) -> AmountRequest { AmountRequest(purpose: .edit(entry)) }
 

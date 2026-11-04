@@ -11,6 +11,8 @@ struct AmountPanel: View {
     let request: AmountRequest
     /// Hands a changed entry back rather than saving it: a food of a saved meal, which only has an amount.
     var saveTo: ((FoodEntry) -> Void)?
+    /// Takes the amount chosen for a `.pick`.
+    var picked: ((Double, PortionUnit) -> Void)?
     /// A food was added or an entry saved.
     var finished: () -> Void = {}
     let close: () -> Void
@@ -31,6 +33,11 @@ struct AmountPanel: View {
 
     var entry: FoodEntry? { request.entry }
     var isEditing: Bool { entry != nil }
+    /// Choosing an amount for something else: nothing's logged here.
+    var isPicking: Bool {
+        if case .pick = request.purpose { return true }
+        return false
+    }
     /// Saved to a meal: the amount is all there is.
     var isMealFood: Bool { saveTo != nil }
 
@@ -85,7 +92,7 @@ struct AmountPanel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             if let food {
                 if !isMealFood, amount.unit != nil { EditFoodButton { editingFood = true }.buttonStyle(.borderless) }
-                if !isEditing { FavoriteButton(foodID: food.id).buttonStyle(.borderless) }
+                if !isEditing, !isPicking { FavoriteButton(foodID: food.id).buttonStyle(.borderless) }
             }
             Button(action: close) {
                 Image(systemName: "xmark").font(.body.weight(.semibold)).frame(width: 30, height: 30).contentShape(.circle)
@@ -255,6 +262,7 @@ struct AmountPanel: View {
 
     var primaryTitle: String {
         if isEditing { return "Save · \(Format.kcal(nutrients.kcal))" }
+        if isPicking { return "Use · \(Format.kcal(nutrients.kcal))" }
         return "Add\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))") · \(Format.kcal(nutrients.kcal))"
     }
 
@@ -294,6 +302,9 @@ struct AmountPanel: View {
                 let reopened = FoodUnits.logged(for: found, unitID: entry.unitID, count: entry.count, amount: entry.grams)
                 amount = AmountEntry(count: reopened.count, unit: reopened.unit)
             }
+        } else if case .pick(_, let count, let unit) = request.purpose {
+            food = request.food
+            amount = AmountEntry(count: count, unit: unit)
         } else if let food = request.food {
             self.food = food
             let personal = model.personalFood(food.id)
@@ -326,6 +337,8 @@ struct AmountPanel: View {
             var updated = amountChanged ? model.rescaled(entry, food: food, unit: amount.unit, count: count) : entry
             updated.date = date
             if let saveTo { saveTo(updated) } else { model.update(updated) }
+        } else if isPicking, let unit = amount.unit {
+            picked?(count, unit)
         } else if let food, let unit = amount.unit, case .add(let source) = request.purpose {
             model.log([model.entry(for: food, count: count, unit: unit, source: source)])
         }

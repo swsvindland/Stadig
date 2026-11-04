@@ -9,8 +9,7 @@ import SystemCore
 /// photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
-    @Binding var portion: AmountRequest?
-    @Binding var mode: LogMode
+    let session: LoggerSession
     @State private var scanning = true
     @State private var manual = ""
     @State private var missing: String?
@@ -32,7 +31,7 @@ struct BarcodeLogView: View {
                 }
             } else if let label {
                 LabelReviewView(result: label, barcode: missing) { food in
-                    portion = .add(food, source: .label, closeAfterAdd: true)
+                    session.portion = .add(food, source: .label)
                 }
             } else if readingLabel {
                 ProgressView("Reading the label…").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,17 +40,17 @@ struct BarcodeLogView: View {
             } else if LiveLabelScanner.isAvailable && scanning {
                 LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
                     .id(scanID)
-                    .toolbar {
-                        ToolbarItem(placement: .barLeading) {
-                            Menu {
-                                Button("Type the barcode", systemImage: "keyboard") { scanning = false }
-                                Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
-                                Button("Search by name", systemImage: "magnifyingglass") { mode = .search }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                            .accessibilityLabel("Other ways")
+                    .overlay(alignment: .topLeading) {
+                        Menu {
+                            Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                            Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
+                            Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
+                        } label: {
+                            Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(.circle)
                         }
+                        .floatingGlass(in: .circle)
+                        .padding(12)
+                        .accessibilityLabel("Other ways")
                     }
             } else {
                 manualEntry
@@ -59,7 +58,7 @@ struct BarcodeLogView: View {
         }
         .navigationTitle(LiveLabelScanner.isAvailable ? "Scan" : "Barcode")
         // Back from the portion: scan the next thing.
-        .onChange(of: portion) { _, now in if now == nil { scanID = UUID() } }
+        .onChange(of: session.portion) { _, now in if now == nil { scanID = UUID() } }
         // Wherever the read was started from (the scanner's menu has no message of its own).
         .alert("Couldn't read the label", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK") { error = nil }
@@ -119,7 +118,7 @@ struct BarcodeLogView: View {
             } else {
                 labelPhotoChoices
             }
-            Button("Search by name") { mode = .search }
+            Button("Search by name") { session.backToSearch() }
             Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
                 missing = nil
                 error = nil
@@ -152,7 +151,7 @@ struct BarcodeLogView: View {
     func finish(_ outcome: LiveScanOutcome) {
         switch outcome {
         case .food(let food):
-            portion = .add(food, source: .barcode, closeAfterAdd: true)
+            session.portion = .add(food, source: .barcode)
         case .supplement(let found):
             supplement = found
         case .label(let result, let barcode):

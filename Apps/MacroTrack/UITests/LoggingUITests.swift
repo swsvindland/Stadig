@@ -31,6 +31,33 @@ nonisolated final class LoggingUITests: XCTestCase {
         }
     }
 
+    /// The ways to log sit along the bottom with Done, and give their room to the results while
+    /// something's typed. Quick add's Next moves on, since a number pad has no key for it.
+    @MainActor
+    func testTheMethodsAreAlongTheBottomUntilSomethingsTyped() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "An iPad's search is the Foods destination")
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        let quickAdd = app.element("logger.mode.quickAdd").waitToAppear()
+        app.shot("logger-empty")
+        XCTAssertTrue(app.element("logger.mode.scan").exists)
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        quickAdd.waitToDisappear()
+        XCTAssertTrue(app.element("logger.done").exists, "Done stays while typing")
+        app.shot("logger-typing")
+        search.buttons.firstMatch.tap()
+        quickAdd.waitToAppear().tap()
+
+        let kcal = app.element("quickAdd.kcal").waitToAppear()
+        kcal.tap()
+        app.element("quickAdd.next").waitToAppear().tap()
+        XCTAssertTrue(app.element("quickAdd.protein").value(forKey: "hasKeyboardFocus") as? Bool == true, "Next went to protein")
+        XCTAssertTrue(app.element("logger.mode.search").exists, "the ribbon stays in the other ways of logging")
+        app.shot("logger-quick-add")
+    }
+
     /// The amount panel: it opens on the food's usual amount, selected, so the first key replaces it.
     @MainActor
     func testAnAmountIsTypedOnThePanelAndTheKeyboardComesBack() throws {
@@ -62,9 +89,10 @@ nonisolated final class LoggingUITests: XCTestCase {
         try XCTSkipIf(XCUIApplication.isPad, "An iPad's Today edits an entry beside the table (RegularWidthUITests)")
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
-        let calories = app.element("today.calories").waitToAppear()
-        let before = calories.label
-        app.scrollTo(app.element("today.entry")).waitToAppear().tap()
+        app.element("today.calories").waitToAppear()
+        let entry = app.scrollTo(app.element("today.entry")).waitToAppear()
+        let before = entry.label
+        entry.tap()
 
         app.element("amount.panel").waitToAppear()
         app.shot("amount-edit")
@@ -74,7 +102,8 @@ nonisolated final class LoggingUITests: XCTestCase {
         app.element("entryEditor.save").tap()
 
         app.element("amount.panel").waitToDisappear()
-        calories.waitForLabel(toChangeFrom: before)
+        // The entry, not today's total: it depends on the time of day whether a seeded food has happened.
+        app.element("today.entry").waitForLabel(toChangeFrom: before)
     }
 
     @MainActor
@@ -101,7 +130,10 @@ nonisolated final class LoggingUITests: XCTestCase {
         let before = calories.label
 
         logABanana(app)
-        app.element("toast.undo").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+        app.shot("toast-in-logger")
+        app.element("toast.undo").tap()
+        app.shot("toast-after-undo")
         app.element("toast.message").waitToDisappear()
         leaveSearch(app)
 
@@ -123,7 +155,11 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertTrue(add.label.contains("500 kcal"), add.label)
         add.tap()
 
+        // Back in the logger with the meal in sight, ready for the next food.
         add.waitToDisappear()
+        app.shot("logger-after-quick-add")
+        XCTAssertTrue(app.element("logger.meal").waitToAppear().exists)
+        app.element("logger.done").waitToAppear().tap()
         let entry = app.scrollTo(app.todayEntry(containing: "Quick add")).waitToAppear()
         // An iPad's table has the calories in a column of their own.
         XCTAssertTrue(XCUIApplication.isPad ? entry.staticTexts["500"].exists : entry.label.contains("500"), entry.debugDescription)

@@ -14,7 +14,7 @@ struct QuickAddView: View {
     @State private var fat = ""
     @FocusState private var focus: Field?
 
-    enum Field { case kcal, protein, carbs, fat, name }
+    enum Field: CaseIterable { case kcal, protein, carbs, fat, name }
 
     var body: some View {
         Form {
@@ -22,7 +22,9 @@ struct QuickAddView: View {
                 row("Calories", $kcal, "kcal", .kcal)
                 row("Protein", $protein, "g", .protein)
             } footer: {
-                Text("Quick adds count toward today but aren't suggested again.")
+                Text(
+                    "Quick adds count toward \(model.selectedDay == model.today ? "today" : Format.day(model.selectedDay)) but aren't suggested again."
+                )
             }
             Section("Optional") {
                 row("Carbs", $carbs, "g", .carbs)
@@ -32,18 +34,34 @@ struct QuickAddView: View {
         }
         .navigationTitle("Quick add")
         .safeAreaInset(edge: .bottom) {
-            Button {
-                model.quickAdd(name: name, nutrients: nutrients)
-                close()
-            } label: {
-                Text("Add \(Format.kcal(nutrients.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            HStack(spacing: 8) {
+                // A number pad has no key for the next field.
+                if let next {
+                    Button("Next") { focus = next }
+                        .font(.headline)
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityIdentifier("quickAdd.next")
+                }
+                Button {
+                    model.quickAdd(name: name, nutrients: nutrients)
+                    close()
+                } label: {
+                    Text("Add \(Format.kcal(nutrients.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .primaryAction()
+                .accessibilityIdentifier("quickAdd.add")
+                .disabled(nutrients.kcal <= 0 && nutrients.protein <= 0)
             }
-            .primaryAction()
-            .accessibilityIdentifier("quickAdd.add")
-            .padding()
-            .disabled(nutrients.kcal <= 0 && nutrients.protein <= 0)
+            .padding(.horizontal)
         }
         .onAppear { focus = .kcal }
+    }
+
+    /// The field after the one being typed in.
+    var next: Field? {
+        guard let focus, let index = Field.allCases.firstIndex(of: focus), index + 1 < Field.allCases.count else { return nil }
+        return Field.allCases[index + 1]
     }
 
     var nutrients: Nutrients {
