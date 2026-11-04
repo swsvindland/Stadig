@@ -4,38 +4,27 @@ import XCTest
 /// widgets and controls open. On an iPad the ways to log are in Today's toolbar rather than the
 /// bar above the tabs, and a search is the Foods destination.
 nonisolated final class LoggingUITests: XCTestCase {
-    /// Searches for a banana and logs it: on an iPhone from the logger's results, on an iPad from
-    /// Foods, where Return in the search field logs the best match.
+    /// Searches for a banana and logs it.
     @MainActor
     func logABanana(_ app: XCUIApplication) {
         app.logButton("search").tap()
         let search = app.foodSearchField()
         search.tap()
-        if XCUIApplication.isPad {
-            search.typeText("banana\n")
-        } else {
-            search.typeText("banana")
-            app.element("logger.addFood").waitToAppear().tap()
-        }
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.shot("logger-added")
     }
 
-    /// Back to Today once the food is logged: the iPhone's search stays up for the next food until
-    /// Done; an iPad's Foods is a destination of its own, whose search, open, takes the place of
-    /// the tab bar, so Go ▸ Today (⌘1) from the keyboard.
+    /// Back from the logger once the food is logged: it stays up for the next food until Done.
     @MainActor
     func leaveSearch(_ app: XCUIApplication) {
-        if XCUIApplication.isPad {
-            app.typeKey("1", modifierFlags: .command)
-        } else {
-            app.element("logger.done").waitToAppear().tap()
-        }
+        app.element("logger.done").waitToAppear().tap()
     }
 
     /// The ways to log sit along the bottom with Done, and give their room to the results while
     /// something's typed. Quick add's Next moves on, since a number pad has no key for it.
     @MainActor
     func testTheMethodsAreAlongTheBottomUntilSomethingsTyped() throws {
-        try XCTSkipIf(XCUIApplication.isPad, "An iPad's search is the Foods destination")
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
         let quickAdd = app.element("logger.mode.quickAdd").waitToAppear()
@@ -47,7 +36,7 @@ nonisolated final class LoggingUITests: XCTestCase {
         quickAdd.waitToDisappear()
         XCTAssertTrue(app.element("logger.done").exists, "Done stays while typing")
         app.shot("logger-typing")
-        search.buttons.firstMatch.tap()
+        if XCUIApplication.isPad { app.element("logger.clearSearch").tap() } else { search.buttons.firstMatch.tap() }
         quickAdd.waitToAppear().tap()
 
         let kcal = app.element("quickAdd.kcal").waitToAppear()
@@ -61,7 +50,6 @@ nonisolated final class LoggingUITests: XCTestCase {
     /// The amount panel: it opens on the food's usual amount, selected, so the first key replaces it.
     @MainActor
     func testAnAmountIsTypedOnThePanelAndTheKeyboardComesBack() throws {
-        try XCTSkipIf(XCUIApplication.isPad, "An iPad's search is the Foods destination, with its own amount")
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
         let search = app.foodSearchField()
@@ -86,7 +74,6 @@ nonisolated final class LoggingUITests: XCTestCase {
 
     @MainActor
     func testAnEntrysAmountChangesOnThePanel() throws {
-        try XCTSkipIf(XCUIApplication.isPad, "An iPad's Today edits an entry beside the table (RegularWidthUITests)")
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements"])
         app.element("today.calories").waitToAppear()
@@ -139,6 +126,7 @@ nonisolated final class LoggingUITests: XCTestCase {
         app.element("toast.message").waitToDisappear()
         leaveSearch(app)
 
+        app.openTab("Today")
         calories.waitForLabel(toEqual: before)
         app.openTab("Log")
         app.element("log.list").waitToAppear()
@@ -205,6 +193,7 @@ nonisolated final class LoggingUITests: XCTestCase {
 
     @MainActor
     func testAWidgetLinkClosesASheetTheLogOpened() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "An iPad edits an entry in a pane, which a sheet leaves where it is")
         continueAfterFailure = false
         // The supplement sample logs this morning's coffee, so the Log tab has an entry to open.
         let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements", "-tab", "log"])

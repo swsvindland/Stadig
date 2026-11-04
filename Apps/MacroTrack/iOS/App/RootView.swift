@@ -31,7 +31,8 @@ struct RootView: View {
             }
         }
         // Closing it drops a picked time (the model does that), so later one-tap logs are now.
-        .sheet(item: $model.logger) { mode in
+        // Where there's room the logger is a pane of the Log tab, not a sheet over it.
+        .sheet(item: Binding(get: { wide ? nil : model.logger }, set: { model.logger = $0 })) { mode in
             LoggerSheet(start: mode).macSheetSize(width: 600, height: 700)
         }
         .sheet(isPresented: $model.showWeighIn) {
@@ -54,6 +55,8 @@ struct RootView: View {
         }
         .onChange(of: wide, initial: true) { _, wide in
             model.usesSidebar = wide
+            // Widened with a logger open (or launched with one): its pane is on the Log tab.
+            if wide, model.logger != nil { model.tab = .log }
             // Narrowed (an iPad window in Split View) on a screen only the sidebar has: the nearest
             // one the tab bar has.
             guard !wide else { return }

@@ -7,31 +7,40 @@ import Testing
 
 @testable import MacroTrack
 
-/// Where there's a sidebar (iPad, the Mac, Vision Pro) finding a food and the supplements are
-/// screens of their own rather than sheets; without one, the same asks keep the phone's sheets.
+/// Where there's a sidebar (iPad, the Mac, Vision Pro) the logger is a pane of the Log tab, and the
+/// supplements a screen of their own; without one, the same asks keep the phone's sheets.
 @MainActor
 struct SidebarTests {
-    @Test func findingAFoodOpensTheFoodsScreenWithItsSearch() throws {
+    @Test func theLoggerIsAPaneOfTheLogTab() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.tab = .plan
+
+        model.openLogger(.search)
+        #expect(model.tab == .log)
+        #expect(model.logger == .search)
+
+        // A link from a widget does the same.
+        model.logger = nil
+        model.tab = .today
+        DeepLink.open(try #require(URL(string: "macrotrack://log")), model: model)
+        #expect(model.logger == .search && model.tab == .log)
+
+        // An hour's + aims the open logger there, without a new one.
+        let earlier = Date().addingTimeInterval(-3600)
+        model.openLogger(.search, at: earlier)
+        #expect(model.logger == .search && model.loggerTime == earlier)
+    }
+
+    @Test func foodsStaysTheScreenForComparing() {
         let model = TestEnvironment().model()
         model.onboard()
         model.usesSidebar = true
         let before = model.foodSearchRequest
-
-        model.openLogger(.search)
+        model.go(to: .foods)
         #expect(model.tab == .foods)
-        #expect(model.logger == nil)
         #expect(model.foodSearchRequest == before + 1, "the search field takes the cursor")
-
-        // A link from a widget does the same.
-        DeepLink.open(try #require(URL(string: "macrotrack://log")), model: model)
-        #expect(model.logger == nil && model.tab == .foods)
-
-        // The other ways to log, and a search at a moment's time (+ on a moment), are still the logger.
-        model.openLogger(.describe)
-        #expect(model.logger == .describe)
-        let earlier = Date().addingTimeInterval(-3600)
-        model.openLogger(.search, at: earlier)
-        #expect(model.logger == .search && model.loggerTime == earlier)
     }
 
     @Test func withoutTheSidebarSearchIsTheLogger() {

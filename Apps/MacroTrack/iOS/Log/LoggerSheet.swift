@@ -58,6 +58,10 @@ struct LoggerAmount: View {
     let request: AmountRequest
 
     var body: some View {
+        panel.amountSheet(editing: false)
+    }
+
+    var panel: some View {
         AmountPanel(
             request: request,
             picked: { count, unit in
@@ -73,7 +77,83 @@ struct LoggerAmount: View {
             },
             close: { session.portion = nil }
         )
-        .amountSheet(editing: false)
+    }
+}
+
+/// The logger as a pane beside the Log tab, where there's room: not over the day, so each food added
+/// lands in sight, and an hour's + aims it at that hour. The amount takes its place, and goes back
+/// to it. It has its own search field, since a pane isn't where a window's search field goes.
+struct LoggerPane: View {
+    @Environment(AppModel.self) private var model
+    @State private var session: LoggerSession
+    @FocusState private var searchFocused: Bool
+
+    init(start: LogMode) { _session = State(initialValue: LoggerSession(mode: start)) }
+
+    var body: some View {
+        @Bindable var session = session
+        NavigationStack {
+            Group {
+                if let request = session.portion {
+                    LoggerAmount(session: session, request: request).panel
+                } else {
+                    VStack(spacing: 0) {
+                        if session.mode == .search { searchField }
+                        LoggerContent(session: session, done: { model.logger = nil })
+                    }
+                }
+            }
+            .inlineTitle()
+            .navigationDestination(item: $session.openMeal) { id in
+                SavedMealView(mealID: id) {
+                    session.openMeal = nil
+                    session.query = ""
+                }
+            }
+        }
+        .onAppear {
+            model.ai.prewarm()
+            searchFocused = true
+        }
+        .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
+        .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
+        .onChange(of: session.portion) { _, request in if request == nil { searchFocused = true } }
+    }
+
+    var searchField: some View {
+        @Bindable var session = session
+        return TextField("Search foods", text: $session.query)
+            .textFieldStyle(.roundedBorder)
+            .autocorrectionDisabled()
+            .noAutocapitalization()
+            .focused($searchFocused)
+            // Return logs the best match, as the Foods screen's does.
+            .onSubmit(addBestMatch)
+            .accessibilityIdentifier("logger.search")
+            .overlay(alignment: .trailing) {
+                if !session.query.isEmpty {
+                    Button("Clear", systemImage: "xmark.circle.fill") {
+                        session.query = ""
+                        session.focusSearch()
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 6)
+                    .accessibilityIdentifier("logger.clearSearch")
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+    }
+
+    func addBestMatch() {
+        guard let food = session.results.first?.food else { return }
+        let p = model.personalFood(food.id)
+        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
+        model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
+        session.query = ""
+        session.focusSearch()
     }
 }
 

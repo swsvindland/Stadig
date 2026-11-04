@@ -41,6 +41,9 @@ extension XCUIApplication {
     /// along the top, so the toolbar keeps it behind its search button, which opens it.
     @MainActor
     func foodSearchField(file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        // The pane beside the log has a field of its own.
+        let pane = element("logger.search")
+        if pane.waitForExistence(timeout: 2) { return pane }
         let field = searchFields.firstMatch
         if Self.isPad, !field.waitForExistence(timeout: 5) {
             buttons["Search"].firstMatch.waitToAppear(file: file, line: line).tap()

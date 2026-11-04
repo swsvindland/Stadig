@@ -60,6 +60,8 @@ nonisolated final class LogTabUITests: XCTestCase {
         days.element(boundBy: days.count - 1).tap()
         XCTAssertFalse(app.element("log.title").label.hasPrefix("Today"))
         app.shot("log-tomorrow")
+        // It opens on its first food, whatever hour today was showing.
+        XCTAssertTrue(app.element("log.hour.12").waitToAppear().isHittable, "the day's first food's hour is in view")
 
         XCTAssertTrue(app.scrollTo(app.logEntry(containing: "Chicken salad")).waitToAppear().label.contains("Later"), "marked as later")
         XCTAssertTrue(app.element("log.left").label.contains("left"), app.element("log.left").label)

@@ -22,10 +22,13 @@ struct LogTab: View {
     /// Whether the first layout has gone to the opening hour. Coming back from another tab leaves
     /// the list where it was.
     @State private var anchored = false
+    @State private var listWidth: CGFloat = .infinity
 
     /// The Mac reports no size class: it always has room.
     var wide: Bool { sizeClass != .compact }
     var day: Day { model.selectedDay }
+    /// The columns need the room: beside a pane in the Mac's smallest window, the phone's rows fit.
+    var showsColumns: Bool { wide && listWidth >= 520 }
 
     var body: some View {
         let groups = DayHours.groups(on: day, entries: model.allEntries(on: day))
@@ -36,15 +39,20 @@ struct LogTab: View {
                     // are theirs on every platform.
                     Section {
                         ForEach(groups) { group in
-                            HourRows(group: group, wide: wide, editing: $editing)
+                            HourRows(group: group, wide: showsColumns, editing: editingFood)
                         }
                     } header: {
-                        LogHeader(wide: wide).textCase(nil)
+                        LogHeader(wide: showsColumns).textCase(nil)
                     }
                 }
                 .listStyle(.plain)
                 .environment(\.defaultMinListRowHeight, 26)
                 .accessibilityIdentifier("log.list")
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: {
+                    listWidth = $0
+                }
                 #if os(macOS)
                 .onDeleteCommand { model.deleteSelection() }
                 #endif
@@ -53,8 +61,15 @@ struct LogTab: View {
                     anchored = true
                     anchor(proxy, groups)
                 }
-                .onChange(of: day) { _, _ in anchor(proxy, groups) }
-                .onChange(of: model.logAnchorRequest) { _, _ in anchor(proxy, groups) }
+                // After a turn of the main thread: the new day's rows aren't in the list yet, and a
+                // scroll to a row that isn't there is dropped. A change, not a task: a task would
+                // run again on coming back from another tab, which leaves the list where it was.
+                .onChange(of: AnchorKey(day: day, request: model.logAnchorRequest)) { _, key in
+                    Task {
+                        await Task.yield()
+                        anchor(proxy, DayHours.groups(on: key.day, entries: model.allEntries(on: key.day)))
+                    }
+                }
             }
             // Where there's no bar above the tabs for it to swap into.
             .safeAreaInset(edge: .bottom) {
@@ -64,8 +79,34 @@ struct LogTab: View {
             }
             .inlineTitle()
             .toolbar { toolbar }
-            .sheet(item: $editing) { entry in EntryEditor(entry: entry) }
+            .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
+            .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
+        }
+    }
+
+    /// A food's amount where there's no pane to put it in, and otherwise in the pane, in place of
+    /// the logger.
+    var editingFood: Binding<FoodEntry?> { $editing }
+
+    /// What's beside the day, where there's room: a food being changed, or the logger.
+    var paneOpen: Binding<Bool> {
+        Binding(
+            get: { wide && (editing != nil || model.logger != nil) },
+            set: { open in
+                guard !open else { return }
+                editing = nil
+                model.logger = nil
+            })
+    }
+
+    @ViewBuilder
+    var pane: some View {
+        if let editing {
+            EntryEditor(entry: editing, close: { self.editing = nil }).padding(.top, 8).id(editing.id)
+        } else if let mode = model.logger {
+            // A new one for a new way of logging; the same one for another hour's +.
+            LoggerPane(start: mode).id(mode)
         }
     }
 
@@ -103,6 +144,12 @@ struct LogTab: View {
     }
 
     var title: String { day == model.today ? "Today" : Format.day(day, style: .dateTime.weekday(.wide).month().day()) }
+}
+
+/// What moves the list to a day's opening hour.
+private struct AnchorKey: Equatable {
+    var day: Day
+    var request: Int
 }
 
 /// The week and what's left, pinned over the hours.

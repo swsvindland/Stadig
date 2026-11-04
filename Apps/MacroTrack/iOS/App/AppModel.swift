@@ -883,12 +883,10 @@ final class AppModel {
     // MARK: Logging
 
     /// Opens a logger, its foods eaten at `time` (nil is now). The time lasts while the logger is open.
-    /// Where the sidebar has the Foods screen, a search at no particular time opens that instead.
+    /// Where there's room it's a pane beside the Log tab, so that's where this goes, and each food
+    /// added lands in sight. An hour's + with it open aims it at that hour.
     func openLogger(_ mode: LogMode, at time: Date? = nil) {
-        if mode == .search, time == nil, usesSidebar {
-            showFoods()
-            return
-        }
+        if usesSidebar { tab = .log }
         loggerTime = time
         logger = mode
     }

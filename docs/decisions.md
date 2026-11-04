@@ -154,6 +154,10 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **A reminder for another day's doses** still shows Today, as it did; Today only ever shows today now, so that day's doses are in the Log tab's day until the next move.
 - **The Mac's scroll to an hour stops an hour early**, because the pinned line sits over the list's top row there. The spike found it; nothing else needed it.
 - **The hour label is the clock's** ("8 AM"), and two hours read the same when the clocks go back.
+- **The pane has its own search field**, not the window's: a pane isn't where a window's search goes, and on the Mac that placement couldn't be checked overnight. Return logs the best match, as the Foods screen's does.
+- **An entry's amount takes the pane on a wide screen**, and the logger comes back when it's done.
+- **A logger opened from another tab goes to the Log tab** where there's a sidebar, including from a link or a widget, since that's where its pane is. Foods stays the screen for comparing, on ⌘F.
+- **Macro columns go below 520 pt of list**, beside the pane in the Mac's smallest window, where the phone's rows fit better.
 - **Planned days have no limit**: the calendar and ⌘] go as far ahead as you like. On a day to come, a day with no calorie target reads "650 kcal planned".
 - **A day to come refuses what has to have happened**: marking it done or fasted, doses, water and weigh-ins, quietly at the model, and the bar drops its scale there.
 - **Today on iPad, the Mac and Vision Pro is one centered column**, 760 pt, rather than two panes: with the table gone there's nothing to sit beside it, and the sidebar keeps Log a click away. Say if you'd rather use the width.
