@@ -36,6 +36,7 @@ struct MacroCommands: Commands {
                     model?.showWeighIn = true
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(onADayAhead)
             }
             .disabled(!ready)
         }
@@ -70,6 +71,9 @@ struct MacroCommands: Commands {
 
     /// Set up, so there's a Today to log to.
     var ready: Bool { model?.onboarded ?? false }
+
+    /// A day to come, which has nothing to weigh yet: the sheet would save a weight only to drop it.
+    var onADayAhead: Bool { model.map { $0.selectedDay > $0.today } ?? false }
 
     /// A logger, in place of any sheet up, on the day being looked at.
     func log(_ mode: LogMode) {

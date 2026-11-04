@@ -113,6 +113,31 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         XCTAssertTrue(title.contains(" \(date)."), title)
     }
 
+    /// ⌘⇧M follows the day: a day to come has nothing to weigh, and the sheet would throw a weight
+    /// away. Going from each to the other shows the menu keeps up with the day.
+    @MainActor
+    func testTheWeighInShortcutIsOffOnADayAhead() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "-1"])
+        app.element("log.backToToday").waitToAppear()
+        let weigh = app.element("weighIn.save")
+
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        XCTAssertFalse(weigh.waitForExistence(timeout: 2), "nothing to weigh tomorrow")
+
+        app.element("log.backToToday").tap()
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        weigh.waitToAppear()
+        app.element("weighIn.cancel").tap()
+        weigh.waitToDisappear()
+
+        // ⌘]: tomorrow again.
+        app.typeKey("]", modifierFlags: .command)
+        app.element("log.backToToday").waitToAppear()
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        XCTAssertFalse(weigh.waitForExistence(timeout: 2), "nothing to weigh tomorrow")
+    }
+
     @MainActor
     func testTheMealPlanShowsTheWeekGroceriesAndPrepTogether() {
         continueAfterFailure = false

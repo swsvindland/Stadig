@@ -96,6 +96,7 @@
 
 **Not verified**
 
+- History's double-click on the Mac, and ⌘⇧M left off on a day ahead there. The Mac has no UI tests: the iPad's cover a row's menu and the same `Commands`, and the double-click calls what that menu calls.
 - Stadig Macro's rework on the Mac by eye: the Log tab, the pane, selection, ⌘-click and ⇧-click, the amount field and the Sort menu. Its tests and build pass, but its display was asleep overnight.
 - Stadig Macro's rework on a device: the 16 ms budget (every number here is an M1 Max simulator) and how a hold, the swipes and the bar swap feel under a thumb.
 - Stadig Macro's rework on iOS 26. The app targets 26.1, only iOS 27 simulators are installed, and the reported bar lag was on 26.1.
