@@ -32,6 +32,25 @@ enum Platform {
         #endif
     }
 
+    /// The Mac's ⌘ or ⇧ held down during a click: nothing to ask anywhere else.
+    @MainActor
+    static var commandHeld: Bool {
+        #if os(macOS)
+        return NSEvent.modifierFlags.contains(.command)
+        #else
+        return false
+        #endif
+    }
+
+    @MainActor
+    static var shiftHeld: Bool {
+        #if os(macOS)
+        return NSEvent.modifierFlags.contains(.shift)
+        #else
+        return false
+        #endif
+    }
+
     /// Whether an amount is typed on the panel's own keypad. The Mac has a real keyboard and a
     /// focused, selected field instead.
     static var usesAmountKeypad: Bool { !isMac }
@@ -226,6 +245,16 @@ extension View {
         return self
         #else
         return hoverEffect()
+        #endif
+    }
+
+    /// A context menu where a click asks for it, and nothing where a hold means something else.
+    @ViewBuilder
+    func macContextMenu<Menu: View>(@ViewBuilder _ menu: () -> Menu) -> some View {
+        #if os(macOS)
+        contextMenu(menuItems: menu)
+        #else
+        self
         #endif
     }
 

@@ -186,7 +186,10 @@ final class AppModel {
         didSet {
             guard tab != oldValue else { return }
             defaults?.set(tab.rawValue, forKey: Self.tabKey)
-            if oldValue.keepsDay, !tab.keepsDay { selectedDay = today }
+            if oldValue.keepsDay, !tab.keepsDay {
+                selectedDay = today
+                clearSelection()
+            }
         }
     }
     /// The logger on screen. Closing it, by Done, a swipe or a link opening something else, drops
@@ -225,6 +228,8 @@ final class AppModel {
     var usesSidebar = false
     /// Asks the Foods screen to put the cursor in its search field (⌘F, Log Food, a widget's search).
     private(set) var foodSearchRequest = 0
+    /// The foods picked out on the Log tab.
+    var selection = LogSelection()
     /// Asks the Log tab to go to the hour a day opens on: back from a while away, or a tap on today.
     private(set) var logAnchorRequest = 0
     /// Asks Today to scroll to the day's supplements (a tap on a reminder): by evening the food
@@ -374,6 +379,8 @@ final class AppModel {
             let all = store.all(FoodEntry.self).sorted { $0.date < $1.date }
             entriesByDay = Dictionary(grouping: all, by: \.day)
             foodLog = FoodLog(sorted: all, now: Date())
+            // A food deleted from under the selection, here or on another device, leaves it.
+            if !selection.isEmpty { selection.ids.formIntersection(all.map(\.id)) }
             LogPath.end(reading)
         }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
@@ -907,7 +914,7 @@ final class AppModel {
     /// that's mid-way through a day.
     func cameToFront(at date: Date = Date()) {
         defer { wentAway = nil }
-        guard let wentAway, date.timeIntervalSince(wentAway) >= Self.awayLimit, logger == nil else { return }
+        guard let wentAway, date.timeIntervalSince(wentAway) >= Self.awayLimit, logger == nil, selection.isEmpty else { return }
         showToday()
     }
 
@@ -1022,11 +1029,7 @@ final class AppModel {
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
         let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
         let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
-        // Worked out here from the fast's own days: the analysis may not be back yet.
-        let run = fasting.flatMap { fasting -> FastRun? in
-            let days = DayRange(Day(fasting.fast.start), today).days.flatMap { entries(on: $0) }
-            return Fasting.runs([fasting.fast], entries: days, now: Date()).first
-        }
+        let run = fasting.flatMap { fastRun($0.fast) }
         if let run, !run.isRunning, let end = run.end {
             toast = Toast(message: "\(text) · ended your \(Format.duration(run.duration(at: end))) fast", undo: new.map(\.id))
         } else {
@@ -1044,6 +1047,12 @@ final class AppModel {
         let later = log.upcoming.map(\.id)
         if settings.saveToHealth, !eaten.isEmpty { Task { await HealthBridge.shared.saveFoods(eaten.map(Self.healthFood)) } }
         if !later.isEmpty { Task { await HealthBridge.shared.deleteFoods(ids: later) } }
+    }
+
+    /// A fast as it stands now, from its own days: the analysis may not be back yet after a change.
+    func fastRun(_ fast: Fast) -> FastRun? {
+        let days = DayRange(Day(fast.start), today).days.flatMap { entries(on: $0) }
+        return Fasting.runs([fast], entries: days, now: Date()).first
     }
 
     func update(_ entry: FoodEntry) {

@@ -162,6 +162,12 @@ struct PlacingTests {
         #expect(dates.allSatisfy { Day($0, calendar: calendar) == day.adding(days: 5) })
     }
 
+    @Test func toNowEndsAtNowInOrder() {
+        let now = day.adding(days: 1).at(hour: 18, minute: 0, calendar: calendar)
+        let dates = Placing.dates(for: [food(19), food(8), food(12)], .now(now), calendar: calendar)
+        #expect(dates == [0, -2, -1].map { now.addingTimeInterval($0) })
+    }
+
     @Test func nothingToPlaceIsNothing() {
         #expect(Placing.dates(for: [], .sameTimes(on: day), calendar: calendar).isEmpty)
     }

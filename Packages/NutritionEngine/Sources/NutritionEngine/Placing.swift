@@ -7,6 +7,8 @@ public enum Placement: Hashable, Sendable {
     case starting(Date)
     /// On a day, each at its own time of day: to today, to tomorrow, to chosen dates.
     case sameTimes(on: Day)
+    /// A meal eaten now, in order, ending at this moment.
+    case now(Date)
 }
 
 public enum Placing {
@@ -18,6 +20,12 @@ public enum Placing {
         switch placement {
         case .sameTimes(let day):
             return entries.map { day.at(sameTimeAs: $0.date, calendar: calendar) }
+        case .now(let now):
+            // A second apart, as a meal's foods go in: not an hour's gaps running on into the future.
+            let order = entries.indices.sorted { entries[$0].date < entries[$1].date }
+            var dates = entries.map(\.date)
+            for (place, index) in order.enumerated() { dates[index] = now.addingTimeInterval(TimeInterval(place - order.count + 1)) }
+            return dates
         case .starting(let start):
             let spaced = entries.map { start.addingTimeInterval($0.date.timeIntervalSince(earliest)) }
             let day = Day(start, calendar: calendar)

@@ -45,6 +45,9 @@ struct LogTab: View {
                 .listStyle(.plain)
                 .environment(\.defaultMinListRowHeight, 26)
                 .accessibilityIdentifier("log.list")
+                #if os(macOS)
+                .onDeleteCommand { model.deleteSelection() }
+                #endif
                 .onAppear {
                     guard !anchored else { return }
                     anchored = true
@@ -52,6 +55,12 @@ struct LogTab: View {
                 }
                 .onChange(of: day) { _, _ in anchor(proxy, groups) }
                 .onChange(of: model.logAnchorRequest) { _, _ in anchor(proxy, groups) }
+            }
+            // Where there's no bar above the tabs for it to swap into.
+            .safeAreaInset(edge: .bottom) {
+                if wide, !model.selection.isEmpty {
+                    SelectionBar().frame(height: 48).floatingGlass(in: .capsule).padding()
+                }
             }
             .inlineTitle()
             .toolbar { toolbar }
@@ -263,47 +272,115 @@ struct HourRows: View {
     }
 }
 
-/// An hour's label, what it adds up to, and its +.
+/// An hour's label, what it adds up to, and its +. A tap on the label picks out the hour's foods,
+/// and holding it offers what's done with a meal. While foods are picked out, the + takes them here.
 struct HourHeader: View {
     @Environment(AppModel.self) private var model
     let group: HourGroup
+    @State private var naming = false
 
     var body: some View {
         let kcal = group.entries.map(\.nutrients.kcal).reduce(0, +)
         HStack(spacing: 8) {
-            Text(group.start.formatted(.dateTime.hour())).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            label
             Spacer(minLength: 0)
             if kcal > 0 { Text(Format.kcal(kcal)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
-            Button {
-                model.openLogger(.search, at: DayHours.addTime(group, now: Date()))
-            } label: {
-                Image(systemName: "plus").font(.caption.weight(.bold)).frame(width: 36, height: 26).contentShape(.rect)
+            Button(action: add) {
+                Image(systemName: symbol).font(.caption.weight(.bold)).frame(width: 36, height: 26).contentShape(.rect)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Log at \(Format.time(group.start))")
+            .accessibilityLabel(addLabel)
             .accessibilityIdentifier("log.add.\(group.hour)")
         }
         // Contain, or the identifier goes on the + inside it too, over its own.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("log.hour.\(group.hour)")
+        .saveMealPrompt(isPresented: $naming, entries: group.entries)
+    }
+
+    @ViewBuilder
+    var label: some View {
+        let title = group.start.formatted(.dateTime.hour())
+        if group.entries.isEmpty {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+        } else {
+            Button {
+                model.toggleSelection(group)
+            } label: {
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(allSelected ? Color.accentColor : .secondary)
+                    .frame(minWidth: 44, minHeight: 26, alignment: .leading).contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Select the foods at \(title)")
+            .accessibilityIdentifier("log.hourName.\(group.hour)")
+            .contextMenu {
+                let moment = Moment(entries: group.entries)
+                Button("Repeat Now", systemImage: "arrow.clockwise") { model.logAgain(moment, at: Date()) }
+                MomentMealButton(moment: moment) { naming = true }
+                Button("Remove", systemImage: "trash", role: .destructive) { model.delete(entries: group.entries.map(\.id)) }
+            }
+        }
+    }
+
+    var allSelected: Bool { group.entries.allSatisfy { model.selection.ids.contains($0.id) } }
+
+    var symbol: String {
+        if model.selection.isEmpty { return "plus" }
+        return model.selection.intent == .move ? "arrow.right.to.line" : "doc.on.clipboard"
+    }
+
+    var addLabel: String {
+        let time = Format.time(group.start)
+        if model.selection.isEmpty { return "Log at \(time)" }
+        return model.selection.intent == .move ? "Move here, \(time)" : "Copy here, \(time)"
+    }
+
+    func add() {
+        let time = DayHours.addTime(group, now: Date())
+        if model.selection.isEmpty {
+            model.openLogger(.search, at: time)
+        } else {
+            model.placeSelection(.starting(time), named: "\(model.dayName(Day(time))), \(Format.time(time))")
+        }
     }
 }
 
-/// A food in its hour: a tap opens its amount, and a swipe deletes it or logs it again.
+/// A food in its hour: a tap opens its amount, a hold picks it out, and a swipe deletes it or logs
+/// it again. While foods are picked out a tap picks this one out too, and on the Mac ⌘-click and
+/// ⇧-click do. Built the way stage 0's spike found works on `List` rows: every other way to hear a
+/// hold stops scrolling from the row or turns the hold into a tap. The release after a hold still
+/// reaches the Button, which is what `held` is for.
 struct LogEntryRow: View {
     @Environment(AppModel.self) private var model
     let entry: FoodEntry
     let wide: Bool
     @Binding var editing: FoodEntry?
+    /// When a hold picked this out: the tap that lands with its release is swallowed.
+    @State private var held: Date?
+
+    var isSelected: Bool { model.selection.ids.contains(entry.id) }
 
     var body: some View {
-        Button {
-            editing = entry
-        } label: {
-            if wide { columns } else { EntryRow(entry: entry) }
+        Button(action: tapped) {
+            HStack(spacing: 10) {
+                if !model.selection.isEmpty {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                }
+                if wide { columns } else { EntryRow(entry: entry) }
+            }
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+                held = Date()
+                model.toggleSelection(entry)
+            }
+        )
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityAction(named: isSelected ? "Deselect" : "Select") { model.toggleSelection(entry) }
         .accessibilityIdentifier("log.entry")
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
@@ -314,9 +391,29 @@ struct LogEntryRow: View {
             }
             .tint(.accentColor)
         }
-        .contextMenu {
+        // The Mac's right-click. On a touch screen a hold selects, so a menu there would fight it.
+        .macContextMenu {
+            Button(isSelected ? "Deselect" : "Select", systemImage: "checkmark.circle") { model.toggleSelection(entry) }
             Button("Log Again", systemImage: "arrow.clockwise") { model.log([LogAgain.copy(entry, to: model.logDate(), source: .copied)]) }
             Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
+        }
+    }
+
+    func tapped() {
+        // A finger that slid off after the hold never releases here, so a later tap isn't swallowed.
+        if let held, Date().timeIntervalSince(held) < 2 {
+            self.held = nil
+            return
+        }
+        held = nil
+        if Platform.commandHeld {
+            model.toggleSelection(entry)
+        } else if Platform.shiftHeld {
+            model.extendSelection(to: entry)
+        } else if model.selection.isEmpty {
+            editing = entry
+        } else {
+            model.toggleSelection(entry)
         }
     }
 

@@ -49,6 +49,54 @@ nonisolated final class LogTabUITests: XCTestCase {
         XCTAssertTrue(app.element("log.title").waitToAppear().label.hasPrefix("Today"))
     }
 
+    /// A hold picks a food out, and a tap on an hour's name picks out the rest; the bar swaps in, and
+    /// an hour's + becomes where they go.
+    @MainActor
+    func testHoldingAFoodSelectsItAndAnHourTakesItThere() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedPlan", "-tab", "log", "-daysAgo", "1"])
+        let entry = app.scrollTo(app.element("log.entry")).waitToAppear()
+        entry.press(forDuration: 0.7)
+
+        let bar = app.element("selection.bar").waitToAppear()
+        app.shot("selection-one")
+        XCTAssertFalse(app.element("amount.panel").exists, "a hold doesn't open the amount")
+        XCTAssertTrue(app.element("selection.clear").label.hasPrefix("1 "), app.element("selection.clear").label)
+
+        app.element("log.hourName.8").tap()
+        XCTAssertTrue(app.element("selection.clear").label.hasPrefix("3 "), app.element("selection.clear").label)
+        app.shot("selection-hour")
+
+        // A later, empty hour's arrow takes them there.
+        app.scrollTo(app.element("log.add.20")).waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Moved 3 foods").waitToAppear()
+        bar.waitToDisappear()
+        app.shot("selection-moved")
+        app.element("toast.undo").tap()
+        app.element("toast.message").waitToDisappear()
+    }
+
+    @MainActor
+    func testCopyingToChosenDatesKeepsTheSelection() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedPlan", "-tab", "log", "-daysAgo", "1"])
+        app.scrollTo(app.element("log.hourName.8")).waitToAppear().tap()
+        app.element("selection.intent").waitToAppear().tap()
+        XCTAssertEqual(app.element("selection.intent").label, "Copy")
+        app.element("selection.dates").tap()
+
+        let days = app.descendants(matching: .any).matching(identifier: "toDates.day")
+        days.element(boundBy: 0).waitToAppear().tap()
+        days.element(boundBy: 1).tap()
+        app.shot("to-dates")
+        app.element("toDates.done").tap()
+
+        app.element("toast.message", labelContaining: "Copied 3 foods to 2 days").waitToAppear()
+        XCTAssertTrue(app.element("selection.bar").exists, "a copy keeps the selection")
+        app.element("selection.clear").tap()
+        app.element("selection.bar").waitToDisappear()
+    }
+
     @MainActor
     func testTheBarNamesTheDay() throws {
         try XCTSkipIf(XCUIApplication.isPad, "An iPad has no bar above the tabs")

@@ -100,11 +100,13 @@ struct RootView: View {
         .tabViewStyle(.sidebarAdaptable)
         #if os(iOS)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory(isEnabled: !wide) { QuickLogBar() }
+        .tabViewBottomAccessory(isEnabled: !wide) {
+            if model.selection.isEmpty { QuickLogBar() } else { SelectionBar() }
+        }
         #endif
-        // The logger shows its own, in with the meal: one behind it would be a second Undo nobody can
+        // Clear of the selection bar where it's at the foot of the screen. The logger shows its own, in with the meal: one behind it would be a second Undo nobody can
         // reach. It takes over when the logger closes, with its few seconds starting again.
-        .toastOverlay(bottomPadding: wide ? 24 : 130, showing: model.logger == nil)
+        .toastOverlay(bottomPadding: wide ? (model.selection.isEmpty ? 24 : 92) : 130, showing: model.logger == nil)
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }

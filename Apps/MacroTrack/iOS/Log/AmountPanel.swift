@@ -56,7 +56,10 @@ struct AmountPanel: View {
                     unitRow
                     choices
                     NutrientSummary(nutrients: nutrients)
-                    if isEditing, !isMealFood { timeRow }
+                    if isEditing, !isMealFood {
+                        timeRow
+                        takeRow
+                    }
                     if showingNutrients, let food, let unit = amount.unit, let count = amount.count {
                         PortionNutrients(food: food, count: count, unit: unit)
                     }
@@ -202,6 +205,26 @@ struct AmountPanel: View {
                 .accessibilityIdentifier("entryEditor.delete")
             }
         }
+    }
+
+    /// Picks the food out on the Log tab to take it somewhere: another day, or an hour's arrow.
+    var takeRow: some View {
+        HStack(spacing: 8) {
+            take("Move", symbol: "arrow.right.circle", intent: .move)
+            take("Copy", symbol: "doc.on.doc", intent: .copy)
+        }
+    }
+
+    func take(_ title: String, symbol: String, intent: LogSelection.Intent) -> some View {
+        Button(title, systemImage: symbol) {
+            guard let entry else { return }
+            model.select(entry, intent: intent)
+            close()
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("entryEditor.\(title.lowercased())")
     }
 
     var keypad: some View {
@@ -358,7 +381,7 @@ extension View {
     /// A small sheet for the amount panel: all of it in view on a phone, with room to grow, and
     /// room for the time when it's changing an entry.
     func amountSheet(editing: Bool) -> some View {
-        presentationDetents([.height(editing ? 668 : 620), .large])
+        presentationDetents([.height(editing ? 716 : 620), .large])
             .presentationDragIndicator(.visible)
             .macSheetSize(width: 440, height: 520)
     }

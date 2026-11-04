@@ -154,6 +154,12 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **A reminder for another day's doses** still shows Today, as it did; Today only ever shows today now, so that day's doses are in the Log tab's day until the next move.
 - **The Mac's scroll to an hour stops an hour early**, because the pinned line sits over the list's top row there. The spike found it; nothing else needed it.
 - **The hour label is the clock's** ("8 AM"), and two hours read the same when the clocks go back.
+- **Selection's bar names the targets, and Move or Copy is a toggle in it**, with Move first. With the tab bar minimised the targets fold into a menu, since the bar is 252 pt wide there.
+- **To Now is a meal eaten now**: in order, a second apart, ending at now. Keeping an afternoon's gaps would run into the evening.
+- **Moving to several dates at once** moves to the earliest and leaves copies on the rest.
+- **Leaving the Log tab clears the selection**, as it does the day.
+- **On a touch screen a food has no context menu**, since a hold selects. Its swipes do what the menu did. The Mac keeps a right-click menu.
+- **A hold's release is swallowed for 2 seconds** after the hold. A finger that slid off never releases, so without the limit a later tap would be lost.
 
 ## Calls made for warm-ups (2026-11-03)
 
