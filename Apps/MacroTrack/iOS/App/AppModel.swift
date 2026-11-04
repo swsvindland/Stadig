@@ -470,7 +470,10 @@ final class AppModel {
         }
         let now = Date()
         // Every recompute reads the clock, so this is where a food's time passing is noticed.
-        if foodLog.isStale(at: now) { foodLog = foodLog.at(now) }
+        if foodLog.isStale(at: now) {
+            foodLog = foodLog.at(now)
+            healthBackfill?.run()
+        }
         defer { foodClock?.arm(for: foodLog.nextChange) }
         let rankings = LogPath.begin("rankings")
         logAgain = LogAgain.rank(suggestionEntries, now: now)
@@ -885,7 +888,18 @@ final class AppModel {
         } else {
             toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
         }
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(new.map(Self.healthFood)) } }
+        syncHealth(new)
+    }
+
+    /// Health holds what's been eaten and nothing else, so these entries go in if their time has
+    /// come, and any copy of one moved ahead of now comes out. The rest of the time, a food reaching
+    /// its time is written by the backfill, dated when it was eaten.
+    private func syncHealth(_ changed: [FoodEntry]) {
+        let log = FoodLog(changed, now: Date())
+        let eaten = log.eaten
+        let later = log.upcoming.map(\.id)
+        if settings.saveToHealth, !eaten.isEmpty { Task { await HealthBridge.shared.saveFoods(eaten.map(Self.healthFood)) } }
+        if !later.isEmpty { Task { await HealthBridge.shared.deleteFoods(ids: later) } }
     }
 
     func update(_ entry: FoodEntry) {
@@ -900,7 +914,7 @@ final class AppModel {
         let saved = edited(edits, from: before)
         store.save(saved)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(saved.map(Self.healthFood)) } }
+        syncHealth(saved)
         if let message { toast = Toast(message: message, restore: Array(before.values)) }
     }
 
@@ -926,7 +940,7 @@ final class AppModel {
         }
         store.save(saved)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(saved.map(Self.healthFood)) } }
+        syncHealth(saved)
     }
 
     /// Deletes entries (and their Health samples), with "Deleted … Undo": a whole moment goes in two taps.
@@ -960,7 +974,7 @@ final class AppModel {
         let restored = deleted.map { $0.edited(at: now) }
         store.save(restored)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(restored.map(Self.healthFood)) } }
+        syncHealth(restored)
     }
 
     /// One tap from the Log again row: the same food and amount, now.

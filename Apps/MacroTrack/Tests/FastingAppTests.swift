@@ -122,6 +122,38 @@ struct FastingAppTests {
         #expect(FastReminders.wanted(model).isEmpty)
     }
 
+    @Test func notificationsStopAtTheNextMealLoggedForLater() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let all = FastReminders.wanted(model).values.map(\.at)
+        let first = try #require(all.min())
+        // A meal between the first milestone and the rest: it ends the fast at its time.
+        model.log([
+            FoodEntry(
+                date: first.addingTimeInterval(60), name: "Dinner", amountLabel: "1",
+                nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20),
+                source: .search)
+        ])
+        #expect(model.foodLog.nextMeal != nil)
+        #expect(FastReminders.wanted(model).values.map(\.at) == [first])
+    }
+
+    @Test func aDrinkLoggedForLaterDoesntStopThem() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let count = FastReminders.wanted(model).count
+        let first = try #require(FastReminders.wanted(model).values.map(\.at).min())
+        model.log([
+            FoodEntry(
+                date: first.addingTimeInterval(60), name: "Black coffee", amountLabel: "1",
+                nutrients: Nutrients(kcal: 2, protein: 0, carbs: 0, fat: 0),
+                source: .search)
+        ])
+        #expect(FastReminders.wanted(model).count == count)
+    }
+
     @Test func theWidgetsSeeTheFastAndTheExportHasIt() throws {
         let (model, environment, banana) = try model()
         model.startFast(goalHours: 16)

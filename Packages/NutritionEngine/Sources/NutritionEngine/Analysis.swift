@@ -5,7 +5,10 @@ import SystemCore
 public struct MacroState: Sendable {
     public var profile: SharedProfile
     public var settings: MacroSettings
+    /// What's been eaten by `now`.
     public var entries: [FoodEntry]
+    /// Food logged for after `now`, for what runs with the app closed and has to know it's coming.
+    public var upcoming: [FoodEntry]
     public var weighIns: [WeighIn]
     public var dayStatus: [DayStatus]
     public var plan: PhasePlan?
@@ -35,7 +38,9 @@ public struct MacroState: Sendable {
         self.profile = profile
         self.settings = settings
         // Food logged for later hasn't happened: nothing the engine works out sees it until its time.
-        self.entries = FoodLog(entries, now: now).eaten
+        let log = FoodLog(entries, now: now)
+        self.entries = log.eaten
+        upcoming = log.upcoming
         self.weighIns = weighIns
         self.dayStatus = dayStatus
         self.plan = plan

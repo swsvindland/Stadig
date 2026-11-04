@@ -37,4 +37,20 @@ public struct FoodLog: Hashable, Sendable {
     public func at(_ now: Date) -> FoodLog { FoodLog(all, now: now) }
 
     public func isUpcoming(_ entry: FoodEntry) -> Bool { entry.date > now }
+
+    /// When the next meal is due: food enough to end a fast (``MealTiming/mealKcal``), not a coffee.
+    public var nextMeal: Date? { upcoming.filter { $0.nutrients.kcal >= MealTiming.mealKcal }.map(\.date).min() }
+
+    /// What's to come through a day, earliest first, for the widgets and complications.
+    public func later(through last: Day) -> [LaterFood] { LaterFood.of(upcoming, through: last) }
+}
+
+extension LaterFood {
+    /// `entries` through a day, earliest first. Past that the snapshot would only grow: a widget's
+    /// timeline ends at midnight, and the app writes again long before the day after.
+    public static func of(_ entries: [FoodEntry], through last: Day) -> [LaterFood] {
+        entries.filter { $0.day <= last }.sorted { $0.date < $1.date }.map {
+            LaterFood(date: $0.date, nutrients: $0.nutrients, isMeal: $0.nutrients.kcal >= MealTiming.mealKcal)
+        }
+    }
 }

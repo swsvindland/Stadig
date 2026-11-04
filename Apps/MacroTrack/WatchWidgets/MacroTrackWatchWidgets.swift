@@ -34,7 +34,7 @@ struct FastSnapshotProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
-        completion(SnapshotEntry(date: Date(), snapshot: context.isPreview ? Self.sample : WristSnapshotFile.load()))
+        completion(SnapshotEntry(date: Date(), snapshot: context.isPreview ? Self.sample : WristSnapshotFile.load().shown(at: Date())))
     }
 
     func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<SnapshotEntry>) -> Void) {
@@ -48,7 +48,9 @@ struct FastSnapshotProvider: TimelineProvider {
         var dates = stride(from: 0.0, to: 24 * 3600, by: 1800).map { now.addingTimeInterval($0) }
         dates += FastPhase.allCases.map { from.addingTimeInterval($0.startHours * 3600) }
         if let goal = snapshot.fastGoalHours { dates.append(from.addingTimeInterval(goal * 3600)) }
-        let entries = Set(dates.filter { $0 >= now && $0 <= horizon }).sorted().map { SnapshotEntry(date: $0, snapshot: snapshot) }
+        // A meal logged for later ends the fast at its time.
+        dates += snapshot.laterDates(after: now, before: horizon)
+        let entries = Set(dates.filter { $0 >= now && $0 <= horizon }).sorted().map { SnapshotEntry(date: $0, snapshot: snapshot.shown(at: $0)) }
         completion(WidgetKit.Timeline(entries: entries, policy: .after(horizon)))
     }
 
@@ -113,8 +115,9 @@ struct SnapshotEntry: TimelineEntry {
     var snapshot: WristSnapshot
 }
 
-/// The app reloads the timelines whenever the snapshot changes. A second entry at midnight starts
-/// the new day at nothing eaten, with the Watch app closed.
+/// The app reloads the timelines whenever the snapshot changes. An entry for each food logged for
+/// later today counts it at its time, and one at midnight starts the new day at nothing eaten, all
+/// with the Watch app closed.
 struct SnapshotProvider: TimelineProvider {
     func placeholder(in context: Context) -> SnapshotEntry {
         SnapshotEntry(date: Date(), snapshot: .sample(on: .today))
@@ -122,20 +125,17 @@ struct SnapshotProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
         let now = Date()
-        let snapshot = context.isPreview ? .sample(on: Day(now)) : WristSnapshotFile.load().shown(on: Day(now))
+        let snapshot = context.isPreview ? .sample(on: Day(now)) : WristSnapshotFile.load().shown(at: now)
         completion(SnapshotEntry(date: now, snapshot: snapshot))
     }
 
     func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<SnapshotEntry>) -> Void) {
         let now = Date()
         let snapshot = WristSnapshotFile.load()
-        let tomorrow = Day(now).adding(days: 1)
         // The next calendar day, not 24 hours on, which misses midnight the days the clocks change.
-        let entries = [
-            SnapshotEntry(date: now, snapshot: snapshot.shown(on: Day(now))),
-            SnapshotEntry(date: tomorrow.date(), snapshot: snapshot.shown(on: tomorrow)),
-        ]
-        completion(WidgetKit.Timeline(entries: entries, policy: .never))
+        let midnight = Day(now).adding(days: 1).date()
+        let dates = [now] + snapshot.laterDates(after: now, before: midnight) + [midnight]
+        completion(WidgetKit.Timeline(entries: dates.map { SnapshotEntry(date: $0, snapshot: snapshot.shown(at: $0)) }, policy: .never))
     }
 }
 

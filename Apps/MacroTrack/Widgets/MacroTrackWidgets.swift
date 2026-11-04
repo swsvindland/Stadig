@@ -79,19 +79,16 @@ struct MacroProvider: TimelineProvider {
         completion(MacroEntry(date: Date(), snapshot: context.isPreview ? .sample : MacroSnapshot.load().current()))
     }
 
-    /// Now, and a fresh day at midnight.
+    /// Now, one for each food logged for later today, and a fresh day at midnight.
     func getTimeline(in context: Context, completion: @escaping (Timeline<MacroEntry>) -> Void) {
         let now = Date()
         let snapshot = MacroSnapshot.load()
         // The next calendar day, not 24 hours on, which misses midnight or lands before it when the clocks change.
         let midnight = Day(now).adding(days: 1).date()
+        let dates = [now] + snapshot.laterDates(after: now, before: midnight) + [midnight]
         completion(
             Timeline(
-                entries: [
-                    MacroEntry(date: now, snapshot: snapshot.current(now: now)),
-                    MacroEntry(date: midnight, snapshot: snapshot.current(now: midnight)),
-                ],
-                policy: .after(midnight.addingTimeInterval(60))))
+                entries: dates.map { MacroEntry(date: $0, snapshot: snapshot.current(now: $0)) }, policy: .after(midnight.addingTimeInterval(60))))
     }
 }
 

@@ -103,6 +103,83 @@ struct HealthBackfillTests {
 
     func backfill() -> HealthBackfill { HealthBackfill(store: store, health: health, defaults: nil) }
 
+    func later(_ name: String, hour: Int = 22) -> FoodEntry {
+        let date = today.at(hour: hour, minute: 0)
+        return FoodEntry(
+            date: date, name: name, amountLabel: "1", nutrients: Nutrients(kcal: 300, protein: 20, carbs: 30, fat: 10), source: .recent,
+            updatedAt: now)
+    }
+
+    @Test("food logged for later waits for its time, then goes in dated when it was eaten")
+    func laterFoodWaits() async throws {
+        let dinner = later("Dinner")
+        store.save(dinner)
+        let backfill = backfill()
+
+        await backfill.pass(now: now)
+        #expect(health.savedFoods.isEmpty)
+        #expect(backfill.ledger[dinner.id] == nil)
+
+        let after = today.at(hour: 22, minute: 1)
+        await backfill.pass(now: after)
+        #expect(health.savedFoods.map(\.id) == [dinner.id])
+        #expect(health.savedFoods.first?.date == dinner.date)
+    }
+
+    @Test("food moved ahead of now loses its copy, and gets it back at its new time")
+    func movedAhead() async throws {
+        let lunch = entry("Lunch")
+        store.save(lunch)
+        let backfill = backfill()
+        await backfill.pass(now: now)
+        #expect(health.held[lunch.id] != nil)
+
+        store.save(lunch.edited(at: now) { $0.date = today.at(hour: 22, minute: 0) })
+        await backfill.pass(now: now)
+        #expect(health.held[lunch.id] == nil)
+        #expect(backfill.ledger[lunch.id] == nil)
+
+        await backfill.pass(now: today.at(hour: 22, minute: 1))
+        #expect(health.held[lunch.id] != nil)
+    }
+
+    @Test("food moved ahead on another device before this one noted it still loses its copy")
+    func movedAheadUnledgered() async throws {
+        let lunch = entry("Lunch")
+        // Written as it was logged here, and moved on the Mac before a pass noted it.
+        health.held[lunch.id] = lunch.updatedAt.healthVersion
+        store.save(lunch.edited(at: now) { $0.date = today.at(hour: 22, minute: 0) })
+
+        await backfill().pass(now: now)
+
+        #expect(health.held[lunch.id] == nil)
+        #expect(health.deleted == [lunch.id])
+    }
+
+    @Test("later food isn't looked up again until it changes")
+    func laterLookedUpOnce() async throws {
+        let dinner = later("Dinner")
+        store.save(dinner)
+        let backfill = backfill()
+        await backfill.pass(now: now)
+        let lookups = health.reads
+        #expect(lookups > 0)
+        await backfill.pass(now: now)
+        #expect(health.reads == lookups)
+    }
+
+    @Test("what's for later doesn't reach someone who turned Health off")
+    func laterWithHealthOff() async throws {
+        var settings = MacroSettings(id: MacroSettings.singletonID, onboardedAt: today.adding(days: -20).at(hour: 9, minute: 0), saveToHealth: false)
+        // Past the one `init` saved, or the store keeps that one.
+        settings.updatedAt = Date().addingTimeInterval(1)
+        store.save(settings)
+        store.save(later("Dinner"))
+        await backfill().pass(now: now)
+        #expect(health.savedFoods.isEmpty)
+        #expect(health.reads == 0)
+    }
+
     @Test("what came from the Watch and the Mac goes to Health once; what's there already doesn't")
     func writesOnce() async throws {
         let here = entry("Logged on this phone", hour: 8)

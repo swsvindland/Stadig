@@ -29,7 +29,9 @@ enum FastActivityBridge {
                 }
             }
         }
-        let content = ActivityContent(state: state, staleDate: state.nextPhaseAt)
+        // The system can't be told to end it when a meal logged for later comes, with the app closed:
+        // at that time it reads as out of date, and the next open ends it.
+        let content = ActivityContent(state: state, staleDate: Self.staleDate(state, nextMeal: model.foodLog.nextMeal))
         if !live.contains(where: { $0.attributes.id == id }) {
             do {
                 let started = try Activity.request(attributes: FastActivityAttributes(id: id), content: content).id
@@ -52,6 +54,10 @@ enum FastActivityBridge {
                 }
             }
         }
+    }
+
+    static func staleDate(_ state: FastActivityAttributes.ContentState, nextMeal: Date?) -> Date? {
+        [state.nextPhaseAt, nextMeal].compactMap { $0 }.min()
     }
 
     static func end() {

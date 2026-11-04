@@ -138,6 +138,9 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **How food for later looks.** Rows are dimmed to 55% with a small clock, read aloud as "Later". The Mac and iPad table marks the time and dims the food and calories.
 - **A batch up to 60 seconds ahead of the clock means now.** A meal's foods go in a second apart, so without this the last of them would be later food for a moment. A time picked further ahead stays later.
 - **A food's time is checked by a timer, the day and clock changes, and coming back to the app.** While the app is suspended nothing counts it, and the numbers catch up on the way back, as the plan's "no background task" says.
+- **Health gets food at its time, and only then.** A food due while the app runs is written on the next backfill pass, seconds later; with the app closed, at the next launch, foreground or sync wake, dated when it was eaten. Food moved ahead of now loses its copy, and gets it back at the new time. Someone with Health writing turned off gets nothing either way.
+- **Widgets and complications hold what's coming through tomorrow**, with one timeline entry a food today. A meal among it (50 kcal or more) ends a fast on the widget at its time; a black coffee doesn't.
+- **The Live Activity can't end itself when a planned meal comes** with the app closed. It goes stale at that time and the next open ends it. Fast notifications stop at the first planned meal instead.
 
 ## Calls made for warm-ups (2026-11-03)
 

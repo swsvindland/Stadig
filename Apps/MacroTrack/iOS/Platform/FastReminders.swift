@@ -14,13 +14,15 @@ enum FastReminders {
     @MainActor private static var latest: [String: FastMilestone] = [:]
     @MainActor private static var running: Task<Void, Never>?
 
-    /// The notifications wanted, by identifier: the running fast's milestones still to come. None
-    /// while alerts or meal timing are off.
+    /// The notifications wanted, by identifier: the running fast's milestones still to come, up to
+    /// the next meal logged for later, which ends the fast at its time. None while alerts or meal
+    /// timing are off.
     @MainActor
     static func wanted(_ model: AppModel, now: Date = Date()) -> [String: FastMilestone] {
         guard model.tracksMealTiming, model.fastAlerts, let fast = model.analysis?.fast?.fast else { return [:] }
         var wanted: [String: FastMilestone] = [:]
-        for (index, milestone) in Fasting.milestones(fast).enumerated() where milestone.at > now {
+        let meal = model.foodLog.nextMeal ?? .distantFuture
+        for (index, milestone) in Fasting.milestones(fast).enumerated() where milestone.at > now && milestone.at < meal {
             // The time is in the id, so a changed goal or start replaces the notification.
             wanted["\(prefix)\(fast.id.uuidString)-\(index)-\(Int(milestone.at.timeIntervalSince1970))"] = milestone
         }

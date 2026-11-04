@@ -109,6 +109,65 @@ struct FoodLogTests {
         #expect(MacroAnalyst.analyse(after).usable[planned] == 2400)
     }
 
+    // MARK: later, outside the app
+
+    @Test func nextMealSkipsADrink() {
+        var coffee = dinner
+        coffee.date = at(15, 0)
+        coffee.nutrients = Nutrients(kcal: 2, protein: 0, carbs: 0, fat: 0)
+        let log = FoodLog([lunch, coffee, dinner], now: at(13, 0))
+        #expect(log.nextChange == at(15, 0))
+        #expect(log.nextMeal == at(18, 30))
+    }
+
+    @Test func laterFoodStopsAfterTomorrow() {
+        var nextWeek = dinner
+        nextWeek.date = day.adding(days: 7).at(hour: 12, minute: 0)
+        nextWeek.day = day.adding(days: 7)
+        let later = FoodLog([dinner, nextWeek], now: at(13, 0)).later(through: day.adding(days: 1))
+        #expect(later.map(\.date) == [at(18, 30)])
+        #expect(later.first?.isMeal == true)
+    }
+
+    func snapshot(now: Date, fast: Fast? = nil) -> WristSnapshot {
+        let state = state(now: now, fasts: fast.map { [$0] } ?? [])
+        return WristSnapshot(WristToday(state: state, analysis: MacroAnalyst.analyse(state)))
+    }
+
+    @Test func aComplicationCountsLaterFoodAtItsTime() {
+        let written = snapshot(now: at(13, 0))
+        #expect(written.later?.count == 1)
+        #expect(written.shown(at: at(18, 29)).kcal.eaten == 600)
+        let after = written.shown(at: at(18, 31))
+        #expect(after.kcal.eaten == 1400)
+        #expect(after.protein.eaten == 90)
+        #expect(after.later?.isEmpty == true)
+        #expect(written.laterDates(after: at(13, 0), before: at(23, 0)) == [at(18, 30)])
+    }
+
+    @Test func aComplicationsNextDayStartsFromNothing() {
+        let written = snapshot(now: at(13, 0))
+        #expect(written.shown(at: day.adding(days: 1).at(hour: 1, minute: 0)).kcal.eaten == 0)
+    }
+
+    @Test func aMealLoggedForLaterEndsAComplicationsFast() {
+        var written = snapshot(now: at(13, 0))
+        written.fastStart = at(13, 0)
+        written.fastGoalHours = 16
+        #expect(written.shown(at: at(18, 29)).fast(at: at(18, 29)) != nil)
+        let after = written.shown(at: at(18, 31))
+        #expect(after.fast(at: at(18, 31)) == nil)
+        #expect(after.lastMealEnd == at(18, 30))
+    }
+
+    @Test func aSnapshotWithLaterFoodSurvivesAndAnOlderOneReads() throws {
+        let written = snapshot(now: at(13, 0))
+        #expect(WristSnapshot.decoded(try written.encoded())?.later == written.later)
+        var older = written
+        older.later = nil
+        #expect(WristSnapshot.decoded(try older.encoded())?.later == nil)
+    }
+
     // MARK: settled
 
     func copies(at date: Date, count: Int) -> [FoodEntry] {
