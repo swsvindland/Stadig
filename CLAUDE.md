@@ -12,7 +12,7 @@ Scripts/build.sh format                # fix formatting in place
 Scripts/build.sh test [Package]        # package tests (all, or one); STRICT=1 makes warnings errors
 cd Packages/X && swift test --filter Y # one suite or test
 Scripts/build.sh unit lift|macro|mind [ipad|vision|mac]  # an app's unit and integration tests (this checkout's own simulator; iPhone by default)
-Scripts/build.sh ui lift|macro|mind [ipad|vision]        # an app's UI tests
+Scripts/build.sh ui lift|macro|mind [ipad|vision]        # an app's UI tests (ONLY=FastingUITests runs one class)
 Scripts/build.sh ios|watch|macro|macro-watch|mind        # build an app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift|macro|mind              # build an app for the Mac (runs on this Mac) or Vision Pro
 Scripts/leaks.sh lift|macro|mind       # after a build: `leaks` on the app's seeded screens
@@ -20,7 +20,7 @@ Scripts/store-screenshots.sh [lift|macro|mind]  # recapture App Store screenshot
 python3 Scripts/generate-project.py    # after changing targets, settings, Info.plist keys or packages
 ```
 
-Before calling a change done: lint clean, zero warnings, and the tests for what you touched pass (the package's tests for engine changes; `unit` and `ui` for the app you changed when its screens or model changed). A change to an app's screens builds for every platform it runs on (`mac` and `vision` too), and one that touches the iPad or desktop layout runs `ui <app> ipad`. Say which you ran and which you didn't.
+Before calling a change done: lint clean, zero warnings, and the tests for what you touched pass (the package's tests for engine changes; `unit` for the app you changed when its screens or model changed). A change to an app's screens builds for every platform it runs on (`mac` and `vision` too) and runs the UI tests for that flow rather than the whole suite (`ONLY=<TestClass> Scripts/build.sh ui <app>`, plus `ipad` when it touches the iPad or desktop layout). The full UI suites, on the iPhone and the iPad, are for releases (the `release` skill): they take most of the time, so they don't run on every change. Say which you ran and which you didn't.
 
 ## Where code goes
 
@@ -65,7 +65,7 @@ Several Claude Code sessions often work in this repo at once, sharing one checko
 
 ## CI/CD
 
-GitHub Actions lints and runs every package's tests on every push; Xcode Cloud tests each app, archives `main` to TestFlight and release branches (`release/<app>-<version>`) to the App Store. Versions live in `VERSIONS` in the generator; build numbers are Xcode Cloud's. [docs/ci-cd.md](docs/ci-cd.md).
+GitHub Actions lints and runs every package's tests on every push; Xcode Cloud archives `main` to TestFlight and release branches (`release/<app>-<version>`) to the App Store; its Test actions aren't showing on `main`, so nothing runs the app tests for you. Versions live in `VERSIONS` in the generator; build numbers are Xcode Cloud's. [docs/ci-cd.md](docs/ci-cd.md).
 
 ## Skills
 

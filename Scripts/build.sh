@@ -13,6 +13,8 @@
 #   unit <app> [device]  an app's unit and integration tests (its default test plan); device is
 #                  iphone (the default), ipad, vision or mac
 #   ui <app> [device]    an app's UI tests, end to end (its UI test plan), on the same devices
+#                  ONLY=FastingUITests runs just that class of a unit or ui run (or
+#                  ONLY=FastingUITests/testName; separate several with commas)
 #   all            lint, every package's tests and every build above
 #   simulator [device]   print this checkout's test simulator's UDID (creating it if needed):
 #                  iphone (the default), ipad or vision
@@ -136,11 +138,17 @@ destination() {
 app_tests() {
   local kind=$1 device=${3:-iphone}
   use_app ${2:-}
-  local plan=$APP_SCHEME
-  [[ $kind == ui ]] && plan=${APP_SCHEME}UI
+  local plan=$APP_SCHEME target=${APP_SCHEME}Tests name only=()
+  [[ $kind == ui ]] && plan=${APP_SCHEME}UI target=${APP_SCHEME}UITests
+  for name in ${(s:,:)${ONLY:-}}; do only+=(-only-testing:$target/$name); done
   MAC_SIGNING=()
   [[ $device == mac ]] && mac_signing ${APP_PROJECT:h:t}
-  xcode test $APP_PROJECT $APP_SCHEME "$(destination $device)" -testPlan $plan $MAC_SIGNING
+  xcode test $APP_PROJECT $APP_SCHEME "$(destination $device)" -testPlan $plan $MAC_SIGNING $only
+  # xcodebuild calls a filter that matches nothing a success, which would read as the tests having passed.
+  if [[ -n ${ONLY:-} ]] && ! grep -qE "(Executed|Test run with) [1-9][0-9]* test" $DD-$APP_SCHEME-test.log; then
+    print -u2 "ONLY=$ONLY matched no tests in $target"
+    STATUS=1
+  fi
 }
 
 build_app() {

@@ -23,7 +23,7 @@ Internal TestFlight builds need nothing: every push to `main` that touches an ap
 git switch -c release/lift-1.1 main          # macro-…, mind-…
 # Scripts/generate-project.py: VERSIONS["LiftTrack"] = "1.1"
 python3 Scripts/generate-project.py
-Scripts/build.sh lint && Scripts/build.sh unit lift && Scripts/build.sh ui lift
+Scripts/build.sh lint && Scripts/build.sh unit lift && Scripts/build.sh ui lift && Scripts/build.sh ui lift ipad
 git commit -am "Stadig Lift 1.1"              # in a worktree; in the shared checkout use the commit skill
 ```
 

@@ -124,6 +124,15 @@ struct UsualMealTests {
         #expect(LogAgain.rank(entries, now: nine, at: nine, calendar: calendar) == LogAgain.rank(entries, now: nine, calendar: calendar))
     }
 
+    @Test("Log again keeps one order for foods with the same score, so a list doesn't reshuffle between calls")
+    func logAgainTies() {
+        // Eaten at the same moment, so every one scores the same.
+        let entries = (10..<30).map { food("Food \($0)", at(today, 12)) }
+        let ids = LogAgain.rank(entries, now: at(today, 13), calendar: calendar).map(\.id)
+        #expect(ids.count == 12)
+        #expect(ids == ids.sorted())
+    }
+
     @Test("saved meals rank for the time being logged at, and one eaten around then that day isn't usual again")
     func mealsAtATime() {
         let entries = weeks()

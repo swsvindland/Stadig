@@ -13,8 +13,8 @@ Everything goes through `Scripts/build.sh` from the repo root. It prints only er
 |---|---|
 | A package's sources or tests | `Scripts/build.sh test <Package>` (and the packages that depend on it: SystemCore → all of them) |
 | An app's model, platform glue or launch handling | `Scripts/build.sh unit <app>` |
-| An app's screens, navigation or identifiers | `Scripts/build.sh unit <app>` then `Scripts/build.sh ui <app>`, and `Scripts/build.sh mac <app>` and `vision <app>` (every platform builds) |
-| An iPad, Mac or Vision Pro layout (regular width) | the above, plus `Scripts/build.sh ui <app> ipad` |
+| An app's screens, navigation or identifiers | `Scripts/build.sh unit <app>`, then `ONLY=<TestClass> Scripts/build.sh ui <app>` for the flow you changed, and `Scripts/build.sh mac <app>` and `vision <app>` (every platform builds) |
+| An iPad, Mac or Vision Pro layout (regular width) | the above, plus `ONLY=<TestClass> Scripts/build.sh ui <app> ipad` |
 | The app model or anything platform-specific | `Scripts/build.sh unit <app>` and `Scripts/build.sh unit <app> mac` |
 | The generator | `python3 Scripts/generate-project.py`, then build every app it touched on every platform |
 | Widgets, Live Activity, the Watch apps | `Scripts/build.sh ios` / `watch` / `macro` / `macro-watch` |
@@ -23,6 +23,8 @@ Everything goes through `Scripts/build.sh` from the repo root. It prints only er
 `<app>` is `lift`, `macro` or `mind`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything.
 
 One suite or test: `cd Packages/<Package> && swift test --filter <SuiteOrTestName>`.
+
+One UI test class: `ONLY=FastingUITests Scripts/build.sh ui macro` (or `ONLY=FastingUITests/testName`; separate several with commas). The full UI suites are for releases, not every change: they're the slowest thing here, and the `release` skill runs them on the iPhone and the iPad.
 
 `STRICT=1` (what CI uses) turns warnings into errors. The code has zero warnings; keep it that way rather than relying on STRICT to catch them.
 
