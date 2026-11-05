@@ -285,8 +285,9 @@ struct WeekStrip: View {
     }
 }
 
-/// What's left against that day's targets, with what's logged for later beside it. On a past day
-/// being caught up, the whole usual day a tap away.
+/// What's left against that day's targets, with what's logged for later beside it, and each macro
+/// under that when carbs and fat are shown. On a past day being caught up, the whole usual day a
+/// tap away.
 struct DaySummaryLine: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -295,15 +296,37 @@ struct DaySummaryLine: View {
         let intake = model.dayIntake(on: day)
         let targets = model.targets(on: day)
         let missing = model.catchUp
+        let counted = counted(intake)
+        let allMacros = model.settings.showAllMacros
         VStack(spacing: 2) {
-            HStack(spacing: 8) {
-                Text(left(intake, targets)).font(.subheadline.weight(.semibold).monospacedDigit())
-                if let protein = targets?.protein {
-                    Text("\(Format.grams(max(0, protein - counted(intake).protein))) protein left").font(.subheadline.monospacedDigit())
-                        .foregroundStyle(
-                            Macro.protein.color)
+            VStack(spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(left(intake, targets)).font(.subheadline.weight(.semibold).monospacedDigit())
+                    if allMacros {
+                        Spacer(minLength: 0)
+                        if let kcal = targets?.kcal {
+                            Text("\(Format.whole(counted.kcal)) of \(Format.kcal(kcal))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        if let protein = targets?.protein {
+                            Text("\(Format.grams(max(0, protein - counted.protein))) protein left").font(.subheadline.monospacedDigit())
+                                .foregroundStyle(Macro.protein.color)
+                        }
+                        Spacer(minLength: 0)
+                    }
                 }
-                Spacer(minLength: 0)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                if allMacros {
+                    HStack(spacing: 10) {
+                        MacroBar(macro: .protein, eaten: counted.protein, target: targets?.protein)
+                        MacroBar(macro: .carbs, eaten: counted.carbs, target: targets?.carbs)
+                        MacroBar(macro: .fat, eaten: counted.fat, target: targets?.fat)
+                    }
+                    // A third of a phone is tight for "Protein 120 g left".
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("log.left")

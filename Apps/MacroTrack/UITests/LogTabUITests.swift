@@ -77,6 +77,25 @@ nonisolated final class LogTabUITests: XCTestCase {
         XCTAssertTrue(app.scrollTo(app.logEntry(containing: "Bananas")).waitToAppear().exists)
     }
 
+    /// A day's line has every macro, and a planned day's counts the food planned on it.
+    @MainActor
+    func testTheLineHasEveryMacroOnAPlannedDay() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedPlan", "-seedUpcoming", "-tab", "log"])
+        app.element("log.title").waitToAppear()
+        let days = app.descendants(matching: .any).matching(identifier: "log.day")
+        days.element(boundBy: days.count - 1).tap()
+        XCTAssertFalse(app.element("log.title").label.hasPrefix("Today"))
+        app.shot("log-line-tomorrow")
+
+        let line = app.element("log.left").waitToAppear().label
+        for macro in ["Protein", "Carbs", "Fat"] {
+            XCTAssertTrue(line.contains("\(macro): "), line)
+            XCTAssertFalse(line.contains("\(macro): 0 g"), line)
+        }
+        // The bars say "of" too, against their macro's target: only the day's total is in kcal.
+        XCTAssertNotNil(line.range(of: #"[\d,]+ of [\d,]+ kcal"#, options: .regularExpression), "the day's total against its target: \(line)")
+    }
     /// A hold picks a food out, and a tap on an hour's name picks out the rest; the bar swaps in, and
     /// an hour's + becomes where they go.
     @MainActor
