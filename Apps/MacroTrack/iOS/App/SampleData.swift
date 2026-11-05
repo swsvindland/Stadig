@@ -98,9 +98,10 @@ enum SampleData {
             ("Oats and yogurt", ["oats", "greek yogurt", "banana"]), ("Chicken and rice", ["chicken breast", "white rice cooked", "broccoli"]),
         ] {
             let ids = Set(queries.compactMap { foods[$0]?.id })
-            guard ids.count == queries.count, let moment = moments.last(where: { ids.isSubset(of: $0.entries.compactMap(\.foodID)) }) else {
-                continue
-            }
+            // -sampleNoMeals: for Foods' Meals with nothing saved yet.
+            guard !LaunchOptions.current.has("-sampleNoMeals"), ids.count == queries.count,
+                let moment = moments.last(where: { ids.isSubset(of: $0.entries.compactMap(\.foodID)) })
+            else { continue }
             model.store.save(SavedMeal(name: name, from: moment.entries.filter { $0.foodID.map(ids.contains) ?? false }, updatedAt: moment.end))
         }
         model.reload()

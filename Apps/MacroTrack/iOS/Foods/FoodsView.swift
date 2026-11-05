@@ -176,7 +176,7 @@ struct FoodsView: View {
                 if model.savedMeals.isEmpty {
                     ContentUnavailableView(
                         "No meals yet", systemImage: "fork.knife",
-                        description: Text("Foods eaten together can be saved as a meal from Today, or from the meal under the logger's search."))
+                        description: Text("Foods eaten together can be saved as a meal from the menu on an hour's name in Log, or from the meal under the logger's search."))
                 } else {
                     ContentUnavailableView.search(text: query)
                 }
