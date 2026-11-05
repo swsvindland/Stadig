@@ -65,6 +65,12 @@ struct BackgroundAnalysisTests {
         #expect(model.analysis?.fast == nil)
     }
 
+    @Test func siriSpeaksTheFastItJustStarted() async {
+        let model = model()
+        let said = await model.startFastInWords(goalHours: 16, within: .seconds(60))
+        #expect(said.contains("into your 16 h fast"), "not how things stood before it: \(said)")
+    }
+
     @Test func aDueCheckInAppliesItselfOnce() async throws {
         let environment = TestEnvironment()
         let model = environment.model()
