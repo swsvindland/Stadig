@@ -72,7 +72,7 @@ nonisolated final class MealUITests: XCTestCase {
 
         // Saved, the hour's menu no longer offers to save it.
         hour.press(forDuration: 0.8)
-        app.buttons["Repeat Now"].waitToAppear()
+        app.element("log.hourMenu.repeat").waitToAppear()
         XCTAssertFalse(app.buttons["today.saveMeal"].exists)
     }
 }

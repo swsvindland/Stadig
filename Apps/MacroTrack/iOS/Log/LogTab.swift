@@ -496,8 +496,10 @@ struct HourHeader: View {
             .contextMenu {
                 let moment = Moment(entries: group.entries)
                 Button("Repeat Now", systemImage: "arrow.clockwise") { model.logAgain(moment, at: Date()) }
+                    .accessibilityIdentifier("log.hourMenu.repeat")
                 MomentMealButton(moment: moment) { naming = true }
                 Button("Remove", systemImage: "trash", role: .destructive) { model.delete(entries: group.entries.map(\.id)) }
+                    .accessibilityIdentifier("log.hourMenu.remove")
             }
         }
     }
@@ -566,12 +568,14 @@ struct LogEntryRow: View {
         .accessibilityIdentifier("log.entry")
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
+                .accessibilityIdentifier("log.entry.delete")
         }
         .swipeActions(edge: .leading) {
             Button("Again", systemImage: "arrow.clockwise") {
                 model.log([LogAgain.copy(entry, to: model.logDate(), source: .copied)])
             }
             .tint(.accentColor)
+            .accessibilityIdentifier("log.entry.again")
         }
         // The Mac's right-click. On a touch screen a hold selects, so a menu there would fight it.
         .macContextMenu {
@@ -680,7 +684,7 @@ struct DayChooser: View {
             .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("dayChooser.cancel")
                 }
             }
         }

@@ -233,6 +233,7 @@ nonisolated final class LogTabUITests: XCTestCase {
         XCTAssertTrue(bar.exists)
     }
 
+    /// Cancel leaves the day where it was.
     @MainActor
     func testTheDayIsChosenFromTheTitle() throws {
         continueAfterFailure = false
@@ -240,5 +241,28 @@ nonisolated final class LogTabUITests: XCTestCase {
         app.element("log.title").waitToAppear().tap()
         XCTAssertTrue(app.element("log.datePicker").waitToAppear().exists)
         app.shot("log-day-chooser")
+        app.element("dayChooser.cancel").tap()
+        app.element("log.datePicker").waitToDisappear()
+        XCTAssertTrue(app.element("log.title").label.hasPrefix("Today"))
+    }
+
+    /// To Dates reaches past the month it opens on.
+    @MainActor
+    func testToDatesGoesToAnotherMonth() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        let entry = app.scrollTo(app.element("log.entry")).waitToAppear()
+        entry.press(forDuration: 0.8)
+        app.element("selection.dates").waitToAppear().tap()
+
+        let next = app.element("toDates.nextMonth").waitToAppear()
+        let days = app.descendants(matching: .any).matching(identifier: "toDates.day")
+        let before = days.firstMatch.waitToAppear().label
+        next.tap()
+        days.firstMatch.waitForLabel(toChangeFrom: before)
+        days.element(boundBy: 14).tap()
+        app.element("toDates.done").waitToAppear().tap()
+
+        app.element("toast.message", labelContaining: "Moved 1 food").waitToAppear()
     }
 }

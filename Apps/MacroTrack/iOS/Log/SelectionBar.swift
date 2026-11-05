@@ -110,11 +110,15 @@ struct ToDatesSheet: View {
         NavigationStack {
             VStack(spacing: 14) {
                 HStack {
-                    Button("Previous Month", systemImage: "chevron.left") { month = Self.first(of: month).adding(days: -1) }.labelStyle(.iconOnly)
+                    Button("Previous Month", systemImage: "chevron.left") { month = Self.first(of: month).adding(days: -1) }
+                        .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("toDates.previousMonth")
                     Spacer()
                     Text(month.date().formatted(.dateTime.month(.wide).year())).font(.headline)
                     Spacer()
-                    Button("Next Month", systemImage: "chevron.right") { month = Self.first(of: month).adding(days: 32) }.labelStyle(.iconOnly)
+                    Button("Next Month", systemImage: "chevron.right") { month = Self.first(of: month).adding(days: 32) }
+                        .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("toDates.nextMonth")
                 }
                 .buttonStyle(.borderless)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 4) {
