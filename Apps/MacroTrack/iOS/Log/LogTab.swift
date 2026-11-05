@@ -126,6 +126,7 @@ struct LogTab: View {
             .toolbar { toolbar }
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
+            .notesWork(editing != nil || choosingDay, covering: choosingDay || (editing != nil && !wide))
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
             // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
             .onChange(of: current == nil) { _, gone in if gone { editing = nil } }

@@ -252,6 +252,10 @@ final class AppModel {
     /// a long way down, and a reminder can open an app that hasn't built Today yet.
     var pendingSupplementsScroll = false
     var toast: Toast?
+    /// What screens have open that only they can see (`notesWork`), and whether each covers the toast.
+    private var openWork: [UUID: Bool] = [:]
+    /// Whether a sheet is over where the toast shows: it waits, rather than its seconds running out.
+    var toastCovered: Bool { openWork.values.contains(true) }
     /// How long a toast stays up.
     var toastTime: Duration = .seconds(4)
     /// A photo dropped on the window, waiting for the photo logger to read it.
@@ -997,9 +1001,11 @@ final class AppModel {
     /// Brings the offer up if it's due, on opening the app. Never over a sheet someone is in the
     /// middle of: it waits for the next time they open the app.
     func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings else { return }
+        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings, openWork.isEmpty else { return }
         showPaywall = true
     }
+
+    func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
     /// open: only one shows at a time. A screen's own sheet (an entry being edited) gives way by

@@ -109,7 +109,7 @@ struct RootView: View {
         #endif
         // Clear of the selection bar where it's at the foot of the screen. The logger shows its own, in with the meal: one behind it would be a second Undo nobody can
         // reach. It takes over when the logger closes, with its few seconds starting again.
-        .toastOverlay(bottomPadding: wide ? (model.selection.isEmpty ? 24 : 92) : 130, showing: model.logger == nil)
+        .toastOverlay(bottomPadding: wide ? (model.selection.isEmpty ? 24 : 92) : 130, showing: model.logger == nil && !model.toastCovered)
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }
@@ -181,6 +181,30 @@ extension View {
     func toastOverlay(bottomPadding: CGFloat = 24, showing: Bool = true) -> some View {
         modifier(ToastOverlay(bottomPadding: bottomPadding, showing: showing))
     }
+
+    /// Tells the model a sheet of this screen's is open, or a food's open beside it, which it can't
+    /// see for itself: `open` is held in the view. It's what someone's in the middle of, so the
+    /// offer on opening waits for it. `covering` says it's over where the toast shows, whose few
+    /// seconds would run out behind it: a pane isn't.
+    func notesWork(_ open: Bool, covering: Bool = true) -> some View { modifier(WorkNote(open: open, covering: covering)) }
+}
+
+private struct WorkNote: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let open: Bool
+    let covering: Bool
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear(perform: note)
+            .onChange(of: open) { _, _ in note() }
+            .onChange(of: covering) { _, _ in note() }
+            // Off screen it's over, wherever it was left: a tab that's gone, a screen that went.
+            .onDisappear { model.noteWork(id, open: false, covering: false) }
+    }
+
+    func note() { model.noteWork(id, open: open, covering: covering) }
 }
 
 private struct ToastOverlay: ViewModifier {

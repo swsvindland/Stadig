@@ -19,6 +19,7 @@ struct MealTray: View {
         }
         .animation(.snappy, value: moment?.entries.map(\.id))
         .sheet(isPresented: $showing) { MealSheet(date: date) }
+        .notesWork(showing)
     }
 
     func tray(_ moment: Moment) -> some View {
@@ -108,7 +109,8 @@ struct MealSheet: View {
                 }
             }
         }
-        .toastOverlay()
+        // A food's amount covers this too, and its few seconds shouldn't run out behind it.
+        .toastOverlay(showing: editing == nil)
         .presentationDetents([.medium, .large])
         .macSheetSize(width: 440, height: 560)
     }

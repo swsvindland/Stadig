@@ -223,6 +223,64 @@ nonisolated final class LogTabUITests: XCTestCase {
         app.element("selection.bar").waitToDisappear()
     }
 
+    /// An amount over the logger hides its toast, so the toast waits for it, rather than its few
+    /// seconds running out behind the sheet with the Undo in them.
+    @MainActor
+    func testUndoOutlastsAnAmountOverTheLogger() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "The pane's own test is in RegularWidthUITests")
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search", "-toastSeconds", "5"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        search.tap()
+        search.typeText("apple")
+        app.element("logger.food").waitToAppear().tap()
+        let close = app.element("portion.close").waitToAppear()
+        Thread.sleep(forTimeInterval: 7)
+        close.tap()
+        close.waitToDisappear()
+
+        app.element("toast.undo").waitToAppear()
+    }
+
+    /// The same for a food opened on the Log tab straight after deleting another.
+    @MainActor
+    func testUndoOfADeleteOutlastsAFoodOpenedAfterIt() throws {
+        try XCTSkipIf(XCUIApplication.isPad, "A food opens beside the hours there, covering nothing")
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1", "-toastSeconds", "5"])
+        let foods = app.descendants(matching: .any).matching(identifier: "log.entry")
+        let entry = app.scrollTo(foods.firstMatch).waitToAppear()
+        entry.swipeLeft()
+        app.element("log.entry.delete").waitToAppear().tap()
+        app.element("toast.undo").waitToAppear()
+
+        app.scrollTo(foods.firstMatch).tap()
+        let cancel = app.element("entryEditor.cancel").waitToAppear()
+        Thread.sleep(forTimeInterval: 7)
+        cancel.tap()
+        cancel.waitToDisappear()
+
+        let undo = app.element("toast.undo").waitToAppear()
+        undo.tap()
+        app.element("toast.message").waitToDisappear()
+    }
+
+    /// The swipe the other way logs a food again, at now.
+    @MainActor
+    func testASwipeLogsAFoodAgain() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        app.scrollTo(app.element("log.entry")).waitToAppear().swipeRight()
+        app.element("log.entry.again").waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Logged").waitToAppear()
+    }
+
+    /// The bar's words are what's read out and what Voice Control hears, and they name the day.
     @MainActor
     func testTheBarNamesTheDay() throws {
         try XCTSkipIf(XCUIApplication.isPad, "An iPad has no bar above the tabs")

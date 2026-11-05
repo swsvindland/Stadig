@@ -484,6 +484,7 @@ struct FoodInspector: View {
         .sheet(isPresented: $editing) {
             if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { _ in } }
         }
+        .notesWork(editing)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 10) {
                 // The meal this food joins, with what's gone into it so far.

@@ -62,7 +62,7 @@ struct LoggerSheet: View {
         .onChange(of: model.loggerRequest) { _, request in if request.mode == start { session.go(to: start) } }
     }
 
-    var content: some View { LoggerContent(session: session, done: { dismiss() }) }
+    var content: some View { LoggerContent(session: session, covered: session.portion != nil, done: { dismiss() }) }
 }
 
 /// The amount panel, as the logger opens it: an added food goes back to the search for the next
@@ -184,7 +184,7 @@ struct LoggerPane: View {
 struct LoggerContent: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
-    /// A food's being changed over it: a toast's few seconds would run out unseen.
+    /// An amount or a food is over it: a toast's few seconds would run out unseen.
     var covered = false
     let done: () -> Void
 
@@ -211,7 +211,7 @@ struct LoggerContent: View {
     var bottom: some View {
         VStack(spacing: 8) {
             // Over the meal it just changed, where the eye already is after a tap on +.
-            if !covered { ToastSlot() }
+            if !covered, !model.toastCovered { ToastSlot() }
             VStack(spacing: 8) {
                 MealTray()
                 LogTimeBar()
