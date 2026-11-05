@@ -14,6 +14,8 @@ The logic is the product, so most tests live with the logic in the packages. The
 
 What the package tests cover, suite by suite, is in [package-tests.md](package-tests.md).
 
+Stadig Macro's app tests run one at a time (`parallelizable` in its test plan, from the generator). Nearly all of them are on the main actor, so Swift Testing starting them together only queues them for it with each one's clock already running: a test's `eventually`, or the plan's 120-second allowance, could run out behind the rest of the suite. A run took 133 s with 45 timeouts that way, and takes 19 s now.
+
 ## Running tests
 
 ```sh
