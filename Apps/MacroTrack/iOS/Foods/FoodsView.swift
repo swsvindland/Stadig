@@ -482,7 +482,7 @@ struct FoodInspector: View {
         // The search runs again once it's saved (the personal foods change) and lists the food as
         // corrected, at the same amount.
         .sheet(isPresented: $editing) {
-            if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { _ in } }
+            if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { amount.use($0) } }
         }
         .notesWork(editing)
         .safeAreaInset(edge: .bottom) {

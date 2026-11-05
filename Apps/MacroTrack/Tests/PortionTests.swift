@@ -10,6 +10,47 @@ import Testing
 /// in the unit chosen.
 @MainActor
 struct PortionChoiceTests {
+    /// The Foods inspector's amount, counted in calories, through a correction: the same bananas,
+    /// so the count, the summary and what Log saves all read the new numbers.
+    @Test func anAmountInCaloriesTakesACorrection() throws {
+        let banana = try #require(Catalogs.food.food(id: Foods.bananaID))
+        let grams = try #require(FoodUnits.units(for: banana).first { $0.id == "g" })
+        let calories = try #require(FoodUnits.units(for: banana).first { $0.id == "kcal" })
+        var amount = PortionAmount(count: 105, unit: calories)
+        let corrected = try #require(banana.correcting(kcal: 178, protein: 1, carbs: 22, fat: 0.3, count: 100, unit: grams))
+
+        amount.use(corrected)
+
+        let unit = try #require(amount.unit)
+        #expect(unit.id == "kcal")
+        #expect(abs(amount.count - 210) <= 1, "\(amount.count)")
+        #expect(amount.text == FoodUnits.format(amount.count, unit))
+        #expect(abs(amount.nutrients(corrected).kcal - amount.count) < 1, "the number and the total agree")
+    }
+
+    @Test func anAmountInCaloriesOfAFoodCorrectedToNoneGoesToItsBasis() throws {
+        let banana = try #require(Catalogs.food.food(id: Foods.bananaID))
+        let grams = try #require(FoodUnits.units(for: banana).first { $0.id == "g" })
+        let calories = try #require(FoodUnits.units(for: banana).first { $0.id == "kcal" })
+        var amount = PortionAmount(count: 89, unit: calories)
+        let corrected = try #require(banana.correcting(kcal: 0, protein: 0, carbs: 0, fat: 0, count: 100, unit: grams))
+
+        amount.use(corrected)
+
+        #expect(amount.unit?.id == "g")
+        #expect(amount.count == 100)
+    }
+
+    @Test func anAmountInGramsIsLeftAlone() throws {
+        let banana = try #require(Catalogs.food.food(id: Foods.bananaID))
+        let grams = try #require(FoodUnits.units(for: banana).first { $0.id == "g" })
+        var amount = PortionAmount(count: 118, unit: grams)
+        let corrected = try #require(banana.correcting(kcal: 178, protein: 1, carbs: 22, fat: 0.3, count: 100, unit: grams))
+        amount.use(corrected)
+        #expect(amount.count == 118)
+        #expect(amount.unit?.id == "g")
+    }
+
     @Test func poundsComeInTenths() throws {
         let banana = try #require(Catalogs.food.food(id: Foods.bananaID))
         let pound = try #require(FoodUnits.units(for: banana).first { $0.id == "lb" })

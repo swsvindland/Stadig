@@ -741,6 +741,17 @@ struct PortionAmount: Equatable {
 
     func unit(for food: Food) -> PortionUnit? { unit ?? FoodUnits.units(for: food).first }
 
+    /// The same amount of the food with new numbers (or the catalog's again), as a food being added
+    /// takes them (`AmountDraft.use`). Its units are the same ones, but calories hold a different
+    /// amount now, and a food corrected to no calories can't be counted in them.
+    mutating func use(_ corrected: Food) {
+        guard let old = unit else { return }
+        let units = FoodUnits.units(for: corrected)
+        guard let next = units.first(where: { $0.id == old.id }) ?? units.first(where: { $0.id == corrected.basis.rawValue }), next != old else { return }
+        let converted = FoodUnits.convert(count, from: old, to: next)
+        self = PortionAmount(count: converted.isFinite ? converted : count, unit: next)
+    }
+
     func nutrients(_ food: Food) -> Nutrients { unit(for: food).map { FoodUnits.nutrients(food, count: count, unit: $0) } ?? .zero }
 }
 
