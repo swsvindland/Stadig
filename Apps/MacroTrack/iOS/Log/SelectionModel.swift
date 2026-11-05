@@ -33,6 +33,12 @@ extension AppModel {
         if ids.isSubset(of: selection.ids) { selection.ids.subtract(ids) } else { selection.ids.formUnion(ids) }
     }
 
+    /// A meal's foods, the same way.
+    func toggleSelection(_ meal: Moment) {
+        let ids = Set(meal.entries.map(\.id))
+        if ids.isSubset(of: selection.ids) { selection.ids.subtract(ids) } else { selection.ids.formUnion(ids) }
+    }
+
     /// From the food picked out last to this one, through what's between them on screen: ⇧-click.
     /// With that one no longer picked out or not on this day, from the nearest that is.
     func extendSelection(to entry: FoodEntry, in order: DayOrder = .time) {

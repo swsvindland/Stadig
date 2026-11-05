@@ -167,3 +167,7 @@
 - A few app tests read the real clock: two of Stadig Macro's model tests.
 - On an iPad a SwiftUI `Table`'s first section header doesn't show (it looks to be under the column headers, and isn't in the accessibility tree either), so Stadig Lift's Program doesn't name its first day and Stadig Macro's Today doesn't head its first moment (later ones show). Seen on the simulator, not worked around.
 - Lint is clean with this Mac's swift-format; CI's runs the same command.
+
+- **Stadig Macro's meal cards (2026-11-05, iPhone simulator, iOS 27 runtime, `-inMemoryStore -seedSampleData`, with `-daysAgo`, `-sampleEmptyYesterday` and `-seedUpcoming`).** A logged day, an empty yesterday and today with food for later all look right. On the empty yesterday, a dashed card's + made it a real card and updated the totals, a card's + opened the logger at a minute after that meal with the meal in sight, and **+ 10 AM** opened it at 10:00 AM on that day. Not looked at: iPad, the Mac and Vision Pro (they build, and keep the hours), picking foods out and taking them to a card (unit test only), dark mode, a device.
+
+- **Stadig Macro's Log hours (2026-11-05, iPhone simulator).** Today with no hub shows + 7 AM to + 8 PM between Earlier and Later, and Settings with `-seedRhythm` shows Automatic as 6 AM and 9 PM. Not tried: picking hours by hand in the running app (unit test only), or the real hub's file arriving from another device.

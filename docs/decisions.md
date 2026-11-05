@@ -11,6 +11,13 @@
   - **Filling the day:** a sentence that doesn't say how the day divides makes up eight hours at home around the office.
   - **The commute:** it pushes hours at home earlier or later rather than cutting them, and they don't move back if the commute shrinks.
 
+- **The Log tab as meal cards on iPhone.** On 2026-11-05 you chose meal cards from the mock over the hour grid, and said adding to other cards and filling in a past day at set times had to stay very fast. iPad, the Mac and Vision Pro keep the hours and macro columns, since you asked about the iPhone.
+  - **Open hours show as one-tap slots** between cards rather than folding into a row, so "9, noon, 5" is three taps. You asked for settings for which hours appear, defaulting to about 7 AM to 8 PM, with sleep from the other apps as the default where known. So Automatic reads wake and bed from the hub's rhythm, then the caffeine bedtime, then 7 AM to 8 PM. The last hour is the one before bed. It uses the everyday times, so a shift pattern's own sleep isn't read yet.
+  - **Meal names:** Snack under 200 kcal at any hour; otherwise Breakfast 4–11, Lunch 11–15, Dinner 16–22, Snack otherwise. Only drinks is Drink. A saved meal's own name wins.
+  - **Markers are emoji read from the food's name**, with a plate for anything unknown. Real brand logos would need images and licensing. The mock's type tags weren't built.
+  - **Short names** apply on the cards only. The amount panel, logger and saved meals keep the catalog's name.
+  - **A meal's +** logs at now while now is within 45 minutes of its last food, otherwise a minute after that food.
+
 - **One course per block, around your real week.** On 2026-11-05 you said Mind was built the wrong way: lessons landed on packed days, because it never read Stadig Lift's days or classes, and each lesson mixed courses. You chose blocks a week per course in place of the tiers, reviews inside each course's block, missed blocks rolling forward, a soft time-of-day default with a per-course override, six parts of the day rather than clock times, and a conversation counting as a block if you say it happened. The hub comes next, as a day planner for the whole family. The calls made along the way:
   - **Parts by the clock:** Early before 8, Morning 8–11, Midday 11–14, Afternoon 14–17, Evening 17–20, Night 20 on, with the small hours counting as the night before.
   - **Packed:** two or more commitments on a day closes it, matching "gym and classes, no Mind; no classes, maybe a Mind block". Friday's lift and pros class would count, if Muay Thai is set up for Friday in Stadig Lift.

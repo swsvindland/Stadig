@@ -1,0 +1,166 @@
+import Foundation
+import SystemCore
+import Testing
+
+@testable import NutritionEngine
+
+struct DayCardsTests {
+    let calendar = Calendar.gregorian(.newYork)
+    let day = Day(year: 2027, month: 6, day: 15)
+
+    func food(_ hour: Int, _ minute: Int = 0, kcal: Double = 300, fluid: Double? = nil) -> FoodEntry {
+        let date = day.at(hour: hour, minute: minute, calendar: calendar)
+        return FoodEntry(
+            date: date, day: day, name: "Food", amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 10, carbs: 1, fat: 1), fluid: fluid,
+            source: .search, updatedAt: date)
+    }
+
+    func time(_ hour: Int, _ minute: Int = 0) -> Date { day.at(hour: hour, minute: minute, calendar: calendar) }
+
+    func items(_ entries: [FoodEntry], held: [Date] = [], now: Date? = nil) -> [DayItem] {
+        DayCards.items(DayHours.groups(on: day, entries: entries, calendar: calendar), held: held, now: now)
+    }
+
+    /// The day as a line: M for a meal, H for what's held, N for now, a number for open hours.
+    func shape(_ items: [DayItem]) -> String {
+        items.map { item in
+            switch item {
+            case .meal: "M"
+            case .held: "H"
+            case .now: "N"
+            case .hours(let groups): "\(groups.count)"
+            }
+        }.joined(separator: " ")
+    }
+
+    @Test func anEmptyDayIsAllOpenHours() {
+        #expect(shape(items([])) == "24")
+    }
+
+    @Test func mealsSitBetweenTheOpenHours() {
+        #expect(shape(items([food(9), food(12), food(17)])) == "9 M 2 M 4 M 6")
+    }
+
+    @Test func aMealAcrossAnHourIsOneCardAndTakesBothHours() {
+        let list = items([food(8, 50), food(9, 20)])
+        #expect(shape(list) == "8 M 14")
+        if case .meal(let meal) = list[1] { #expect(meal.entries.count == 2) } else { Issue.record("Not a meal") }
+    }
+
+    @Test func aHeldTimeTakesItsHour() {
+        #expect(shape(items([], held: [time(9), time(12, 30), time(17)])) == "9 H 2 H 4 H 6")
+    }
+
+    @Test func todayHasItsHourEvenWithAMealInIt() {
+        #expect(shape(items([food(16, 5)], now: time(16, 30))) == "16 M N 7")
+    }
+
+    @Test func foodLaterInTheHourComesAfterNow() {
+        #expect(shape(items([food(16, 45)], now: time(16, 30))) == "16 N M 7")
+    }
+
+    @Test func aDayOpensOnNowThenItsFirstMealThenWhatsHeld() {
+        #expect(DayCards.opening(items([food(9)], now: time(16))).map { if case .now = $0 { true } else { false } } == true)
+        #expect(DayCards.opening(items([food(9)], held: [time(7)])).map { if case .meal = $0 { true } else { false } } == true)
+        #expect(DayCards.opening(items([], held: [time(7)])).map { if case .held = $0 { true } else { false } } == true)
+        #expect(DayCards.opening(items([])).map { if case .hours = $0 { true } else { false } } == true)
+    }
+
+    @Test func aMealsPlusJoinsTheMealOnAnotherDay() {
+        let meal = Moment(entries: [food(12), food(12, 10)])
+        #expect(DayCards.addTime(to: meal, now: time(20), calendar: calendar) == time(12, 11))
+    }
+
+    @Test func aMealsPlusLogsAtNowWhileItsStillThatMeal() {
+        let meal = Moment(entries: [food(12)])
+        #expect(DayCards.addTime(to: meal, now: time(12, 30), calendar: calendar) == time(12, 30))
+    }
+
+    @Test func aMealsPlusStaysOnItsDay() {
+        let meal = Moment(entries: [food(23, 59)])
+        let added = DayCards.addTime(to: meal, now: time(23, 59).addingTimeInterval(86400), calendar: calendar)
+        #expect(Day(added, calendar: calendar) == day)
+    }
+
+    @Test(arguments: [
+        (7, 400.0, "Breakfast"), (10, 400, "Breakfast"), (11, 400, "Lunch"), (14, 400, "Lunch"), (15, 400, "Snack"), (16, 400, "Dinner"),
+        (21, 400, "Dinner"), (23, 400, "Snack"), (2, 400, "Snack"), (8, 150, "Snack"), (19, 150, "Snack"),
+    ])
+    func aMealIsNamedFromItsTimeAndSize(hour: Int, kcal: Double, name: String) {
+        #expect(MealName.of(Moment(entries: [food(hour, kcal: kcal)]), calendar: calendar) == name)
+    }
+
+    @Test func onlyDrinksAreADrink() {
+        #expect(MealName.of(Moment(entries: [food(9, kcal: 5, fluid: 250)]), calendar: calendar) == "Drink")
+        #expect(MealName.of(Moment(entries: [food(9, kcal: 5, fluid: 250), food(9, 5)]), calendar: calendar) == "Breakfast")
+    }
+}
+
+struct LogHoursTests {
+    @Test func nothingKnownIsSevenToEight() {
+        #expect(LogHours.window() == 7...20)
+    }
+
+    @Test func sleepSetsTheWindow() {
+        #expect(LogHours.window(wake: 6 * 60, bed: 22 * 60 + 30) == 6...22)
+        #expect(LogHours.window(wake: 6 * 60 + 45, bed: 22 * 60) == 6...21)
+    }
+
+    @Test func aBedtimeAfterMidnightRunsToTheEndOfTheDay() {
+        #expect(LogHours.window(wake: 9 * 60, bed: 25 * 60) == 9...23)
+    }
+
+    @Test func thePersonsOwnHoursWinOverSleep() {
+        #expect(LogHours.window(first: 8, wake: 6 * 60, bed: 22 * 60) == 8...21)
+        #expect(LogHours.window(last: 19, wake: 6 * 60, bed: 22 * 60) == 6...19)
+    }
+
+    @Test func hoursSetTheWrongWayRoundAreSwapped() {
+        #expect(LogHours.window(first: 20, last: 7) == 7...20)
+    }
+
+    @Test func openHoursSplitAroundTheWindow() {
+        let hours = DayHours.groups(on: Day(year: 2027, month: 6, day: 15), entries: [], calendar: .gregorian(.newYork))
+        let split = LogHours.split(hours, window: 7...20)
+        #expect(split.earlier.map(\.hour) == Array(0...6))
+        #expect(split.shown.map(\.hour) == Array(7...20))
+        #expect(split.later.map(\.hour) == [21, 22, 23])
+    }
+}
+
+struct FoodLabelTests {
+    @Test(
+        arguments: [
+            ("Cereals, oats, regular and quick, unenriched", "Oats", "regular and quick, unenriched"),
+            ("Nuts, almonds", "Almonds", nil),
+            ("Fish, salmon, Atlantic, farmed", "Salmon", "Atlantic, farmed"),
+            ("Chicken, broilers or fryers, breast, meat only, cooked, roasted", "Chicken breast", "meat only, cooked, roasted"),
+            ("Beef, ground, 90% lean meat", "Ground beef", "90% lean meat"),
+            ("Rice, white, long-grain, regular, enriched", "White rice", "long-grain, regular, enriched"),
+            ("Yogurt, Greek, plain, lowfat", "Greek yogurt", "plain, lowfat"),
+            ("Oil, olive, extra virgin", "Olive oil", "extra virgin"),
+            ("Apples, raw, without skin", "Apples", "raw, without skin"),
+            ("Bananas, raw", "Bananas", "raw"),
+        ] as [(String, String, String?)])
+    func aCatalogNameReadsAsItsSaid(name: String, title: String, detail: String?) {
+        let parts = FoodLabel.parts(of: name)
+        #expect(parts.title == title)
+        #expect(parts.detail == detail)
+    }
+
+    @Test(arguments: ["KIND bar", "McDONALD'S, BIG MAC", "Protein shake"])
+    func aNameWithNothingToCutStaysWhole(name: String) {
+        #expect(FoodLabel.parts(of: name).title == name)
+        #expect(FoodLabel.parts(of: name).detail == nil)
+    }
+
+    @Test(arguments: [
+        ("Cereals, oats, regular and quick", "🥣"), ("Yogurt, Greek, plain", "🥛"), ("Bananas, raw", "🍌"), ("Chicken, broilers or fryers, breast", "🍗"),
+        ("Rice, white, long-grain", "🍚"), ("Broccoli, raw", "🥦"), ("Nuts, almonds", "🌰"), ("Fish, salmon, Atlantic", "🐟"), ("Eggplant, raw", "🍆"),
+        ("Eggs, scrambled", "🥚"), ("Pineapple, raw", "🍍"), ("Apples, raw", "🍎"), ("Sweet potato, baked", "🍠"), ("Potatoes, roasted", "🥔"),
+        ("Goat curry", "🍽️"), ("Hamburger, single patty", "🍔"),
+    ])
+    func aFoodsMarkerComesFromItsName(name: String, marker: String) {
+        #expect(FoodMarker.of(name) == marker)
+    }
+}
