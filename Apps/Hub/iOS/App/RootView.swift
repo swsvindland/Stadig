@@ -14,6 +14,7 @@ struct RootView: View {
                 TabView(selection: $model.tab) {
                     Tab("Today", systemImage: "sun.max", value: AppTab.today) { TodayView() }
                     Tab("Week", systemImage: "calendar", value: AppTab.week) { WeekView() }
+                    Tab("Stats", systemImage: "chart.bar", value: AppTab.stats) { StatsView() }
                     Tab("Rhythm", systemImage: "repeat", value: AppTab.rhythm) { RhythmView() }
                 }
                 .tabViewStyle(.sidebarAdaptable)
@@ -25,6 +26,9 @@ struct RootView: View {
         }
         .sheet(isPresented: $model.showPlansChanged) {
             PlansChangedView()
+        }
+        .sheet(item: $model.moving) { item in
+            MoveSheet(item: item, day: model.selectedDay)
         }
         .alert(
             model.missingApp.map { "\($0.displayName) isn't on this device" } ?? "",

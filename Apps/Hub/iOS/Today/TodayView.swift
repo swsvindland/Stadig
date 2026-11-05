@@ -157,24 +157,50 @@ struct PartCard: View {
     }
 }
 
-/// One thing in a part. What an app tracks opens that app; the rest has nothing to tap.
+/// One thing in a part. What an app tracks opens that app, a class opens the move sheet, and the gym
+/// does the first with a button beside it for the second. The rest has nothing to tap.
 struct ItemRow: View {
+    @Environment(AppModel.self) private var model
     let item: HubItem
 
     var body: some View {
         if let app = item.app {
-            OpenAppButton(app: app) {
-                row(trailing: true)
+            HStack(spacing: 6) {
+                OpenAppButton(app: app) {
+                    row(trailing: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(item.action ?? "")
+                .accessibilityIdentifier("today.item.\(item.id)")
+                if item.canMove {
+                    Button {
+                        model.moving = item
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.footnote)
+                            .frame(width: 44, height: 36)
+                            .background(.insetBackground, in: .rect(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Move \(item.title)")
+                    .accessibilityIdentifier("today.move.\(item.id)")
+                }
+            }
+        } else if item.canMove {
+            Button {
+                model.moving = item
+            } label: {
+                row(trailing: false, moves: true)
             }
             .buttonStyle(.plain)
-            .accessibilityHint(item.action ?? "")
-            .accessibilityIdentifier("today.item.\(item.id)")
+            .accessibilityHint("Move it to another part of the day")
+            .accessibilityIdentifier("today.move.\(item.id)")
         } else {
             row(trailing: false)
         }
     }
 
-    private func row(trailing: Bool) -> some View {
+    private func row(trailing: Bool, moves: Bool = false) -> some View {
         HStack(spacing: 8) {
             Text(item.title)
                 .font(.subheadline.weight(.semibold))
@@ -183,7 +209,7 @@ struct ItemRow: View {
             if item.done {
                 Image(systemName: "checkmark").foregroundStyle(.secondary).accessibilityLabel("Done")
             } else {
-                Text(HubText.length(item.minutes)).font(.footnote).foregroundStyle(.secondary)
+                Text(moves ? "\(HubText.length(item.minutes)) · Move" : HubText.length(item.minutes)).font(.footnote).foregroundStyle(.secondary)
                 if trailing { Image(systemName: "arrow.up.forward").font(.footnote).foregroundStyle(.secondary).accessibilityHidden(true) }
             }
         }

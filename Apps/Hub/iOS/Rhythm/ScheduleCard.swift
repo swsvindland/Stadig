@@ -13,8 +13,14 @@ struct ScheduleCard: View {
     @State private var unread = false
     @State private var reading = false
     @State private var adjusting = false
+    @State private var editingHybrid = Self.opensHybrid
 
     private static let commutes = [0, 15, 30, 45, 60, 90]
+    #if DEBUG
+    private static var opensHybrid: Bool { LaunchOptions.current.has("-showHybridEditor") }
+    #else
+    private static let opensHybrid = false
+    #endif
     private var selected: SchedulePreset? { SchedulePreset.matching(pattern) }
 
     var body: some View {
@@ -23,7 +29,13 @@ struct ScheduleCard: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 124), spacing: 6)], spacing: 6) {
                 ForEach(SchedulePreset.allCases) { preset in
                     Button {
-                        pattern = preset.pattern(anchor: monday).withCommute(pattern.commuteMinutes)
+                        // A hybrid week is the person's own: tapping it again opens it, never resets it.
+                        if preset == .hybrid {
+                            if selected != .hybrid { pattern = preset.pattern(anchor: monday).withCommute(pattern.commuteMinutes) }
+                            editingHybrid = true
+                        } else {
+                            pattern = preset.pattern(anchor: monday).withCommute(pattern.commuteMinutes)
+                        }
                     } label: {
                         Text(preset.label)
                             .font(.subheadline.weight(.semibold))
@@ -56,15 +68,21 @@ struct ScheduleCard: View {
                 .labelsHidden()
                 .accessibilityIdentifier("schedule.commute")
             }
-            Button("Adjust the days") { adjusting = true }
-                .secondaryAction()
-                .accessibilityIdentifier("schedule.adjust")
+            Button("Adjust the days") {
+                if selected == .hybrid { editingHybrid = true } else { adjusting = true }
+            }
+            .secondaryAction()
+            .accessibilityIdentifier("schedule.adjust")
             Divider()
             ownWords
         }
         .card(padding: 14, radius: 18)
         .sheet(isPresented: $adjusting) {
             NavigationStack { WeekEditor(pattern: $pattern) }
+                .sheetForm(width: 520, height: 640)
+        }
+        .sheet(isPresented: $editingHybrid) {
+            NavigationStack { HybridEditor(pattern: $pattern, monday: monday) }
                 .sheetForm(width: 520, height: 640)
         }
     }
@@ -90,7 +108,7 @@ struct ScheduleCard: View {
 
     @ViewBuilder private var ownWords: some View {
         Text("Or say it in your own words").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
-        TextField("9 hours Monday to Thursday, every other Friday off", text: $words, axis: .vertical)
+        TextField("3 days in the office for 6 hours, an hour at home before and after", text: $words, axis: .vertical)
             .textFieldStyle(.roundedBorder)
             .accessibilityIdentifier("schedule.words")
         Button(reading ? "Reading…" : "Read it") {
@@ -203,6 +221,15 @@ struct DayEditor: View {
             ForEach(spans.indices, id: \.self) { index in
                 TextField("Name", text: $spans[index].label)
                     .accessibilityIdentifier("editor.\(weekday.short).\(index).name")
+                if spans[index].kind != .school {
+                    // Hours at home have no commute, so it can only tell if the day says which is which.
+                    Picker("Where", selection: place(index)) {
+                        Text("Away").tag(DaySpan.Kind.work)
+                        Text("Home").tag(DaySpan.Kind.home)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("editor.\(weekday.short).\(index).where")
+                }
                 ClockField(title: "From", minutes: $spans[index].start)
                 // An end at or before the start is the next morning: a night shift.
                 ClockField(
@@ -218,5 +245,9 @@ struct DayEditor: View {
         } label: {
             LabeledContent(weekday.name, value: ScheduleSummary.describe(spans))
         }
+    }
+
+    private func place(_ index: Int) -> Binding<DaySpan.Kind> {
+        Binding(get: { spans[index].kind }, set: { spans[index].kind = $0 })
     }
 }

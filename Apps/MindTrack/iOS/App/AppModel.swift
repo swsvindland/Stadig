@@ -309,6 +309,7 @@ final class AppModel {
         #if DEBUG
         if LaunchOptions.current.has("-seedRhythm") { rhythm = SampleData.rhythm(today: studyDay(now())) }
         #endif
+        commitments = commitments.placed(by: rhythm)
         dayAhead = HubPlanner.ahead(shared: shared, today: studyDay(now()), now: now())
         guard
             calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes

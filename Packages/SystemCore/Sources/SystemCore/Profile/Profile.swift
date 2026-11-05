@@ -202,6 +202,11 @@ public struct RecurringActivity: Hashable, Codable, Sendable, Identifiable {
     public var summary: String {
         "\(activity.label) · \(weekdays.map(\.short).joined(separator: "/")) \(timeOfDay.label.lowercased())s"
     }
+
+    /// The part of a date it's in: where the hub moved it, or its own time of day.
+    public func part(on day: Day, rhythm: Rhythm?, changes: [DayChange]) -> DayPart {
+        changes.movedPart(of: activity.label, on: day) ?? rhythm?.placedPart(of: activity.label, on: day.weekday) ?? DayPart(timeOfDay)
+    }
 }
 
 /// Setup answers, asked once and shared through the core. A second app reads these instead of

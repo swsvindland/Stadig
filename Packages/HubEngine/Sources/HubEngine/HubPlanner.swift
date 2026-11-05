@@ -8,6 +8,10 @@ public struct HubInputs: Sendable {
     public var changes: [DayChange]
     public var profile: SharedProfile?
     public var lift: AppSummary?
+    /// Stadig Macro's summary, which says it's in use even before it has meal times to give.
+    public var macro: AppSummary?
+    /// Stadig Mind's summary, for the stats.
+    public var mind: AppSummary?
     public var ask: BlockAsk?
     public var meals: MealRhythm?
     public var today: Day
@@ -15,14 +19,16 @@ public struct HubInputs: Sendable {
     public var timeZone: TimeZone
 
     public init(
-        rhythm: Rhythm, changes: [DayChange] = [], profile: SharedProfile? = nil, lift: AppSummary? = nil, ask: BlockAsk? = nil,
-        meals: MealRhythm? = nil,
+        rhythm: Rhythm, changes: [DayChange] = [], profile: SharedProfile? = nil, lift: AppSummary? = nil, macro: AppSummary? = nil,
+        mind: AppSummary? = nil, ask: BlockAsk? = nil, meals: MealRhythm? = nil,
         today: Day, now: Date, timeZone: TimeZone = .current
     ) {
         self.rhythm = rhythm
         self.changes = changes.live
         self.profile = profile
         self.lift = lift
+        self.macro = macro
+        self.mind = mind
         self.ask = ask
         self.meals = meals
         self.today = today
@@ -46,8 +52,13 @@ public struct HubItem: Hashable, Sendable, Identifiable {
     /// Where it goes within its part, in minutes from midnight. Only for putting a part in order:
     /// what's flexible has no time of its own.
     public var order: Int
+    /// The commitment it comes from, for a class or the gym: the name a move goes by.
+    public var commitment: String?
 
-    public init(id: String, title: String, kind: Kind, part: DayPart, minutes: Int, done: Bool = false, app: AppID? = nil, order: Int = 0) {
+    public init(
+        id: String, title: String, kind: Kind, part: DayPart, minutes: Int, done: Bool = false, app: AppID? = nil, order: Int = 0,
+        commitment: String? = nil
+    ) {
         self.id = id
         self.title = title
         self.kind = kind
@@ -56,7 +67,11 @@ public struct HubItem: Hashable, Sendable, Identifiable {
         self.done = done
         self.app = app
         self.order = order
+        self.commitment = commitment
     }
+
+    /// Whether it can be moved: a class or the gym, until it's done.
+    public var canMove: Bool { commitment != nil && !done }
 
     /// Work and the commute are the day's shape, not things to do.
     public var isYours: Bool { kind != .work && kind != .commute }
@@ -132,7 +147,7 @@ public enum HubPlanner {
 
     static func commitments(_ inputs: HubInputs) -> WeekCommitments {
         let lift = inputs.lift.flatMap { fresh($0.updated, inputs) ? $0 : nil }
-        return WeekCommitments(profile: inputs.profile, lift: lift, before: inputs.today, timeZone: inputs.timeZone)
+        return WeekCommitments(profile: inputs.profile, lift: lift, before: inputs.today, timeZone: inputs.timeZone).placed(by: inputs.rhythm)
     }
 
     /// Stadig Mind's week, laid out by the same function Mind uses, or the week it last published if
@@ -198,14 +213,14 @@ public enum HubPlanner {
                 left -= used
             }
         }
-        let onDay = commitments.on(day.weekday)
+        let onDay = commitments.on(day, changes: inputs.changes)
         for commitment in onDay where commitment.title != WeekCommitments.liftTitle && !closed.contains(commitment.part) {
             spend(commitment.minutes, from: commitment.part)
             items.append(
                 HubItem(
                     id: "\(day.iso).\(commitment.title)", title: commitment.title, kind: .activity, part: commitment.part,
                     minutes: commitment.minutes,
-                    order: slot(in: commitment.part)))
+                    order: slot(in: commitment.part), commitment: commitment.title))
         }
         for commitment in onDay where commitment.title == WeekCommitments.liftTitle {
             let order = ([commitment.part] + DayPart.allCases.filter { $0 != commitment.part }).filter { !closed.contains($0) }
@@ -215,7 +230,7 @@ public enum HubPlanner {
             items.append(
                 HubItem(
                     id: "\(day.iso).\(commitment.title)", title: "Gym", kind: .lift, part: part, minutes: minutes, done: done,
-                    app: .liftTrack, order: slot(in: part)))
+                    app: .liftTrack, order: slot(in: part), commitment: commitment.title))
         }
 
         // Meals in their usual parts, ticked off as they're logged.
@@ -228,6 +243,14 @@ public enum HubPlanner {
                     HubItem(
                         id: "\(day.iso).meal.\(index)", title: "Meal", kind: .meal, part: part, minutes: mealMinutes, done: done, app: .macroTrack,
                         order: slot(in: part)))
+            }
+            // What was eaten at an unusual time, or before there's a usual time at all, still happened.
+            for (index, part) in eaten.enumerated() {
+                _ = take(mealMinutes, from: part)
+                items.append(
+                    HubItem(
+                        id: "\(day.iso).meal.extra.\(index)", title: "Meal", kind: .meal, part: part, minutes: mealMinutes, done: true,
+                        app: .macroTrack, order: slot(in: part)))
             }
         }
 
@@ -264,7 +287,9 @@ extension HubInputs {
         guard let rhythm = shared.read(.rhythm) else { return nil }
         self.init(
             rhythm: rhythm, changes: shared.read(.dayChanges) ?? [], profile: shared.read(.profile), lift: shared.read(.summary(.liftTrack)),
-            ask: shared.read(.blockAsk), meals: shared.read(.mealRhythm), today: today, now: now, timeZone: timeZone)
+            macro: shared.read(.summary(.macroTrack)), mind: shared.read(.summary(.knowledge)), ask: shared.read(.blockAsk),
+            meals: shared.read(.mealRhythm), today: today, now: now,
+            timeZone: timeZone)
     }
 }
 

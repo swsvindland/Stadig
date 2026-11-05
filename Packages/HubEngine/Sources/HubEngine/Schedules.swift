@@ -3,13 +3,14 @@ import SystemCore
 
 /// The usual shapes of a week, to start from.
 public enum SchedulePreset: String, CaseIterable, Sendable, Identifiable {
-    case nineToFive, alternateFridays, university, rotatingShifts, nothingFixed
+    case nineToFive, hybrid, alternateFridays, university, rotatingShifts, nothingFixed
 
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
         case .nineToFive: "9 to 5"
+        case .hybrid: "Hybrid"
         case .alternateFridays: "Alternate Fridays"
         case .university: "University"
         case .rotatingShifts: "Shifts"
@@ -26,6 +27,8 @@ public enum SchedulePreset: String, CaseIterable, Sendable, Identifiable {
         switch self {
         case .nineToFive:
             return WorkPattern(anchor: anchor, weeks: [[nine, nine, nine, nine, nine, off, off]])
+        case .hybrid:
+            return HybridWeek.standard.pattern(anchor: anchor)
         case .alternateFridays:
             return WorkPattern(anchor: anchor, weeks: [[long, long, long, long, nine, off, off], [long, long, long, long, off, off, off]])
         case .university:
@@ -57,8 +60,22 @@ public enum ScheduleSummary {
     public static func describe(_ spans: [DaySpan]) -> String {
         // The commute has a line of its own: these are the hours you're there.
         let awake = spans.filter { $0.kind != .sleep && $0.kind != .commute }
+        // A day split between home and the office needs each piece: it isn't one stretch of hours.
+        if awake.contains(where: { $0.kind == .home }) {
+            let pieces = awake.sorted { $0.start < $1.start }.map { span in
+                "\(span.kind == .home ? "home" : span.label.lowercased()) \(clock(span.start)) to \(clock(span.end))"
+            }
+            let text = pieces.joined(separator: ", ")
+            return text.prefix(1).uppercased() + text.dropFirst()
+        }
         guard let first = awake.min(by: { $0.start < $1.start }), let last = awake.max(by: { $0.end < $1.end }) else { return "off" }
         return "\(clock(first.start)) to \(clock(last.end))"
+    }
+
+    /// Minutes of work in an average week of the cycle. The commute doesn't count.
+    public static func weeklyMinutes(_ pattern: WorkPattern) -> Int {
+        let spans = pattern.weeks.flatMap { $0 }.flatMap { $0 }.filter { $0.kind != .commute && $0.kind != .sleep }
+        return spans.map(\.minutes).reduce(0, +) / max(1, pattern.weeks.count)
     }
 
     /// A line for each run of days that look the same, a block for each week of a cycle.
@@ -77,6 +94,9 @@ public enum ScheduleSummary {
                 out.append("\(days): \(text)")
                 start = end + 1
             }
+        }
+        if pattern.weeks.flatMap({ $0 }).flatMap({ $0 }).contains(where: { $0.kind == .home }) {
+            out.append("\(HubText.length(weeklyMinutes(pattern))) a week")
         }
         if let endsOn = pattern.endsOn { out.append("Until \(endsOn.iso)") }
         return out
@@ -111,6 +131,18 @@ public enum ScheduleReader {
     /// Hours from a sentence: "9 to 5", "8:30am-5pm", or "9 hours", which starts at eight with half
     /// an hour for lunch. Nil if it doesn't say.
     static func hours(in text: String) -> (start: Int, end: Int)? {
+        if let span = times(in: text) { return span }
+        if let regex = try? Regex(#"(\d{1,2})[\s-]*hours?"#), let match = text.firstMatch(of: regex),
+            let hours = match[1].substring.flatMap({ Int($0) }),
+            (1...14).contains(hours)
+        {
+            return (8 * 60, 8 * 60 + hours * 60 + 30)
+        }
+        return nil
+    }
+
+    /// A span given by the clock: "9 to 5", "8:30am-5pm".
+    static func times(in text: String) -> (start: Int, end: Int)? {
         let pattern = #"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|until|till|-|–)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?"#
         if let regex = try? Regex(pattern), let match = text.firstMatch(of: regex),
             let fromHour = match[1].substring.flatMap({ Int($0) }), let toHour = match[4].substring.flatMap({ Int($0) })
@@ -129,12 +161,6 @@ public enum ScheduleReader {
             while end <= start { end += 12 * 60 }
             return (start, end)
         }
-        if let regex = try? Regex(#"(\d{1,2})[\s-]*hours?"#), let match = text.firstMatch(of: regex),
-            let hours = match[1].substring.flatMap({ Int($0) }),
-            (1...14).contains(hours)
-        {
-            return (8 * 60, 8 * 60 + hours * 60 + 30)
-        }
         return nil
     }
 
@@ -142,6 +168,7 @@ public enum ScheduleReader {
     public static func read(_ sentence: String, anchor: Day) -> Draft? {
         let text = sentence.lowercased()
         func any(_ words: String...) -> Bool { words.contains { text.contains($0) } }
+        if isHybrid(text) { return readHybrid(text, anchor: anchor) }
         if any("shift", "roster", "rota") { return Draft(pattern: SchedulePreset.rotatingShifts.pattern(anchor: anchor), asksWhichWeek: true) }
         if any("lecture", "university", "semester", "tutorial", "college") {
             return Draft(pattern: SchedulePreset.university.pattern(anchor: anchor), asksWhichWeek: false)

@@ -16,6 +16,16 @@ struct ScheduleOutput {
     var endMinute: Int
     @Guide(description: "True only if the person says every other Friday is off.")
     var alternateFridaysOff: Bool
+    @Guide(description: "True only if the person splits work between an office and home.")
+    var isHybrid: Bool
+    @Guide(description: "Days in the office, for a hybrid week. 1 is Monday and 7 is Sunday.", .maximumCount(7), .element(.range(1...7)))
+    var officeDays: [Int]
+    @Guide(description: "Whole days worked at home, for a hybrid week. 1 is Monday and 7 is Sunday.", .maximumCount(7), .element(.range(1...7)))
+    var homeDays: [Int]
+    @Guide(description: "On an office day, the minutes worked at home before leaving.", .range(0...480))
+    var homeMinutesBefore: Int
+    @Guide(description: "On an office day, the minutes worked at home after getting back.", .range(0...480))
+    var homeMinutesAfter: Int
 }
 
 /// Reads a schedule from a sentence. The rules go first, and give the same answer on every device.
@@ -30,7 +40,9 @@ public struct ScheduleAssistant: Sendable {
     static let instructions = """
         You read a sentence about when someone works or studies in a normal week, and list the days and hours it \
         gives. Use only what the sentence says. If it gives no hours, use 540 for the start and 1020 for the end. If \
-        it gives no days, use Monday to Friday.
+        it gives no days, use Monday to Friday. If work is split between an office and home, set isHybrid, use the \
+        start and end for the hours at the office, and give the office days, the days at home, and the time worked at \
+        home before and after the office. If it only says how many days, count them from Monday.
         """
 
     public func read(_ sentence: String, anchor: Day) async -> ScheduleReader.Draft? {
@@ -41,6 +53,15 @@ public struct ScheduleAssistant: Sendable {
             let reply = try await session.respond(
                 to: sentence, generating: ScheduleOutput.self, options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 120))
             let output = reply.content
+            if output.isHybrid {
+                var week = HybridWeek.standard
+                week.days = (1...7).map { output.officeDays.contains($0) ? .office : output.homeDays.contains($0) ? .home : .off }
+                week.officeStart = output.startMinute
+                week.officeEnd = output.endMinute
+                week.homeBefore = output.homeMinutesBefore
+                week.homeAfter = output.homeMinutesAfter
+                return ScheduleReader.draft(week, anchor: anchor)
+            }
             guard output.firstDay <= output.lastDay else { return nil }
             return ScheduleReader.draft(
                 days: (output.firstDay - 1)...(output.lastDay - 1), start: output.startMinute, end: output.endMinute,

@@ -8,7 +8,7 @@ import SystemStore
 let appLog = Logger(subsystem: "dev.svindland.stadig.hub", category: "app")
 
 enum AppTab: String, Hashable {
-    case today, week, rhythm
+    case today, week, stats, rhythm
 }
 
 /// The hub keeps two things of its own, the rhythm and what changed, and publishes them for the
@@ -25,6 +25,8 @@ final class AppModel {
 
     var tab = AppTab.today
     var showPlansChanged = false
+    /// The class or gym session being moved, on `selectedDay`.
+    var moving: HubItem?
     /// The day Today shows.
     var selectedDay: Day
     /// An app that wouldn't open, because it isn't on this device.
@@ -38,6 +40,9 @@ final class AppModel {
     private(set) var thisWeek: HubWeek?
     private(set) var nextWeek: HubWeek?
     private(set) var lines: [RhythmLine] = []
+    private(set) var stats: [StatLine] = []
+    /// When any app last published its stats.
+    private(set) var statsUpdated: Date?
     /// A second device or a reinstall, with the rhythm still on its way: the wait for it.
     private(set) var arrival: ICloudArrival?
     /// The shared container mirrored to the person's other devices, which is also how the rhythm
@@ -105,7 +110,7 @@ final class AppModel {
         let inputs = rhythm.map { rhythm in
             HubInputs(
                 rhythm: rhythm, changes: changes, profile: shared.read(.profile), lift: shared.read(.summary(.liftTrack)),
-                ask: shared.read(.blockAsk),
+                macro: shared.read(.summary(.macroTrack)), mind: shared.read(.summary(.knowledge)), ask: shared.read(.blockAsk),
                 meals: shared.read(.mealRhythm), today: today, now: now())
         }
         self.rhythm = rhythm
@@ -113,6 +118,8 @@ final class AppModel {
         thisWeek = inputs.map { HubPlanner.week(of: today, $0) }
         nextWeek = inputs.map { HubPlanner.week(of: today.startOfWeek.adding(weeks: 1), $0) }
         lines = inputs.map(RhythmSummary.lines) ?? []
+        stats = inputs.map(StatsBoard.lines) ?? []
+        statsUpdated = inputs.flatMap(StatsBoard.updated)
     }
 
     private func dayNow(_ rhythm: Rhythm) -> Day { Day(now(), dayStartsAt: rhythm.dayStart) }
@@ -227,6 +234,46 @@ final class AppModel {
     /// Back to the plan as it was: from today on. What's passed has passed.
     func backToPlan() {
         remove(changes.filter { ($0.kind == DayChange.lighter && $0.day == today.startOfWeek) || $0.day >= today })
+    }
+
+    // MARK: Moving a class or the gym
+
+    private func oneOffs(_ title: String, on day: Day) -> [DayChange] {
+        changes.filter { $0.kind == DayChange.moved && $0.day == day && $0.title == title }
+    }
+
+    /// Whether it's somewhere other than where its app says, on this day.
+    func isMoved(_ item: HubItem, on day: Day) -> Bool {
+        guard let title = item.commitment else { return false }
+        return !oneOffs(title, on: day).isEmpty || rhythm?.placedPart(of: title, on: day.weekday) != nil
+    }
+
+    /// Every week goes in the rhythm, one day in what changed. Either way a one-off already on that
+    /// day goes, or it would go on hiding the new place.
+    func move(_ item: HubItem, on day: Day, to part: DayPart, everyWeek: Bool) {
+        guard let title = item.commitment else { return }
+        let earlier = oneOffs(title, on: day)
+        if !earlier.isEmpty { remove(earlier) }
+        if everyWeek {
+            updateRhythm { rhythm in
+                rhythm.placements.removeAll { $0.title == title && $0.weekday == day.weekday }
+                rhythm.placements.append(ClassPlacement(title: title, weekday: day.weekday, part: part))
+            }
+        } else {
+            store.save(DayChangeRecord(.move(title, on: day, to: part, at: stamp)))
+            readShared()
+        }
+    }
+
+    /// Undoes the nearest move: this day's if there is one, otherwise the weekly one.
+    func putBack(_ item: HubItem, on day: Day) {
+        guard let title = item.commitment else { return }
+        let oneOff = oneOffs(title, on: day)
+        if oneOff.isEmpty {
+            updateRhythm { rhythm in rhythm.placements.removeAll { $0.title == title && $0.weekday == day.weekday } }
+        } else {
+            remove(oneOff)
+        }
     }
 
     private func remove(_ gone: [DayChange]) {
