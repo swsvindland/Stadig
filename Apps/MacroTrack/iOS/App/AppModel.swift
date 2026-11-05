@@ -169,6 +169,10 @@ final class AppModel {
     /// off the main thread (the history) and need to know when to again.
     private(set) var analysisVersion = 0
     private(set) var logAgain: [LogAgainItem] = []
+    /// Log Again as the Log tab's chips show it, the order taken once a visit: on changing tab and
+    /// on going away, or when there's none yet. It holds still while they're being tapped, however
+    /// the row comes and goes.
+    private(set) var logAgainChips: [LogAgainItem] = []
     /// Every saved meal, best first for now.
     private(set) var mealSuggestions: [MealSuggestion] = []
     /// Log Again, saved meals and "Same as" for the time the open logger logs at, when that isn't
@@ -201,6 +205,7 @@ final class AppModel {
             // Where it's a pane it's part of the Log tab. Left open behind another tab, it would go
             // on logging at its picked time, out of sight, and hold the toast where it can't be seen.
             if usesSidebar, tab != .log { logger = nil }
+            takeLogAgainOrder()
             if oldValue.keepsDay, !tab.keepsDay {
                 selectedDay = today
                 clearSelection()
@@ -621,6 +626,8 @@ final class AppModel {
         return Derived(state: state, analysis: state.map(MacroAnalyst.analyse), logAgain: logAgain, meals: ranked)
     }
 
+    private func takeLogAgainOrder() { logAgainChips = Array(logAgain.prefix(10)) }
+
     /// All the log on a day and those beside it, food for later included: a time ranked for reaches
     /// across midnight either way.
     private func logAround(_ day: Day) -> [FoodEntry] { (-1...1).flatMap { allEntries(on: day.adding(days: $0)) } }
@@ -634,6 +641,8 @@ final class AppModel {
 
     private func show(_ derived: Derived) {
         logAgain = derived.logAgain
+        // A launch restored to Log never changes tab, and the first food ever logged has no order yet.
+        if logAgainChips.isEmpty { takeLogAgainOrder() }
         mealSuggestions = derived.meals
         analysis = derived.analysis
         guard var state = derived.state, let found = derived.analysis else { return }
@@ -957,6 +966,7 @@ final class AppModel {
     /// Keeps the first time, since leaving can say so twice (the Mac: behind another app, then hidden).
     func wentToBackground(at date: Date = Date()) {
         if wentAway == nil { wentAway = date }
+        takeLogAgainOrder()
     }
 
     /// After a while away the Log tab is back on today at the hour it is, unless something's open

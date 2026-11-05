@@ -439,7 +439,7 @@ struct HourRows: View {
         ForEach(group.entries) { entry in
             LogEntryRow(entry: entry, wide: wide, editing: $editing)
         }
-        if isNow, !model.logAgain.isEmpty { LogAgainChips() }
+        if isNow, !model.logAgainChips.isEmpty { LogAgainChips() }
     }
 
     var isNow: Bool { model.selectedDay == model.today && group.start <= Date() && Date() < group.end }
@@ -639,16 +639,15 @@ struct LogEntryRow: View {
 }
 
 /// Log again, under the hour it is, in one tap each. The order holds still while they're being
-/// tapped: it's taken once a visit, so a food logged doesn't move the next one out from under a thumb.
+/// tapped: the model takes it once a visit (`logAgainChips`), so a food logged doesn't move the next
+/// one out from under a thumb, and the row scrolling away and back doesn't either.
 struct LogAgainChips: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var chips: [LogAgainItem] = []
 
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                ForEach(chips) { item in
+                ForEach(model.logAgainChips) { item in
                     Button {
                         model.logAgain(item)
                     } label: {
@@ -663,12 +662,7 @@ struct LogAgainChips: View {
         }
         .scrollIndicators(.hidden)
         .listRowSeparator(.hidden)
-        .onAppear(perform: refresh)
-        .onChange(of: model.tab) { _, _ in refresh() }
-        .onChange(of: scenePhase) { _, phase in if phase == .background { refresh() } }
     }
-
-    func refresh() { chips = Array(model.logAgain.prefix(10)) }
 }
 
 /// Any day, from the title.

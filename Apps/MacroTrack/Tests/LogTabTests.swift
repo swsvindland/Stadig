@@ -1,5 +1,6 @@
 import Foundation
 import NutritionEngine
+import SwiftUI
 import SystemCore
 import SystemStore
 import Testing
@@ -136,6 +137,50 @@ struct LogTabTests {
         #expect(Day(try #require(model.water.last).date) == yesterday)
         #expect(model.state(of: yesterday) == .partial)
         #expect(model.state(of: model.today) == nil)
+    }
+
+    /// Chips hold still once they're there: a food logged doesn't move the next one out from under
+    /// a thumb, whatever happens to the row meanwhile. Going away is where they're taken again.
+    @Test func logAgainsOrderHoldsUntilTheNextVisit() throws {
+        let model = model()
+        let day = yesterdayIn(model)
+        func food(_ name: String, kcal: Double) -> FoodEntry {
+            FoodEntry(date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), source: .search)
+        }
+        model.log([food("Oats", kcal: 300), food("Yogurt", kcal: 120)])
+        let before = model.logAgainChips.map(\.template.name)
+        #expect(Set(before) == ["Oats", "Yogurt"], "it fills itself with nothing there yet")
+        let last = try #require(before.last)
+
+        // The lower chip, tapped again and again, climbs the ranking but not the row.
+        for _ in 0..<6 { model.logAgain(try #require(model.logAgainChips.first { $0.template.name == last })) }
+        #expect(model.logAgain.first?.template.name == last)
+        #expect(model.logAgainChips.map(\.template.name) == before)
+
+        // As on the Mac, where switching apps never reaches the scene phase's background.
+        model.wentToBackground()
+        #expect(model.logAgainChips.first?.template.name == last)
+    }
+
+    @Test func logAgainsOrderIsTakenOnChangingTab() throws {
+        let model = model()
+        let day = yesterdayIn(model)
+        func food(_ name: String, kcal: Double) -> FoodEntry {
+            FoodEntry(date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), source: .search)
+        }
+        model.log([food("Oats", kcal: 300), food("Yogurt", kcal: 120)])
+        let last = try #require(model.logAgainChips.last)
+        for _ in 0..<6 { model.logAgain(last) }
+
+        model.tab = .log
+        #expect(model.logAgainChips.first?.template.name == last.template.name)
+    }
+
+    @Test func theColumnsNeedRoomAndOrdinaryText() {
+        #expect(LogColumns.fit(width: 600, textSize: .large))
+        #expect(LogColumns.fit(width: 600, textSize: .xxxLarge), "these still fit, scaled")
+        #expect(!LogColumns.fit(width: 519, textSize: .large), "beside a pane in the smallest window")
+        #expect(!LogColumns.fit(width: 900, textSize: .accessibility1), "no scale factor saves these")
     }
 
     @Test func theLastTabComesBackOnTheNextLaunch() throws {
