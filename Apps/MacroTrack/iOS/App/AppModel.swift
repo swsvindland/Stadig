@@ -517,6 +517,9 @@ final class AppModel {
         if ai.allowCloud != settings.allowCloudAI { ai.configure(catalog: catalog, allowCloud: settings.allowCloudAI) }
     }
 
+    /// Work or school and sleep, from the hub. Nil without it.
+    private(set) var rhythm: Rhythm?
+
     /// What other apps and the hub published. Our own writes notify us too, so this only
     /// recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
@@ -526,6 +529,12 @@ final class AppModel {
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
         let adopted = adopt(sharedProfile)
+        var rhythm = shared.read(.rhythm)
+        #if DEBUG
+        if LaunchOptions.current.has("-seedRhythm") { rhythm = Rhythm(wake: 6 * 60, bed: 22 * 60) }
+        #endif
+        // Only changes which hours show, so nothing needs working out again.
+        if rhythm != self.rhythm { self.rhythm = rhythm }
         let changed = adopted || lift != self.lift || calendar != self.calendar || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes
         guard changed else { return }
         self.lift = lift

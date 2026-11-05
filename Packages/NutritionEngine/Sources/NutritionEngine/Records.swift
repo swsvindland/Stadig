@@ -218,6 +218,9 @@ public struct MacroSettings: Hashable, Codable, Sendable, Identifiable {
     public var fastAlerts: Bool?
     /// When the person read who shouldn't fast for more than a day; nil until they have.
     public var fastingScreenSeen: Date?
+    /// The first and last hours the Log tab offers, 0 to 23; nil follows sleep, then ``LogHours/standard``.
+    public var logFirstHour: Int?
+    public var logLastHour: Int?
     public var updatedAt: Date
 
     public init(
