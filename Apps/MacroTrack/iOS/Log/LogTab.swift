@@ -24,6 +24,7 @@ extension AppModel {
 struct LogTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var textSize
     @State private var editing: FoodEntry?
     @State private var choosingDay = false
     /// Whether the first layout has gone to the opening hour. Coming back from another tab leaves
@@ -37,8 +38,7 @@ struct LogTab: View {
     /// The Mac reports no size class: it always has room.
     var wide: Bool { sizeClass != .compact }
     var day: Day { model.selectedDay }
-    /// The columns need the room: beside a pane in the Mac's smallest window, the phone's rows fit.
-    var showsColumns: Bool { wide && listWidth >= 520 }
+    var showsColumns: Bool { wide && LogColumns.fit(width: listWidth, textSize: textSize) }
 
     var body: some View {
         let groups = DayHours.groups(on: day, entries: model.allEntries(on: day))
@@ -389,20 +389,30 @@ struct DaySummaryLine: View {
 enum LogColumns {
     static let width: CGFloat = 56
 
+    /// Whether the columns can show. They need the room, so beside a pane in the Mac's smallest
+    /// window the phone's rows take over, and at accessibility sizes no scale factor saves them.
+    static func fit(width: CGFloat, textSize: DynamicTypeSize) -> Bool { width >= 520 && !textSize.isAccessibilitySize }
+
     static var header: some View {
         HStack(spacing: 0) {
             Text("Food")
             Spacer()
-            cells(["kcal", "P", "C", "F"])
+            cells(["kcal", "P", "C", "F"], spoken: ["Calories", "Protein", "Carbs", "Fat"])
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
     }
 
-    static func cells(_ values: [String]) -> some View {
+    /// `spoken` is what VoiceOver reads for each: a row's numbers mean nothing without their names.
+    static func cells(_ values: [String], spoken: [String]) -> some View {
         HStack(spacing: 0) {
-            ForEach(Array(values.enumerated()), id: \.offset) { _, value in
-                Text(value).frame(width: width, alignment: .trailing).monospacedDigit()
+            ForEach(Array(zip(values, spoken).enumerated()), id: \.offset) { _, cell in
+                Text(cell.0)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(width: width, alignment: .trailing)
+                    .monospacedDigit()
+                    .accessibilityLabel(cell.1)
             }
         }
     }
@@ -615,9 +625,12 @@ struct LogEntryRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
-            LogColumns.cells([
-                "\(entry.isEstimate ? "≈" : "")\(Format.whole(n.kcal))", Format.whole(n.protein), Format.whole(n.carbs), Format.whole(n.fat),
-            ])
+            LogColumns.cells(
+                ["\(entry.isEstimate ? "≈" : "")\(Format.whole(n.kcal))", Format.whole(n.protein), Format.whole(n.carbs), Format.whole(n.fat)],
+                spoken: [
+                    "\(entry.isEstimate ? "about " : "")\(Format.whole(n.kcal)) calories", "\(Format.whole(n.protein)) grams protein",
+                    "\(Format.whole(n.carbs)) grams carbs", "\(Format.whole(n.fat)) grams fat",
+                ])
         }
         .opacity(later ? 0.55 : 1)
         .contentShape(.rect)
