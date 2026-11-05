@@ -188,6 +188,32 @@ struct FastingAppTests {
         #expect(model.gapsBefore(on: yesterday).isEmpty)
     }
 
+    @Test func anHourHoldsTheGapBeforeEachMealThatStartsInIt() throws {
+        let environment = TestEnvironment()
+        let model = environment.model()
+        model.onboard()
+        let yesterday = model.today.adding(days: -1)
+        let food: (Int, Int) throws -> FoodEntry = { hour, minute in
+            try model.entry(foodID: Foods.bananaID, grams: 200, date: yesterday.at(hour: hour, minute: minute))
+        }
+        let breakfast = try food(8, 0)
+        // Two meals starting within an hour, the second running into the next.
+        let snack = try food(10, 0)
+        let lunch = try food(10, 50)
+        let lunchEnds = try food(11, 20)
+        model.log([breakfast, snack, lunch, lunchEnds])
+        model.setTracksMealTiming(true)
+        model.setState(.complete, for: yesterday)
+
+        let before = model.gapsBefore(on: yesterday)
+        let hours = DayHours.groups(on: yesterday, entries: model.allEntries(on: yesterday))
+        func gaps(at hour: Int) -> [TimeInterval] { hours.first { $0.hour == hour }?.gaps(before).map(\.duration) ?? [] }
+
+        #expect(gaps(at: 8).isEmpty, "the day's first meal has nothing before it")
+        #expect(gaps(at: 10) == [2 * 3600, 50 * 60], "in the order they were eaten")
+        #expect(gaps(at: 11).isEmpty, "a meal's gap is on the hour it started")
+    }
+
     @Test func theFastLinkOpensTheFastScreenOnlyWithMealTimingOn() throws {
         let (model, _, _) = try model()
         DeepLink.open(URL(string: "macrotrack://fast")!, model: model)

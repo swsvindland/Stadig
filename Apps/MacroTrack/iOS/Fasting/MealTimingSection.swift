@@ -149,7 +149,8 @@ struct OvernightLine: View {
     }
 }
 
-/// "+3 h 20 m" before a meal, coloured by its band: grazing in orange, 3–5 hours in green.
+/// "+3 h 20 m" on the hour a meal starts in, coloured by its band: grazing in orange, 3–5 hours in
+/// green.
 struct GapBadge: View {
     let gap: MealGap
 
@@ -194,4 +195,10 @@ extension AppModel {
         for (meal, gap) in zip(eating.meals.dropFirst(), eating.gaps) { gaps[meal.id] = gap }
         return gaps
     }
+}
+
+extension HourGroup {
+    /// The gaps before the meals that start in this hour, earliest first. A meal is known by its
+    /// first food, so one running into the next hour has its gap in the hour it started.
+    func gaps(_ before: [UUID: MealGap]) -> [MealGap] { entries.compactMap { before[$0.id] } }
 }

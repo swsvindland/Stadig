@@ -40,6 +40,7 @@ struct LogTab: View {
     var body: some View {
         let groups = DayHours.groups(on: day, entries: model.allEntries(on: day))
         let listed = showsColumns ? order.listed(model.allEntries(on: day)) : nil
+        let gaps = model.gapsBefore(on: day)
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
@@ -50,7 +51,7 @@ struct LogTab: View {
                             ForEach(listed) { LogEntryRow(entry: $0, wide: true, showsTime: true, editing: editingFood) }
                         } else {
                             ForEach(groups) { group in
-                                HourRows(group: group, wide: showsColumns, editing: editingFood)
+                                HourRows(group: group, gaps: group.gaps(gaps), wide: showsColumns, editing: editingFood)
                             }
                         }
                     } header: {
@@ -388,11 +389,13 @@ enum LogColumns {
 struct HourRows: View {
     @Environment(AppModel.self) private var model
     let group: HourGroup
+    /// The gap before each meal that starts in this hour.
+    let gaps: [MealGap]
     let wide: Bool
     @Binding var editing: FoodEntry?
 
     var body: some View {
-        HourHeader(group: group)
+        HourHeader(group: group, gaps: gaps)
             .id(group.id)
             // Thin: a whole day of hours fits in a couple of scrolls.
             .listRowInsets(EdgeInsets(top: 1, leading: 16, bottom: 1, trailing: 8))
@@ -420,17 +423,21 @@ struct HourRows: View {
     }
 }
 
-/// An hour's label, what it adds up to, and its +. A tap on the label picks out the hour's foods,
-/// and holding it offers what's done with a meal. While foods are picked out, the + takes them here.
+/// An hour's label, the gap before a meal that starts in it, what it adds up to, and its +. A tap
+/// on the label picks out the hour's foods, and holding it offers what's done with a meal. While
+/// foods are picked out, the + takes them here.
 struct HourHeader: View {
     @Environment(AppModel.self) private var model
     let group: HourGroup
+    let gaps: [MealGap]
     @State private var naming = false
 
     var body: some View {
         let kcal = group.entries.map(\.nutrients.kcal).reduce(0, +)
         HStack(spacing: 8) {
             label
+            // Two, when a second meal starts within the hour of the first.
+            ForEach(gaps, id: \.self) { GapBadge(gap: $0).accessibilityIdentifier("log.gap") }
             Spacer(minLength: 0)
             if kcal > 0 { Text(Format.kcal(kcal)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
             Button(action: add) {
