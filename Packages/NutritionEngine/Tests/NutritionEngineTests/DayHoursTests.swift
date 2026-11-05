@@ -212,6 +212,29 @@ struct PlacingTests {
         #expect(dates == [0, -2, -1].map { now.addingTimeInterval($0) })
     }
 
+    @Test func toNowJustAfterMidnightStaysOnToday() {
+        let today = day.adding(days: 1)
+        let midnight = today.date(calendar: calendar)
+        let now = midnight.addingTimeInterval(1)
+        let dates = Placing.dates(for: [food(19), food(8), food(12)], .now(now), calendar: calendar)
+        #expect(dates.allSatisfy { Day($0, calendar: calendar) == today })
+        #expect(dates == [1, 0, 0.5].map { midnight.addingTimeInterval($0) })
+    }
+
+    @Test func toNowAtMidnightItselfStaysOnToday() {
+        let today = day.adding(days: 1)
+        let midnight = today.date(calendar: calendar)
+        let dates = Placing.dates(for: [food(8), food(12)], .now(midnight), calendar: calendar)
+        #expect(dates == [midnight, midnight])
+    }
+
+    @Test func toNowWithRoomKeepsItsSeconds() {
+        let today = day.adding(days: 1)
+        let now = today.date(calendar: calendar).addingTimeInterval(2)
+        let dates = Placing.dates(for: [food(8), food(12), food(19)], .now(now), calendar: calendar)
+        #expect(dates == [-2, -1, 0].map { now.addingTimeInterval($0) })
+    }
+
     @Test func nothingToPlaceIsNothing() {
         #expect(Placing.dates(for: [], .sameTimes(on: day), calendar: calendar).isEmpty)
     }

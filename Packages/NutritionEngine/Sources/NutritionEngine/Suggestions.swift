@@ -97,13 +97,20 @@ public enum LogAgain {
 
     /// A batch stamped just ahead of now, moved back so its last food is now. A meal's foods go in
     /// a second apart to keep their order: without this the last of them would be later food for a
-    /// moment, and the meal would be split across the tick on the ring and in a fast.
+    /// moment, and the meal would be split across the tick on the ring and in a fast. Just after
+    /// midnight today's foods close up rather than run back into yesterday; a copy for an earlier
+    /// day is already off today, and only moves with the rest.
     public static func settled(_ batch: [FoodEntry], now: Date, calendar: Calendar = .current) -> [FoodEntry] {
         guard let latest = batch.map(\.date).max(), latest > now, latest.timeIntervalSince(now) <= settling else { return batch }
         let back = latest.timeIntervalSince(now)
+        let midnight = Day(now, calendar: calendar).date(calendar: calendar)
+        let span = latest.timeIntervalSince(batch.map(\.date).filter { $0 >= midnight }.min() ?? latest)
+        let squeeze = span > 0 ? min(1, now.timeIntervalSince(midnight) / span) : 1
         return batch.map { entry in
             var entry = entry
-            entry.date = entry.date.addingTimeInterval(-back)
+            entry.date =
+                entry.date < midnight
+                ? entry.date.addingTimeInterval(-back) : max(midnight, now.addingTimeInterval(-latest.timeIntervalSince(entry.date) * squeeze))
             entry.day = Day(entry.date, calendar: calendar)
             return entry
         }

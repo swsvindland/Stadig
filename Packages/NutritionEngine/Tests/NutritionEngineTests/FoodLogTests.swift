@@ -263,4 +263,32 @@ struct FoodLogTests {
         let settled = LogAgain.settled(copies(at: midnight.addingTimeInterval(-1), count: 3), now: midnight.addingTimeInterval(-1))
         #expect(settled.allSatisfy { $0.day == day })
     }
+
+    @Test func aMealJustAfterMidnightStaysOnToday() {
+        let tomorrow = day.adding(days: 1)
+        let midnight = tomorrow.date()
+        let now = midnight.addingTimeInterval(1)
+        let settled = LogAgain.settled(copies(at: now, count: 3), now: now)
+        #expect(settled.allSatisfy { $0.day == tomorrow })
+        #expect(settled.map(\.date) == [0, 0.5, 1].map { midnight.addingTimeInterval($0) })
+    }
+
+    @Test func aMealAtMidnightItselfStaysOnToday() {
+        let tomorrow = day.adding(days: 1)
+        let midnight = tomorrow.date()
+        let settled = LogAgain.settled(copies(at: midnight, count: 3), now: midnight)
+        #expect(settled.allSatisfy { $0.day == tomorrow })
+        #expect(settled.map(\.date) == [midnight, midnight, midnight])
+    }
+
+    @Test func aCopyForAnEarlierDayStaysThere() {
+        // Copied to today and yesterday at once: the batch ends just ahead of the clock.
+        let tomorrow = day.adding(days: 1)
+        let now = tomorrow.date().addingTimeInterval(5)
+        var earlier = copies(at: day.date().addingTimeInterval(30), count: 1)
+        earlier[0].day = day
+        let settled = LogAgain.settled(earlier + copies(at: now.addingTimeInterval(25), count: 1), now: now)
+        #expect(settled.map(\.day) == [day, tomorrow])
+        #expect(settled.last?.date == now)
+    }
 }
