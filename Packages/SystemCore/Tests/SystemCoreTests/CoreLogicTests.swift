@@ -927,6 +927,14 @@ struct FatigueTests {
 
 @Suite("Agility, physique, endurance")
 struct StatsTests {
+    /// Save stays off on an empty entry: the day alone isn't a measurement.
+    @Test("measurements are empty until a field is filled")
+    func emptyMeasurements() {
+        let day = Day(year: 2026, month: 1, day: 1)
+        #expect(BodyMeasurements(day: day).isEmpty)
+        #expect(!BodyMeasurements(day: day, waistCm: 84).isEmpty)
+    }
+
     @Test func weakestMobilityTestBecomesTheLimiter() {
         let day = Day(year: 2026, month: 1, day: 1)
         let analysis = Agility.analyse([

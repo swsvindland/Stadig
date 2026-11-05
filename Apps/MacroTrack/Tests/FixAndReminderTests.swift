@@ -2,6 +2,7 @@ import FoodDatabase
 import Foundation
 import NutritionEngine
 import SystemCore
+import SystemStore
 import Testing
 
 @testable import MacroTrack
@@ -118,6 +119,27 @@ struct SupplementReminderTests {
         let (model, _) = modelWithAStack()
         model.updateSettings { $0.supplementReminders = false }
         #expect(SupplementReminders.wanted(model, now: model.today.date()).isEmpty)
+    }
+
+    @Test func aSupplementInTheStackIsFoundByItsBarcodeAndTakenWithUndo() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        var facts = SupplementFacts(
+            id: "custom:Multi", name: "Multi", unit: "tablet", ingredients: [SupplementIngredient(name: "Zinc", amount: 11, unit: "mg")],
+            source: .custom)
+        facts.barcode = "00031604010539"
+        model.store.save(Supplement(facts: facts))
+        model.reload()
+        #expect(model.ownSupplement(barcode: "036000291452") == nil)
+        let found = try #require(model.ownSupplement(barcode: "031604010539"))
+
+        model.takeExtra(found)
+
+        #expect(model.supplementLogs.count == 1)
+        let toast = try #require(model.toast)
+        #expect(toast.undoDoses == model.supplementLogs.map(\.id))
+        model.undo(toast)
+        #expect(model.supplementLogs.isEmpty)
     }
 
     @Test func takingAllATimesDosesShowsUndo() throws {

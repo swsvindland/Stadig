@@ -63,6 +63,8 @@ struct CatchUpAppTests {
         // A day marked done has nothing left to catch up.
         model.setState(.complete, for: yesterday)
         #expect(model.catchUp.isEmpty)
+        model.setState(.fasting, for: yesterday)
+        #expect(model.catchUp.isEmpty, "nor does a day marked fasted")
         model.setState(nil, for: yesterday)
         #expect(model.catchUp.count == 3)
     }

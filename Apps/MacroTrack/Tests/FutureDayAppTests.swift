@@ -72,6 +72,14 @@ struct FutureDayAppTests {
         #expect(model.supplementLogs.isEmpty)
     }
 
+    /// A day to come has nothing to weigh, so the menu's Weigh In is off there.
+    @Test func weighingInIsOffOnADayToCome() {
+        let (model, _) = model()
+        #expect(MacroCommands(model: model).onADayAhead)
+        model.show(day: model.today)
+        #expect(!MacroCommands(model: model).onADayAhead)
+    }
+
     @Test func aDayToComeHasNothingToCatchUp() {
         let (model, tomorrow) = model()
         let week = (2...8).map { model.today.adding(days: -$0) }

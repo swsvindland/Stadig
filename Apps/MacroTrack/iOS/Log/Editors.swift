@@ -189,12 +189,14 @@ struct WeighInSheet: View {
     }
 
     /// One step lighter or heavier: 0.1 kg, or 0.2 lb.
+    static func nudged(_ value: String, by direction: Double, in unit: WeightUnit) -> String {
+        let step = unit == .kg ? 0.1 : 0.2
+        return Format.editable(max(0, (Format.parse(value) ?? 0) + direction * step), digits: 1)
+    }
+
     func nudge(_ direction: Double) -> some View {
         Button {
-            let unit = model.units.weight
-            let step = unit == .kg ? 0.1 : 0.2
-            let current = Format.parse(value) ?? 0
-            value = Format.editable(max(0, current + direction * step), digits: 1)
+            value = Self.nudged(value, by: direction, in: model.units.weight)
         } label: {
             Image(systemName: direction < 0 ? "minus" : "plus")
                 .font(.title2.weight(.semibold))

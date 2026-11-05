@@ -1,6 +1,6 @@
 ---
 name: add-feature
-description: The end-to-end way to add or change a feature in Stadig Lift, Stadig Macro or Stadig Mind: engine logic and tests in the package first, then the SwiftUI screen, identifiers and UI test, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
+description: The end-to-end way to add or change a feature in Stadig Lift, Stadig Macro or Stadig Mind: engine logic and tests in the package first, then the SwiftUI screen and identifiers, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
 ---
 
 # Add or change a feature
@@ -24,16 +24,16 @@ Work in this order. Each step is small and checked before the next.
 
 - The app model (`iOS/App/AppModel.swift`) exposes what the screen needs, computed once per change rather than in `body`.
 - Views: `@Environment(AppModel.self)`, small subviews, no heavy work in `body`, formatters created once.
-- Give every control a test will touch `.accessibilityIdentifier("screen.element")`, and make sure VoiceOver reads it sensibly.
+- Give every interactive control `.accessibilityIdentifier("screen.element")`, and make sure VoiceOver reads it sensibly.
 - Long-lived observers, timers and tasks: `[weak self]`, stored, cancelled in `onDisappear`/`deinit` (or `.task`, which cancels itself).
 - If it needs data to show, extend `SampleData` so `-seedSampleData` exercises it, and add a DEBUG launch argument if the screen is deep (open it directly).
 - Purchases: check whether it sits behind the unlock (`Purchases`; see `docs/decisions.md`).
 
 ## 4. Tests in the app
 
-- Wiring worth checking (the model publishes the right thing to the shared container, a deep link lands on the right step): `Apps/<App>/Tests`.
-- The user-visible flow: a UI test in `Apps/<App>/UITests` (see the `ui-tests` skill).
-- `Scripts/build.sh unit <app>` and `ONLY=<TestClass> Scripts/build.sh ui <app>` for the flow you changed.
+- What the flow decides (what's saved and when, what Undo brings back) and wiring worth checking (the model publishes the right thing to the shared container, a deep link lands on the right step): `Apps/<App>/Tests`.
+- No UI test, unless it changes onboarding or the offer (see the `ui-tests` skill). Look at the screen in the running app (the `run-app` skill).
+- `Scripts/build.sh unit <app>`.
 
 ## 5. Finish
 

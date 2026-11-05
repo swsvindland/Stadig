@@ -72,6 +72,10 @@ struct DayIntake: Equatable {
     var eaten: Nutrients
     var later: Nutrients
     var all: Nutrients { eaten + later }
+
+    /// What's left is counted from what's been eaten today, with what's coming said beside it, and
+    /// from all of a day's food on any other: a planned day is planned against its whole target.
+    func counted(on day: Day, today: Day) -> Nutrients { day == today ? eaten : all }
 }
 
 /// A short confirmation after logging, with Undo.

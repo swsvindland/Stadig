@@ -153,3 +153,18 @@ struct HistoryTests {
         #expect(DayHistory.rows(state, MacroAnalyst.analyse(state)).isEmpty)
     }
 }
+
+@Suite("A phase's weeks")
+struct PhaseWeekTests {
+    @Test("a day is in its week of the phase; before it the first, past it the last")
+    func weekOfAPhase() {
+        let start = Day(year: 2026, month: 3, day: 2)
+        let phase = PlannedPhase(kind: .cut, weeks: 8, start: start)
+        #expect(phase.week(on: start) == 1)
+        #expect(phase.week(on: start.adding(days: 6)) == 1)
+        #expect(phase.week(on: start.adding(days: 7)) == 2)
+        #expect(phase.week(on: start.adding(days: 55)) == 8)
+        #expect(phase.week(on: start.adding(days: -10)) == 1)
+        #expect(phase.week(on: start.adding(days: 100)) == 8)
+    }
+}

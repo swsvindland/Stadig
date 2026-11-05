@@ -34,13 +34,6 @@ extension XCUIApplication {
         }
     }
 
-    /// The tab bar's button for a tab: the iPhone's, or on an iPad the one in the bar along the top
-    /// (Today, Plan and Progress are there; Shelf, Writing and Courses are inside Library).
-    @MainActor
-    func tabButton(_ name: String) -> XCUIElement {
-        Self.isPad ? buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch : tabBars.buttons[name]
-    }
-
     /// Opens a destination from an iPad's sidebar: shown with the toggle at the start of the tab bar,
     /// a row tapped, then hidden again if it still covers the screen (in portrait it slides over).
     @MainActor

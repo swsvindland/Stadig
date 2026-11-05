@@ -32,7 +32,7 @@ Apps/<App>/           LiftTrack, MacroTrack, MindTrack: thin SwiftUI shells over
   iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
                       per feature; Platform/Adaptive.swift spells what differs between platforms
   Tests/              The app's unit and integration tests (Swift Testing, hosted in the app)
-  UITests/            The app's end-to-end UI tests
+  UITests/            UI tests of first run, the offer and the tabs, and the store screenshots
   Widgets/, Shared/   Widgets and Live Activities, and the snapshot they share with the app
   Watch/, WatchWidgets/   Stadig Lift's and Stadig Macro's Watch apps and their complications
   Records/            Stadig Macro's records that its iPhone and Watch apps both compile
@@ -70,7 +70,7 @@ Scripts/build.sh format             # fix formatting in place
 Scripts/build.sh test [Package]     # package tests (all, or one)
 Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift, macro, mind)
 Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
-ONLY=SessionUITests Scripts/build.sh ui lift    # one class of them
+ONLY=PurchaseUITests Scripts/build.sh ui lift   # one class of them
 Scripts/build.sh ios|watch|macro|macro-watch|mind   # build one app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build

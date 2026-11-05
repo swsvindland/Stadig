@@ -19,6 +19,14 @@ struct LogTabTests {
 
     var yesterdayIn: (AppModel) -> Day { { $0.today.adding(days: -1) } }
 
+    @Test func aDaysLineCountsWhatsEatenTodayAndAllOfAnyOtherDay() {
+        let today = Day(year: 2026, month: 11, day: 5)
+        let intake = DayIntake(eaten: Nutrients(kcal: 500, protein: 0, carbs: 0, fat: 0), later: Nutrients(kcal: 300, protein: 0, carbs: 0, fat: 0))
+        #expect(intake.counted(on: today, today: today).kcal == 500)
+        #expect(intake.counted(on: today.adding(days: 1), today: today).kcal == 800)
+        #expect(intake.counted(on: today.adding(days: -1), today: today).kcal == 800)
+    }
+
     @Test func leavingTheLogGoesBackToToday() {
         let model = model()
         model.show(day: yesterdayIn(model))

@@ -321,12 +321,11 @@ struct CurrentPhaseCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let phase = analysis.phase {
-                let week = min(phase.weeks, phase.start.days(until: model.today) / 7 + 1)
                 HStack(alignment: .firstTextBaseline) {
                     Text(phase.kind.label).font(.title2.weight(.bold))
                         .accessibilityIdentifier("plan.currentPhase")
                     Spacer()
-                    Text("Week \(max(1, week)) of \(phase.weeks)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    Text("Week \(phase.week(on: model.today)) of \(phase.weeks)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         .accessibilityIdentifier("plan.week")
                 }
                 ProgressView(value: Double(max(0, phase.start.days(until: model.today))), total: Double(phase.weeks * 7)).tint(phase.kind.color)
