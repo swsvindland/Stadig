@@ -59,11 +59,12 @@ public enum DayHours {
     }
 
     /// When a + on an hour logs: now, in the hour it is now; just after the hour's last food, so it
-    /// joins that meal; otherwise the top of the hour.
+    /// joins that meal; otherwise the top of the hour. It stays in the hour even when that food
+    /// doesn't: one logged in another time zone can sit in the day's first hour from before it began.
     public static func addTime(_ group: HourGroup, now: Date) -> Date {
         if group.start <= now && now < group.end { return now }
         guard let last = group.entries.last else { return group.start }
-        return min(last.date.addingTimeInterval(60), group.end.addingTimeInterval(-60))
+        return max(group.start, min(last.date.addingTimeInterval(60), group.end.addingTimeInterval(-60)))
     }
 }
 

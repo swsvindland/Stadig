@@ -135,6 +135,27 @@ struct DayHoursTests {
         let groups = DayHours.groups(on: day, entries: [], calendar: calendar)
         #expect(DayHours.addTime(groups[9], now: day.at(hour: 20, minute: 0, calendar: calendar)) == day.at(hour: 9, minute: 0, calendar: calendar))
     }
+
+    @Test func addingBesideAFoodFromBeforeTheDayStaysOnTheDay() throws {
+        // Logged at 7 AM in Tokyo on this day, which is the evening before in New York.
+        var abroad = food(0)
+        abroad.date = day.at(hour: 7, minute: 0, calendar: .gregorian(TimeZone(identifier: "Asia/Tokyo") ?? .gmt))
+        let groups = DayHours.groups(on: day, entries: [abroad], calendar: calendar)
+        #expect(groups[0].entries.map(\.id) == [abroad.id])
+        let time = DayHours.addTime(groups[0], now: day.at(hour: 20, minute: 0, calendar: calendar))
+        #expect(time == groups[0].start)
+        #expect(Day(time, calendar: calendar) == day)
+    }
+
+    @Test func addingBesideAFoodFromAfterTheDayStaysOnTheDay() throws {
+        // Logged at 11 PM in Los Angeles on this day, which is the next morning in New York.
+        var abroad = food(23)
+        abroad.date = day.at(hour: 23, minute: 0, calendar: .gregorian(TimeZone(identifier: "America/Los_Angeles") ?? .gmt))
+        let groups = DayHours.groups(on: day, entries: [abroad], calendar: calendar)
+        #expect(groups[23].entries.map(\.id) == [abroad.id])
+        let time = DayHours.addTime(groups[23], now: day.at(hour: 20, minute: 0, calendar: calendar))
+        #expect(Day(time, calendar: calendar) == day)
+    }
 }
 
 struct PlacingTests {
