@@ -3,7 +3,7 @@ import SystemCore
 
 /// Where foods land when they're moved or copied.
 public enum Placement: Hashable, Sendable {
-    /// From a moment on, keeping the gaps between them: to now, or to an hour.
+    /// From a moment on, keeping the gaps between them: to an hour.
     case starting(Date)
     /// On a day, each at its own time of day: to today, to tomorrow, to chosen dates.
     case sameTimes(on: Day)
