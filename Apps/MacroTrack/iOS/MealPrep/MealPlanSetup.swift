@@ -253,13 +253,33 @@ struct PlannedMealsSection: View {
     }
 
     func row(_ meal: PlannedMeal, _ recipe: PlannedRecipe, _ plan: MealPlan) -> some View {
+        PlannedMealRow(meal: meal, recipe: recipe, plan: plan)
+    }
+
+    /// In the evening, the next day's containers to move from the freezer.
+    func thawReminder(_ plan: MealPlan) -> String? {
+        guard day == model.today, Calendar.current.component(.hour, from: Date()) >= 17 else { return nil }
+        let frozen = plan.meals(on: day.adding(days: 1)).filter { $0.storage == .freezer }
+        guard !frozen.isEmpty else { return nil }
+        return "Tonight: move tomorrow's \(frozen.count == 1 ? "container" : "\(frozen.count) containers") from the freezer to the fridge."
+    }
+}
+
+/// A meal from the plan on a day: what it is, and Log, or a tick once it's logged.
+struct PlannedMealRow: View {
+    @Environment(AppModel.self) private var model
+    let meal: PlannedMeal
+    let recipe: PlannedRecipe
+    let plan: MealPlan
+
+    var body: some View {
         let logged = model.isLogged(meal, in: plan)
         let n = recipe.nutrients
-        return HStack(spacing: 12) {
+        HStack(spacing: 12) {
             Image(systemName: meal.slot.symbol).foregroundStyle(Color.accentColor).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(recipe.title).font(.subheadline.weight(.medium)).lineLimit(2)
-                Text("\(meal.slot.label) · \(Format.kcal(n.kcal)) · \(Format.grams(n.protein)) protein\(note(meal, recipe))")
+                Text("\(meal.slot.label) · \(Format.kcal(n.kcal)) · \(Format.grams(n.protein)) protein\(note)")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -275,7 +295,7 @@ struct PlannedMealsSection: View {
     }
 
     /// Where the serving is, and what to add when eating it.
-    func note(_ meal: PlannedMeal, _ recipe: PlannedRecipe) -> String {
+    var note: String {
         let topping = recipe.items.filter(\.onTheDay).map { $0.name.lowercased() }
         let add = topping.isEmpty ? "" : " · add \(topping.joined(separator: ", "))"
         switch meal.storage {
@@ -285,11 +305,4 @@ struct PlannedMealsSection: View {
         }
     }
 
-    /// In the evening, the next day's containers to move from the freezer.
-    func thawReminder(_ plan: MealPlan) -> String? {
-        guard day == model.today, Calendar.current.component(.hour, from: Date()) >= 17 else { return nil }
-        let frozen = plan.meals(on: day.adding(days: 1)).filter { $0.storage == .freezer }
-        guard !frozen.isEmpty else { return nil }
-        return "Tonight: move tomorrow's \(frozen.count == 1 ? "container" : "\(frozen.count) containers") from the freezer to the fridge."
-    }
 }

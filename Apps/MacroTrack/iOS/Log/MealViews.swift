@@ -19,6 +19,7 @@ struct MealTray: View {
         }
         .animation(.snappy, value: moment?.entries.map(\.id))
         .sheet(isPresented: $showing) { MealSheet(date: date) }
+        .notesWork(showing)
     }
 
     func tray(_ moment: Moment) -> some View {
@@ -99,16 +100,18 @@ struct MealSheet: View {
             }
             .navigationTitle(moment.map { Self.title($0, state: model.saveState(of: $0.entries)) } ?? "This meal")
             .inlineTitle()
-            .navigationDestination(item: $editing) { entry in
-                EntryEditor(entry: entry, close: { editing = nil }).navigationTitle("Edit")
-            }
+            // A sheet of its own: pushed here it's held to this one's half height, where the keypad
+            // and Save leave no room for the amount being typed.
+            .sheet(item: $editing) { entry in EntryEditor(entry: entry, canTake: false) }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }.accessibilityIdentifier("mealSheet.done")
                 }
             }
         }
-        .toastOverlay()
+        // A food's amount covers this too, and its few seconds shouldn't run out behind it. Over the
+        // list, clear of the bar at the foot: a toast that's just come here would sit on Save as Meal.
+        .toastOverlay(bottomPadding: 92, showing: editing == nil)
         .presentationDetents([.medium, .large])
         .macSheetSize(width: 440, height: 560)
     }
@@ -359,7 +362,7 @@ struct SavedMealView: View {
             Button {
                 editing = food
             } label: {
-                EntryRow(entry: food).opacity(included ? 1 : 0.45)
+                EntryRow(entry: food, isLogged: false).opacity(included ? 1 : 0.45)
             }
             .buttonStyle(.plain)
             .hoverHighlight()

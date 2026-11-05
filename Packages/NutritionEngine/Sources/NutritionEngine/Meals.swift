@@ -74,9 +74,11 @@ public enum SavedMeals {
     /// a day being caught up), with days ago counted from now, as Log Again counts them. A meal
     /// counts as eaten in any moment of the last 180 days that holds every one of its foods, whether
     /// it was logged as the meal or food by food (and with a drink beside it). Meals never eaten keep
-    /// the order they were saved in, newest first.
+    /// the order they were saved in, newest first. `logged` is the log around `time` where `entries`
+    /// leaves food for later out: a meal already planned then isn't offered as well, and what's only
+    /// planned doesn't count towards how often it's eaten.
     public static func rank(
-        _ meals: [SavedMeal], entries: [FoodEntry], now: Date, at time: Date? = nil, calendar: Calendar = .current
+        _ meals: [SavedMeal], entries: [FoodEntry], logged: [FoodEntry]? = nil, now: Date, at time: Date? = nil, calendar: Calendar = .current
     ) -> [MealSuggestion] {
         guard !meals.isEmpty else { return [] }
         let today = Day(now, calendar: calendar)
@@ -85,15 +87,17 @@ public enum SavedMeals {
         let hourNow = LogAgain.hourOfDay(time, calendar)
         // By day, as Log Again reads them: a meal's foods go in a second apart, so the last of one
         // just logged is still a moment ahead of the clock.
-        let recent = entries.filter { $0.day <= today && $0.day > today.adding(days: -180) }
-        let moments = Dictionary(grouping: recent, by: \.day).flatMap { day, entries in
-            Timeline.moments(entries).map { (day: day, start: $0.start, end: $0.end, keys: Set($0.entries.map(LogAgain.key))) }
+        func read(_ entries: [FoodEntry]) -> [(day: Day, start: Date, end: Date, keys: Set<String>)] {
+            Dictionary(grouping: entries, by: \.day).flatMap { day, entries in
+                Timeline.moments(entries).map { (day: day, start: $0.start, end: $0.end, keys: Set($0.entries.map(LogAgain.key))) }
+            }
         }
+        let moments = read(entries.filter { $0.day <= today && $0.day > today.adding(days: -180) })
+        let around = logged.map(read) ?? moments
         return meals.map { meal in
             let keys = meal.keys
             var score = 0.0
             var usual = false
-            var eatenNow = false
             for moment in moments where !keys.isEmpty && keys.isSubset(of: moment.keys) {
                 let days = Double(moment.day.days(until: today))
                 var diff = abs(LogAgain.hourOfDay(moment.start, calendar) - hourNow)
@@ -101,10 +105,13 @@ public enum SavedMeals {
                 let fit = max(0.1, exp(-(diff * diff) / (2 * LogAgain.hourSpread * LogAgain.hourSpread)))
                 score += pow(0.5, days / LogAgain.halfLife) * fit
                 if moment.day != timeDay, days <= 30, diff * 3600 <= usualWindow { usual = true }
-                // By the clock, not the day: dinner logged at 11:30 PM is still just eaten at 12:15 AM.
-                if moment.end >= time.addingTimeInterval(-usualWindow), moment.start <= time.addingTimeInterval(usualWindow) { eatenNow = true }
             }
-            // Already eaten around now: lunch isn't offered again once it's logged.
+            // Already eaten around now, or planned: lunch isn't offered again once it's logged. By
+            // the clock, not the day: dinner logged at 11:30 PM is still just eaten at 12:15 AM.
+            let eatenNow = around.contains { moment in
+                !keys.isEmpty && keys.isSubset(of: moment.keys) && moment.end >= time.addingTimeInterval(-usualWindow)
+                    && moment.start <= time.addingTimeInterval(usualWindow)
+            }
             return MealSuggestion(meal: meal, score: score, usualNow: usual && !eatenNow)
         }
         .sorted { $0.score != $1.score ? $0.score > $1.score : $0.meal.updatedAt > $1.meal.updatedAt }

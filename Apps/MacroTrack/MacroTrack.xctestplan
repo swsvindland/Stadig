@@ -20,6 +20,7 @@
   },
   "testTargets": [
     {
+      "parallelizable": false,
       "target": {
         "containerPath": "container:MacroTrack.xcodeproj",
         "identifier": "4D2E755E6ADE3050A7463B68",

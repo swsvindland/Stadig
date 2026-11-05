@@ -1,0 +1,194 @@
+import XCTest
+
+/// The amount panel: what it says about a food, whether what it says is what Save does, and the
+/// places it opens from.
+nonisolated final class AmountUITests: XCTestCase {
+    /// Searches the open logger for a banana and opens its amount.
+    @MainActor
+    func openABanana(_ app: XCUIApplication) {
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear().tap()
+        app.element("amount.panel").waitToAppear()
+    }
+
+    /// Adds a banana with its +, then opens it from the meal under the search.
+    @MainActor
+    func openABananaFromTheMeal(_ app: XCUIApplication) {
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("logger.meal").waitToAppear().tap()
+        app.element("mealSheet.entry").waitToAppear().tap()
+    }
+
+    /// Adds a banana with its + and leaves the logger, where it covers the log.
+    @MainActor
+    func logABanana(_ app: XCUIApplication) {
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Logged").waitToAppear()
+        if !XCUIApplication.isPad { app.element("logger.done").waitToAppear().tap() }
+    }
+
+    /// The pencil on the open amount: its calories typed over with `kcal`.
+    @MainActor
+    func correct(to kcal: String, in app: XCUIApplication) {
+        app.element("portion.editFood").waitToAppear().tap()
+        let field = app.element("foodEditor.kcal").waitToAppear()
+        // The number sits at the field's right edge, so a tap there leaves the cursor after it.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        let current = (field.value as? String) ?? ""
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count) + kcal)
+        app.closeNumberPad()
+        let save = app.element("foodEditor.save").waitToAppear()
+        save.tap()
+        save.waitToDisappear()
+    }
+
+    /// The chip for a unit, by its exact name: "g" alone would also find "cup, sliced".
+    @MainActor
+    func unit(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(identifier: "portion.unit").matching(NSPredicate(format: "label == %@", label)).firstMatch.waitToAppear()
+    }
+
+    /// The number on the panel, without its unit.
+    @MainActor
+    func quantity(_ app: XCUIApplication) -> String {
+        let quantity = app.element("amount.quantity").waitToAppear()
+        return ((quantity.value as? String) ?? "").split(separator: " ").first.map(String.init) ?? ""
+    }
+
+    /// On an iPhone there's no Foods screen, so the amount is the one place to see a food's
+    /// vitamins and minerals and where its numbers came from before logging it.
+    @MainActor
+    func testAFoodsAmountSaysWhatTheFoodIs() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        XCTAssertEqual(app.element("food.source").waitToAppear().label, "USDA FoodData Central")
+        XCTAssertTrue(app.staticTexts["Whole food"].exists, "how processed it is")
+        app.shot("amount-food")
+
+        // All of it in view as it opens, rather than behind a drag that would resize the sheet.
+        let nutrients = app.staticTexts["Vitamins and minerals"].waitToAppear()
+        XCTAssertTrue(app.element("amount.summary").isHittable, "the macros clear the keypad")
+        XCTAssertTrue(nutrients.isHittable, "and so does what folds below them")
+        nutrients.tap()
+        app.shot("amount-food-nutrients")
+        XCTAssertTrue(app.staticTexts["Potassium"].waitForExistence(timeout: 5), "the food's minerals, unfolded")
+    }
+
+    /// A correction's note shows the moment it's saved, on the amount it was made from.
+    @MainActor
+    func testACorrectedFoodSaysSoOnItsAmount() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        correct(to: "150", in: app)
+        XCTAssertEqual(app.element("food.source").waitToAppear().label, "Your numbers, corrected from USDA FoodData Central")
+    }
+
+    /// The meal sheet stops at half height for its own list. A food's amount needs more than that:
+    /// the keypad and Save take it all, with nothing left to show the amount being typed.
+    @MainActor
+    func testAFoodsAmountFromTheMealIsAllInView() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABananaFromTheMeal(app)
+
+        let quantity = app.element("amount.quantity").waitToAppear()
+        app.shot("amount-from-meal")
+        XCTAssertTrue(quantity.isHittable, "the amount being typed is in view")
+        XCTAssertTrue(app.element("entryEditor.save").isHittable, "and so is Save")
+        XCTAssertTrue(app.element("entryEditor.delete").isHittable, "and the time and Delete below the numbers")
+    }
+
+    /// Taking a food elsewhere needs the Log tab behind it, for the bar and the hours' arrows. The
+    /// meal sheet is over the logger, so it doesn't offer it.
+    @MainActor
+    func testTheMealSheetDoesntOfferMoveAndCopy() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABananaFromTheMeal(app)
+
+        app.element("entryEditor.save").waitToAppear()
+        XCTAssertFalse(app.element("entryEditor.move").exists)
+        XCTAssertFalse(app.element("entryEditor.copy").exists)
+    }
+
+    /// Foods already logged keep their numbers, so a correction made from one leaves Save saying
+    /// the numbers it's going to keep.
+    @MainActor
+    func testSaveSaysTheNumbersAnEntryKeepsAfterACorrection() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search"])
+        logABanana(app)
+
+        app.scrollTo(app.logEntry(containing: "banana")).waitToAppear().tap()
+        let save = app.element("entryEditor.save").waitToAppear()
+        let logged = save.label
+        correct(to: "900", in: app)
+        XCTAssertEqual(save.waitToAppear().label, logged, "it says what it will keep")
+    }
+
+    /// The chips hold a food's units, and calories are one its numbers change. Counted in the old
+    /// ones, the amount and the total disagree.
+    @MainActor
+    func testTheCalorieChipFollowsACorrection() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        // An amount offered, which a chip converts. A typed one stays the number it is.
+        unit("g", in: app).tap()
+        correct(to: "150", in: app)
+
+        unit("kcal", in: app).tap()
+        XCTAssertEqual(quantity(app), "150", "the same grams at the corrected numbers")
+        XCTAssertEqual(app.element("portion.add").label, "Add · 150 kcal")
+    }
+
+    /// An amount typed and then moved goes with the food, rather than going back to what it was.
+    @MainActor
+    func testMoveTakesTheAmountTypedBeforeIt() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search"])
+        logABanana(app)
+
+        // Logged just now, it's in the hour the list opens on, clear of the pinned line.
+        let entry = app.scrollTo(app.logEntry(containing: "banana")).waitToAppear()
+        let before = entry.label
+        entry.tap()
+        app.element("amount.panel").waitToAppear()
+        app.element("amount.key.3").tap()
+        // A tap scrolls to what it's after, so this is what says it's in view as the sheet opens.
+        XCTAssertTrue(app.element("entryEditor.move").isHittable, "Move fits under the time")
+        app.element("entryEditor.move").tap()
+
+        app.element("amount.panel").waitToDisappear()
+        app.element("selection.bar").waitToAppear()
+        app.logEntry(containing: "banana").waitForLabel(toChangeFrom: before)
+    }
+
+    /// Half a pound is how a pound is measured. Half a gram isn't.
+    @MainActor
+    func testOuncesAndPoundsTakeFractions() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        let half = app.element("amount.key.½").waitToAppear()
+
+        unit("g", in: app).tap()
+        XCTAssertFalse(half.isEnabled, "grams are too small to halve")
+
+        unit("lb", in: app).tap()
+        XCTAssertTrue(half.isEnabled, "pounds aren't")
+        app.element("amount.key.1").tap()
+        half.tap()
+        XCTAssertEqual(quantity(app), "1½")
+    }
+}

@@ -18,6 +18,16 @@ extension XCUIApplication {
         XCUIDevice.shared.system.open(try XCTUnwrap(URL(string: link), file: file, line: line))
     }
 
+    /// Saves the screen as `<name>.png` when UI_SHOTS names a folder (through TEST_RUNNER_UI_SHOTS),
+    /// for looking over a new screen; nothing otherwise.
+    @MainActor
+    func shot(_ name: String) {
+        guard let folder = ProcessInfo.processInfo.environment["UI_SHOTS"] else { return }
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        Thread.sleep(forTimeInterval: 0.6)
+        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/\(name).png"))
+    }
+
     /// An iPad, where the regular-width layout runs: the tab bar along the top, the sidebar's
     /// destinations, Today's log as a table and every way to log in its toolbar.
     @MainActor

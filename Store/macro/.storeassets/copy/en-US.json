@@ -1,5 +1,9 @@
 {
   "slots": {
+    "log": {
+      "headline": "Your day, **hour by hour**",
+      "subhead": "Any food, moved or changed in a tap or two"
+    },
     "meal-prep": {
       "headline": "A week of meals in **one afternoon**",
       "subhead": "Sized to your targets, with the groceries"

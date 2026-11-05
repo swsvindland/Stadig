@@ -131,6 +131,8 @@ public struct WristToday: Hashable, Sendable {
     public var lastMealEnd: Date?
     /// Where a fast started now would start: the end of the last meal in the last day, else now.
     public var suggestedFastStart: Date
+    /// Food logged for later, through tomorrow, for the complications.
+    public var later: [LaterFood]
 
     /// How many single foods to offer: what the phone's Log again row shows.
     public static let logAgainCount = 10
@@ -140,6 +142,7 @@ public struct WristToday: Hashable, Sendable {
         let targets = analysis.targets
         let eaten = analysis.intakeByDay[today] ?? .zero
         day = today
+        later = LaterFood.of(state.upcoming, after: state.entries, since: analysis.fast?.fast.start, through: today.adding(days: 1))
         mode = targets.mode
         badge = Self.badge(targets, assessment: analysis.assessment, phase: analysis.phase)
         note = targets.note
@@ -197,11 +200,14 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
     public var fastGoalHours: Double?
     /// When the last meal ended, while meal timing is on, for the time since it.
     public var lastMealEnd: Date?
+    /// Food logged for later, through tomorrow: each counts from its time on a complication's
+    /// timeline, with the Watch app closed. Older snapshots don't have it.
+    public var later: [LaterFood]?
     public var updated: Date
 
     public init(
         day: Day, kcal: MacroProgress, protein: MacroProgress, badge: String? = nil, fastStart: Date? = nil, fastGoalHours: Double? = nil,
-        lastMealEnd: Date? = nil, updated: Date = Date()
+        lastMealEnd: Date? = nil, later: [LaterFood]? = nil, updated: Date = Date()
     ) {
         self.day = day
         self.kcal = kcal
@@ -210,6 +216,7 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
         self.fastStart = fastStart
         self.fastGoalHours = fastGoalHours
         self.lastMealEnd = lastMealEnd
+        self.later = later
         self.updated = updated
     }
 
@@ -218,13 +225,28 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
             day: today.day, kcal: today.kcal, protein: today.protein, badge: today.badge,
             fastStart: today.tracksMealTiming ? today.fast?.fast.start : nil,
             fastGoalHours: today.tracksMealTiming ? today.fast?.fast.goalHours : nil,
-            lastMealEnd: today.tracksMealTiming ? today.lastMealEnd : nil, updated: updated)
+            lastMealEnd: today.tracksMealTiming ? today.lastMealEnd : nil, later: today.later.isEmpty ? nil : today.later, updated: updated)
     }
 
     /// The fast as it stands at `date`, for a complication's timeline entry.
     public func fast(at date: Date) -> FastStatus? {
         guard let fastStart, let fastGoalHours else { return nil }
         return Fasting.status(Fast(start: fastStart, goalHours: fastGoalHours), now: date)
+    }
+
+    /// When a complication's numbers change next: a date for each food still to come, up to `end`.
+    public func laterDates(after now: Date, before end: Date) -> [Date] {
+        (later ?? []).map(\.date).filter { $0 > now && $0 < end }
+    }
+
+    /// A complication's timeline from `now`: a date for each food still to come today, midnight to
+    /// start the new day at nothing eaten, and when to read the snapshot again. That's just past
+    /// midnight: the snapshot holds tomorrow's food too, whose dates go in once it's today, and
+    /// the Watch app may not run to write another.
+    public func timeline(from now: Date, calendar: Calendar = .current) -> (dates: [Date], reload: Date) {
+        // The next calendar day, not 24 hours on, which misses midnight the days the clocks change.
+        let midnight = Day(now, calendar: calendar).adding(days: 1).date(calendar: calendar)
+        return ([now] + laterDates(after: now, before: midnight) + [midnight], midnight.addingTimeInterval(60))
     }
 
     /// Before the Watch app has written one: nothing eaten, no targets.
@@ -246,6 +268,25 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
         fresh.day = day
         fresh.kcal.eaten = 0
         fresh.protein.eaten = 0
+        return fresh
+    }
+
+    /// As it stands at a moment: `shown(on:)` for its day, with the later food that's happened by
+    /// then counted, on the day it was for, and a meal among it ending the fast.
+    public func shown(at date: Date, calendar: Calendar = .current) -> WristSnapshot {
+        let day = Day(date, calendar: calendar)
+        var fresh = shown(on: day)
+        let happened = (later ?? []).filter { $0.date <= date }
+        for food in happened where Day(food.date, calendar: calendar) == day {
+            fresh.kcal.eaten += food.nutrients.kcal
+            fresh.protein.eaten += food.nutrients.protein
+        }
+        if let meal = happened.filter(\.isMeal).map(\.date).max(), fastStart != nil || lastMealEnd != nil {
+            fresh.fastStart = nil
+            fresh.fastGoalHours = nil
+            fresh.lastMealEnd = meal
+        }
+        fresh.later = later?.filter { $0.date > date }
         return fresh
     }
 

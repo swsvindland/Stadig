@@ -73,6 +73,54 @@ struct DeepLinkTests {
 /// The widgets' snapshot: written only when it changes, read back as written, and fresh after midnight.
 @MainActor
 struct MacroSnapshotTests {
+    func later(_ date: Date, kcal: Double) -> LaterFood {
+        LaterFood(date: date, nutrients: Nutrients(kcal: kcal, protein: kcal / 20, carbs: kcal / 10, fat: kcal / 40), isMeal: kcal >= 50)
+    }
+
+    @Test func laterFoodCountsFromItsTime() {
+        let dinner = date(2027, 3, 14, 18, 30, in: .current)
+        var snapshot = MacroSnapshot(day: MacroSnapshot.isoDay(dinner), kcal: 1000, kcalTarget: 2300, protein: 60)
+        snapshot.later = [later(dinner, kcal: 800)]
+
+        #expect(snapshot.current(now: dinner.addingTimeInterval(-60)).kcal == 1000)
+        let after = snapshot.current(now: dinner.addingTimeInterval(60))
+        #expect(after.kcal == 1800)
+        #expect(after.protein == 100)
+        #expect(after.later?.isEmpty == true)
+        #expect(snapshot.laterDates(after: dinner.addingTimeInterval(-60), before: dinner.addingTimeInterval(60)) == [dinner])
+    }
+
+    @Test func aMealLoggedForLaterEndsTheFast() {
+        let dinner = date(2027, 3, 14, 18, 30, in: .current)
+        var snapshot = MacroSnapshot(day: MacroSnapshot.isoDay(dinner))
+        snapshot.tracksMealTiming = true
+        snapshot.fastStart = dinner.addingTimeInterval(-3600)
+        snapshot.fastGoalHours = 16
+        snapshot.later = [later(dinner.addingTimeInterval(-600), kcal: 2), later(dinner, kcal: 700)]
+
+        #expect(snapshot.current(now: dinner.addingTimeInterval(-300)).fastStart != nil)
+        let after = snapshot.current(now: dinner.addingTimeInterval(1))
+        #expect(after.fastStart == nil)
+        #expect(after.lastMealEnd == dinner)
+    }
+
+    @Test func tomorrowsFoodCountsTomorrowFromNothing() {
+        let dinner = date(2027, 3, 15, 18, 30, in: .current)
+        var snapshot = MacroSnapshot(day: MacroSnapshot.isoDay(dinner.addingTimeInterval(-86_400)), kcal: 1000)
+        snapshot.later = [later(dinner, kcal: 700)]
+        #expect(snapshot.current(now: dinner.addingTimeInterval(3600)).kcal == 700)
+        #expect(snapshot.current(now: dinner.addingTimeInterval(-3600)).kcal == 0)
+    }
+
+    @Test func aSnapshotFromBeforeLaterFoodStillReads() throws {
+        let url = URL.temporaryDirectory.appending(path: "widget-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(#"{"day":"2027-03-14","kcal":1240,"protein":96,"carbs":0,"fat":0,"weighedToday":false,"updated":0}"#.utf8).write(to: url)
+        let snapshot = MacroSnapshot.load(from: url)
+        #expect(snapshot.kcal == 1240)
+        #expect(snapshot.later == nil)
+    }
+
     @Test func roundTripsThroughItsFile() {
         let url = TestEnvironment().widgetURL
         var snapshot = MacroSnapshot(day: "2027-03-14", kcal: 1240, kcalTarget: 2300, protein: 96, proteinTarget: 170)

@@ -14,8 +14,8 @@ extension SupplementForm {
     }
 }
 
-/// The day's doses on Today, by time of day: a tap marks one taken, "Take all" a time's worth.
-/// Once everything's marked it folds to one line.
+/// The day's doses on Today, or under a past day's hours on the Log tab, by time of day: a tap marks
+/// one taken, "Take all" a time's worth. Once everything's marked it folds to one line.
 struct SupplementsSection: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -175,7 +175,8 @@ private struct DoseRow: View {
         }
         .contextMenu {
             if !dose.taken { Button("Taken", systemImage: "checkmark") { model.take([dose], on: day) } }
-            if !dose.skipped { Button("Skip today", systemImage: "minus.circle") { model.skip(dose, on: day) } }
+            // It's reached from a past day's foot on the Log tab too.
+            if !dose.skipped { Button(day == model.today ? "Skip today" : "Skip", systemImage: "minus.circle") { model.skip(dose, on: day) } }
             Button("Edit \(dose.supplement.name)", systemImage: "pencil", action: edit)
         }
         .accessibilityLabel(

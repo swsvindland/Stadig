@@ -23,6 +23,9 @@ nonisolated struct MacroSnapshot: Codable, Hashable, Sendable {
     var fastStart: Date?
     var fastGoalHours: Double?
     var lastMealEnd: Date?
+    /// Food logged for later, through tomorrow: each counts from its time on the widgets' timelines,
+    /// with the app closed. Older snapshots don't have it.
+    var later: [LaterFood]?
     var updated = Date()
 
     static let groupID = "group.dev.svindland.stadig"
@@ -39,17 +42,39 @@ nonisolated struct MacroSnapshot: Codable, Hashable, Sendable {
         return sample
     }
 
-    /// Today's view of it: eaten resets to nothing once the day it was written for has passed.
+    /// Today's view of it: eaten resets to nothing once the day it was written for has passed, and
+    /// food logged for later counts from its time, a meal among it ending the fast.
     func current(now: Date = Date()) -> MacroSnapshot {
-        guard day != Self.isoDay(now) else { return self }
         var fresh = self
-        fresh.day = Self.isoDay(now)
-        fresh.kcal = 0
-        fresh.protein = 0
-        fresh.carbs = 0
-        fresh.fat = 0
-        fresh.weighedToday = false
+        let today = Self.isoDay(now)
+        if day != today {
+            fresh.day = today
+            fresh.kcal = 0
+            fresh.protein = 0
+            fresh.carbs = 0
+            fresh.fat = 0
+            fresh.weighedToday = false
+        }
+        guard let later else { return fresh }
+        let happened = later.filter { $0.date <= now }
+        for food in happened where Self.isoDay(food.date) == today {
+            fresh.kcal += food.nutrients.kcal
+            fresh.protein += food.nutrients.protein
+            fresh.carbs += food.nutrients.carbs
+            fresh.fat += food.nutrients.fat
+        }
+        if let meal = happened.filter(\.isMeal).map(\.date).max(), fastStart != nil || lastMealEnd != nil {
+            fresh.fastStart = nil
+            fresh.fastGoalHours = nil
+            fresh.lastMealEnd = meal
+        }
+        fresh.later = later.filter { $0.date > now }
         return fresh
+    }
+
+    /// When the numbers change next: a date for each food still to come, up to `end`.
+    func laterDates(after now: Date, before end: Date) -> [Date] {
+        (later ?? []).map(\.date).filter { $0 > now && $0 < end }
     }
 
     var kcalLeft: Double? { kcalTarget.map { $0 - kcal } }

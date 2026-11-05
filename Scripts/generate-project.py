@@ -610,12 +610,17 @@ def generate(spec):
             options.update({"testRepetitionMode": "retryOnFailure", "maximumTestRepetitions": 2})
         else:
             options["codeCoverage"] = True
+        # Stadig Macro's app tests are nearly all on the main actor, so running them together gains
+        # nothing: they queue for it with each one's clock already running, and a wait or the time
+        # allowance runs out behind the rest of the suite. One at a time took its 293 from 133 s and
+        # 45 timeouts to 19 s.
+        one_at_a_time = {"parallelizable": False} if app_name == "MacroTrack" and not plan.endswith("UI") else {}
         # A hung test fails on its own instead of holding the CI machine until the job's timeout.
         options.update({"testTimeoutsEnabled": True, "defaultTestExecutionTimeAllowance": 300 if plan.endswith("UI") else 120})
         return {
             "configurations": [{"id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{app_name}/{plan}")).upper(), "name": "Default", "options": {}}],
             "defaultOptions": options,
-            "testTargets": [{"target": ref(t)} for t in tests],
+            "testTargets": [{"target": ref(t), **one_at_a_time} for t in tests],
             "version": 1,
         }
 

@@ -6,7 +6,7 @@ The screenshots for Stadig Lift, Stadig Macro and Stadig Mind, kept as [storeass
 | --- | --- | --- |
 | `lift` | iPhone 6.9" (1320×2868), iPad 13" (2064×2752) | session, today, plan (Program on the iPad), progress, body |
 | `lift-watch` | Apple Watch (422×514) | set, rating, rest, conditioning, home |
-| `macro` | iPhone 6.9", iPad 13" | today, search, scan, plan, progress, meal prep |
+| `macro` | iPhone 6.9", iPad 13" | today, log, search, scan, plan, progress, meal prep |
 | `macro-watch` | Apple Watch | today, log again, water, supplements, weigh-in |
 | `mind` | iPhone 6.9", iPad 13" | plan, japanese, maths, progress, shelf |
 
@@ -21,6 +21,8 @@ Scripts/store-screenshots.sh lift          # or macro, mind; all three by defaul
 ```
 
 It runs the app's `StoreScreenshots` UI test (`Apps/<App>/UITests/StoreScreenshots.swift`) on a Pro Max iPhone and a 13-inch iPad Pro at once, over `-seedSampleData`, and the Watch app on an Apple Watch Ultra 3 with its sample launch arguments, then imports every capture into the project, replacing the old one by name. The simulators are this checkout's own ("Stadig Shots iPhone|iPad|Watch <checkout>"), light mode, 9:41. The test skips itself in every other run, so the UI test plans carry it without running it.
+
+Take Stadig Macro's during the day. Its Today shows the food logged so far, so before breakfast it reads "0 of 2,200 kcal", and its Log slot is yesterday, which looks the same at any hour.
 
 Stadig Mind's Today isn't in the set: on a rest day it says so, and which day is a rest day depends on when the screenshots are taken.
 

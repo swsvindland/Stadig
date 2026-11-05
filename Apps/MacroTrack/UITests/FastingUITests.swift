@@ -24,6 +24,20 @@ nonisolated final class FastingUITests: XCTestCase {
         app.element("today.sinceLastMeal").waitToAppear()
     }
 
+    /// The gap before a meal sits on the hour it starts in, on a day whose log can be trusted.
+    @MainActor
+    func testTheGapBeforeAMealIsOnItsHour() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedMealTiming", "-tab", "log", "-daysAgo", "1"])
+        let gap = app.scrollTo(app.element("log.gap")).waitToAppear()
+        XCTAssertTrue(gap.label.contains("after the meal before"), gap.label)
+        app.shot("log-gap")
+
+        // Partly logged, a long gap may only be a snack that wasn't.
+        app.scrollTo(app.element("today.dayState.partial")).waitToAppear().tap()
+        app.element("log.gap").waitToDisappear()
+    }
+
     @MainActor
     func testTheWeeksMealTimingOnProgress() {
         continueAfterFailure = false

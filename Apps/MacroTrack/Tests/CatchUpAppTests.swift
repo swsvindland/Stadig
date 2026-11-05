@@ -67,6 +67,31 @@ struct CatchUpAppTests {
         #expect(model.catchUp.count == 3)
     }
 
+    @Test func sameAsLeavesAMealAlreadyPlannedThen() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        week(model)
+        let ahead = model.today.adding(days: 1)
+        model.selectedDay = ahead
+        model.openLogger(.search)
+        model.loggerTime = ahead.at(hour: 8, minute: 0)
+        let usual = try #require(model.loggerUsual)
+        #expect(usual.entries.map(\.name) == ["Oats", "Coffee"])
+
+        // Once it's planned there, one more tap would only log it twice.
+        model.logAgain(usual)
+        #expect(model.allEntries(on: ahead).count == 2)
+        #expect(model.loggerUsual == nil)
+
+        // What's planned isn't what's offered either: the day after still gets what was eaten.
+        model.logger = nil
+        let after = ahead.adding(days: 1)
+        model.selectedDay = after
+        model.openLogger(.search)
+        model.loggerTime = after.at(hour: 8, minute: 0)
+        #expect(Day(try #require(model.loggerUsual).start) == model.today.adding(days: -2))
+    }
+
     @Test func theLoggerSuggestsForTheTimeItLogsAt() throws {
         let model = TestEnvironment().model()
         model.onboard()

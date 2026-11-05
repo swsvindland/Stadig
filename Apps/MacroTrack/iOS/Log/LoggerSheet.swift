@@ -3,84 +3,282 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// A food and portion to confirm, and whether the logger closes after adding it.
-struct PortionRequest: Identifiable, Hashable {
-    var food: Food
-    var source: EntrySource
-    var closeAfterAdd = false
-    var id: String { food.id }
-}
-
-/// Every way to log, in one sheet that opens straight on the way chosen. Logging keeps the sheet
-/// open (with Undo) so a meal of several foods is a few taps, with the meal so far in sight under
-/// the search; Done closes it.
+/// The logger as a sheet: it holds the navigation and the search field around `LoggerContent`, and
+/// Done closes it. Logging keeps it open (with Undo) so a meal of several foods is a few taps.
 struct LoggerSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State private var mode: LogMode
-    @State private var query = ""
-    @State private var portion: PortionRequest?
-    @State private var openMeal: SavedMeal.ID?
+    let start: LogMode
+    @State private var session: LoggerSession
+    @FocusState private var searchFocused: Bool
 
-    init(start: LogMode) { _mode = State(initialValue: start) }
+    init(start: LogMode) {
+        self.start = start
+        _session = State(initialValue: LoggerSession(mode: start))
+    }
 
     var body: some View {
+        @Bindable var session = session
         NavigationStack {
-            content
-                .inlineTitle()
-                #if os(macOS)
-            // A Mac sheet shows only its confirmation buttons in the toolbar: the time goes above.
-            .safeAreaInset(edge: .top) {
-                if mode != .search {
-                    HStack {
-                        TimeMenu().menuIndicator(.hidden).fixedSize()
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+            Group {
+                if session.mode == .search {
+                    content
+                        .searchable(text: $session.query, placement: .alwaysShown, prompt: "Search foods")
+                        // The search is active whenever the logger is (the keyboard stays up for the
+                        // next food), and by default an active search hides the bar with the title.
+                        .searchPresentationToolbarBehavior(.avoidHidingContent)
+                        .searchFocused($searchFocused)
+                        .autocorrectionDisabled()
+                        .noAutocapitalization()
+                        .onAppear { if session.portion == nil { searchFocused = true } }
+                } else {
+                    content
                 }
             }
-                #endif
-                .toolbar {
-                    if mode != .search, !Platform.isMac { ToolbarItem(placement: .principal) { TimeMenu() } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }.accessibilityIdentifier("logger.done")
-                    }
+            .inlineTitle()
+            .navigationDestination(item: $session.openMeal) { id in
+                SavedMealView(mealID: id) {
+                    session.openMeal = nil
+                    session.query = ""
                 }
-                .navigationDestination(item: $portion) { request in
-                    PortionView(request: request) { closeAfter in
-                        portion = nil
-                        query = ""
-                        if closeAfter || request.closeAfterAdd { dismiss() }
-                    }
-                }
-                .navigationDestination(item: $openMeal) { id in
-                    SavedMealView(mealID: id) {
-                        openMeal = nil
-                        query = ""
-                    }
-                }
+            }
+            .sheet(item: $session.portion, onDismiss: { session.focusSearch() }) { request in
+                LoggerAmount(session: session, request: request)
+            }
         }
-        // Just above the search's time bar, and the meal over it once there is one, where the eye
-        // already is after a tap on +.
-        .toastOverlay(bottomPadding: mode == .search ? (model.mealBeingLogged() == nil ? 64 : 116) : 24)
-        .onAppear { model.ai.prewarm() }
+        .onAppear {
+            model.ai.prewarm()
+            #if DEBUG
+            SampleData.seedReview(session, model)
+            #endif
+        }
+        // Done, or a swipe down: nobody's left to read for.
+        .onDisappear { session.stopRead() }
+        .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
+        .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
+        .onChange(of: session.openMeal) { _, meal in if meal == nil { searchFocused = true } }
+        // Asked for another way, the root presents that one's sheet in this one's place, and a
+        // camera opening here would land on a sheet on its way out.
+        .onChange(of: model.loggerRequest) { _, request in if request.mode == start { session.go(to: start) } }
+        .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
+    }
+
+    var content: some View { LoggerContent(session: session, covered: session.portion != nil, done: { dismiss() }) }
+}
+
+/// The amount panel, as the logger opens it: an added food goes back to the search for the next
+/// one, and a review's food goes back to the review.
+struct LoggerAmount: View {
+    let session: LoggerSession
+    let request: AmountRequest
+
+    var body: some View {
+        panel.amountSheet(editing: false)
+    }
+
+    var panel: some View {
+        AmountPanel(
+            request: request,
+            picked: { count, unit in
+                guard case .pick(let item, _, _) = request.purpose, let index = session.review?.items.firstIndex(where: { $0.id == item }) else {
+                    return
+                }
+                session.review?.items[index].count = count
+                session.review?.items[index].unit = unit
+            },
+            foodCorrected: { session.useCorrection($0) },
+            finished: {
+                guard case .add = request.purpose else { return }
+                session.backToSearch()
+            },
+            close: { session.portion = nil }
+        )
+    }
+}
+
+/// The logger as a pane beside the Log tab, where there's room: not over the day, so each food added
+/// lands in sight, and an hour's + aims it at that hour. The amount takes its place, and goes back
+/// to it. It has its own search field, since a pane isn't where a window's search field goes.
+struct LoggerPane: View {
+    @Environment(AppModel.self) private var model
+    /// A food's being changed over it. It stays alive under there, out of sight and out of reach.
+    let covered: Bool
+    @State private var session: LoggerSession
+    @FocusState private var searchFocused: Bool
+
+    init(start: LogMode, covered: Bool = false) {
+        self.covered = covered
+        _session = State(initialValue: LoggerSession(mode: start))
+    }
+
+    var body: some View {
+        @Bindable var session = session
+        NavigationStack {
+            Group {
+                if let request = session.portion {
+                    LoggerAmount(session: session, request: request).panel
+                } else {
+                    VStack(spacing: 0) {
+                        if session.mode == .search { searchField }
+                        LoggerContent(session: session, covered: covered, done: { model.logger = nil })
+                    }
+                }
+            }
+            .inlineTitle()
+            .navigationDestination(item: $session.openMeal) { id in
+                SavedMealView(mealID: id) {
+                    session.openMeal = nil
+                    session.query = ""
+                }
+            }
+        }
+        .opacity(covered ? 0 : 1)
+        .disabled(covered)
+        .accessibilityHidden(covered)
+        .onAppear {
+            model.ai.prewarm()
+            #if DEBUG
+            SampleData.seedReview(session, model)
+            #endif
+            searchFocused = true
+        }
+        .onDisappear { session.stopRead() }
+        .onChange(of: covered) { _, covered in searchFocused = !covered && session.portion == nil }
+        .onChange(of: session.focusRequest) { _, _ in searchFocused = true }
+        .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
+        .onChange(of: session.portion) { _, request in if request == nil { searchFocused = true } }
+        .onChange(of: model.loggerRequest) { _, request in if let mode = request.mode { session.go(to: mode) } }
+        .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
+    }
+
+    var searchField: some View {
+        @Bindable var session = session
+        return TextField("Search foods", text: $session.query)
+            .textFieldStyle(.roundedBorder)
+            .autocorrectionDisabled()
+            .noAutocapitalization()
+            .focused($searchFocused)
+            // Return logs the best match, as the Foods screen's does.
+            .onSubmit { session.pressedReturn(model) }
+            .accessibilityIdentifier("logger.search")
+            .overlay(alignment: .trailing) {
+                if !session.query.isEmpty {
+                    Button("Clear", systemImage: "xmark.circle.fill") {
+                        session.query = ""
+                        session.focusSearch()
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 6)
+                    .accessibilityIdentifier("logger.clearSearch")
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+    }
+}
+
+/// Every way to log, in one place: search, scan, a photo, a description and quick add, each
+/// returning to the search. It holds no navigation, search field or toolbar of its own: a host gives
+/// it those, so a sheet and a pane can each show it. The meal so far, the time, the other ways to log
+/// and Done sit together at the bottom, in reach of a thumb and above the keyboard.
+struct LoggerContent: View {
+    @Environment(AppModel.self) private var model
+    let session: LoggerSession
+    /// An amount or a food is over it: a toast's few seconds would run out unseen.
+    var covered = false
+    let done: () -> Void
+
+    var body: some View {
+        method
+            .safeAreaInset(edge: .bottom) { bottom }
+            .task(id: session.query) { await session.search(model) }
     }
 
     @ViewBuilder
-    var content: some View {
-        switch mode {
-        case .search:
-            SearchLogView(query: $query, mode: $mode, portion: $portion, openMeal: $openMeal)
-        case .scan:
-            BarcodeLogView(portion: $portion, mode: $mode)
-        case .camera, .photoLibrary:
-            PhotoLogView(useCamera: mode == .camera, mode: $mode, query: $query, close: { dismiss() })
-        case .describe:
-            DescribeLogView(mode: $mode, query: $query, close: { dismiss() })
-        case .quickAdd:
-            QuickAddView(close: { dismiss() })
+    var method: some View {
+        switch session.mode {
+        case .search: SearchLogView(session: session)
+        case .scan: BarcodeLogView(session: session, covered: covered)
+        case .camera, .photoLibrary: PhotoLogView(useCamera: session.mode == .camera, session: session)
+        case .describe: DescribeLogView(session: session)
+        case .quickAdd: QuickAddView(close: { session.backToSearch() })
         }
+    }
+
+    /// Hidden while something's typed, when the room is the results'.
+    var showsRibbon: Bool { session.mode != .search || session.query.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    var bottom: some View {
+        VStack(spacing: 8) {
+            // Over the meal it just changed, where the eye already is after a tap on +.
+            if !covered, !model.toastCovered { ToastSlot() }
+            VStack(spacing: 8) {
+                MealTray()
+                LogTimeBar()
+                methodsRow
+            }
+            .padding(.horizontal)
+        }
+        .padding(.bottom, 8)
+        .animation(.snappy, value: model.toast)
+    }
+
+    var methodsRow: some View {
+        HStack(spacing: 8) {
+            if showsRibbon { MethodRibbon(session: session) } else { Spacer(minLength: 0) }
+            Button(action: done) {
+                Text("Done").font(.headline).padding(.horizontal, 18).frame(minHeight: 44).contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            // Over a scrolling list, as the bars above it are: clear glass alone lets the rows read through.
+            .background(Color.cardBackground.opacity(0.75), in: .capsule)
+            .floatingGlass(in: .capsule)
+            .accessibilityIdentifier("logger.done")
+        }
+    }
+}
+
+/// The other ways to log.
+struct MethodRibbon: View {
+    @Environment(AppModel.self) private var model
+    let session: LoggerSession
+
+    var body: some View {
+        HStack(spacing: 4) {
+            chip("Search", "magnifyingglass", .search)
+            chip("Scan", "barcode.viewfinder", .scan)
+            if model.ai.canSeePhotos || waiting(on: .camera, .photoLibrary) { chip("Photo", "camera", .camera) }
+            if model.ai.canDescribe || waiting(on: .describe) { chip("Describe", "text.bubble", .describe) }
+            chip("Quick add", "plus.forwardslash.minus", .quickAdd)
+        }
+        .padding(2)
+        .frame(maxWidth: .infinity)
+        .background(Color.cardBackground.opacity(0.75), in: .capsule)
+        .floatingGlass(in: .capsule)
+    }
+
+    /// A review left unlogged is reached through its way of logging, even if the model has gone.
+    func waiting(on ways: LogMode...) -> Bool { session.review.map { ways.contains($0.mode) } ?? false }
+
+    func chip(_ title: String, _ symbol: String, _ target: LogMode) -> some View {
+        let current = session.mode == target || (target == .camera && session.mode == .photoLibrary)
+        return Button {
+            session.mode = target
+        } label: {
+            Image(systemName: symbol)
+                .font(.title3)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(current ? Color.accentColor.opacity(0.2) : .clear, in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(current ? .isSelected : [])
+        .accessibilityIdentifier("logger.mode.\(target.rawValue)")
     }
 }
 
@@ -108,53 +306,21 @@ enum LogTime {
         return "\(Format.day(Day(date), style: .dateTime.weekday(.abbreviated))) \(Format.time(date))"
     }
 
-    /// A time picked on the wheel for today, on the day nearest now: 11:30 PM picked just after
-    /// midnight is last night, 7 PM picked at noon is this evening.
+    /// How far back a time picked ahead of the clock can still mean last night.
+    static let lastNight: TimeInterval = 6 * 3600
+
+    /// A time picked on the wheel for today means today, even if that's later on: 7 PM picked at
+    /// noon is this evening, and so is 6:30 PM picked at 6 AM. Only a real last night is yesterday:
+    /// 11:30 PM picked just after midnight.
     static func nearest(_ picked: Date, now: Date = Date(), calendar: Calendar = .current) -> Date {
         guard picked > now, let yesterday = calendar.date(byAdding: .day, value: -1, to: picked) else { return picked }
-        return now.timeIntervalSince(yesterday) < picked.timeIntervalSince(now) ? yesterday : picked
+        return now.timeIntervalSince(yesterday) <= lastNight ? yesterday : picked
     }
 
     static func ago(_ minutes: Int) -> String { minutes < 60 ? "\(minutes) min ago" : "\(minutes / 60) h ago" }
 
     /// The same, short enough for a row of chips.
     static func short(_ minutes: Int) -> String { minutes < 60 ? "\(minutes)m ago" : "\(minutes / 60)h ago" }
-}
-
-/// The time choice in the logger's title: now, a recent time, or any time.
-struct TimeMenu: View {
-    @Environment(AppModel.self) private var model
-    @State private var picking = false
-
-    var body: some View {
-        Menu {
-            if model.selectedDay == model.today {
-                Button("Now") { model.loggerTime = nil }
-                ForEach(LogTime.recent, id: \.self) { minutes in
-                    Button(LogTime.ago(minutes)) { model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60) }
-                }
-            }
-            let usual = model.usualLogTimes()
-            if !usual.isEmpty {
-                Section("Usually") {
-                    ForEach(usual, id: \.self) { time in
-                        Button(Format.time(time)) { model.loggerTime = time }
-                    }
-                }
-            }
-            Button("Pick a time…", systemImage: "clock") { picking = true }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "clock").font(.subheadline)
-                Text(LogTime.label(model)).font(.headline)
-                Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-            }
-            .foregroundStyle(.primary)
-        }
-        .accessibilityLabel("Eaten: \(LogTime.label(model))")
-        .accessibilityIdentifier("logger.time")
-        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
-    }
 }
 
 /// The time choice under a search, where the thumb is.
@@ -297,32 +463,37 @@ struct TimePickerSheet: View {
 }
 
 /// Search as you type: saved meals and personal foods first, the last portion pre-filled, + logs in
-/// one tap.
+/// one tap. While the AI's review is finding a food, what's picked goes there instead.
 struct SearchLogView: View {
     @Environment(AppModel.self) private var model
-    @Binding var query: String
-    @Binding var mode: LogMode
-    @Binding var portion: PortionRequest?
-    @Binding var openMeal: SavedMeal.ID?
-    @State private var results: [FoodMatch] = []
-    @State private var searching = false
-    @FocusState private var focused: Bool
+    let session: LoggerSession
+
+    var query: String { session.query }
+    var results: [FoodMatch] { session.results }
 
     var body: some View {
         List {
-            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+            if session.finding != nil {
                 Section {
-                    ModeShortcuts(mode: $mode)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    HStack {
+                        Text("Pick a food for your meal").font(.subheadline.weight(.medium))
+                        Spacer()
+                        Button("Back to the meal") { session.stopFinding() }
+                            .font(.subheadline)
+                            .accessibilityIdentifier("logger.backToReview")
+                    }
                 }
+            }
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 // Saved meals and Log Again follow the time being logged at: lunch for noon, even
                 // when it's caught up at 9 PM. A usual moment that is a saved meal is in My Meals.
-                if let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
+                // Finding a food for a review, only what's one food can be its answer.
+                if session.finding == nil, let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
                     Section("Same as \(Format.relative(Day(usual.start), today: model.today))") {
                         UsualMomentRow(moment: usual)
                     }
                 }
-                let suggested = model.loggerMeals
+                let suggested = session.finding == nil ? model.loggerMeals : []
                 if !suggested.isEmpty {
                     Section("My meals") {
                         ForEach(suggested.prefix(20)) { suggestion in
@@ -330,11 +501,11 @@ struct SearchLogView: View {
                         }
                     }
                 }
-                let again = model.loggerLogAgain
+                let again = model.loggerLogAgain.filter { session.finding == nil || $0.template.foodID != nil }
                 if !again.isEmpty {
                     Section(model.timedSuggestions == nil ? "Log again" : "Log again for \(LogTime.time(model))") {
                         ForEach(again.prefix(12)) { item in
-                            RecentRow(item: item, open: { open(item) })
+                            RecentRow(item: item, add: { addAgain(item) }, open: { open(item) })
                         }
                     }
                 }
@@ -354,14 +525,14 @@ struct SearchLogView: View {
                         }
                     }
                 }
-            } else if results.isEmpty && meals.isEmpty && !searching {
+            } else if results.isEmpty && meals.isEmpty && !session.searching {
                 ContentUnavailableView {
                     Label("No matches", systemImage: "magnifyingglass")
                 } description: {
                     Text("Try fewer words, scan the barcode, or describe it.")
                 } actions: {
-                    Button("Describe “\(query)”") { mode = .describe }
-                    Button("Quick add calories") { mode = .quickAdd }.accessibilityIdentifier("logger.noMatchesQuickAdd")
+                    Button("Describe “\(query)”") { session.mode = .describe }
+                    Button("Quick add calories") { session.mode = .quickAdd }.accessibilityIdentifier("logger.noMatchesQuickAdd")
                 }
                 .listRowBackground(Color.clear)
             } else if meals.isEmpty {
@@ -376,32 +547,13 @@ struct SearchLogView: View {
         .insetGroupedList()
         // The time bar's usual times take the weekday's place there on a day being caught up.
         .navigationTitle(model.selectedDay == model.today ? "" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide)))
-        .searchable(text: $query, placement: .alwaysShown, prompt: "Search foods")
-        // The search is active whenever the logger is (the keyboard stays up for the next food), and
-        // by default an active search hides the bar with Done in it.
-        .searchPresentationToolbarBehavior(.avoidHidingContent)
-        .searchFocused($focused)
-        .autocorrectionDisabled()
-        .noAutocapitalization()
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 8) {
-                MealTray()
-                LogTimeBar()
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-        }
-        .task(id: query) { await search() }
-        .onAppear { if portion == nil { focused = true } }
-        .onChange(of: portion) { _, request in if request == nil { focused = true } }
-        .onChange(of: openMeal) { _, meal in if meal == nil { focused = true } }
     }
 
     /// Saved meals with what's typed: the person's own handful, so no need to wait for the catalog,
     /// and read afresh each time, so a meal changed or deleted on its screen isn't logged as it was.
     var meals: [SavedMeal] {
         let text = query.trimmingCharacters(in: .whitespaces)
-        return text.isEmpty ? [] : SavedMeals.matching(text, in: model.loggerMeals.map(\.meal))
+        return text.isEmpty || session.finding != nil ? [] : SavedMeals.matching(text, in: model.loggerMeals.map(\.meal))
     }
 
     var foodResults: some View {
@@ -416,85 +568,42 @@ struct SearchLogView: View {
             meal: meal,
             add: {
                 model.log(meal)
-                query = ""
-                focused = true
+                session.query = ""
+                session.focusSearch()
             },
             open: {
-                focused = false
-                openMeal = meal.id
+                session.blurSearch()
+                session.openMeal = meal.id
             })
     }
 
-    func search() async {
-        let text = query.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else {
-            results = []
-            return
-        }
-        searching = true
-        // A short pause so fast typing doesn't queue a search per keystroke.
-        try? await Task.sleep(for: .milliseconds(90))
-        guard !Task.isCancelled else { return }
-        let catalog = model.catalog
-        let personal = model.personal
-        let found = await Task.detached(priority: .userInitiated) { catalog.search(text, personal: personal, limit: 60) }.value
-        guard !Task.isCancelled else { return }
-        results = model.corrected(found)
-        searching = false
-    }
-
-    /// The + button: the suggested (or last-used) portion, logged now, and the search cleared
-    /// for the next food.
-    func quickAdd(_ food: Food) {
-        let p = model.personalFood(food.id)
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
-        model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
-        query = ""
-        focused = true
-    }
+    /// The + button.
+    func quickAdd(_ food: Food) { session.add(food, model) }
 
     func open(_ food: Food) {
-        focused = false
-        portion = PortionRequest(food: food, source: .search)
+        guard session.finding == nil else {
+            session.use(food)
+            return
+        }
+        session.blurSearch()
+        session.portion = .add(food, source: .search)
     }
 
     func open(_ item: LogAgainItem) {
         if let id = item.template.foodID, let food = model.food(id: id) {
             open(food)
-        } else {
+        } else if session.finding == nil {
             model.logAgain(item)
         }
     }
-}
 
-/// Scan, photo, describe and quick add, from the empty search.
-struct ModeShortcuts: View {
-    @Environment(AppModel.self) private var model
-    @Binding var mode: LogMode
-
-    var body: some View {
-        HStack(spacing: 8) {
-            chip("Scan", "barcode.viewfinder", .scan)
-            if model.ai.canSeePhotos { chip("Photo", "camera", .camera) }
-            if model.ai.canDescribe { chip("Describe", "text.bubble", .describe) }
-            chip("Quick add", "plus.forwardslash.minus", .quickAdd)
+    /// The + on Log again: the same food and amount, or the food being found for the review.
+    func addAgain(_ item: LogAgainItem) {
+        guard session.finding != nil else {
+            model.logAgain(item)
+            return
         }
-    }
-
-    func chip(_ title: String, _ symbol: String, _ target: LogMode) -> some View {
-        Button {
-            mode = target
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: symbol).font(.title3)
-                Text(title).font(.caption.weight(.medium)).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .background(.insetBackground, in: .rect(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .hoverHighlight()
-        .accessibilityIdentifier("logger.mode.\(target.rawValue)")
+        if let food = item.template.foodID.flatMap(model.food(id:)) { session.use(food) }
     }
 }
 
@@ -544,8 +653,8 @@ struct FoodRow: View {
 
 /// A recently logged food, re-logged as it was.
 struct RecentRow: View {
-    @Environment(AppModel.self) private var model
     let item: LogAgainItem
+    let add: () -> Void
     let open: () -> Void
 
     var body: some View {
@@ -564,9 +673,7 @@ struct RecentRow: View {
             }
             .buttonStyle(.plain)
             .hoverHighlight()
-            Button {
-                model.logAgain(item)
-            } label: {
+            Button(action: add) {
                 Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
@@ -605,98 +712,6 @@ struct UsualMomentRow: View {
     }
 }
 
-/// How much: a count and a unit, with the numbers updating as they change. The pencil corrects
-/// the food's numbers to its package's, for this time and the next.
-struct PortionView: View {
-    @Environment(AppModel.self) private var model
-    let request: PortionRequest
-    let done: (_ closeLogger: Bool) -> Void
-    @State private var amount = PortionAmount()
-    @State private var filled = false
-    /// The food as the person just corrected it, in place of the one asked for.
-    @State private var edited: Food?
-    @State private var editing = false
-
-    var food: Food { edited ?? request.food }
-
-    var body: some View {
-        let current = amount.unit(for: food)
-        let n = amount.nutrients(food)
-        Form {
-            Section {
-                FoodHeader(food: food, corrected: model.isCorrected(food.id))
-            }
-            Section("Amount") {
-                AmountFields(food: food, amount: $amount)
-            }
-            Section {
-                NutrientSummary(nutrients: n)
-                if let current { PortionNutrients(food: food, count: amount.count, unit: current) }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                guard let current else { return }
-                model.log([model.entry(for: food, count: amount.count, unit: current, source: request.source)])
-                done(false)
-            } label: {
-                Text("Add\(LogTime.label(model) == "Now" ? "" : " at \(LogTime.time(model))") · \(Format.kcal(n.kcal))")
-                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
-            }
-            .primaryAction()
-            .accessibilityIdentifier("portion.add")
-            .padding()
-            .disabled(current == nil || amount.count <= 0)
-        }
-        .navigationTitle("Amount")
-        .toolbar {
-            ToolbarItemGroup(placement: .barTrailing) {
-                if current != nil { EditFoodButton { editing = true } }
-                FavoriteButton(foodID: food.id)
-            }
-        }
-        .sheet(isPresented: $editing) {
-            if let current { FoodEditor(food: food, count: amount.count, unit: current) { use($0) } }
-        }
-        .onAppear {
-            // Once: it appears again when the food editor closes, and the amount chosen stays.
-            guard !filled else { return }
-            filled = true
-            amount = PortionAmount(suggestedFor: food, personal: model.personalFood(food.id))
-        }
-    }
-
-    /// The food as corrected (or the catalog's again), at the same amount: its units are the same,
-    /// but one counted in calories holds a different amount now.
-    func use(_ food: Food) {
-        edited = food
-        if let id = amount.unit?.id, let unit = FoodUnits.units(for: food).first(where: { $0.id == id }) { amount.unit = unit }
-    }
-
-    /// Half, one, one and a half and two of the usual amount, each rounded the way that unit is
-    /// measured (quarters of a cup or a portion, tenths of an ounce or a pound, whole grams),
-    /// without repeats.
-    static func quickChoices(base: Double, unit: PortionUnit) -> [Double] {
-        var seen = Set<Double>()
-        return [0.5, 1, 1.5, 2].map { FoodUnits.convert(base * $0, from: unit, to: unit) }.filter { $0.isFinite && seen.insert($0).inserted }
-    }
-
-    /// A weight or volume with its unit ("0.5 lb", "150 g"), a count of portions on its own.
-    static func quickChoiceLabel(_ value: Double, unit: PortionUnit) -> String {
-        unit.kind == .mass || unit.kind == .volume ? FoodUnits.label(count: value, unit: unit) : Format.number(value, digits: 2)
-    }
-
-    static func sourceLabel(_ food: Food) -> String {
-        switch food.source {
-        case .usda: "USDA FoodData Central"
-        case .off: "Open Food Facts"
-        case .custom: "My food"
-        case .recipe: "Recipe"
-        case .label: "From its label"
-        }
-    }
-}
-
 /// An amount being chosen: the count, its unit, the text being typed and the usual amount the quick
 /// choices are halves and multiples of.
 struct PortionAmount: Equatable {
@@ -725,6 +740,19 @@ struct PortionAmount: Equatable {
     }
 
     func unit(for food: Food) -> PortionUnit? { unit ?? FoodUnits.units(for: food).first }
+
+    /// The same amount of the food with new numbers (or the catalog's again), as a food being added
+    /// takes them (`AmountDraft.use`). Its units are the same ones, but calories hold a different
+    /// amount now, and a food corrected to no calories can't be counted in them.
+    mutating func use(_ corrected: Food) {
+        guard let old = unit else { return }
+        let units = FoodUnits.units(for: corrected)
+        guard let next = units.first(where: { $0.id == old.id }) ?? units.first(where: { $0.id == corrected.basis.rawValue }), next != old else {
+            return
+        }
+        let converted = FoodUnits.convert(count, from: old, to: next)
+        self = PortionAmount(count: converted.isFinite ? converted : count, unit: next)
+    }
 
     func nutrients(_ food: Food) -> Nutrients { unit(for: food).map { FoodUnits.nutrients(food, count: count, unit: $0) } ?? .zero }
 }
@@ -769,8 +797,8 @@ struct AmountFields: View {
         }
         if let current {
             HStack(spacing: 8) {
-                ForEach(PortionView.quickChoices(base: amount.base, unit: current), id: \.self) { value in
-                    Button(PortionView.quickChoiceLabel(value, unit: current)) {
+                ForEach(AmountChoices.quick(base: amount.base, unit: current), id: \.self) { value in
+                    Button(AmountChoices.label(value, unit: current)) {
                         amount.count = value
                         amount.text = FoodUnits.format(value, current)
                     }
@@ -789,14 +817,25 @@ struct FoodHeader: View {
     let food: Food
     /// The numbers are the person's correction of the catalog's.
     var corrected = false
+    var nameFont: Font = .title3.weight(.semibold)
+
+    static func sourceLabel(_ food: Food) -> String {
+        switch food.source {
+        case .usda: "USDA FoodData Central"
+        case .off: "Open Food Facts"
+        case .custom: "My food"
+        case .recipe: "Recipe"
+        case .label: "From its label"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(food.name).font(.title3.weight(.semibold))
+            Text(food.name).font(nameFont)
             if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
                 Text(brand).font(.subheadline).foregroundStyle(.secondary)
             }
-            Text(corrected ? "Your numbers, corrected from \(PortionView.sourceLabel(food))" : PortionView.sourceLabel(food))
+            Text(corrected ? "Your numbers, corrected from \(Self.sourceLabel(food))" : Self.sourceLabel(food))
                 .font(.caption).foregroundStyle(.tertiary)
                 .accessibilityIdentifier("food.source")
             FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))

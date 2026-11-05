@@ -6,6 +6,8 @@ import SystemCore
 public struct Moment: Hashable, Sendable, Identifiable {
     public var entries: [FoodEntry]
 
+    public init(entries: [FoodEntry]) { self.entries = entries }
+
     public var id: UUID { entries.first?.id ?? UUID() }
     public var start: Date { entries.first?.date ?? .distantPast }
     public var end: Date { entries.last?.date ?? .distantPast }

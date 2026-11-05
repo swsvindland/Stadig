@@ -54,6 +54,8 @@ public final class RecordStore {
     @ObservationIgnored var askWhyRefused: (@Sendable () async -> String?)?
     /// That question, asked once a launch, at the first export turned down.
     @ObservationIgnored private(set) var refusalQuestion: Task<Void, Never>?
+    /// What the next save throws, as a full disk would, rolled back like any failed save. Tests set it.
+    @ObservationIgnored var nextSaveFailure: (any Error)?
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var remoteChangeNoticed: ContinuousClock.Instant?
     /// The newest history transaction already accounted for.
@@ -303,21 +305,64 @@ public final class RecordStore {
         commit(changes, kind: T.kind, context, patch: bulk ? nil : { self.patchCache(T.self, with: Array(written.values)) })
     }
 
+    /// Saves records just made, with ids nothing else has, and returns them as stored (dates to the
+    /// millisecond), or nothing when the save failed and none of them are. `save` without looking
+    /// for an earlier copy: finding one by id reads the whole table, which over years of records is
+    /// most of what a save costs.
+    @discardableResult
+    public func insert<T: StoredRecord>(_ records: [T]) -> [T] {
+        guard let context, !records.isEmpty else { return [] }
+        let encoder = SystemJSON.encoder()
+        let decoder = SystemJSON.decoder()
+        var written: [RecordVersion] = []
+        var stored: [T] = []
+        for record in records {
+            var stamped = record
+            stamped.updatedAt = record.updatedAt.roundedToMilliseconds
+            let payload: Data
+            do {
+                payload = try encoder.encode(stamped)
+            } catch {
+                storeLog.error(
+                    "Couldn't encode \(T.kind, privacy: .public) \(record.id, privacy: .public): \(String(describing: error), privacy: .public)")
+                continue
+            }
+            let version = RecordVersion(
+                kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt, schemaVersion: T.schemaVersion, payload: payload, deleted: false)
+            _ = write(version, into: [], context: context)
+            written.append(version)
+            if let saved = decode(T.self, version, decoder) { stored.append(saved) }
+        }
+        let saved = commit(written.count, kind: T.kind, context, patch: written.count > 32 ? nil : { self.patchCache(T.self, with: written) })
+        return saved ? stored : []
+    }
+
     /// Soft delete: the record's rows keep their place with `deleted` set, the payload cleared and
     /// `updatedAt` moved past the last edit, so the deletion syncs and beats older copies.
     public func delete<T: StoredRecord>(_ type: T.Type, id: UUID) {
-        guard let context else { return }
-        let rows = fetchRows(kind: T.kind, uuid: id)
-        guard let current = Self.newest(rows).map(RecordVersion.init),
-            rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty })
-        else { return }
-        let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
-        let tombstone = RecordVersion(
-            kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
-            payload: Data(), deleted: true)
-        commit(write(tombstone, into: rows, context: context).changed ? 1 : 0, kind: T.kind, context) {
-            self.patchCache(T.self, with: [tombstone])
+        delete(type, ids: [id])
+    }
+
+    /// `delete` for several records in one save, so a batch is one change to read and to sync.
+    public func delete<T: StoredRecord>(_ type: T.Type, ids: some Collection<UUID>) {
+        guard let context, !ids.isEmpty else { return }
+        let bulk = ids.count > 32
+        let rowsByID: [UUID: [RecordRow]] = bulk ? Dictionary(grouping: fetchRows(kind: T.kind), by: \.uuid) : [:]
+        var tombstones: [RecordVersion] = []
+        var changes = 0
+        for id in Set(ids) {
+            let rows = rowsByID[id] ?? (bulk ? [] : fetchRows(kind: T.kind, uuid: id))
+            guard let current = Self.newest(rows).map(RecordVersion.init),
+                rows.contains(where: { !$0.tombstone || !$0.payload.isEmpty })
+            else { continue }
+            let stamp = Date(wholeMilliseconds: max(Date().wholeMilliseconds, current.updatedAt.wholeMilliseconds + 1))
+            let tombstone = RecordVersion(
+                kind: T.kind, uuid: id, updatedAt: stamp, schemaVersion: T.schemaVersion,
+                payload: Data(), deleted: true)
+            tombstones.append(tombstone)
+            if write(tombstone, into: rows, context: context).changed { changes += 1 }
         }
+        commit(changes, kind: T.kind, context, patch: bulk ? nil : { self.patchCache(T.self, with: tombstones) })
     }
 
     /// Removes every row of every kind. With iCloud on, that erases the data on every device.
@@ -514,23 +559,27 @@ public final class RecordStore {
         return (rows, changed)
     }
 
-    /// Saves a write to one kind and records the change. `patch` brings the kind's decoded cache up
-    /// to date once the save has gone through; without one, or when the save fails and is rolled
-    /// back, the cache is dropped and read again.
-    private func commit(_ changes: Int, kind: String, _ context: ModelContext, patch: (() -> Void)? = nil) {
-        guard changes > 0 else { return }
-        var patched = false
+    /// Saves a write to one kind, records the change and says whether it was saved. `patch` brings
+    /// the kind's decoded cache up to date once the save has gone through; without one, or when the
+    /// save fails and is rolled back, the cache is dropped and read again.
+    @discardableResult
+    private func commit(_ changes: Int, kind: String, _ context: ModelContext, patch: (() -> Void)? = nil) -> Bool {
+        guard changes > 0 else { return false }
+        var saved = false
         do {
-            try context.save()
-            if let patch {
-                patch()
-                patched = true
+            if let failure = nextSaveFailure {
+                nextSaveFailure = nil
+                throw failure
             }
+            try context.save()
+            saved = true
+            patch?()
         } catch {
             storeLog.error("\(self.name, privacy: .public): save failed: \(String(describing: error), privacy: .public)")
             context.rollback()
         }
-        changed(kinds: [kind], cachePatched: patched)
+        changed(kinds: [kind], cachePatched: saved && patch != nil)
+        return saved
     }
 
     /// Patches a kind's decoded `all`, if it has been read, with versions just saved: each takes its

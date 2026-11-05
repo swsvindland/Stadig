@@ -7,31 +7,159 @@ import Testing
 
 @testable import MacroTrack
 
-/// Where there's a sidebar (iPad, the Mac, Vision Pro) finding a food and the supplements are
-/// screens of their own rather than sheets; without one, the same asks keep the phone's sheets.
+/// Where there's a sidebar (iPad, the Mac, Vision Pro) the logger is a pane of the Log tab, and the
+/// supplements a screen of their own; without one, the same asks keep the phone's sheets.
 @MainActor
 struct SidebarTests {
-    @Test func findingAFoodOpensTheFoodsScreenWithItsSearch() throws {
+    @Test func theLoggerIsAPaneOfTheLogTab() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.tab = .plan
+
+        model.openLogger(.search)
+        #expect(model.tab == .log)
+        #expect(model.logger == .search)
+
+        // A link from a widget does the same.
+        model.logger = nil
+        model.tab = .today
+        DeepLink.open(try #require(URL(string: "macrotrack://log")), model: model)
+        #expect(model.logger == .search && model.tab == .log)
+
+        // An hour's + aims the open logger there, without a new one.
+        let earlier = Date().addingTimeInterval(-3600)
+        model.openLogger(.search, at: earlier)
+        #expect(model.logger == .search && model.loggerTime == earlier)
+    }
+
+    /// The pane is part of the Log tab. Left open behind another tab it would go on logging at its
+    /// picked hour, out of sight, and hold the toast where no one can see it or its Undo.
+    @Test(arguments: [AppTab.today, .foods, .plan])
+    func leavingTheLogClosesItsPane(_ destination: AppTab) {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.search, at: model.today.at(hour: 19, minute: 0))
+
+        model.tab = destination
+
+        #expect(model.logger == nil)
+        #expect(model.loggerTime == nil, "a one-tap log on this tab is for now")
+
+        // Opening one from here goes back to the Log tab, as ever.
+        model.openLogger(.search)
+        #expect(model.tab == .log)
+        #expect(model.logger == .search)
+    }
+
+    /// A sheet sits over whichever tab: a link can change the tab under it without closing it.
+    @Test func withoutTheSidebarTheLoggerOutlastsATabChange() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let dinner = model.today.at(hour: 19, minute: 0)
+        model.tab = .log
+        model.openLogger(.search, at: dinner)
+
+        model.tab = .plan
+
+        #expect(model.logger == .search)
+        #expect(model.loggerTime == dinner)
+    }
+
+    /// `logger` is the way it opened with, so asking for that again changes nothing there: this is
+    /// how a logger that's gone back to its search hears it.
+    @Test func askingForAWayAgainIsHeard() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.openLogger(.scan)
+        let first = model.loggerRequest
+        #expect(first.mode == .scan)
+
+        // As a widget's link and the menu ask, in place of any sheet up.
+        model.dismissSheets()
+        model.openLogger(.scan)
+
+        #expect(model.logger == .scan)
+        #expect(model.loggerRequest != first)
+        #expect(model.loggerRequest.mode == .scan)
+    }
+
+    /// Where it's a pane the logger isn't a sheet to clear away: a weigh-in from the menu or a link
+    /// opens over it, with its review or what's typed there underneath.
+    @Test func closingSheetsLeavesThePane() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.describe)
+
+        model.dismissSheets()
+
+        #expect(model.logger == .describe)
+    }
+
+    @Test func closingSheetsClosesAnIPhonesLogger() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.openLogger(.describe)
+        model.dismissSheets()
+        #expect(model.logger == nil)
+    }
+
+    @Test func aPhotoDroppedOnAPhotoLoggerIsHeard() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.photoLibrary)
+        let first = model.loggerRequest
+
+        model.logDroppedPhoto(Data([0xFF, 0xD8, 0xFF]))
+
+        #expect(model.loggerRequest != first, "nothing appears for it to read the photo on")
+        #expect(model.loggerRequest.mode == .photoLibrary)
+    }
+
+    /// With a pane open an hour's + leaves it on whichever way it's on, or a review goes with it.
+    @Test func anHourAimsAnOpenPaneWithoutChangingIt() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.camera)
+        let first = model.loggerRequest
+        let dinner = model.today.at(hour: 19, minute: 0)
+
+        model.aimLogger(at: dinner)
+
+        #expect(model.logger == .camera)
+        #expect(model.loggerTime == dinner)
+        #expect(model.loggerRequest != first, "it still has to show, over a food's amount")
+        #expect(model.loggerRequest.mode == nil, "with no way of logging to go to")
+    }
+
+    @Test func anHourOpensTheSearchWithNothingOpen() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        let dinner = model.today.at(hour: 19, minute: 0)
+        model.aimLogger(at: dinner)
+        #expect(model.logger == .search && model.loggerTime == dinner)
+        #expect(model.tab == .log)
+
+        // Without a pane there's a sheet, which nothing reaches an hour past.
+        let phone = TestEnvironment().model()
+        phone.onboard()
+        phone.aimLogger(at: dinner)
+        #expect(phone.logger == .search && phone.loggerTime == dinner)
+    }
+
+    @Test func foodsStaysTheScreenForComparing() {
         let model = TestEnvironment().model()
         model.onboard()
         model.usesSidebar = true
         let before = model.foodSearchRequest
-
-        model.openLogger(.search)
+        model.go(to: .foods)
         #expect(model.tab == .foods)
-        #expect(model.logger == nil)
         #expect(model.foodSearchRequest == before + 1, "the search field takes the cursor")
-
-        // A link from a widget does the same.
-        DeepLink.open(try #require(URL(string: "macrotrack://log")), model: model)
-        #expect(model.logger == nil && model.tab == .foods)
-
-        // The other ways to log, and a search at a moment's time (+ on a moment), are still the logger.
-        model.openLogger(.describe)
-        #expect(model.logger == .describe)
-        let earlier = Date().addingTimeInterval(-3600)
-        model.openLogger(.search, at: earlier)
-        #expect(model.logger == .search && model.loggerTime == earlier)
     }
 
     @Test func withoutTheSidebarSearchIsTheLogger() {

@@ -9,8 +9,9 @@ import SystemCore
 /// photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
-    @Binding var portion: PortionRequest?
-    @Binding var mode: LogMode
+    let session: LoggerSession
+    /// A food's open over the pane: no camera behind it, reading what it sees for nobody.
+    var covered = false
     @State private var scanning = true
     @State private var manual = ""
     @State private var missing: String?
@@ -26,32 +27,34 @@ struct BarcodeLogView: View {
     var body: some View {
         Group {
             if let supplement {
-                SupplementFoundView(supplement: supplement) {
+                SupplementFoundView(supplement: supplement, took: session.backToSearch) {
                     self.supplement = nil
                     scanning = true
                 }
             } else if let label {
                 LabelReviewView(result: label, barcode: missing) { food in
-                    portion = PortionRequest(food: food, source: .label, closeAfterAdd: true)
+                    session.portion = .add(food, source: .label)
                 }
             } else if readingLabel {
                 ProgressView("Reading the label…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let missing {
                 notFound(missing)
+            } else if covered {
+                Color.clear
             } else if LiveLabelScanner.isAvailable && scanning {
                 LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
                     .id(scanID)
-                    .toolbar {
-                        ToolbarItem(placement: .barLeading) {
-                            Menu {
-                                Button("Type the barcode", systemImage: "keyboard") { scanning = false }
-                                Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
-                                Button("Search by name", systemImage: "magnifyingglass") { mode = .search }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                            .accessibilityLabel("Other ways")
+                    .overlay(alignment: .topLeading) {
+                        Menu {
+                            Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                            Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
+                            Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
+                        } label: {
+                            Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(.circle)
                         }
+                        .floatingGlass(in: .circle)
+                        .padding(12)
+                        .accessibilityLabel("Other ways")
                     }
             } else {
                 manualEntry
@@ -59,7 +62,7 @@ struct BarcodeLogView: View {
         }
         .navigationTitle(LiveLabelScanner.isAvailable ? "Scan" : "Barcode")
         // Back from the portion: scan the next thing.
-        .onChange(of: portion) { _, now in if now == nil { scanID = UUID() } }
+        .onChange(of: session.portion) { _, now in if now == nil { scanID = UUID() } }
         // Wherever the read was started from (the scanner's menu has no message of its own).
         .alert("Couldn't read the label", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK") { error = nil }
@@ -119,7 +122,7 @@ struct BarcodeLogView: View {
             } else {
                 labelPhotoChoices
             }
-            Button("Search by name") { mode = .search }
+            Button("Search by name") { session.backToSearch() }
             Button(LiveLabelScanner.isAvailable ? "Scan again" : "Type another barcode") {
                 missing = nil
                 error = nil
@@ -152,7 +155,7 @@ struct BarcodeLogView: View {
     func finish(_ outcome: LiveScanOutcome) {
         switch outcome {
         case .food(let food):
-            portion = PortionRequest(food: food, source: .barcode, closeAfterAdd: true)
+            session.portion = .add(food, source: .barcode)
         case .supplement(let found):
             supplement = found
         case .label(let result, let barcode):
@@ -313,8 +316,9 @@ struct LabelReviewView: View {
 /// A scanned supplement: one dose now if it's in the stack, or added to it.
 struct SupplementFoundView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let supplement: Supplement
+    /// A dose was taken. The logger goes back to its search, as with a food, whichever host it's in.
+    let took: () -> Void
     let scanAgain: () -> Void
     @State private var adding = false
 
@@ -330,9 +334,10 @@ struct SupplementFoundView: View {
             if own {
                 Button("Take \(supplement.facts.amountLabel(supplement.doses.first?.count ?? supplement.facts.servingCount)) now") {
                     model.takeExtra(supplement)
-                    dismiss()
+                    took()
                 }
                 .primaryAction()
+                .accessibilityIdentifier("supplementFound.take")
                 Button("Edit") { adding = true }
             } else {
                 Button("Add to my supplements") { adding = true }.primaryAction()
