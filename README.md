@@ -1,9 +1,10 @@
-# Stadig: Stadig Lift, Stadig Macro and Stadig Mind
+# Stadig: Stadig Lift, Stadig Macro, Stadig Mind and the hub
 
 **Stadig** (STAH-dig, Norwegian for steady; "the System" in the design doc and the code) is a small family of fast, offline-first apps (Stadig Lift, Stadig Macro and Stadig Mind) with an optional hub on top. The apps don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
 
 - **Stadig Lift** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 - **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
+- **Stadig**, the hub, plans a day around work or school: the gym, meals, study and protected free time. It logs nothing and its buttons open the apps. It adapts from silence, with one optional tap for a night out or a lighter week. See [docs/hub.md](docs/hub.md).
 - **Stadig Mind** is the doc's Knowledge app, "Stadig Lift for the mind": focused 25-minute blocks of Japanese, maths, writing and reading, one subject at a time. Two weeks find a level in each, each subject gets its own blocks a week around Stadig Lift's days and classes, spaced repetition brings things back just before they'd be forgotten, and something new comes only once the last thing has stuck. Intelligence and Wisdom move only on check-in tests and finished books. It's at its best at a desk: on the Mac and an iPad with a keyboard, sessions run full-width and entirely from the keyboard. iPhone, iPad, Mac and Apple Vision Pro, with widgets.
 
 This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. Each app is free for 21 days, then a one-time purchase or a monthly subscription (`SystemPurchases`, and [docs/app-store-connect.md](docs/app-store-connect.md) for the store's side). No third-party dependencies.
@@ -28,7 +29,9 @@ Packages/             Local Swift packages: all the logic, each with its own tes
                       part runner per subject, the maths skill graph, the writing bank, the reading ladder, analysis
   SystemAI/           The one interface to a language model: Apple's on-device model first, Private Cloud Compute
                       for heavier jobs when allowed, a plain reason when neither can answer
-Apps/<App>/           LiftTrack, MacroTrack, MindTrack: thin SwiftUI shells over the packages
+  HubEngine/          The hub: work and school schedules, reading one from a sentence, and a day and a week put
+                      together from what the apps published
+Apps/<App>/           LiftTrack, MacroTrack, MindTrack, Hub: thin SwiftUI shells over the packages
   iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
                       per feature; Platform/Adaptive.swift spells what differs between platforms
   Tests/              The app's unit and integration tests (Swift Testing, hosted in the app)
@@ -48,7 +51,7 @@ Store/                The App Store screenshots: a storeassets project per app a
 .github/workflows/    GitHub Actions: lint and package tests on every push, the site build
 ```
 
-The **hub** doesn't exist yet. The apps already publish everything the hub needs and read what it would write. Stadig Lift and Stadig Macro talk to each other today through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Mind on the Mac sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase and day-by-day logging, and Stadig Lift publishes its training calendar, measurements and strength. Stadig Mind reads that calendar (Stadig Lift's deloads are its review weeks) and the shared life modes, and publishes its Intelligence and Wisdom readings, study sessions, Discipline and the study the hub could fit into a free evening.
+The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Mind on the Mac sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase and day-by-day logging, and Stadig Lift publishes its training calendar, measurements and strength. Stadig Mind reads that calendar (Stadig Lift's deloads are its review weeks) and the shared life modes, and publishes its Intelligence and Wisdom readings, study sessions, Discipline and its week's blocks. Stadig Macro publishes when you usually eat. The **hub** publishes your rhythm and what changed, and each app can see what's left of your day. [docs/hub.md](docs/hub.md) has the contract.
 
 ## Getting started
 

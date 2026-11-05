@@ -94,7 +94,9 @@ struct CourseSettings: View {
                         model.setAmount($0, for: domain)
                     }
                 }
-                if let warning = CourseLoad.warning(settings, week: week, commitments: model.commitments) {
+                if let warning = CourseLoad.warning(
+                    settings, week: week, commitments: model.commitments, open: model.state.map { WeekPlanner.openPartCount($0, settings: week) })
+                {
                     Label(warning, systemImage: "exclamationmark.triangle.fill").font(.footnote).symbolRenderingMode(.multicolor)
                 }
             } header: {

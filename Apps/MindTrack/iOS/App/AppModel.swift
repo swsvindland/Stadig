@@ -1,4 +1,5 @@
 import Foundation
+import HubEngine
 import MindEngine
 import OSLog
 import Observation
@@ -60,6 +61,12 @@ final class AppModel {
     private(set) var weekSettings: WeekSettings?
     /// What the week already holds, from Stadig Lift.
     private(set) var commitments: WeekCommitments = .none
+    /// Work or school and sleep, from the hub. Nil without it.
+    private(set) var rhythm: Rhythm?
+    /// "I'm out tonight" and lighter weeks, from the hub.
+    private(set) var dayChanges: [DayChange] = []
+    /// What's left of today, for someone who uses the hub.
+    private(set) var dayAhead: String?
     private(set) var cards: [MemoryCard] = []
     /// Moves each time the cards are read again, so a screen built from them (a course's words)
     /// knows to rebuild without comparing thousands of cards.
@@ -297,11 +304,19 @@ final class AppModel {
         if systemData.isEmpty, LaunchOptions.current.has("-seedSampleData") { systemData = SampleData.systemData(ending: today) }
         if LaunchOptions.current.has("-seedBusyWeek") { commitments = SampleData.busyWeek }
         #endif
+        var rhythm = shared.read(.rhythm)
+        let dayChanges = shared.read(.dayChanges) ?? []
+        #if DEBUG
+        if LaunchOptions.current.has("-seedRhythm") { rhythm = SampleData.rhythm(today: studyDay(now())) }
+        #endif
+        dayAhead = HubPlanner.ahead(shared: shared, today: studyDay(now()), now: now())
         guard
             calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes
-                || systemData != catalogs.systemData || commitments != self.commitments
+                || systemData != catalogs.systemData || commitments != self.commitments || rhythm != self.rhythm || dayChanges != self.dayChanges
         else { return }
         self.commitments = commitments
+        self.rhythm = rhythm
+        self.dayChanges = dayChanges
         self.calendar = calendar
         self.recommendations = recommendations
         self.lifeModes = lifeModes
@@ -337,7 +352,7 @@ final class AppModel {
         return StudyState(
             settings: settings, cards: cards, sessions: sessions, tests: tests, books: books, reflections: reflections,
             pieces: pieces, comparisons: comparisons, lifeModes: lifeModes, calendar: calendar, recommendations: recommendations,
-            today: today, now: now(), weekSettings: weekSettings, commitments: commitments)
+            today: today, now: now(), weekSettings: weekSettings, commitments: commitments, rhythm: rhythm, dayChanges: dayChanges)
     }
 
     func recompute() {
@@ -381,6 +396,8 @@ final class AppModel {
         do {
             try shared.writeIfChanged(summary, to: .summary(.knowledge), by: .knowledge, stamp: \.updated, now: now())
             lastPublished = summary
+            try shared.writeIfChanged(
+                WeekPlanner.published(state, layout: analysis.layout), to: .blockAsk, by: .knowledge, stamp: \.updated, now: now())
         } catch {
             appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
         }

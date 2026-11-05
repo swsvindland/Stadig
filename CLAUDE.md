@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Stadig ("The System"): three apps (Stadig Lift, Stadig Macro, Stadig Mind), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (Stadig Lift and Stadig Macro also have Watch apps), as thin shells over twelve local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+Stadig ("The System"): three apps (Stadig Lift, Stadig Macro, Stadig Mind) and the hub (Stadig), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (Stadig Lift and Stadig Macro also have Watch apps), as thin shells over thirteen local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
 
-Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift, Stadig Macro and Stadig Mind, never "Lift Track", "Macro Track", "Mind Track" or "The System"; the family, the hub and the App Store bundle are Stadig. Code keeps its old names (`Apps/LiftTrack`, `LiftEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
+Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift, Stadig Macro and Stadig Mind, never "Lift Track", "Macro Track", "Mind Track" or "The System"; the family and the hub are Stadig. Code keeps its old names (`Apps/LiftTrack`, `Apps/Hub`, `LiftEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
 
 ## Commands
 
@@ -11,11 +11,11 @@ Scripts/build.sh lint                  # swift-format --strict, as CI runs it
 Scripts/build.sh format                # fix formatting in place
 Scripts/build.sh test [Package]        # package tests (all, or one); STRICT=1 makes warnings errors
 cd Packages/X && swift test --filter Y # one suite or test
-Scripts/build.sh unit lift|macro|mind [ipad|vision|mac]  # an app's unit and integration tests (this checkout's own simulator; iPhone by default)
-Scripts/build.sh ui lift|macro|mind [ipad|vision]        # an app's few UI tests, for releases (ONLY=PurchaseUITests runs one class)
-Scripts/build.sh ios|watch|macro|macro-watch|mind        # build an app for the iOS simulator (or a Watch app)
-Scripts/build.sh mac|vision lift|macro|mind              # build an app for the Mac (runs on this Mac) or Vision Pro
-Scripts/leaks.sh lift|macro|mind       # after a build: `leaks` on the app's seeded screens
+Scripts/build.sh unit lift|macro|mind|hub [ipad|vision|mac]  # an app's unit and integration tests (this checkout's own simulator; iPhone by default)
+Scripts/build.sh ui lift|macro|mind|hub [ipad|vision]        # an app's few UI tests, for releases (ONLY=PurchaseUITests runs one class)
+Scripts/build.sh ios|watch|macro|macro-watch|mind|hub        # build an app for the iOS simulator (or a Watch app)
+Scripts/build.sh mac|vision lift|macro|mind|hub              # build an app for the Mac (runs on this Mac) or Vision Pro
+Scripts/leaks.sh lift|macro|mind|hub   # after a build: `leaks` on the app's seeded screens
 Scripts/store-screenshots.sh [lift|macro|mind]  # recapture App Store screenshots into Store/ (Store/README.md)
 python3 Scripts/generate-project.py    # after changing targets, settings, Info.plist keys or packages
 ```
@@ -25,7 +25,7 @@ Before calling a change done: lint clean, zero warnings, and the tests for what 
 ## Where code goes
 
 - **One target per app, every platform.** Screens choose layouts by size class (compact keeps the iPhone design; regular, on iPad, the Mac and Vision Pro, gets the desktop one) and spell platform differences through `Platform/Adaptive.swift`, not scattered `#if`. Hardware a platform lacks (camera, Pencil, Health on the Mac) gets that platform's substitute, never a dead control.
-- **Logic lives in a package, with tests.** Rules, calculations, planning, parsing, anything with a right answer: the engine package for that app (`LiftEngine`, `NutritionEngine`, `MindEngine`, …), or `SystemCore` when two apps or the hub must agree. Apps hold views, the app model, platform glue (Health, notifications, camera, widgets) and DEBUG seeding.
+- **Logic lives in a package, with tests.** Rules, calculations, planning, parsing, anything with a right answer: the engine package for that app (`LiftEngine`, `NutritionEngine`, `MindEngine`, `HubEngine`, …), or `SystemCore` when two apps or the hub must agree. Apps hold views, the app model, platform glue (Health, notifications, camera, widgets) and DEBUG seeding.
 - **Shared contracts** between apps go through `SystemCore` models and `SystemStore`'s shared container, which `FamilySync` carries to the person's other devices through the family CloudKit container. Changing a published payload means a schema version bump and a migration test.
 - **No third-party dependencies**, in apps or packages. Apple frameworks only.
 - **Never edit `*.xcodeproj`, schemes or `*.xctestplan` by hand.** `Scripts/generate-project.py` writes them (CI fails if they drift). New files in an app's folders need nothing: targets use synchronized folders.

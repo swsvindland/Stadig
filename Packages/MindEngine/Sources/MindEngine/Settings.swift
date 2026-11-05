@@ -203,9 +203,11 @@ public enum CourseLoad {
     public static let languageBlocksNeeded = 2
 
     /// What to change when the blocks won't fit the week, or nil when they do.
-    public static func warning(_ settings: MindSettings, week: WeekSettings, commitments: WeekCommitments) -> String? {
+    /// `open` is the week's open parts when something else knows them: the hub's rhythm, which the
+    /// settings and commitments alone can't see.
+    public static func warning(_ settings: MindSettings, week: WeekSettings, commitments: WeekCommitments, open known: Int? = nil) -> String? {
         let blocks = week.total(settings.domains)
-        let open = WeekPlanner.openPartCount(settings: week, commitments: commitments)
+        let open = known ?? WeekPlanner.openPartCount(settings: week, commitments: commitments)
         if blocks > open {
             return "\(blocks) blocks and \(open) open parts of the week. Open a part, or drop a block."
         }

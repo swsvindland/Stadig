@@ -1,6 +1,6 @@
 ---
 name: new-package
-description: Add a new local Swift package to the repo (for a new engine, the hub, or splitting one up) and wire it into the apps, the generator, the scripts and CI. Use when creating a package under Packages/ or making an app depend on another package.
+description: Add a new local Swift package to the repo (for a new engine, or splitting one up) and wire it into the apps, the generator, the scripts and CI. Use when creating a package under Packages/ or making an app depend on another package.
 ---
 
 # Add a package
@@ -14,7 +14,7 @@ description: Add a new local Swift package to the repo (for a new engine, the hu
    /// One paragraph: what this package owns and what it deliberately doesn't.
    let package = Package(
        name: "<Name>",
-       platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26)],
+       platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v26), .visionOS(.v26)],
        products: [.library(name: "<Name>", targets: ["<Name>"])],
        dependencies: [.package(path: "../SystemCore")],
        targets: [
@@ -30,8 +30,8 @@ description: Add a new local Swift package to the repo (for a new engine, the hu
 2. **Tests** in `Tests/<Name>Tests/` with Swift Testing, from the first commit.
 
 3. **Wire it in:**
-   - `Scripts/generate-project.py`: add it to the app's package list (`LIFT_PACKAGES`, `MACRO_PACKAGES`, `MIND_PACKAGES`) and to the products of each target that imports it; run the generator.
-   - `Scripts/build.sh`: add it to `PACKAGES` in dependency order.
+   - `Scripts/generate-project.py`: add it to the app's package list (`LIFT_PACKAGES`, `MACRO_PACKAGES`, `MIND_PACKAGES`, `HUB_PACKAGES`) and to the products of each target that imports it; run the generator.
+   - `Scripts/build.sh` finds every package by itself (`PACKAGES` is a glob); nothing to change.
    - `docs/ci-cd.md`: add `Packages/<Name>` to the Xcode Cloud file filter of every app that uses it, and tell the owner to update those workflows (they live in App Store Connect).
    - GitHub's `CI` picks it up through `Scripts/build.sh test`; nothing to change there.
 

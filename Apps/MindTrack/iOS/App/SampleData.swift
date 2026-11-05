@@ -16,6 +16,13 @@ enum SampleData {
         return WeekCommitments(days: [.monday: [lift, bjj, muayThai], .wednesday: [lift, bjj, muayThai], .friday: [lift]])
     }()
 
+    /// -seedRhythm: nine to five, Monday to Friday, as the hub would publish it.
+    static func rhythm(today: Day) -> Rhythm {
+        let work = [DaySpan(.work, "Work", from: 9 * 60, to: 17 * 60)]
+        let days = Weekday.allCases.map { $0 == .saturday || $0 == .sunday ? [] : work }
+        return Rhythm(pattern: WorkPattern(anchor: today.startOfWeek, weeks: [days]))
+    }
+
     @MainActor
     static func seedIfEmpty(_ model: AppModel) {
         guard model.settings == nil else { return }

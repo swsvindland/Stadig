@@ -251,7 +251,9 @@ public enum Analyst {
             let finished = WeekPlanner.finished(state, settings: settings, monday: monday, timeZone: .current).filter { days.contains($0.day) }
             // As the week stood when it was planned. If a pause has been entered since, for days it
             // knew nothing about, those days' share comes off.
-            let kept = settings.target(monday)
+            // A lighter week is judged by its lighter count, which the week may never have noted if
+            // the app wasn't opened.
+            let kept = state.dayChanges.isLighter(monday) ? nil : settings.target(monday)
             let share = kept.map { min(1, Double(days.count) / Double(max(1, $0.days))) } ?? 1
             func shared(_ count: Int) -> Int { Int((Double(count) * share).rounded(.up)) }
             var left = (kept?.counts ?? WeekPlanner.counts(state, settings: settings, monday: monday, lagging: [])).mapValues(shared)

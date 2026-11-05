@@ -3,11 +3,12 @@ import SwiftUI
 import SystemCore
 
 /// The week as seven days of six parts, showing the blocks and what the week already holds. Tapping
-/// a part opens it for study or closes it, and the blocks move to suit.
+/// a part opens it for study or closes it, and the blocks move to suit. With no `toggle` it's only
+/// to look at: the hub's rhythm is deciding which parts are open.
 struct WeekGrid: View {
     let cells: [WeekCell]
     var today: Weekday?
-    let toggle: (WeekCell) -> Void
+    var toggle: ((WeekCell) -> Void)?
 
     /// Room for "Afternoon". The seven days share what's left, whatever the width: a `Grid` here sized
     /// its columns from their contents and pushed the whole page past the screen.
@@ -31,15 +32,22 @@ struct WeekGrid: View {
                     Text(part.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
                         .frame(width: Self.labelWidth, alignment: .leading)
                     ForEach(rows[part] ?? []) { cell in
-                        Button {
-                            toggle(cell)
-                        } label: {
+                        if let toggle {
+                            Button {
+                                toggle(cell)
+                            } label: {
+                                WeekCellView(cell: cell)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(cell.accessibilityLabel)
+                            .accessibilityHint(cell.isOpen ? "Closes this part of the week" : "Opens this part of the week")
+                            .accessibilityIdentifier("week.part.\(cell.id)")
+                        } else {
                             WeekCellView(cell: cell)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(cell.accessibilityLabel)
+                                .accessibilityIdentifier("week.part.\(cell.id)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(cell.accessibilityLabel)
-                        .accessibilityHint(cell.isOpen ? "Closes this part of the week" : "Opens this part of the week")
-                        .accessibilityIdentifier("week.part.\(cell.id)")
                     }
                 }
             }

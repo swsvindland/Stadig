@@ -26,6 +26,15 @@ public enum UsualMeals {
     /// usual (and two days at least): a snack eaten twice a week is, one eaten twice a month isn't.
     public static let share = 0.25
 
+    /// When this person usually eats and what they've eaten today, by part of the day, for the hub.
+    /// Always about today, whichever day the Log tab is on.
+    public static func rhythm(entries: [FoodEntry], today: Day, now: Date, calendar: Calendar = .current) -> MealRhythm {
+        func part(_ date: Date) -> DayPart { DayPart(hour: calendar.component(.hour, from: date)) }
+        return MealRhythm(
+            usual: on(today, entries: entries, today: today, calendar: calendar).map { part($0.time) }, day: today,
+            eaten: MealTiming.meals(entries.filter { $0.day == today }).map { part($0.start) }, updated: now)
+    }
+
     /// The times of day this person usually eats, earliest first, placed on `day`, each with what
     /// was last eaten then and whether `day` has a meal then already. Read from meals (moments of
     /// ``MealTiming/mealKcal`` or more, so a black coffee isn't one) over the ``lookback`` days to

@@ -55,9 +55,10 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 
 **The app's folders** (the file filter: start if any file here changes):
 
-- Stadig Lift: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/LiftEngine`
-- Stadig Macro: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Scripts/catalogs.manifest`
-- Stadig Mind: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/SystemAI`, `Packages/MindEngine`, `Scripts/catalogs.manifest`
+- Stadig Lift: `Apps/LiftTrack`, `Packages/SystemCore`, `Packages/ExerciseLibrary`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/LiftEngine`, `Packages/HubEngine`
+- Stadig Macro: `Apps/MacroTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/HealthBridge`, `Packages/NutritionEngine`, `Packages/FoodDatabase`, `Packages/FoodIntelligence`, `Packages/MealPlanner`, `Packages/HubEngine`, `Scripts/catalogs.manifest`
+- Stadig Mind: `Apps/MindTrack`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/SystemPurchases`, `Packages/SystemAI`, `Packages/MindEngine`, `Packages/HubEngine`, `Scripts/catalogs.manifest`
+- Stadig (the hub): `Apps/Hub`, `Packages/SystemCore`, `Packages/SystemStore`, `Packages/HubEngine`
 
 (`python3 Scripts/generate-project.py --packages <App>` prints each app's packages; keep these lists in step when an app gains one.)
 

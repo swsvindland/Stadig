@@ -245,3 +245,7 @@ The rules are tested in the packages ([package-tests.md](package-tests.md)). The
 - **The offer:** free days answering the offer that ends onboarding; One More Day and buying each answering the prompt on opening; no prompt during the free days.
 
 Run them with `Scripts/build.sh unit lift` (the app's tests and its packages' tests) and `Scripts/build.sh ui lift`, on the checkout's own test simulator (see [testing.md](testing.md)). After a build, `Scripts/leaks.sh lift` runs `leaks` on the seeded app on Today, Plan, Progress, Body and a started session.
+
+## With the hub
+
+For someone who uses the hub, Today has a one-line "Your day" strip of what's left of the day, opening Stadig. A lighter week caps the session at two thirds, to the nearest five minutes and no less than half an hour, on the same site as crunch, and the weekly quota doesn't change. Lift publishes nothing new: the hub reads the shared profile and summary. [hub.md](hub.md) has the contract.
