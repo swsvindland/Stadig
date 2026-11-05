@@ -138,16 +138,16 @@ export const apps: App[] = [
     slug: "mind",
     name: "Stadig Mind",
     short: "Study",
-    oneLiner: "Training for the mind. 25 minutes a day, prescribed.",
+    oneLiner: "Training for the mind. 25-minute blocks, one subject at a time.",
     description:
-      "Stadig Mind is a study app for iPhone, iPad, Mac and Apple Vision Pro that runs focused 25-minute sessions in Japanese, maths, writing and reading. A two-week assessment finds your level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before you'd forget them, and new material comes only once the last thing has stuck.",
+      "Stadig Mind is a study app for iPhone, iPad, Mac and Apple Vision Pro that runs focused 25-minute blocks of Japanese, maths, writing and reading, one subject at a time. A two-week assessment finds your level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before you'd forget them, and new material comes only once the last thing has stuck.",
     platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro"],
     category: "EducationalApplication",
     accent: "mind",
     appStoreUrl: null,
     headline: "Progressive overload for your head.",
     intro: [
-      "Study apps hand you a pile of cards and a streak. Stadig Mind hands you a session. Reviews first, then the day's subjects, then practice, in one 25-minute block that ends when the timer does.",
+      "Study apps hand you a pile of cards and a streak. Stadig Mind hands you a block. One subject for 25 minutes: its reviews first, then new material, then practice, ending when the timer does.",
       "It finds your level in each subject, adds new material at a rate your recall can carry, and measures you only on tests. Time spent counts for nothing.",
     ],
     features: [
@@ -177,12 +177,12 @@ export const apps: App[] = [
       },
     ],
     how: [
-      { title: "The first session is the placement", body: "A vocabulary test from common words to rare, a maths placement that walks the skill graph in a dozen problems, one writing item per skill." },
+      { title: "Each subject's first block is its placement", body: "A vocabulary test from common words to rare, a maths placement that walks the skill graph in a dozen problems, one writing item per skill." },
       { title: "Two weeks of assessment", body: "Weekly notes say what was learned. Then the block starts." },
-      { title: "25 minutes, five days", body: "Reviews, new material, practice. Spare time goes to reviews ahead of schedule." },
+      { title: "Blocks around your week", body: "Choose how many blocks each subject gets. They land in the open parts of your week, around Stadig Lift's days and classes, and a missed one moves forward." },
       { title: "Review weeks and check-ins", body: "Every sixth week, or whenever Stadig Lift deloads: nothing new, reading for pleasure, and a check-in that moves Intelligence and Wisdom." },
     ],
-    free: "Reviews, the catalogs, export and backup are free. Buying it or subscribing unlocks sessions after the assessment.",
+    free: "Reviews, the catalogs, export and backup are free. Buying it or subscribing unlocks blocks after the assessment.",
     keywords: ["spaced repetition app", "FSRS", "learn Japanese app", "maths practice app", "study planner", "reading ladder", "deliberate practice"],
   },
 ];

@@ -27,9 +27,13 @@ enum WidgetBridge {
         snapshot.day = today
         snapshot.dayStart = model.dayStart
         snapshot.dueReviews = analysis.dueToday
-        let studyDays = analysis.week.filter { $0.status != .rest && $0.status != .paused }
-        snapshot.plannedThisWeek = studyDays.count
-        snapshot.doneThisWeek = studyDays.filter { $0.status == .done }.count
+        let layout = analysis.layout
+        snapshot.plannedThisWeek = layout.target
+        snapshot.doneThisWeek = layout.counts.keys.map { min(layout.done[$0, default: 0], layout.counts[$0, default: 0]) }.reduce(0, +)
+        if analysis.blocks.count > 1 {
+            snapshot.blocksToday = analysis.blocks.count
+            snapshot.blocksDoneToday = analysis.blocks.filter(\.done).count
+        }
         snapshot.nextDay = analysis.week.first { $0.day > today && $0.status == .planned }?.day
         snapshot.phaseLastDay = model.state?.phaseLastDay
         if case .paused(let kind) = analysis.phase {

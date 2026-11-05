@@ -1,4 +1,5 @@
 import Foundation
+import HubEngine
 import MindEngine
 import OSLog
 import Observation
@@ -56,6 +57,16 @@ final class AppModel {
 
     // Records.
     private(set) var settings: MindSettings?
+    /// The study week: blocks by course and the parts opened or closed by hand.
+    private(set) var weekSettings: WeekSettings?
+    /// What the week already holds, from Stadig Lift.
+    private(set) var commitments: WeekCommitments = .none
+    /// Work or school and sleep, from the hub. Nil without it.
+    private(set) var rhythm: Rhythm?
+    /// "I'm out tonight" and lighter weeks, from the hub.
+    private(set) var dayChanges: [DayChange] = []
+    /// What's left of today, for someone who uses the hub.
+    private(set) var dayAhead: String?
     private(set) var cards: [MemoryCard] = []
     /// Moves each time the cards are read again, so a screen built from them (a course's words)
     /// knows to rebuild without comparing thousands of cards.
@@ -215,6 +226,8 @@ final class AppModel {
     /// Re-reads the kinds of record that changed since the last read, then recomputes.
     func reload() {
         if needsReading(MindSettings.self) { settings = store.all(MindSettings.self).first }
+        if needsReading(WeekSettings.self) { weekSettings = store.all(WeekSettings.self).first }
+        seedWeekIfNeeded()
         if needsReading(MemoryCard.self) {
             cards = store.all(MemoryCard.self)
             cardsRevision += 1
@@ -230,6 +243,15 @@ final class AppModel {
         recompute()
         // After the life modes that arrived from the other apps are kept, so they don't count as new.
         lastRevision = store.revision
+    }
+
+    /// Someone set up before blocks gets a week from their tiers, starting today. Stamped as old as
+    /// can be: a week set up on another device, still on its way down, wins over this one.
+    private func seedWeekIfNeeded() {
+        guard weekSettings == nil, let settings, settings.onboardedAt != nil else { return }
+        let week = WeekSettings.seeded(from: settings, since: studyDay(now()), now: Date(timeIntervalSince1970: 0))
+        store.save(week)
+        weekSettings = week
     }
 
     private func needsReading<T: StoredRecord>(_ type: T.Type) -> Bool {
@@ -275,15 +297,26 @@ final class AppModel {
         let calendar = shared.read(.calendar)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .knowledge }
         let lifeModes = syncLifeModes()
-        var systemData = SystemData(
-            lift: shared.read(.summary(.liftTrack)), macro: shared.read(.summary(.macroTrack)), nutrition: shared.read(.nutrition))
+        let lift = shared.read(.summary(.liftTrack))
+        var systemData = SystemData(lift: lift, macro: shared.read(.summary(.macroTrack)), nutrition: shared.read(.nutrition))
+        var commitments = WeekCommitments(profile: shared.read(.profile), lift: lift, before: studyDay(now()))
         #if DEBUG
         if systemData.isEmpty, LaunchOptions.current.has("-seedSampleData") { systemData = SampleData.systemData(ending: today) }
+        if LaunchOptions.current.has("-seedBusyWeek") { commitments = SampleData.busyWeek }
         #endif
+        var rhythm = shared.read(.rhythm)
+        let dayChanges = shared.read(.dayChanges) ?? []
+        #if DEBUG
+        if LaunchOptions.current.has("-seedRhythm") { rhythm = SampleData.rhythm(today: studyDay(now())) }
+        #endif
+        dayAhead = HubPlanner.ahead(shared: shared, today: studyDay(now()), now: now())
         guard
             calendar != self.calendar || recommendations != self.recommendations || lifeModes != self.lifeModes
-                || systemData != catalogs.systemData
+                || systemData != catalogs.systemData || commitments != self.commitments || rhythm != self.rhythm || dayChanges != self.dayChanges
         else { return }
+        self.commitments = commitments
+        self.rhythm = rhythm
+        self.dayChanges = dayChanges
         self.calendar = calendar
         self.recommendations = recommendations
         self.lifeModes = lifeModes
@@ -319,7 +352,7 @@ final class AppModel {
         return StudyState(
             settings: settings, cards: cards, sessions: sessions, tests: tests, books: books, reflections: reflections,
             pieces: pieces, comparisons: comparisons, lifeModes: lifeModes, calendar: calendar, recommendations: recommendations,
-            today: today, now: now())
+            today: today, now: now(), weekSettings: weekSettings, commitments: commitments, rhythm: rhythm, dayChanges: dayChanges)
     }
 
     func recompute() {
@@ -334,8 +367,19 @@ final class AppModel {
         }
         let analysis = Analyst.analyse(state, catalogs: catalogs)
         self.analysis = analysis
+        note(analysis.layout)
         series = Dictionary(uniqueKeysWithValues: state.settings.domains.map { ($0, Analyst.series($0, state: state)) })
         publish(state, analysis)
+    }
+
+    /// Keeps what this week asks for: Discipline judges it by this once it's over, so changing a
+    /// course or a class later doesn't rescore it. The record's date stays as it is: this isn't a
+    /// choice anyone made, and it mustn't let a seed made here beat a week set up on another device.
+    private func note(_ layout: WeekLayout) {
+        guard var week = weekSettings, week.target(layout.monday) != layout.ledger else { return }
+        week.record(layout.ledger, for: layout.monday)
+        store.save(week)
+        weekSettings = week
     }
 
     /// Stadig Mind's summary for the hub, written only when it changes. A stat keeps the date it
@@ -352,6 +396,8 @@ final class AppModel {
         do {
             try shared.writeIfChanged(summary, to: .summary(.knowledge), by: .knowledge, stamp: \.updated, now: now())
             lastPublished = summary
+            try shared.writeIfChanged(
+                WeekPlanner.published(state, layout: analysis.layout), to: .blockAsk, by: .knowledge, stamp: \.updated, now: now())
         } catch {
             appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
         }
@@ -359,7 +405,8 @@ final class AppModel {
 
     // MARK: Onboarding
 
-    func completeOnboarding(_ settings: MindSettings, booksRead: [Book]) {
+    /// `week` is what setup chose; without one (a debug launch) the courses' tiers seed it.
+    func completeOnboarding(_ settings: MindSettings, week: WeekSettings? = nil, booksRead: [Book]) {
         // Set up already on another device, and iCloud brought it while this onboarding was on
         // screen: keep that setup (its start date, courses and books) rather than starting over.
         if store.get(MindSettings.self, id: MindSettings.singletonID)?.onboardedAt != nil {
@@ -371,6 +418,10 @@ final class AppModel {
         settings.onboardedAt = now()
         settings.updatedAt = now()
         store.save(settings)
+        var chosen = week ?? WeekSettings.seeded(from: settings, since: studyDay(now()), now: now())
+        chosen.since = studyDay(now())
+        chosen.updatedAt = now()
+        store.save(chosen)
         store.save(booksRead)
         reload()
         // The onboarding is the first session.
@@ -384,6 +435,37 @@ final class AppModel {
         settings.updatedAt = now()
         store.save(settings)
         reload()
+    }
+
+    /// Saves the week and the courses that go with it.
+    func save(week: WeekSettings, settings newSettings: MindSettings? = nil) {
+        var week = week
+        week.updatedAt = now()
+        store.save(week)
+        if let newSettings, newSettings != settings {
+            save(settings: newSettings)
+        } else {
+            reload()
+        }
+    }
+
+    /// Opens a part of the week, or closes it.
+    func togglePart(_ weekday: Weekday, _ part: DayPart) {
+        guard let weekSettings else { return }
+        save(week: WeekPlanner.toggling(weekday, part, settings: weekSettings, commitments: commitments))
+    }
+
+    /// Sets a course's amount: off, reviews only or a number of blocks.
+    func setAmount(_ amount: Int, for domain: Domain) {
+        guard var week = weekSettings, var settings else { return }
+        if week.setAmount(amount, for: domain, settings: &settings) { save(week: week, settings: settings) }
+    }
+
+    /// Fixes a course to a part of the day, or leaves it to the usual fit.
+    func setPin(_ part: DayPart?, for domain: Domain) {
+        guard var week = weekSettings else { return }
+        week.setPin(part, for: domain)
+        save(week: week)
     }
 
     // MARK: Sessions
@@ -402,13 +484,26 @@ final class AppModel {
         start(SessionPlanner.plan(.extra, domains: [], state: state, catalogs: catalogs, minutes: minutes))
     }
 
-    /// A session of one domain on demand, outside the plan.
-    func startSession(_ domains: [Domain]) {
+    /// A block of a course, planned or not: wherever and whenever it happens, it counts for the
+    /// week. Planned afresh here, so a screen left open past the day's turn can't run yesterday's.
+    func startBlock(_ domain: Domain) {
         refreshDay()
         guard let state = makeState() else { return }
-        var plan = SessionPlanner.plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, catalogs: catalogs)
-        plan.planned = analysis?.today.map { Set($0.domains) == Set(domains) } ?? false
+        start(SessionPlanner.block(domain, state: state, catalogs: catalogs))
+    }
+
+    /// A check-in, or a reviews-only course's short session, as Today offers it now.
+    func startOffered(_ offered: SessionPlan) {
+        refreshDay()
+        let current = (analysis?.checkIns ?? []) + (analysis?.reviewsOnly ?? [])
+        guard let plan = current.first(where: { $0.kind == offered.kind && $0.domains == offered.domains }) else { return }
         start(plan)
+    }
+
+    /// A real conversation in a language, had away from the app: one of the week's blocks.
+    func logConversation(_ domain: Domain) {
+        store.save(StudySession.conversation(domain, at: now()))
+        reload()
     }
 
     /// Brings the offer up if it's due, on opening the app. Never over a session, or over a sheet
@@ -680,10 +775,11 @@ final class AppModel {
 
     /// For sample data: saves records straight to the store.
     func seed(
-        settings: MindSettings, cards: [MemoryCard], sessions: [StudySession], tests: [TestResult], books: [Book],
+        settings: MindSettings, week: WeekSettings, cards: [MemoryCard], sessions: [StudySession], tests: [TestResult], books: [Book],
         reflections: [Reflection], pieces: [WritingPiece] = []
     ) {
         store.save(settings)
+        store.save(week)
         store.save(cards)
         store.save(sessions)
         store.save(tests)

@@ -1,6 +1,6 @@
 ---
 name: build-and-test
-description: Build, lint and test Stadig Lift, Stadig Macro, Stadig Mind and their Swift packages, and read the failures. Use after any code change before calling it done, when a build or test fails, or when asked to run the tests, check warnings, or run the sanitizers.
+description: Build, lint and test Stadig Lift, Stadig Macro, Stadig Mind, the hub and their Swift packages, and read the failures. Use after any code change before calling it done, when a build or test fails, or when asked to run the tests, check warnings, or run the sanitizers.
 ---
 
 # Build and test

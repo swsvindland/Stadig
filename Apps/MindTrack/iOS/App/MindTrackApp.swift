@@ -33,6 +33,9 @@ struct MindTrackApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         model.reloadIfChanged()
+                        // A class added in Stadig Lift while this app was away: the notice doesn't
+                        // reach a suspended app.
+                        model.readShared()
                         model.refreshDay()
                         Task {
                             await model.purchases.refresh()
@@ -140,7 +143,8 @@ enum DebugLaunch {
         }
         if let courses, var settings = model.settings, settings.courses != courses {
             settings.courses = courses
-            model.save(settings: settings)
+            let week = WeekSettings.seeded(from: settings, since: model.today, now: model.now())
+            model.save(week: week, settings: settings)
         }
         // -mathsStrands discrete,classic sets the maths strands after numeracy, most important first.
         if let strands = launch.value(after: "-mathsStrands"), var settings = model.settings {
@@ -153,7 +157,7 @@ enum DebugLaunch {
         // order given.
         if let domain = launch.value(after: "-study").flatMap(Domain.init(rawValue:)) {
             model.run = nil
-            model.startSession([domain])
+            model.startBlock(domain)
         }
         // -checkIn writing starts a check-in of that subject now, whatever the calendar says.
         if let domain = launch.value(after: "-checkIn").flatMap(Domain.init(rawValue:)) {

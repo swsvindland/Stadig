@@ -16,12 +16,20 @@ public struct StudyState: Sendable {
     public var recommendations: [Recommendation]
     public var today: Day
     public var now: Date
+    /// How the study week is set up, as stored. See `week`.
+    public var weekSettings: WeekSettings?
+    /// What the person's week already holds, from Stadig Lift.
+    public var commitments: WeekCommitments
+    /// Someone's work or school and sleep, from the hub. Nil without one: Mind's own defaults apply.
+    public var rhythm: Rhythm?
+    /// "I'm out tonight" and lighter weeks, from the hub.
+    public var dayChanges: [DayChange]
 
     public init(
         settings: MindSettings, cards: [MemoryCard] = [], sessions: [StudySession] = [], tests: [TestResult] = [],
         books: [Book] = [], reflections: [Reflection] = [], pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [],
         lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil, recommendations: [Recommendation] = [], today: Day,
-        now: Date
+        now: Date, weekSettings: WeekSettings? = nil, commitments: WeekCommitments = .none, rhythm: Rhythm? = nil, dayChanges: [DayChange] = []
     ) {
         self.settings = settings
         self.cards = Dictionary(cards.map { ($0.key, $0) }, uniquingKeysWith: { $0.updatedAt >= $1.updatedAt ? $0 : $1 })
@@ -37,7 +45,14 @@ public struct StudyState: Sendable {
         self.recommendations = recommendations
         self.today = today
         self.now = now
+        self.weekSettings = weekSettings
+        self.commitments = commitments
+        self.rhythm = rhythm
+        self.dayChanges = dayChanges.live
     }
+
+    /// The study week: as stored, or what the courses make of it before anything has been saved.
+    public var week: WeekSettings { weekSettings ?? .seeded(from: settings, since: start, now: now) }
 
     /// The hour on the clock a study day begins (`MindSettings.dayStart`).
     public var dayStart: Int { settings.dayStart }
@@ -70,6 +85,11 @@ public struct StudyState: Sendable {
         due(on: day).filter { Subjects.module($0.domain).usable($0.key, catalogs: catalogs) }
     }
 
+    /// The due cards of one course that can be asked: a block's own reviews.
+    public func due(on day: Day, catalogs: Catalogs, in domain: Domain) -> [MemoryCard] {
+        due(on: day, catalogs: catalogs).filter { $0.domain == domain }
+    }
+
     /// Whether a course still needs its placement. Main and Secondary courses place before new
     /// material. A Maintenance course places only where the placement cards what it finds known
     /// (maths, writing): reviews only of nothing would leave a course chosen as Maintenance from
@@ -83,7 +103,15 @@ public struct StudyState: Sendable {
     /// The English book on the go. A reader in a language being learned has its own level; see `GradedReaders`.
     public var currentBook: Book? { books.filter { $0.status == .reading && $0.language == nil }.max { $0.updatedAt < $1.updatedAt } }
 
-    public var lastCheckIn: Day? { sessions.last { $0.purpose == .checkIn && $0.finished }?.day(startingAt: dayStart) }
+    /// The last day a course was actually tested at a check-in. Starting one and ending it straight
+    /// away left nothing measured, so it doesn't use up the check-in.
+    public func lastCheckIn(_ domain: Domain) -> Day? {
+        sessions.last { session in
+            guard session.purpose == .checkIn, session.finished, session.domains.contains(domain) else { return false }
+            let day = session.day(startingAt: dayStart)
+            return tests.contains { $0.domain == domain && $0.day(startingAt: dayStart) == day }
+        }?.day(startingAt: dayStart)
+    }
 }
 
 /// One part of a session, as Today lists it and the session runs it.
@@ -139,23 +167,18 @@ public struct SessionPlan: Hashable, Sendable {
     public var planned: Bool
 }
 
-/// Turns a day into a session: reviews first (the warm-up, across every course, Maintenance ones
-/// included), then the day's Main courses, then a short block of one Secondary course, the
-/// Secondary courses taking turns. Nothing new in a review week; tests at a check-in; placement
-/// first wherever a course's level isn't known yet.
+/// Turns a block of the week into a session: the course's own reviews first, then the course. Nothing
+/// new in a review week; a course's first block is its placement. Check-ins and a reviews-only
+/// course's short session sit beside the blocks.
 public enum SessionPlanner {
     static func reviewSeconds(_ card: MemoryCard) -> Double { Subjects.module(card.domain).reviewSeconds(card) }
-
-    /// The Main courses studied on a day, from the weekly split. Pass `priorities` when they're
-    /// already worked out; they're computed otherwise.
-    public static func domains(on day: Day, state: StudyState, priorities: Set<Domain>? = nil) -> [Domain] {
-        Split.week(starting: day.startOfWeek, settings: state.settings, priorities: priorities ?? self.priorities(state))[day] ?? []
-    }
 
     /// Lagging courses: stalled or slipping at the last check-ins, or named by the hub.
     public static func priorities(_ state: StudyState) -> Set<Domain> {
         var out: Set<Domain> = []
-        for domain in state.settings.focus {
+        let week = state.week
+        let courses = state.settings.domains.filter { week.blocks($0) > 0 }
+        for domain in courses {
             let trajectory = Analyst.trajectory(domain, state: state)
             if trajectory == .stalled || trajectory == .regressing { out.insert(domain) }
         }
@@ -164,41 +187,106 @@ public enum SessionPlanner {
             && recommendation.kind == .prioritise
         {
             if case .stat(let stat) = recommendation.subject {
-                out.formUnion(state.settings.focus.filter { $0.stat == stat })
+                out.formUnion(courses.filter { $0.stat == stat })
             }
         }
         return out
     }
 
-    /// Today's session, or nil on a rest or paused day.
-    public static func today(_ state: StudyState, catalogs: Catalogs, priorities: Set<Domain>? = nil) -> SessionPlan? {
-        if state.phase.isPaused { return nil }
-        let placing = state.settings.domains.filter { state.needsPlacement($0, catalogs: catalogs) }
-        if state.sessions.isEmpty || !placing.isEmpty && state.sessions.allSatisfy({ $0.purpose == .placement }) {
-            let domains = Set(state.settings.studied + placing).sorted()
-            return plan(.placement, domains: domains, state: state, catalogs: catalogs)
-        }
-        if StudyCalendar.checkInDue(
-            on: state.today, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes,
-            lastCheckIn: state.lastCheckIn)
-        {
-            return plan(.checkIn, domains: state.settings.domains, state: state, catalogs: catalogs)
-        }
-        let domains = domains(on: state.today, state: state, priorities: priorities)
-        guard !domains.isEmpty else { return nil }
-        return plan(state.phase.isReview ? .review : .regular, domains: domains, state: state, catalogs: catalogs)
+    /// The next block to do today, or nil on a day with none left, a rest day or a pause.
+    public static func today(_ state: StudyState, catalogs: Catalogs) -> SessionPlan? {
+        guard !state.phase.isPaused else { return nil }
+        let next = WeekPlanner.layout(state, settings: state.week).blocks(on: state.today).first { !$0.done }
+        return next.map { block($0.domain, state: state, catalogs: catalogs) }
     }
 
-    /// A session of any courses on demand: an extra one, or a different course than planned.
+    /// Check-ins are per course: each course's plain tests, on the days it's due one. They sit beside
+    /// the week's blocks rather than in them, so a course with no blocks gets its check-in and one
+    /// that's used up its blocks still does. A course with nothing to test yet isn't offered one.
+    public static func checkIns(_ state: StudyState, catalogs: Catalogs) -> [SessionPlan] {
+        state.settings.domains.compactMap { domain in
+            guard !state.needsPlacement(domain, catalogs: catalogs),
+                StudyCalendar.checkInDue(
+                    on: state.today, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes, lastCheckIn: state.lastCheckIn(domain))
+            else { return nil }
+            var plan = plan(.checkIn, domains: [domain], state: state, catalogs: catalogs)
+            plan.headline = "\(domain.label) check-in · about \(plan.parts.map(\.minutes).reduce(0, +)) min"
+            return plan.parts.isEmpty ? nil : plan
+        }
+    }
+
+    /// Due cards at which a course with no blocks gets a short review of its own.
+    public static let reviewsOnlyMinimum = 15
+
+    /// Courses with no blocks in the week still have what's been learned to keep: a short review of
+    /// that course alone when enough has come due, or their placement if they've never had one,
+    /// which is how a maths or writing course on reviews only gets cards at all.
+    public static func reviewsOnly(_ state: StudyState, catalogs: Catalogs) -> [SessionPlan] {
+        let week = state.week
+        return state.settings.domains.filter { week.blocks($0) == 0 }.compactMap { domain in
+            if state.needsPlacement(domain, catalogs: catalogs) {
+                var plan = block(domain, state: state, catalogs: catalogs)
+                plan.planned = false
+                return plan
+            }
+            guard state.due(on: state.today, catalogs: catalogs, in: domain).count >= reviewsOnlyMinimum else { return nil }
+            var plan = plan(.extra, domains: [domain], state: state, catalogs: catalogs)
+            plan.headline = "\(domain.label) reviews · \(plan.minutes) min"
+            return plan
+        }
+    }
+
+    /// The most of a block its warm-up takes, in a normal week and a review week.
+    static let warmUpShare = 0.35
+    static let reviewWeekWarmUpShare = 0.5
+
+    /// One block of one course: its own reviews first, as many as fit in the warm-up's share, then
+    /// the course itself. A course's first block is its placement instead: the test, plus new words
+    /// for a language, and as long as that takes. Reading has no reviews, and takes as long as focus
+    /// has held rather than the whole block.
+    public static func block(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> SessionPlan {
+        block(domain, kind: state.phase.isReview ? .review : .regular, state: state, catalogs: catalogs)
+    }
+
+    static func block(_ domain: Domain, kind: StudyKind, state: StudyState, catalogs: Catalogs) -> SessionPlan {
+        if state.needsPlacement(domain, catalogs: catalogs) {
+            var plan = plan(.placement, domains: [domain], state: state, catalogs: catalogs)
+            plan.minutes = plan.parts.map(\.minutes).reduce(0, +)
+            plan.headline = "\(domain.label) level · \(plan.minutes) min"
+            return plan
+        }
+        let total = state.settings.schedule.minutes
+        let review = kind == .review
+        var parts: [PlanPart] = []
+        var notes: [String] = []
+        let due = domain == .reading ? [] : state.due(on: state.today, catalogs: catalogs, in: domain)
+        let share = review ? reviewWeekWarmUpShare : warmUpShare
+        let warmUp = due.isEmpty ? 0 : warmUpMinutes(due, of: total, share: share)
+        if warmUp > 0 {
+            parts.append(PlanPart(kind: .reviews, domain: domain, minutes: warmUp, title: "Warm-up reviews", detail: reviewDetail(due)))
+        }
+        parts += Subjects.module(domain).mainParts(
+            domain, minutes: max(5, total - warmUp), kind: kind, state: state, catalogs: catalogs, notes: &notes)
+        if review { notes.insert("Review week: nothing new. Reviews, practice and reading for pleasure.", at: 0) }
+        let length = parts.map(\.minutes).reduce(0, +)
+        let minutes = domain == .reading ? length : max(total, length)
+        return SessionPlan(
+            day: state.today, kind: kind, minutes: minutes, domains: [domain], parts: parts, headline: "\(domain.label) · \(minutes) min",
+            notes: notes, planned: true)
+    }
+
+    /// Minutes of reviews: as long as the due cards take, up to a share of the session.
+    static func warmUpMinutes(_ due: [MemoryCard], of total: Int, share: Double) -> Int {
+        let seconds = due.map(reviewSeconds).reduce(0, +)
+        return Int(min(Double(total) * share, max(1, (seconds / 60).rounded(.up))).rounded(.up))
+    }
+
+    /// A session that isn't a course's ordinary block: its check-in, its placement, or a quick review
+    /// of one course or of everything due.
     public static func plan(_ kind: StudyKind, domains: [Domain], state: StudyState, catalogs: Catalogs, minutes: Int? = nil) -> SessionPlan {
         let total = minutes ?? (kind == .extra ? 5 : state.settings.schedule.minutes)
         var parts: [PlanPart] = []
         var notes: [String] = []
-        let due = state.due(on: state.today, catalogs: catalogs)
-        let dueSeconds = due.map(reviewSeconds).reduce(0, +)
-        // The day's courses, then the Secondary course whose block it is.
-        var courses = domains.sorted()
-
         switch kind {
         case .checkIn:
             for domain in domains.sorted() {
@@ -209,88 +297,35 @@ public enum SessionPlanner {
             for domain in domains.sorted() where state.needsPlacement(domain, catalogs: catalogs) {
                 parts += Subjects.module(domain).placementParts(domain, state: state, catalogs: catalogs)
             }
-            // What's left of the first session goes to the first language's new material, a Main
-            // one before a Secondary one.
+            // What's left of the first block goes to a language's first new material.
             let used = parts.map(\.minutes).reduce(0, +)
-            let languages = domains.sorted().filter { $0.isLanguage && state.settings.mode($0)?.learns == true }
-            if let language = languages.first(where: { state.settings.mode($0) == .focus }) ?? languages.first, total - used >= 4 {
+            if let language = domains.sorted().first(where: { $0.isLanguage && state.settings.mode($0)?.learns == true }), total - used >= 4 {
                 parts.append(
                     LanguageModule.learnPart(
-                        language, minutes: total - used, session: total - used, state: state,
-                        catalogs: catalogs, notes: &notes))
+                        language, minutes: total - used, session: total - used, state: state, catalogs: catalogs, notes: &notes))
             }
-            notes.append("The first session finds where you are, so nothing is too easy or out of reach.")
+            notes.append("A course's first block finds where you are, so nothing is too easy or out of reach.")
         default:
-            // A quick review is all reviews; otherwise they're the warm-up before the day's subjects.
-            let share = kind == .extra ? 1 : kind == .review ? 0.5 : 0.35
-            let warmUp = due.isEmpty ? 0 : Int(min(Double(total) * share, max(1, (dueSeconds / 60).rounded(.up))).rounded(.up))
-            if warmUp > 0 {
-                parts.append(PlanPart(kind: .reviews, minutes: warmUp, title: "Warm-up reviews", detail: reviewDetail(due)))
+            // A quick review of one course keeps to that course.
+            let scoped = domains.count == 1 ? domains.first : nil
+            let due = scoped.map { state.due(on: state.today, catalogs: catalogs, in: $0) } ?? state.due(on: state.today, catalogs: catalogs)
+            if !due.isEmpty {
+                parts.append(
+                    PlanPart(
+                        kind: .reviews, domain: scoped, minutes: warmUpMinutes(due, of: total, share: 1), title: "Quick review",
+                        detail: reviewDetail(due)))
             }
-            var remaining = max(kind == .extra ? 0 : 5, total - warmUp)
-            let main = domains.sorted()
-            guard kind != .extra else { break }
-            func minutes(_ parts: [PlanPart]) -> Int { parts.map(\.minutes).reduce(0, +) }
-            // A Maintenance course with nothing learned yet places once, one a session.
-            if let course = state.settings.maintenance.first(where: { state.needsPlacement($0, catalogs: catalogs) }) {
-                let placement = Subjects.module(course).placementParts(course, state: state, catalogs: catalogs)
-                parts += placement
-                remaining = max(3, remaining - minutes(placement))
-                notes.append("\(course.label) is on Maintenance with nothing learned yet: a short placement finds what you know, to keep it up.")
-            }
-            for domain in main where state.needsPlacement(domain, catalogs: catalogs) {
-                let placement = Subjects.module(domain).placementParts(domain, state: state, catalogs: catalogs)
-                parts += placement
-                remaining = max(3, remaining - minutes(placement))
-            }
-            var block: [PlanPart] = []
-            if let course = secondaryCourse(state, excluding: main, catalogs: catalogs) {
-                let module = Subjects.module(course)
-                if state.needsPlacement(course, catalogs: catalogs) {
-                    block = module.placementParts(course, state: state, catalogs: catalogs)
-                } else {
-                    block = module.mainParts(
-                        course, minutes: CourseLoad.secondaryMinutes(remaining), kind: kind, state: state, catalogs: catalogs, notes: &notes)
-                }
-                remaining = max(3, remaining - minutes(block))
-                courses.append(course)
-            }
-            let learning = main.filter { !state.needsPlacement($0, catalogs: catalogs) }
-            for (index, domain) in learning.enumerated() {
-                let first = Int((Double(remaining) * 0.65).rounded())
-                let share = learning.count == 1 ? remaining : (index == 0 ? first : remaining - first)
-                parts += Subjects.module(domain).mainParts(domain, minutes: share, kind: kind, state: state, catalogs: catalogs, notes: &notes)
-            }
-            parts += block
-            if kind == .review { notes.insert("Review week: nothing new. Reviews, practice and reading for pleasure.", at: 0) }
         }
         let minutesTotal = max(total, parts.map(\.minutes).reduce(0, +))
-        let names = courses.map(\.label)
         let headline: String
         switch kind {
         case .checkIn: headline = "Check-in · about \(parts.map(\.minutes).reduce(0, +)) min"
         case .placement: headline = "Finding your level · \(minutesTotal) min"
-        case .extra: headline = "Quick review · \(total) min"
-        default: headline = "\(ListFormatter.localizedString(byJoining: names)) · \(minutesTotal) min"
+        default: headline = "Quick review · \(total) min"
         }
         return SessionPlan(
-            day: state.today, kind: kind, minutes: minutesTotal, domains: courses, parts: parts, headline: headline,
-            notes: notes, planned: kind != .extra)
-    }
-
-    /// The Secondary course whose turn it is for a session's block: one still to be placed first,
-    /// then the one that has waited longest since a session last had it (today's left out, so the
-    /// plan holds all day), ties in course order. Never one already in the session.
-    static func secondaryCourse(_ state: StudyState, excluding: [Domain], catalogs: Catalogs) -> Domain? {
-        let candidates = state.settings.secondary.filter { !excluding.contains($0) }
-        if let unplaced = candidates.first(where: { state.needsPlacement($0, catalogs: catalogs) }) { return unplaced }
-        func last(_ domain: Domain) -> Date {
-            state.sessions.last { session in
-                session.day(startingAt: state.dayStart) < state.today && (session.purpose == .regular || session.purpose == .review)
-                    && session.domains.contains(domain)
-            }?.start ?? .distantPast
-        }
-        return candidates.min { (last($0), $0) < (last($1), $1) }
+            day: state.today, kind: kind, minutes: minutesTotal, domains: domains.sorted(), parts: parts, headline: headline, notes: notes,
+            planned: kind != .extra)
     }
 
     static func reviewDetail(_ due: [MemoryCard]) -> String {

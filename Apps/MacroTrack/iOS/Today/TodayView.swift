@@ -24,6 +24,9 @@ struct TodayView: View {
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                     }
+                    if let line = model.dayAhead {
+                        Section { HubStrip(line: line) }
+                    }
                     WeightSection(day: model.today)
                     TodayFood(day: model.today)
                     DayStateSection(day: model.today)

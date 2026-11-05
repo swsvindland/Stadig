@@ -11,9 +11,7 @@ nonisolated final class OnboardingUITests: XCTestCase {
 
         // Two courses keep the setup short: maths and Japanese, the rest off.
         app.element("onboarding.coursesTitle").waitToAppear(timeout: 10)
-        for course in ["writing", "reading"] {
-            app.scroll(to: app.segmentedControls["onboarding.course.\(course)"]).buttons["Off"].tap()
-        }
+        for course in ["writing", "reading"] { app.turnOff("onboarding.course.\(course)") }
         next.tap()
 
         app.element("onboarding.scheduleTitle").waitToAppear(timeout: 10)
@@ -50,21 +48,17 @@ nonisolated final class OnboardingUITests: XCTestCase {
         XCTAssertFalse(app.element("icloud.waiting").exists)
     }
 
+    /// With every course's blocks gone there'd be no week to plan: the last one keeps its block.
     @MainActor
-    func testSetupNeedsAMainCourse() {
+    func testTheLastCourseKeepsABlock() {
         let app = XCUIApplication.launched(["-onboardingPage", "courses"])
         app.element("onboarding.coursesTitle").waitToAppear()
         let next = app.buttons["onboarding.next"]
-        XCTAssertTrue(next.isEnabled)
+        for course in ["reading", "writing", "maths"] { app.turnOff("onboarding.course.\(course)") }
 
-        app.scroll(to: app.segmentedControls["onboarding.course.spanish"]).buttons["Maintenance"].tap()
-        app.scroll(to: app.segmentedControls["onboarding.course.maths"]).buttons["Secondary"].tap()
-        for course in ["japanese", "writing", "reading"] {
-            app.scroll(to: app.segmentedControls["onboarding.course.\(course)"]).buttons["Off"].tap()
-        }
-        XCTAssertFalse(next.isEnabled, "only Main courses have days: Secondary and Maintenance alone have none")
-
-        app.segmentedControls["onboarding.course.reading"].buttons["Main"].tap()
+        let japanese = app.scroll(to: app.steppers["onboarding.course.japanese"])
+        for _ in 0..<6 { japanese.buttons.element(boundBy: 0).tap() }
+        XCTAssertTrue(japanese.spoken.contains("1 a week"), japanese.spoken)
         XCTAssertTrue(next.isEnabled)
 
         app.buttons["onboarding.back"].tap()

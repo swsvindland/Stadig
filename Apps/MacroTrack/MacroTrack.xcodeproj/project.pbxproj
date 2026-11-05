@@ -15,6 +15,7 @@
 		4D2E2CF8F7D0D20B168CDCD6 /* SystemPurchases in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2ECE4C71CC74A289B3073F /* SystemPurchases */; };
 		4D2E3A06B8A5250413B46FC8 /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E6E52F11BBD748D232B06 /* NutritionEngine */; };
 		4D2E4D1A1867C53AAE0D6790 /* MacroTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4D2EC22AF45335C4B684EE31 /* MacroTrackWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4D2E5350420A1A598B145E67 /* HubEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E56BCCB52D75A08F10A84 /* HubEngine */; };
 		4D2E7143E63B462A1161303B /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E536DEE702E24FA5C993E /* NutritionEngine */; };
 		4D2E716C1F226D4FE0343661 /* MacroTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D2E1D8D2FF6A1E634DEFEB1 /* MacroTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D2E8524BBC9DF9BF8197D5D /* NutritionEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4D2E18F2A7E91C90026C203F /* NutritionEngine */; };
@@ -209,6 +210,7 @@
 				4D2E13E4859256E882D4008A /* FoodDatabase in Frameworks */,
 				4D2EEEDEFDEC9FF7965286E5 /* FoodIntelligence in Frameworks */,
 				4D2EBE8EC3D2486AF8652BDD /* MealPlanner in Frameworks */,
+				4D2E5350420A1A598B145E67 /* HubEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -383,6 +385,7 @@
 				4D2ED4A06E193F96A0389D8C /* FoodDatabase */,
 				4D2E8F6BD442DB25FA95AD53 /* FoodIntelligence */,
 				4D2EF05702E4CD97E846AA31 /* MealPlanner */,
+				4D2E56BCCB52D75A08F10A84 /* HubEngine */,
 			);
 			productName = MacroTrack;
 			productReference = 4D2E0B78FB0B51F8F3B160A0 /* MacroTrack.app */;
@@ -515,6 +518,7 @@
 				4D2EA4925F43231E360002E4 /* XCLocalSwiftPackageReference "../../Packages/FoodDatabase" */,
 				4D2EF9C8167C68B180CA70E7 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */,
 				4D2E75BE5188436D937C2159 /* XCLocalSwiftPackageReference "../../Packages/MealPlanner" */,
+				4D2ED52D3FFDD7504E676551 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4D2E12DD401F846BD5431438 /* Products */;
@@ -1278,6 +1282,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/NutritionEngine;
 		};
+		4D2ED52D3FFDD7504E676551 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/HubEngine;
+		};
 		4D2EF9C8167C68B180CA70E7 /* XCLocalSwiftPackageReference "../../Packages/FoodIntelligence" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/FoodIntelligence;
@@ -1294,6 +1302,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4D2EB5B6D7A3DB29E3575598 /* XCLocalSwiftPackageReference "../../Packages/NutritionEngine" */;
 			productName = NutritionEngine;
+		};
+		4D2E56BCCB52D75A08F10A84 /* HubEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4D2ED52D3FFDD7504E676551 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */;
+			productName = HubEngine;
 		};
 		4D2E5CE4FFFBD05C11053D6C /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;

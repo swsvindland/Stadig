@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var page = Page.welcome
     @State private var settings = MindSettings(onboardedAt: nil)
+    @State private var week = WeekSettings.fresh(MindSettings(onboardedAt: nil).domains, since: .today, now: Date())
     @State private var books: [Book] = []
 
     var pages: [Page] { Self.pages(for: settings) }
@@ -63,7 +64,6 @@ struct OnboardingView: View {
                         }
                         .primaryAction()
                         .controlSize(.large)
-                        .disabled(page == .courses && settings.focus.isEmpty)
                         .accessibilityIdentifier("onboarding.next")
                     }
                 }
@@ -92,9 +92,10 @@ struct OnboardingView: View {
             Image(systemName: "brain.head.profile").font(.system(size: 56)).foregroundStyle(.tint)
             Text("Stadig Mind").font(.largeTitle.bold())
                 .accessibilityIdentifier("onboarding.welcomeTitle")
-            Text("Focused 25-minute sessions that find your level, then train it, the way Stadig Lift trains the body.").font(.title3)
+            Text("Focused 25-minute blocks, one subject at a time, that find your level and train it the way Stadig Lift trains the body.").font(
+                .title3)
             VStack(alignment: .leading, spacing: 12) {
-                Label("The first sessions find where you are in each subject", systemImage: "scope")
+                Label("A subject's first block finds where you are", systemImage: "scope")
                 Label("Something new only once the last thing has stuck", systemImage: "stairs")
                 Label("Reviews come back just before you'd forget", systemImage: "arrow.triangle.2.circlepath")
                 Label("Intelligence and Wisdom move only on real tests, never on time spent", systemImage: "gauge.with.dots.needle.67percent")
@@ -109,11 +110,11 @@ struct OnboardingView: View {
             Text("What do you want to train?").font(.title.bold())
                 .accessibilityIdentifier("onboarding.coursesTitle")
             Text(
-                "Main courses get days of their own. Secondary courses take turns at a short block in each session, so they keep moving, more slowly. Maintenance keeps what you know with a few minutes of reviews. Two or three Main courses at once is plenty."
+                "Each subject gets its own blocks a week. Four or five keeps a language moving; a block or two is enough to keep maths going. Reviews only keeps what you know."
             )
             .foregroundStyle(.secondary)
-            CoursePicker(settings: $settings)
-            LoadWarning(settings: settings)
+            CoursePicker(settings: $settings, week: $week)
+            LoadWarning(warning: warning)
         }
     }
 
@@ -122,21 +123,30 @@ struct OnboardingView: View {
             Text("When do you study?").font(.title.bold())
                 .accessibilityIdentifier("onboarding.scheduleTitle")
             Text(
-                "Main courses rotate across the week like a training split. Reviews from every course open each session, and a Secondary course's block closes it."
+                "Blocks go in the open parts of your week, around Stadig Lift's days and classes if you use it. Miss one and it moves to the next open part. Tap a part to open or close it."
             )
             .foregroundStyle(.secondary)
-            ScheduleEditor(settings: $settings)
-            LoadWarning(settings: settings)
-            WeekPreview(settings: settings)
+            Picker("Block length", selection: Binding(get: { settings.schedule.minutes }, set: { settings.schedule.minutes = $0 })) {
+                ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("onboarding.sessionLength")
+            LoadWarning(warning: warning)
+            WeekGrid(cells: previewCells) { week = WeekPlanner.toggling($0.weekday, $0.part, settings: week, commitments: model.commitments) }
         }
     }
 
+    var warning: String? { CourseLoad.warning(settings, week: week, commitments: model.commitments) }
+
+    /// The week these choices make.
+    var previewCells: [WeekCell] { WeekPlanner.preview(settings, week: week, commitments: model.commitments, on: week.since) }
+
     var ready: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Your first session").font(.largeTitle.bold())
+            Text("Your first block").font(.largeTitle.bold())
                 .accessibilityIdentifier("onboarding.readyTitle")
             Text(
-                "About \(settings.schedule.minutes) minutes to find your level, then the first new material. Answer honestly: “Don't know” is always better than a guess."
+                "Each subject's first block finds your level, then starts the new material. Answer honestly: “Don't know” is always better than a guess."
             )
             .font(.title3)
             VStack(alignment: .leading, spacing: 10) {
@@ -145,7 +155,7 @@ struct OnboardingView: View {
                 }
                 if !settings.maintenance.isEmpty {
                     Label(
-                        "Maintenance: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label))), reviews of what you know",
+                        "Reviews only: \(ListFormatter.localizedString(byJoining: settings.maintenance.map(\.label)))",
                         systemImage: "arrow.triangle.2.circlepath")
                 }
             }
@@ -164,15 +174,14 @@ struct OnboardingView: View {
 
     func finish() {
         if !settings.has(.japanese) { settings.readsKana = nil }
-        model.completeOnboarding(settings, booksRead: settings.has(.reading) ? books : [])
+        model.completeOnboarding(settings, week: week, booksRead: settings.has(.reading) ? books : [])
     }
 }
 
-/// Every course as Main, Secondary, Maintenance or Off.
+/// Every course, with how much of it there is in a week.
 struct CoursePicker: View {
-    enum Choice: Hashable { case focus, secondary, maintenance, off }
-
     @Binding var settings: MindSettings
+    @Binding var week: WeekSettings
 
     var body: some View {
         VStack(spacing: 10) {
@@ -185,108 +194,13 @@ struct CoursePicker: View {
                             Text(domain.pitch).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    Picker(domain.label, selection: binding(domain)) {
-                        Text(CourseMode.focus.label).tag(Choice.focus)
-                        Text(CourseMode.secondary.label).tag(Choice.secondary)
-                        Text(CourseMode.maintenance.label).tag(Choice.maintenance)
-                        Text("Off").tag(Choice.off)
+                    CourseAmount(domain: domain, amount: week.amount(domain, settings: settings), identifier: "onboarding.course.\(domain.rawValue)")
+                    {
+                        week.setAmount($0, for: domain, settings: &settings)
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("onboarding.course.\(domain.rawValue)")
                 }
                 .card()
             }
         }
-    }
-
-    func binding(_ domain: Domain) -> Binding<Choice> {
-        Binding {
-            switch settings.mode(domain) {
-            case .focus: .focus
-            case .secondary: .secondary
-            case .maintenance: .maintenance
-            case nil: .off
-            }
-        } set: { choice in
-            switch choice {
-            case .focus: settings.courses[domain] = .focus
-            case .secondary: settings.courses[domain] = .secondary
-            case .maintenance: settings.courses[domain] = .maintenance
-            case .off: settings.courses[domain] = nil
-            }
-        }
-    }
-}
-
-/// Days a week and session length.
-struct ScheduleEditor: View {
-    @Binding var settings: MindSettings
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Stepper(
-                value: Binding(
-                    get: { settings.schedule.daysPerWeek },
-                    set: { settings.schedule = StudySchedule(daysPerWeek: $0, minutes: settings.schedule.minutes) }),
-                in: 1...7
-            ) {
-                LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
-            }
-            .accessibilityIdentifier("onboarding.daysPerWeek")
-            Picker("Session length", selection: Binding(get: { settings.schedule.minutes }, set: { settings.schedule.minutes = $0 })) {
-                ForEach(StudySchedule.sessionOptions, id: \.self) { Text("\($0) min").tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("onboarding.sessionLength")
-        }
-        .card()
-    }
-}
-
-/// What to change when the courses won't fit the week. Nothing when they do.
-struct LoadWarning: View {
-    let settings: MindSettings
-
-    var body: some View {
-        if let warning = CourseLoad.check(settings).warning {
-            Label(warning, systemImage: "exclamationmark.triangle.fill")
-                .font(.subheadline)
-                .symbolRenderingMode(.multicolor)
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: 14))
-        }
-    }
-}
-
-/// The week the split makes, previewed.
-struct WeekPreview: View {
-    let settings: MindSettings
-
-    var body: some View {
-        let monday = Day.today.startOfWeek
-        let week = Split.week(starting: monday, settings: settings)
-        HStack(alignment: .top, spacing: 6) {
-            ForEach(0..<7, id: \.self) { offset in
-                let day = monday.adding(days: offset)
-                VStack(spacing: 6) {
-                    Text(day.weekday.short).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    VStack(spacing: 3) {
-                        ForEach(week[day] ?? [], id: \.self) { DomainBadge(domain: $0, size: 26) }
-                        if (week[day] ?? []).isEmpty {
-                            Circle().fill(Color.secondary.opacity(0.15)).frame(width: 26, height: 26)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .top)
-            }
-        }
-        .card(padding: 12)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            Weekday.allCases.compactMap { weekday in
-                let day = monday.adding(days: weekday.rawValue - 1)
-                return week[day].map { "\(weekday.name): \($0.map(\.label).joined(separator: " and "))" }
-            }.joined(separator: ". "))
     }
 }

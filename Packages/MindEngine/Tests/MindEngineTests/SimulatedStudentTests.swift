@@ -8,20 +8,25 @@ import Testing
 struct SimulatedStudentTests {
     let deck = Fixtures.deck()
 
-    @Test("the first session finds a level in each domain and teaches the first words")
+    @Test("each course's first block finds its level, and a language's goes on to teach the first words")
     func firstSession() throws {
-        // Reading's reading test is the rest of a first session with all four courses (ReadingTests);
-        // without it, what's left goes to the first new words.
         var store = Store(settings: Fixtures.settings([.japanese, .maths, .writing]))
         var student = Student(vocabulary: 1200, mathsLevel: 5, writingLevel: 1, deck: deck)
-        let state = store.state(on: Fixtures.monday)
-        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
-        #expect(plan.kind == .placement)
-        #expect(
-            plan.parts.map { "\($0.kind) \($0.domain?.rawValue ?? "")" } == [
-                "placement japanese", "placement maths", "placement writing", "learn japanese",
-            ])
-        let run = try #require(store.study(on: Fixtures.monday, student: &student, deck: deck))
+        let catalogs = Fixtures.catalogs(deck)
+        var runs: [Domain: StudyRun] = [:]
+        for (index, domain) in [Domain.japanese, .maths, .writing].enumerated() {
+            let state = store.state(on: Fixtures.monday, at: 18 + Double(index))
+            let plan = SessionPlanner.block(domain, state: state, catalogs: catalogs)
+            #expect(plan.kind == .placement)
+            #expect(plan.domains == [domain])
+            let expected = domain == .japanese ? ["placement japanese", "learn japanese"] : ["placement \(domain.rawValue)"]
+            #expect(plan.parts.map { "\($0.kind) \($0.domain?.rawValue ?? "")" } == expected)
+            var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
+            _ = student.run(&run, from: state.now)
+            store.save(run)
+            runs[domain] = run
+        }
+        let run = try #require(runs[.japanese])
 
         let vocabulary = try #require(store.tests.first { $0.test == .vocabulary })
         #expect(vocabulary.placement)
@@ -40,8 +45,8 @@ struct SimulatedStudentTests {
         #expect(writing.placement && writing.score > 0.2)
         #expect(!WritingPlan.known(store.cards).isEmpty)
 
-        // Words below the level the placement just measured were checked, not taught; the session
-        // ran about its length.
+        // Words below the level the placement just measured were checked, not taught; the block
+        // was a real sitting.
         let words = store.cards.values.filter { $0.key.wordID != nil }
         #expect(!words.isEmpty)
         var firstAsked: [CardKey: AttemptKind] = [:]
@@ -54,7 +59,7 @@ struct SimulatedStudentTests {
             let rank = try #require(deck.word(id)).rank
             #expect(kind == (rank <= Int(vocabulary.score) ? .probe : .learn), "word \(rank) first asked as \(kind), placed at \(vocabulary.score)")
         }
-        #expect(run.session.minutes > 12 && run.session.minutes < 40, "\(run.session.minutes) minutes")
+        #expect(run.session.minutes > 2 && run.session.minutes < 40, "\(run.session.minutes) minutes")
         #expect(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck))?.kind == .regular)
     }
 
@@ -116,13 +121,13 @@ struct SimulatedStudentTests {
         for offset in 0..<(7 * 7 + 3) {
             let day = Fixtures.monday.adding(days: offset)
             let before = store.cards.count
-            if let run = store.study(on: day, student: &student, deck: deck) {
+            for run in store.studyAll(on: day, student: &student, deck: deck) {
                 kinds[day] = run.plan.kind
                 if run.plan.kind == .review {
-                    newDuringReview += store.cards.count - before
                     #expect(!run.plan.parts.contains { if case .learn = $0.kind { true } else { false } }, "nothing new in a review week")
                 }
             }
+            if kinds[day] == .review { newDuringReview += store.cards.count - before }
         }
         let state = store.state(on: Fixtures.monday.adding(days: 51))
         // Days 0–13 assessment, then weeks 1–5 loading (days 14–48), review days 49–55.
@@ -138,17 +143,13 @@ struct SimulatedStudentTests {
         #expect(topics > placed + 3, "\(topics) maths topics known, \(placed) from placement")
         #expect(store.books.contains { $0.status == .reading } && !store.reflections.isEmpty)
 
-        // Check-in on the last days of the review week.
-        var checkIn: StudyRun?
-        for offset in 52...56 where checkIn == nil {
-            if let run = store.study(on: Fixtures.monday.adding(days: offset), student: &student, deck: deck), run.plan.kind == .checkIn {
-                checkIn = run
-            }
-        }
-        let run = try #require(checkIn)
-        let kindsTested = Set(run.newTests.map(\.test))
+        // Check-ins on the last days of the review week, a course at a time.
+        var checkIns: [StudyRun] = []
+        for offset in 52...56 { checkIns += store.takeCheckIns(on: Fixtures.monday.adding(days: offset), student: &student, deck: deck) }
+        #expect(checkIns.allSatisfy { $0.plan.domains.count == 1 })
+        let kindsTested = Set(checkIns.flatMap(\.newTests).map(\.test))
         #expect(kindsTested.isSuperset(of: [.vocabulary, .listening, .maths, .writing]), "\(kindsTested)")
-        #expect(run.changedCards.isEmpty || run.changedCards.allSatisfy { store.cards[$0]?.memory != nil }, "tests don't schedule")
+        #expect(checkIns.allSatisfy { run in run.changedCards.allSatisfy { store.cards[$0]?.memory != nil } }, "tests don't schedule")
 
         let final = store.state(on: Fixtures.monday.adding(days: 57))
         let analysis = Analyst.analyse(final, catalogs: Fixtures.catalogs(deck))
@@ -157,7 +158,9 @@ struct SimulatedStudentTests {
         #expect(analysis.discipline.band == .inZone || analysis.discipline.band == .above, "\(analysis.discipline)")
         let summary = Analyst.appSummary(final, analysis)
         #expect(summary.app == .knowledge && !summary.sessions.isEmpty && summary.sessions.allSatisfy { $0.kind == .study })
-        #expect(StudyCalendar.checkInDue(on: final.today, start: final.start, calendar: nil, lifeModes: [], lastCheckIn: final.lastCheckIn) == false)
+        #expect(
+            StudyCalendar.checkInDue(on: final.today, start: final.start, calendar: nil, lifeModes: [], lastCheckIn: final.lastCheckIn(.japanese))
+                == false)
     }
 
     @Test("a wrong review comes round again in the same session without being rescheduled twice")

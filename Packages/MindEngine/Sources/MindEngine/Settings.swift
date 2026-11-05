@@ -6,8 +6,6 @@ import SystemCore
 /// course or genre from a newer version on another device) aside and writes them back unchanged.
 public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public static let singletonID = UUID(uuidString: "00000000-0000-0000-0000-00000000317D")!
-    /// Heavy Main courses (languages and maths) past this spread the week too thin.
-    public static let focusCap = 3
     /// Days start at 4 a.m. unless changed, as Anki's do: late enough for a late night, early
     /// enough for an early morning.
     public static let standardDayStart = 4
@@ -15,7 +13,8 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public static let dayStarts = 0...6
 
     public var id: UUID
-    /// Every active course and how hard it's pushed. Courses not here are off.
+    /// Every active course. Courses not here are off. How much of each there is lives in
+    /// `WeekSettings`, which keeps these values in step for older builds.
     public var courses: [Domain: CourseMode]
     public var schedule: StudySchedule
     /// Schedules replaced in the last few weeks, so Discipline judges each day by the one in force
@@ -36,9 +35,9 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     public var speaking: Bool
     /// Private Cloud Compute for heavier AI jobs (writing feedback) when the device model isn't enough.
     public var allowCloudAI: Bool
-    /// Lagging courses get more sessions. Off keeps the split even.
+    /// A lagging course gets one more block a week.
     public var autoPrioritise: Bool
-    /// Reminders at the usual study time when the day's session hasn't happened.
+    /// Not built yet: nothing reads this.
     public var reminders: Bool
     /// The hour on the clock a study day begins. A session between midnight and then counts for
     /// the evening before, so a lesson done late on Friday night is Friday's.
@@ -93,11 +92,9 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
 
     /// Every active course, in order.
     public var domains: [Domain] { courses.keys.sorted() }
-    /// Main courses: the ones with days of their own.
-    public var focus: [Domain] { domains.filter { courses[$0] == .focus } }
-    public var secondary: [Domain] { domains.filter { courses[$0] == .secondary } }
+    /// Courses on reviews only.
     public var maintenance: [Domain] { domains.filter { courses[$0] == .maintenance } }
-    /// Main and Secondary: the courses that learn new material.
+    /// The courses that learn new material.
     public var studied: [Domain] { domains.filter { courses[$0]?.learns == true } }
     public var languages: [Domain] { domains.filter(\.isLanguage) }
 
@@ -200,62 +197,24 @@ public struct MindSettings: Hashable, Codable, Sendable, Identifiable {
     }
 }
 
-/// How much the chosen courses ask of the week, against the time there is. Languages need
-/// near-daily exposure, so each extra Main course dilutes the others.
+/// How much the chosen courses ask of the week, against the time there is.
 public enum CourseLoad {
-    /// Sessions a week a Main course needs to move: two for a language (its reviews come up in
-    /// every warm-up as well), one for the rest. Writing rides along in a maths session when both
-    /// are Main.
-    public static func sessionsNeeded(_ domain: Domain) -> Int { domain.isLanguage ? 2 : 1 }
+    /// Blocks a week below which a language barely moves: it wants near-daily exposure.
+    public static let languageBlocksNeeded = 2
 
-    /// The heavy courses the cap counts: languages and maths. Writing pairs with maths and reading
-    /// happens off the clock too.
-    public static func heavy(_ domain: Domain) -> Bool { domain.isLanguage || domain == .maths }
-
-    /// Minutes of reviews a Maintenance course takes in each session's warm-up.
-    public static let maintenanceMinutes = 4
-
-    /// A Secondary block's share of the time a session has after its warm-up, and its least: about
-    /// seven minutes of a 25-minute session.
-    public static let secondaryShare = 0.3
-    public static let secondaryMinimum = 5
-
-    /// A Secondary block's minutes, from the minutes a session has once its warm-up is done.
-    public static func secondaryMinutes(_ remaining: Int) -> Int {
-        max(secondaryMinimum, Int((Double(remaining) * secondaryShare).rounded()))
-    }
-    /// Blocks a week a Secondary course needs to keep moving. Every study day has one block, and
-    /// the Secondary courses take turns at it.
-    public static let secondaryBlocksNeeded = 2
-
-    public struct Check: Hashable, Sendable {
-        public var sessionsNeeded: Int
-        public var sessionsAvailable: Int
-        public var focusCount: Int
-        /// What to change, when the load doesn't fit. Nil when it does.
-        public var warning: String?
-    }
-
-    public static func check(_ settings: MindSettings) -> Check {
-        let focus = settings.focus
-        var needed = focus.map(sessionsNeeded).reduce(0, +)
-        if focus.contains(.maths) && focus.contains(.writing) { needed -= 1 }
-        let heavyCount = focus.filter(heavy).count
-        let available = settings.schedule.daysPerWeek
-        let secondary = settings.secondary.count
-        let reviewShare = settings.maintenance.count * maintenanceMinutes
-        var warning: String?
-        if heavyCount > MindSettings.focusCap {
-            warning = "\(heavyCount) heavy Main courses is more than three. Each one dilutes the others: make one Secondary."
-        } else if needed > available {
-            warning = "These Main courses want about \(needed) sessions a week and there are \(available). Add a day, or make one Secondary."
-        } else if secondary > 0 && available < secondaryBlocksNeeded * secondary {
-            let each = (Double(available) / Double(secondary)).formatted(.number.precision(.fractionLength(0...1)))
-            warning =
-                "\(secondary) Secondary courses take turns at one short block a session, so each comes up about \(each) times a week. Add a day, or move one to Maintenance."
-        } else if reviewShare > settings.schedule.minutes / 2 {
-            warning = "Maintenance reviews would take most of each session. Keep fewer courses on Maintenance, or make sessions longer."
+    /// What to change when the blocks won't fit the week, or nil when they do.
+    /// `open` is the week's open parts when something else knows them: the hub's rhythm, which the
+    /// settings and commitments alone can't see.
+    public static func warning(_ settings: MindSettings, week: WeekSettings, commitments: WeekCommitments, open known: Int? = nil) -> String? {
+        let blocks = week.total(settings.domains)
+        let open = known ?? WeekPlanner.openPartCount(settings: week, commitments: commitments)
+        if blocks > open {
+            return "\(blocks) blocks and \(open) open parts of the week. Open a part, or drop a block."
         }
-        return Check(sessionsNeeded: needed, sessionsAvailable: available, focusCount: focus.count, warning: warning)
+        let thin = settings.languages.filter { (1..<languageBlocksNeeded).contains(week.blocks($0)) }
+        if let language = thin.first {
+            return "\(language.label) on one block a week will move slowly. Two or more keeps it going."
+        }
+        return nil
     }
 }

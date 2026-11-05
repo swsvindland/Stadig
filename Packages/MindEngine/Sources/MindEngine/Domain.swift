@@ -32,7 +32,7 @@ public enum Domain: String, CaseIterable, Codable, CodingKeyRepresentable, Senda
         switch self {
         case .japanese: "Listening, speaking, reading and writing, with kana and kanji scaffolds that fade as each one sticks."
         case .spanish: "Understand and be understood: listening and speaking first, with words on spaced repetition."
-        case .maths: "Everyday numeracy every session, plus algebra to calculus and the statistics that matter in real life."
+        case .maths: "Everyday numeracy every block, plus algebra to calculus and the statistics that matter in real life."
         case .writing: "Creative, practical or persuasive: write, get a few specific notes, and see the difference term by term."
         case .reading: "A ladder of books just above where you read now, with stamina built separately from difficulty."
         }
@@ -56,42 +56,27 @@ public enum Domain: String, CaseIterable, Codable, CodingKeyRepresentable, Senda
     public static func < (a: Domain, b: Domain) -> Bool { allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)! }
 }
 
-/// How hard a course is pushed. Main courses have days of their own in the weekly split: full
-/// sessions and new material. Secondary courses take turns at a short block in sessions, so they
-/// keep moving, more slowly. Maintenance courses keep what's learned with a few minutes of
-/// reviews in each session's warm-up. `focus` is Main's stored name, from before there were three.
+/// What a course's tier was, before each course had its own number of blocks a week. It's still what
+/// `MindSettings.courses` holds, so that record keeps reading the same in an older build, and it
+/// still says whether a course learns or only reviews. `WeekSettings.modes` keeps it in step with
+/// the blocks; `focus` is Main's stored name.
 public enum CourseMode: String, CaseIterable, Codable, Sendable, Identifiable {
     case focus, secondary, maintenance
 
     public var id: String { rawValue }
 
-    public var label: String {
-        switch self {
-        case .focus: "Main"
-        case .secondary: "Secondary"
-        case .maintenance: "Maintenance"
-        }
-    }
-
-    public var detail: String {
-        switch self {
-        case .focus: "Days of its own: full sessions and new material."
-        case .secondary: "A short block in most sessions: new material, more slowly."
-        case .maintenance: "Reviews only, a few minutes a day, so nothing slips."
-        }
-    }
-
-    /// Main and Secondary courses learn new material; Maintenance only reviews.
+    /// A course with blocks learns new material; one with none only reviews.
     public var learns: Bool { self != .maintenance }
 }
 
-/// When the person studies: focused 25-minute blocks, five days a week by default.
+/// How long a block is, and the days a week from before blocks, which Discipline still reads for the
+/// days before they began.
 public struct StudySchedule: Hashable, Codable, Sendable {
     public static let sessionOptions = [15, 25, 50]
 
     public var daysPerWeek: Int
     public var minutes: Int
-    /// Days the person would rather study. Empty means any.
+    /// Days the person would rather study. Empty meant any.
     public var preferredDays: [Weekday]
 
     public init(daysPerWeek: Int = 5, minutes: Int = 25, preferredDays: [Weekday] = []) {

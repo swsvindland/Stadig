@@ -131,6 +131,7 @@ struct TodayStudyView: View {
     }
 
     private var weekLine: String {
+        if let total = snapshot.blocksToday, snapshot.status == .today { return "\(snapshot.blocksDoneToday ?? 0) of \(total) today" }
         guard snapshot.status != .setUp, snapshot.plannedThisWeek > 0 else { return "" }
         return "\(snapshot.doneThisWeek) of \(snapshot.plannedThisWeek) this week"
     }

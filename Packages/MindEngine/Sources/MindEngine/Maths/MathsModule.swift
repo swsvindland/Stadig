@@ -188,7 +188,7 @@ enum MathsModule: SubjectModule {
             latestTest(strand, state).flatMap(level).map { "\(strand.short) level \(Int($0.rounded()))" }
         }
         let next = MathsPlan.mainStrand(state).flatMap { MathsPlan.next(state.cards, strand: $0) }.map { " Next up: \($0.title)." } ?? ""
-        let weak = NumeracyPlan.weak(state) ? " Numeracy gets five minutes a session until it's quick." : ""
+        let weak = NumeracyPlan.weak(state) ? " Numeracy gets five minutes a block until it's quick." : ""
         return "Maths: \(ListFormatter.localizedString(byJoining: levels)), of 10.\(next)\(weak)"
     }
 }

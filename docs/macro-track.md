@@ -136,3 +136,7 @@ The UI tests launch with `-uiTesting` plus the arguments above and find elements
 - `PurchaseUITests`: free days answering the offer that ends onboarding; One More Day and buying each answering the prompt on opening; no prompt during the free days.
 
 Not covered yet: the live scan's state machine and the food editor (its logic is still in the views, though a correction's scaling is `Food.correcting` in FoodDatabase), a reminder's tap scrolling Today to the supplements, and cancelling meal-plan setup while it plans.
+
+## With the hub
+
+For someone who uses the hub, Today has a one-line "Your day" strip of what's left of the day, opening Stadig. Macro publishes when you usually eat as parts of the day, with today's eaten parts (`apps/macroTrack/meals.json`, computed for today, whatever day is selected), so the hub can show meals without knowing what's in them. [hub.md](hub.md) has the contract.

@@ -62,13 +62,17 @@ struct TodayView: View {
             OpenSessionCard()
         } else if case .paused(let kind) = analysis.phase {
             PausedCard(kind: kind)
-        } else if let plan = analysis.today {
-            SessionCard(plan: plan)
-        } else if let done = analysis.doneToday.last(where: \.planned) ?? analysis.doneToday.last {
-            DoneCard(session: done)
         } else {
-            RestCard()
+            if let plan = analysis.today {
+                SessionCard(plan: plan, part: analysis.blocks.first { !$0.done }?.part)
+            } else if let done = analysis.doneToday.last(where: \.planned) ?? analysis.doneToday.last {
+                DoneCard(session: done)
+            } else {
+                RestCard(commitments: analysis.commitments)
+            }
+            TodayRest(analysis: analysis)
         }
+        if let line = model.dayAhead { HubStrip(line: line).card(padding: 12) }
         // What's worth doing next waits on the Mac while a session is open beside it: each starts
         // another session or opens the shelf, and neither runs beside one.
         if !model.sessionOpen {
@@ -99,16 +103,130 @@ struct TodayView: View {
     }
 }
 
-private struct SessionCard: View {
+/// Everything else on Today after the next block: the day's other blocks, check-ins, reviews-only
+/// courses, and a conversation to log.
+private struct TodayRest: View {
+    @Environment(AppModel.self) private var model
+    let analysis: MindAnalysis
+
+    /// The day's blocks other than the next one, those to come first.
+    var others: [TodayBlock] {
+        let next = analysis.blocks.first { !$0.done }
+        return analysis.blocks.filter { $0.id != next?.id }.sorted { (!$0.done ? 0 : 1, $0.part) < (!$1.done ? 0 : 1, $1.part) }
+    }
+
+    var body: some View {
+        let others = others
+        let offers = analysis.checkIns + analysis.reviewsOnly
+        if !others.isEmpty || !offers.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(others) { BlockRow(block: $0) }
+                ForEach(offers, id: \.headline) { OfferRow(plan: $0) }
+            }
+            .card(padding: 0)
+        }
+        if let languages = model.settings?.languages, !languages.isEmpty, !model.sessionOpen {
+            ConversationButton(languages: languages)
+        }
+    }
+}
+
+/// A later block of the day, or one that's done.
+private struct BlockRow: View {
+    @Environment(AppModel.self) private var model
+    let block: TodayBlock
+
+    var body: some View {
+        HStack(spacing: 12) {
+            DomainBadge(domain: block.domain, size: 30).opacity(block.done ? 0.4 : 1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(block.plan?.headline ?? block.domain.label).font(.subheadline.weight(.semibold))
+                Text(block.part.label).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if block.done {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel("Done")
+            } else {
+                Button("Start") { model.startBlock(block.domain) }
+                    .secondaryAction()
+                    .disabled(model.sessionOpen)
+                    .accessibilityLabel("Start \(block.domain.label)")
+                    .accessibilityIdentifier("today.block.\(block.domain.rawValue)")
+            }
+        }
+        .padding(14)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// A check-in, or a short session for a course with no blocks.
+private struct OfferRow: View {
     @Environment(AppModel.self) private var model
     let plan: SessionPlan
 
     var body: some View {
+        HStack(spacing: 12) {
+            if let domain = plan.domains.first { DomainBadge(domain: domain, size: 30) }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(plan.headline).font(.subheadline.weight(.semibold))
+                Text(plan.kind == .checkIn ? "The plain tests: these are what move your stats" : "Optional").font(.caption).foregroundStyle(
+                    .secondary)
+            }
+            Spacer()
+            Button("Start") { model.startOffered(plan) }
+                .secondaryAction()
+                .disabled(model.sessionOpen)
+                .accessibilityLabel("Start \(plan.headline)")
+                .accessibilityIdentifier("today.offer.\(plan.kind.rawValue).\(plan.domains.first?.rawValue ?? "")")
+        }
+        .padding(14)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// A real conversation away from the app, a commute's talking with a friend or Claude, counts as a
+/// block. Nothing happens if it's never pressed.
+private struct ConversationButton: View {
+    @Environment(AppModel.self) private var model
+    let languages: [Domain]
+    @State private var asking: Domain?
+
+    var body: some View {
+        Group {
+            if languages.count == 1, let language = languages.first {
+                Button("Log a \(language.label) conversation", systemImage: "bubble.left.and.bubble.right") { asking = language }
+            } else {
+                Menu("Log a conversation", systemImage: "bubble.left.and.bubble.right") {
+                    ForEach(languages) { language in
+                        Button(language.label) { asking = language }
+                    }
+                }
+            }
+        }
+        .secondaryAction()
+        .accessibilityIdentifier("today.logConversation")
+        .confirmationDialog(
+            "Count \(StudySession.conversationMinutes) minutes of real conversation as a block?",
+            isPresented: Binding(get: { asking != nil }, set: { if !$0 { asking = nil } }), titleVisibility: .visible, presenting: asking
+        ) { language in
+            Button("Count it") { model.logConversation(language) }
+                .accessibilityIdentifier("today.logConversation.confirm")
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+private struct SessionCard: View {
+    @Environment(AppModel.self) private var model
+    let plan: SessionPlan
+    /// The part of the day the block is planned for.
+    var part: DayPart?
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                ForEach(plan.domains.filter { domain in plan.kind != .checkIn || plan.parts.contains { $0.domain == domain } }, id: \.self) {
-                    DomainBadge(domain: $0, size: 32)
-                }
+                ForEach(plan.domains, id: \.self) { DomainBadge(domain: $0, size: 32) }
+                if let part { Text(part.label).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("today.part") }
                 Spacer()
                 if plan.kind != .regular { Pill(text: plan.kind.label, color: .accentColor) }
             }
@@ -188,15 +306,26 @@ private struct DoneCard: View {
 }
 
 private struct RestCard: View {
+    /// What fills the day, when something does.
+    var commitments: [Commitment] = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Rest day", systemImage: "moon.zzz.fill").font(.title3.bold())
                 .accessibilityIdentifier("today.rest")
-            Text("Rest is part of the plan, and spacing is what makes memory stick. Nothing is expected today.")
-                .foregroundStyle(.secondary)
+            Text(detail).foregroundStyle(.secondary)
+                .accessibilityIdentifier("today.restDetail")
             StudyMoreMenu()
         }
         .card(padding: 18)
+    }
+}
+
+extension RestCard {
+    var detail: String {
+        let held = commitments.map(\.title)
+        guard !held.isEmpty else { return "Rest is part of the plan, and spacing is what makes memory stick. Nothing is expected today." }
+        return "\(ListFormatter.localizedString(byJoining: held)) today, so no study is planned. Anything you do still counts for the week."
     }
 }
 
@@ -232,7 +361,7 @@ private struct StudyMoreMenu: View {
             Menu {
                 ForEach(settings.domains) { domain in
                     Button(domain.label, systemImage: domain.symbol) {
-                        model.startSession(MindCommands.session(of: domain, settings: settings))
+                        model.startBlock(domain)
                     }
                     .accessibilityIdentifier("today.studyAnyway.\(domain.rawValue)")
                 }
@@ -270,7 +399,6 @@ struct ActionCard: View {
         case .extraReview(let minutes): "\(spelledOut(minutes)) minutes of reviews"
         case .pickBook: "Choose a book"
         case .stalledBook: "Open the shelf"
-        case .catchUp: "Catch up now"
         case .episode: "I watched one"
         }
     }
@@ -294,7 +422,6 @@ struct ActionCard: View {
         case .extraReview(let minutes): model.startExtraReview(minutes: minutes)
         case .pickBook, .stalledBook: model.showShelf = true
         case .episode(let language): model.episodeLanguage = language
-        case .catchUp(let domains): model.startSession(domains)
         }
     }
 }

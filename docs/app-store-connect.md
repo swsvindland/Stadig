@@ -18,9 +18,11 @@ Proceeds at 15%: about $25.49 per $29.99 purchase and $2.54 per month of subscri
 
 **Apps → + → New App**, or check they're already there from TestFlight:
 
-| | Stadig Lift | Stadig Macro | Stadig Mind |
-|---|---|---|---|
-| Bundle id | `dev.svindland.stadig.lift` | `dev.svindland.stadig.macro` | `dev.svindland.stadig.mind` |
+| | Stadig Lift | Stadig Macro | Stadig Mind | Stadig (the hub) |
+|---|---|---|---|---|
+| Bundle id | `dev.svindland.stadig.lift` | `dev.svindland.stadig.macro` | `dev.svindland.stadig.mind` | `dev.svindland.stadig.hub` |
+
+The hub has no purchases, so sections 3, 4 and 6 don't apply to it until how it's sold is decided ([decisions.md](decisions.md)). On developer.apple.com its identifier needs iCloud and App Groups, with the family container `iCloud.dev.svindland.stadig`, the App Group and a container of its own, `iCloud.dev.svindland.stadig.hub`.
 
 - **Platforms:** add macOS and visionOS on each app's page (**Add Platform**), so one purchase covers every device.
 - **Pricing and Availability:** the app itself is **Free**. The money is all in-app purchases.

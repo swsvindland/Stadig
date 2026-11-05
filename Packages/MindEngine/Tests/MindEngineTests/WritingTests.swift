@@ -303,13 +303,13 @@ struct WritingScheduleTests {
         let catalogs = WritingFixtures.catalogs
         var tests = [TestResult(test: .writing, date: Fixtures.monday.date(), score: 0.7, placement: true)]
         let first = WritingFixtures.state(WritingFixtures.settings(), tests: tests, on: day)
-        let plan = SessionPlanner.plan(.regular, domains: [.writing], state: first, catalogs: catalogs)
+        let plan = SessionPlanner.block(.writing, state: first, catalogs: catalogs)
         #expect(plan.parts.contains { $0.kind == .test(.writingBenchmark) && $0.minutes == 12 }, "\(plan.parts)")
 
         let benchmark = WritingFixtures.piece(.benchmark, on: day, taskID: "benchmark-creative")
         let later = WritingFixtures.state(WritingFixtures.settings(), pieces: [benchmark], tests: tests, on: day.adding(days: 3))
         #expect(
-            !SessionPlanner.plan(.regular, domains: [.writing], state: later, catalogs: catalogs).parts.contains {
+            !SessionPlanner.block(.writing, state: later, catalogs: catalogs).parts.contains {
                 $0.kind == .test(.writingBenchmark)
             })
 
@@ -379,7 +379,7 @@ struct WritingSessionTests {
     func compose() throws {
         let benchmark = WritingFixtures.piece(.benchmark, on: Fixtures.monday, taskID: "benchmark-creative")
         let state = WritingFixtures.state(WritingFixtures.settings(), pieces: [benchmark], tests: placed, on: day)
-        let plan = SessionPlanner.plan(.regular, domains: [.writing], state: state, catalogs: catalogs)
+        let plan = SessionPlanner.block(.writing, state: state, catalogs: catalogs)
         #expect(plan.parts.last?.kind == .custom("writing"))
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
         toWriting(&run, at: state.now)
@@ -414,7 +414,7 @@ struct WritingSessionTests {
         ]
         let state = WritingFixtures.state(WritingFixtures.settings(), pieces: earlier, tests: placed, on: day)
         var run = StudyRun(
-            plan: SessionPlanner.plan(.regular, domains: [.writing], state: state, catalogs: catalogs), state: state,
+            plan: SessionPlanner.block(.writing, state: state, catalogs: catalogs), state: state,
             catalogs: catalogs, now: state.now)
         toWriting(&run, at: state.now)
         guard case .compose(let task) = run.step, task.exercise == .franklinNotes else {

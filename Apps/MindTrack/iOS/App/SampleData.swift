@@ -3,10 +3,26 @@ import Foundation
 import MindEngine
 import SystemCore
 
-/// Eight and a half weeks of study for checking screens: every session planned by the real planner
+/// Eight and a half weeks of study for checking screens: every block planned by the real planner
 /// and run by the real session engine, answered by a student who gets most things right, through
-/// the assessment, a block, a review week and its check-in.
+/// the assessment, a training block, a review week and its check-ins.
 enum SampleData {
+    /// -seedBusyWeek: lifting early on Monday, Wednesday and Friday, with BJJ and Muay Thai on Monday
+    /// and Wednesday evenings, as Stadig Lift would publish them.
+    static let busyWeek: WeekCommitments = {
+        let lift = Commitment(title: "Lift", part: .early, minutes: 90)
+        let bjj = Commitment(title: "BJJ", part: .evening, minutes: 60, symbol: ActivityType.bjj.symbol)
+        let muayThai = Commitment(title: "Muay Thai", part: .evening, minutes: 60, symbol: ActivityType.muayThai.symbol)
+        return WeekCommitments(days: [.monday: [lift, bjj, muayThai], .wednesday: [lift, bjj, muayThai], .friday: [lift]])
+    }()
+
+    /// -seedRhythm: nine to five, Monday to Friday, as the hub would publish it.
+    static func rhythm(today: Day) -> Rhythm {
+        let work = [DaySpan(.work, "Work", from: 9 * 60, to: 17 * 60)]
+        let days = Weekday.allCases.map { $0 == .saturday || $0 == .sunday ? [] : work }
+        return Rhythm(pattern: WorkPattern(anchor: today.startOfWeek, weeks: [days]))
+    }
+
     @MainActor
     static func seedIfEmpty(_ model: AppModel) {
         guard model.settings == nil else { return }
@@ -22,6 +38,8 @@ enum SampleData {
             settings.schedule = StudySchedule(daysPerWeek: 6)
         }
         settings.updatedAt = start.date()
+        let week = WeekSettings.fresh(settings.domains, since: start, now: start.date())
+        let commitments = LaunchOptions.current.has("-seedBusyWeek") ? busyWeek : .none
         var books = ladder.books.filter { ["mistborn-final-empire", "the-name-of-the-wind"].contains($0.id) }.map { entry -> Book in
             var book = entry.book(status: .readBefore)
             book.feel = .right
@@ -42,92 +60,97 @@ enum SampleData {
             let day = start.adding(days: offset)
             // A missed day now and then.
             if offset > 20 && rng.chance(0.08) { continue }
-            let state = StudyState(
-                settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
-                reflections: reflections, pieces: pieces, comparisons: comparisons, today: day,
-                now: day.date().addingTimeInterval(18.5 * 3600))
-            guard let plan = SessionPlanner.today(state, catalogs: model.catalogs) else { continue }
-            var run = StudyRun(plan: plan, state: state, catalogs: model.catalogs, now: state.now)
-            var now = state.now
-            var steps = 0
-            while let step = run.step, steps < 600 {
-                steps += 1
-                switch step {
-                case .lesson:
-                    now += 25
-                    run.next(now: now)
-                case .question(let question):
-                    now += question.expectedSeconds * Double.random(in: 0.6...1.3, using: &rng)
-                    let p = chance(question, cards: run.cards, catalogs: model.catalogs, now: now)
-                    if question.allowsDontKnow && p < 0.3 && rng.chance(0.7) {
-                        run.dontKnow(now: now)
+            // The day's check-ins and blocks, one after another through the evening.
+            for sitting in 0..<4 {
+                let state = StudyState(
+                    settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books,
+                    reflections: reflections, pieces: pieces, comparisons: comparisons, today: day,
+                    now: day.date().addingTimeInterval((18.5 + Double(sitting)) * 3600), weekSettings: week, commitments: commitments)
+                guard
+                    let plan = SessionPlanner.checkIns(state, catalogs: model.catalogs).first ?? SessionPlanner.today(state, catalogs: model.catalogs)
+                else { break }
+                var run = StudyRun(plan: plan, state: state, catalogs: model.catalogs, now: state.now)
+                var now = state.now
+                var steps = 0
+                while let step = run.step, steps < 600 {
+                    steps += 1
+                    switch step {
+                    case .lesson:
+                        now += 25
+                        run.next(now: now)
+                    case .question(let question):
+                        now += question.expectedSeconds * Double.random(in: 0.6...1.3, using: &rng)
+                        let p = chance(question, cards: run.cards, catalogs: model.catalogs, now: now)
+                        if question.allowsDontKnow && p < 0.3 && rng.chance(0.7) {
+                            run.dontKnow(now: now)
+                            now += 3
+                            run.next(now: now)
+                            continue
+                        }
+                        let right = rng.chance(p)
+                        if let index = question.correctChoice {
+                            run.choose(right ? index : (index + 1) % question.choices.count, now: now)
+                        } else if right, case .number(let value, let tolerance) = question.answer {
+                            run.type(tolerance > 0 ? String(format: "%.2f", value.double) : value.description, now: now)
+                        } else {
+                            run.type("0", now: now)
+                        }
                         now += 3
                         run.next(now: now)
-                        continue
+                    case .pickBook(let options):
+                        now += 20
+                        if let pick = options.first { run.pickBook(pick, now: now) } else { run.skipPart(now: now) }
+                    case .read(let book, let minutes):
+                        now += Double(minutes) * 60
+                        let page = book.page + minutes * 2 + rng.int(0...10)
+                        let finished = page >= book.pages
+                        // Focus holds to about twenty minutes, then drifts.
+                        run.finishReading(
+                            page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes),
+                            focus: minutes <= 20 ? .held : .drifted, now: now)
+                    case .reflect(_, let finished):
+                        now += 60
+                        run.reflect(rng.pick(finished ? bookNotes : sectionNotes), now: now)
+                    case .passage(let passage):
+                        now += Double(passage.words) / 4
+                        run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
+                    case .speak(let task):
+                        now += task.expectedSeconds
+                        let said = rng.chance(task.band.map { bandChance($0) } ?? 0.85) ? task.answer : ""
+                        run.respond(
+                            task.mode == .say ? .spoken(transcript: said, seconds: task.expectedSeconds) : .written(text: said, source: .typed),
+                            now: now)
+                        if run.feedback != nil { run.next(now: now + 3) }
+                    case .compose(let task):
+                        now += Double(task.minutes) * 60
+                        if task.reviewing != nil {
+                            run.respond(.skip, now: now)
+                        } else {
+                            run.submitWriting(
+                                SampleWriting.text(for: task, week: offset / 7), source: rng.chance(0.3) ? .handwritten : .typed,
+                                misspelled: SampleWriting.misspelled, now: now)
+                        }
+                    case .compare(let pair):
+                        now += 90
+                        // Mostly the newer piece: the sample student is getting better.
+                        let newer = pair.first.id == pair.newer.id ? 0 : 1
+                        run.respond(.picked(rng.chance(0.8) ? newer : 1 - newer), now: now)
                     }
-                    let right = rng.chance(p)
-                    if let index = question.correctChoice {
-                        run.choose(right ? index : (index + 1) % question.choices.count, now: now)
-                    } else if right, case .number(let value, let tolerance) = question.answer {
-                        run.type(tolerance > 0 ? String(format: "%.2f", value.double) : value.description, now: now)
-                    } else {
-                        run.type("0", now: now)
-                    }
-                    now += 3
-                    run.next(now: now)
-                case .pickBook(let options):
-                    now += 20
-                    if let pick = options.first { run.pickBook(pick, now: now) } else { run.skipPart(now: now) }
-                case .read(let book, let minutes):
-                    now += Double(minutes) * 60
-                    let page = book.page + minutes * 2 + rng.int(0...10)
-                    let finished = page >= book.pages
-                    // Focus holds to about twenty minutes, then drifts.
-                    run.finishReading(
-                        page: page, finished: finished, feel: finished ? .right : nil, minutes: Double(minutes),
-                        focus: minutes <= 20 ? .held : .drifted, now: now)
-                case .reflect(_, let finished):
-                    now += 60
-                    run.reflect(rng.pick(finished ? bookNotes : sectionNotes), now: now)
-                case .passage(let passage):
-                    now += Double(passage.words) / 4
-                    run.respond(.passageRead(seconds: Double(passage.words) / 4), now: now)
-                case .speak(let task):
-                    now += task.expectedSeconds
-                    let said = rng.chance(task.band.map { bandChance($0) } ?? 0.85) ? task.answer : ""
-                    run.respond(
-                        task.mode == .say ? .spoken(transcript: said, seconds: task.expectedSeconds) : .written(text: said, source: .typed),
-                        now: now)
-                    if run.feedback != nil { run.next(now: now + 3) }
-                case .compose(let task):
-                    now += Double(task.minutes) * 60
-                    if task.reviewing != nil {
-                        run.respond(.skip, now: now)
-                    } else {
-                        run.submitWriting(
-                            SampleWriting.text(for: task, week: offset / 7), source: rng.chance(0.3) ? .handwritten : .typed,
-                            misspelled: SampleWriting.misspelled, now: now)
-                    }
-                case .compare(let pair):
-                    now += 90
-                    // Mostly the newer piece: the sample student is getting better.
-                    let newer = pair.first.id == pair.newer.id ? 0 : 1
-                    run.respond(.picked(rng.chance(0.8) ? newer : 1 - newer), now: now)
                 }
-            }
-            run.finish(now: now)
-            for key in run.changedCards { cards[key] = run.cards[key] }
-            sessions.append(run.session)
-            tests += run.newTests
-            for id in run.changedBooks {
-                if let book = run.books.first(where: { $0.id == id }) {
-                    books.removeAll { $0.id == id }
-                    books.append(book)
+                run.finish(now: now)
+                for key in run.changedCards { cards[key] = run.cards[key] }
+                sessions.append(run.session)
+                tests += run.newTests
+                for id in run.changedBooks {
+                    if let book = run.books.first(where: { $0.id == id }) {
+                        books.removeAll { $0.id == id }
+                        books.append(book)
+                    }
                 }
+                reflections += run.newReflections
+                pieces += run.newPieces
+                comparisons += run.newComparisons
             }
-            reflections += run.newReflections
-            pieces += run.newPieces
-            comparisons += run.newComparisons
         }
         tests.append(
             TestResult(
@@ -144,7 +167,7 @@ enum SampleData {
             books.append(book)
         }
         model.seed(
-            settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
+            settings: settings, week: week, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
             pieces: pieces)
         model.seedWriting(comparisons: comparisons)
     }

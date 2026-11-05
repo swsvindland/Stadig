@@ -188,4 +188,16 @@ struct UsualMealTests {
         let snack = [food("Almonds", at(ahead, 16))]
         #expect(LogAgain.usual(at: at(ahead, 12, 30), entries: entries, logged: snack, today: today, calendar: calendar) == usual)
     }
+
+    @Test func theHubLearnsTheDayByItsParts() {
+        // Today has its breakfast, at 7:40 so still early, lunch, almonds and dinner in the fixture;
+        // the hub is told so. What's usual is the 8 o'clock of all the days, not today's.
+        let rhythm = UsualMeals.rhythm(entries: weeks(), today: today, now: at(today, 20), calendar: calendar)
+        #expect(rhythm.day == today)
+        #expect(rhythm.usual.first == .morning)
+        #expect(rhythm.usual.contains(.midday))
+        #expect(rhythm.usual.last == .evening)
+        #expect(rhythm.eaten.first == .early)
+        #expect(rhythm.eaten.last == .evening)
+    }
 }

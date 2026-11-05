@@ -50,12 +50,16 @@ struct SettingsEditsTests {
         pane.catchUp(to: model.profile)
         #expect(pane.value.schedule.daysPerWeek == 5)
 
+        // What synced in reaches the shared file, for the apps that plan around it.
+        #expect(app.shared.read(.profile)?.schedule.daysPerWeek == 5)
+
         // Back to the pane and away again, changing nothing: nothing is written, here or for the other apps.
         let revision = app.store.revision
+        let written = app.shared.envelope(.profile)?.writtenAt
         #expect(model.save(profileEdits: pane.value, from: pane.original) == nil)
         #expect(app.store.revision == revision)
         #expect(model.profile?.schedule.daysPerWeek == 5)
-        #expect(app.shared.read(.profile)?.schedule.daysPerWeek == 3, "the shared profile isn't rewritten by a visit")
+        #expect(app.shared.envelope(.profile)?.writtenAt == written, "the shared profile isn't rewritten by a visit")
     }
 
     @Test("Edits made on an old copy write only the fields changed, over what synced in")

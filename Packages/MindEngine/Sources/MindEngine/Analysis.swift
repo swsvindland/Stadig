@@ -8,8 +8,6 @@ public struct MindAction: Hashable, Sendable, Identifiable {
         case extraReview
         case pickBook
         case stalledBook
-        /// Yesterday's planned session didn't happen.
-        case catchUp
         /// Watch an episode without subtitles and say how much you followed.
         case episode
     }
@@ -20,8 +18,6 @@ public struct MindAction: Hashable, Sendable, Identifiable {
         case extraReview(minutes: Int)
         case pickBook
         case stalledBook
-        /// The domains of the session that was missed.
-        case catchUp([Domain])
         case episode(Language)
 
         public var kind: Kind {
@@ -29,7 +25,6 @@ public struct MindAction: Hashable, Sendable, Identifiable {
             case .extraReview: .extraReview
             case .pickBook: .pickBook
             case .stalledBook: .stalledBook
-            case .catchUp: .catchUp
             case .episode: .episode
             }
         }
@@ -54,12 +49,25 @@ public struct MindAction: Hashable, Sendable, Identifiable {
 
 /// A day of the week as the Plan tab shows it.
 public struct StudyDay: Hashable, Sendable, Identifiable {
-    public enum Status: Hashable, Sendable { case done, missed, today, planned, rest, paused }
+    public enum Status: Hashable, Sendable { case done, today, planned, rest, paused }
 
     public var day: Day
     public var domains: [Domain]
     public var status: Status
+    /// The day's blocks, with the part each sits in.
+    public var blocks: [PlannedBlock]
     public var id: Int { day.ordinal }
+}
+
+/// A block on Today: what's planned, and the session it starts until it's done.
+public struct TodayBlock: Hashable, Sendable, Identifiable {
+    public var block: PlannedBlock
+    public var plan: SessionPlan?
+
+    public var id: String { block.id }
+    public var domain: Domain { block.domain }
+    public var part: DayPart { block.part }
+    public var done: Bool { block.done }
 }
 
 /// One language's picture: words in, kana for Japanese, the latest tests and recall.
@@ -107,6 +115,16 @@ public struct MindAnalysis: Sendable {
     public var writing: WritingSummary
     public var reading: ReadingSummary
     public var quests: [Quest]
+    /// The week of blocks.
+    public var layout: WeekLayout
+    /// Today's blocks, in part order. `today` is the first one still to do.
+    public var blocks: [TodayBlock]
+    /// Courses due a check-in: beside the blocks, not one of them.
+    public var checkIns: [SessionPlan] = []
+    /// Short sessions for courses with no blocks: their reviews, or their placement.
+    public var reviewsOnly: [SessionPlan] = []
+    /// What fills today, when it has no blocks because of it.
+    public var commitments: [Commitment] = []
 }
 
 extension MathTopic {
@@ -120,23 +138,26 @@ extension MathTopic {
 public enum Analyst {
     public static func analyse(_ state: StudyState, catalogs: Catalogs) -> MindAnalysis {
         let phase = state.phase
-        // Each course's trend is worked out once: the plan and the week both need it.
-        let priorities = SessionPlanner.priorities(state)
-        let plan = SessionPlanner.today(state, catalogs: catalogs, priorities: priorities)
+        let layout = WeekPlanner.layout(state, settings: state.week)
+        let blocks = todayBlocks(layout, state: state, catalogs: catalogs)
         let doneToday = state.sessions.filter { $0.day(startingAt: state.dayStart) == state.today && $0.finished }
-        let todayDone = doneToday.contains { $0.planned && $0.counts }
         let due = state.due(on: state.today, catalogs: catalogs)
         let discipline = discipline(state)
         let maths = mathsSummary(state)
         let writing = writingSummary(state, catalogs: catalogs)
         let reading = readingSummary(state)
         var analysis = MindAnalysis(
-            phase: phase, today: todayDone ? nil : plan, doneToday: doneToday, week: week(state, priorities: priorities),
+            phase: phase, today: blocks.compactMap(\.plan).first, doneToday: doneToday, week: week(state, layout: layout),
             dueToday: due.count, actions: [], stats: stats(state), discipline: discipline,
             learned: learned(state, maths: maths, writing: writing, reading: reading),
             languages: state.settings.languages.map { languageSummary($0, state: state) },
-            maths: maths, writing: writing, reading: reading, quests: [])
-        analysis.actions = actions(state, analysis: analysis, plannedToday: plan != nil)
+            maths: maths, writing: writing, reading: reading, quests: [], layout: layout, blocks: blocks)
+        if !phase.isPaused {
+            analysis.checkIns = SessionPlanner.checkIns(state, catalogs: catalogs)
+            analysis.reviewsOnly = SessionPlanner.reviewsOnly(state, catalogs: catalogs)
+            if blocks.isEmpty { analysis.commitments = state.commitments.on(state.today.weekday) }
+        }
+        analysis.actions = actions(state, analysis: analysis)
         analysis.quests = quests(state, analysis: analysis)
         return analysis
     }
@@ -200,50 +221,86 @@ public enum Analyst {
     public static func discipline(_ state: StudyState) -> DisciplineScore {
         let window = Discipline.window(ending: state.today)
         var items: [AdherenceItem] = []
+        let settings = state.week
         for day in window.days where day >= state.start && state.settings.schedule(on: day).studyDays.contains(day.weekday) {
+            // From the day blocks began they're what counts, below; the days before keep the rule
+            // they were planned under, so an upgrade doesn't rescore them.
+            if day >= settings.since { continue }
             guard StudyCalendar.pause(on: day, lifeModes: state.lifeModes) == nil else { continue }
             let done = state.sessions.contains { $0.day(startingAt: state.dayStart) == day && $0.planned && $0.counts }
             if day == state.today && !done { continue }
             items.append(AdherenceItem(day: day, kind: .session, label: "Study session", done: done))
         }
-        return Discipline.score(items, exempt: LifeModes.exemptDays(in: window, periods: state.lifeModes), window: window)
+        let exempt = LifeModes.exemptDays(in: window, periods: state.lifeModes)
+        items += blockItems(state, settings: settings, window: window, exempt: exempt)
+        return Discipline.score(items, exempt: exempt, window: window)
+    }
+
+    /// Blocks done against blocks planned, a week at a time, because a block can happen any day of
+    /// its week. Done blocks go on the days they happened. A finished week's misses are shared out
+    /// over its days, not put on Sunday: a sick Sunday mustn't erase them, and the four-week window
+    /// should cut a week evenly. The week under way counts what's done so far; nothing is missed
+    /// until the week is over. Paused days aren't counted either way, crunch included.
+    static func blockItems(_ state: StudyState, settings: WeekSettings, window: DayRange, exempt: Set<Day>) -> [AdherenceItem] {
+        var items: [AdherenceItem] = []
+        let thisWeek = state.today.startOfWeek
+        var monday = max(settings.since, window.start).startOfWeek
+        while monday <= thisWeek {
+            defer { monday = monday.adding(weeks: 1) }
+            let days = WeekPlanner.countedDays(state, settings: settings, monday: monday).filter { $0 <= state.today }
+            let finished = WeekPlanner.finished(state, settings: settings, monday: monday, timeZone: .current).filter { days.contains($0.day) }
+            // As the week stood when it was planned. If a pause has been entered since, for days it
+            // knew nothing about, those days' share comes off.
+            // A lighter week is judged by its lighter count, which the week may never have noted if
+            // the app wasn't opened.
+            let kept = state.dayChanges.isLighter(monday) ? nil : settings.target(monday)
+            let share = kept.map { min(1, Double(days.count) / Double(max(1, $0.days))) } ?? 1
+            func shared(_ count: Int) -> Int { Int((Double(count) * share).rounded(.up)) }
+            var left = (kept?.counts ?? WeekPlanner.counts(state, settings: settings, monday: monday, lagging: [])).mapValues(shared)
+            var done: [PlannedBlock] = []
+            for block in finished where left[block.domain, default: 0] > 0 {
+                left[block.domain, default: 0] -= 1
+                done.append(block)
+            }
+            items += done.map { AdherenceItem(day: $0.day, kind: .session, label: "\($0.domain.label) block", done: true) }
+            guard monday < thisWeek else { continue }
+            let target = shared(kept?.total ?? WeekPlanner.target(state, settings: settings, monday: monday))
+            let counted = days.filter { !exempt.contains($0) }
+            guard !counted.isEmpty else { continue }
+            for index in 0..<max(0, target - done.count) {
+                items.append(AdherenceItem(day: counted[index % counted.count], kind: .session, label: "Study block", done: false))
+            }
+        }
+        return items
     }
 
     // MARK: The week
 
-    /// The days before today show the split of the schedule in force then, as Discipline judges
-    /// them: a day that was a rest day wasn't missed, and one that was a study day was.
-    static func week(_ state: StudyState, priorities: Set<Domain>? = nil) -> [StudyDay] {
-        let monday = state.today.startOfWeek
-        let priorities = priorities ?? SessionPlanner.priorities(state)
-        var splits: [StudySchedule: [Day: [Domain]]] = [:]
-        func split(_ schedule: StudySchedule) -> [Day: [Domain]] {
-            if let known = splits[schedule] { return known }
-            var settings = state.settings
-            settings.schedule = schedule
-            let split = Split.week(starting: monday, settings: settings, priorities: priorities)
-            splits[schedule] = split
-            return split
-        }
-        return (0..<7).map { offset in
-            let day = monday.adding(days: offset)
-            let domains = split(day < state.today ? state.settings.schedule(on: day) : state.settings.schedule)[day] ?? []
-            let done = state.sessions.contains { $0.day(startingAt: state.dayStart) == day && $0.planned && $0.counts }
+    /// The week in blocks. A past day shows what was done and nothing else: what wasn't done has
+    /// rolled forward, so there's no such thing as a missed day.
+    static func week(_ state: StudyState, layout: WeekLayout) -> [StudyDay] {
+        (0..<7).map { offset in
+            let day = layout.monday.adding(days: offset)
+            let blocks = layout.blocks(on: day)
             let status: StudyDay.Status
             if StudyCalendar.pause(on: day, lifeModes: state.lifeModes) != nil {
                 status = .paused
-            } else if done {
-                status = .done
-            } else if domains.isEmpty {
+            } else if blocks.isEmpty {
                 status = .rest
-            } else if day == state.today {
-                status = .today
-            } else if day < state.today && day >= state.start {
-                status = .missed
+            } else if blocks.allSatisfy(\.done) {
+                status = .done
             } else {
-                status = .planned
+                status = day == state.today ? .today : .planned
             }
-            return StudyDay(day: day, domains: domains, status: status)
+            return StudyDay(day: day, domains: blocks.map(\.domain), status: status, blocks: blocks)
+        }
+    }
+
+    /// Today's blocks, each with its session until it's done.
+    static func todayBlocks(_ layout: WeekLayout, state: StudyState, catalogs: Catalogs) -> [TodayBlock] {
+        guard !state.phase.isPaused else { return [] }
+        return layout.blocks(on: state.today).map { block in
+            TodayBlock(block: block, plan: block.done ? nil : SessionPlanner.block(block.domain, state: state, catalogs: catalogs))
         }
     }
 
@@ -317,7 +374,7 @@ public enum Analyst {
 
     // MARK: Actions and quests
 
-    static func actions(_ state: StudyState, analysis: MindAnalysis, plannedToday: Bool) -> [MindAction] {
+    static func actions(_ state: StudyState, analysis: MindAnalysis) -> [MindAction] {
         var out: [MindAction] = []
         let due = analysis.dueToday
         if case .paused(let kind) = analysis.phase {
@@ -328,25 +385,6 @@ public enum Analyst {
                         detail: "Crunch mode pauses Stadig Mind. \(due) reviews are waiting; nothing is expected.", priority: 1))
             }
             return out
-        }
-        if !plannedToday && analysis.doneToday.isEmpty && due >= 15 {
-            out.append(
-                MindAction(
-                    id: "extra", command: .extraReview(minutes: 5), title: "Optional: five minutes of reviews",
-                    detail: "Rest day. \(due) are due; clearing some now keeps tomorrow's warm-up short.", priority: 0.5))
-        } else if due > 80 {
-            out.append(
-                MindAction(
-                    id: "pile", command: .extraReview(minutes: 10), title: "Clear the review pile",
-                    detail: "\(due) reviews are due. A ten-minute review session tonight clears about \(min(due, 80)).", priority: 1.5))
-        }
-        let yesterday = state.today.adding(days: -1)
-        if let missed = analysis.week.first(where: { $0.day == yesterday && $0.status == .missed }), !plannedToday, analysis.doneToday.isEmpty {
-            out.append(
-                MindAction(
-                    id: "catch-up", command: .catchUp(missed.domains),
-                    title: "Catch up on yesterday's \(ListFormatter.localizedString(byJoining: missed.domains.map(\.label)))",
-                    detail: "Today is a rest day, so there's room for it. Missing it is fine too; one day barely moves anything.", priority: 1))
         }
         if state.settings.has(.reading) {
             if let book = state.currentBook {
@@ -389,21 +427,15 @@ public enum Analyst {
     /// Study that didn't happen, offered to the hub for free time blocks.
     static func quests(_ state: StudyState, analysis: MindAnalysis) -> [Quest] {
         var out: [Quest] = []
-        if let plan = analysis.today {
-            let stat: StatKind = plan.domains == [.reading] ? .wisdom : .intelligence
+        for block in analysis.blocks {
+            guard let plan = block.plan else { continue }
             out.append(
                 Quest(
-                    id: "mind.session.\(state.today.iso)", title: plan.headline, detail: plan.parts.map(\.title).joined(separator: ", "),
-                    stat: stat, source: .knowledge, minutes: plan.minutes, day: state.today, timeOfDay: .evening, priority: 2))
+                    id: "mind.block.\(block.id)", title: plan.headline,
+                    detail: plan.parts.map(\.title).joined(separator: ", "), stat: block.domain.stat, source: .knowledge, minutes: plan.minutes,
+                    day: state.today, timeOfDay: block.part.timeOfDay, priority: 2))
         }
-        if analysis.dueToday > 40 {
-            out.append(
-                Quest(
-                    id: "mind.reviews.\(state.today.iso)", title: "Clear \(min(analysis.dueToday, 60)) reviews",
-                    detail: "About ten minutes in Stadig Mind", stat: .intelligence, source: .knowledge, minutes: 10, day: state.today,
-                    priority: 1))
-        }
-        if let book = analysis.reading.current, analysis.today?.domains.contains(.reading) != true {
+        if let book = analysis.reading.current, !analysis.blocks.contains(where: { $0.domain == .reading }) {
             out.append(
                 Quest(
                     id: "mind.read.\(state.today.iso)", title: "Read 20 pages of \(book.title)", stat: .wisdom, source: .knowledge,

@@ -1,6 +1,7 @@
 import ExerciseLibrary
 import Foundation
 import HealthBridge
+import HubEngine
 import LiftEngine
 import OSLog
 import Observation
@@ -114,6 +115,8 @@ final class AppModel {
     private(set) var recommendations: [Recommendation] = []
     /// A profile another app wrote before Stadig Lift was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
+    /// What's changed this week, from the hub.
+    private(set) var dayChanges: [DayChange] = []
 
     // Derived.
     private(set) var analysis: LiftAnalysis?
@@ -149,6 +152,8 @@ final class AppModel {
     /// either changes, not on every redraw.
     private(set) var historyRows: [HistoryRow] = []
     var today: Day = .today
+    /// What's left of today, for someone who uses the hub.
+    private(set) var dayAhead: String?
 
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
@@ -297,14 +302,17 @@ final class AppModel {
     /// What other apps and the hub published. Our own writes notify us too, so this only
     /// recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
+        dayAhead = HubPlanner.ahead(shared: shared, today: today, now: Date())
         let nutrition = shared.read(.nutrition)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .liftTrack && $0.isActive() }
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
+        let dayChanges = shared.read(.dayChanges) ?? []
         let changed =
             nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
-            || lifeModes != self.lifeModes
+            || lifeModes != self.lifeModes || dayChanges != self.dayChanges
         guard changed else { return }
+        self.dayChanges = dayChanges
         self.nutrition = nutrition
         self.recommendations = recommendations
         self.sharedProfile = sharedProfile
@@ -358,6 +366,16 @@ final class AppModel {
 
     @ObservationIgnored private var lastPublished: (summary: AppSummary, calendar: SystemCalendar)?
 
+    /// The profile in the shared file, which the other apps plan from.
+    private func share(_ profile: SharedProfile) {
+        do {
+            try shared.write(profile, to: .profile, by: .liftTrack)
+            sharedProfile = profile
+        } catch {
+            appLog.error("Couldn't share the profile: \(error.localizedDescription)")
+        }
+    }
+
     /// Small summaries for the other apps, the hub, the widgets and the Watch, written only when
     /// they change.
     private func publish(_ state: LiftState, _ analysis: LiftAnalysis) {
@@ -375,6 +393,9 @@ final class AppModel {
             } catch {
                 appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
             }
+        }
+        if let profile, let shareable = profile.sharing(over: sharedProfile, writtenBy: shared.envelope(.profile)?.writtenBy, now: Date()) {
+            share(shareable)
         }
         WidgetBridge.update(self)
         #if os(iOS)
@@ -404,7 +425,7 @@ final class AppModel {
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .liftTrack)
+        share(profile)
         reload()
     }
 
@@ -602,7 +623,7 @@ final class AppModel {
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .liftTrack)
+        share(profile)
         if let measurements, !measurements.isEmpty { store.save(MeasurementRecord(measurements)) }
         reload()
         guard !store.all(LiftSettings.self).contains(where: { $0.onboardedAt != nil }) else { return }
@@ -819,6 +840,11 @@ final class AppModel {
         var day = planned
         var minutesAvailable = minutes
         if let cap = analysis.life.maxMinutes { minutesAvailable = min(minutesAvailable ?? cap, cap) }
+        // A lighter week, from the hub: a shorter session, and the week's quota as it was.
+        if dayChanges.isLighter(today) {
+            let cap = DayChange.lighterMinutes(next.mesocycle.minutesPerSession)
+            minutesAvailable = min(minutesAvailable ?? cap, cap)
+        }
         if let minutesAvailable, minutesAvailable != next.mesocycle.minutesPerSession {
             var input = generatorInput(
                 profile: profile, gym: gymForToday, kind: next.mesocycle.block.kind, start: next.mesocycle.block.start,
