@@ -81,9 +81,13 @@ public enum LogAgain {
 
     /// "Same as yesterday" for a time being logged at, on any day to `today`: what was eaten around
     /// then on another recent day, while nothing logged that day ended within 90 minutes of it.
-    public static func usual(at time: Date, entries: [FoodEntry], today: Day, calendar: Calendar = .current) -> Moment? {
+    /// `logged` is that day's whole log where `entries` leaves food for later out: what's already
+    /// planned then shouldn't be offered again, and shouldn't be what's offered on another day.
+    public static func usual(
+        at time: Date, entries: [FoodEntry], logged: [FoodEntry]? = nil, today: Day, calendar: Calendar = .current
+    ) -> Moment? {
         let day = Day(time, calendar: calendar)
-        let nearby = Timeline.moments(entries.filter { $0.day == day }).contains { abs($0.end.timeIntervalSince(time)) < 90 * 60 }
+        let nearby = Timeline.moments(logged ?? entries.filter { $0.day == day }).contains { abs($0.end.timeIntervalSince(time)) < 90 * 60 }
         return nearby ? nil : usualMoment(near: time, entries: entries, calendar: calendar, through: today)
     }
 

@@ -574,14 +574,15 @@ final class AppModel {
         let state = state(now: now)
         let suggestions = suggestionEntries
         let eaten = entries
+        let around = logAround(today)
         let meals = savedMeals
         guard backgroundAnalysis, let state else {
-            show(Self.worked(state, suggestions: suggestions, eaten: eaten, meals: meals, now: now))
+            show(Self.worked(state, suggestions: suggestions, eaten: eaten, around: around, meals: meals, now: now))
             return
         }
         let generation = analysisGeneration
         analysisTask = Task.detached(priority: .userInitiated) { [weak self] in
-            let derived = Self.worked(state, suggestions: suggestions, eaten: eaten, meals: meals, now: now)
+            let derived = Self.worked(state, suggestions: suggestions, eaten: eaten, around: around, meals: meals, now: now)
             guard !Task.isCancelled else { return }
             await self?.show(derived, generation: generation)
         }
@@ -596,16 +597,20 @@ final class AppModel {
     }
 
     private nonisolated static func worked(
-        _ state: MacroState?, suggestions: [FoodEntry], eaten: [FoodEntry], meals: [SavedMeal], now: Date
+        _ state: MacroState?, suggestions: [FoodEntry], eaten: [FoodEntry], around: [FoodEntry], meals: [SavedMeal], now: Date
     ) -> Derived {
         let rankings = LogPath.begin("rankings")
         let logAgain = LogAgain.rank(suggestions, now: now)
-        let ranked = SavedMeals.rank(meals, entries: eaten, now: now)
+        let ranked = SavedMeals.rank(meals, entries: eaten, logged: around, now: now)
         LogPath.end(rankings)
         let interval = LogPath.begin("analyse")
         defer { LogPath.end(interval) }
         return Derived(state: state, analysis: state.map(MacroAnalyst.analyse), logAgain: logAgain, meals: ranked)
     }
+
+    /// All the log on a day and those beside it, food for later included: a time ranked for reaches
+    /// across midnight either way.
+    private func logAround(_ day: Day) -> [FoodEntry] { (-1...1).flatMap { allEntries(on: day.adding(days: $0)) } }
 
     /// A finished analysis, unless a newer recompute has started since.
     private func show(_ derived: Derived, generation: Int) {
@@ -1214,8 +1219,8 @@ final class AppModel {
         let time = logDate()
         timedSuggestions = TimedSuggestions(
             time: time, logAgain: LogAgain.rank(suggestionEntries, now: now, at: time),
-            meals: SavedMeals.rank(savedMeals, entries: entries, now: now, at: time),
-            usual: LogAgain.usual(at: time, entries: suggestionEntries, today: today))
+            meals: SavedMeals.rank(savedMeals, entries: entries, logged: logAround(Day(time)), now: now, at: time),
+            usual: LogAgain.usual(at: time, entries: suggestionEntries, logged: allEntries(on: Day(time)), today: today))
     }
 
     func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {
