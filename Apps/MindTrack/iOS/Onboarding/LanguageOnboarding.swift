@@ -13,7 +13,7 @@ struct LanguageOnboarding: View {
             Text("Languages").font(.title.bold())
                 .accessibilityIdentifier("onboarding.languagesTitle")
             Text(
-                "The aim is understanding real people and being understood, not conjugation tables. The first session finds how many words you know already."
+                "The aim is understanding real people and being understood, not conjugation tables. The first block finds how many words you know already."
             )
             .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 10) {
@@ -24,7 +24,7 @@ struct LanguageOnboarding: View {
                 .font(.subheadline)
                 Label("Real use, with drills as support", systemImage: "bubble.left.and.bubble.right").font(.headline)
                 Text(
-                    "New words go on spaced repetition; the rest of a session is a short dialogue, sentences by ear, saying and writing what you know, and pictures. Help under new words (furigana, romaji, a stress guide) fades word by word as each one sticks."
+                    "New words go on spaced repetition; the rest of a block is a short dialogue, sentences by ear, saying and writing what you know, and pictures. Help under new words (furigana, romaji, a stress guide) fades word by word as each one sticks."
                 )
                 .font(.subheadline)
             }
@@ -40,7 +40,7 @@ struct LanguageOnboarding: View {
                     .accessibilityIdentifier("onboarding.kana")
                     Text(
                         settings.readsKana == false
-                            ? "Words start in the first session, with romaji under each kana until it sticks, and hiragana then katakana come in beside them."
+                            ? "Words start in the first block, with romaji under each kana until it sticks, and hiragana then katakana come in beside them."
                             : "You'll start with a word test to find your vocabulary."
                     )
                     .font(.footnote).foregroundStyle(.secondary)
@@ -97,27 +97,9 @@ private struct TwoLanguages: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Two languages", systemImage: "globe").font(.headline)
             Text(
-                "Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so each extra Main course dilutes the others."
+                "Dissimilar languages interfere less (Japanese and Spanish less than Spanish and Italian), but time is the real limit: languages need near-daily exposure, so a second one thins out the first. If kana are new, give Spanish fewer blocks until they're solid."
             )
             .font(.subheadline)
-            ForEach(settings.languages.filter { $0 != settings.languages.first }) { domain in
-                Picker(domain.label, selection: Binding(get: { settings.mode(domain) ?? .focus }, set: { settings.courses[domain] = $0 })) {
-                    ForEach(CourseMode.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("onboarding.languageMode.\(domain.rawValue)")
-            }
-            if settings.has(.japanese), settings.has(.spanish) {
-                Text(
-                    settings.readsKana == false
-                        ? "Suggested: Japanese as Main, and Spanish as Secondary until kana are solid. Make it a second Main course then."
-                        : "Suggested: Japanese as Main. Spanish works as a second Main course, or as Secondary for now."
-                )
-                .font(.footnote).foregroundStyle(.secondary)
-            }
-            if let warning = CourseLoad.check(settings).warning {
-                Label(warning, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange)
-            }
         }
         .card()
     }

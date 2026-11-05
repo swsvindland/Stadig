@@ -11,7 +11,7 @@ struct MathsOnboarding: View {
             Text("Maths").font(.title.bold())
                 .accessibilityIdentifier("onboarding.mathsTitle")
             Text(
-                "Three strands, each with its own level. The first session places each one with a short test that steps up and down, so there's nothing to remember about school."
+                "Three strands, each with its own level. The first block places each one with a short test that steps up and down, so there's nothing to remember about school."
             )
             .foregroundStyle(.secondary)
             ForEach(MathsStrand.allCases) { strand in
@@ -90,7 +90,7 @@ struct MathsSettings: View {
             Text("Maths")
         } footer: {
             Text(
-                "Numeracy opens every maths session. The strand that matters more gets two sessions in three; one switched on later is placed in its first session."
+                "Numeracy opens every maths block. The strand that matters more gets two blocks in three; one switched on later is placed in its first block."
             )
         }
     }

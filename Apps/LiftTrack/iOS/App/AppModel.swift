@@ -358,6 +358,16 @@ final class AppModel {
 
     @ObservationIgnored private var lastPublished: (summary: AppSummary, calendar: SystemCalendar)?
 
+    /// The profile in the shared file, which the other apps plan from.
+    private func share(_ profile: SharedProfile) {
+        do {
+            try shared.write(profile, to: .profile, by: .liftTrack)
+            sharedProfile = profile
+        } catch {
+            appLog.error("Couldn't share the profile: \(error.localizedDescription)")
+        }
+    }
+
     /// Small summaries for the other apps, the hub, the widgets and the Watch, written only when
     /// they change.
     private func publish(_ state: LiftState, _ analysis: LiftAnalysis) {
@@ -375,6 +385,9 @@ final class AppModel {
             } catch {
                 appLog.error("Couldn't publish the summary: \(error.localizedDescription)")
             }
+        }
+        if let profile, let shareable = profile.sharing(over: sharedProfile, writtenBy: shared.envelope(.profile)?.writtenBy, now: Date()) {
+            share(shareable)
         }
         WidgetBridge.update(self)
         #if os(iOS)
@@ -404,7 +417,7 @@ final class AppModel {
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .liftTrack)
+        share(profile)
         reload()
     }
 
@@ -602,7 +615,7 @@ final class AppModel {
         var profile = profile
         profile.updatedAt = Date()
         store.save(ProfileRecord(profile))
-        try? shared.write(profile, to: .profile, by: .liftTrack)
+        share(profile)
         if let measurements, !measurements.isEmpty { store.save(MeasurementRecord(measurements)) }
         reload()
         guard !store.all(LiftSettings.self).contains(where: { $0.onboardedAt != nil }) else { return }

@@ -7,13 +7,13 @@ import SystemCore
 protocol SubjectModule {
     /// Whether a course still needs its placement before new material.
     static func needsPlacement(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> Bool
-    /// The placement parts for a course, in a first session or the first one after it's added.
+    /// The placement parts for a course: its first block.
     static func placementParts(_ domain: Domain, state: StudyState, catalogs: Catalogs) -> [PlanPart]
     /// Whether the placement cards what it finds known, so a Maintenance course with nothing
     /// learned yet has reviews once it's placed. A test that only measures gives it nothing.
     static var placementCardsKnown: Bool { get }
-    /// The main block for a Main course, or a Secondary course's short block: new material in a
-    /// regular week, practice in a review week.
+    /// A block's main part, after its warm-up: new material in a regular week, practice in a review
+    /// week.
     static func mainParts(
         _ domain: Domain, minutes: Int, kind: StudyKind, state: StudyState, catalogs: Catalogs,
         notes: inout [String]
@@ -59,7 +59,8 @@ enum Subjects {
     static func runner(for part: PlanPart, state: StudyState, catalogs: Catalogs) -> any PartRunner {
         switch part.kind {
         case .reviews:
-            let due = state.due(on: state.today, catalogs: catalogs)
+            // A block keeps to its own course's reviews; without a course they're across every one.
+            let due = part.domain.map { state.due(on: state.today, catalogs: catalogs, in: $0) } ?? state.due(on: state.today, catalogs: catalogs)
             // Most forgotten first; ties in key order, so a session is the same on every run.
             func retrievability(_ card: MemoryCard) -> Double {
                 card.memory.map { Scheduler.retrievability($0, at: state.today.date()) } ?? 0

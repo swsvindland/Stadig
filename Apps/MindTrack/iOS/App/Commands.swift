@@ -43,7 +43,7 @@ struct MindCommands: Commands {
                 Button("Show the Session") { showSession() }
                     .keyboardShortcut("n")
             } else {
-                Button(model.analysis?.today?.kind == .checkIn ? "Start the Check-In" : "Start Today's Session") {
+                Button("Start the Next Block") {
                     model.startToday()
                     showSession()
                 }
@@ -53,7 +53,7 @@ struct MindCommands: Commands {
             Menu("Study Anyway") {
                 ForEach(model.settings?.domains ?? []) { domain in
                     Button(domain.label) {
-                        model.startSession(Self.session(of: domain, settings: model.settings))
+                        model.startBlock(domain)
                         showSession()
                     }
                     // The Mac's menu bar keeps a submenu open to its items whatever the menu says.
@@ -85,11 +85,6 @@ struct MindCommands: Commands {
     /// On iPhone, iPad and Vision Pro a session covers the screen: what's behind it waits until it
     /// ends, rather than opening there unseen. The Mac's main window stays usable beside the session's.
     var behindSession: Bool { model.sessionOpen && !Platform.isMac }
-
-    /// Maths brings its writing segment with it, as on Today.
-    static func session(of domain: Domain, settings: MindSettings?) -> [Domain] {
-        domain == .maths && settings?.has(.writing) == true ? [.maths, .writing] : [domain]
-    }
 
     /// On the Mac a session started from the menu bar opens its window here, since the main window
     /// (which opens it otherwise) may be closed; so does the unlock, when the session waits for it.

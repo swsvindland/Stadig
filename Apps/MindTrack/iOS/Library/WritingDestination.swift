@@ -86,7 +86,7 @@ struct WritingDestination: View {
             .toolbar {
                 if model.settings?.has(.writing) == true {
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Write Now", systemImage: "square.and.pencil") { model.startSession([.writing]) }
+                        Button("Write Now", systemImage: "square.and.pencil") { model.startBlock(.writing) }
                             .disabled(model.sessionOpen)
                             .help("Start a writing session")
                             .accessibilityIdentifier("writingList.writeNow")

@@ -73,7 +73,9 @@ struct SimulatedWriterTests {
         for offset in 0..<140 {
             let day = Fixtures.monday.adding(days: offset)
             let state = store.state(on: day)
-            guard let plan = SessionPlanner.today(state, catalogs: catalogs) else { continue }
+            guard let plan = SessionPlanner.checkIns(state, catalogs: catalogs).first ?? SessionPlanner.today(state, catalogs: catalogs) else {
+                continue
+            }
             plans.append((day, plan))
             var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
             var now = state.now

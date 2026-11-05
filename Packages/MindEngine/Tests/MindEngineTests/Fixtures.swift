@@ -171,12 +171,15 @@ struct Store {
     var comparisons: [BlindComparison] = []
     var lifeModes: [LifeModePeriod] = []
     var calendar: SystemCalendar?
+    var weekSettings: WeekSettings?
+    var commitments: WeekCommitments = .none
 
     func state(on day: Day, at hour: Double = 18) -> StudyState {
         StudyState(
             settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
             pieces: pieces, comparisons: comparisons,
-            lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600))
+            lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600), weekSettings: weekSettings,
+            commitments: commitments)
     }
 
     mutating func save(_ run: StudyRun) {
@@ -194,15 +197,51 @@ struct Store {
         comparisons += run.newComparisons
     }
 
-    /// Runs today's planned session, if there is one, with the student.
+    /// Runs the next block of today, if there is one, with the student.
     @discardableResult
     mutating func study(on day: Day, student: inout Student, deck: LanguageDeck) -> StudyRun? {
         let state = state(on: day)
-        guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { return nil }
+        let catalogs = Fixtures.catalogs(deck)
+        // A check-in due today goes first, when it's fresh, as a person would take it.
+        let checkIn = state.phase.isPaused ? nil : SessionPlanner.checkIns(state, catalogs: catalogs).first
+        guard let plan = checkIn ?? SessionPlanner.today(state, catalogs: catalogs) else { return nil }
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         _ = student.run(&run, from: state.now)
         save(run)
         return run
+    }
+
+    /// Takes every check-in due today, with the student.
+    @discardableResult
+    mutating func takeCheckIns(on day: Day, student: inout Student, deck: LanguageDeck) -> [StudyRun] {
+        let catalogs = Fixtures.catalogs(deck)
+        var runs: [StudyRun] = []
+        for plan in SessionPlanner.checkIns(state(on: day), catalogs: catalogs) {
+            let state = state(on: day, at: 9 + Double(runs.count))
+            var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
+            _ = student.run(&run, from: state.now)
+            save(run)
+            runs.append(run)
+        }
+        return runs
+    }
+
+    /// Runs every block left today, in order, with the student. Each block is planned as the day
+    /// stands when it starts, so the second sees what the first changed.
+    @discardableResult
+    mutating func studyAll(on day: Day, student: inout Student, deck: LanguageDeck) -> [StudyRun] {
+        var runs: [StudyRun] = []
+        let today = state(on: day)
+        guard !today.phase.isPaused else { return [] }
+        for block in WeekPlanner.layout(today, settings: today.week).blocks(on: day) where !block.done {
+            let state = state(on: day, at: 18 + Double(runs.count))
+            let plan = SessionPlanner.block(block.domain, state: state, catalogs: Fixtures.catalogs(deck))
+            var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
+            _ = student.run(&run, from: state.now)
+            save(run)
+            runs.append(run)
+        }
+        return runs
     }
 }
 

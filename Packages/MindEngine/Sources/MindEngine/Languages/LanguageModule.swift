@@ -43,18 +43,15 @@ enum LanguageModule: SubjectModule {
                 rest,
             ]
         }
-        // A Secondary course's short block: one skill check at most, and new words paced for the
-        // block rather than a whole session.
-        let secondary = state.settings.mode(domain) == .secondary
-        let checks = Array(skillChecks(domain, state: state, catalogs: catalogs).prefix(secondary ? 1 : skillChecksPerSession))
+        let checks = Array(skillChecks(domain, state: state, catalogs: catalogs).prefix(skillChecksPerSession))
         if !checks.isEmpty {
             notes.append(
                 "\(domain.label): measuring \(ListFormatter.localizedString(byJoining: checks.map { $0.title.lowercased() })) for the first time.")
         }
         let remaining = max(5, minutes - checks.map(\.minutes).reduce(0, +))
         let learn = learnPart(
-            domain, minutes: Int((Double(remaining) * 0.55).rounded()), session: secondary ? minutes : state.settings.schedule.minutes,
-            state: state, catalogs: catalogs, notes: &notes)
+            domain, minutes: Int((Double(remaining) * 0.55).rounded()), session: state.settings.schedule.minutes, state: state, catalogs: catalogs,
+            notes: &notes)
         let known = state.cards.values.filter { $0.domain == domain && $0.memory != nil && !$0.key.isKana }.count
         if known < practiceFrom && LanguagePlan.frontier(state.tests, language) < 100 {
             var all = learn
@@ -198,7 +195,10 @@ enum LanguageModule: SubjectModule {
         return catalogs.deck(language)?.word(id) != nil
     }
 
-    static func reviewSeconds(_ card: MemoryCard) -> Double { card.key.isKana ? 5 : 8 }
+    /// Seconds a word's review usually takes.
+    static let wordReviewSeconds = 8.0
+
+    static func reviewSeconds(_ card: MemoryCard) -> Double { card.key.isKana ? 5 : wordReviewSeconds }
 
     /// The four skills, listening and speaking weighted most, on every day a skill was tested once
     /// they've all been measured; before that, vocabulary on its log scale. Self-rated episodes and

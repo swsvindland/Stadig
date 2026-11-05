@@ -104,7 +104,7 @@ enum Platform {
     }
 
     /// Segmented pickers size each segment to its label rather than splitting the width evenly, so
-    /// "Main, Secondary, Maintenance, Off" fits a phone without "Maintena…". The Mac's segmented
+    /// Four short choices fit a phone without "Maintena…". The Mac's segmented
     /// control already sizes to its labels.
     static func styleControls() {
         #if canImport(UIKit)

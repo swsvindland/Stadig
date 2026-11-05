@@ -18,13 +18,6 @@ struct DesktopTests {
         #expect(AppTab.allCases.map(\.title) == ["Today", "Plan", "Progress", "Shelf", "Writing", "Courses"])
     }
 
-    @Test func studyAnywayBringsMathsItsWritingSegment() {
-        let both = TestApp.settings([.maths, .writing])
-        #expect(MindCommands.session(of: .maths, settings: both) == [.maths, .writing])
-        #expect(MindCommands.session(of: .writing, settings: both) == [.writing])
-        #expect(MindCommands.session(of: .maths, settings: TestApp.settings([.maths])) == [.maths])
-    }
-
     @Test func draftsAreListedNewestFirstWithTheirExercise() async throws {
         let folder = TestApp.folder().appending(path: "Drafts", directoryHint: .isDirectory)
         let drafts = WritingDrafts(folder: folder)

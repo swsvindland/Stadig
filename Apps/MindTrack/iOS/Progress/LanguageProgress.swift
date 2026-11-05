@@ -19,7 +19,7 @@ struct LanguageProgress: View {
                 DomainBadge(domain: summary.domain)
                 Text(summary.domain.label).font(.headline)
                 Spacer()
-                if summary.mode != .focus { Pill(text: summary.mode.label, color: .secondary) }
+                if summary.mode == .maintenance { Pill(text: "Reviews only", color: .secondary) }
             }
             SkillLevels(domain: summary.domain, state: state)
             if let latest = series.last, series.count >= 2 || LanguageSkills.levels(summary.domain, tests: state.tests).count >= 3 {
@@ -46,7 +46,7 @@ struct LanguageProgress: View {
             } else if summary.domain == .japanese, state.settings.readsKana == false {
                 Text("\(summary.kanaLearned) of \(KanaTable.all.count) kana in. The word test comes once hiragana is.").foregroundStyle(.secondary)
             } else {
-                Text("The word test comes in the first session.").foregroundStyle(.secondary)
+                Text("The word test comes in its first block.").foregroundStyle(.secondary)
             }
             LabeledContent("Words learned here", value: "\(summary.wordsLearned)")
             if let retention = summary.retention { LabeledContent("Recall on reviews", value: Format.percent(retention)) }

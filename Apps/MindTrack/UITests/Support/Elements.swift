@@ -22,9 +22,20 @@ extension XCUIApplication {
         XCTAssertTrue(element.exists, "\(element) not found after \(swipes) swipes", file: file, line: line)
         return element
     }
+
+    /// Steps a course's amount down until it's off.
+    @MainActor
+    func turnOff(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
+        let stepper = scroll(to: steppers[identifier], file: file, line: line)
+        for _ in 0...8 where !stepper.spoken.contains("Off") { stepper.buttons.element(boundBy: 0).tap() }
+    }
 }
 
 extension XCUIElement {
+    /// What VoiceOver reads: the label, then the value (a LabeledContent row puts its detail there).
+    @MainActor
+    var spoken: String { [label, value as? String].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ") }
+
     /// Waits for the element to go, failing the test if it stays.
     @MainActor
     func waitToDisappear(timeout: TimeInterval = 20, file: StaticString = #filePath, line: UInt = #line) {

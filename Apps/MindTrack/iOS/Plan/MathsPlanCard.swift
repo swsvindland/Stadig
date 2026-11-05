@@ -37,11 +37,11 @@ struct MathsPlanCard: View {
 
     func footnote(levels: [StrandLevel], main: MathsStrand?) -> String {
         let others = levels.map(\.strand).filter { $0 != .numeracy }
-        guard let main else { return "A few minutes of timed numeracy opens every maths session." }
+        guard let main else { return "A few minutes of timed numeracy opens every maths block." }
         if others.count > 1 {
-            return "Timed numeracy opens every maths session. \(main.label) gets two sessions in three, as the one you chose first."
+            return "Timed numeracy opens every maths block. \(main.label) gets two blocks in three, as the one you chose first."
         }
-        return "Timed numeracy opens every maths session; the rest goes to \(main.label.lowercased())."
+        return "Timed numeracy opens every maths block; the rest goes to \(main.label.lowercased())."
     }
 }
 
@@ -57,7 +57,7 @@ private struct StrandRow: View {
                 Text(level.strand.label).font(.subheadline.weight(.semibold))
                 if focus { Pill(text: "Focus", color: .accentColor) }
                 Spacer()
-                Text(placed ? "Working at \(level.working)" : "Placed in its first session").monospacedDigit().foregroundStyle(.secondary)
+                Text(placed ? "Working at \(level.working)" : "Placed in its first block").monospacedDigit().foregroundStyle(.secondary)
             }
             LevelMeter(level: placed ? level.working : 0)
             if let numeracy {

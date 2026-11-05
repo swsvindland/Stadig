@@ -10,28 +10,6 @@ struct PlanTests {
     let monday = Fixtures.monday
     let deck = Fixtures.deck()
 
-    @Test("the split: five days rotate Japanese, maths with writing, and reading, never the same two days running")
-    func split() {
-        let week = Split.week(starting: monday, settings: Fixtures.settings())
-        let days = week.keys.sorted()
-        #expect(days.count == 5)
-        let groups = days.map { week[$0]! }
-        #expect(groups.filter { $0 == [.japanese] }.count == 2)
-        #expect(groups.filter { $0 == [.maths, .writing] }.count >= 1)
-        #expect(groups.filter { $0 == [.reading] }.count >= 1)
-        #expect(zip(groups, groups.dropFirst()).allSatisfy { $0 != $1 }, "\(groups)")
-
-        // A lagging domain gets more of the week.
-        let prioritised = Split.week(starting: monday, settings: Fixtures.settings(), priorities: [.reading])
-        #expect(prioritised.values.filter { $0 == [.reading] }.count >= 2)
-
-        // Two days with three groups: every group still comes round within two weeks.
-        let two = Fixtures.settings(days: 2)
-        let first = Set(Split.week(starting: monday, settings: two).values)
-        let second = Set(Split.week(starting: monday.adding(weeks: 1), settings: two).values)
-        #expect(first.union(second).count == 3, "\(first) \(second)")
-    }
-
     @Test("on its own: two weeks of assessment, five weeks of blocks, a review week, and a check-in at its end")
     func calendar() {
         func phase(_ offset: Int, calendar: SystemCalendar? = nil, modes: [LifeModePeriod] = []) -> StudyPhase {
@@ -101,6 +79,8 @@ struct PlanTests {
         ]
         let word = deck.word(100_100)!
         store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 1, at: monday.date()), introduced: monday.date())
+        // Judged by the old rule, a day at a time, to show the crunch days leaving it.
+        store.weekSettings = WeekSettings(since: monday.adding(weeks: 60))
         store.lifeModes = [
             LifeModePeriod(
                 kind: .crunch(CrunchDials(minutesAvailable: 0)), start: monday.adding(days: 1),
@@ -116,6 +96,8 @@ struct PlanTests {
     @Test("Discipline: one missed session in four weeks is in the zone; there's no credit above it")
     func discipline() {
         var store = Store(settings: Fixtures.settings())
+        // Days from before blocks keep their one-a-day rule.
+        store.weekSettings = WeekSettings(since: monday.adding(weeks: 60))
         let today = monday.adding(days: 34)
         let studyDays = Set(store.settings.schedule.studyDays)
         var missed = false
@@ -312,6 +294,7 @@ extension PlanTests {
     @Test("Discipline judges each day by the schedule in force then: more days a week doesn't rescore the weeks before")
     func scheduleChange() throws {
         var store = Store(settings: Fixtures.settings(days: 3))
+        store.weekSettings = WeekSettings(since: monday.adding(weeks: 60))
         let threeDays = Set(store.settings.schedule.studyDays)
         #expect(threeDays == [.monday, .wednesday, .friday])
         for offset in 0...37 where threeDays.contains(monday.adding(days: offset).weekday) {
@@ -329,33 +312,10 @@ extension PlanTests {
         let state = store.state(on: change.adding(days: 1))
         let score = Analyst.discipline(state)
         #expect(score.rate == 1 && score.planned >= 10, "\(score)")
-        // Tuesday was a rest day then, though it's a study day now.
-        let week = Analyst.week(state)
-        #expect(week.first { $0.day == monday.adding(days: 36) }?.status == .rest, "\(week.map(\.status))")
-        #expect(week.first { $0.day == monday.adding(days: 35) }?.status == .done)
-
         // Without the old schedule, every Tuesday and Thursday before would read as missed.
         var forgotten = state
         forgotten.settings.earlierSchedules = []
         #expect((Analyst.discipline(forgotten).rate ?? 1) < 0.8)
-    }
-
-    @Test("the week shows the days before a schedule change as that schedule had them, as Discipline counts them")
-    func weekAcrossScheduleChange() {
-        var store = Store(settings: Fixtures.settings(days: 3))
-        let old = store.settings.schedule
-        // From the second week's Thursday: Tuesdays and Thursdays.
-        store.settings.schedule = StudySchedule(daysPerWeek: 2, preferredDays: [.tuesday, .thursday])
-        store.settings.recordScheduleChange(from: old, on: monday.adding(days: 10))
-        let state = store.state(on: monday.adding(days: 11))
-        let week = Analyst.week(state)
-        func day(_ offset: Int) -> StudyDay? { week.first { $0.day == monday.adding(days: offset) } }
-        #expect(day(7)?.status == .missed && day(7)?.domains.isEmpty == false, "Monday was a study day then: \(week.map(\.status))")
-        #expect(day(8)?.status == .rest && day(8)?.domains.isEmpty == true, "Tuesday was a rest day then")
-        #expect(day(9)?.status == .missed && day(10)?.status == .missed && day(11)?.status == .rest)
-        // Monday, Wednesday and Friday of the first week, then Monday, Wednesday and Thursday.
-        let discipline = Analyst.discipline(state)
-        #expect(discipline.planned == 6 && discipline.completed == 0, "\(discipline)")
     }
 
     @Test("a due card whose word left the catalog isn't counted, planned for or asked")
@@ -502,7 +462,7 @@ extension PlanTests {
         #expect(learn.items == slipping.count && notes.contains { $0.contains("70%") }, "\(learn) \(notes)")
     }
 
-    @Test("Today's actions carry what they start: minutes of reviews, the missed session's domains, the episode's language")
+    @Test("Today's actions carry what they start, and none offers reviews across courses outside a crunch")
     func actionCommands() {
         var store = Store(settings: Fixtures.settings())
         store.sessions = [
@@ -530,13 +490,10 @@ extension PlanTests {
                 switch action.command {
                 case .extraReview(let minutes): #expect(minutes == (action.id == "pile" ? 10 : 5), "\(action.id)")
                 case .episode(let language): #expect(action.id == "episode.\(language.domain.rawValue)" && language == .japanese)
-                case .catchUp(let domains):
-                    let yesterday = analysis.week.first { $0.day == state.today.adding(days: -1) }
-                    #expect(!domains.isEmpty && domains == yesterday?.domains, "\(domains)")
                 case .pickBook, .stalledBook: break
                 }
             }
         }
-        #expect(seen.isSuperset(of: [.extraReview, .episode, .catchUp]), "\(seen)")
+        #expect(seen.contains(.episode) && !seen.contains(.extraReview), "\(seen)")
     }
 }

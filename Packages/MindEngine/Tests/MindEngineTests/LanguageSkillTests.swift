@@ -89,7 +89,10 @@ struct Driver {
     @discardableResult
     mutating func study(_ store: inout Store, on day: Day, deck: LanguageDeck) -> StudyRun? {
         let state = store.state(on: day)
-        guard let plan = SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)) else { return nil }
+        let catalogs = Fixtures.catalogs(deck)
+        guard let plan = SessionPlanner.checkIns(state, catalogs: catalogs).first ?? SessionPlanner.today(state, catalogs: catalogs) else {
+            return nil
+        }
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         self.run(&run, from: state.now)
         store.save(run)
@@ -349,7 +352,7 @@ struct LanguageSessionTests {
 
     func practice(_ store: Store, on day: Day) throws -> (StudyRun, Driver) {
         let state = store.state(on: day)
-        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
+        let plan = SessionPlanner.block(.spanish, state: state, catalogs: Fixtures.catalogs(deck))
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         var driver = Driver(student: Student(vocabulary: 400, mathsLevel: 0, writingLevel: 0, deck: deck))
         driver.run(&run, from: state.now)
@@ -360,7 +363,7 @@ struct LanguageSessionTests {
     func practiceKinds() throws {
         let store = store(known: 120)
         let day = Fixtures.monday.adding(days: 1)
-        let plan = try #require(SessionPlanner.today(store.state(on: day), catalogs: Fixtures.catalogs(deck)))
+        let plan = SessionPlanner.block(.spanish, state: store.state(on: day), catalogs: Fixtures.catalogs(deck))
         #expect(plan.parts.map { "\($0.kind)" }.suffix(2) == ["learn", "sentences"], "\(plan.parts)")
         #expect(plan.parts.last?.title == "Listening and speaking")
         let (run, driver) = try practice(store, on: day)
@@ -381,7 +384,7 @@ struct LanguageSessionTests {
     func speakingOff() throws {
         let store = store(known: 120, speaking: false)
         let day = Fixtures.monday.adding(days: 1)
-        let plan = try #require(SessionPlanner.today(store.state(on: day), catalogs: Fixtures.catalogs(deck)))
+        let plan = SessionPlanner.block(.spanish, state: store.state(on: day), catalogs: Fixtures.catalogs(deck))
         #expect(plan.parts.last?.title == "Listening and reading")
         let (_, driver) = try practice(store, on: day)
         #expect(!driver.tasks.contains { $0.mode == .say })
@@ -394,7 +397,7 @@ struct LanguageSessionTests {
     func cantSpeak() throws {
         let store = store(known: 120)
         let state = store.state(on: Fixtures.monday.adding(days: 1))
-        let plan = try #require(SessionPlanner.today(state, catalogs: Fixtures.catalogs(deck)))
+        let plan = SessionPlanner.block(.spanish, state: state, catalogs: Fixtures.catalogs(deck))
         var run = StudyRun(plan: plan, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
         var driver = Driver(student: Student(vocabulary: 400, mathsLevel: 0, writingLevel: 0, deck: deck))
         driver.speak = { _ in .skip }
@@ -408,13 +411,16 @@ struct LanguageSessionTests {
     @Test("the four skills are measured once the vocabulary test finds enough words, two at a time, then at every check-in")
     func skillChecks() throws {
         var store = store(known: 120, skills: false)
-        let first = try #require(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck)))
+        let first = SessionPlanner.block(.spanish, state: store.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck))
         let tests: [TestKind] = first.parts.compactMap { if case .test(let kind) = $0.kind { kind } else { nil } }
         #expect(tests == [.listening, .speaking], "\(first.parts.map(\.kind))")
         var student = Student(vocabulary: 400, mathsLevel: 0, writingLevel: 0, deck: deck)
-        store.study(on: Fixtures.monday.adding(days: 1), student: &student, deck: deck)
+        let state = store.state(on: Fixtures.monday.adding(days: 1))
+        var run = StudyRun(plan: first, state: state, catalogs: Fixtures.catalogs(deck), now: state.now)
+        _ = student.run(&run, from: state.now)
+        store.save(run)
         #expect(Set(store.tests.map(\.test)).isSuperset(of: [.listening, .speaking]))
-        let second = try #require(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 2)), catalogs: Fixtures.catalogs(deck)))
+        let second = SessionPlanner.block(.spanish, state: store.state(on: Fixtures.monday.adding(days: 2)), catalogs: Fixtures.catalogs(deck))
         let secondTests: [TestKind] = second.parts.compactMap { if case .test(let kind) = $0.kind { kind } else { nil } }
         #expect(secondTests == [.languageReading, .languageWriting])
         let checkIn = LanguageModule.checkInParts(
@@ -423,7 +429,7 @@ struct LanguageSessionTests {
         // Not before the vocabulary test finds 150 words.
         var beginner = self.store(known: 10, skills: false)
         beginner.tests[0].score = 60
-        let early = try #require(SessionPlanner.today(beginner.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck)))
+        let early = SessionPlanner.block(.spanish, state: beginner.state(on: Fixtures.monday.adding(days: 1)), catalogs: Fixtures.catalogs(deck))
         #expect(!early.parts.contains { if case .test = $0.kind { true } else { false } })
     }
 

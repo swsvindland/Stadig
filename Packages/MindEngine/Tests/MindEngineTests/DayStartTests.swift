@@ -30,7 +30,10 @@ struct DayStartTests {
         StudyState(settings: settings(dayStart: dayStart), sessions: [lateSession], today: Day(now, dayStartsAt: dayStart), now: now)
     }
 
-    func status(_ day: Day, _ state: StudyState) -> StudyDay.Status? { Analyst.week(state).first { $0.day == day }?.status }
+    /// The days a state's finished blocks count for.
+    func blockDays(_ state: StudyState) -> [Day] {
+        WeekPlanner.finished(state, settings: state.week, monday: state.today.startOfWeek, timeZone: .current).map(\.day)
+    }
 
     @Test("a session after midnight counts for the evening before, and the next day's still waits")
     func lateSessionIsTheEvenings() {
@@ -39,21 +42,19 @@ struct DayStartTests {
         // Just after it, the day hasn't turned over yet: it's still Friday, and Friday's done.
         let late = state(dayStart: 4, now: saturday.at(hour: 0, minute: 58))
         #expect(late.today == friday)
-        #expect(status(friday, late) == .done)
-        // Saturday morning: Friday stays done and Saturday's own session is still to do.
+        #expect(blockDays(late) == [friday])
+        // Saturday morning: it's still Friday's.
         let morning = state(dayStart: 4, now: saturday.at(hour: 9, minute: 0))
         #expect(morning.today == saturday)
-        #expect(status(friday, morning) == .done)
-        #expect(status(saturday, morning) == .today)
+        #expect(blockDays(morning) == [friday])
         #expect(morning.sessions.allSatisfy { $0.day(startingAt: morning.dayStart) != morning.today })
     }
 
-    @Test("with days starting at midnight, the same session is Saturday's and Friday is missed")
+    @Test("with days starting at midnight, the same session is Saturday's")
     func midnightStartKeepsTheCalendarDay() {
         let morning = state(dayStart: 0, now: saturday.at(hour: 9, minute: 0))
         #expect(morning.today == saturday)
-        #expect(status(friday, morning) == .missed)
-        #expect(status(saturday, morning) == .done)
+        #expect(blockDays(morning) == [saturday])
     }
 
     @Test("a card due in the small hours is due that evening; a test taken then counts that evening")
