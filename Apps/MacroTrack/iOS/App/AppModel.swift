@@ -293,7 +293,7 @@ final class AppModel {
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
     /// Wakes the model when a food's time comes, and when the day or the clock changes.
-    @ObservationIgnored private var foodClock: FoodClock?
+    @ObservationIgnored private(set) var foodClock: FoodClock?
     /// Whether the analysis and the suggestions are worked out off the main thread: on, once launch
     /// is done, so a tap never waits on years of log. Off in tests, where the numbers are there as
     /// soon as a write returns, and for launch itself, so the first frame has them.
@@ -458,10 +458,16 @@ final class AppModel {
 
     /// Catches up with the store and the calendar, for the ways in that don't make the scene active
     /// (Siri, Shortcuts, a notification's button), where `today` can still be yesterday.
-    func refreshDay() {
+    func refreshDay(now: Date = Date()) {
         reloadIfChanged()
         readShared()
-        if today != .today || foodLog.isStale(at: Date()) { recompute() }
+        if today != .today || foodLog.isStale(at: now) {
+            recompute(now: now)
+        } else {
+            // The timer counts seconds, not the clock: after a clock change it would wake at the wrong
+            // time, and waking ahead of the food, with nothing due, would leave none.
+            foodClock?.arm(for: foodLog.nextChange)
+        }
     }
 
     /// New food saved and put in its place, as the store holds it (to the millisecond, which a
@@ -553,14 +559,13 @@ final class AppModel {
             supplementLogs: supplementLogs, water: water, fasts: fasts, today: today, now: now)
     }
 
-    func recompute() {
+    func recompute(now: Date = Date()) {
         let interval = LogPath.begin("recompute")
         defer { LogPath.end(interval) }
         if today != .today {
             selectedDay = .today
             today = .today
         }
-        let now = Date()
         // Every recompute reads the clock, so this is where a food's time passing is noticed.
         if foodLog.isStale(at: now) {
             foodLog = foodLog.at(now)

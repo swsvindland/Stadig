@@ -78,8 +78,9 @@ public struct FoodLog: Hashable, Sendable {
     /// When the next food's time comes, and with it the next change to `eaten`.
     public var nextChange: Date? { upcoming.map(\.date).min() }
 
-    /// Whether a food's time has passed since this split.
-    public func isStale(at now: Date) -> Bool { nextChange.map { $0 <= now } ?? false }
+    /// Whether this split no longer holds: a food's time has passed since it, or the clock has been
+    /// set back behind it, which can put food already counted ahead of now again.
+    public func isStale(at now: Date) -> Bool { now < self.now || (nextChange.map { $0 <= now } ?? false) }
 
     /// The same log split at another moment.
     public func at(_ now: Date) -> FoodLog { isSorted ? FoodLog(sorted: all, now: now) : FoodLog(all, now: now) }

@@ -95,6 +95,38 @@ struct FoodLogAppTests {
         #expect(model.entries.count == 1)
     }
 
+    @Test func aClockChangeSetsTheTimerAgain() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let date = laterDate(model)
+        model.log([food("Dinner", kcal: 800, at: date)])
+        let clock = try #require(model.foodClock)
+        // What a clock set back leaves: the old timer woke ahead of the food, and found nothing due.
+        clock.arm(for: nil)
+
+        model.refreshDay()
+
+        #expect(same(clock.armedFor, date))
+    }
+
+    @Test func aClockSetBackPutsFoodAheadAgainAndSetsTheTimer() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let date = laterDate(model)
+        model.log([food("Dinner", kcal: 800, at: date)])
+        // The clock reaches dinner, and it's counted, with nothing left to wait for.
+        model.refreshDay(now: date.addingTimeInterval(60))
+        #expect(model.foodLog.upcoming.isEmpty)
+        let clock = try #require(model.foodClock)
+        #expect(clock.armedFor == nil)
+
+        // Set back before dinner, nothing's due, but dinner hasn't happened any more.
+        model.refreshDay(now: date.addingTimeInterval(-60))
+
+        #expect(model.foodLog.upcoming.map(\.name) == ["Dinner"])
+        #expect(same(clock.armedFor, date))
+    }
+
     @Test func removingALaterFoodStopsTheTimer() throws {
         let model = TestEnvironment().model()
         model.onboard()

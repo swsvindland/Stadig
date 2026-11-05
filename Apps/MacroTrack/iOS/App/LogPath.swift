@@ -40,6 +40,8 @@ nonisolated final class FoodClock {
     private let fire: @MainActor @Sendable () -> Void
     private var observers: [NSObjectProtocol] = []
     private var wake: Task<Void, Never>?
+    /// The date the timer was last set for.
+    private(set) var armedFor: Date?
 
     init(fire: @escaping @MainActor @Sendable () -> Void) {
         self.fire = fire
@@ -55,6 +57,7 @@ nonisolated final class FoodClock {
     func arm(for date: Date?) {
         wake?.cancel()
         wake = nil
+        armedFor = date
         guard let date else { return }
         let fire = fire
         wake = Task { @MainActor in

@@ -182,6 +182,13 @@ struct FoodLogTests {
             updatedAt: date)
     }
 
+    @Test func aClockSetBackLeavesASplitStale() {
+        let log = FoodLog([lunch, dinner], now: at(19, 0))
+        #expect(log.upcoming.isEmpty)
+        #expect(log.isStale(at: at(18, 0)))
+        #expect(log.at(at(18, 0)).upcoming.map(\.id) == [dinner.id])
+    }
+
     @Test func nextMealSkipsADrink() {
         var coffee = dinner
         coffee.date = at(15, 0)
