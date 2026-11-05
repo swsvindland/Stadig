@@ -10,6 +10,8 @@ import SystemCore
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
+    /// A food's open over the pane: no camera behind it, reading what it sees for nobody.
+    var covered = false
     @State private var scanning = true
     @State private var manual = ""
     @State private var missing: String?
@@ -37,6 +39,8 @@ struct BarcodeLogView: View {
                 ProgressView("Reading the label…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let missing {
                 notFound(missing)
+            } else if covered {
+                Color.clear
             } else if LiveLabelScanner.isAvailable && scanning {
                 LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
                     .id(scanID)

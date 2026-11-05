@@ -1009,9 +1009,10 @@ final class AppModel {
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
     /// open: only one shows at a time. A screen's own sheet (an entry being edited) gives way by
-    /// itself when one of these presents: SwiftUI replaces it (LoggingUITests checks that).
+    /// itself when one of these presents: SwiftUI replaces it (LoggingUITests checks that). Where
+    /// the logger's a pane it isn't a sheet, and what's in it stays under whatever opens.
     func dismissSheets() {
-        logger = nil
+        if !usesSidebar { logger = nil }
         showWeighIn = false
         showFast = false
         showSupplements = false

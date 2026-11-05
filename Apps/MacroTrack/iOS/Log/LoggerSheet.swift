@@ -198,7 +198,7 @@ struct LoggerContent: View {
     var method: some View {
         switch session.mode {
         case .search: SearchLogView(session: session)
-        case .scan: BarcodeLogView(session: session)
+        case .scan: BarcodeLogView(session: session, covered: covered)
         case .camera, .photoLibrary: PhotoLogView(useCamera: session.mode == .camera, session: session)
         case .describe: DescribeLogView(session: session)
         case .quickAdd: QuickAddView(close: { session.backToSearch() })

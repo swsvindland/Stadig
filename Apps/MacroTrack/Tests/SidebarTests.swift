@@ -85,6 +85,27 @@ struct SidebarTests {
         #expect(model.loggerRequest.mode == .scan)
     }
 
+    /// Where it's a pane the logger isn't a sheet to clear away: a weigh-in from the menu or a link
+    /// opens over it, with its review or what's typed there underneath.
+    @Test func closingSheetsLeavesThePane() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.usesSidebar = true
+        model.openLogger(.describe)
+
+        model.dismissSheets()
+
+        #expect(model.logger == .describe)
+    }
+
+    @Test func closingSheetsClosesAnIPhonesLogger() {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.openLogger(.describe)
+        model.dismissSheets()
+        #expect(model.logger == nil)
+    }
+
     @Test func aPhotoDroppedOnAPhotoLoggerIsHeard() {
         let model = TestEnvironment().model()
         model.onboard()
