@@ -91,12 +91,14 @@ struct EntryEditor: View {
     /// Set where the editor sits beside the log (an inspector) rather than in a sheet: what closes it.
     var close: (() -> Void)?
     var saveTo: ((FoodEntry) -> Void)?
+    /// Whether it can be picked out to take elsewhere; see `AmountPanel.canTake`.
+    var canTake = true
 
     var body: some View {
         if let close {
-            AmountPanel(request: .edit(entry), saveTo: saveTo, close: close)
+            AmountPanel(request: .edit(entry), saveTo: saveTo, canTake: canTake, close: close)
         } else {
-            AmountPanel(request: .edit(entry), saveTo: saveTo, close: { dismiss() })
+            AmountPanel(request: .edit(entry), saveTo: saveTo, canTake: canTake, close: { dismiss() })
                 .amountSheet(editing: true)
         }
     }

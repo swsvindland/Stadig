@@ -13,6 +13,17 @@ nonisolated final class AmountUITests: XCTestCase {
         app.element("amount.panel").waitToAppear()
     }
 
+    /// Adds a banana with its +, then opens it from the meal under the search.
+    @MainActor
+    func openABananaFromTheMeal(_ app: XCUIApplication) {
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.addFood").waitToAppear().tap()
+        app.element("logger.meal").waitToAppear().tap()
+        app.element("mealSheet.entry").waitToAppear().tap()
+    }
+
     /// Adds a banana with its + and leaves the logger, where it covers the log.
     @MainActor
     func logABanana(_ app: XCUIApplication) {
@@ -50,6 +61,34 @@ nonisolated final class AmountUITests: XCTestCase {
     func quantity(_ app: XCUIApplication) -> String {
         let quantity = app.element("amount.quantity").waitToAppear()
         return ((quantity.value as? String) ?? "").split(separator: " ").first.map(String.init) ?? ""
+    }
+
+    /// The meal sheet stops at half height for its own list. A food's amount needs more than that:
+    /// the keypad and Save take it all, with nothing left to show the amount being typed.
+    @MainActor
+    func testAFoodsAmountFromTheMealIsAllInView() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABananaFromTheMeal(app)
+
+        let quantity = app.element("amount.quantity").waitToAppear()
+        app.shot("amount-from-meal")
+        XCTAssertTrue(quantity.isHittable, "the amount being typed is in view")
+        XCTAssertTrue(app.element("entryEditor.save").isHittable, "and so is Save")
+        XCTAssertTrue(app.element("entryEditor.delete").isHittable, "and the time and Delete below the numbers")
+    }
+
+    /// Taking a food elsewhere needs the Log tab behind it, for the bar and the hours' arrows. The
+    /// meal sheet is over the logger, so it doesn't offer it.
+    @MainActor
+    func testTheMealSheetDoesntOfferMoveAndCopy() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABananaFromTheMeal(app)
+
+        app.element("entryEditor.save").waitToAppear()
+        XCTAssertFalse(app.element("entryEditor.move").exists)
+        XCTAssertFalse(app.element("entryEditor.copy").exists)
     }
 
     /// Foods already logged keep their numbers, so a correction made from one leaves Save saying

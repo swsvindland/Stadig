@@ -11,6 +11,9 @@ struct AmountPanel: View {
     let request: AmountRequest
     /// Hands a changed entry back rather than saving it: a food of a saved meal, which only has an amount.
     var saveTo: ((FoodEntry) -> Void)?
+    /// Whether Move and Copy are offered. They hand the food to the Log tab's bar and hours, so
+    /// they're no use over the logger, where neither can be reached.
+    var canTake = true
     /// Takes the amount chosen for a `.pick`.
     var picked: ((Double, PortionUnit) -> Void)?
     /// The food's numbers were corrected here, for whoever holds a copy of it.
@@ -57,7 +60,7 @@ struct AmountPanel: View {
                     NutrientSummary(nutrients: nutrients)
                     if isEditing, !isMealFood {
                         timeRow
-                        takeRow
+                        if canTake { takeRow }
                     }
                     if showingNutrients, let food, let unit = amount.unit, let count = amount.count {
                         PortionNutrients(food: food, count: count, unit: unit)

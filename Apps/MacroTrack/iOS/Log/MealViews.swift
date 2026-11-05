@@ -99,9 +99,9 @@ struct MealSheet: View {
             }
             .navigationTitle(moment.map { Self.title($0, state: model.saveState(of: $0.entries)) } ?? "This meal")
             .inlineTitle()
-            .navigationDestination(item: $editing) { entry in
-                EntryEditor(entry: entry, close: { editing = nil }).navigationTitle("Edit")
-            }
+            // A sheet of its own: pushed here it's held to this one's half height, where the keypad
+            // and Save leave no room for the amount being typed.
+            .sheet(item: $editing) { entry in EntryEditor(entry: entry, canTake: false) }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }.accessibilityIdentifier("mealSheet.done")
