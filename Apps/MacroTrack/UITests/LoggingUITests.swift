@@ -222,6 +222,29 @@ nonisolated final class LoggingUITests: XCTestCase {
         XCTAssertFalse(app.element("review.log").waitForExistence(timeout: 2), "logging it ended it")
     }
 
+    /// Finding a food for the review, with the query cleared: what's offered is foods, and a + on one
+    /// answers the review rather than logging it to the day.
+    @MainActor
+    func testClearingTheSearchWhileFindingAFoodStillAnswersTheReview() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedReview", "-log", "describe"])
+        let log = app.element("review.log").waitToAppear()
+        XCTAssertTrue(log.label.hasPrefix("Log 1 food"), log.label)
+        app.buttons.matching(NSPredicate(format: "label == 'Change food'")).element(boundBy: 1).tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Search for'")).firstMatch.waitToAppear().tap()
+        app.element("logger.backToReview").waitToAppear()
+
+        let search = app.foodSearchField()
+        if XCUIApplication.isPad { app.element("logger.clearSearch").tap() } else { search.buttons.firstMatch.tap() }
+        let again = app.element("logger.logAgain").waitToAppear()
+        XCTAssertFalse(app.element("logger.savedMeal").exists, "a meal can't be one food")
+        XCTAssertFalse(app.element("logger.sameAsUsual").exists, "nor can what was eaten together")
+        again.tap()
+
+        XCTAssertTrue(app.element("review.log", labelContaining: "Log 2 foods").waitToAppear().exists)
+        XCTAssertFalse(app.element("toast.message").exists, "nothing went on the day")
+    }
+
     /// From the review, the pencil on its food's amount: 300 kcal corrected to 360.
     @MainActor
     func correctTheFoodInTheReview(_ app: XCUIApplication) {

@@ -485,12 +485,13 @@ struct SearchLogView: View {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 // Saved meals and Log Again follow the time being logged at: lunch for noon, even
                 // when it's caught up at 9 PM. A usual moment that is a saved meal is in My Meals.
-                if let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
+                // Finding a food for a review, only what's one food can be its answer.
+                if session.finding == nil, let usual = model.loggerUsual, SavedMeals.meal(for: usual.entries, in: model.savedMeals) == nil {
                     Section("Same as \(Format.relative(Day(usual.start), today: model.today))") {
                         UsualMomentRow(moment: usual)
                     }
                 }
-                let suggested = model.loggerMeals
+                let suggested = session.finding == nil ? model.loggerMeals : []
                 if !suggested.isEmpty {
                     Section("My meals") {
                         ForEach(suggested.prefix(20)) { suggestion in
@@ -498,11 +499,11 @@ struct SearchLogView: View {
                         }
                     }
                 }
-                let again = model.loggerLogAgain
+                let again = model.loggerLogAgain.filter { session.finding == nil || $0.template.foodID != nil }
                 if !again.isEmpty {
                     Section(model.timedSuggestions == nil ? "Log again" : "Log again for \(LogTime.time(model))") {
                         ForEach(again.prefix(12)) { item in
-                            RecentRow(item: item, open: { open(item) })
+                            RecentRow(item: item, add: { addAgain(item) }, open: { open(item) })
                         }
                     }
                 }
@@ -589,9 +590,18 @@ struct SearchLogView: View {
     func open(_ item: LogAgainItem) {
         if let id = item.template.foodID, let food = model.food(id: id) {
             open(food)
-        } else {
+        } else if session.finding == nil {
             model.logAgain(item)
         }
+    }
+
+    /// The + on Log again: the same food and amount, or the food being found for the review.
+    func addAgain(_ item: LogAgainItem) {
+        guard session.finding != nil else {
+            model.logAgain(item)
+            return
+        }
+        if let food = item.template.foodID.flatMap(model.food(id:)) { session.use(food) }
     }
 }
 
@@ -641,8 +651,8 @@ struct FoodRow: View {
 
 /// A recently logged food, re-logged as it was.
 struct RecentRow: View {
-    @Environment(AppModel.self) private var model
     let item: LogAgainItem
+    let add: () -> Void
     let open: () -> Void
 
     var body: some View {
@@ -661,9 +671,7 @@ struct RecentRow: View {
             }
             .buttonStyle(.plain)
             .hoverHighlight()
-            Button {
-                model.logAgain(item)
-            } label: {
+            Button(action: add) {
                 Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
