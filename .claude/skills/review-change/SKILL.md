@@ -25,7 +25,7 @@ Read the whole diff (`git diff`, or `git diff main...<branch>`), then the code a
 - No O(n²) over histories that grow every day.
 
 ## Tests and tooling
-- New logic has package tests; changed flows have UI test coverage or a reason why not. Tests are deterministic.
+- New logic has package tests, and what a changed flow decides is tested below the UI. Tests are deterministic.
 - `Scripts/build.sh lint` clean; zero warnings; project files only changed through the generator.
 
 ## Docs

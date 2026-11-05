@@ -174,6 +174,38 @@ struct AppModelTests {
         #expect(relaunched.analysis?.next?.doneThisWeek == 1)
     }
 
+    @Test("Measurements add a row that's there after a relaunch")
+    func measurementsAddARow() {
+        let app = TestApp()
+        let model = app.onboarded()
+        let before = model.measurements.count
+        model.save(measurements: BodyMeasurements(day: .today, waistCm: 84))
+        #expect(model.measurements.count == before + 1)
+        #expect(app.model().measurements.count == before + 1)
+    }
+
+    @Test("Export writes a CSV file for each table, with the session logged in it")
+    func exportWritesEachTable() throws {
+        let model = TestApp().onboarded()
+        model.start(try #require(model.plan()))
+        model.logUntilAWorkSet()
+        model.logNext(2)
+        model.finish(feedback: nil)
+
+        let files = try model.exportCSV()
+        #expect(Set(files.map(\.lastPathComponent)) == ["sets.csv", "sessions.csv", "outside-activities.csv", "measurements.csv", "tests.csv"])
+        let sessions = try #require(files.first { $0.lastPathComponent == "sessions.csv" })
+        let lines = try String(contentsOf: sessions, encoding: .utf8).split(whereSeparator: \.isNewline)
+        #expect(lines.count == 2, "a header and the session")
+    }
+
+    @Test("A vacation saves as its editor opens, a week from now")
+    func aNewVacationSaves() {
+        let model = TestApp().onboarded()
+        #expect(model.save(lifeMode: LifeModeKindChoice.vacation.newPeriod))
+        #expect(model.lifeModes.count == 1)
+    }
+
     @Test("Finishing a session with nothing logged keeps nothing and shows no summary")
     func emptySessionIsDropped() throws {
         let model = TestApp().onboarded()

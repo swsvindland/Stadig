@@ -245,6 +245,29 @@ struct SessionTests {
         #expect(live.rest?.plan.target == 180)
     }
 
+    @Test("a correction replaces the logged reps, on a warm-up as on a work set")
+    func correctingReps() throws {
+        let start = Fixture.start.date().addingTimeInterval(18 * 3600)
+        var squat = lift("barbell-back-squat", load: 140, rest: RestPlan(target: 180, minimum: 120, heartRateGuided: false))
+        let exercise = Fixture.catalog.resolve(squat.exerciseID)
+        let ramp = Warmup.sets(
+            to: 140, reps: 10, targetRIR: 2, exercise: exercise, role: .main, increments: environment.increments(for: exercise))
+        squat.sets = ramp + squat.sets
+        var live = session([squat], at: start)
+        let warmup = try #require(live.items[0].sets.firstIndex { $0.prescription.kind == .warmup })
+        let work = try #require(live.items[0].sets.firstIndex { $0.prescription.kind != .warmup })
+
+        live.log(item: 0, set: warmup, reps: 5, loadKg: nil, rating: nil, environment: environment, now: start)
+        live.edit(item: 0, set: warmup, reps: 6, loadKg: nil, rating: .orange, environment: environment, now: start.addingTimeInterval(30))
+        #expect(live.items[0].sets[warmup].logged?.reps == 6)
+        #expect(live.items[0].sets[warmup].logged?.rating == nil, "a warm-up isn't rated")
+
+        live.log(item: 0, set: work, reps: 10, loadKg: 140, rating: .orange, environment: environment, now: start.addingTimeInterval(300))
+        live.edit(item: 0, set: work, reps: 8, loadKg: nil, rating: .orange, environment: environment, now: start.addingTimeInterval(330))
+        #expect(live.items[0].sets[work].logged?.reps == 8)
+        #expect(live.items[0].sets[work].logged?.loadKg == 140, "no weight given leaves the weight as it was")
+    }
+
     @Test("a swap before anything's done warms the new exercise up its own way; one after a logged set adds none")
     func swapWarmsUp() throws {
         let start = Fixture.start.date().addingTimeInterval(18 * 3600)

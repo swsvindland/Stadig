@@ -41,7 +41,7 @@ struct PlanView: View {
     }
 }
 
-private struct BlockCard: View {
+struct BlockCard: View {
     let analysis: MindAnalysis
     let state: StudyState
 

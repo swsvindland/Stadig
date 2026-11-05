@@ -152,6 +152,12 @@ struct AppModelTests {
         #expect(environment.model().settings.dietHistory == .longCut)
     }
 
+    @Test func aNudgeStepsTheWeightTyped() {
+        #expect(WeighInSheet.nudged("82", by: 1, in: .kg) == Format.editable(82.1, digits: 1))
+        #expect(WeighInSheet.nudged("180", by: -1, in: .lb) == Format.editable(179.8, digits: 1))
+        #expect(WeighInSheet.nudged("0", by: -1, in: .kg) == Format.editable(0, digits: 1), "never below nothing")
+    }
+
     @Test func loggingAFoodChangesTodayAndSurvivesARelaunch() throws {
         let environment = TestEnvironment()
         let model = environment.model()

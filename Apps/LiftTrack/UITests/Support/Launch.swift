@@ -52,42 +52,6 @@ extension XCUIApplication {
         if row.exists && row.isHittable && toggle.exists && toggle.label == "Hide Sidebar" { toggle.tap() }
     }
 
-    /// Closes an iPad's number pad, which iPadOS shows in a popover beside a number field a moment
-    /// after typing starts: a tap anywhere else only closes the popover, so the tap meant for the
-    /// next field or button would do nothing. With no pad (a keyboard docked along the bottom leaves
-    /// other taps alone) there's nothing to close. The tap lands on the navigation bar over the field
-    /// typed in, the lowest of those above it: under a sheet (Measurements) the bars behind it are
-    /// higher up, and a tap on one of them lands outside the sheet. (With the pad up nothing behind
-    /// it is hittable, so that can't tell them apart.) It lands at the spot nearest the bar's middle
-    /// that's clear of its buttons and the pad, so a sheet's Cancel and Save are never in the way.
-    @MainActor
-    func closeNumberPad(file: StaticString = #filePath, line: UInt = #line) {
-        let pad = popovers.containing(.key, identifier: nil).firstMatch
-        guard Self.isPad, pad.waitForExistence(timeout: 3) else { return }
-        let field = descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch.frame
-        let bars = navigationBars.allElementsBoundByIndex.map { ($0, $0.frame) }.filter { _, frame in
-            frame.minX <= field.midX && field.midX <= frame.maxX && frame.maxY <= field.minY
-        }
-        guard let (bar, frame) = bars.max(by: { $0.1.maxY < $1.1.maxY }) else {
-            return XCTFail("No navigation bar above the field being typed in, to close the number pad", file: file, line: line)
-        }
-        let taken = bar.buttons.allElementsBoundByIndex.map { $0.frame.insetBy(dx: -8, dy: 0) } + [pad.frame]
-        // From the middle out, a twentieth of the bar at a time: 0.5, 0.45, 0.55, … 0.1, 0.9.
-        let spots: [CGFloat] =
-            [0.5]
-            + (1...8).flatMap { (step: Int) -> [CGFloat] in
-                let offset = 0.05 * CGFloat(step)
-                return [0.5 - offset, 0.5 + offset]
-            }
-        let clear = spots.first { dx in
-            let spot = CGPoint(x: frame.minX + frame.width * dx, y: frame.midY)
-            return !taken.contains { $0.contains(spot) }
-        }
-        guard let clear else { return XCTFail("No spot on \(bar) clear of its buttons and the number pad", file: file, line: line) }
-        bar.coordinate(withNormalizedOffset: CGVector(dx: clear, dy: 0.5)).tap()
-        pad.waitToDisappear(timeout: 5, file: file, line: line)
-    }
-
     /// An iPad, where the regular-width layout runs: the tab bar along the top, the sidebar and the
     /// desktop destinations.
     @MainActor
@@ -106,19 +70,6 @@ extension XCUIElement {
     @discardableResult
     func waitToAppear(timeout: TimeInterval = 20, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         XCTAssertTrue(waitForExistence(timeout: timeout), "\(self) never appeared", file: file, line: line)
-        return self
-    }
-
-    /// Swipes `container` until the element is on screen: a list only builds the rows it shows.
-    /// Slowly, so the list has stopped before the element is tapped, and back down when the row
-    /// went past the middle.
-    @MainActor
-    @discardableResult
-    func scrolledTo(in container: XCUIElement, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        for _ in 0..<15 where !(exists && isHittable) {
-            if exists && frame.maxY < container.frame.midY { container.swipeDown(velocity: .slow) } else { container.swipeUp(velocity: .slow) }
-        }
-        XCTAssertTrue(exists && isHittable, "\(self) isn't on screen after scrolling", file: file, line: line)
         return self
     }
 

@@ -1,6 +1,6 @@
 import XCTest
 
-/// The app as a person meets it: the first run, every tab with data in it, and Settings.
+/// The app as a person meets it: the first run, and every tab with data in it.
 nonisolated final class AppUITests: XCTestCase {
     @MainActor
     func testSeededLaunchShowsEachTab() {
@@ -9,8 +9,6 @@ nonisolated final class AppUITests: XCTestCase {
 
         app.element("today.calories").waitToAppear()
         XCTAssertTrue(app.logButton("search").exists, "logging is one tap away on Today")
-
-        app.shot("today")
 
         app.openTab("Log")
         app.element("log.list").waitToAppear()
@@ -67,53 +65,5 @@ nonisolated final class AppUITests: XCTestCase {
         XCTAssertTrue(app.logButton("search").exists)
         let weight = app.element("today.weight").waitToAppear()
         XCTAssertTrue(weight.label.contains("181.4 lb"), "the first weigh-in is today's: \(weight.label)")
-    }
-
-    @MainActor
-    func testSettingsOpenFromTodayAndClose() {
-        continueAfterFailure = false
-        let app = XCUIApplication.launched(["-seedSampleData"])
-
-        app.toolbarItem("today.settings", title: "Settings").tap()
-        let done = app.element("settings.done").waitToAppear()
-        XCTAssertTrue(app.element("settings.showAllMacros").exists)
-        XCTAssertTrue(app.element("settings.drinks").exists)
-
-        done.tap()
-        done.waitToDisappear()
-        XCTAssertTrue(app.element("today.calories").waitToAppear().isHittable)
-    }
-
-    @MainActor
-    func testAnIllnessStartedInSettingsRunsUntilItsBetter() {
-        continueAfterFailure = false
-        let app = XCUIApplication.launched(["-seedSampleData", "-showSettings"])
-
-        app.element("settings.done").waitToAppear()
-        // A tap anywhere on the row opens the menu, not only on its words: here, near its far end
-        // (the sheet's, which on an iPad is narrower than the screen).
-        let start = app.scrollTo(app.element("settings.startLifeMode")).waitToAppear()
-        let farEnd = CGVector(dx: app.navigationBars["Settings"].frame.maxX - 48, dy: start.frame.midY)
-        app.coordinate(withNormalizedOffset: .zero).withOffset(farEnd).tap()
-        app.buttons["settings.lifeMode.ill"].waitToAppear().tap()
-
-        // An illness can be open-ended; that's how it starts.
-        XCTAssertTrue(app.element("lifeMode.openEnded").waitToAppear().exists)
-        app.element("lifeMode.save").tap()
-
-        let row = app.element("settings.lifeMode").waitToAppear()
-        XCTAssertTrue(row.label.contains("ongoing"), "an open-ended illness: \(row.label)")
-    }
-
-    @MainActor
-    func testExportingCSVOffersToShareTheFiles() {
-        continueAfterFailure = false
-        let app = XCUIApplication.launched(["-seedSampleData", "-showSettings"])
-
-        app.element("settings.done").waitToAppear()
-        app.scrollTo(app.element("settings.exportCSV")).waitToAppear().tap()
-        // The share row appears under the button, which can be the bottom of the screen.
-        let share = app.scrollTo(app.element("settings.shareCSV")).waitToAppear()
-        XCTAssertTrue(share.label.contains("CSV files"), share.label)
     }
 }

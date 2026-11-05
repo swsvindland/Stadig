@@ -201,6 +201,20 @@ final class LoggerSession {
         mode = review.mode
     }
 
+    /// What Log again offers: finding a food for a review, only what's one food can be its answer.
+    func again(_ items: [LogAgainItem]) -> [LogAgainItem] {
+        finding == nil ? items : items.filter { $0.template.foodID != nil }
+    }
+
+    /// The + on Log again: the same food and amount, or the food being found for the review.
+    func addAgain(_ item: LogAgainItem, model: AppModel) {
+        guard finding != nil else {
+            model.logAgain(item)
+            return
+        }
+        if let food = item.template.foodID.flatMap(model.food(id:)) { use(food) }
+    }
+
     /// Back to the review with the item as it was.
     func stopFinding() {
         guard let review else { return }

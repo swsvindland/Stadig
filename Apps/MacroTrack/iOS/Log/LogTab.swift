@@ -372,9 +372,7 @@ struct DaySummaryLine: View {
         }
     }
 
-    /// What's left is counted from what's been eaten today, with what's coming said beside it, and
-    /// from all of a day's food on any other: a planned day is planned against its whole target.
-    func counted(_ intake: DayIntake) -> Nutrients { day == model.today ? intake.eaten : intake.all }
+    func counted(_ intake: DayIntake) -> Nutrients { intake.counted(on: day, today: model.today) }
 
     func left(_ intake: DayIntake, _ targets: DailyTargets?) -> String {
         let later = day == model.today && intake.later.kcal > 0 ? " · \(Format.whole(intake.later.kcal)) later" : ""

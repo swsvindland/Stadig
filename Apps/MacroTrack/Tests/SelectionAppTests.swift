@@ -149,6 +149,18 @@ struct SelectionAppTests {
         model.placeSelection(on: days)
         for target in days { #expect(model.allEntries(on: target).map(\.name) == ["Salmon"]) }
         #expect(model.toast?.message.hasPrefix("Copied 1 food to 3 days") == true)
+        #expect(model.selection.ids.count == 1, "a copy keeps the selection, for more days")
+    }
+
+    @Test func toDatesStepsAMonthAtATime() {
+        var month = Day(year: 2026, month: 1, day: 31)
+        for expected in Array(2...12) + [1] {
+            month = ToDatesSheet.next(after: month)
+            #expect(month.month == expected)
+            #expect(ToDatesSheet.previous(before: ToDatesSheet.next(after: month)).month == expected)
+        }
+        #expect(month.year == 2027)
+        #expect(ToDatesSheet.days(in: Day(year: 2028, month: 2, day: 10)).count == 29)
     }
 
     @Test func aMoveToManyDatesLeavesCopiesOnTheRest() {

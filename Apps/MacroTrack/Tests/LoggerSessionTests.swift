@@ -112,6 +112,31 @@ struct LoggerSessionTests {
         #expect(session.review == nil)
     }
 
+    /// With the search cleared, Log again's + is the answer to the review, not a food on the day.
+    @Test func whileFindingAFoodLogAgainAnswersTheReview() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        model.log([try model.entry(foodID: Foods.coffeeID, grams: 237)])
+        model.log([
+            FoodEntry(
+                date: Date(), name: "Bar snack", amountLabel: "1", nutrients: Nutrients(kcal: 90, protein: 1, carbs: 2, fat: 8), source: .quickAdd)
+        ])
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        #expect(session.again(model.logAgain).count == model.logAgain.count)
+
+        session.find("", for: unmatched.id)
+        let offered = session.again(model.logAgain)
+        #expect(offered.map(\.template.foodID) == [Foods.coffeeID], "what's no one food can't answer it")
+        let onTheDay = logged(model)
+        session.addAgain(try #require(offered.first), model: model)
+
+        #expect(session.finding == nil)
+        #expect(session.review?.items[1].food?.id == Foods.coffeeID)
+        #expect(logged(model) == onTheDay, "nothing went on the day")
+    }
+
     @Test func goingOffToSearchKeepsTheReview() throws {
         let model = TestEnvironment().model()
         model.onboard()

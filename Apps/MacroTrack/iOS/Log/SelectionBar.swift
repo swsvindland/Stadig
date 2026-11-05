@@ -111,13 +111,13 @@ struct ToDatesSheet: View {
         NavigationStack {
             VStack(spacing: 14) {
                 HStack {
-                    Button("Previous Month", systemImage: "chevron.left") { month = Self.first(of: month).adding(days: -1) }
+                    Button("Previous Month", systemImage: "chevron.left") { month = Self.previous(before: month) }
                         .labelStyle(.iconOnly)
                         .accessibilityIdentifier("toDates.previousMonth")
                     Spacer()
                     Text(month.date().formatted(.dateTime.month(.wide).year())).font(.headline)
                     Spacer()
-                    Button("Next Month", systemImage: "chevron.right") { month = Self.first(of: month).adding(days: 32) }
+                    Button("Next Month", systemImage: "chevron.right") { month = Self.next(after: month) }
                         .labelStyle(.iconOnly)
                         .accessibilityIdentifier("toDates.nextMonth")
                 }
@@ -174,6 +174,12 @@ struct ToDatesSheet: View {
     }
 
     static func first(of month: Day) -> Day { month.adding(days: 1 - month.dayOfMonth) }
+
+    /// A day in the month before.
+    static func previous(before month: Day) -> Day { first(of: month).adding(days: -1) }
+
+    /// A day in the month after: 32 days from any first is past its month and short of the next's end.
+    static func next(after month: Day) -> Day { first(of: month).adding(days: 32) }
 
     static func days(in month: Day) -> [Day] {
         let first = first(of: month)

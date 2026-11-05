@@ -7,16 +7,6 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
-    /// The first element with this identifier whose label contains `text` (case-insensitive).
-    @MainActor
-    func element(_ identifier: String, labelContaining text: String) -> XCUIElement {
-        descendants(matching: .any).matching(identifier: identifier).matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
-    }
-
-    /// A food on the Log tab whose text contains `text`.
-    @MainActor
-    func logEntry(containing text: String) -> XCUIElement { element("log.entry", labelContaining: text) }
-
     /// The button that opens a way to log: the iPhone's quick-log bar above the tabs, or Today's
     /// toolbar on an iPad ("search", "weighIn", "quickAdd").
     @MainActor
@@ -87,31 +77,6 @@ extension XCUIApplication {
         bar.coordinate(withNormalizedOffset: CGVector(dx: clear, dy: 0.5)).tap()
         pad.waitToDisappear(timeout: 5, file: file, line: line)
     }
-
-    /// Scrolls until the element is on screen and can be tapped, or gives up after a few drags.
-    /// Each drag holds at its end, so the list stops where it's let go (a tap on a list that's still
-    /// gliding only stops it), and a row left above the middle is dragged back down: a list drops
-    /// the rows it has scrolled well past. The drags run down the middle of the screen, or of the
-    /// column `beside` is in (an iPad's Today has its summary in a column beside the log). A row
-    /// behind the Log tab's pinned week and line counts as out of reach: XCUITest calls it hittable,
-    /// and the tap lands on them.
-    @MainActor
-    @discardableResult
-    func scrollTo(_ element: XCUIElement, drags: Int = 15, beside: XCUIElement? = nil) -> XCUIElement {
-        var left = drags
-        let x = beside.map { $0.waitToAppear().frame.midX / frame.width } ?? 0.5
-        let pinned = self.element("log.header")
-        // A little past it: the section's padding is outside the frame it reports, and takes a tap too.
-        func reachable() -> Bool { element.exists && element.isHittable && !(pinned.exists && element.frame.midY < pinned.frame.maxY + 20) }
-        while !reachable(), left > 0 {
-            let back = element.exists && element.frame.maxY < frame.midY
-            let start = coordinate(withNormalizedOffset: CGVector(dx: x, dy: back ? 0.35 : 0.7))
-            let end = coordinate(withNormalizedOffset: CGVector(dx: x, dy: back ? 0.7 : 0.35))
-            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
-            left -= 1
-        }
-        return element
-    }
 }
 
 extension XCUIElement {
@@ -120,20 +85,6 @@ extension XCUIElement {
     func type(_ text: String) {
         tap()
         typeText(text)
-    }
-
-    /// Waits for the label to stop being `old`, as when a number on screen updates.
-    @MainActor
-    func waitForLabel(toChangeFrom old: String, timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
-        let changed = NSPredicate(format: "label != %@", old)
-        let expectation = XCTNSPredicateExpectation(predicate: changed, object: self)
-        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: timeout), .completed, "\(self) still reads \(old)", file: file, line: line)
-    }
-
-    @MainActor
-    func waitForLabel(toEqual label: String, timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
-        let same = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: self)
-        XCTAssertEqual(XCTWaiter().wait(for: [same], timeout: timeout), .completed, "\(self) never read \(label)", file: file, line: line)
     }
 
     /// Waits for the element to go away, as a sheet does once it's dismissed.

@@ -140,6 +140,27 @@ struct DeepLinkTests {
     }
 }
 
+/// The Plan tab's line for the Secondary courses, which the week strip doesn't show.
+@MainActor
+struct PlanCardTests {
+    func line(_ courses: [Domain: CourseMode]) throws -> String? {
+        let store = TestApp.store()
+        var settings = TestApp.settings(onboarded: TestApp.wednesday.addingTimeInterval(-86_400))
+        settings.courses = courses
+        store.save(settings)
+        let model = TestApp.model(store: store)
+        return BlockCard(analysis: try #require(model.analysis), state: try #require(model.state)).secondary
+    }
+
+    @Test func theLineSaysWhatTheSecondaryCoursesGet() throws {
+        #expect(try line([.japanese: .focus]) == nil)
+        #expect(try line([.japanese: .focus, .maths: .secondary]) == "Maths gets a short block in each session")
+        #expect(
+            try line([.japanese: .focus, .maths: .secondary, .writing: .secondary])
+                == "Maths and Writing take turns at a short block in each session")
+    }
+}
+
 /// Finding a book: the ladder and earlier lookups answer offline.
 @MainActor
 struct BookLookupTests {

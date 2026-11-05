@@ -13,8 +13,8 @@
 #   unit <app> [device]  an app's unit and integration tests (its default test plan); device is
 #                  iphone (the default), ipad, vision or mac
 #   ui <app> [device]    an app's UI tests, end to end (its UI test plan), on the same devices
-#                  ONLY=FastingUITests runs just that class of a unit or ui run (or
-#                  ONLY=FastingUITests/testName; separate several with commas)
+#                  ONLY=PurchaseUITests runs just that class of a unit or ui run (or
+#                  ONLY=PurchaseUITests/testName; separate several with commas)
 #   all            lint, every package's tests and every build above
 #   simulator [device]   print this checkout's test simulator's UDID (creating it if needed):
 #                  iphone (the default), ipad or vision

@@ -174,6 +174,36 @@ struct AppModelTests {
         #expect(relaunched.cards.count == model.cards.count)
     }
 
+    /// The first session finds a level, so ending it early still counts: Today says it's done
+    /// rather than offering it again.
+    @Test func aFirstSessionEndedEarlyLeavesTodayDone() throws {
+        let clock = TestClock()
+        let model = TestApp.model(clock: clock)
+        model.completeOnboarding(TestApp.settings([.maths]), booksRead: [])
+        #expect(Student.answer(model, steps: 3, clock: clock) > 0)
+        model.endSession()
+
+        let session = try #require(model.sessions.first)
+        #expect(session.purpose == .placement)
+        #expect(!session.ranToEnd)
+        #expect(session.counts)
+        #expect(model.analysis?.today == nil, "nothing left to start")
+    }
+
+    @Test func aSessionAnsweredToTheEndLeavesTodayDone() throws {
+        let clock = TestClock()
+        let model = TestApp.onboardedModel(clock: clock)
+        #expect(model.analysis?.today != nil)
+        model.startToday()
+        Student.answer(model, steps: 400, clock: clock)
+        model.endSession()
+
+        let session = try #require(model.sessions.first)
+        #expect(session.ranToEnd)
+        #expect(session.counts)
+        #expect(model.analysis?.today == nil, "nothing left to start")
+    }
+
     @Test func aSessionLeftHalfwayKeepsWhatItLearned() throws {
         let clock = TestClock()
         let store = TestApp.store()
@@ -415,6 +445,15 @@ struct AppModelTests {
         #expect(model.books.first { $0.id == second.id }?.status == .reading)
     }
 
+    @Test func aBookStartedFromTheLadderIsTheOneOnTheGo() throws {
+        let model = TestApp.onboardedModel([.reading])
+        let book = try #require(model.catalogs.ladder.books(in: nil).first)
+        model.start(book: book)
+        let started = try #require(model.books.first { $0.title == book.title })
+        #expect(started.status == .reading)
+        #expect(started.started == model.today)
+    }
+
     @Test func changingTheScheduleKeepsTheOldOneForEarlierDays() throws {
         let model = TestApp.onboardedModel()
         var settings = try #require(model.settings)
@@ -443,6 +482,13 @@ struct AppModelTests {
         #expect(test.score == 2.0 / 3)
         #expect(test.language == .japanese)
         #expect(test.date == clock.now)
+    }
+
+    @Test func anEpisodeListsUnderItsOwnLanguage() {
+        let model = TestApp.onboardedModel([.japanese, .spanish])
+        model.logEpisode(rating: 2, title: "Midnight Diner", language: .japanese)
+        #expect(model.analysis?.languages.first { $0.domain == .japanese }?.episodes.count == 1)
+        #expect(model.analysis?.languages.first { $0.domain == .spanish }?.episodes.isEmpty == true)
     }
 
     @Test func aChangeFromAnotherDeviceReachesTheOpenApp() async throws {

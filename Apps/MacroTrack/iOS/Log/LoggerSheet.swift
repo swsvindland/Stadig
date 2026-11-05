@@ -501,11 +501,11 @@ struct SearchLogView: View {
                         }
                     }
                 }
-                let again = model.loggerLogAgain.filter { session.finding == nil || $0.template.foodID != nil }
+                let again = session.again(model.loggerLogAgain)
                 if !again.isEmpty {
                     Section(model.timedSuggestions == nil ? "Log again" : "Log again for \(LogTime.time(model))") {
                         ForEach(again.prefix(12)) { item in
-                            RecentRow(item: item, add: { addAgain(item) }, open: { open(item) })
+                            RecentRow(item: item, add: { session.addAgain(item, model: model) }, open: { open(item) })
                         }
                     }
                 }
@@ -595,15 +595,6 @@ struct SearchLogView: View {
         } else if session.finding == nil {
             model.logAgain(item)
         }
-    }
-
-    /// The + on Log again: the same food and amount, or the food being found for the review.
-    func addAgain(_ item: LogAgainItem) {
-        guard session.finding != nil else {
-            model.logAgain(item)
-            return
-        }
-        if let food = item.template.foodID.flatMap(model.food(id:)) { session.use(food) }
     }
 }
 

@@ -25,6 +25,10 @@ public struct PlannedPhase: Hashable, Codable, Sendable, Identifiable {
     public var end: Day { endedEarly ?? start.adding(days: weeks * 7 - 1) }
     public var range: DayRange { DayRange(start, end) }
 
+    /// Which week of the phase a day is in, from 1: before it starts, the first, and past its end,
+    /// the last.
+    public func week(on day: Day) -> Int { max(1, min(weeks, start.days(until: day) / 7 + 1)) }
+
     public var summary: String {
         let pct = abs(ratePerWeek * 100)
         let rate =
