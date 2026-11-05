@@ -32,6 +32,29 @@ enum Platform {
         #endif
     }
 
+    /// The Mac's ⌘ or ⇧ held down during a click: nothing to ask anywhere else.
+    @MainActor
+    static var commandHeld: Bool {
+        #if os(macOS)
+        return NSEvent.modifierFlags.contains(.command)
+        #else
+        return false
+        #endif
+    }
+
+    @MainActor
+    static var shiftHeld: Bool {
+        #if os(macOS)
+        return NSEvent.modifierFlags.contains(.shift)
+        #else
+        return false
+        #endif
+    }
+
+    /// Whether an amount is typed on the panel's own keypad. The Mac has a real keyboard and a
+    /// focused, selected field instead.
+    static var usesAmountKeypad: Bool { !isMac }
+
     /// iPhone or iPad: a camera the app can drive, Live Activities and a paired Watch. The Mac and
     /// Vision Pro import photos and files instead.
     static var isPhoneOrPad: Bool {
@@ -225,6 +248,16 @@ extension View {
         #endif
     }
 
+    /// A context menu where a click asks for it, and nothing where a hold means something else.
+    @ViewBuilder
+    func macContextMenu<Menu: View>(@ViewBuilder _ menu: () -> Menu) -> some View {
+        #if os(macOS)
+        contextMenu(menuItems: menu)
+        #else
+        self
+        #endif
+    }
+
     /// A sheet's size on the Mac, where a sheet is as big as its content asks (a form can ask for
     /// very little). Elsewhere the system sizes sheets.
     func macSheetSize(width: CGFloat, height: CGFloat) -> some View {
@@ -253,7 +286,69 @@ extension View {
         return datePickerStyle(.wheel)
         #endif
     }
+
+    /// Someone going to something else and coming back, in the ways the scene phase doesn't see,
+    /// since a window left in sight stays `.active`: another app in front of it on the Mac, or beside
+    /// or over it on an iPad, and the Mac going to sleep with the app in front.
+    func onGoingAway(left: @escaping () -> Void, returned: @escaping () -> Void) -> some View {
+        modifier(GoingAway(left: left, returned: returned))
+    }
+
+    /// The Delete key on a list's selection, on the Mac. A click on a row doesn't give a list the
+    /// keyboard, and a field beside it keeps it, so each change to the selection takes it there.
+    /// Elsewhere a selection is deleted from its bar.
+    func onDeleteKey(selection: Set<UUID>, perform: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        return modifier(DeleteKey(selection: selection, delete: perform))
+        #else
+        return self
+        #endif
+    }
 }
+
+private struct GoingAway: ViewModifier {
+    let left: () -> Void
+    let returned: () -> Void
+    @Environment(\.appearsActive) private var appearsActive
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        let workspace = NSWorkspace.shared.notificationCenter
+        content
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in left() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in returned() }
+            // The display too: a Mac on power can stay awake with nobody at it.
+            .onReceive(workspace.publisher(for: NSWorkspace.willSleepNotification)) { _ in left() }
+            .onReceive(workspace.publisher(for: NSWorkspace.screensDidSleepNotification)) { _ in left() }
+            .onReceive(workspace.publisher(for: NSWorkspace.didWakeNotification)) { _ in woke() }
+            .onReceive(workspace.publisher(for: NSWorkspace.screensDidWakeNotification)) { _ in woke() }
+        #else
+        content.onChange(of: appearsActive) { _, active in if active { returned() } else { left() } }
+        #endif
+    }
+
+    #if os(macOS)
+    /// Waking with another app in front isn't coming back to this one: that's still to come, and
+    /// activation will say so.
+    private func woke() { if NSApp.isActive { returned() } }
+    #endif
+}
+
+#if os(macOS)
+private struct DeleteKey: ViewModifier {
+    let selection: Set<UUID>
+    let delete: () -> Void
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focused($focused)
+            .onDeleteCommand(perform: delete)
+            // On any change, not only the first: a field clicked into since has the keyboard.
+            .onChange(of: selection) { _, selection in if !selection.isEmpty { focused = true } }
+    }
+}
+#endif
 
 extension SearchFieldPlacement {
     /// A search field that stays in view under the title on iPhone, iPad and Vision Pro, and sits

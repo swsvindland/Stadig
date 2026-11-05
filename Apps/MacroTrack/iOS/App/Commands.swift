@@ -36,6 +36,7 @@ struct MacroCommands: Commands {
                     model?.showWeighIn = true
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(onADayAhead)
             }
             .disabled(!ready)
         }
@@ -45,12 +46,10 @@ struct MacroCommands: Commands {
                     .keyboardShortcut("[")
                 Button("Next Day") { step(1) }
                     .keyboardShortcut("]")
-                    .disabled(model.map { $0.selectedDay >= $0.today } ?? true)
                 Divider()
                 Button("Today") {
-                    guard let model else { return }
-                    model.selectedDay = model.today
-                    model.go(to: .today)
+                    model?.showToday()
+                    model?.go(to: .log)
                 }
                 .keyboardShortcut("t")
             }
@@ -73,6 +72,9 @@ struct MacroCommands: Commands {
     /// Set up, so there's a Today to log to.
     var ready: Bool { model?.onboarded ?? false }
 
+    /// A day to come, which has nothing to weigh yet: the sheet would save a weight only to drop it.
+    var onADayAhead: Bool { model.map { $0.selectedDay > $0.today } ?? false }
+
     /// A logger, in place of any sheet up, on the day being looked at.
     func log(_ mode: LogMode) {
         guard let model else { return }
@@ -80,11 +82,10 @@ struct MacroCommands: Commands {
         model.openLogger(mode)
     }
 
-    /// The day before or after, on Today, where the change shows.
+    /// The day before or after, on the Log tab, where the change shows.
     func step(_ days: Int) {
         guard let model else { return }
-        model.selectedDay = min(model.today, model.selectedDay.adding(days: days))
-        model.go(to: .today)
+        model.show(day: model.selectedDay.adding(days: days))
     }
 }
 

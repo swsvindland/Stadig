@@ -25,6 +25,18 @@ extension AppModel {
         guard let last = analysis.lastMeal else { return "Nothing logged recently to count from." }
         return "\(Format.duration(now.timeIntervalSince(last.end))) since your last meal, at \(Format.moment(last.end, now: now))."
     }
+
+    /// Starts a fast for Siri. Returns how it stands, in words, which has to wait for the analysis:
+    /// read as the save returns, that's still the time since the last meal.
+    func startFastInWords(goalHours: Double, within limit: Duration = .seconds(3)) async -> String {
+        await analysisFinished(within: limit)
+        guard onboarded else { return "Open Stadig Macro to set it up first." }
+        // Longer fasts start in the app, where the safety notes are.
+        if !tracksMealTiming { setTracksMealTiming(true) }
+        guard startFast(goalHours: goalHours) else { return "You're already fasting. \(fastSentence)" }
+        await analysisFinished(within: limit)
+        return fastSentence
+    }
 }
 
 struct StartFastIntent: AppIntent {
@@ -40,13 +52,7 @@ struct StartFastIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
-        guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
-        // Longer fasts start in the app, where the safety notes are.
-        if !model.tracksMealTiming { model.setTracksMealTiming(true) }
-        guard model.startFast(goalHours: Double(hours)) else {
-            return .result(dialog: IntentDialog(stringLiteral: "You're already fasting. \(model.fastSentence)"))
-        }
-        return .result(dialog: IntentDialog(stringLiteral: model.fastSentence))
+        return .result(dialog: IntentDialog(stringLiteral: await model.startFastInWords(goalHours: Double(hours))))
     }
 }
 
@@ -58,6 +64,7 @@ struct EndFastIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         guard let status = model.analysis?.fast else { return .result(dialog: "You're not fasting right now.") }
         let elapsed = Date().timeIntervalSince(status.fast.start)
         model.endFast()
@@ -74,6 +81,7 @@ struct FastStatusIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppModel.shared
         model.refreshDay()
+        await model.analysisFinished(within: .seconds(3))
         return .result(dialog: IntentDialog(stringLiteral: model.fastSentence))
     }
 }

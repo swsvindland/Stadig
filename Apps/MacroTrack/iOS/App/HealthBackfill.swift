@@ -17,6 +17,10 @@ import UIKit
 /// the Mac (which has no Health). Each device that logs something writes it to Health as it logs;
 /// this covers the rest as it syncs in.
 ///
+/// Health only ever holds what's happened. Food logged for later is left out until its time, and
+/// a pass after that writes it, dated when it was eaten. Food moved ahead of now has its copy taken
+/// out, on this device or from a change that synced in, ledgered here or not.
+///
 /// Every food, glass of water, dose taken and weigh-in typed in over the last `window` days is
 /// checked against Health by its sync identifier (the record's id, which every write here uses):
 /// what Health already holds at that version, from this app on any device, is left alone, and the
@@ -45,6 +49,9 @@ final class HealthBackfill {
     private var runAgain = false
     private var storeObserver: AnyObject?
     private var unlockObserver: NotificationToken?
+    /// Later food looked up in Health and found not there, at the version looked up: each is
+    /// asked about once a run rather than every pass.
+    private var checkedLater: [UUID: Int] = [:]
 
     /// The live one, over the app's store and this device's Health, with a first pass now; nil where
     /// there's no Health (the Mac).
@@ -91,16 +98,21 @@ final class HealthBackfill {
     func pass(now: Date = Date()) async {
         let since = Day(now).adding(days: -Self.window)
         let settings = MacroSettings.inForce(store.all(MacroSettings.self))
-        let entries = store.all(FoodEntry.self)
+        let log = FoodLog(store.all(FoodEntry.self), now: now)
+        let entries = log.eaten
+        let later = Set(log.upcoming.map(\.id))
+        // Food moved ahead that this device never wrote or noted, as a move on the Mac can be before
+        // the phone has read the food at all: the ledger can't say, so Health has to.
+        let unknown = log.upcoming.filter { ledger[$0.id] == nil && checkedLater[$0.id] != $0.updatedAt.healthVersion }
         let water = store.all(WaterLog.self)
         let doses = store.all(SupplementLog.self)
         let weighIns = store.all(WeighIn.self)
         let items = Self.items(entries: entries, water: water, doses: doses, weighIns: weighIns, since: since, setUp: settings?.onboardedAt)
         let pending = items.filter { item in ledger[item.id].map { !Self.isCurrent($0.version, item.version) } ?? true }
         let gone = Self.gone(
-            ledger: ledger, items: items, since: since, unmarked: { unmarked(of: $0) }, deleted: { deletions(of: $0) })
+            ledger: ledger, items: items, since: since, unmarked: { unmarked(of: $0, later: later) }, deleted: { deletions(of: $0) })
         defer { keep(since: since) }
-        guard !pending.isEmpty || !gone.isEmpty else { return }
+        guard !pending.isEmpty || !gone.isEmpty || !unknown.isEmpty else { return }
 
         // Someone who doesn't write to Health from Stadig Macro wants none of this: what's here now
         // counts as handled, so turning it on later doesn't pour in the past.
@@ -123,6 +135,11 @@ final class HealthBackfill {
             for item in gone where item.source == .weighIn { await health.delete(weight: item.id) }
             for item in gone { ledger[item.id] = nil }
         }
+        if !unknown.isEmpty, let held = await health.versions(foods: unknown.map(\.id)) {
+            let copies = unknown.filter { held[$0.id] != nil }.map(\.id)
+            if !copies.isEmpty { await health.delete(foods: copies) }
+            for entry in unknown { checkedLater[entry.id] = entry.updatedAt.healthVersion }
+        }
         guard !pending.isEmpty else { return }
         // Nil when Health couldn't be read: the next pass tries again rather than write blind.
         guard let foods = await health.versions(foods: pending.filter { $0.source != .weighIn }.map(\.id)),
@@ -140,10 +157,14 @@ final class HealthBackfill {
     }
 
     /// The records of a kind still in the store whose Health copy should go anyway: a dose marked
-    /// not taken. Nothing else qualifies: an entry dated back out of the window, say, keeps its copy.
-    private func unmarked(of source: HealthCopy.Source) -> Set<UUID> {
-        guard source == .dose else { return [] }
-        return Set(store.all(SupplementLog.self).filter { !$0.taken }.map(\.id))
+    /// not taken, or food moved ahead of now. Nothing else qualifies: an entry dated back out of the
+    /// window, say, keeps its copy.
+    private func unmarked(of source: HealthCopy.Source, later: Set<UUID>) -> Set<UUID> {
+        switch source {
+        case .dose: Set(store.all(SupplementLog.self).filter { !$0.taken }.map(\.id))
+        case .entry: later
+        case .water, .weighIn: []
+        }
     }
 
     /// A kind's deletions, read from its whole history, so they're asked for only when something

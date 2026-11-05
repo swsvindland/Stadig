@@ -176,7 +176,11 @@ struct FoodsView: View {
                 if model.savedMeals.isEmpty {
                     ContentUnavailableView(
                         "No meals yet", systemImage: "fork.knife",
-                        description: Text("Foods eaten together can be saved as a meal from Today, or from the meal under the logger's search."))
+                        description: Text(
+                            """
+                            Foods eaten together can be saved as a meal from the menu on an hour's name in Log, \
+                            or from the meal under the logger's search.
+                            """))
                 } else {
                     ContentUnavailableView.search(text: query)
                 }
@@ -482,8 +486,9 @@ struct FoodInspector: View {
         // The search runs again once it's saved (the personal foods change) and lists the food as
         // corrected, at the same amount.
         .sheet(isPresented: $editing) {
-            if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { _ in } }
+            if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { amount.use($0) } }
         }
+        .notesWork(editing)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 10) {
                 // The meal this food joins, with what's gone into it so far.

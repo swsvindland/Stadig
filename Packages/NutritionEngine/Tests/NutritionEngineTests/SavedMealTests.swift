@@ -26,6 +26,15 @@ struct SavedMealTests {
     }
 
     /// Monday's sandwich at lunch, a minute between each food.
+    /// A meal's foods on the days of this suite's calendar: a new entry takes its day from the device's.
+    func eaten(_ meal: SavedMeal, at date: Date) -> [FoodEntry] {
+        meal.entries(at: date).map { entry in
+            var entry = entry
+            entry.day = Day(entry.date, calendar: calendar)
+            return entry
+        }
+    }
+
     func sandwich(_ day: Day, hour: Int = 12) -> [FoodEntry] {
         ["Bread, whole-wheat", "Turkey breast, deli", "Cheese, swiss", "Lettuce, romaine", "Mayonnaise"].enumerated().map { i, name in
             food(name, at(day, hour, i), kcal: [140, 60, 110, 5, 90][i])
@@ -87,9 +96,9 @@ struct SavedMealTests {
         var entries: [FoodEntry] = []
         for offset in 0..<5 {
             let day = monday.adding(days: offset)
-            entries += offset < 2 ? sandwich(day) + [food("Coffee", at(day, 12, 6))] : sandwichMeal.entries(at: at(day, 12, 15))
+            entries += offset < 2 ? sandwich(day) + [food("Coffee", at(day, 12, 6))] : eaten(sandwichMeal, at: at(day, 12, 15))
         }
-        entries += oats.entries(at: at(monday.adding(days: 2), 7)) + oats.entries(at: at(monday.adding(days: 3), 7, 30))
+        entries += eaten(oats, at: at(monday.adding(days: 2), 7)) + eaten(oats, at: at(monday.adding(days: 3), 7, 30))
         // Half a sandwich isn't the sandwich.
         entries += Array(sandwich(monday.adding(days: 5)).prefix(3))
 
@@ -98,7 +107,7 @@ struct SavedMealTests {
         #expect(noon[0].usualNow && !noon[1].usualNow && !noon[2].usualNow)
         #expect(noon[2].score == 0)
         // Once today's lunch is logged, it isn't offered again, though it still ranks first.
-        let lunch = sandwichMeal.entries(at: at(monday.adding(days: 6), 12, 5))
+        let lunch = eaten(sandwichMeal, at: at(monday.adding(days: 6), 12, 5))
         let after = SavedMeals.rank([oats, sandwichMeal], entries: entries + lunch, now: at(monday.adding(days: 6), 12, 20), calendar: calendar)
         #expect(after.map(\.meal.name) == ["Turkey sandwich", "Oats"])
         #expect(!after[0].usualNow)
@@ -145,8 +154,8 @@ struct SavedMealTests {
         #expect(SavedMeals.meal(for: again + [food("Apple", at(monday, 12, 9))], in: [saved]) == nil)
         #expect(SavedMeals.meal(for: [], in: [saved]) == nil)
         // Logged as it was saved, it's the same; with twice the bread, it's the meal changed.
-        #expect(saved.hasSameAmounts(as: saved.entries(at: at(monday, 13)).reversed()))
-        var more = saved.entries(at: at(monday, 13))
+        #expect(saved.hasSameAmounts(as: eaten(saved, at: at(monday, 13)).reversed()))
+        var more = eaten(saved, at: at(monday, 13))
         more[0].nutrients.kcal *= 2
         #expect(!saved.hasSameAmounts(as: more))
         #expect(!saved.hasSameAmounts(as: Array(saved.foods.dropLast())))
@@ -156,7 +165,7 @@ struct SavedMealTests {
             FoodEntry(date: at(monday, 9), name: "Jam", brand: "Bonne Maman", amountLabel: "1", nutrients: .zero, source: .description),
         ]
         let toast = SavedMeal(name: "Toast", from: quick)
-        #expect(SavedMeals.meal(for: toast.entries(at: at(monday, 10)), in: [saved, toast])?.id == toast.id)
+        #expect(SavedMeals.meal(for: eaten(toast, at: at(monday, 10)), in: [saved, toast])?.id == toast.id)
     }
 
     @Test("of two meals with the same foods, the one in the same amounts is the one eaten")
@@ -168,11 +177,11 @@ struct SavedMealTests {
         let light = SavedMeal(name: "Light sandwich", from: lighter)
         // Either order: the newer one isn't taken for the other.
         for meals in [[light, full], [full, light]] {
-            #expect(SavedMeals.meal(for: full.entries(at: at(monday, 13)), in: meals)?.id == full.id)
-            #expect(SavedMeals.meal(for: light.entries(at: at(monday, 13)), in: meals)?.id == light.id)
+            #expect(SavedMeals.meal(for: eaten(full, at: at(monday, 13)), in: meals)?.id == full.id)
+            #expect(SavedMeals.meal(for: eaten(light, at: at(monday, 13)), in: meals)?.id == light.id)
         }
         // Neither as saved: the first, to update.
-        var other = full.entries(at: at(monday, 13))
+        var other = eaten(full, at: at(monday, 13))
         other[1].nutrients.kcal = 120
         #expect(SavedMeals.meal(for: other, in: [light, full])?.id == light.id)
     }
@@ -186,16 +195,16 @@ struct SavedMealTests {
                 nutrients: Nutrients(kcal: 150, protein: 5, carbs: 27, fat: 3), source: .search),
         ]
         let meal = SavedMeal(name: "Oats and water", from: water)
-        var more = meal.entries(at: at(monday, 9))
+        var more = eaten(meal, at: at(monday, 9))
         more[0].grams = 500
         #expect(!meal.hasSameAmounts(as: more))
-        #expect(meal.hasSameAmounts(as: meal.entries(at: at(monday, 9))))
+        #expect(meal.hasSameAmounts(as: eaten(meal, at: at(monday, 9))))
     }
 
     @Test("dinner eaten just before midnight isn't offered again just after")
     func aroundMidnight() {
         let dinner = SavedMeal(name: "Late dinner", from: [food("Pasta", at(monday, 23, 30)), food("Sauce", at(monday, 23, 31))])
-        let week = (0..<4).flatMap { dinner.entries(at: at(monday.adding(days: $0), 23, 30)) }
+        let week = (0..<4).flatMap { eaten(dinner, at: at(monday.adding(days: $0), 23, 30)) }
         // At 12:15 AM, the dinner of 45 minutes ago (yesterday by the calendar) has just been eaten.
         let after = SavedMeals.rank([dinner], entries: week, now: at(monday.adding(days: 4), 0, 15), calendar: calendar)
         #expect(after[0].score > 0 && !after[0].usualNow)

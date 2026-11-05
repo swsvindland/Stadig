@@ -340,6 +340,42 @@ struct UnitsTests {
     }
 }
 
+@Suite("Fractions on the amount keypad")
+struct FractionTests {
+    func unit(_ food: Food, _ id: String) throws -> PortionUnit { try #require(FoodUnits.units(for: food).first { $0.id == id }) }
+
+    @Test func weightsAndVolumesTakeThemUnlessTheyreMetric() throws {
+        let drink = UnitsTests.with([("1 cup", 240)], basis: .ml)
+        for id in ["oz", "lb"] { #expect(try !unit(UnitsTests.bread, id).isFine, "\(id) is measured in halves") }
+        for id in ["floz", "cup", "tbsp", "tsp"] { #expect(try !unit(drink, id).isFine, "\(id) is measured in halves") }
+        #expect(try unit(UnitsTests.bread, "g").isFine)
+        #expect(try unit(drink, "ml").isFine)
+    }
+
+    @Test func portionsTakeThemAndCaloriesDont() throws {
+        let slice = try #require(FoodUnits.units(for: UnitsTests.bread).first { $0.kind == .portion })
+        #expect(!slice.isFine)
+        #expect(try !unit(UnitsTests.with([], basis: .serving), "serving").isFine)
+        #expect(try unit(UnitsTests.bread, "kcal").isFine)
+    }
+
+    /// A fraction typed on a weight reads back as the number it is, in the amount and on the entry.
+    @Test func aFractionOfAPoundCountsAndReadsInDecimals() throws {
+        let pound = try unit(UnitsTests.bread, "lb")
+        var amount = AmountEntry(count: 1, unit: pound)
+        amount.press(.digit(1))
+        amount.press(.fraction("½"))
+        #expect(amount.count == 1.5)
+        #expect(FoodUnits.label(count: 1.5, unit: pound) == "1.5 lb")
+    }
+
+    @Test func tensAreForTheSameUnits() throws {
+        #expect(try FoodUnits.step(for: unit(UnitsTests.bread, "g")) == 10)
+        #expect(try FoodUnits.step(for: unit(UnitsTests.bread, "kcal")) == 10)
+        #expect(try FoodUnits.step(for: unit(UnitsTests.bread, "lb")) == 0.5)
+    }
+}
+
 @Suite("Portion micronutrients")
 struct PortionMicroTests {
     @Test("vitamins and minerals scale with the portion, and unlisted ones stay unknown")

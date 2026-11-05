@@ -160,4 +160,32 @@ struct UsualMealTests {
         let logged = entries + [food("Burrito", at(yesterday, 12, 15), kcal: 700)]
         #expect(LogAgain.usual(at: at(yesterday, 12, 30), entries: logged, today: today, calendar: calendar) == nil)
     }
+
+    @Test("a saved meal planned near now isn't offered as well, and what's planned doesn't make it usual")
+    func savedMealPlannedNearNow() {
+        let eaten = [food("Turkey", at(today.adding(days: -2), 12, 15)), food("Turkey", at(today.adding(days: -3), 12, 10))]
+        let lunch = SavedMeal(name: "Turkey sandwich", from: [eaten[0]])
+        let elevenThirty = at(today, 11, 30)
+        #expect(SavedMeals.rank([lunch], entries: eaten, now: elevenThirty, calendar: calendar)[0].usualNow)
+
+        let planned = food("Turkey", at(today, 12, 15))
+        #expect(!SavedMeals.rank([lunch], entries: eaten, logged: [planned], now: elevenThirty, calendar: calendar)[0].usualNow)
+        // Planned for this evening it's no reason to hold back the lunch it is now.
+        let tonight = food("Turkey", at(today, 19))
+        #expect(SavedMeals.rank([lunch], entries: eaten, logged: [tonight], now: elevenThirty, calendar: calendar)[0].usualNow)
+    }
+
+    @Test("same as usual for a time on a day to come: a meal planned near it counts, and planned food is never the suggestion")
+    func usualNearAPlannedMeal() {
+        // What's been eaten: the app keeps food for later out of what it suggests from.
+        let entries = weeks()
+        let ahead = today.adding(days: 2)
+        let usual = LogAgain.usual(at: at(ahead, 12, 30), entries: entries, today: today, calendar: calendar)
+        #expect(usual?.entries.map(\.name) == ["Salad", "Chicken"])
+        let planned = [food("Soup", at(ahead, 12, 45)), food("Bread", at(ahead, 12, 46))]
+        #expect(LogAgain.usual(at: at(ahead, 12, 30), entries: entries, logged: planned, today: today, calendar: calendar) == nil)
+        // With what's planned further off, the row stays, and still offers what was eaten.
+        let snack = [food("Almonds", at(ahead, 16))]
+        #expect(LogAgain.usual(at: at(ahead, 12, 30), entries: entries, logged: snack, today: today, calendar: calendar) == usual)
+    }
 }

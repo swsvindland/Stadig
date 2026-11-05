@@ -14,6 +14,10 @@ The logic is the product, so most tests live with the logic in the packages. The
 
 What the package tests cover, suite by suite, is in [package-tests.md](package-tests.md).
 
+Stadig Macro's app tests run one at a time (`parallelizable` in its test plan, from the generator). Nearly all of them are on the main actor, so Swift Testing starting them together only queues them for it with each one's clock already running: a test's `eventually`, or the plan's 120-second allowance, could run out behind the rest of the suite. A run took 133 s with 45 timeouts that way, and takes 19 s now.
+
+A row can rest behind the Log tab's pinned week and line, where XCUITest still calls it hittable and a tap at its middle lands on them. `scrollTo` knows that, so use it to reach a row, rather than `tap()` on what happens to exist.
+
 ## Running tests
 
 ```sh
@@ -34,6 +38,17 @@ App tests run on a simulator of the checkout's own, "Stadig Tests <checkout>" (a
 
 Opt-in reports: `SIM_DEBUG=1 swift test --filter simulationReport` (SystemCore), `PRINT_PROGRAMS=1 swift test` (LiftEngine), `PRINT_PLAN=1 swift test --filter SampleWeek` (MealPlanner), `MEAL_AI_EVAL=1 swift test --filter Evaluation` (FoodIntelligence, runs the real models on this Mac).
 
+## The log path's budget
+
+Logging a food and changing day in Stadig Macro should take the main thread no more than a frame: a p95 of 16 ms at 5 years of history (`LongHistory`, 12 foods a day). The steps are signposted (`LogPath`, under Points of Interest in Instruments), and two reports time them over 1, 5 and 10 years. Neither fails on timing, and both are opt-in, since seeding takes a while:
+
+```sh
+cd Packages/NutritionEngine && BENCHMARKS=1 swift test -Xswiftc -O --filter AnalysisBenchmarkTests   # the engine's pieces
+OPTIMIZED=1 TEST_RUNNER_BENCHMARKS=1 ONLY=LogPathBenchmarkTests Scripts/build.sh unit macro          # the app model's steps, in a store on disk
+```
+
+The report is in the run's log (`/tmp/system-dd-<checkout>-MacroTrack-test.log`). Judge the budget on these optimized builds: a plain Debug build runs several times slower than what ships. Run them with nothing else building, and treat a simulator's numbers as a Mac's: a phone's are slower. `LogPathBenchmarkTests` runs as the app does once launched, with the analysis off the main thread: `log` and the steps under it are what a tap holds the main thread for, and "On screen" is until the analysis is back and SwiftUI has updated Today; `-seedLongHistory` runs the real app over the same history, for Instruments.
+
 ## Writing tests
 
 - **New logic goes in a package, with its tests.** If a view model or the app model grows a rule, move the rule into the package and test it there; the app test then only checks the wiring.
@@ -43,6 +58,9 @@ Opt-in reports: `SIM_DEBUG=1 swift test --filter simulationReport` (SystemCore),
 - **App tests** create their app model over an in-memory store and a temporary shared container, never the real ones. The test host launches the app in a minimal mode under XCTest, so nothing touches Health, iCloud or notifications.
 - **UI tests** launch with `-uiTesting` (an in-memory store, no permission prompts, no animations) plus the DEBUG launch arguments that set up the screen under test (`-seedSampleData`, `-tab plan`, …; each app's doc lists them). Find elements by accessibility identifier (`screen.element`, such as `today.startSession`), never by position, and wait with `waitForExistence` rather than sleeping. Each app's `UITests/Support` has the launch helpers.
 - **UI tests on the iPad.** In regular width iPadOS puts the tabs in a bar along the top, where a section shows as one item (Stadig Lift's Training and Records, Stadig Macro's Food and Review, Stadig Mind's Library) that opens its first destination, and the whole sidebar is on the toggle at the bar's start. So tests move between tabs with `app.openTab("Progress")`, which taps the iPhone's tab bar or, on an iPad, opens the sidebar, taps the row and closes the sidebar again if it still covers the screen; `app.tabButton(_:)` is the button in either bar, and `-tab` starts a test on any destination. A flow the iPad does differently stays one test where it can (Stadig Macro's `logButton` is the quick-log bar's button or Today's toolbar's); a test of something only the iPhone has (Stadig Macro's entry sheet on Today) skips on the iPad with `XCTSkipIf` saying which iPad test covers it. Two things the iPad does that the iPhone doesn't: a number field's pad is a popover beside it, and a tap anywhere else only closes the popover, so close it before tapping on (Stadig Macro's `closeNumberPad`); and a toolbar's search can be a button until tapped (Stadig Macro's `foodSearchField`).
+- **A full iPad toolbar.** With the tabs in a bar along the top, an iPad's toolbar folds its later items into a **More** menu, so a test finds them with `app.toolbarItem("toolbar.weighIn", title: "Weigh In")`, which opens the menu if it has to; `app.logButton("search")` does that for the ways to log.
+- **The hour a suite runs.** The sample's food is at its usual times, so at 2 AM today's breakfast hasn't happened yet and is later food. A test that needs today's food reads `allEntries(on:)` or a food's label, or uses `-daysAgo 1`, whose food is the same whenever it runs. Stadig Macro finds a food on the Log tab with `app.logEntry(containing: "Oats")`.
+- **Seeing what a UI test saw.** `TEST_RUNNER_UI_SHOTS=<folder>` makes `app.shot("name")` save the screen there, for a look at a layout without opening an `.xcresult`; every other run skips it.
 - **Keys.** `typeKey` delivers characters and ⌘ shortcuts to an iPad simulator (Stadig Lift's 2 and Space, Stadig Mind's 1 and ⌘1–⌘6), but not Return or Escape: not even Return to a search field with the cursor in it, where it's the system's own. Tests tap the button those keys stand for; Return and Escape on an iPad are checked by hand.
 - **Containers.** SwiftUI gives a `Table`'s or a `List`'s rows to accessibility, and not always the container's identifier: wait for a row (`session.outlineItem`, a row's text) rather than the table. An identifier on a bare stack is given to every element inside it, over their own, so a stack that's identified as a whole (`session.screen`, `mealPlan.week`) gets `.accessibilityElement(children: .contain)` first.
 - **App Store screenshots.** Each app's `UITests/StoreScreenshots.swift` isn't a test: it walks to the store screens and saves each as a PNG, and only when `Scripts/store-screenshots.sh` sets `STORE_SCREENSHOTS` (through `TEST_RUNNER_STORE_SCREENSHOTS`); every other run skips it. A screen in the set that moves or loses an identifier fails it there, not in CI. `Store/README.md` has the rest.

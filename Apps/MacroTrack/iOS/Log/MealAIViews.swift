@@ -29,26 +29,16 @@ enum MealAIMessages {
 struct PhotoLogView: View {
     @Environment(AppModel.self) private var model
     let useCamera: Bool
-    @Binding var mode: LogMode
-    @Binding var query: String
-    let close: () -> Void
+    let session: LoggerSession
     @State private var showCamera = false
     @State private var image: CGImage?
     @State private var note = ""
-    @State private var guess: MealGuess?
-    @State private var working = false
-    @State private var error: String?
 
     var body: some View {
         Group {
-            if let guess {
-                MealReviewView(
-                    guess: guess, source: .photo,
-                    search: { text in
-                        query = text
-                        mode = .search
-                    }, close: close)
-            } else if working {
+            if session.review != nil {
+                MealReviewView(session: session)
+            } else if session.reading {
                 AnalyzingView(
                     image: image, engine: model.ai.availability.onDeviceVision ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
@@ -60,22 +50,22 @@ struct PhotoLogView: View {
             if let photo { analyze { await photo.prepared(maxDimension: 1280) } }
         }
         // A photo dropped on the window, or on this screen, is read like one chosen.
-        .dropDestination(for: DroppedImage.self, isEnabled: guess == nil && !working && model.ai.canSeePhotos) { images, _ in
+        .dropDestination(for: DroppedImage.self, isEnabled: session.review == nil && !session.reading && model.ai.canSeePhotos) { images, _ in
             guard let data = images.first?.data else { return }
             analyze { await PhotoInput.prepare(data, maxDimension: 1280) }
         }
         .onAppear {
-            if let dropped = model.takeDroppedPhoto(), guess == nil, model.ai.canSeePhotos {
-                analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
-            } else if useCamera, Camera.isAvailable, guess == nil, image == nil, model.ai.canSeePhotos {
-                showCamera = true
-            }
+            if !readDroppedPhoto(), useCamera, image == nil { openCamera() }
+        }
+        // Asked again while this is showing, when nothing appears.
+        .onChange(of: model.loggerRequest) { _, request in
+            if !readDroppedPhoto(), request.mode == .camera { openCamera() }
         }
         #if DEBUG
         .task {
             // -photo meal.jpg reads a picture from the app's Documents the way the photo library's are,
             // since a simulator can't be made to pick one.
-            if let name = LaunchOptions.current.value(after: "-photo"), guess == nil, image == nil, model.ai.canSeePhotos {
+            if let name = LaunchOptions.current.value(after: "-photo"), session.review == nil, image == nil, model.ai.canSeePhotos {
                 let url = URL.documentsDirectory.appending(path: name)
                 analyze { await PhotoInput.prepare(try Data(contentsOf: url), maxDimension: 1280) }
             }
@@ -90,7 +80,7 @@ struct PhotoLogView: View {
                     Label(
                         model.ai.availability.reason ?? "Photo logging isn't available on this \(Platform.deviceName).",
                         systemImage: "exclamationmark.triangle")
-                    Button("Search instead") { mode = .search }
+                    Button("Search instead") { session.backToSearch() }
                 }
             } else {
                 Section {
@@ -113,40 +103,46 @@ struct PhotoLogView: View {
                     TextField("Optional: \"large\", \"no dressing\", \"half eaten\"", text: $note)
                 }
             }
-            if let error {
-                Section { Text(error).foregroundStyle(.secondary) }
+            if let problem = session.readProblem {
+                Section { Text(problem).foregroundStyle(.secondary) }
             }
         }
     }
 
+    /// Reads a photo dropped on the window, if there is one: once, and in place of a review, as it
+    /// does on any other way of logging. Not over a read under way, which would race it.
+    func readDroppedPhoto() -> Bool {
+        guard let dropped = model.takeDroppedPhoto(), model.ai.canSeePhotos, !session.reading else { return false }
+        session.review = nil
+        analyze { await PhotoInput.prepare(dropped, maxDimension: 1280) }
+        return true
+    }
+
+    func openCamera() {
+        guard Camera.isAvailable, session.review == nil, !session.reading, model.ai.canSeePhotos else { return }
+        showCamera = true
+    }
+
     /// Reads a photo: loaded and downsampled off the main thread, then named by the model.
     func analyze(_ photo: @escaping () async throws -> CGImage?) {
-        working = true
-        error = nil
         image = nil
-        Task {
-            defer { working = false }
+        session.startRead(.photo, model) {
             let prepared: CGImage?
             do {
                 prepared = try await photo()
             } catch {
-                self.error = "Couldn't load that photo. If it's in iCloud, check your connection and try again."
-                return
+                return .nothing("Couldn't load that photo. If it's in iCloud, check your connection and try again.")
             }
-            guard let cg = prepared else {
-                error = "Couldn't open that photo. Try another."
-                return
-            }
+            guard let cg = prepared else { return .nothing("Couldn't open that photo. Try another.") }
             image = cg
             do {
                 let result = try await model.ai.recognize(photo: cg, note: note.isEmpty ? nil : note, personal: model.personal)
                 if !result.isFood || result.items.isEmpty {
-                    error = result.scene.map { "That looks like \($0), not food." } ?? "Couldn't see any food in that photo."
-                } else {
-                    guess = result
+                    return .nothing(result.scene.map { "That looks like \($0), not food." } ?? "Couldn't see any food in that photo.")
                 }
+                return .foods(result)
             } catch {
-                self.error = MealAIMessages.text(for: error)
+                return .nothing(MealAIMessages.text(for: error))
             }
         }
     }
@@ -155,25 +151,15 @@ struct PhotoLogView: View {
 /// "Two eggs, toast with butter and a flat white": typed or dictated, then confirmed.
 struct DescribeLogView: View {
     @Environment(AppModel.self) private var model
-    @Binding var mode: LogMode
-    @Binding var query: String
-    let close: () -> Void
+    let session: LoggerSession
     @State private var text = ""
-    @State private var guess: MealGuess?
-    @State private var working = false
-    @State private var error: String?
     @FocusState private var focused: Bool
 
     var body: some View {
         Group {
-            if let guess {
-                MealReviewView(
-                    guess: guess, source: .description,
-                    search: { text in
-                        query = text
-                        mode = .search
-                    }, close: close)
-            } else if working {
+            if session.review != nil {
+                MealReviewView(session: session)
+            } else if session.reading {
                 AnalyzingView(image: nil, engine: model.ai.availability.onDevice ? "on your \(Platform.deviceName)" : "with Private Cloud Compute")
             } else {
                 Form {
@@ -182,7 +168,7 @@ struct DescribeLogView: View {
                             Label(
                                 model.ai.availability.reason ?? "Describing meals isn't available on this \(Platform.deviceName).",
                                 systemImage: "exclamationmark.triangle")
-                            Button("Search instead") { mode = .search }
+                            Button("Search instead") { session.backToSearch() }
                         }
                     }
                     Section {
@@ -196,8 +182,8 @@ struct DescribeLogView: View {
                             "Type or dictate with the keyboard's microphone. Brands and amounts help: \"a Big Mac and medium fries\", \"a plate of spaghetti bolognese\"."
                         )
                     }
-                    if let error {
-                        Section { Text(error).foregroundStyle(.secondary) }
+                    if let problem = session.readProblem {
+                        Section { Text(problem).foregroundStyle(.secondary) }
                     }
                 }
                 .safeAreaInset(edge: .bottom) {
@@ -217,19 +203,12 @@ struct DescribeLogView: View {
     func analyze() {
         let description = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !description.isEmpty else { return }
-        working = true
-        error = nil
-        Task {
-            defer { working = false }
+        session.startRead(.description, model) {
             do {
                 let result = try await model.ai.recognize(description: description, personal: model.personal)
-                if result.items.isEmpty {
-                    error = "Couldn't find foods in that. Try naming each one."
-                } else {
-                    guess = result
-                }
+                return result.items.isEmpty ? .nothing("Couldn't find foods in that. Try naming each one.") : .foods(result)
             } catch {
-                self.error = MealAIMessages.text(for: error)
+                return .nothing(MealAIMessages.text(for: error))
             }
         }
     }
@@ -251,58 +230,36 @@ struct AnalyzingView: View {
     }
 }
 
-/// What the model saw, matched to real foods: check, fix with a tap, log.
+/// What the model saw, matched to real foods: check, fix with a tap, log. The review is the
+/// logger's, so going off to search for one of its foods comes back to it as it was.
 struct MealReviewView: View {
     @Environment(AppModel.self) private var model
-    let guess: MealGuess
-    let source: EntrySource
-    let search: (String) -> Void
-    let close: () -> Void
-    @State private var items: [ReviewItem] = []
+    let session: LoggerSession
 
-    struct ReviewItem: Identifiable {
-        var id: UUID
-        var seen: GuessedItem
-        var food: Food?
-        var unit: PortionUnit?
-        var count: Double
-        var included: Bool
-
-        var nutrients: Nutrients {
-            if let food, let unit { return FoodUnits.nutrients(food, count: count, unit: unit) }
-            return seen.nutrients.scaled(seen.count > 0 ? count / seen.count : 1)
-        }
-
-        var amount: String { unit.map { FoodUnits.label(count: count, unit: $0) } ?? Format.number(count) }
-    }
+    var items: Binding<[MealReview.Item]> { Binding(get: { session.review?.items ?? [] }, set: { session.review?.items = $0 }) }
 
     var body: some View {
-        let chosen = items.filter { $0.included && $0.food != nil }
+        let chosen = session.review?.chosen ?? []
         let total = Nutrients.sum(chosen.map(\.nutrients))
         List {
-            if let scene = guess.scene, !scene.isEmpty {
+            if let scene = session.review?.guess.scene, !scene.isEmpty {
                 Section { Text(scene).font(.subheadline).foregroundStyle(.secondary) }
             }
             Section {
-                ForEach($items) { $item in
-                    ReviewRow(item: $item, search: search)
+                ForEach(items) { $item in
+                    ReviewRow(item: $item, session: session)
                 }
             } footer: {
-                Text(
-                    "\(guess.engine == .onDevice ? "On device" : "Private Cloud Compute") · \(Format.number(guess.seconds)) s. Amounts marked ≈ are estimates; nutrients always come from the food database."
-                )
+                if let guess = session.review?.guess {
+                    Text(
+                        "\(guess.engine == .onDevice ? "On device" : "Private Cloud Compute") · \(Format.number(guess.seconds)) s. Amounts marked ≈ are estimates; nutrients always come from the food database."
+                    )
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                let entries = chosen.compactMap { item -> FoodEntry? in
-                    guard let food = item.food, let unit = item.unit else { return nil }
-                    return model.entry(
-                        for: food, count: item.count, unit: unit, source: source,
-                        confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
-                }
-                model.log(entries)
-                close()
+                session.logReview(model)
             } label: {
                 Text(chosen.isEmpty ? "Nothing to log" : "Log \(chosen.count) \(chosen.count == 1 ? "food" : "foods") · \(Format.kcal(total.kcal))")
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -310,20 +267,15 @@ struct MealReviewView: View {
             .primaryAction()
             .padding()
             .disabled(chosen.isEmpty)
-        }
-        .onAppear {
-            guard items.isEmpty else { return }
-            // A catalog match the person corrected shows (and logs) their numbers.
-            items = guess.items.map { g in
-                ReviewItem(id: g.id, seen: g, food: g.match.map { model.corrected($0.food) }, unit: g.unit, count: g.count, included: g.match != nil)
-            }
+            .accessibilityIdentifier("review.log")
         }
     }
 }
 
 private struct ReviewRow: View {
-    @Binding var item: MealReviewView.ReviewItem
-    let search: (String) -> Void
+    @Environment(AppModel.self) private var model
+    @Binding var item: MealReview.Item
+    let session: LoggerSession
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -347,7 +299,15 @@ private struct ReviewRow: View {
                     }
                     HStack(spacing: 10) {
                         Stepper(value: Binding(get: { item.count }, set: { item.count = max(range.lowerBound, $0) }), in: range, step: step) {
-                            Text("\(item.seen.approximate ? "≈ " : "")\(item.amount)").font(.subheadline.monospacedDigit())
+                            // A tap types the amount, for one the steps are a long way from.
+                            Button("\(item.seen.approximate ? "≈ " : "")\(item.amount)") {
+                                guard let unit = item.unit else { return }
+                                session.portion = AmountRequest(purpose: .pick(item: item.id, count: item.count, unit: unit), food: food)
+                            }
+                            .font(.subheadline.monospacedDigit())
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Type an amount")
+                            .accessibilityIdentifier("review.amount")
                         }
                     }
                     Text("\(Format.kcal(item.nutrients.kcal)) · \(Format.macros(item.nutrients))").font(.caption.monospacedDigit()).foregroundStyle(
@@ -360,10 +320,10 @@ private struct ReviewRow: View {
             Spacer(minLength: 0)
             Menu {
                 ForEach(item.seen.alternatives.filter { $0.food.id != item.food?.id }) { alt in
-                    Button(alt.food.title) { swap(to: alt.food) }
+                    Button(alt.food.title) { session.swap(item.id, to: alt.food, model) }
                 }
                 Divider()
-                Button("Search for “\(item.seen.seenName)”", systemImage: "magnifyingglass") { search(item.seen.seenName) }
+                Button("Search for “\(item.seen.seenName)”", systemImage: "magnifyingglass") { session.find(item.seen.seenName, for: item.id) }
             } label: {
                 Image(systemName: "arrow.left.arrow.right.circle").font(.title3)
             }
@@ -383,18 +343,5 @@ private struct ReviewRow: View {
     var range: ClosedRange<Double> {
         let byTens = item.unit.map { FoodUnits.step(for: $0) >= 10 } ?? false
         return byTens ? step...max(5000, item.count * 4) : 0.25...max(50, item.count * 2)
-    }
-
-    func swap(to food: Food) {
-        let units = FoodUnits.units(for: food)
-        if let current = item.unit, let same = units.first(where: { $0.id == current.id }) {
-            item.unit = same
-        } else {
-            let suggestion = FoodUnits.suggested(for: food)
-            item.unit = suggestion.unit
-            item.count = suggestion.count
-        }
-        item.food = food
-        item.included = true
     }
 }

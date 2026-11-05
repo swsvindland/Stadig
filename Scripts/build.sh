@@ -25,7 +25,8 @@
 # Vision <checkout>", created when missing), so sessions in other checkouts and worktrees never
 # collide with them. SIMULATOR=<udid> uses another.
 # STRICT=1 (as CI sets it) treats every warning as an error. SANITIZE=thread or address runs the
-# package tests under that sanitizer.
+# package tests under that sanitizer. OPTIMIZED=1 compiles Debug as a release is, keeping DEBUG and
+# @testable, for the benchmarks' numbers (docs/testing.md); it rebuilds, so run it after, not between.
 set -u
 cd "${0:A:h}/.."
 WHAT=${1:-all}
@@ -86,6 +87,7 @@ xcode() {
   # Simulator builds sign to run locally, which needs no account, and hosted tests need the signature.
   local flags=()
   (( STRICT )) && flags+=(SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES)
+  (( ${OPTIMIZED:-0} )) && flags+=(SWIFT_OPTIMIZATION_LEVEL=-O SWIFT_COMPILATION_MODE=wholemodule)
   print "== $scheme $action $*"
   mkdir -p $DD-results
   xcodebuild $action -project $project -scheme $scheme -destination $dest -derivedDataPath $DD \

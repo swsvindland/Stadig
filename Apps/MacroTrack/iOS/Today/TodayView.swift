@@ -3,107 +3,75 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// What's left today, the one or two things worth doing, and the day's log. Built so a visit can
-/// be a glance and a tap. With room (iPad, the Mac, Vision Pro) the log is a table beside the
-/// summary, edited in an inspector.
+/// Today at a glance, always today: what's left, the weight, anything the plan asks, the ways to
+/// log in a tap, then meal timing, supplements, drinks and the week's food-quality suggestions. The
+/// day's food is on the Log tab.
 struct TodayView: View {
+    @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    var body: some View {
-        if sizeClass == .compact { TodayList() } else { TodayBoard() }
-    }
-}
+    @State private var width: CGFloat = 0
 
-/// Today as one list: the phone's, and a narrow iPad window's. The food comes first, since logging
-/// is what most visits are for: what's left, the weight, anything the plan asks, then the ways to
-/// log in a tap and the day's log. Meal timing, supplements, drinks and the week's food-quality
-/// suggestions follow it.
-struct TodayList: View {
-    @Environment(AppModel.self) private var model
-    @State private var editing: FoodEntry?
+    /// The Mac reports no size class: it always has room.
+    var wide: Bool { sizeClass != .compact }
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     Section {
-                        SummaryCard(day: model.selectedDay)
+                        SummaryCard(day: model.today)
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                     }
-                    WeightSection(day: model.selectedDay)
-                    TodayFood(day: model.selectedDay)
-                    TimelineSections(day: model.selectedDay, editing: $editing)
-                    DayStateSection(day: model.selectedDay)
-                    TodayMore(day: model.selectedDay)
+                    WeightSection(day: model.today)
+                    TodayFood(day: model.today)
+                    DayStateSection(day: model.today)
+                    TodayMore(day: model.today)
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
-                .onChange(of: model.supplementsScrollRequest) { _, _ in
+                // A readable column, in margins of the list's own background.
+                .contentMargins(.horizontal, max(0, (width - 760) / 2), for: .scrollContent)
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: {
+                    width = $0
+                }
+                // A reminder can be tapped with Today not built yet: the request waits for it.
+                .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
+                    guard pending else { return }
+                    model.pendingSupplementsScroll = false
                     withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
                 }
             }
-            .navigationTitle(
-                model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month().day())
-            )
-            .toolbar { toolbar }
-            .sheet(item: $editing) { entry in
-                EntryEditor(entry: entry)
+            .navigationTitle("Today")
+            .toolbar {
+                if wide {
+                    LogToolbar()
+                } else {
+                    ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "today.settings") }
+                }
             }
             .refreshable { await model.refreshHealth() }
         }
     }
-
-    @ToolbarContentBuilder
-    var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .barLeading) {
-            Button {
-                model.selectedDay = model.selectedDay.adding(days: -1)
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .accessibilityLabel("Previous day")
-            .accessibilityIdentifier("today.previousDay")
-            if model.selectedDay < model.today {
-                Button {
-                    model.selectedDay = model.selectedDay.adding(days: 1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                }
-                .accessibilityLabel("Next day")
-                .accessibilityIdentifier("today.nextDay")
-            }
-        }
-        ToolbarItemGroup(placement: .barTrailing) {
-            if model.selectedDay != model.today {
-                Button("Today") { model.selectedDay = model.today }
-                    .accessibilityIdentifier("today.backToToday")
-            }
-            SettingsButton(identifier: "today.settings")
-        }
-    }
 }
 
-/// Above the day's log: what the plan asks for today, then the ways to log in a tap (planned
-/// meals and Log again), or, on a past day, its catch-up.
+/// What the plan asks for today, then the ways to log in a tap (planned meals and Log again).
 struct TodayFood: View {
     @Environment(AppModel.self) private var model
     let day: Day
 
     var body: some View {
-        if day == model.today {
-            ActionsSection()
-            PlannedMealsSection(day: day)
-            if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
-        } else {
-            CatchUpSection(day: day)
-            PlannedMealsSection(day: day)
-        }
+        ActionsSection()
+        PlannedMealsSection(day: day)
+        if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
     }
 }
 
-/// Below the day's log: meal timing, the supplements (where a reminder's tap scrolls to), drinks,
-/// and today's food-quality suggestions.
+/// Meal timing, the supplements (where a reminder's tap scrolls to), drinks, and today's
+/// food-quality suggestions. A past day's foot on the Log tab is this too, without the suggestions.
 struct TodayMore: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -127,9 +95,9 @@ struct SettingsButton: View {
             Button {
                 model.showSettings = true
             } label: {
-                Image(systemName: "gearshape")
+                // A title, for when a full toolbar folds it into its menu.
+                Label("Settings", systemImage: "gearshape")
             }
-            .accessibilityLabel("Settings")
             .accessibilityIdentifier(identifier)
         }
     }
@@ -472,7 +440,7 @@ struct ActionRow: View {
     var button: (String, () -> Void)? {
         switch action.kind {
         case .planReady, .reviewPlan: ("See plan", { model.tab = .plan })
-        case .logYesterday: ("Catch up", { model.selectedDay = model.today.adding(days: -1) })
+        case .logYesterday: ("Catch up", { model.show(day: model.today.adding(days: -1)) })
         case .protein: ("Log", { model.openLogger(.search) })
         default: nil
         }
@@ -545,91 +513,6 @@ struct LogAgainSection: View {
     }
 }
 
-/// The day as a timeline: each moment (foods eaten together) with its time and total.
-struct TimelineSections: View {
-    @Environment(AppModel.self) private var model
-    let day: Day
-    @Binding var editing: FoodEntry?
-
-    var body: some View {
-        let moments = Timeline.moments(model.entries(on: day))
-        let gaps = model.gapsBefore(on: day)
-        if moments.isEmpty {
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(day == model.today ? "Nothing logged yet today" : "Nothing logged on this day").font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("today.nothingLogged")
-                    Text("Search, scan, snap or describe below. Foods eaten together are kept together, however many times you eat.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            }
-        }
-        ForEach(moments) { moment in
-            MomentSection(moment: moment, gap: gaps[moment.id], editing: $editing)
-        }
-    }
-}
-
-/// Foods eaten together: their time, their total, and quick ways to add to them or eat them again.
-struct MomentSection: View {
-    @Environment(AppModel.self) private var model
-    let moment: Moment
-    /// Since the meal before, when meal timing is on.
-    var gap: MealGap?
-    @Binding var editing: FoodEntry?
-    @State private var naming = false
-
-    var body: some View {
-        Section {
-            ForEach(moment.entries) { entry in
-                Button {
-                    editing = entry
-                } label: {
-                    EntryRow(entry: entry)
-                }
-                .buttonStyle(.plain)
-                .hoverHighlight()
-                .accessibilityIdentifier("today.entry")
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
-                }
-                .swipeActions(edge: .leading) {
-                    Button("Again", systemImage: "arrow.clockwise") {
-                        model.log([LogAgain.copy(entry, to: model.logDate(), source: .copied)])
-                    }
-                    .tint(.accentColor)
-                }
-            }
-        } header: {
-            HStack(spacing: 10) {
-                Text(Format.time(moment.start)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                if let gap { GapBadge(gap: gap) }
-                Spacer()
-                Text(Format.kcal(moment.nutrients.kcal)).monospacedDigit()
-                Menu {
-                    Button("Log all again", systemImage: "arrow.clockwise") { model.logAgain(moment) }
-                    MomentMealButton(moment: moment) { naming = true }
-                    Button("Delete all", systemImage: "trash", role: .destructive) { model.delete(entries: moment.entries.map(\.id)) }
-                } label: {
-                    Image(systemName: "ellipsis.circle").font(.title3)
-                }
-                .accessibilityLabel("More for \(Format.time(moment.start))")
-                .accessibilityIdentifier("today.momentMenu")
-                Button {
-                    // Added foods join this moment.
-                    model.openLogger(.search, at: moment.end.addingTimeInterval(60))
-                } label: {
-                    Image(systemName: "plus.circle.fill").font(.title3)
-                }
-                .accessibilityLabel("Add to \(Format.time(moment.start))")
-                .accessibilityIdentifier("today.addToMoment")
-            }
-            .saveMealPrompt(isPresented: $naming, entries: moment.entries)
-        }
-    }
-}
-
 /// A moment's menu item for the saved meals: save it as one, update the one it is, or nothing
 /// when it's a saved meal as it was saved (or a single food).
 struct MomentMealButton: View {
@@ -657,10 +540,15 @@ struct MomentMealButton: View {
 }
 
 struct EntryRow: View {
+    @Environment(AppModel.self) private var model
     let entry: FoodEntry
+    /// A food in a saved meal is a template: its date means nothing.
+    var isLogged = true
 
     var body: some View {
+        let later = isLogged && model.foodLog.isUpcoming(entry)
         HStack(alignment: .firstTextBaseline) {
+            if later { LaterMark() }
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name).font(.body).lineLimit(1)
                 Text([entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · "))
@@ -672,8 +560,17 @@ struct EntryRow: View {
                 Text("\(Format.grams(entry.nutrients.protein)) P").font(.caption.monospacedDigit()).foregroundStyle(Macro.protein.color)
             }
         }
+        // Dimmed until its time: it's in the day's log, but it doesn't count yet.
+        .opacity(later ? 0.55 : 1)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The mark on food logged for later, read by the shape as well as the row's dimming.
+struct LaterMark: View {
+    var body: some View {
+        Image(systemName: "clock").font(.caption).foregroundStyle(.secondary).accessibilityLabel("Later")
     }
 }
 
@@ -684,7 +581,7 @@ struct DayStateSection: View {
 
     var body: some View {
         let state = model.state(of: day)
-        let hasEntries = !model.entries(on: day).isEmpty
+        let hasEntries = !model.allEntries(on: day).isEmpty
         if hasEntries || state != nil || day < model.today {
             Section {
                 HStack(spacing: 8) {
@@ -697,15 +594,19 @@ struct DayStateSection: View {
                         .buttonStyle(.bordered)
                         .choiceTint(state == choice)
                         .buttonBorderShape(.capsule)
+                        .accessibilityAddTraits(state == choice ? .isSelected : [])
                         .accessibilityIdentifier("today.dayState.\(choice.rawValue)")
                     }
                 }
+                // A plain list draws one under the last row too, from where the first button's words start.
+                .listRowSeparator(.hidden)
                 if Platform.isMac { Text(Self.note).font(.caption).foregroundStyle(.secondary) }
             } header: {
                 Text(day == model.today ? "Done logging today?" : "How complete is this day?")
             } footer: {
-                // The Mac's list footers are one line: there the note is a row of the section.
-                if !Platform.isMac { Text(Self.note) }
+                // The Mac's list footers are one line: there the note is a row of the section. A plain
+                // list, as the Log tab's foot is in, leaves a footer's text at the size of a row's.
+                if !Platform.isMac { Text(Self.note).font(.footnote).foregroundStyle(.secondary) }
             }
         }
     }

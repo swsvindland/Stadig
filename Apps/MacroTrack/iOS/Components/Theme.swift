@@ -260,7 +260,8 @@ struct ToastView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Image(systemName: toast.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(toast.failed ? Color.orange : .green)
             Text(toast.message).font(.subheadline.weight(.medium)).lineLimit(2)
                 .accessibilityIdentifier("toast.message")
             Spacer(minLength: 4)

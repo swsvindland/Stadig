@@ -7,6 +7,96 @@ import Testing
 
 @MainActor
 struct RecordStoreTests {
+    @Test func insertingNewRecordsReadsLikeSavingThem() {
+        let store = memoryStore()
+        store.save(Lift(name: "Bench", reps: 5, updatedAt: t0))
+        _ = store.all(Lift.self)
+        let revision = store.revision
+        let new = [Lift(name: "Squat", reps: 3, updatedAt: t0 + 60), Lift(name: "Row", reps: 8, updatedAt: t0 + 120)]
+
+        let stored = store.insert(new)
+
+        #expect(stored == new)
+        #expect(store.revision == revision + 1)
+        #expect(store.all(Lift.self).map(\.name) == ["Row", "Squat", "Bench"])
+        #expect(store.get(Lift.self, id: new[0].id) == new[0])
+        #expect(store.rows(kind: Lift.kind).count == 3)
+    }
+
+    @Test func aRecordInsertedCanBeSavedAndDeletedLikeAnyOther() {
+        let store = memoryStore()
+        var lift = Lift(name: "Squat", reps: 3, updatedAt: t0)
+        store.insert([lift])
+        lift.reps = 5
+        lift.updatedAt = t0 + 60
+        store.save(lift)
+        #expect(store.all(Lift.self) == [lift])
+        #expect(store.rows(kind: Lift.kind).count == 1)
+        store.delete(Lift.self, id: lift.id)
+        #expect(store.all(Lift.self).isEmpty)
+    }
+
+    @Test func anInsertThatFailsToSaveStoresAndReturnsNothing() {
+        let store = memoryStore()
+        store.save(Lift(name: "Bench", reps: 5, updatedAt: t0))
+        _ = store.all(Lift.self)
+        let revision = store.revision
+        store.nextSaveFailure = CocoaError(.fileWriteOutOfSpace)
+
+        let stored = store.insert([Lift(name: "Squat", reps: 3, updatedAt: t0 + 60)])
+
+        #expect(stored.isEmpty, "a caller mustn't show what isn't in the store")
+        #expect(store.revision == revision + 1, "the kind is read again")
+        #expect(store.all(Lift.self).map(\.name) == ["Bench"])
+        #expect(store.rows(kind: Lift.kind).count == 1)
+
+        // Rolled back, so the next save doesn't take the failed one with it.
+        let row = Lift(name: "Row", reps: 8, updatedAt: t0 + 120)
+        #expect(store.insert([row]) == [row])
+        #expect(store.all(Lift.self).map(\.name) == ["Row", "Bench"])
+    }
+
+    @Test func insertingNothingChangesNothing() {
+        let store = memoryStore()
+        #expect(store.insert([Lift]()).isEmpty)
+        #expect(store.revision == 0)
+    }
+
+    @Test func deletingSeveralIsOneChange() {
+        let store = memoryStore()
+        let lifts = (0..<3).map { Lift(name: "Lift \($0)", reps: 5, updatedAt: t0 + Double($0)) }
+        store.save(lifts)
+        _ = store.all(Lift.self)
+        let revision = store.revision
+
+        store.delete(Lift.self, ids: [lifts[0].id, lifts[2].id, lifts[2].id, UUID()])
+
+        #expect(store.revision == revision + 1)
+        #expect(store.all(Lift.self) == [lifts[1]])
+        #expect(store.deletedIDs(Lift.self) == [lifts[0].id, lifts[2].id])
+    }
+
+    @Test func deletingManyReadsThemAgainInOneGo() {
+        let store = memoryStore()
+        let lifts = (0..<40).map { Lift(name: "Lift \($0)", reps: 5, updatedAt: t0 + Double($0)) }
+        store.save(lifts)
+        _ = store.all(Lift.self)
+
+        store.delete(Lift.self, ids: lifts.dropFirst().map(\.id))
+
+        #expect(store.all(Lift.self) == [lifts[0]])
+        #expect(store.deletedIDs(Lift.self).count == 39)
+    }
+
+    @Test func deletingNothingChangesNothing() {
+        let store = memoryStore()
+        store.save(Lift(name: "Squat", reps: 3, updatedAt: t0))
+        let revision = store.revision
+        store.delete(Lift.self, ids: [])
+        store.delete(Lift.self, ids: [UUID()])
+        #expect(store.revision == revision)
+    }
+
     @Test func saveGetAllRoundTrip() {
         let store = memoryStore()
         #expect(store.syncStatus == "Memory only")

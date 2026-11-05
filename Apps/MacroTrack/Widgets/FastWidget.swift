@@ -14,7 +14,7 @@ struct FastProvider: TimelineProvider {
     func placeholder(in context: Context) -> FastEntry { FastEntry(date: Date(), snapshot: .fastSample) }
 
     func getSnapshot(in context: Context, completion: @escaping (FastEntry) -> Void) {
-        completion(FastEntry(date: Date(), snapshot: context.isPreview ? .fastSample : MacroSnapshot.load()))
+        completion(FastEntry(date: Date(), snapshot: context.isPreview ? .fastSample : MacroSnapshot.load().current()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<FastEntry>) -> Void) {
@@ -28,7 +28,9 @@ struct FastProvider: TimelineProvider {
         var dates = stride(from: 0.0, to: 24 * 3600, by: 1800).map { now.addingTimeInterval($0) }
         dates += FastPhase.allCases.map { from.addingTimeInterval($0.startHours * 3600) }
         if let goal = snapshot.fastGoalHours { dates.append(from.addingTimeInterval(goal * 3600)) }
-        let entries = Set(dates.filter { $0 >= now && $0 <= horizon }).sorted().map { FastEntry(date: $0, snapshot: snapshot) }
+        // A meal logged for later ends the fast at its time.
+        dates += snapshot.laterDates(after: now, before: horizon)
+        let entries = Set(dates.filter { $0 >= now && $0 <= horizon }).sorted().map { FastEntry(date: $0, snapshot: snapshot.current(now: $0)) }
         completion(WidgetKit.Timeline(entries: entries, policy: .after(horizon)))
     }
 }

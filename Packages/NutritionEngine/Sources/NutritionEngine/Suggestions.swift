@@ -81,15 +81,43 @@ public enum LogAgain {
 
     /// "Same as yesterday" for a time being logged at, on any day to `today`: what was eaten around
     /// then on another recent day, while nothing logged that day ended within 90 minutes of it.
-    public static func usual(at time: Date, entries: [FoodEntry], today: Day, calendar: Calendar = .current) -> Moment? {
+    /// `logged` is that day's whole log where `entries` leaves food for later out: what's already
+    /// planned then shouldn't be offered again, and shouldn't be what's offered on another day.
+    public static func usual(
+        at time: Date, entries: [FoodEntry], logged: [FoodEntry]? = nil, today: Day, calendar: Calendar = .current
+    ) -> Moment? {
         let day = Day(time, calendar: calendar)
-        let nearby = Timeline.moments(entries.filter { $0.day == day }).contains { abs($0.end.timeIntervalSince(time)) < 90 * 60 }
+        let nearby = Timeline.moments(logged ?? entries.filter { $0.day == day }).contains { abs($0.end.timeIntervalSince(time)) < 90 * 60 }
         return nearby ? nil : usualMoment(near: time, entries: entries, calendar: calendar, through: today)
     }
 
     /// Copies of a moment's entries at `date`, a second apart so they keep their order.
     public static func copy(_ moment: Moment, to date: Date, source: EntrySource = .copied) -> [FoodEntry] {
         moment.entries.enumerated().map { i, e in copy(e, to: date.addingTimeInterval(Double(i)), source: source) }
+    }
+
+    /// How far ahead of the clock a batch can end and still mean now.
+    public static let settling: TimeInterval = 60
+
+    /// A batch stamped just ahead of now, moved back so its last food is now. A meal's foods go in
+    /// a second apart to keep their order: without this the last of them would be later food for a
+    /// moment, and the meal would be split across the tick on the ring and in a fast. Just after
+    /// midnight today's foods close up rather than run back into yesterday; a copy for an earlier
+    /// day is already off today, and only moves with the rest.
+    public static func settled(_ batch: [FoodEntry], now: Date, calendar: Calendar = .current) -> [FoodEntry] {
+        guard let latest = batch.map(\.date).max(), latest > now, latest.timeIntervalSince(now) <= settling else { return batch }
+        let back = latest.timeIntervalSince(now)
+        let midnight = Day(now, calendar: calendar).date(calendar: calendar)
+        let span = latest.timeIntervalSince(batch.map(\.date).filter { $0 >= midnight }.min() ?? latest)
+        let squeeze = span > 0 ? min(1, now.timeIntervalSince(midnight) / span) : 1
+        return batch.map { entry in
+            var entry = entry
+            entry.date =
+                entry.date < midnight
+                ? entry.date.addingTimeInterval(-back) : max(midnight, now.addingTimeInterval(-latest.timeIntervalSince(entry.date) * squeeze))
+            entry.day = Day(entry.date, calendar: calendar)
+            return entry
+        }
     }
 
     /// A copy of an entry for now, keeping the amount and numbers.

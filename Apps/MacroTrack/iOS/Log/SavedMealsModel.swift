@@ -18,7 +18,7 @@ extension AppModel {
     /// logger is adding to, so what's gone in so far stays in sight.
     func mealBeingLogged(at date: Date? = nil) -> Moment? {
         let date = date ?? logDate()
-        return Timeline.moment(joining: date, in: entries(on: Day(date)))
+        return Timeline.moment(joining: date, in: allEntries(on: Day(date)))
     }
 
     /// Saved meals worth a chip on Today: eaten around this time of day in the last month.

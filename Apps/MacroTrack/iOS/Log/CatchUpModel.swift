@@ -33,9 +33,9 @@ extension AppModel {
         return usualTimes.filter { !$0.logged }
     }
 
-    /// Usual times to pick in the logger: all of a past day's, and today's up to now.
+    /// Usual times to pick in the logger: all of another day's, and today's up to now.
     func usualLogTimes(now: Date = Date()) -> [Date] {
-        usualTimes.map(\.time).filter { selectedDay < today || $0 <= now }
+        usualTimes.map(\.time).filter { selectedDay != today || $0 <= now }
     }
 
     /// A meal by name: the saved meal it is, a food alone by its whole name ("Nuts, almonds", not

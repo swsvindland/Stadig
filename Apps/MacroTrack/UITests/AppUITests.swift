@@ -9,7 +9,11 @@ nonisolated final class AppUITests: XCTestCase {
 
         app.element("today.calories").waitToAppear()
         XCTAssertTrue(app.logButton("search").exists, "logging is one tap away on Today")
-        XCTAssertTrue(app.element("today.nothingLogged").exists, "the sample weeks end yesterday")
+
+        app.shot("today")
+
+        app.openTab("Log")
+        app.element("log.list").waitToAppear()
 
         app.openTab("Plan")
         // Three and a half weeks: the assessment is done and a phase is recommended.
@@ -70,7 +74,7 @@ nonisolated final class AppUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication.launched(["-seedSampleData"])
 
-        app.element("today.settings").waitToAppear().tap()
+        app.toolbarItem("today.settings", title: "Settings").tap()
         let done = app.element("settings.done").waitToAppear()
         XCTAssertTrue(app.element("settings.showAllMacros").exists)
         XCTAssertTrue(app.element("settings.drinks").exists)

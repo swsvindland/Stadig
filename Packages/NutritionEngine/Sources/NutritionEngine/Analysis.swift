@@ -5,7 +5,10 @@ import SystemCore
 public struct MacroState: Sendable {
     public var profile: SharedProfile
     public var settings: MacroSettings
+    /// What's been eaten by `now`.
     public var entries: [FoodEntry]
+    /// Food logged for after `now`, for what runs with the app closed and has to know it's coming.
+    public var upcoming: [FoodEntry]
     public var weighIns: [WeighIn]
     public var dayStatus: [DayStatus]
     public var plan: PhasePlan?
@@ -34,7 +37,10 @@ public struct MacroState: Sendable {
     ) {
         self.profile = profile
         self.settings = settings
-        self.entries = entries
+        // Food logged for later hasn't happened: nothing the engine works out sees it until its time.
+        let log = FoodLog(entries, now: now)
+        self.entries = log.eaten
+        upcoming = log.upcoming
         self.weighIns = weighIns
         self.dayStatus = dayStatus
         self.plan = plan
@@ -143,7 +149,11 @@ public enum MacroAnalyst {
     /// Assessment length: three weeks, two when Health already had a fortnight of weigh-ins.
     public static func assessmentDays(weighInsBeforeStart: Int) -> Int { weighInsBeforeStart >= 10 ? 14 : 21 }
 
-    public static func analyse(_ state: MacroState) -> MacroAnalysis {
+    public static func analyse(_ state: MacroState) -> MacroAnalysis { analyse(state, calendar: .current) }
+
+    /// `calendar` is where the day's 4 AM falls: a separate form, not a default, so `analyse` can
+    /// still be passed around as a one-argument function.
+    public static func analyse(_ state: MacroState, calendar: Calendar) -> MacroAnalysis {
         let today = state.today
         // Days just back from a trip or illness are water: they don't move the trend.
         var ignored = Set<Day>()
@@ -173,10 +183,8 @@ public enum MacroAnalyst {
         var intakeByDay: [Day: Nutrients] = [:]
         for entry in state.entries { intakeByDay[entry.day] = (intakeByDay[entry.day] ?? .zero) + entry.nutrients }
         // A supplement's few calories count on days with food logged; alone, they don't make a day logged.
-        for log in state.supplementLogs where log.taken {
-            if let n = log.nutrients, let day = intakeByDay[log.day] {
-                intakeByDay[log.day] = day + Nutrients(kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat)
-            }
+        for log in state.supplementLogs {
+            if let day = intakeByDay[log.day] { intakeByDay[log.day] = day + Intake.calories(of: log) }
         }
 
         let trainingDays =
@@ -201,7 +209,6 @@ public enum MacroAnalyst {
         // Everything else is unknown.
         let states = Dictionary(state.dayStatus.map { ($0.day, $0.state) }, uniquingKeysWith: { a, _ in a })
         let entriesByDay = Dictionary(grouping: state.entries, by: \.day)
-        let calendar = Calendar.current
         let fastedDays = Fasting.fastedDays(fastRuns, today: today, now: state.now, calendar: calendar)
         var complete: [Day: Double] = [:]
         for day in Set(intakeByDay.keys).union(states.keys).union(fastedDays) where day < today {
@@ -218,7 +225,8 @@ public enum MacroAnalyst {
                     continue
                 }
                 let cutoff = day.adding(days: 1).date(calendar: calendar).addingTimeInterval(4 * 3600)
-                let live = (entriesByDay[day] ?? []).filter { $0.updatedAt <= cutoff }
+                // By when each was first logged: fixing a food later doesn't undo that it was logged live.
+                let live = (entriesByDay[day] ?? []).filter { $0.firstLogged <= cutoff }
                 if live.count >= 3, kcal >= formula * 0.7 { complete[day] = kcal }
             }
         }
@@ -364,13 +372,13 @@ public enum MacroAnalyst {
         analysis.mealTiming = MealTiming.report(
             recent, today: today, known: known, bedtime: { state.bedtime(on: $0, calendar: calendar) },
             phase: analysis.phase?.kind, referenceKg: referenceKg, calendar: calendar)
-        analysis.actions = actions(state, analysis)
+        analysis.actions = actions(state, analysis, calendar: calendar)
         return analysis
     }
 
     // MARK: Actions
 
-    static func actions(_ state: MacroState, _ a: MacroAnalysis) -> [MacroAction] {
+    static func actions(_ state: MacroState, _ a: MacroAnalysis, calendar: Calendar) -> [MacroAction] {
         var list: [MacroAction] = []
         let today = state.today
         let weighedToday = state.weighIns.contains { $0.day == today }
@@ -392,7 +400,7 @@ public enum MacroAnalyst {
                     action: "See the recommendation and start it.", priority: 9))
         }
         // Protein short late in the day.
-        let hour = Calendar.current.component(.hour, from: state.now)
+        let hour = calendar.component(.hour, from: state.now)
         if let target = a.targets.protein, a.todayIntake.kcal > 0, hour >= 15, a.fast == nil {
             let gap = target - a.todayIntake.protein
             if gap >= 25 {

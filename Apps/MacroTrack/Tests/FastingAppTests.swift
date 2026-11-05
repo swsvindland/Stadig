@@ -122,6 +122,75 @@ struct FastingAppTests {
         #expect(FastReminders.wanted(model).isEmpty)
     }
 
+    @Test func notificationsStopAtTheNextMealLoggedForLater() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let all = FastReminders.wanted(model).values.map(\.at)
+        let first = try #require(all.min())
+        // A meal between the first milestone and the rest: it ends the fast at its time.
+        model.log([
+            FoodEntry(
+                date: first.addingTimeInterval(60), name: "Dinner", amountLabel: "1",
+                nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20),
+                source: .search)
+        ])
+        #expect(FastReminders.wanted(model).values.map(\.at) == [first])
+    }
+
+    @Test func smallFoodsTogetherLoggedForLaterStopThem() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let first = try #require(FastReminders.wanted(model).values.map(\.at).min())
+        // Milk in a coffee and a square of chocolate: neither's a meal, and together they are.
+        model.log(
+            ["Milk", "Chocolate"].enumerated().map { index, name in
+                FoodEntry(
+                    date: first.addingTimeInterval(60 + Double(index)), name: name, amountLabel: "1",
+                    nutrients: Nutrients(kcal: 30, protein: 1, carbs: 3, fat: 1), source: .search)
+            })
+        #expect(FastReminders.wanted(model).values.map(\.at) == [first])
+    }
+
+    #if os(iOS)
+    @Test func aMealPlannedWithinAPhaseReachesTheLiveActivity() throws {
+        let (model, _, _) = try model()
+        model.startFast(goalHours: 16)
+        let status = try #require(model.analysis?.fast)
+        let sent = FastActivityBridge.Sent(status, nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        // Before the next phase, so nothing the activity shows changes.
+        let lunch = try #require(status.nextPhaseAt).addingTimeInterval(-600)
+        model.log([
+            FoodEntry(date: lunch, name: "Lunch", amountLabel: "1", nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20), source: .search)
+        ])
+
+        let planned = FastActivityBridge.Sent(try #require(model.analysis?.fast), nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        #expect(planned.state == sent.state)
+        #expect(same(planned.staleDate, lunch))
+        #expect(planned != sent, "it has to hear that it goes out of date at lunch")
+
+        model.delete(entries: model.foodLog.upcoming.map(\.id))
+        let removed = FastActivityBridge.Sent(try #require(model.analysis?.fast), nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        #expect(removed == sent, "and that it no longer does")
+    }
+    #endif
+
+    @Test func aDrinkLoggedForLaterDoesntStopThem() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let count = FastReminders.wanted(model).count
+        let first = try #require(FastReminders.wanted(model).values.map(\.at).min())
+        model.log([
+            FoodEntry(
+                date: first.addingTimeInterval(60), name: "Black coffee", amountLabel: "1",
+                nutrients: Nutrients(kcal: 2, protein: 0, carbs: 0, fat: 0),
+                source: .search)
+        ])
+        #expect(FastReminders.wanted(model).count == count)
+    }
+
     @Test func theWidgetsSeeTheFastAndTheExportHasIt() throws {
         let (model, environment, banana) = try model()
         model.startFast(goalHours: 16)
@@ -154,6 +223,32 @@ struct FastingAppTests {
         // Off: none.
         model.setTracksMealTiming(false)
         #expect(model.gapsBefore(on: yesterday).isEmpty)
+    }
+
+    @Test func anHourHoldsTheGapBeforeEachMealThatStartsInIt() throws {
+        let environment = TestEnvironment()
+        let model = environment.model()
+        model.onboard()
+        let yesterday = model.today.adding(days: -1)
+        let food: (Int, Int) throws -> FoodEntry = { hour, minute in
+            try model.entry(foodID: Foods.bananaID, grams: 200, date: yesterday.at(hour: hour, minute: minute))
+        }
+        let breakfast = try food(8, 0)
+        // Two meals starting within an hour, the second running into the next.
+        let snack = try food(10, 0)
+        let lunch = try food(10, 50)
+        let lunchEnds = try food(11, 20)
+        model.log([breakfast, snack, lunch, lunchEnds])
+        model.setTracksMealTiming(true)
+        model.setState(.complete, for: yesterday)
+
+        let before = model.gapsBefore(on: yesterday)
+        let hours = DayHours.groups(on: yesterday, entries: model.allEntries(on: yesterday))
+        func gaps(at hour: Int) -> [TimeInterval] { hours.first { $0.hour == hour }?.gaps(before).map(\.duration) ?? [] }
+
+        #expect(gaps(at: 8).isEmpty, "the day's first meal has nothing before it")
+        #expect(gaps(at: 10) == [2 * 3600, 50 * 60], "in the order they were eaten")
+        #expect(gaps(at: 11).isEmpty, "a meal's gap is on the hour it started")
     }
 
     @Test func theFastLinkOpensTheFastScreenOnlyWithMealTimingOn() throws {

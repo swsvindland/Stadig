@@ -55,22 +55,24 @@ nonisolated final class MealUITests: XCTestCase {
     }
 
     @MainActor
-    func testAMomentOnTodaySavesAsAMeal() throws {
-        try XCTSkipIf(XCUIApplication.isPad, "An iPad's Today is a table, whose moments are saved from a row's context menu")
+    func testAnHourOnTheLogSavesAsAMeal() throws {
         continueAfterFailure = false
-        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search"])
         add("banana", in: app)
         add("almonds", in: app)
         app.element("logger.done").tap()
 
-        app.scrollTo(app.element("today.momentMenu")).tap()
+        // The hour's name, held, offers what's done with a meal.
+        let hour = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'log.hourName.'")).firstMatch
+        app.scrollTo(hour).waitToAppear().press(forDuration: 0.8)
         app.buttons["today.saveMeal"].waitToAppear().tap()
         name("Banana and almonds", in: app)
         app.element("toast.message", labelContaining: "Saved Banana and almonds · 2 foods").waitToAppear()
+        app.element("toast.message").waitToDisappear()
 
-        // Saved, the moment's menu no longer offers to save it.
-        app.scrollTo(app.element("today.momentMenu")).tap()
-        app.buttons["Log all again"].waitToAppear()
+        // Saved, the hour's menu no longer offers to save it.
+        hour.press(forDuration: 0.8)
+        app.element("log.hourMenu.repeat").waitToAppear()
         XCTAssertFalse(app.buttons["today.saveMeal"].exists)
     }
 }

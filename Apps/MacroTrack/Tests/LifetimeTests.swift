@@ -53,9 +53,8 @@ struct RemoteChangeTests {
         elsewhere.save(MacroSettings(id: MacroSettings.singletonID, onboardedAt: Date(), assessmentStart: model.today))
         NotificationCenter.default.post(name: Notification.Name("NSPersistentStoreRemoteChangeNotification"), object: nil)
 
-        // The store waits for a quiet moment, then needs the main actor, which the other suites
-        // share: a generous wait, over as soon as it lands.
-        #expect(await eventually(timeout: .seconds(30)) { model.onboarded })
+        // The store waits for a quiet moment first.
+        #expect(await eventually { model.onboarded })
         #expect(model.profile?.heightCm == 180)
     }
 

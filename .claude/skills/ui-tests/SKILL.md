@@ -39,4 +39,8 @@ Every app's DEBUG launch arguments are in `docs/<app>.md`. Start a test as close
 
 ## Debugging
 
+In Stadig Macro: `app.logEntry(containing:)` finds a food on the Log tab, `app.toolbarItem(_:title:)` finds a toolbar button an iPad may have folded into More, and `app.logButton("search")` finds a way to log on either device. `-tab log -daysAgo 1` gives a full day whatever the hour; today's food depends on when the suite runs (docs/testing.md).
+
+`TEST_RUNNER_UI_SHOTS=<folder>` makes `app.shot("name")` save the screen, to look at a layout without an `.xcresult`.
+
 Failures leave an `.xcresult` under `<DerivedData>-results/` (the path is printed with the failure); open it in Xcode for the screenshot and element tree at the failure. `app.debugDescription` prints the tree from inside a test. For a hosted-test hang at launch, check the app skips permission prompts under `-uiTesting`.

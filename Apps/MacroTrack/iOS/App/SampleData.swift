@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import FoodDatabase
+import FoodIntelligence
 import MealPlanner
 import NutritionEngine
 import SystemCore
@@ -97,9 +98,10 @@ enum SampleData {
             ("Oats and yogurt", ["oats", "greek yogurt", "banana"]), ("Chicken and rice", ["chicken breast", "white rice cooked", "broccoli"]),
         ] {
             let ids = Set(queries.compactMap { foods[$0]?.id })
-            guard ids.count == queries.count, let moment = moments.last(where: { ids.isSubset(of: $0.entries.compactMap(\.foodID)) }) else {
-                continue
-            }
+            // -sampleNoMeals: for Foods' Meals with nothing saved yet.
+            guard !LaunchOptions.current.has("-sampleNoMeals"), ids.count == queries.count,
+                let moment = moments.last(where: { ids.isSubset(of: $0.entries.compactMap(\.foodID)) })
+            else { continue }
             model.store.save(SavedMeal(name: name, from: moment.entries.filter { $0.foodID.map(ids.contains) ?? false }, updatedAt: moment.end))
         }
         model.reload()
@@ -110,6 +112,77 @@ enum SampleData {
         if LaunchOptions.current.has("-seedMealPlan") {
             model.makeMealPlan(preferences: PlanPreferences(slots: Set(MealSlot.allCases)), start: .today.adding(days: -1))
         }
+    }
+
+    /// Food logged ahead: dinner later today if there's a later today, then lunch and dinner on the
+    /// next two days. Debug builds only (-seedUpcoming; it needs -seedSampleData).
+    @MainActor
+    static func seedUpcoming(_ model: AppModel) {
+        func food(_ name: String, kcal: Double, at date: Date) -> FoodEntry {
+            FoodEntry(
+                date: date, name: name, amountLabel: "1 serving",
+                nutrients: Nutrients(kcal: kcal, protein: kcal / 15, carbs: kcal / 9, fat: kcal / 30),
+                source: .search)
+        }
+        let today = model.today
+        var foods: [FoodEntry] = []
+        let dinner = today.at(hour: 19, minute: 0)
+        if dinner > Date() { foods.append(food("Salmon and rice", kcal: 650, at: dinner)) }
+        for offset in 1...2 {
+            let day = today.adding(days: offset)
+            foods.append(food("Chicken salad", kcal: 480, at: day.at(hour: 12, minute: 30)))
+            foods.append(food("Pasta bake", kcal: 720, at: day.at(hour: 19, minute: 0)))
+        }
+        model.store.save(foods)
+        model.reload()
+    }
+
+    /// Years of the same log (`LongHistory`), through the real store, to see the app with a long
+    /// history and measure it. Debug builds only (-seedLongHistory, 5 years unless a number follows).
+    @MainActor
+    static func seedLongHistory(_ model: AppModel, years: Int) {
+        guard model.entries.isEmpty, model.profile == nil else { return }
+        let history = LongHistory(years: years)
+        var settings = history.settings
+        settings.id = MacroSettings.singletonID
+        model.store.save(ProfileRecord(history.profile))
+        model.store.save(settings)
+        model.store.save(history.plan)
+        model.store.save(history.entries)
+        model.store.save(history.weighIns)
+        model.store.save(history.statuses)
+        model.store.save(history.checkIns)
+        model.store.save(history.supplements)
+        model.store.save(history.supplementLogs)
+        model.store.save(history.water)
+        model.store.save(history.fasts)
+        model.store.save(history.savedMeals)
+        model.reload()
+    }
+
+    /// A meal as if the model had read it, ready to check, since a simulator may have no model.
+    /// Debug builds only (-seedReview, with -log describe): one of the person's own foods at 300
+    /// kcal, and something it couldn't match.
+    @MainActor
+    static func seedReview(_ session: LoggerSession, _ model: AppModel) {
+        guard LaunchOptions.current.has("-seedReview"), session.review == nil else { return }
+        let name = "Beef stew"
+        let stew =
+            model.customFoods.first { $0.food.name == name }?.food
+            ?? model.save(
+                customFood: Food(
+                    id: "seed-stew", name: name, basis: .serving, nutrients: Nutrients(kcal: 300, protein: 25, carbs: 20, fat: 13), source: .custom))
+        guard let serving = FoodUnits.units(for: stew).first else { return }
+        let seen = [
+            GuessedItem(
+                seenName: name, seenBrand: nil, match: FoodMatch(food: stew, score: 1, personal: true), alternatives: [], unit: serving, count: 1,
+                nutrients: stew.nutrients, sure: true, approximate: false),
+            GuessedItem(
+                seenName: "Mystery sauce", seenBrand: nil, match: nil, alternatives: [], unit: nil, count: 1, nutrients: .zero, sure: false,
+                approximate: true),
+        ]
+        let guess = MealGuess(scene: nil, isFood: true, items: seen, engine: .onDevice, seconds: 1)
+        session.review = MealReview(guess: guess, source: .description, mode: session.mode, corrected: model.corrected)
     }
 
     /// The stack from the design brief, two weeks of it taken, and drinks: fish oil and a
@@ -127,9 +200,10 @@ enum SampleData {
                 id: "custom:\(name)", name: name, servingCount: count, unit: unit,
                 ingredients: lines.map { SupplementIngredient(name: $0.0, amount: $0.1, unit: $0.2) }, source: .custom)
         }
-        let fish =
-            model.supplementCatalog?.supplement(barcode: "031604010539")
-            ?? custom("Fish Oil 1200 mg", 1, "softgel", [("Calories", 10, "kcal"), ("EPA", 216, "mg"), ("DHA", 144, "mg")])
+        // With its barcode, catalog or not: a UI test scans it.
+        var fishOil = custom("Fish Oil 1200 mg", 1, "softgel", [("Calories", 10, "kcal"), ("EPA", 216, "mg"), ("DHA", 144, "mg")])
+        fishOil.barcode = "00031604010539"
+        let fish = model.supplementCatalog?.supplement(barcode: "031604010539") ?? fishOil
         let multi = label(
             "centrum adults multivitamin",
             fallback: custom(

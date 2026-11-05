@@ -29,9 +29,12 @@ struct MacroTrackApp: App {
         #if DEBUG
         // -seedSampleData fills an empty store; -tab plan|progress (or foods|mealplan|supplements|history,
         // the sidebar's) opens a tab; -daysAgo 1 opens Today on an earlier day; -log search|describe|quickAdd
-        // opens a logger. For checking screens quickly, and for the UI tests.
+        // opens a logger, and -seedReview gives it a meal to check; -toastSeconds 30 holds a toast, where a
+        // UI test's steps take longer than its few seconds. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
+        if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
         if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }
@@ -39,9 +42,12 @@ struct MacroTrackApp: App {
         if let tab = launch.value(after: "-tab") {
             model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
-        if let days = launch.value(after: "-daysAgo").flatMap(Int.init) { model.selectedDay = model.today.adding(days: -days) }
+        if let days = launch.number(after: "-daysAgo") { model.show(day: model.today.adding(days: -days)) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
+        if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
         #endif
+        // From here on, off the main thread: launch and its seeds ran with the numbers ready.
+        model.backgroundAnalysis = true
         MacroShortcuts.updateAppShortcutParameters()
         // Reminders' Taken button; tests and UI tests never schedule any.
         if !launch.isQuiet { SupplementReminders.register() }
@@ -98,6 +104,7 @@ struct MacroTrackApp: App {
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
+                    model.cameToFront()
                     model.refreshDay()
                     // Apple Intelligence may have been turned on, or finished downloading, meanwhile.
                     model.ai.configure(catalog: model.catalog, allowCloud: model.settings.allowCloudAI)
@@ -112,11 +119,14 @@ struct MacroTrackApp: App {
                         model.askForPurchaseIfDue()
                     }
                 case .background:
+                    model.wentToBackground()
                     releaseCatalogMemory(model)
                 default:
                     break
                 }
             }
+            // Hidden or minimized, both this and the scene phase fire. The model takes the first.
+            .onGoingAway(left: { model.wentToBackground() }, returned: { model.cameToFront() })
             #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
             releaseCatalogMemory(model)

@@ -11,14 +11,15 @@ import SystemStore
 
 let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
-/// Where the app is. The iPhone's tab bar has Today, Plan and Progress; the sidebar on iPad, the
-/// Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
+/// Where the app is. The iPhone's tab bar has Today, Log, Plan and Progress; the sidebar on iPad,
+/// the Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
 enum AppTab: String, Hashable, CaseIterable {
-    case today, foods, mealPlan, supplements, plan, progress, history
+    case today, log, foods, mealPlan, supplements, plan, progress, history
 
     var title: String {
         switch self {
         case .today: "Today"
+        case .log: "Log"
         case .foods: "Foods"
         case .mealPlan: "Meal Plan"
         case .supplements: "Supplements"
@@ -33,15 +34,44 @@ enum AppTab: String, Hashable, CaseIterable {
     var isSidebarOnly: Bool {
         switch self {
         case .foods, .mealPlan, .supplements, .history: true
-        case .today, .plan, .progress: false
+        case .today, .log, .plan, .progress: false
         }
     }
+
+    /// The nearest thing the tab bar has, for a window narrowed to no room for the sidebar.
+    var compactFallback: AppTab {
+        switch self {
+        case .mealPlan: .plan
+        case .history: .progress
+        case .foods: .log
+        case .supplements: .today
+        case .today, .log, .plan, .progress: self
+        }
+    }
+
+    /// Screens that log to a day other than today. Leaving them goes back to today: the one rule that
+    /// stops a food landing on the wrong day.
+    var keepsDay: Bool { self == .log || self == .foods }
 }
 
 /// The ways into logging. Each opens straight to its first step.
 enum LogMode: String, Identifiable, Hashable {
     case search, scan, camera, photoLibrary, describe, quickAdd
     var id: String { rawValue }
+}
+
+/// An ask for the logger, which may be open already.
+struct LoggerRequest: Equatable {
+    var serial = 0
+    /// The way of logging asked for; nil asks only for the logger to show, at a new time.
+    var mode: LogMode?
+}
+
+/// What a day adds up to so far, and what's logged for later.
+struct DayIntake: Equatable {
+    var eaten: Nutrients
+    var later: Nutrients
+    var all: Nutrients { eaten + later }
 }
 
 /// A short confirmation after logging, with Undo.
@@ -58,13 +88,19 @@ struct Toast: Identifiable, Equatable {
     var fast: FastUndo?
     /// A saved meal just deleted, which the Undo brings back.
     var deletedMeal: SavedMeal?
+    /// Entries as they were before an edit, which the Undo puts back.
+    var restore: [FoodEntry] = []
+    /// Says something didn't happen, not that it did.
+    var failed = false
 
     enum FastUndo: Equatable {
         case started(UUID)
         case ended(Fast)
     }
 
-    var canUndo: Bool { !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil }
+    var canUndo: Bool {
+        !undo.isEmpty || !undoWater.isEmpty || !undoDoses.isEmpty || !deleted.isEmpty || fast != nil || deletedMeal != nil || !restore.isEmpty
+    }
 }
 
 /// The app's state: Stadig Macro's own synced records, what Stadig Lift and the hub published, what
@@ -75,6 +111,7 @@ final class AppModel {
     /// What Health records this app wrote carry as their source: the current id and the one it had
     /// before the 2026-10 rename, so samples saved before it still count as the app's own.
     static let ownBundlePrefixes = ["dev.svindland.stadig.macro", "dev.svindland.macrotrack"]
+    static let tabKey = "app.tab"
 
     let store: RecordStore
     let shared: SharedContainer
@@ -91,10 +128,11 @@ final class AppModel {
     // Records.
     private(set) var profile: SharedProfile?
     private(set) var settings = MacroSettings()
-    private(set) var entries: [FoodEntry] = [] {
-        didSet { entriesByDay = Dictionary(grouping: entries, by: \.day) }
-    }
-    /// The same entries by day, oldest first within each: a day's log without walking years of them.
+    /// The log, split at the last time the clock was read: what's been eaten and what's for later.
+    private(set) var foodLog = FoodLog([], now: Date())
+    /// What's been eaten, oldest first. Food for later is in `foodLog`, and in `allEntries(on:)`.
+    var entries: [FoodEntry] { foodLog.eaten }
+    /// All the log by day, oldest first within each: a day's log without walking years of them.
     private var entriesByDay: [Day: [FoodEntry]] = [:]
     private(set) var weighIns: [WeighIn] = []
     private(set) var dayStatus: [DayStatus] = []
@@ -131,6 +169,10 @@ final class AppModel {
     /// off the main thread (the history) and need to know when to again.
     private(set) var analysisVersion = 0
     private(set) var logAgain: [LogAgainItem] = []
+    /// Log Again as the Log tab's chips show it, the order taken once a visit: on changing tab and
+    /// on going away, or when there's none yet. It holds still while they're being tapped, however
+    /// the row comes and goes.
+    private(set) var logAgainChips: [LogAgainItem] = []
     /// Every saved meal, best first for now.
     private(set) var mealSuggestions: [MealSuggestion] = []
     /// Log Again, saved meals and "Same as" for the time the open logger logs at, when that isn't
@@ -145,19 +187,41 @@ final class AppModel {
     }
     /// Bumped when the personal foods are rebuilt, for lists made from them off the main thread.
     private(set) var personalVersion = 0
+    /// Bumped when a correction or one of the person's own foods changes, here or on another device,
+    /// for whoever holds a copy of a food.
+    private(set) var foodsChanged = 0
     /// The one food that best fixes this week's shortest nutrient, ready to log.
     private(set) var microFix: MicroFix?
     /// A fermented food to log, while the week has had too few.
     private(set) var fermentedFix: FermentedFix?
 
     // Presentation.
-    var tab: AppTab = .today
+    /// Where the app is, kept for the next launch. Links, widgets, Siri and controls land where they
+    /// always did, whatever this says.
+    var tab: AppTab = .today {
+        didSet {
+            guard tab != oldValue else { return }
+            defaults?.set(tab.rawValue, forKey: Self.tabKey)
+            // Where it's a pane it's part of the Log tab. Left open behind another tab, it would go
+            // on logging at its picked time, out of sight, and hold the toast where it can't be seen.
+            if usesSidebar, tab != .log { logger = nil }
+            takeLogAgainOrder()
+            if oldValue.keepsDay, !tab.keepsDay {
+                selectedDay = today
+                clearSelection()
+            }
+        }
+    }
     /// The logger on screen. Closing it, by Done, a swipe or a link opening something else, drops
     /// its picked time here rather than in the sheet's onDismiss, which runs after the close
     /// animation: a "+" on a moment tapped meanwhile would lose its time to it.
     var logger: LogMode? {
         didSet { if logger == nil { loggerTime = nil } }
     }
+    /// The last ask for a logger, which what's showing one follows. `logger` is the way it opened
+    /// with: it doesn't change when a logger that's since gone back to its search is asked for that
+    /// way again, and it can't follow the logger's own moves, or the sheet would present again.
+    private(set) var loggerRequest = LoggerRequest()
     /// When a logger's foods were eaten; nil is now (or this time of day, on a past day). Only while
     /// the logger is open: it's cleared when the logger closes or the day changes, so a later one-tap
     /// log doesn't land at a time picked hours (or a day) before.
@@ -188,14 +252,26 @@ final class AppModel {
     var usesSidebar = false
     /// Asks the Foods screen to put the cursor in its search field (⌘F, Log Food, a widget's search).
     private(set) var foodSearchRequest = 0
-    /// Asks Today to scroll to the day's supplements (a tap on a reminder): by evening the food
-    /// above them can be a long way down.
-    var supplementsScrollRequest = 0
+    /// The foods picked out on the Log tab.
+    var selection = LogSelection()
+    /// Asks the Log tab to go to the hour a day opens on: back from a while away, or a tap on today.
+    private(set) var logAnchorRequest = 0
+    /// Today is to scroll to the day's supplements (a tap on a reminder), once it's there to: they're
+    /// a long way down, and a reminder can open an app that hasn't built Today yet.
+    var pendingSupplementsScroll = false
     var toast: Toast?
+    /// What screens have open that only they can see (`notesWork`), and whether each covers the toast.
+    private var openWork: [UUID: Bool] = [:]
+    /// Whether a sheet is over where the toast shows: it waits, rather than its seconds running out.
+    var toastCovered: Bool { openWork.values.contains(true) }
+    /// How long a toast stays up.
+    var toastTime: Duration = .seconds(4)
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
-    /// The day Today shows and logs to: today, or a day being caught up.
+    /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
+    /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
+    /// launch, at midnight, on coming back after a while away, and from anywhere outside the app.
     var selectedDay: Day = .today {
         didSet {
             guard selectedDay != oldValue else { return }
@@ -228,6 +304,18 @@ final class AppModel {
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
+    /// Wakes the model when a food's time comes, and when the day or the clock changes.
+    @ObservationIgnored private(set) var foodClock: FoodClock?
+    /// Whether the analysis and the suggestions are worked out off the main thread: on, once launch
+    /// is done, so a tap never waits on years of log. Off in tests, where the numbers are there as
+    /// soon as a write returns, and for launch itself, so the first frame has them.
+    @ObservationIgnored var backgroundAnalysis = false
+    /// The analysis running now, and which recompute it was for: a newer one's replaces it.
+    @ObservationIgnored private var analysisTask: Task<Void, Never>?
+    @ObservationIgnored private var analysisGeneration = 0
+    /// When the app last left the front, to know a while away from a glance at a message.
+    @ObservationIgnored private var wentAway: Date?
+    @ObservationIgnored private var targetsByDay: (version: Int, targets: [Day: DailyTargets]) = (0, [:])
     /// Where "Not now" on a suggestion is remembered between launches; nil keeps it for this run.
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var hiddenUntil: [String: Date] = [:]
@@ -271,7 +359,8 @@ final class AppModel {
     /// A model over these: what tests build, over an in-memory store and a temporary container.
     init(
         store: RecordStore, shared: SharedContainer, widgetURL: URL?, defaults: UserDefaults? = nil,
-        catalog: FoodCatalog = .standard(), supplementCatalog: SupplementCatalog? = .standard(), usesSystemServices: Bool = false
+        catalog: FoodCatalog = .standard(), supplementCatalog: SupplementCatalog? = .standard(), usesSystemServices: Bool = false,
+        backgroundAnalysis: Bool = false
     ) {
         self.store = store
         self.shared = shared
@@ -282,7 +371,10 @@ final class AppModel {
         self.usesSystemServices = usesSystemServices
         purchases = Purchases(.macro, store: store)
         weightAnchor = defaults?.data(forKey: Self.weightAnchorKey)
+        tab = defaults?.string(forKey: Self.tabKey).flatMap(AppTab.init(rawValue:)) ?? .today
+        foodClock = FoodClock { [weak self] in self?.refreshDay() }
         reload()
+        self.backgroundAnalysis = backgroundAnalysis
         // A second device or a reinstall: onboarding waits while the person's data comes down.
         if !onboarded { arrival = ICloudArrival.start(for: store) }
         sharedObserver = SharedContainer.observeChanges { [weak self] in self?.readShared() }
@@ -302,13 +394,25 @@ final class AppModel {
     /// Re-reads the kinds of record that changed since the last read, then recomputes. Unchanged
     /// kinds aren't read or sorted again, but the analysis still runs over everything, so it's work
     /// in proportion to the history.
-    func reload() {
+    /// `readingShared` false is for this model's own saves: a change to the shared files arrives by
+    /// its own notification, and `refreshDay` looks again on the way back to the front.
+    func reload(readingShared: Bool = true) {
+        let interval = LogPath.begin("reload")
+        defer { LogPath.end(interval) }
         if needsReading(ProfileRecord.self) { profile = store.all(ProfileRecord.self).first?.profile }
         if needsReading(MacroSettings.self) {
             settings = MacroSettings.inForce(store.all(MacroSettings.self)) ?? MacroSettings(id: MacroSettings.singletonID)
         }
         let entriesChanged = needsReading(FoodEntry.self)
-        if entriesChanged { entries = store.all(FoodEntry.self).sorted { $0.date < $1.date } }
+        if entriesChanged {
+            let reading = LogPath.begin("readEntries")
+            let all = store.all(FoodEntry.self).sorted { $0.date < $1.date }
+            entriesByDay = Dictionary(grouping: all, by: \.day)
+            foodLog = FoodLog(sorted: all, now: Date())
+            // A food deleted from under the selection, here or on another device, leaves it.
+            if !selection.isEmpty { selection.ids.formIntersection(all.map(\.id)) }
+            LogPath.end(reading)
+        }
         if needsReading(WeighIn.self) { weighIns = store.all(WeighIn.self).sorted { $0.date < $1.date } }
         if needsReading(DayStatus.self) { dayStatus = store.all(DayStatus.self) }
         if needsReading(PhasePlan.self) { plan = store.all(PhasePlan.self).first }
@@ -330,9 +434,14 @@ final class AppModel {
         if needsReading(SavedMeal.self) { savedMeals = store.all(SavedMeal.self) }
         if needsReading(MealPlan.self) { reloadMealPlans() }
         applyAISetting()
-        readShared(recompute: false)
+        if readingShared {
+            let reading = LogPath.begin("readShared")
+            readShared(recompute: false)
+            LogPath.end(reading)
+        }
         recompute()
         if entriesChanged || customChanged || favoritesChanged || correctionsChanged { refreshPersonal() }
+        if customChanged || correctionsChanged { foodsChanged &+= 1 }
         lastRevision = store.revision
     }
 
@@ -362,9 +471,36 @@ final class AppModel {
 
     /// Catches up with the store and the calendar, for the ways in that don't make the scene active
     /// (Siri, Shortcuts, a notification's button), where `today` can still be yesterday.
-    func refreshDay() {
+    func refreshDay(now: Date = Date()) {
         reloadIfChanged()
-        if today != .today { recompute() }
+        readShared()
+        if today != .today || foodLog.isStale(at: now) {
+            recompute(now: now)
+        } else {
+            // The timer counts seconds, not the clock: after a clock change it would wake at the wrong
+            // time, and waking ahead of the food, with nothing due, would leave none.
+            foodClock?.arm(for: foodLog.nextChange)
+        }
+    }
+
+    /// New food saved and put in its place, as the store holds it (to the millisecond, which a
+    /// fast's start is compared with): years of log aren't sorted and grouped again for one more. A
+    /// big batch is left for `reload` to read whole. A save that failed places nothing and says so,
+    /// and marks nothing as read, so `reload` finds what the store really holds.
+    private func insert(_ new: [FoodEntry]) -> Bool {
+        let saving = LogPath.begin("save")
+        let stored = store.insert(new).sorted { $0.date < $1.date }
+        LogPath.end(saving)
+        guard !stored.isEmpty else { return false }
+        guard new.count <= 32 else { return true }
+        foodLog = foodLog.inserting(stored, now: Date())
+        for entry in stored {
+            var day = entriesByDay[entry.day] ?? []
+            day.insert(entry, at: day.firstIndex { $0.date > entry.date } ?? day.endIndex)
+            entriesByDay[entry.day] = day
+        }
+        readRevisions[FoodEntry.kind] = store.revision(of: FoodEntry.self)
+        return true
     }
 
     /// Rebuilds the AI engine when the Private Cloud Compute setting changed: on this device, on
@@ -425,44 +561,122 @@ final class AppModel {
     /// Whole milliseconds, the precision the store and the shared container keep.
     private static func milliseconds(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
 
-    var state: MacroState? {
+    var state: MacroState? { state(now: Date()) }
+
+    /// What the analysis reads at a moment. It's given all the log and keeps what's been eaten by then.
+    func state(now: Date) -> MacroState? {
         guard let profile else { return nil }
         return MacroState(
-            profile: profile, settings: settings, entries: entries, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
+            profile: profile, settings: settings, entries: foodLog.all, weighIns: weighIns, dayStatus: dayStatus, plan: plan,
             lifeModes: lifeModes, calendar: calendar, lift: lift, checkIns: checkIns, supplements: supplements,
-            supplementLogs: supplementLogs, water: water, fasts: fasts, today: today)
+            supplementLogs: supplementLogs, water: water, fasts: fasts, today: today, now: now)
     }
 
-    func recompute() {
+    func recompute(now: Date = Date()) {
+        let interval = LogPath.begin("recompute")
+        defer { LogPath.end(interval) }
         if today != .today {
-            if selectedDay == today { selectedDay = .today }
+            selectedDay = .today
             today = .today
         }
-        let now = Date()
-        logAgain = LogAgain.rank(suggestionEntries, now: now)
-        mealSuggestions = SavedMeals.rank(savedMeals, entries: entries, now: now)
+        // Every recompute reads the clock, so this is where a food's time passing is noticed.
+        if foodLog.isStale(at: now) {
+            foodLog = foodLog.at(now)
+            healthBackfill?.run()
+        }
+        defer { foodClock?.arm(for: foodLog.nextChange) }
         refreshCatchUp()
-        guard let state else {
-            analysis = nil
+        analysisGeneration &+= 1
+        analysisTask?.cancel()
+        analysisTask = nil
+        let state = state(now: now)
+        let suggestions = suggestionEntries
+        let eaten = entries
+        let around = logAround(today)
+        let meals = savedMeals
+        guard backgroundAnalysis, let state else {
+            show(Self.worked(state, suggestions: suggestions, eaten: eaten, around: around, meals: meals, now: now))
             return
         }
-        let analysis = MacroAnalyst.analyse(state)
-        self.analysis = analysis
+        let generation = analysisGeneration
+        analysisTask = Task.detached(priority: .userInitiated) { [weak self] in
+            let derived = Self.worked(state, suggestions: suggestions, eaten: eaten, around: around, meals: meals, now: now)
+            guard !Task.isCancelled else { return }
+            await self?.show(derived, generation: generation)
+        }
+    }
+
+    /// What a recompute works out from the whole log, which is why it can run off the main thread.
+    private struct Derived: Sendable {
+        var state: MacroState?
+        var analysis: MacroAnalysis?
+        var logAgain: [LogAgainItem]
+        var meals: [MealSuggestion]
+    }
+
+    private nonisolated static func worked(
+        _ state: MacroState?, suggestions: [FoodEntry], eaten: [FoodEntry], around: [FoodEntry], meals: [SavedMeal], now: Date
+    ) -> Derived {
+        let rankings = LogPath.begin("rankings")
+        let logAgain = LogAgain.rank(suggestions, now: now)
+        let ranked = SavedMeals.rank(meals, entries: eaten, logged: around, now: now)
+        LogPath.end(rankings)
+        let interval = LogPath.begin("analyse")
+        defer { LogPath.end(interval) }
+        return Derived(state: state, analysis: state.map(MacroAnalyst.analyse), logAgain: logAgain, meals: ranked)
+    }
+
+    private func takeLogAgainOrder() { logAgainChips = Array(logAgain.prefix(10)) }
+
+    /// All the log on a day and those beside it, food for later included: a time ranked for reaches
+    /// across midnight either way.
+    private func logAround(_ day: Day) -> [FoodEntry] { (-1...1).flatMap { allEntries(on: day.adding(days: $0)) } }
+
+    /// A finished analysis, unless a newer recompute has started since.
+    private func show(_ derived: Derived, generation: Int) {
+        guard generation == analysisGeneration else { return }
+        analysisTask = nil
+        show(derived)
+    }
+
+    private func show(_ derived: Derived) {
+        logAgain = derived.logAgain
+        // A launch restored to Log never changes tab, and the first food ever logged has no order yet.
+        if logAgainChips.isEmpty { takeLogAgainOrder() }
+        mealSuggestions = derived.meals
+        analysis = derived.analysis
+        guard var state = derived.state, let found = derived.analysis else { return }
         // The weekly check-in applies itself: small, capped steps, explained on Today.
-        if let due = analysis.dueCheckIn, plan != nil, onboarded {
+        if let due = found.dueCheckIn, plan != nil, onboarded {
             store.save(due)
             checkIns = Self.ordered(store.all(CheckIn.self))
             readRevisions[CheckIn.kind] = store.revision(of: CheckIn.self)
             lastRevision = store.revision
-            self.analysis = MacroAnalyst.analyse(self.state ?? state)
+            if backgroundAnalysis {
+                recompute()
+                return
+            }
+            state = self.state(now: state.now) ?? state
+            analysis = MacroAnalyst.analyse(state)
         }
-        publish()
+        publish(state)
         refreshMicroFix()
         refreshFermentedFix()
         if usesSystemServices {
             SupplementReminders.schedule(self)
             FastReminders.schedule(self)
             FastActivityBridge.update(self)
+        }
+    }
+
+    /// Waits until the analysis running now, and any a newer change starts meanwhile, has shown, or
+    /// until `limit` has passed: Siri reads the numbers straight after a write, with nothing on screen
+    /// to catch up.
+    func analysisFinished(within limit: Duration) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + limit
+        while analysisTask != nil, clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
         }
     }
 
@@ -519,8 +733,10 @@ final class AppModel {
     @ObservationIgnored private var lastPublished: (nutrition: NutritionSummary, summary: AppSummary)?
 
     /// The phase and day-by-day nutrition for Stadig Lift and the hub, written only when they change.
-    private func publish() {
-        guard let state, let analysis else { return }
+    private func publish(_ state: MacroState) {
+        let interval = LogPath.begin("publish")
+        defer { LogPath.end(interval) }
+        guard let analysis else { return }
         var nutrition = MacroAnalyst.nutritionSummary(state, analysis)
         var summary = MacroAnalyst.appSummary(state, analysis)
         if let last = lastPublished {
@@ -617,6 +833,7 @@ final class AppModel {
         fresh.id = entry.id
         fresh.day = entry.day
         fresh.updatedAt = entry.updatedAt
+        fresh.loggedAt = entry.loggedAt
         return fresh
     }
 
@@ -629,7 +846,7 @@ final class AppModel {
     /// with the last portion used, plus favourites and the person's own foods.
     private func refreshPersonal() {
         personalTask?.cancel()
-        let entries = entries.filter { $0.foodID != nil }
+        let entries = entries
         let favorites = favorites
         let custom = customFoods.map(\.food)
         let corrected = corrections
@@ -640,6 +857,7 @@ final class AppModel {
             var byFood: [String: (score: Double, last: FoodEntry)] = [:]
             for entry in entries {
                 guard let id = entry.foodID else { continue }
+                if Task.isCancelled { return }
                 let days = max(0, now.timeIntervalSince(entry.date) / 86400)
                 let weight = pow(0.5, days / 30)
                 var current = byFood[id] ?? (0, entry)
@@ -713,17 +931,53 @@ final class AppModel {
     // MARK: Logging
 
     /// Opens a logger, its foods eaten at `time` (nil is now). The time lasts while the logger is open.
-    /// Where the sidebar has the Foods screen, a search at no particular time opens that instead.
+    /// Where there's room it's a pane beside the Log tab, so that's where this goes, and each food
+    /// added lands in sight. Asked for with one open, it goes to that way of logging.
     func openLogger(_ mode: LogMode, at time: Date? = nil) {
-        if mode == .search, time == nil, usesSidebar {
-            showFoods()
-            return
-        }
+        if usesSidebar { tab = .log }
         loggerTime = time
         logger = mode
+        loggerRequest = LoggerRequest(serial: loggerRequest.serial &+ 1, mode: mode)
     }
 
-    /// A destination by name (the Go menu, ⌘1…⌘7). One only the sidebar has, asked for without one
+    /// An hour's +, or a usual time to catch up on. A pane already open stays as it is, on whichever
+    /// way of logging, with what's typed and any review, and only its time changes.
+    func aimLogger(at time: Date) {
+        guard usesSidebar, logger != nil else { return openLogger(.search, at: time) }
+        loggerTime = time
+        loggerRequest = LoggerRequest(serial: loggerRequest.serial &+ 1, mode: nil)
+    }
+
+    /// A day in the Log tab, where a day other than today is looked at.
+    func show(day: Day) {
+        tab = .log
+        selectedDay = day
+    }
+
+    /// Back to today's log, at the hour it is.
+    func showToday() {
+        selectedDay = today
+        logAnchorRequest &+= 1
+    }
+
+    /// How long away counts as a new visit: long enough that the day being looked at was for then.
+    static let awayLimit: TimeInterval = 10 * 60
+
+    /// Keeps the first time, since leaving can say so twice (the Mac: behind another app, then hidden).
+    func wentToBackground(at date: Date = Date()) {
+        if wentAway == nil { wentAway = date }
+        takeLogAgainOrder()
+    }
+
+    /// After a while away the Log tab is back on today at the hour it is, unless something's open
+    /// that's mid-way through a day.
+    func cameToFront(at date: Date = Date()) {
+        defer { wentAway = nil }
+        guard let wentAway, date.timeIntervalSince(wentAway) >= Self.awayLimit, logger == nil, selection.isEmpty else { return }
+        showToday()
+    }
+
+    /// A destination by name (the Go menu, ⌘1…⌘8). One only the sidebar has, asked for without one
     /// (an iPhone with a keyboard), opens its nearest equivalent instead.
     func go(to destination: AppTab) {
         guard destination.isSidebarOnly, !usesSidebar else {
@@ -733,8 +987,7 @@ final class AppModel {
         switch destination {
         case .foods: openLogger(.search)
         case .supplements: showSupplements = true
-        case .mealPlan: tab = .plan
-        default: tab = .progress
+        default: tab = destination.compactFallback
         }
     }
 
@@ -762,15 +1015,18 @@ final class AppModel {
     /// Brings the offer up if it's due, on opening the app. Never over a sheet someone is in the
     /// middle of: it waits for the next time they open the app.
     func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings else { return }
+        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings, openWork.isEmpty else { return }
         showPaywall = true
     }
 
+    func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }
+
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
     /// open: only one shows at a time. A screen's own sheet (an entry being edited) gives way by
-    /// itself when one of these presents: SwiftUI replaces it (LoggingUITests checks that).
+    /// itself when one of these presents: SwiftUI replaces it (LoggingUITests checks that). Where
+    /// the logger's a pane it isn't a sheet, and what's in it stays under whatever opens.
     func dismissSheets() {
-        logger = nil
+        if !usesSidebar { logger = nil }
         showWeighIn = false
         showFast = false
         showSupplements = false
@@ -820,45 +1076,113 @@ final class AppModel {
     ]
 
     /// Saves entries, shows "Logged … Undo", and writes them to Health. A meal logged during a fast
-    /// ends it, and says so: the Undo puts the fast back with the food.
-    func log(_ new: [FoodEntry], message: String? = nil) {
+    /// ends it, and says so: the Undo puts the fast back with the food. Returns whether they were
+    /// saved: if not, nothing shows them, Health doesn't get them, and a toast says so.
+    @discardableResult
+    func log(_ new: [FoodEntry], message: String? = nil) -> Bool {
+        let interval = LogPath.begin("log")
+        defer { LogPath.end(interval) }
         // A food the person corrected is logged at their numbers, however it was found.
-        let new = corrections.isEmpty ? new : new.map(withCorrection)
-        guard !new.isEmpty else { return }
+        let new = LogAgain.settled(corrections.isEmpty ? new : new.map(withCorrection), now: Date())
+        guard !new.isEmpty else { return false }
         let fasting = analysis?.fast
-        store.save(new)
-        reload()
+        guard insert(new) else {
+            toast = Toast(message: new.count == 1 ? "Couldn't save \(new[0].name)" : "Couldn't save \(new.count) foods", failed: true)
+            return false
+        }
+        reload(readingShared: false)
+        refreshPersonal()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
         let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
         let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
         let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
-        if let fasting, analysis?.fast == nil, let run = analysis?.fasts.first(where: { $0.id == fasting.fast.id }), let end = run.end {
+        let run = fasting.flatMap { fastRun($0.fast) }
+        if let run, !run.isRunning, let end = run.end {
             toast = Toast(message: "\(text) · ended your \(Format.duration(run.duration(at: end))) fast", undo: new.map(\.id))
         } else {
             toast = Toast(message: "\(text) · \(detail)", undo: new.map(\.id))
         }
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(new.map(Self.healthFood)) } }
+        syncHealth(new)
+        return true
+    }
+
+    /// Health holds what's been eaten and nothing else, so these entries go in if their time has
+    /// come, and any copy of one moved ahead of now comes out. The rest of the time, a food reaching
+    /// its time is written by the backfill, dated when it was eaten.
+    private func syncHealth(_ changed: [FoodEntry]) {
+        let log = FoodLog(changed, now: Date())
+        let eaten = log.eaten
+        let later = log.upcoming.map(\.id)
+        if settings.saveToHealth, !eaten.isEmpty { Task { await HealthBridge.shared.saveFoods(eaten.map(Self.healthFood)) } }
+        if !later.isEmpty { Task { await HealthBridge.shared.deleteFoods(ids: later) } }
+    }
+
+    /// A fast as it stands now, from its own days: the analysis may not be back yet after a change.
+    func fastRun(_ fast: Fast) -> FastRun? {
+        let days = DayRange(Day(fast.start), today).days.flatMap { entries(on: $0) }
+        return Fasting.runs([fast], entries: days, now: Date()).first
     }
 
     func update(_ entry: FoodEntry) {
-        var entry = entry
-        entry.updatedAt = Date()
-        entry.day = Day(entry.date)
-        store.save(entry)
+        update([entry])
+    }
+
+    /// Saves edits together, with one write to Health. A `message` also says so, with an Undo that
+    /// puts every entry back as it was.
+    func update(_ edits: [FoodEntry], message: String? = nil) {
+        guard !edits.isEmpty else { return }
+        let before = entriesBefore(edits)
+        let saved = edited(edits, from: before)
+        store.save(saved)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods([Self.healthFood(entry)]) } }
+        syncHealth(saved)
+        if let message { toast = Toast(message: message, restore: Array(before.values)) }
+    }
+
+    /// The entries as stored now, by id, of the ones about to be edited.
+    private func entriesBefore(_ edits: [FoodEntry]) -> [UUID: FoodEntry] {
+        let ids = Set(edits.map(\.id))
+        return Dictionary(foodLog.all.lazy.filter { ids.contains($0.id) }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    private func edited(_ edits: [FoodEntry], from before: [UUID: FoodEntry]) -> [FoodEntry] {
+        let now = Date()
+        return edits.map { edit in (before[edit.id] ?? edit).edited(at: now) { $0 = edit } }
+    }
+
+    /// Entries back as they were before an edit, each on the day it was on, stamped now.
+    private func restore(_ versions: [FoodEntry]) {
+        let before = entriesBefore(versions)
+        let days = Dictionary(versions.map { ($0.id, $0.day) }, uniquingKeysWith: { first, _ in first })
+        let saved = edited(versions, from: before).map { entry in
+            var entry = entry
+            entry.day = days[entry.id] ?? entry.day
+            return entry
+        }
+        store.save(saved)
+        reload()
+        syncHealth(saved)
     }
 
     /// Deletes entries (and their Health samples), with "Deleted … Undo": a whole moment goes in two taps.
     func delete(entries ids: [UUID]) {
         let gone = Set(ids)
-        let removed = entries.filter { gone.contains($0.id) }
-        for id in ids { store.delete(FoodEntry.self, id: id) }
+        let removed = foodLog.all.filter { gone.contains($0.id) }
+        store.delete(FoodEntry.self, ids: ids)
         reload()
         Task { await HealthBridge.shared.deleteFoods(ids: ids) }
         if !removed.isEmpty {
             toast = Toast(message: removed.count == 1 ? "Deleted \(removed[0].name)" : "Deleted \(removed.count) foods", deleted: removed)
         }
+    }
+
+    /// Takes a toast down after its few seconds on screen. A slot leaving the screen cancels this,
+    /// and a cancelled wait isn't those seconds up: the toast stays for the next slot to show, with
+    /// its few seconds starting again.
+    func expire(_ toast: Toast) async {
+        try? await Task.sleep(for: toastTime)
+        guard !Task.isCancelled, self.toast?.id == toast.id else { return }
+        self.toast = nil
     }
 
     func undo(_ toast: Toast) {
@@ -868,21 +1192,19 @@ final class AppModel {
         if !toast.deleted.isEmpty { bringBack(toast.deleted) }
         if let fast = toast.fast { undo(fast) }
         if let meal = toast.deletedMeal { save(meal) }
+        if !toast.restore.isEmpty { restore(toast.restore) }
         self.toast = nil
     }
 
     /// Deleted entries saved again, stamped now: the store keeps whichever is newer, and the delete
-    /// is newer than the entries as they were.
+    /// is newer than the entries as they were. Each is still as first logged, so a day caught up on
+    /// Monday and undone on Thursday stays a day logged live.
     private func bringBack(_ deleted: [FoodEntry]) {
         let now = Date()
-        let restored = deleted.map { entry in
-            var entry = entry
-            entry.updatedAt = now
-            return entry
-        }
+        let restored = deleted.map { $0.edited(at: now) }
         store.save(restored)
         reload()
-        if settings.saveToHealth { Task { await HealthBridge.shared.saveFoods(restored.map(Self.healthFood)) } }
+        syncHealth(restored)
     }
 
     /// One tap from the Log again row: the same food and amount, now.
@@ -900,12 +1222,14 @@ final class AppModel {
     var usualNow: Moment? {
         guard selectedDay == today else { return nil }
         let now = Date()
-        let nearby = Timeline.moments(entries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
+        let nearby = Timeline.moments(allEntries(on: today)).contains { abs($0.end.timeIntervalSince(now)) < 90 * 60 }
         return nearby ? nil : LogAgain.usualMoment(near: now, entries: suggestionEntries)
     }
 
     /// Reads the selected day's usual times again, then the logger's suggestions for its time.
     func refreshCatchUp() {
+        let interval = LogPath.begin("refreshCatchUp")
+        defer { LogPath.end(interval) }
         usualTimes = UsualMeals.on(selectedDay, entries: suggestionEntries, today: today)
         refreshTimedSuggestions()
     }
@@ -921,11 +1245,13 @@ final class AppModel {
         let time = logDate()
         timedSuggestions = TimedSuggestions(
             time: time, logAgain: LogAgain.rank(suggestionEntries, now: now, at: time),
-            meals: SavedMeals.rank(savedMeals, entries: entries, now: now, at: time),
-            usual: LogAgain.usual(at: time, entries: suggestionEntries, today: today))
+            meals: SavedMeals.rank(savedMeals, entries: entries, logged: logAround(Day(time)), now: now, at: time),
+            usual: LogAgain.usual(at: time, entries: suggestionEntries, logged: allEntries(on: Day(time)), today: today))
     }
 
-    func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {
+    /// Returns whether it was saved.
+    @discardableResult
+    func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) -> Bool {
         log([
             FoodEntry(
                 date: date ?? logDate(), name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving", nutrients: nutrients,
@@ -954,11 +1280,46 @@ final class AppModel {
             version: dose.updatedAt.healthVersion)
     }
 
-    func entries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
+    /// What's been eaten on a day.
+    func entries(on day: Day) -> [FoodEntry] {
+        let all = allEntries(on: day)
+        return foodLog.nextChange == nil ? all : all.filter { !foodLog.isUpcoming($0) }
+    }
+
+    /// A day's whole log, eaten and still to come: what its rows show.
+    func allEntries(on day: Day) -> [FoodEntry] { entriesByDay[day] ?? [] }
+
+    /// A food as the log has it now, or nil once it's been moved or deleted. A panel left open on one
+    /// reads it here, because saving the copy it opened with would undo that.
+    func current(_ entry: FoodEntry) -> FoodEntry? {
+        allEntries(on: entry.day).first { $0.id == entry.id && $0.date == entry.date }
+    }
+
+    /// A day's targets as they stood that day, for the Log tab's line. Kept until the analysis
+    /// moves on: working one out reads the plan and every check-in.
+    func targets(on day: Day) -> DailyTargets? {
+        guard let analysis else { return nil }
+        if day == today { return analysis.targets }
+        if let known = analysis.dayTargets[day] { return known }
+        if targetsByDay.version != analysisVersion { targetsByDay = (analysisVersion, [:]) }
+        if let kept = targetsByDay.targets[day] { return kept }
+        guard let state = state(now: Date()) else { return nil }
+        let targets = MacroAnalyst.targets(on: day, state, analysis)
+        targetsByDay.targets[day] = targets
+        return targets
+    }
+
+    /// A day's food by whether it's happened yet, with the doses taken counted as eaten.
+    func dayIntake(on day: Day, now: Date = Date()) -> DayIntake {
+        let split = FoodLog(allEntries(on: day), now: now)
+        return DayIntake(eaten: Intake.total(split.eaten, doses: supplementLogs.filter { $0.day == day }), later: Intake.total(split.upcoming))
+    }
 
     func state(of day: Day) -> DayState? { dayStatus.first { $0.day == day }?.state }
 
     func setState(_ state: DayState?, for day: Day) {
+        // A day that hasn't happened isn't done, fasted or anything else yet.
+        guard day <= today else { return }
         let existing = dayStatus.filter { $0.day == day }
         for e in existing { store.delete(DayStatus.self, id: e.id) }
         if let state { store.save(DayStatus(id: existing.first?.id ?? UUID(), day: day, state: state)) }
@@ -993,6 +1354,7 @@ final class AppModel {
     var latestWeighIn: WeighIn? { weighIns.last { !$0.excluded } }
 
     func weighIn(kg: Double, date: Date = Date()) {
+        guard date <= Date() else { return }
         let w = WeighIn(date: date, kg: kg)
         store.save(w)
         reload()
