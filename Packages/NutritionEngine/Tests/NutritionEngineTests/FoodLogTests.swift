@@ -186,7 +186,7 @@ struct FoodLogTests {
         let log = FoodLog([lunch, dinner], now: at(19, 0))
         #expect(log.upcoming.isEmpty)
         #expect(log.isStale(at: at(18, 0)))
-        #expect(log.at(at(18, 0)).upcoming.map(\.id) == [dinner.id])
+        #expect(log.at(at(18, 0)).upcoming.map(\.name) == ["Dinner"])
     }
 
     @Test func nextMealSkipsADrink() {

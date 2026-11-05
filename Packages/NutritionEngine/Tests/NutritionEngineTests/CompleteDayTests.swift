@@ -21,7 +21,7 @@ struct CompleteDayTests {
     func usable(_ entries: [FoodEntry]) -> Double? {
         let state = MacroState(
             profile: profile(), settings: MacroSettings(), entries: entries, today: today, now: today.at(hour: 12, minute: 0, calendar: calendar))
-        return MacroAnalyst.analyse(state).usable[day]
+        return MacroAnalyst.analyse(state, calendar: calendar).usable[day]
     }
 
     @Test func aDayLoggedLiveCounts() {
