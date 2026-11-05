@@ -216,13 +216,13 @@ struct AmountPanel: View {
 
     func take(_ title: String, symbol: String, intent: LogSelection.Intent) -> some View {
         Button(title, systemImage: symbol) {
-            guard let entry else { return }
-            model.select(entry, intent: intent)
+            model.take(draft, at: date, intent: intent)
             close()
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
         .frame(maxWidth: .infinity)
+        .disabled(amount.count == nil)
         .accessibilityIdentifier("entryEditor.\(title.lowercased())")
     }
 

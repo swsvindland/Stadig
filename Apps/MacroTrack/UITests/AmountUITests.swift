@@ -83,6 +83,28 @@ nonisolated final class AmountUITests: XCTestCase {
         XCTAssertEqual(app.element("portion.add").label, "Add · 150 kcal")
     }
 
+    /// An amount typed and then moved goes with the food, rather than going back to what it was.
+    @MainActor
+    func testMoveTakesTheAmountTypedBeforeIt() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search"])
+        logABanana(app)
+
+        // Logged just now, it's in the hour the list opens on, clear of the pinned line.
+        let entry = app.scrollTo(app.logEntry(containing: "banana")).waitToAppear()
+        let before = entry.label
+        entry.tap()
+        app.element("amount.panel").waitToAppear()
+        app.element("amount.key.3").tap()
+        // A tap scrolls to what it's after, so this is what says it's in view as the sheet opens.
+        XCTAssertTrue(app.element("entryEditor.move").isHittable, "Move fits under the time")
+        app.element("entryEditor.move").tap()
+
+        app.element("amount.panel").waitToDisappear()
+        app.element("selection.bar").waitToAppear()
+        app.logEntry(containing: "banana").waitForLabel(toChangeFrom: before)
+    }
+
     /// Half a pound is how a pound is measured. Half a gram isn't.
     @MainActor
     func testOuncesAndPoundsTakeFractions() throws {

@@ -182,6 +182,7 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Leaving a read stops it.** Going to another way of logging or tapping Done while Photo or Describe is looking stops the model, so it spends no more Private Cloud Compute quota, and what it would have said is dropped. Coming back means starting that read again. The camera and the photo library count as one way, so tapping Photo on a picked photo leaves its read running. A read carries on under a food opened beside it, as the pane's other state does.
 - **A hold's release is swallowed for 2 seconds** after the hold. A finger that slid off never releases, so without the limit a later tap would be lost.
 - **Correcting a food from a logged entry leaves that entry as logged**, as entries always have, and its amount now says so: the total and Save stay at the stored numbers under the "corrected" note. Changing the amount prices it at the corrected numbers. Offering to update the entry stays open. An entry counted in calories keeps its number too, or it would read 150 kcal over a Save of 120.
+- **Move or Copy on a food's amount saves what's changed first.** A typed amount or a new time goes with the food rather than being dropped. It stays on the food too, so a Copy changes the food it came from as well: a selection holds foods, not amounts, so the copy can't differ. Undo puts a move back where it was, at the amount typed. With no amount on the panel they're off, as Save is.
 
 These reverse or change earlier calls, as the plan said they would:
 

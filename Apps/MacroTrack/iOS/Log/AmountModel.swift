@@ -130,6 +130,14 @@ extension AppModel {
         return entry
     }
 
+    /// Picks the entry out to take elsewhere, with whatever the panel changed saved first: a food
+    /// goes as it stands there, and the panel closing shouldn't lose what's typed.
+    func take(_ draft: AmountDraft, at date: Date, intent: LogSelection.Intent) {
+        guard let entry = draft.entry else { return }
+        if draft.amountChanged || date != entry.date, let edited = edited(draft, at: date) { update(edited) }
+        select(entry, intent: intent)
+    }
+
     /// An entry at a new amount, with what it knew beyond the food scaling along with it (a drink's
     /// caffeine, when the catalog didn't list it, and its fluid). A food that's gone from the catalog,
     /// or never was in it (a quick add, an estimate), scales by `count` as a multiplier.

@@ -165,4 +165,59 @@ struct AmountDraftTests {
         #expect(draft.amount.unit?.id == "g")
         #expect(draft.amount.count == 60)
     }
+
+    // MARK: Taken elsewhere
+
+    /// Tap a food at 100 g, type 200, Move, To Tomorrow: it goes at 200 g.
+    @Test func moveTakesAnAmountTypedFirst() throws {
+        let model = model()
+        let entry = try logged(model, count: 100, unitID: "g")
+        var draft = model.draft(for: .edit(entry))
+        draft.amount.choose(200)
+
+        model.take(draft, at: entry.date, intent: .move)
+        model.placeSelection(on: [entry.day.adding(days: 1)])
+
+        let moved = try #require(model.allEntries(on: entry.day.adding(days: 1)).first)
+        #expect(moved.id == entry.id)
+        #expect(moved.grams == 200)
+        #expect(model.allEntries(on: entry.day).isEmpty)
+    }
+
+    /// A copy starts from the food as it stands on the panel, so the one it came from says the same.
+    @Test func copyTakesAnAmountTypedFirst() throws {
+        let model = model()
+        let entry = try logged(model, count: 100, unitID: "g")
+        var draft = model.draft(for: .edit(entry))
+        draft.amount.choose(200)
+
+        model.take(draft, at: entry.date, intent: .copy)
+        model.placeSelection(on: [entry.day.adding(days: 1)])
+
+        #expect(model.allEntries(on: entry.day).first?.grams == 200)
+        #expect(model.allEntries(on: entry.day.adding(days: 1)).first?.grams == 200)
+    }
+
+    @Test func aMoveTakesATimeChangedFirst() throws {
+        let model = model()
+        let entry = try logged(model, count: 100, unitID: "g")
+        let later = eaten.addingTimeInterval(600)
+
+        model.take(model.draft(for: .edit(entry)), at: later, intent: .move)
+
+        #expect(model.allEntries(on: entry.day).first?.date == later)
+        #expect(model.selection.ids == [entry.id])
+    }
+
+    /// Nothing changed, nothing's written: an entry doesn't read as edited for being picked out.
+    @Test func takingAFoodLeftAsItIsSavesNothing() throws {
+        let model = model()
+        let entry = try logged(model, count: 100, unitID: "g")
+        let stored = try #require(model.allEntries(on: entry.day).first)
+
+        model.take(model.draft(for: .edit(stored)), at: stored.date, intent: .move)
+
+        #expect(model.allEntries(on: entry.day).first == stored)
+        #expect(model.selection.ids == [entry.id])
+    }
 }
