@@ -239,6 +239,16 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
         (later ?? []).map(\.date).filter { $0 > now && $0 < end }
     }
 
+    /// A complication's timeline from `now`: a date for each food still to come today, midnight to
+    /// start the new day at nothing eaten, and when to read the snapshot again. That's just past
+    /// midnight: the snapshot holds tomorrow's food too, whose dates go in once it's today, and
+    /// the Watch app may not run to write another.
+    public func timeline(from now: Date, calendar: Calendar = .current) -> (dates: [Date], reload: Date) {
+        // The next calendar day, not 24 hours on, which misses midnight the days the clocks change.
+        let midnight = Day(now, calendar: calendar).adding(days: 1).date(calendar: calendar)
+        return ([now] + laterDates(after: now, before: midnight) + [midnight], midnight.addingTimeInterval(60))
+    }
+
     /// Before the Watch app has written one: nothing eaten, no targets.
     public static let empty = WristSnapshot(
         day: Day(ordinal: 0), kcal: MacroProgress(eaten: 0, target: nil), protein: MacroProgress(eaten: 0, target: nil),

@@ -310,6 +310,32 @@ struct FoodLogTests {
         #expect(written.shown(at: day.adding(days: 1).at(hour: 1, minute: 0)).kcal.eaten == 0)
     }
 
+    @Test func aComplicationsTimelineGoesOnToTomorrowsFood() {
+        // Tomorrow's lunch, planned in the evening, and the Watch app doesn't run tomorrow.
+        let tomorrow = day.adding(days: 1)
+        let meal = tomorrow.at(hour: 12, minute: 30)
+        var written = snapshot(now: at(21, 0))
+        written.later = [LaterFood(date: meal, nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20), isMeal: true)]
+
+        let tonight = written.timeline(from: at(21, 0))
+        #expect(tonight.dates == [at(21, 0), tomorrow.date()], "it isn't today's food yet")
+        #expect(tonight.reload == tomorrow.date().addingTimeInterval(60), "so it's read again past midnight")
+
+        let next = written.timeline(from: tonight.reload)
+        #expect(next.dates == [tonight.reload, meal, tomorrow.adding(days: 1).date()])
+        #expect(written.shown(at: tomorrow.at(hour: 12, minute: 29)).kcal.eaten == 0)
+        #expect(written.shown(at: tomorrow.at(hour: 13, minute: 0)).kcal.eaten == 700)
+    }
+
+    @Test func aComplicationsTimelineFindsMidnightTheDayTheClocksChange() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        // 2027's spring change: a 23-hour day, where 24 hours on is already 1 AM.
+        let change = Day(year: 2027, month: 3, day: 14)
+        let timeline = snapshot(now: at(13, 0)).timeline(from: change.at(hour: 0, minute: 30, calendar: calendar), calendar: calendar)
+        #expect(timeline.dates.last == change.adding(days: 1).date(calendar: calendar))
+    }
+
     @Test func aMealLoggedForLaterEndsAComplicationsFast() {
         var written = snapshot(now: at(13, 0))
         written.fastStart = at(13, 0)

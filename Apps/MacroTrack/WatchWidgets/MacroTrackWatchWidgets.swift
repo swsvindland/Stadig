@@ -116,8 +116,8 @@ struct SnapshotEntry: TimelineEntry {
 }
 
 /// The app reloads the timelines whenever the snapshot changes. An entry for each food logged for
-/// later today counts it at its time, and one at midnight starts the new day at nothing eaten, all
-/// with the Watch app closed.
+/// later today counts it at its time, one at midnight starts the new day at nothing eaten, and the
+/// timeline is read again just after, for that day's food, all with the Watch app closed.
 struct SnapshotProvider: TimelineProvider {
     func placeholder(in context: Context) -> SnapshotEntry {
         SnapshotEntry(date: Date(), snapshot: .sample(on: .today))
@@ -130,12 +130,11 @@ struct SnapshotProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<SnapshotEntry>) -> Void) {
-        let now = Date()
         let snapshot = WristSnapshotFile.load()
-        // The next calendar day, not 24 hours on, which misses midnight the days the clocks change.
-        let midnight = Day(now).adding(days: 1).date()
-        let dates = [now] + snapshot.laterDates(after: now, before: midnight) + [midnight]
-        completion(WidgetKit.Timeline(entries: dates.map { SnapshotEntry(date: $0, snapshot: snapshot.shown(at: $0)) }, policy: .never))
+        let timeline = snapshot.timeline(from: Date())
+        completion(
+            WidgetKit.Timeline(
+                entries: timeline.dates.map { SnapshotEntry(date: $0, snapshot: snapshot.shown(at: $0)) }, policy: .after(timeline.reload)))
     }
 }
 
