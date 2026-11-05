@@ -21,6 +21,7 @@
 		4C1F7B7EA507411B3F7725C5 /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F2201F2C7E64C3222C40E /* LiftEngine */; };
 		4C1F835F934A900ADAF00E66 /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F79889302F3CA596230B7 /* ExerciseLibrary */; };
 		4C1F8B78A2B0888568C4814C /* LiftTrackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4C1FAED2321BE701EE35872F /* LiftTrackWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C1F8EC2F986A2D41E4B4AED /* HubEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1FC1095453EB38B466ADEA /* HubEngine */; };
 		4C1FF7F19E0EE2376E01A1DC /* LiftEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1F305888CE3E3240BEC7D3 /* LiftEngine */; };
 /* End PBXBuildFile section */
 
@@ -183,6 +184,7 @@
 				4C1F2646B1B0A9D777A993C7 /* SystemPurchases in Frameworks */,
 				4C1F4B0B49702571024D9A55 /* HealthBridge in Frameworks */,
 				4C1FF7F19E0EE2376E01A1DC /* LiftEngine in Frameworks */,
+				4C1F8EC2F986A2D41E4B4AED /* HubEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -369,6 +371,7 @@
 				4C1FD635F657E2308541C2E4 /* SystemPurchases */,
 				4C1F2908801A952F633063C1 /* HealthBridge */,
 				4C1F305888CE3E3240BEC7D3 /* LiftEngine */,
+				4C1FC1095453EB38B466ADEA /* HubEngine */,
 			);
 			productName = LiftTrack;
 			productReference = 4C1F5BB8AF6C3A479AAEAFCA /* LiftTrack.app */;
@@ -469,6 +472,7 @@
 				4C1F91A3752B0AF24DC7E0BC /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */,
 				4C1FA55B00C9069C9ECE4AB8 /* XCLocalSwiftPackageReference "../../Packages/HealthBridge" */,
 				4C1F92C28AFE0D69C08AA0B2 /* XCLocalSwiftPackageReference "../../Packages/LiftEngine" */,
+				4C1F143C60A1F2884753E4AB /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C1F20749AA77F28E33D1946 /* Products */;
@@ -1208,6 +1212,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4C1F143C60A1F2884753E4AB /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/HubEngine;
+		};
 		4C1F899B3627BF5839E0B44B /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
@@ -1284,6 +1292,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4C1FA6FD3602A53A0B303F33 /* XCLocalSwiftPackageReference "../../Packages/ExerciseLibrary" */;
 			productName = ExerciseLibrary;
+		};
+		4C1FC1095453EB38B466ADEA /* HubEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1F143C60A1F2884753E4AB /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */;
+			productName = HubEngine;
 		};
 		4C1FD635F657E2308541C2E4 /* SystemPurchases */ = {
 			isa = XCSwiftPackageProductDependency;

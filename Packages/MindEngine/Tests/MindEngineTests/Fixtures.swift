@@ -173,13 +173,15 @@ struct Store {
     var calendar: SystemCalendar?
     var weekSettings: WeekSettings?
     var commitments: WeekCommitments = .none
+    var rhythm: Rhythm?
+    var dayChanges: [DayChange] = []
 
     func state(on day: Day, at hour: Double = 18) -> StudyState {
         StudyState(
             settings: settings, cards: Array(cards.values), sessions: sessions, tests: tests, books: books, reflections: reflections,
             pieces: pieces, comparisons: comparisons,
             lifeModes: lifeModes, calendar: calendar, today: day, now: day.date().addingTimeInterval(hour * 3600), weekSettings: weekSettings,
-            commitments: commitments)
+            commitments: commitments, rhythm: rhythm, dayChanges: dayChanges)
     }
 
     mutating func save(_ run: StudyRun) {

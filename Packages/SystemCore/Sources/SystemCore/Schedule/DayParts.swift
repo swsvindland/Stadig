@@ -32,6 +32,19 @@ public enum DayPart: String, CaseIterable, Codable, Sendable, Identifiable, Comp
         }
     }
 
+    /// Where the part falls on a day's timeline, in minutes from that day's midnight. A day runs 4 a.m.
+    /// to 4 a.m., so the night goes past 1440, as a span running into the next day does.
+    public var minutes: Range<Int> {
+        switch self {
+        case .early: 240..<480
+        case .morning: 480..<660
+        case .midday: 660..<840
+        case .afternoon: 840..<1020
+        case .evening: 1020..<1200
+        case .night: 1200..<1680
+        }
+    }
+
     public init(_ time: TimeOfDay) {
         switch time {
         case .morning: self = .morning
@@ -72,6 +85,8 @@ public struct Commitment: Hashable, Sendable {
 /// Stadig Lift.
 public struct WeekCommitments: Hashable, Sendable {
     public static let none = WeekCommitments()
+    /// A lift, as a commitment's title.
+    public static let liftTitle = "Lift"
     /// How many recent lifts say when this person trains.
     static let recentLifts = 8
 
@@ -95,7 +110,7 @@ public struct WeekCommitments: Hashable, Sendable {
         if let lift {
             let part = Self.liftingPart(lift.sessions, before: today, timeZone: timeZone) ?? .evening
             for weekday in profile.schedule.trainingDays {
-                days[weekday, default: []].append(Commitment(title: "Lift", part: part, minutes: profile.schedule.minutesPerSession))
+                days[weekday, default: []].append(Commitment(title: Self.liftTitle, part: part, minutes: profile.schedule.minutesPerSession))
             }
         }
         for activity in profile.recurring {

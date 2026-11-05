@@ -72,6 +72,7 @@ struct TodayView: View {
             }
             TodayRest(analysis: analysis)
         }
+        if let line = model.dayAhead { HubStrip(line: line).card(padding: 12) }
         // What's worth doing next waits on the Mac while a session is open beside it: each starts
         // another session or opens the shelf, and neither runs beside one.
         if !model.sessionOpen {

@@ -1,6 +1,6 @@
 ---
 name: run-app
-description: Launch Stadig Lift, Stadig Macro or Stadig Mind in the iOS Simulator with seeded data or on a specific screen, take screenshots and drive it, without touching anyone's stored data. Use to see a change working in the real app, check a screen, or reproduce a bug.
+description: Launch Stadig Lift, Stadig Macro, Stadig Mind or the hub in the iOS Simulator with seeded data or on a specific screen, take screenshots and drive it, without touching anyone's stored data. Use to see a change working in the real app, check a screen, or reproduce a bug.
 ---
 
 # Run an app in the simulator (or on the Mac)

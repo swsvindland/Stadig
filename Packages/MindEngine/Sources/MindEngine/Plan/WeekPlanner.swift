@@ -18,6 +18,12 @@ public struct PlannedBlock: Hashable, Sendable, Identifiable {
         self.done = done
     }
 
+    init?(_ block: PlacedBlock) {
+        guard let domain = Domain(rawValue: block.course) else { return nil }
+        self.init(day: block.day, part: block.part, domain: domain, done: block.done)
+        repeatIndex = block.repeatIndex
+    }
+
     public var id: String { "\(day.iso).\(part.rawValue).\(domain.rawValue)\(repeatIndex > 0 ? ".\(repeatIndex)" : "")" }
 }
 
@@ -79,18 +85,8 @@ public struct WeekCell: Hashable, Sendable, Identifiable {
 /// Only `layout` decides which part a block goes in, from the parts it's given, so a plan from the
 /// hub can replace that one step without touching lessons or Discipline.
 public enum WeekPlanner {
-    /// The parts a weekday offers before anything else is known. Mind can't see work, so a day job
-    /// is assumed: weekdays offer the ends of the day, weekends all of it.
-    static func usualParts(_ weekday: Weekday) -> [DayPart] {
-        switch weekday {
-        case .saturday, .sunday: DayPart.allCases
-        default: [.early, .evening, .night]
-        }
-    }
-
-    /// Two commitments fill a day: with the gym in the morning and a class in the evening, there's
-    /// no study to fit around them. Any part can still be opened by hand.
-    public static func isPacked(_ weekday: Weekday, commitments: WeekCommitments) -> Bool { commitments.on(weekday).count >= 2 }
+    /// Two commitments fill a day. Any part can still be opened by hand.
+    public static func isPacked(_ weekday: Weekday, commitments: WeekCommitments) -> Bool { DayShape.isPacked(weekday, commitments: commitments) }
 
     /// The parts of a weekday open for study.
     public static func openParts(_ weekday: Weekday, commitments: WeekCommitments, settings: WeekSettings) -> [DayPart] {
@@ -98,15 +94,47 @@ public enum WeekPlanner {
         let packed = isPacked(weekday, commitments: commitments)
         return DayPart.allCases.filter { part in
             if let override = settings.override(weekday, part) { return override }
-            return !packed && !held.contains(part) && usualParts(weekday).contains(part)
+            return !packed && !held.contains(part) && DayShape.usualParts(weekday).contains(part)
         }
+    }
+
+    /// Whether the hub's rhythm is shaping the week, in place of Mind's defaults and the parts opened
+    /// by hand. Those are kept, in case it stops.
+    public static func followsRhythm(_ state: StudyState) -> Bool { state.rhythm?.pattern != nil }
+
+    /// The parts of a date open for study. With a rhythm, work, sleep and any change say what's free,
+    /// then lifts and classes take theirs. A day the rhythm doesn't know, past a term's end say, falls
+    /// back on Mind's own defaults rather than reading as free.
+    public static func openParts(on day: Day, state: StudyState, settings: WeekSettings) -> [DayPart] {
+        if let rhythm = state.rhythm,
+            let parts = DayShape.studyParts(on: day, rhythm: rhythm, changes: state.dayChanges, commitments: state.commitments)
+        {
+            return parts
+        }
+        let closed = state.dayChanges.closedParts(on: day)
+        return openParts(day.weekday, commitments: state.commitments, settings: settings).filter { !closed.contains($0) }
+    }
+
+    /// The week as a grid: each part of each weekday, in order, as it stands this week.
+    public static func cells(_ state: StudyState, settings: WeekSettings, layout: WeekLayout) -> [WeekCell] {
+        cells(settings: settings, commitments: state.commitments, layout: layout) { weekday in
+            openParts(on: layout.monday.adding(days: weekday.rawValue - 1), state: state, settings: settings)
+        }
+    }
+
+    /// Open parts in this week.
+    public static func openPartCount(_ state: StudyState, settings: WeekSettings) -> Int {
+        let monday = state.today.startOfWeek
+        return (0..<7).map { openParts(on: monday.adding(days: $0), state: state, settings: settings).count }.reduce(0, +)
     }
 
     /// The whole week as a grid: each part of each weekday, in order. Pass a layout to show its
     /// blocks; without one it's just the shape of the week.
-    public static func cells(settings: WeekSettings, commitments: WeekCommitments, layout: WeekLayout? = nil) -> [WeekCell] {
+    public static func cells(
+        settings: WeekSettings, commitments: WeekCommitments, layout: WeekLayout? = nil, open openOn: ((Weekday) -> [DayPart])? = nil
+    ) -> [WeekCell] {
         Weekday.allCases.flatMap { weekday -> [WeekCell] in
-            let open = openParts(weekday, commitments: commitments, settings: settings)
+            let open = openOn?(weekday) ?? openParts(weekday, commitments: commitments, settings: settings)
             let held = commitments.on(weekday)
             let blocks = layout?.blocks.filter { $0.day.weekday == weekday } ?? []
             return DayPart.allCases.map { part in
@@ -153,22 +181,20 @@ public enum WeekPlanner {
 
     // MARK: Time of day
 
-    /// How well a part suits a course, from 2.5 at its best: a tie-breaker, and small against the
-    /// spacing of a week. The evidence is thin. Your own chronotype matters more than any subject
-    /// rule, which is why a course can be pinned. Maths goes early (Pope 2016: a small effect, in
-    /// teenagers). Languages go late, because new words stick better when sleep follows soon (mostly
-    /// small lab studies, though Memrise's data agrees). Writing sits off the peak, where insight
-    /// comes more easily (Wieth and Zacks 2011). Reading in the evening is a preference, not a
-    /// finding. See docs/decisions.md.
-    static func timeFit(_ domain: Domain, _ part: DayPart) -> Double {
-        let order: [DayPart]
+    /// The parts of the day, best first for a course: a tie-breaker, and small against the spacing of
+    /// a week. The evidence is thin. Your own chronotype matters more than any subject rule, which is
+    /// why a course can be pinned. Maths goes early (Pope 2016: a small effect, in teenagers). Languages
+    /// go late, because new words stick better when sleep follows soon (mostly small lab studies,
+    /// though Memrise's data agrees). Writing sits off the peak, where insight comes more easily
+    /// (Wieth and Zacks 2011). Reading in the evening is a preference, not a finding. See
+    /// docs/decisions.md.
+    static func fit(_ domain: Domain) -> [DayPart] {
         switch domain {
-        case .maths: order = [.morning, .midday, .early, .afternoon, .evening, .night]
-        case .japanese, .spanish: order = [.night, .evening, .afternoon, .midday, .morning, .early]
-        case .reading: order = [.evening, .night, .afternoon, .midday, .morning, .early]
-        case .writing: order = [.midday, .afternoon, .morning, .early, .evening, .night]
+        case .maths: [.morning, .midday, .early, .afternoon, .evening, .night]
+        case .japanese, .spanish: [.night, .evening, .afternoon, .midday, .morning, .early]
+        case .reading: [.evening, .night, .afternoon, .midday, .morning, .early]
+        case .writing: [.midday, .afternoon, .morning, .early, .evening, .night]
         }
-        return Double(order.count - 1 - (order.firstIndex(of: part) ?? order.count - 1)) * 0.5
     }
 
     // MARK: The week's counts
@@ -186,34 +212,50 @@ public enum WeekPlanner {
         return SessionPlanner.priorities(past)
     }
 
-    /// Blocks a course asks for in a week. Each day of the week brings a seventh of the course's
-    /// blocks, or half that in a review week, and none before blocks began or during a pause, so a
-    /// Thursday start or a pause ending on Wednesday asks for a share of the week, not the whole of
-    /// it. A review week that starts midweek is covered the same way. Rounded up: the count is
-    /// worked in fourteenths so that seven sevenths of four is four and not a hair over.
-    static func count(_ domain: Domain, settings: WeekSettings, state: StudyState, monday: Day) -> Int {
-        let blocks = settings.blocks(domain)
-        var fourteenths = 0
-        for offset in 0..<7 {
-            let day = monday.adding(days: offset)
-            guard day >= settings.since else { continue }
-            switch StudyCalendar.phase(on: day, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes) {
-            case .paused: continue
-            case .review: fourteenths += blocks
-            default: fourteenths += blocks * 2
-            }
+    /// What a day brings to a week's count: 2 for a normal day, 1 in a review week, 0 before blocks
+    /// began or during a pause.
+    static func units(on day: Day, settings: WeekSettings, state: StudyState) -> Int {
+        guard day >= settings.since else { return 0 }
+        switch StudyCalendar.phase(on: day, start: state.start, calendar: state.calendar, lifeModes: state.lifeModes) {
+        case .paused: return 0
+        case .review: return 1
+        default: return state.dayChanges.isLighter(day) ? 1 : 2
         }
-        return (fourteenths + 13) / 14
+    }
+
+    /// What the week of `monday` asks for: this week's and next week's days, so that the hub can read
+    /// it past the turn of the week. A lagging course gets one more block.
+    public static func ask(_ state: StudyState, settings: WeekSettings, monday: Day, lagging: Set<Domain>, timeZone: TimeZone = .current) -> BlockAsk
+    {
+        let courses = state.settings.domains.map { domain in
+            BlockCourse(
+                id: domain.rawValue, blocks: settings.blocks(domain), extra: lagging.contains(domain) ? 1 : 0, pin: settings.pin(domain),
+                fit: fit(domain))
+        }
+        var units: [String: Int] = [:]
+        for offset in 0..<14 {
+            let day = monday.adding(days: offset)
+            units[day.iso] = self.units(on: day, settings: settings, state: state)
+        }
+        let active = Set(state.settings.domains)
+        let finished = finished(state, settings: settings, monday: monday, timeZone: timeZone).filter { active.contains($0.domain) }
+        return BlockAsk(
+            monday: monday, since: settings.since, courses: courses, units: units,
+            finished: finished.map { FinishedBlock(course: $0.domain.rawValue, day: $0.day, part: $0.part) }, neverStudied: state.sessions.isEmpty,
+            updated: state.now)
+    }
+
+    /// What Stadig Mind publishes for the hub: this week as it stands.
+    public static func published(_ state: StudyState, layout: WeekLayout) -> BlockAsk {
+        var ask = ask(state, settings: state.week, monday: layout.monday, lagging: priorities(state))
+        ask.planned = layout.blocks.filter { !$0.done }.map { FinishedBlock(course: $0.domain.rawValue, day: $0.day, part: $0.part) }
+        return ask
     }
 
     /// Blocks each active course asks for in the week of `monday`, with one more for a lagging one.
     static func counts(_ state: StudyState, settings: WeekSettings, monday: Day, lagging: Set<Domain>) -> [Domain: Int] {
-        var counts: [Domain: Int] = [:]
-        for domain in state.settings.domains {
-            let count = count(domain, settings: settings, state: state, monday: monday)
-            counts[domain] = count + (count > 0 && lagging.contains(domain) ? 1 : 0)
-        }
-        return counts
+        let counts = ask(state, settings: settings, monday: monday, lagging: lagging).counts(monday: monday)
+        return Dictionary(uniqueKeysWithValues: counts.compactMap { key, value in Domain(rawValue: key).map { ($0, value) } })
     }
 
     /// What a week asks for: its blocks, or its open parts if there are fewer. A week that can't
@@ -223,7 +265,7 @@ public enum WeekPlanner {
         for offset in 0..<7 {
             let day = monday.adding(days: offset)
             guard day >= settings.since, StudyCalendar.pause(on: day, lifeModes: state.lifeModes) == nil else { continue }
-            open += openParts(day.weekday, commitments: state.commitments, settings: settings).count
+            open += openParts(on: day, state: state, settings: settings).count
         }
         return min(counts(state, settings: settings, monday: monday, lagging: lagging).values.reduce(0, +), open)
     }
@@ -264,99 +306,19 @@ public enum WeekPlanner {
     public static func layout(_ state: StudyState, settings: WeekSettings, timeZone: TimeZone = .current) -> WeekLayout {
         let monday = state.today.startOfWeek
         let lagging = priorities(state)
-        let counts = counts(state, settings: settings, monday: monday, lagging: lagging)
-        let finished = finished(state, settings: settings, monday: monday, timeZone: timeZone).filter { counts[$0.domain] != nil }
-        var left = counts
-        for block in finished where block.day < state.today { left[block.domain, default: 0] -= 1 }
-
-        // The parts to come, today's included.
-        var parts: [(day: Day, part: DayPart)] = []
-        for offset in 0..<7 {
-            let day = monday.adding(days: offset)
-            guard day >= state.today, day >= settings.since, StudyCalendar.pause(on: day, lifeModes: state.lifeModes) == nil else { continue }
-            parts += openParts(day.weekday, commitments: state.commitments, settings: settings).map { (day, $0) }
+        let ask = ask(state, settings: settings, monday: monday, lagging: lagging, timeZone: timeZone)
+        var clock = Calendar(identifier: .gregorian)
+        clock.timeZone = timeZone
+        let week = BlockPlanner.layout(ask, today: state.today, firstPart: DayPart(hour: clock.component(.hour, from: state.now))) { day in
+            openParts(on: day, state: state, settings: settings)
         }
-        // Only what came before today counts against a part. Today's own finished blocks would push
-        // their courses off the day, and the list has to hold until tomorrow.
-        var placed = place(left.filter { $0.value > 0 }, in: parts, settings: settings, earlier: finished.filter { $0.day < state.today })
-
-        // The very first block follows onboarding straight away, whatever the day looks like.
-        if state.sessions.isEmpty, state.today == settings.since, !placed.blocks.contains(where: { $0.day == state.today }) {
-            var clock = Calendar(identifier: .gregorian)
-            clock.timeZone = timeZone
-            let part = DayPart(hour: clock.component(.hour, from: state.now))
-            if let first = placed.blocks.indices.first {
-                placed.blocks[first].day = state.today
-                placed.blocks[first].part = part
-            } else if let domain = placed.leftovers.keys.sorted().first {
-                // A closed last day of the week: nothing placed, and the first block still follows.
-                placed.blocks.append(PlannedBlock(day: state.today, part: part, domain: domain))
-                placed.leftovers[domain, default: 0] -= 1
-            }
-        }
-
-        // A block done today comes off today's list; one that wasn't on it comes off the end of its
-        // course's week instead, so that the day's list doesn't change but the count still holds.
-        var extras: [PlannedBlock] = []
-        for block in finished where block.day == state.today {
-            if let index = placed.blocks.firstIndex(where: { $0.day == block.day && $0.domain == block.domain && !$0.done }) {
-                placed.blocks[index].done = true
-            } else {
-                extras.append(block)
-                if let last = placed.blocks.lastIndex(where: { $0.domain == block.domain && $0.day > block.day }) {
-                    placed.blocks.remove(at: last)
-                } else if placed.leftovers[block.domain, default: 0] > 0 {
-                    placed.leftovers[block.domain, default: 0] -= 1
-                }
-            }
-        }
-
-        let past = finished.filter { $0.day < state.today }
-        let done = Dictionary(finished.map { ($0.domain, 1) }, uniquingKeysWith: +)
+        let counts = Dictionary(uniqueKeysWithValues: week.counts.compactMap { key, value in Domain(rawValue: key).map { ($0, value) } })
+        let done = Dictionary(uniqueKeysWithValues: week.done.compactMap { key, value in Domain(rawValue: key).map { ($0, value) } })
+        let leftovers = Dictionary(uniqueKeysWithValues: week.leftovers.compactMap { key, value in Domain(rawValue: key).map { ($0, value) } })
         let achieved = counts.keys.map { min(done[$0, default: 0], counts[$0, default: 0]) }.reduce(0, +)
         let target = max(achieved, target(state, settings: settings, monday: monday, lagging: lagging))
-        var blocks = (past + placed.blocks + extras).sorted { ($0.day, $0.part, $0.domain) < ($1.day, $1.part, $1.domain) }
-        var seen: [String: Int] = [:]
-        for index in blocks.indices {
-            blocks[index].repeatIndex = seen[blocks[index].id, default: 0]
-            seen[PlannedBlock(day: blocks[index].day, part: blocks[index].part, domain: blocks[index].domain).id, default: 0] += 1
-        }
         return WeekLayout(
-            monday: monday, blocks: blocks, counts: counts, done: done, leftovers: placed.leftovers.filter { $0.value > 0 }, target: target,
+            monday: monday, blocks: week.blocks.compactMap(PlannedBlock.init), counts: counts, done: done, leftovers: leftovers, target: target,
             ledger: WeekTarget(total: target, counts: counts, days: countedDays(state, settings: settings, monday: monday).count))
-    }
-
-    /// Places what's left, a round at a time so that the courses take turns at the best parts. Each
-    /// block takes the part that suits it best, keeping a course to one block a day where it can and
-    /// spreading the blocks over the days: spacing matters more than the time of day. Ties go by day,
-    /// then part, so the same week always comes out the same way.
-    static func place(_ left: [Domain: Int], in parts: [(day: Day, part: DayPart)], settings: WeekSettings, earlier: [PlannedBlock]) -> (
-        blocks: [PlannedBlock], leftovers: [Domain: Int]
-    ) {
-        var blocks: [PlannedBlock] = []
-        var leftovers: [Domain: Int] = [:]
-        var free = parts
-        let order = left.keys.sorted { (-left[$0, default: 0], $0) < (-left[$1, default: 0], $1) }
-        for round in 0..<(left.values.max() ?? 0) {
-            for domain in order where round < left[domain, default: 0] {
-                var best: (index: Int, score: Double)?
-                let same = (blocks + earlier).filter { $0.domain == domain }
-                for (index, slot) in free.enumerated() {
-                    let sameDay = same.filter { $0.day == slot.day }.count
-                    let nextDoor = same.filter { abs($0.day.days(until: slot.day)) == 1 }.count
-                    let thatDay = blocks.filter { $0.day == slot.day }.count
-                    let pinned = settings.pin(domain) == slot.part ? 6.0 : 0
-                    let score = timeFit(domain, slot.part) + pinned - 5 * Double(sameDay) - 1.4 * Double(thatDay) - 0.6 * Double(nextDoor)
-                    if score > best?.score ?? -.infinity { best = (index, score) }
-                }
-                guard let best else {
-                    leftovers[domain, default: 0] += 1
-                    continue
-                }
-                let slot = free.remove(at: best.index)
-                blocks.append(PlannedBlock(day: slot.day, part: slot.part, domain: domain))
-            }
-        }
-        return (blocks, leftovers)
     }
 }

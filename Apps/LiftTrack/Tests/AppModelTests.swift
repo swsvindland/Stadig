@@ -12,6 +12,21 @@ import Testing
 @MainActor
 @Suite("App model")
 struct AppModelTests {
+    @Test("A lighter week from the hub shortens the session and goes when it's undone")
+    func lighterWeek() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let full = try #require(model.plan())
+        let change = DayChange.lighterWeek(of: model.today)
+        try app.shared.write([change], to: .dayChanges, by: .hub)
+        model.readShared()
+        let lighter = try #require(model.plan())
+        #expect(lighter.estimatedMinutes < full.estimatedMinutes, "\(lighter.estimatedMinutes) of \(full.estimatedMinutes)")
+        try app.shared.write([change.deleted()], to: .dayChanges, by: .hub)
+        model.readShared()
+        #expect(try #require(model.plan()).estimatedMinutes == full.estimatedMinutes)
+    }
+
     @Test("A fresh install isn't onboarded and has nothing to plan")
     func freshModel() {
         let model = TestApp().model()

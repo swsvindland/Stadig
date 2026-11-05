@@ -1,6 +1,7 @@
 import FoodDatabase
 import Foundation
 import HealthBridge
+import HubEngine
 import MealPlanner
 import NutritionEngine
 import OSLog
@@ -273,6 +274,8 @@ final class AppModel {
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
+    /// What's left of today, for someone who uses the hub.
+    private(set) var dayAhead: String?
     /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
     /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
     /// launch, at midnight, on coming back after a while away, and from anywhere outside the app.
@@ -305,6 +308,7 @@ final class AppModel {
     @ObservationIgnored private var foodCache: [String: Food] = [:]
     @ObservationIgnored private var personalTask: Task<Void, Never>?
     @ObservationIgnored private var fixTask: Task<Void, Never>?
+    @ObservationIgnored private var mealRhythmTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
@@ -516,6 +520,7 @@ final class AppModel {
     /// What other apps and the hub published. Our own writes notify us too, so this only
     /// recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
+        dayAhead = HubPlanner.ahead(shared: shared, today: today, now: Date())
         let lift = shared.read(.summary(.liftTrack))
         let calendar = shared.read(.calendar)
         let sharedProfile = shared.read(.profile)
@@ -759,6 +764,27 @@ final class AppModel {
             }
         }
         WidgetBridge.update(self)
+        publishMeals()
+    }
+
+    /// When this person eats, for the hub. Off the main actor: it reads four weeks of food, and
+    /// publishing mustn't slow the log.
+    private func publishMeals() {
+        let entries = suggestionEntries
+        let today = today
+        let now = Date()
+        let shared = shared
+        let log = appLog
+        mealRhythmTask?.cancel()
+        mealRhythmTask = Task.detached(priority: .utility) {
+            let rhythm = UsualMeals.rhythm(entries: entries, today: today, now: now)
+            guard !Task.isCancelled else { return }
+            do {
+                try shared.writeIfChanged(rhythm, to: .mealRhythm, by: .macroTrack, stamp: \.updated, now: now)
+            } catch {
+                log.error("Couldn't publish meal times: \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: Foods

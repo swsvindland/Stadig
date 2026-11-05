@@ -130,6 +130,27 @@
   - Stadig Mind: piano (MIDI scoring and sheet music, deferred), Korean, Japanese grammar lessons (grammar is met in sentences only), kanji as cards of their own, reminders, a Watch app, and the iPad on a piano stand
   - Body Track migration (deferred, as the doc says)
 
+## Calls made for the hub (2026-11-05)
+
+Sam's own calls are in [hub.md](hub.md): Today over the six parts, work as a schedule you give it, buttons that open the app, adapting from silence, free time never named, and no phone calendar for now. These are what I decided under them:
+
+- **A part is open for study if it has a free run of 45 minutes.** A 25-minute block needs room around it.
+- **Two evenings kept clear by default,** the end of the week first (Friday, Saturday, Sunday, then back), chosen from the work pattern alone so every app agrees. Settable from 0 to 5.
+- **Sleep is part of the rhythm:** one wake and bed time by default, and a shift pattern can set its own per day. Parts you're asleep in close.
+- **Parts stay on the clock, even for night workers.** Pins cover the rest.
+- **Classes never drop off the day.** A class is a fact about the week, so a tight part runs on into the next rather than losing it, and the lift is what moves. Going out takes it off with no mark.
+- **"Out tonight" late in the day also closes the parts already gone,** except the one it is now, so tonight's blocks move to another day rather than to a morning that's over. Open: within today Mind still holds a block in a part that's passed if nothing's changed, so a morning block stays until the day turns over, as it did before the hub.
+- **A lighter week** is a day's units at 1, with no stacking on a review week, and a session at two thirds, to the nearest five minutes, no less than 30. It ends on Sunday and doesn't renew.
+- **Free time is shown to the nearest quarter of an hour, and "Full" under 30 minutes.** It's room, not a measurement.
+- **Published data older than 28 days is ignored:** the app may be gone.
+- **A second device's change can briefly show a done block as undone** if a Mac behind on sync republishes an older `finished`. Accepted. So are later days reshuffling after "I'm out tonight": today holds, and the week re-forms.
+- **The hub is free, with no purchase code,** until how it's sold is decided. It can't see whether another app is unlocked.
+- **The "Your day" strip is one line,** at most three things, on each app's Today, only for someone who uses the hub. Each app has its own screen to fill.
+- **Earlier parts of today hide what was in them.** A block not done there rolls forward by itself, so the screen doesn't keep it as a reproach.
+- **What's still there from earlier today reads "Still today",** not "Next". It can be done, and if it isn't it moves on by itself.
+- **The hub's day starts at 4 a.m.** (`Rhythm.dayStart`), and nothing yet carries Stadig Mind's own day-start setting across. Open: someone who moved Mind's day start would see the two turn over at different hours.
+- **The icon is the family's mark from the site,** drawn by `Scripts/make-hub-icons.swift`, and awaits Sam's sign-off, as does the App Store copy.
+
 ## Calls made for correcting foods and Today's order (2026-11-03)
 
 - **A correction, not a copy.** A catalog food's numbers are kept as a `FoodCorrection` under the catalog's own id rather than as a custom food beside it, so the barcode, search, favourites, Log Again and the entries already logged all find the corrected food in its place, without a second row to tell apart; one record per food (its id comes from the food's), so correcting it on two devices can't make two. The person's own foods (typed in, or read from a label) are changed in place instead.

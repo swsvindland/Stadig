@@ -107,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [lift, macro, mind]
+        app: [lift, macro, mind, hub]
     steps:
       - uses: actions/checkout@v5
 

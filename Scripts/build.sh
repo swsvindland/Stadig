@@ -8,6 +8,7 @@
 #   macro          Stadig Macro for iPhone/iPad with its widgets
 #   macro-watch    Stadig Macro's Watch app and its complications (generic watchOS simulator)
 #   mind           Stadig Mind for iPhone/iPad
+#   hub            Stadig, the hub, for iPhone/iPad
 #   mac <app>      the app for the Mac, signed to run on this Mac (see mac_build below)
 #   vision <app>   the app for Apple Vision Pro (generic visionOS simulator)
 #   unit <app> [device]  an app's unit and integration tests (its default test plan); device is
@@ -19,7 +20,7 @@
 #   simulator [device]   print this checkout's test simulator's UDID (creating it if needed):
 #                  iphone (the default), ipad or vision
 #   products [mac] print where this checkout's simulator (or Mac) builds land (the .app files)
-# <app> is lift, macro or mind. Builds print only errors and warnings, into a DerivedData folder of
+# <app> is lift, macro, mind or hub. Builds print only errors and warnings, into a DerivedData folder of
 # this checkout's own (/tmp/system-dd-<checkout>; DERIVED_DATA overrides it). Simulator work runs on
 # this checkout's own simulators ("Stadig Tests <checkout>", "Stadig iPad <checkout>" and "Stadig
 # Vision <checkout>", created when missing), so sessions in other checkouts and worktrees never
@@ -107,7 +108,8 @@ use_app() {
     lift) APP_PROJECT=Apps/LiftTrack/LiftTrack.xcodeproj APP_SCHEME=LiftTrack ;;
     macro) APP_PROJECT=Apps/MacroTrack/MacroTrack.xcodeproj APP_SCHEME=MacroTrack ;;
     mind) APP_PROJECT=Apps/MindTrack/MindTrack.xcodeproj APP_SCHEME=MindTrack ;;
-    *) print -u2 "Unknown app '${1:-}': choose lift, macro or mind"; exit 2 ;;
+    hub) APP_PROJECT=Apps/Hub/Hub.xcodeproj APP_SCHEME=Hub ;;
+    *) print -u2 "Unknown app '${1:-}': choose lift, macro, mind or hub"; exit 2 ;;
   esac
 }
 
@@ -186,13 +188,14 @@ case $WHAT in
   macro) build_app macro ;;
   macro-watch) build_macro_watch ;;
   mind) build_app mind ;;
+  hub) build_app hub ;;
   mac) build_mac ${2:-} ;;
   vision) build_vision ${2:-} ;;
   unit|ui) app_tests $WHAT ${2:-} ${3:-} ;;
   all)
     lint; run_tests
-    build_app lift; build_watch; build_app macro; build_macro_watch; build_app mind
-    for app in lift macro mind; do build_mac $app; build_vision $app; done
+    build_app lift; build_watch; build_app macro; build_macro_watch; build_app mind; build_app hub
+    for app in lift macro mind hub; do build_mac $app; build_vision $app; done
     ;;
   simulator) test_simulator ${2:-} ;;
   products) [[ ${2:-} == mac ]] && print $DD/Build/Products/Debug || print $DD/Build/Products/Debug-iphonesimulator ;;

@@ -88,20 +88,33 @@ private struct WeekCard: View {
     let week: WeekSettings
     let analysis: MindAnalysis
     let state: StudyState
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            let follows = WeekPlanner.followsRhythm(state)
             WeekGrid(
-                cells: WeekPlanner.cells(settings: week, commitments: state.commitments, layout: analysis.layout), today: state.today.weekday
-            ) { model.togglePart($0.weekday, $0.part) }
+                cells: WeekPlanner.cells(state, settings: week, layout: analysis.layout), today: state.today.weekday,
+                toggle: follows ? nil : { model.togglePart($0.weekday, $0.part) })
             if analysis.layout.leftoverCount > 0 {
                 let count = analysis.layout.leftoverCount
                 Label("\(count) block\(count == 1 ? "" : "s") won't fit this week", systemImage: "tray.full")
                     .font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("plan.leftovers")
             }
-            Text("Tap a part of the week to open or close it. Anything missed moves to the next open part.")
-                .font(.footnote).foregroundStyle(.secondary)
+            if follows {
+                Text("This week fits around your rhythm in Stadig. Anything missed moves to the next open part.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("plan.rhythm")
+                Button("Open your rhythm") {
+                    if let url = URL(string: "stadig://rhythm") { openURL(url) }
+                }
+                .font(.footnote)
+                .accessibilityIdentifier("plan.openRhythm")
+            } else {
+                Text("Tap a part of the week to open or close it. Anything missed moves to the next open part.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
         }
     }
 }

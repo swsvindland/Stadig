@@ -10,6 +10,7 @@
 		4E3F0266A2E47EC91D557B25 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F916CF44D5BAA829C0F56 /* SystemCore */; };
 		4E3F0D71B889B5A062FD7C4F /* SystemAI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F3C3E176BD4363C48D6B9 /* SystemAI */; };
 		4E3F3054D47B68D6B5472092 /* SystemPurchases in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3FBB2776FEA3C72FFC8576 /* SystemPurchases */; };
+		4E3F51737B7B442BA64340F8 /* HubEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F6A42259F9D81BD1F6A09 /* HubEngine */; };
 		4E3F749F6853156086920694 /* SystemCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F8003CF536D69AED3EF12 /* SystemCore */; };
 		4E3F795B6990C2D3391783D4 /* SystemStore in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3F3D49BBDDDD73B590632D /* SystemStore */; };
 		4E3FD06152EAF22916A01108 /* MindTrackWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E3FB37F44E435D00DEE9BD5 /* MindTrackWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -134,6 +135,7 @@
 				4E3F3054D47B68D6B5472092 /* SystemPurchases in Frameworks */,
 				4E3F0D71B889B5A062FD7C4F /* SystemAI in Frameworks */,
 				4E3FFDB243C0BC13E093CA2A /* MindEngine in Frameworks */,
+				4E3F51737B7B442BA64340F8 /* HubEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,6 +227,7 @@
 				4E3FBB2776FEA3C72FFC8576 /* SystemPurchases */,
 				4E3F3C3E176BD4363C48D6B9 /* SystemAI */,
 				4E3FA3B761C1075B2B17E233 /* MindEngine */,
+				4E3F6A42259F9D81BD1F6A09 /* HubEngine */,
 			);
 			productName = MindTrack;
 			productReference = 4E3F3EDD57C99DB6BF9B6B6F /* MindTrack.app */;
@@ -341,6 +344,7 @@
 				4E3F2C0491437C84D5EE15D2 /* XCLocalSwiftPackageReference "../../Packages/SystemPurchases" */,
 				4E3FD3E7F45B1713A2CAF73A /* XCLocalSwiftPackageReference "../../Packages/SystemAI" */,
 				4E3F62EE23BAD56FC323B2B5 /* XCLocalSwiftPackageReference "../../Packages/MindEngine" */,
+				4E3F91C88E67D25C54986BC2 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4E3F0A48DDB67074AC8427C7 /* Products */;
@@ -883,6 +887,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemStore;
 		};
+		4E3F91C88E67D25C54986BC2 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/HubEngine;
+		};
 		4E3FA6CECBB692880F4AA8A1 /* XCLocalSwiftPackageReference "../../Packages/SystemCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../Packages/SystemCore;
@@ -903,6 +911,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4E3F7BBD2DFCC17BF79AF4CD /* XCLocalSwiftPackageReference "../../Packages/SystemStore" */;
 			productName = SystemStore;
+		};
+		4E3F6A42259F9D81BD1F6A09 /* HubEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E3F91C88E67D25C54986BC2 /* XCLocalSwiftPackageReference "../../Packages/HubEngine" */;
+			productName = HubEngine;
 		};
 		4E3F8003CF536D69AED3EF12 /* SystemCore */ = {
 			isa = XCSwiftPackageProductDependency;

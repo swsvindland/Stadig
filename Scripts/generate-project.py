@@ -3,7 +3,7 @@
 linked to the local Swift packages in Packages/. Run from the repo root:
 
     python3 Scripts/generate-project.py              # every app
-    python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack, MacroTrack or MindTrack)
+    python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack, MacroTrack, MindTrack or Hub)
 """
 import hashlib
 import json
@@ -16,7 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "9HAG9PT8LJ"
 # Each app's version (CFBundleShortVersionString), shared by its extensions and Watch app as the App
 # Store requires. Bump it here when cutting a release branch, then run this script.
-VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0", "MindTrack": "1.0"}
+VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0", "MindTrack": "1.0", "Hub": "1.0"}
 
 
 def q(v):
@@ -236,7 +236,7 @@ lift_watch = watch_app("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp", "
 
 lift_watch_widgets = watch_widgets("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp.widgets")
 
-LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "SystemPurchases", "HealthBridge", "LiftEngine"]
+LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "SystemPurchases", "HealthBridge", "LiftEngine", "HubEngine"]
 lift_embeds = [
     # (host, embedded, phase name, dstSubfolderSpec, dstPath, platform filter or None for every platform)
     ("LiftTrack", "LiftTrackWidgets", "Embed Foundation Extensions", 13, "", None),
@@ -299,7 +299,7 @@ macro_widgets = dict(swift_common, **ios_widgets_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro.widgets",
 })
 
-MACRO_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner"]
+MACRO_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner", "HubEngine"]
 
 # The Watch app reads and writes the same CloudKit records as the phone (Records/), with no food
 # catalog: an entry carries its own numbers, and FoodIntelligence and MealPlanner don't build for
@@ -363,7 +363,7 @@ mind_widgets = dict(swift_common, **ios_widgets_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind.widgets",
 })
 
-MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "SystemAI", "MindEngine"]
+MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "SystemAI", "MindEngine", "HubEngine"]
 
 MIND = {
     "name": "MindTrack",
@@ -386,7 +386,38 @@ MIND = {
     "schemes": [("MindTrack", "MindTrack", "MindTrack.app", True)],
 }
 
-APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO, "MindTrack": MIND}
+# MARK: - Stadig (the hub)
+
+hub_app = {**swift_common, **ios_app_common, **{
+    "CODE_SIGN_ENTITLEMENTS": "Config/Hub.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/Hub-macOS.entitlements",
+    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig",
+    "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.productivity",
+    # Xcode moved this out of Config/Info.plist into build settings.
+    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
+    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.hub",
+}}
+
+HUB_PACKAGES = ["SystemCore", "SystemStore", "HubEngine"]
+
+HUB = {
+    "name": "Hub",
+    "id_prefix": "4A5B",
+    "packages": HUB_PACKAGES,
+    "targets": [
+        ("Hub", "Hub.app", "com.apple.product-type.application", "wrapper.application", hub_app, ["iOS"], HUB_PACKAGES),
+    ] + test_targets("Hub", "dev.svindland.stadig.hub"),
+    "embeds": [],
+    "config_files": ["Info.plist", "Hub.entitlements", "Hub-macOS.entitlements"],
+    "groups": ["iOS", "Tests", "UITests"],
+    "exceptions": [],
+    "extra_files": ["Hub.xctestplan", "HubUI.xctestplan"],
+    "test_plans": [("Hub", ["HubTests"]), ("HubUI", ["HubUITests"])],
+    # Nothing to buy, so no StoreKit configuration.
+    "schemes": [("Hub", "Hub", "Hub.app", False)],
+}
+
+APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO, "MindTrack": MIND, "Hub": HUB}
 
 project_debug = {
     "ALWAYS_SEARCH_USER_PATHS": "NO", "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",

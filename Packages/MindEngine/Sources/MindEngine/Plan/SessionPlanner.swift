@@ -20,12 +20,16 @@ public struct StudyState: Sendable {
     public var weekSettings: WeekSettings?
     /// What the person's week already holds, from Stadig Lift.
     public var commitments: WeekCommitments
+    /// Someone's work or school and sleep, from the hub. Nil without one: Mind's own defaults apply.
+    public var rhythm: Rhythm?
+    /// "I'm out tonight" and lighter weeks, from the hub.
+    public var dayChanges: [DayChange]
 
     public init(
         settings: MindSettings, cards: [MemoryCard] = [], sessions: [StudySession] = [], tests: [TestResult] = [],
         books: [Book] = [], reflections: [Reflection] = [], pieces: [WritingPiece] = [], comparisons: [BlindComparison] = [],
         lifeModes: [LifeModePeriod] = [], calendar: SystemCalendar? = nil, recommendations: [Recommendation] = [], today: Day,
-        now: Date, weekSettings: WeekSettings? = nil, commitments: WeekCommitments = .none
+        now: Date, weekSettings: WeekSettings? = nil, commitments: WeekCommitments = .none, rhythm: Rhythm? = nil, dayChanges: [DayChange] = []
     ) {
         self.settings = settings
         self.cards = Dictionary(cards.map { ($0.key, $0) }, uniquingKeysWith: { $0.updatedAt >= $1.updatedAt ? $0 : $1 })
@@ -43,6 +47,8 @@ public struct StudyState: Sendable {
         self.now = now
         self.weekSettings = weekSettings
         self.commitments = commitments
+        self.rhythm = rhythm
+        self.dayChanges = dayChanges.live
     }
 
     /// The study week: as stored, or what the courses make of it before anything has been saved.
