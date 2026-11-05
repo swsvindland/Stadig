@@ -51,7 +51,7 @@ struct LogTab: View {
                     // are theirs on every platform.
                     Section {
                         if let listed {
-                            ForEach(listed) { LogEntryRow(entry: $0, wide: true, showsTime: true, editing: editingFood) }
+                            ForEach(listed) { LogEntryRow(entry: $0, wide: true, showsTime: true, order: order, editing: editingFood) }
                         } else {
                             ForEach(groups) { group in
                                 HourRows(group: group, gaps: group.gaps(gaps), wide: showsColumns, editing: editingFood)
@@ -547,6 +547,8 @@ struct LogEntryRow: View {
     let wide: Bool
     /// Out of its hour, in a sorted list, a food says when it was.
     var showsTime = false
+    /// How the day's listed around it, for what's between two clicks.
+    var order = DayOrder.time
     @Binding var editing: FoodEntry?
     /// When a hold picked this out: the tap that lands with its release is swallowed.
     @State private var held: Date?
@@ -604,7 +606,7 @@ struct LogEntryRow: View {
         if Platform.commandHeld {
             model.toggleSelection(entry)
         } else if Platform.shiftHeld {
-            model.extendSelection(to: entry)
+            model.extendSelection(to: entry, in: order)
         } else if model.selection.isEmpty {
             editing = entry
         } else {

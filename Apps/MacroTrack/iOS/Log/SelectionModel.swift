@@ -9,6 +9,8 @@ struct LogSelection: Equatable {
 
     var ids: Set<UUID> = []
     var intent: Intent = .move
+    /// The food picked out last, which ⇧-click extends from.
+    var anchor: UUID?
 
     var isEmpty: Bool { ids.isEmpty }
 }
@@ -18,7 +20,10 @@ extension AppModel {
     var selectedEntries: [FoodEntry] { selection.isEmpty ? [] : foodLog.all.filter { selection.ids.contains($0.id) } }
 
     func toggleSelection(_ entry: FoodEntry) {
-        if selection.ids.remove(entry.id) == nil { selection.ids.insert(entry.id) }
+        if selection.ids.remove(entry.id) == nil {
+            selection.ids.insert(entry.id)
+            selection.anchor = entry.id
+        }
     }
 
     /// An hour's foods: a tap starts or extends the selection, so a partly selected hour selects
@@ -28,21 +33,22 @@ extension AppModel {
         if ids.isSubset(of: selection.ids) { selection.ids.subtract(ids) } else { selection.ids.formUnion(ids) }
     }
 
-    /// From the entry selected last to this one, in the day's order: ⇧-click.
-    func extendSelection(to entry: FoodEntry) {
-        let day = allEntries(on: entry.day)
-        let selected = day.indices.filter { selection.ids.contains(day[$0].id) }
-        guard let target = day.firstIndex(of: entry), let anchor = selected.min(by: { abs($0 - target) < abs($1 - target) }) else {
-            toggleSelection(entry)
-            return
-        }
-        selection.ids.formUnion(day[min(anchor, target)...max(anchor, target)].map(\.id))
+    /// From the food picked out last to this one, through what's between them on screen: ⇧-click.
+    /// With that one no longer picked out or not on this day, from the nearest that is.
+    func extendSelection(to entry: FoodEntry, in order: DayOrder = .time) {
+        let all = allEntries(on: entry.day)
+        let rows = order.listed(all) ?? all
+        guard let target = rows.firstIndex(where: { $0.id == entry.id }) else { return toggleSelection(entry) }
+        let last = selection.anchor.flatMap { id in selection.ids.contains(id) ? rows.firstIndex { $0.id == id } : nil }
+        let selected = rows.indices.filter { selection.ids.contains(rows[$0].id) }
+        guard let anchor = last ?? selected.min(by: { abs($0 - target) < abs($1 - target) }) else { return toggleSelection(entry) }
+        selection.ids.formUnion(rows[min(anchor, target)...max(anchor, target)].map(\.id))
     }
 
     func clearSelection() { selection = LogSelection() }
 
     /// One food picked out to take elsewhere, from its amount.
-    func select(_ entry: FoodEntry, intent: LogSelection.Intent) { selection = LogSelection(ids: [entry.id], intent: intent) }
+    func select(_ entry: FoodEntry, intent: LogSelection.Intent) { selection = LogSelection(ids: [entry.id], intent: intent, anchor: entry.id) }
 
     /// Takes the selection to a place by its intent: a move ends the selection, and a copy keeps it,
     /// so the same foods can go to another day next.

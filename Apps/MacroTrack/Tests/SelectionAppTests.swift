@@ -248,12 +248,70 @@ struct SelectionAppTests {
         #expect(model.allEntries(on: day).count == 3)
     }
 
-    @Test func shiftSelectsFromTheNearestSelected() {
+    @Test func shiftSelectsFromTheFoodPickedOut() {
         let (model, day) = model()
         let foods = model.allEntries(on: day)
         model.toggleSelection(foods[0])
         model.extendSelection(to: foods[2])
         #expect(model.selection.ids.count == 3)
+    }
+
+    /// A 8:00 500, B 9:00 100, C 10:00 200, D 11:00 300, E 12:00 400.
+    func fiveFoods() -> (AppModel, [FoodEntry]) {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let day = model.today.adding(days: -1)
+        model.log(
+            [("A", 8, 500.0), ("B", 9, 100), ("C", 10, 200), ("D", 11, 300), ("E", 12, 400)].map { name, hour, kcal in
+                food(name, kcal: kcal, at: day.at(hour: hour, minute: 0))
+            })
+        model.toast = nil
+        model.show(day: day)
+        return (model, model.allEntries(on: day))
+    }
+
+    func names(_ model: AppModel) -> [String] { model.selectedEntries.map(\.name) }
+
+    @Test func shiftGoesFromTheLastClickedNotTheNearest() {
+        let (model, foods) = fiveFoods()
+        model.toggleSelection(foods[0])
+        model.toggleSelection(foods[4])
+        model.extendSelection(to: foods[1])
+        #expect(names(model) == ["A", "B", "C", "D", "E"], "E back to B, with A already picked out")
+    }
+
+    @Test func shiftFollowsTheRowsOnScreen() {
+        let (model, foods) = fiveFoods()
+        // By calories the rows read A, E, D, C, B.
+        model.toggleSelection(foods[0])
+        model.extendSelection(to: foods[3], in: .calories)
+        #expect(names(model) == ["A", "D", "E"], "E is between them on screen; B and C aren't")
+    }
+
+    @Test func shiftFallsBackToTheNearestWhenTheLastClickedIsGone() {
+        let (model, foods) = fiveFoods()
+        model.toggleSelection(foods[0])
+        model.toggleSelection(foods[4])
+        // Clicked off again: it can't be where the range starts.
+        model.toggleSelection(foods[4])
+        model.toggleSelection(foods[1])
+        model.toggleSelection(foods[1])
+        model.extendSelection(to: foods[2])
+        #expect(names(model) == ["A", "B", "C"])
+    }
+
+    @Test func shiftFallsBackWhenTheLastClickedIsOnAnotherDay() {
+        let (model, foods) = fiveFoods()
+        let today = food("Today's", at: model.today.at(hour: 0, minute: 1))
+        model.log([today])
+        model.toast = nil
+        model.toggleSelection(foods[0])
+        let stored = model.allEntries(on: model.today).first { $0.name == "Today's" }
+        if let stored { model.toggleSelection(stored) }
+        // The selection survives a change of day, and its last click isn't in this day's rows.
+        model.extendSelection(to: foods[2])
+        #expect(names(model).contains("B"))
+        #expect(names(model).contains("C"))
     }
 
     @Test func aMoveThatEndsAFastSaysSo() throws {
