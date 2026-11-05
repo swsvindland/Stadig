@@ -39,6 +39,12 @@ extension XCUIApplication {
     /// Answers the step on screen the way a person would: reads a lesson, picks the first answer
     /// (or says "Don't know"), and moves on from the feedback.
     @MainActor
+    /// Steps a course's amount down until it's off.
+    func turnOff(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
+        let stepper = scroll(to: steppers[identifier], file: file, line: line)
+        for _ in 0...8 where !stepper.spoken.contains("Off") { stepper.buttons.element(boundBy: 0).tap() }
+    }
+
     func answerStep() {
         let lesson = buttons["lesson.continue"]
         let choice = buttons["question.choice.0"]

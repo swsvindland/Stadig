@@ -83,7 +83,7 @@ struct AppModelTests {
 
         #expect(model.onboarded)
         #expect(model.settings?.onboardedAt == clock.now)
-        #expect(model.settings?.focus == [.maths, .reading])
+        #expect(model.settings?.studied == [.maths, .reading])
         #expect(model.books.map(\.title) == ["The Hobbit"])
         let analysis = try #require(model.analysis)
         #expect(analysis.phase.isAssessment, "the first two weeks find the level")
@@ -94,7 +94,7 @@ struct AppModelTests {
         // What was set up is there after a relaunch.
         let relaunched = TestApp.model(store: store, clock: clock)
         #expect(relaunched.onboarded)
-        #expect(relaunched.settings?.focus == [.maths, .reading])
+        #expect(relaunched.settings?.studied == [.maths, .reading])
         #expect(relaunched.books.count == 1)
     }
 
@@ -115,7 +115,7 @@ struct AppModelTests {
 
         let settings = try #require(model.settings)
         #expect(settings.onboardedAt == started, "the program keeps its start: the assessment isn't run again")
-        #expect(settings.focus == [.writing])
+        #expect(settings.studied == [.writing])
         #expect(model.books.isEmpty, "onboarding's books aren't added on top of the synced setup")
     }
 
@@ -271,7 +271,7 @@ struct AppModelTests {
         model.endSession()
         #expect(model.stepScreen == nil)
 
-        model.startSession([.maths])
+        model.startBlock(.maths)
         let second = try #require(model.stepScreen)
         #expect(second.step == first.step, "both on their first step")
         #expect(second != first)
@@ -300,7 +300,7 @@ struct AppModelTests {
         let screen = model.stepScreen
         let saved = model.store.revision
 
-        model.startSession([.writing])
+        model.startBlock(.writing)
         model.startExtraReview(minutes: 10)
         model.startToday()
         #expect(model.run?.session.id == run.session.id)

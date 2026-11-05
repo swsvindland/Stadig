@@ -4,7 +4,7 @@ import XCTest
 nonisolated final class SessionUITests: XCTestCase {
     @MainActor
     func testTheFirstSessionCountsWhenEnded() {
-        let app = XCUIApplication.launched(["-onboarded"])
+        let app = XCUIApplication.launched(["-onboarded", "-courses", "maths"])
         let end = app.buttons["session.end"].waitToAppear()
         let firstPart = app.element("session.part").waitToAppear().label
         XCTAssertTrue(firstPart.hasPrefix("Part 1 of"), firstPart)
@@ -14,7 +14,7 @@ nonisolated final class SessionUITests: XCTestCase {
         app.menuButton("session.endConfirm", title: "End session").waitToAppear(timeout: 5).tap()
         end.waitToDisappear()
 
-        // Placement ended early still counts: today is done.
+        // Placement ended early still counts: today's one block is done.
         app.element("today.done").waitToAppear(timeout: 10)
         XCTAssertFalse(app.buttons["today.start"].exists)
     }

@@ -338,7 +338,7 @@ struct ReadingTests {
         let book = Book(title: "On the go", author: "A", tier: 4, pages: 400, genres: [.literary], status: .reading, format: .print)
         store.books = [book]
         let state = store.state(on: Fixtures.monday.adding(days: 1))
-        let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
+        let plan = SessionPlanner.block(.reading, state: state, catalogs: catalogs)
         let part = try #require(plan.parts.first { $0.kind == .read })
         #expect(part.minutes == ReadingPlan.firstBlock, "\(plan.parts)")
         #expect(plan.notes.contains { $0.contains("\(ReadingPlan.firstBlock)-minute block") })
@@ -353,13 +353,15 @@ struct ReadingTests {
         var audio = book
         audio.format = .audiobook
         store.books = [audio]
-        let listening = try #require(SessionPlanner.today(store.state(on: Fixtures.monday.adding(days: 1)), catalogs: catalogs))
+        let listening = SessionPlanner.block(.reading, state: store.state(on: Fixtures.monday.adding(days: 1)), catalogs: catalogs)
         #expect(try #require(listening.parts.first { $0.kind == .read }).minutes > ReadingPlan.firstBlock)
     }
 
     @Test("sixteen weeks of reading: placed by the test, stamina grows with the reader, the ladder climbs and a check-in re-tests")
     func sixteenWeeks() throws {
         var store = Store(settings: Fixtures.settings([.reading], days: 4))
+        // Reading most days, so stamina and the ladder have something to climb on.
+        store.weekSettings = WeekSettings(blocks: [.reading: 7], since: Fixtures.monday)
         let recent = ReadingLadder.standard.books.filter { $0.tier == 4 && !$0.levelledFromText }.prefix(2).map { ladder -> Book in
             var book = ladder.book(status: .readBefore)
             book.feel = .right
@@ -376,7 +378,9 @@ struct ReadingTests {
             // Regular reading trains focus: about a minute more a fortnight, up to forty.
             if offset % 14 == 13 { reader.focusSpan = min(40, reader.focusSpan + 1) }
             let state = store.state(on: day)
-            guard let plan = SessionPlanner.today(state, catalogs: catalogs) else { continue }
+            guard let plan = SessionPlanner.checkIns(state, catalogs: catalogs).first ?? SessionPlanner.today(state, catalogs: catalogs) else {
+                continue
+            }
             var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
             reader.run(&run, from: state.now)
             store.save(run)
@@ -622,7 +626,7 @@ extension ReadingTests {
     @Test("'Not today' with no book on the go isn't the day's session done")
     func notToday() throws {
         var (store, state) = readingDay()
-        let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
+        let plan = SessionPlanner.block(.reading, state: state, catalogs: catalogs)
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
         guard case .pickBook = run.step else {
             Issue.record("no book to pick: \(String(describing: run.step))")
@@ -634,15 +638,15 @@ extension ReadingTests {
         #expect(!run.session.ranToEnd && !run.session.counts)
         store.save(run)
         let after = store.state(on: state.today.adding(days: 1))
-        let discipline = Analyst.discipline(after)
-        #expect(discipline.planned == 2 && discipline.completed == 1, "\(discipline)")
-        #expect(Analyst.week(after).first { $0.day == state.today }?.status == .missed)
+        // Nothing has counted: the block is still to do.
+        let week = WeekPlanner.layout(after, settings: after.week)
+        #expect(week.done[.reading] == nil, "\(week.done)")
     }
 
     @Test("a second pick, page or reflection is ignored once the reading has moved on")
     func repeatedTaps() throws {
         let (_, state) = readingDay()
-        let plan = try #require(SessionPlanner.today(state, catalogs: catalogs))
+        let plan = SessionPlanner.block(.reading, state: state, catalogs: catalogs)
         var run = StudyRun(plan: plan, state: state, catalogs: catalogs, now: state.now)
         guard case .pickBook(let books) = run.step, let ladderBook = books.first else {
             Issue.record("no book to pick")

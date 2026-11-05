@@ -15,7 +15,7 @@ struct ReadingOnboarding: View {
             Text("Reading").font(.title.bold())
                 .accessibilityIdentifier("onboarding.readingTitle")
             Text(
-                "Your level comes from a short reading test in the first session: a few passages, a few questions each. Here, only what you're reading now and what you've read in the last twelve months."
+                "Your level comes from a short reading test in its first block: a few passages, a few questions each. Here, only what you're reading now and what you've read in the last twelve months."
             )
             .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {

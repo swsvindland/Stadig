@@ -11,6 +11,11 @@ nonisolated extension MindSettings: @retroactive StoredRecord {
     public static var schemaVersion: Int { 1 }
 }
 
+nonisolated extension WeekSettings: @retroactive StoredRecord {
+    public static var kind: String { "week-settings" }
+    public static var schemaVersion: Int { 1 }
+}
+
 nonisolated extension MemoryCard: @retroactive StoredRecord {
     public static var kind: String { "card" }
     public static var schemaVersion: Int { 1 }

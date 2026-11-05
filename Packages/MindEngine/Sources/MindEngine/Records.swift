@@ -218,6 +218,17 @@ public struct StudySession: Hashable, Codable, Sendable, Identifiable {
         self.updatedAt = updatedAt
     }
 
+    /// The usual length of a conversation logged by hand.
+    public static let conversationMinutes = 20
+
+    /// A real conversation in a language, had away from the app: a commute's worth of talking counts
+    /// as one of the course's blocks. It moves no stat; those stay with tests and real outcomes.
+    public static func conversation(_ domain: Domain, at start: Date, minutes: Int = conversationMinutes) -> StudySession {
+        StudySession(
+            purpose: .regular, start: start, end: start.addingTimeInterval(Double(minutes) * 60), plannedMinutes: minutes, domains: [domain],
+            planned: true, activeSeconds: Double(minutes) * 60, ranToEnd: true)
+    }
+
     /// The study day it began on, for days that start at `dayStart` on the clock.
     public func day(startingAt dayStart: Int) -> Day { Day(start, dayStartsAt: dayStart) }
     public var minutes: Double { activeSeconds / 60 }

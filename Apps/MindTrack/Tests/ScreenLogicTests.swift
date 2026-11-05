@@ -184,12 +184,6 @@ struct TodayActionTests {
         #expect(run.plan.minutes == 10)
     }
 
-    @Test func catchingUpStartsTheMissedDomains() throws {
-        let model = TestApp.onboardedModel([.maths, .reading])
-        ActionCard.perform(.catchUp([.reading]), model: model)
-        #expect(try #require(model.run).plan.domains == [.reading])
-    }
-
     @Test func anEpisodeIsLoggedForItsLanguage() {
         let model = TestApp.onboardedModel([.japanese, .spanish])
         ActionCard.perform(.episode(.spanish), model: model)

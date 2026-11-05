@@ -67,6 +67,8 @@ public struct StudyRun: Sendable {
     private(set) var stepShownAt = 0.0
     private(set) var lastNow: Date
     private(set) var asked = 0
+    /// Sessions of this course earlier today.
+    private let blocksToday: Int
     let catalogs: Catalogs
     let settings: MindSettings
     let tests: [TestResult]
@@ -87,6 +89,8 @@ public struct StudyRun: Sendable {
         cards = state.cards
         books = state.books
         lastNow = now
+        blocksToday =
+            state.sessions.filter { $0.day(startingAt: state.dayStart) == state.today && !$0.domains.filter(plan.domains.contains).isEmpty }.count
         session = StudySession(purpose: plan.kind, start: now, plannedMinutes: plan.minutes, domains: plan.domains, planned: plan.planned)
         planParts = plan.parts
         budgets = plan.parts.map { Double($0.minutes) * 60 }
@@ -291,8 +295,9 @@ public struct StudyRun: Sendable {
 
     func usable(_ key: CardKey) -> Bool { Subjects.module(key.domain).usable(key, catalogs: catalogs) }
 
-    /// Questions vary by day and by how many have been asked.
-    var seed: String { "\(today.iso).\(asked)" }
+    /// Questions vary by day, by how many have been asked, and by the block: a second block of a
+    /// course on one day asks different ones.
+    var seed: String { blocksToday == 0 ? "\(today.iso).\(asked)" : "\(today.iso).\(blocksToday).\(asked)" }
 
     // MARK: Stepping
 
@@ -338,18 +343,20 @@ public struct StudyRun: Sendable {
     private mutating func addExtraPractice(seconds: Double) {
         guard !addedExtraPractice, plan.kind == .regular || plan.kind == .review || plan.kind == .placement else { return }
         let domains = Set(plan.domains.filter { $0 != .reading })
-        let ahead = cards.values.filter { card in
+        // Due cards the warm-up didn't reach come first: a block is the only place they get asked.
+        let candidates = cards.values.filter { card in
             guard domains.contains(card.domain), let memory = card.memory, !changedCards.contains(card.key) else { return false }
-            return Day(memory.lastReview, dayStartsAt: dayStart) != today && !card.isDue(on: today, dayStart: dayStart) && usable(card.key)
+            return Day(memory.lastReview, dayStartsAt: dayStart) != today && usable(card.key)
         }.sorted { ($0.memory?.due ?? .distantFuture, $0.key) < ($1.memory?.due ?? .distantFuture, $1.key) }
-        guard !ahead.isEmpty else { return }
+        guard !candidates.isEmpty else { return }
         addedExtraPractice = true
+        let due = candidates.contains { $0.isDue(on: today, dayStart: dayStart) }
         planParts.append(
             PlanPart(
-                kind: .reviews, minutes: Int((seconds / 60).rounded()), title: "Extra practice",
-                detail: "Reviews ahead of schedule"))
+                kind: .reviews, domain: domains.count == 1 ? domains.first : nil, minutes: Int((seconds / 60).rounded()), title: "Extra practice",
+                detail: due ? "The reviews still due, then ahead of schedule" : "Reviews ahead of schedule"))
         budgets.append(seconds)
-        runners.append(ReviewsRunner(queue: Array(ahead.prefix(80)).map(\.key)))
+        runners.append(ReviewsRunner(queue: Array(candidates.prefix(80)).map(\.key)))
     }
 }
 

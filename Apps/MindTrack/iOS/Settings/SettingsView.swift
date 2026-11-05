@@ -81,65 +81,60 @@ struct MacSettings: View {
     }
 }
 
-/// Main, Secondary, Maintenance or off for each course, with the load check. At least one stays
-/// Main: only Main courses have days.
+/// How much of each course there is, and when it goes, with the load check.
 struct CourseSettings: View {
     @Environment(AppModel.self) private var model
     let settings: MindSettings
 
     var body: some View {
-        Section {
-            ForEach(Domain.allCases) { domain in
-                Picker(
-                    selection: Binding(
-                        get: { settings.mode(domain) },
-                        set: { mode in
-                            var s = settings
-                            s.courses[domain] = mode
-                            if !s.focus.isEmpty { model.save(settings: s) }
-                        })
-                ) {
-                    ForEach(CourseMode.allCases) { Text($0.label).tag(CourseMode?.some($0)) }
-                    Text("Off").tag(CourseMode?.none)
-                } label: {
-                    Label(domain.label, systemImage: domain.symbol)
+        if let week = model.weekSettings {
+            Section {
+                ForEach(Domain.allCases) { domain in
+                    CourseAmount(domain: domain, amount: week.amount(domain, settings: settings), identifier: "settings.course.\(domain.rawValue)") {
+                        model.setAmount($0, for: domain)
+                    }
                 }
-                .accessibilityIdentifier("settings.course.\(domain.rawValue)")
+                if let warning = CourseLoad.warning(settings, week: week, commitments: model.commitments) {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill").font(.footnote).symbolRenderingMode(.multicolor)
+                }
+            } header: {
+                Text("Courses")
+            } footer: {
+                Text(
+                    "Each course gets its own blocks a week, opening with its own reviews. Reviews only keeps what you know, with a short review when enough has come due; maths and writing take a short placement first if nothing's learned yet. Turning one off keeps everything learned, and its reviews wait until it's back."
+                )
             }
-            if let warning = CourseLoad.check(settings).warning {
-                Label(warning, systemImage: "exclamationmark.triangle.fill").font(.footnote).symbolRenderingMode(.multicolor)
+            Section {
+                ForEach(settings.domains.filter { week.blocks($0) > 0 }) { domain in
+                    Picker(
+                        domain.label,
+                        selection: Binding(get: { week.pin(domain) }, set: { model.setPin($0, for: domain) })
+                    ) {
+                        Text("Any time").tag(DayPart?.none)
+                        ForEach(DayPart.allCases) { Text($0.label).tag(DayPart?.some($0)) }
+                    }
+                    .accessibilityIdentifier("settings.pin.\(domain.rawValue)")
+                }
+            } header: {
+                Text("Best time of day")
+            } footer: {
+                Text(
+                    "Any time leans maths early and languages late, when new words have sleep to settle in. It's a light touch, and your own rhythm matters more, so set a course's time here if you know it."
+                )
             }
-        } header: {
-            Text("Courses")
-        } footer: {
-            Text(
-                "Main courses get days of their own. Secondary courses take turns at a short block in each session, about seven minutes of a 25-minute one. Maintenance is a few minutes of reviews in each warm-up; maths and writing take a short placement first if nothing's learned yet. Turning one off keeps everything learned; its reviews simply wait until it's back."
-            )
         }
     }
 }
 
-/// Days a week, session length and the extra days for a lagging subject.
+/// Block length, when the day turns over, and the extra block for a lagging subject.
 struct ScheduleSettings: View {
     @Environment(AppModel.self) private var model
     let settings: MindSettings
 
     var body: some View {
         Section {
-            Stepper(
-                value: Binding(
-                    get: { settings.schedule.daysPerWeek },
-                    set: { days in
-                        var s = settings
-                        s.schedule = StudySchedule(daysPerWeek: days, minutes: s.schedule.minutes)
-                        model.save(settings: s)
-                    }), in: 1...7
-            ) {
-                LabeledContent("Days a week", value: "\(settings.schedule.daysPerWeek)")
-            }
-            .accessibilityIdentifier("settings.daysPerWeek")
             Picker(
-                "Session length",
+                "Block length",
                 selection: Binding(
                     get: { settings.schedule.minutes },
                     set: { minutes in
@@ -165,7 +160,7 @@ struct ScheduleSettings: View {
             }
             .accessibilityIdentifier("settings.dayStart")
             Toggle(
-                "Give lagging subjects more days",
+                "Give lagging subjects an extra block",
                 isOn: Binding(
                     get: { settings.autoPrioritise },
                     set: { on in
@@ -179,7 +174,7 @@ struct ScheduleSettings: View {
             Text("Schedule")
         } footer: {
             Text(
-                "The day turns over at the hour you set, not at midnight, so a lesson before bed on a late night counts for that evening. A subject that stalls or slips at a check-in gets an extra day in the split until it moves again."
+                "The day turns over at the hour you set, not at midnight, so a block before bed on a late night counts for that evening. A subject that stalls or slips at a check-in gets one more block a week until it moves again."
             )
         }
     }

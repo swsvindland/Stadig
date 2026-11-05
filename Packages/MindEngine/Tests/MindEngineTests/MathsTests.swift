@@ -218,7 +218,7 @@ struct MathsTests {
     func numeracyBlock() throws {
         var store = placedStore(numeracy: 6)
         let state = store.state(on: monday.adding(days: 15))
-        let plan = SessionPlanner.plan(.regular, domains: [.maths], state: state, catalogs: Catalogs())
+        let plan = SessionPlanner.block(.maths, state: state, catalogs: Catalogs())
         let numeracy = try #require(plan.parts.first)
         #expect(numeracy.kind == .custom("numeracy") && numeracy.minutes == 3 && numeracy.domain == .maths, "\(plan.parts.map(\.kind))")
         #expect(plan.parts.contains { $0.kind == .learn && $0.title == MathsStrand.classic.label })
@@ -229,13 +229,13 @@ struct MathsTests {
             weak.detail = ["level": 3]
             return weak
         }
-        let weak = SessionPlanner.plan(.regular, domains: [.maths, .writing], state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
+        let weak = SessionPlanner.block(.maths, state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
         #expect(
-            weak.parts.first?.minutes == 5 && weak.notes.contains { $0.contains("Numeracy is at level 3") },
+            weak.parts.first { $0.kind != .reviews }?.minutes == 5 && weak.notes.contains { $0.contains("Numeracy is at level 3") },
             "\(weak.parts.map(\.minutes)) \(weak.notes)")
 
-        let review = SessionPlanner.plan(.review, domains: [.maths], state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
-        #expect(review.parts.first?.kind == .custom("numeracy") && !review.parts.contains { $0.kind == .learn })
+        let review = SessionPlanner.block(.maths, kind: .review, state: store.state(on: monday.adding(days: 15)), catalogs: Catalogs())
+        #expect(review.parts.first { $0.kind != .reviews }?.kind == .custom("numeracy") && !review.parts.contains { $0.kind == .learn })
     }
 
     @Test("the first strand chosen gets two sessions in three; only numeracy means the whole block is numeracy")
@@ -254,14 +254,14 @@ struct MathsTests {
         #expect(strands == [.discrete, .discrete, .classic, .discrete, .discrete, .classic])
 
         store.settings.mathsStrands = [.numeracy]
-        let plan = SessionPlanner.plan(.regular, domains: [.maths], state: store.state(on: monday.adding(days: 30)), catalogs: Catalogs())
-        #expect(plan.parts.filter { $0.domain == .maths }.map(\.kind) == [.custom("numeracy")], "\(plan.parts.map(\.kind))")
+        let plan = SessionPlanner.block(.maths, state: store.state(on: monday.adding(days: 30)), catalogs: Catalogs())
+        #expect(plan.parts.filter { $0.kind != .reviews }.map(\.kind) == [.custom("numeracy")], "\(plan.parts.map(\.kind))")
 
         // Statistics switched on later places itself after the numeracy block.
         store.settings.mathsStrands = [.numeracy, .classic, .discrete]
         store.tests.removeAll { $0.test == .discrete }
-        let later = SessionPlanner.plan(.regular, domains: [.maths], state: store.state(on: monday.adding(days: 30)), catalogs: Catalogs())
-        let maths = later.parts.filter { $0.domain == .maths }
+        let later = SessionPlanner.block(.maths, state: store.state(on: monday.adding(days: 30)), catalogs: Catalogs())
+        let maths = later.parts.filter { $0.kind != .reviews }
         #expect(Array(maths.map(\.kind).prefix(2)) == [.custom("numeracy"), .placement] && maths[1].detail.hasPrefix("statistics"), "\(later.parts)")
     }
 
@@ -303,7 +303,7 @@ struct MathsTests {
             let day = monday.adding(days: offset)
             guard let run = store.study(on: day, student: &student, deck: deck) else { continue }
             if run.plan.kind == .regular || run.plan.kind == .review {
-                #expect(run.plan.parts.first { $0.domain == .maths }?.kind == .custom("numeracy"), "\(day): \(run.plan.parts.map(\.kind))")
+                #expect(run.plan.parts.first { $0.kind != .reviews }?.kind == .custom("numeracy"), "\(day): \(run.plan.parts.map(\.kind))")
                 #expect(run.session.attempts.contains { $0.key.numeracy != nil && $0.kind == .learn && $0.seconds < 30 })
             }
             if run.plan.kind == .checkIn { checkIn = run }
@@ -339,7 +339,7 @@ struct MathsTests {
         var levels = [NumeracyPlan.levels(store.state(on: monday.adding(days: 15))).overall]
         for offset in 0..<10 {
             let state = store.state(on: monday.adding(days: 15 + offset))
-            let plan = SessionPlanner.plan(.regular, domains: [.maths], state: state, catalogs: Catalogs())
+            let plan = SessionPlanner.block(.maths, state: state, catalogs: Catalogs())
             var run = StudyRun(plan: plan, state: state, catalogs: Catalogs(), now: state.now)
             _ = student.run(&run, from: state.now)
             store.save(run)
@@ -350,7 +350,7 @@ struct MathsTests {
         let before = NumeracyPlan.levels(store.state(on: monday.adding(days: 30)))
         let state = store.state(on: monday.adding(days: 30))
         var run = StudyRun(
-            plan: SessionPlanner.plan(.review, domains: [.maths], state: state, catalogs: Catalogs()), state: state, catalogs: Catalogs(),
+            plan: SessionPlanner.block(.maths, kind: .review, state: state, catalogs: Catalogs()), state: state, catalogs: Catalogs(),
             now: state.now)
         _ = student.run(&run, from: state.now)
         store.save(run)

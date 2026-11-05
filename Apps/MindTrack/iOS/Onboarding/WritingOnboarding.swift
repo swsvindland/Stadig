@@ -88,7 +88,7 @@ struct WritingSettings: View {
             Text("Writing")
         } footer: {
             Text(
-                "Kinds take turns, one piece a session. The term's benchmark uses the first kind you chose, so it stays the same prompt to compare. Handwriting is read on this device."
+                "Kinds take turns, one piece a block. The term's benchmark uses the first kind you chose, so it stays the same prompt to compare. Handwriting is read on this device."
             )
         }
     }

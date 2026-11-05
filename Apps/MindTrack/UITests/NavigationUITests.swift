@@ -21,13 +21,19 @@ nonisolated final class NavigationUITests: XCTestCase {
         app.element("today.settings").waitToAppear(timeout: 10)
     }
 
+    /// A packed day has no blocks, says what fills it, and can be opened by hand.
     @MainActor
-    func testPlanSaysWhatTheSecondaryCoursesGet() {
-        let app = XCUIApplication.launched([
-            "-seedSampleData", "-courses", "japanese,reading,maths:secondary,writing:secondary", "-tab", "plan",
-        ])
-        let secondary = app.element("plan.secondary").waitToAppear(timeout: 10)
-        XCTAssertEqual(secondary.label, "Maths and Writing take turns at a short block in each session")
+    func testTheWeekFitsAroundWhatItAlreadyHolds() {
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedBusyWeek", "-tab", "plan"])
+        let lift = app.buttons["week.part.1.early"].waitToAppear(timeout: 30)
+        XCTAssertEqual(lift.label, "Monday early: Lift")
+        XCTAssertEqual(app.scroll(to: app.buttons["week.part.1.evening"]).label, "Monday evening: BJJ")
+        let night = app.scroll(to: app.buttons["week.part.1.night"])
+        XCTAssertEqual(night.label, "Monday night: closed")
+        night.tap()
+        let deadline = Date().addingTimeInterval(5)
+        while night.label == "Monday night: closed", Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
+        XCTAssertNotEqual(night.label, "Monday night: closed")
     }
 
     @MainActor
@@ -36,7 +42,7 @@ nonisolated final class NavigationUITests: XCTestCase {
         app.element("today.settings").waitToAppear().tap()
         let done = app.buttons["settings.done"].waitToAppear(timeout: 10)
         XCTAssertTrue(app.navigationBars["Settings"].exists)
-        XCTAssertTrue(app.segmentedControls["settings.course.maths"].exists || app.buttons["settings.course.maths"].exists)
+        XCTAssertTrue(app.steppers["settings.course.maths"].exists)
         done.tap()
         done.waitToDisappear()
         XCTAssertTrue(app.element("today.settings").isHittable)

@@ -7,9 +7,9 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     enum Status: String, Codable, Sendable {
         /// Not set up yet.
         case setUp
-        /// A session waits today.
+        /// A block waits today.
         case today
-        /// Today's session is done.
+        /// Today's blocks are done.
         case done
         /// Nothing planned today.
         case rest
@@ -17,7 +17,7 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
         case paused
     }
 
-    /// One part of today's session, as Today lists it.
+    /// One part of the next block, as Today lists it.
     struct Part: Codable, Hashable, Sendable {
         var title: String
         var minutes: Int
@@ -32,8 +32,12 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     var parts: [Part] = []
     /// The domains' symbols, for the badges along the top.
     var symbols: [String] = []
+    /// Blocks done and planned this week.
     var doneThisWeek = 0
     var plannedThisWeek = 0
+    /// Today's blocks, when there's more than one; nil from a version before blocks.
+    var blocksToday: Int?
+    var blocksDoneToday: Int?
     /// Cards due for review today.
     var dueReviews = 0
     /// The next study day this week, when today has none left.
@@ -50,13 +54,13 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
     static let groupID = "group.dev.svindland.stadig"
     static let empty = MindSnapshot(status: .setUp, headline: "Open Stadig Mind to set up", phase: "Stadig Mind")
     static let sample = MindSnapshot(
-        status: .today, headline: "Japanese and maths · 25 min", phase: "Week 2 of 5",
+        status: .today, headline: "Japanese · 25 min", phase: "Week 2 of 5",
         parts: [
-            Part(title: "Reviews", minutes: 5, symbol: "arrow.triangle.2.circlepath"),
-            Part(title: "Japanese", minutes: 12, symbol: "character.book.closed.ja"),
-            Part(title: "Maths", minutes: 8, symbol: "function"),
+            Part(title: "Warm-up reviews", minutes: 5, symbol: "character.book.closed.ja"),
+            Part(title: "New words", minutes: 12, symbol: "character.book.closed.ja"),
+            Part(title: "Sentences", minutes: 8, symbol: "character.book.closed.ja"),
         ],
-        symbols: ["character.book.closed.ja", "function"], doneThisWeek: 2, plannedThisWeek: 5, dueReviews: 18)
+        symbols: ["character.book.closed.ja"], doneThisWeek: 4, plannedThisWeek: 10, blocksToday: 2, blocksDoneToday: 1, dueReviews: 18)
 
     /// Where the app writes the snapshot and the widgets read it.
     static var appGroupURL: URL? {
@@ -105,6 +109,8 @@ nonisolated struct MindSnapshot: Codable, Hashable, Sendable {
         snapshot.parts = []
         snapshot.symbols = []
         snapshot.dueReviews = 0
+        snapshot.blocksToday = nil
+        snapshot.blocksDoneToday = nil
         if today >= day.startOfWeek.adding(days: 7) { snapshot.doneThisWeek = 0 }
         // A pause with no end set holds until the app says otherwise; any other phase without a
         // last day (a snapshot from before it was kept) isn't trusted.

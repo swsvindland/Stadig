@@ -19,7 +19,7 @@ struct SessionWindow: View {
                 ContentUnavailableView {
                     Label("No session running", systemImage: "brain.head.profile")
                 } description: {
-                    Text("Start today's session from Today, or from Study in the menu bar.")
+                    Text("Start the next block from Today, or from Study in the menu bar.")
                 }
             }
         }
