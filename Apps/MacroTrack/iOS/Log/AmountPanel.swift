@@ -19,12 +19,8 @@ struct AmountPanel: View {
     var finished: () -> Void = {}
     let close: () -> Void
 
-    @State private var amount = AmountEntry(count: 1, unit: nil)
-    @State private var food: Food?
+    @State private var draft = AmountDraft()
     @State private var date = Date()
-    @State private var units: [PortionUnit] = []
-    /// The amount as it reopened, so a change of time alone saves the entry's own numbers.
-    @State private var original: (unitID: String?, count: Double)?
     @State private var editingFood = false
     @State private var showingNutrients = false
     @FocusState private var keysFocused: Bool
@@ -33,6 +29,13 @@ struct AmountPanel: View {
     @State private var selection: TextSelection?
     #endif
 
+    private var amount: AmountEntry {
+        get { draft.amount }
+        nonmutating set { draft.amount = newValue }
+    }
+    var food: Food? { draft.food }
+    var units: [PortionUnit] { draft.units }
+    var nutrients: Nutrients { draft.nutrients }
     var entry: FoodEntry? { request.entry }
     var isEditing: Bool { entry != nil }
     /// Choosing an amount for something else: nothing's logged here.
@@ -42,12 +45,6 @@ struct AmountPanel: View {
     }
     /// Saved to a meal: the amount is all there is.
     var isMealFood: Bool { saveTo != nil }
-
-    var nutrients: Nutrients {
-        let count = amount.count ?? 0
-        if let food, let unit = amount.unit { return FoodUnits.nutrients(food, count: count, unit: unit) }
-        return entry?.nutrients.scaled(count) ?? .zero
-    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -316,51 +313,19 @@ struct AmountPanel: View {
     }
 
     func load() {
-        guard original == nil else { return }
+        guard !draft.isOpen else { return }
         keysFocused = Platform.usesAmountKeypad
-        if let entry {
-            date = entry.date
-            if let id = entry.foodID, let found = model.food(id: id) {
-                food = found
-                // In the unit it was logged in while that still holds the amount logged, else the
-                // food's basis counting that amount: a catalog update can reorder or reword portions.
-                let reopened = FoodUnits.logged(for: found, unitID: entry.unitID, count: entry.count, amount: entry.grams)
-                amount = AmountEntry(count: reopened.count, unit: reopened.unit)
-            }
-        } else if case .pick(_, let count, let unit) = request.purpose {
-            food = request.food
-            amount = AmountEntry(count: count, unit: unit)
-        } else if let food = request.food {
-            self.food = food
-            let personal = model.personalFood(food.id)
-            let suggestion = FoodUnits.suggested(
-                for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
-            amount = AmountEntry(count: suggestion.count, unit: suggestion.unit)
-        }
-        original = (amount.unit?.id, amount.count ?? 1)
-        // The one it opened in, then the food's own order, which starts with its natural portions.
-        if let food {
-            let all = FoodUnits.units(for: food)
-            units = amount.unit.map { current in [current] + all.filter { $0.id != current.id } } ?? all
-        }
+        draft = model.draft(for: request)
+        if let entry { date = entry.date }
         #if os(macOS)
         fieldFocused = true
         selection = TextSelection(range: amount.text.startIndex..<amount.text.endIndex)
         #endif
     }
 
-    /// Whether the amount was changed, rather than only the time.
-    var amountChanged: Bool {
-        guard let original else { return true }
-        return amount.unit?.id != original.unitID || abs((amount.count ?? 0) - original.count) > 1e-9
-    }
-
     func save() {
         guard let count = amount.count else { return }
-        if let entry {
-            // A change of time alone keeps the entry's own numbers.
-            var updated = amountChanged ? model.rescaled(entry, food: food, unit: amount.unit, count: count) : entry
-            updated.date = date
+        if let updated = model.edited(draft, at: date) {
             if let saveTo { saveTo(updated) } else { model.update(updated) }
         } else if isPicking, let unit = amount.unit {
             picked?(count, unit)
@@ -371,11 +336,8 @@ struct AmountPanel: View {
         close()
     }
 
-    /// The food as corrected (or the catalog's again), at the same amount: its units are the same,
-    /// but one counted in calories holds a different amount now.
     func use(_ corrected: Food) {
-        food = corrected
-        if let id = amount.unit?.id, let unit = FoodUnits.units(for: corrected).first(where: { $0.id == id }) { amount.change(to: unit) }
+        draft.use(corrected)
         foodCorrected?(corrected)
     }
 }

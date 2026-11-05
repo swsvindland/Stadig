@@ -34,7 +34,102 @@ struct AmountRequest: Identifiable, Hashable {
     }
 }
 
+/// What the amount panel holds while it's open: the amount, the food it's of and the units it can
+/// be counted in. It's apart from the view so what the panel says and what it saves can't drift.
+struct AmountDraft {
+    var amount = AmountEntry(count: 1, unit: nil)
+    private(set) var entry: FoodEntry?
+    private(set) var food: Food?
+    private(set) var units: [PortionUnit] = []
+    /// The amount as it reopened, so a change of time alone saves the entry's own numbers.
+    private var original: (unitID: String?, count: Double)?
+
+    init() {}
+
+    init(entry: FoodEntry?, food: Food?, amount: AmountEntry) {
+        self.entry = entry
+        self.food = food
+        self.amount = amount
+        original = (amount.unit?.id, amount.count ?? 1)
+        if let food { units = Self.offered(FoodUnits.units(for: food), first: amount.unit) }
+    }
+
+    /// Filled in from a request, which happens once: reading it again would lose what's typed.
+    var isOpen: Bool { original != nil }
+
+    /// Whether the amount was changed, rather than only the time.
+    var amountChanged: Bool {
+        guard let original else { return true }
+        return amount.unit?.id != original.unitID || abs((amount.count ?? 0) - original.count) > 1e-9
+    }
+
+    /// What saving would store. An entry keeps its numbers until its amount changes, even when its
+    /// food reads differently now, because Save does.
+    var nutrients: Nutrients {
+        if let entry, !amountChanged { return entry.nutrients }
+        let count = amount.count ?? 0
+        if let food, let unit = amount.unit { return FoodUnits.nutrients(food, count: count, unit: unit) }
+        return entry?.nutrients.scaled(count) ?? .zero
+    }
+
+    /// The food as corrected (or the catalog's again). Its units are the same ones, but calories
+    /// hold a different amount now, and a food corrected to no calories can't be counted in them.
+    mutating func use(_ corrected: Food) {
+        let kept = entry != nil && !amountChanged
+        let all = FoodUnits.units(for: corrected)
+        func current(_ unit: PortionUnit?) -> PortionUnit? { all.first { $0.id == unit?.id } }
+        food = corrected
+        units = Self.offered(all, first: current(units.first))
+        if let unit = current(amount.unit) ?? all.first(where: { $0.id == corrected.basis.rawValue }) {
+            // An entry staying as logged stays beside the number it was logged at, or the panel
+            // would read 150 kcal over a Save of 120.
+            if kept, unit.id == amount.unit?.id, let count = amount.count {
+                amount = AmountEntry(count: count, unit: unit)
+            } else {
+                amount.change(to: unit)
+            }
+        }
+        if kept { original = (amount.unit?.id, amount.count ?? 1) }
+    }
+
+    /// The one it opened in, then the food's own order, which starts with its natural portions.
+    private static func offered(_ all: [PortionUnit], first: PortionUnit?) -> [PortionUnit] {
+        guard let first else { return all }
+        return [first] + all.filter { $0.id != first.id }
+    }
+}
+
 extension AppModel {
+    /// A request as the panel opens it: an entry in the unit it was logged in, a food at its usual
+    /// amount, and an amount being picked as it stands.
+    func draft(for request: AmountRequest) -> AmountDraft {
+        if let entry = request.entry {
+            guard let id = entry.foodID, let found = food(id: id) else {
+                return AmountDraft(entry: entry, food: nil, amount: AmountEntry(count: 1, unit: nil))
+            }
+            // In the unit it was logged in while that still holds the amount logged, else the
+            // food's basis counting that amount: a catalog update can reorder or reword portions.
+            let reopened = FoodUnits.logged(for: found, unitID: entry.unitID, count: entry.count, amount: entry.grams)
+            return AmountDraft(entry: entry, food: found, amount: AmountEntry(count: reopened.count, unit: reopened.unit))
+        }
+        if case .pick(_, let count, let unit) = request.purpose {
+            return AmountDraft(entry: nil, food: request.food, amount: AmountEntry(count: count, unit: unit))
+        }
+        guard let food = request.food else { return AmountDraft(entry: nil, food: nil, amount: AmountEntry(count: 1, unit: nil)) }
+        let personal = personalFood(food.id)
+        let suggestion = FoodUnits.suggested(
+            for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
+        return AmountDraft(entry: nil, food: food, amount: AmountEntry(count: suggestion.count, unit: suggestion.unit))
+    }
+
+    /// The entry as the panel has it. A change of time alone keeps the entry's own numbers.
+    func edited(_ draft: AmountDraft, at date: Date) -> FoodEntry? {
+        guard var entry = draft.entry, let count = draft.amount.count else { return nil }
+        if draft.amountChanged { entry = rescaled(entry, food: draft.food, unit: draft.amount.unit, count: count) }
+        entry.date = date
+        return entry
+    }
+
     /// An entry at a new amount, with what it knew beyond the food scaling along with it (a drink's
     /// caffeine, when the catalog didn't list it, and its fluid). A food that's gone from the catalog,
     /// or never was in it (a quick add, an estimate), scales by `count` as a multiplier.
