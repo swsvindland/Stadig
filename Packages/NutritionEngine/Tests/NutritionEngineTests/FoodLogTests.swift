@@ -174,20 +174,117 @@ struct FoodLogTests {
 
     // MARK: later, outside the app
 
+    /// A small food: too little alone to end a fast.
+    func bite(_ hour: Int, _ minute: Int, kcal: Double = 30) -> FoodEntry {
+        let date = at(hour, minute)
+        return FoodEntry(
+            date: date, day: day, name: "Bite", amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 0, carbs: 0, fat: 0), source: .search,
+            updatedAt: date)
+    }
+
     @Test func nextMealSkipsADrink() {
         var coffee = dinner
         coffee.date = at(15, 0)
         coffee.nutrients = Nutrients(kcal: 2, protein: 0, carbs: 0, fat: 0)
         let log = FoodLog([lunch, coffee, dinner], now: at(13, 0))
         #expect(log.nextChange == at(15, 0))
-        #expect(log.nextMeal == at(18, 30))
+        #expect(log.nextMeal(since: at(12, 45)) == at(18, 30))
+    }
+
+    @Test func smallFoodsTogetherAreAMeal() {
+        let log = FoodLog([bite(18, 30), bite(18, 30)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 45)) == at(18, 30))
+        #expect(log.later(through: day, since: at(12, 45)).map(\.isMeal) == [false, true])
+    }
+
+    @Test func aRunIsAMealFromTheFoodThatMakesItOne() {
+        // By 6:30 the milk is only milk; the fast is over once the chocolate has gone in too.
+        let log = FoodLog([bite(19, 0), bite(18, 30), bite(19, 10, kcal: 5)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 45)) == at(19, 0))
+        #expect(log.later(through: day, since: at(12, 45)).map(\.isMeal) == [false, true, true])
+    }
+
+    @Test func smallFoodsApartAreNotAMeal() {
+        let log = FoodLog([bite(15, 0), bite(18, 30)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 45)) == nil)
+        #expect(log.later(through: day, since: at(12, 45)).map(\.isMeal) == [false, false])
+    }
+
+    @Test func aRunStartsAgainAfterAGap() {
+        let log = FoodLog([bite(15, 0), bite(18, 0), bite(18, 5)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 45)) == at(18, 5))
+        #expect(log.later(through: day, since: at(12, 45)).map(\.isMeal) == [false, false, true])
+    }
+
+    @Test func foodJustEatenStartsTheRun() {
+        let log = FoodLog([bite(12, 50), bite(13, 20)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 45)) == at(13, 20))
+        #expect(log.later(through: day, since: nil).map(\.isMeal) == [true])
+    }
+
+    @Test func foodFromBeforeTheFastDoesntStartTheRun() {
+        // `Fasting.runs` starts counting from the first food after the start.
+        let log = FoodLog([bite(12, 50), bite(13, 20)], now: at(13, 0))
+        #expect(log.nextMeal(since: at(12, 55)) == nil)
+        #expect(log.later(through: day, since: at(12, 55)).map(\.isMeal) == [false])
+    }
+
+    @Test func aMealAlreadyEatenDoesntMakeAMintOne() {
+        // Lunch is over: a mint after it isn't a second meal, and doesn't end a fast begun since.
+        let log = FoodLog([lunch, bite(12, 50, kcal: 5)], now: at(12, 40))
+        #expect(log.nextMeal(since: at(12, 35)) == nil)
+        #expect(log.later(through: day, since: nil).map(\.isMeal) == [false])
+    }
+
+    @Test func smallFoodsAgreeWithTheFastOnceTheyveHappened() {
+        // What the fast's own rule says at the moment `nextMeal` named, for the app and with it closed.
+        let fast = Fast(start: at(8, 0), goalHours: 16)
+        let entries = [bite(18, 30), bite(19, 0)]
+        let log = FoodLog(entries, now: at(13, 0))
+        #expect(log.nextMeal(since: fast.start) == at(19, 0))
+        let before = FoodLog(entries, now: at(18, 59))
+        #expect(Fasting.runs([fast], entries: before.eaten, now: at(18, 59)).first?.isRunning == true)
+        let after = FoodLog(entries, now: at(19, 0))
+        #expect(Fasting.runs([fast], entries: after.eaten, now: at(19, 0)).first?.isRunning == false)
+    }
+
+    @Test func foodChainedToTheMealBeforeAFastIsThatMealRunningOn() {
+        // Dinner ends at 7, the fast starts there, and tea and a biscuit are planned just after.
+        let fast = Fast(start: at(19, 0), goalHours: 16)
+        let entries = [bite(19, 0, kcal: 700), bite(19, 30), bite(19, 35)]
+        let log = FoodLog(entries, now: at(19, 5))
+        #expect(log.nextMeal(since: fast.start) == nil)
+        #expect(log.later(through: day, since: fast.start).map(\.isMeal) == [false, false])
+        // Which is what the fast says once they've happened: it runs on.
+        #expect(Fasting.runs([fast], entries: FoodLog(entries, now: at(19, 36)).eaten, now: at(19, 36)).first?.isRunning == true)
+    }
+
+    @Test func aDessertChainedToTheMealBeforeAFastIsThatMealToo() {
+        let fast = Fast(start: at(19, 0), goalHours: 16)
+        let entries = [bite(19, 0, kcal: 700), bite(19, 30, kcal: 300)]
+        #expect(FoodLog(entries, now: at(19, 5)).nextMeal(since: fast.start) == nil)
+        #expect(Fasting.runs([fast], entries: FoodLog(entries, now: at(19, 31)).eaten, now: at(19, 31)).first?.isRunning == true)
+    }
+
+    @Test func aMealAfterFoodChainedToTheOneBeforeAFastEndsIt() {
+        let fast = Fast(start: at(19, 0), goalHours: 16)
+        let entries = [bite(19, 0, kcal: 700), bite(19, 30), bite(21, 0, kcal: 600)]
+        #expect(FoodLog(entries, now: at(19, 5)).nextMeal(since: fast.start) == at(21, 0))
+        #expect(Fasting.runs([fast], entries: FoodLog(entries, now: at(21, 1)).eaten, now: at(21, 1)).first?.isRunning == false)
+    }
+
+    @Test func aSmallFoodBeforeAFastDoesntChainTheOnesAfterIt() {
+        // No meal before the start for them to run on from, so they're a meal of their own.
+        let fast = Fast(start: at(19, 0), goalHours: 16)
+        let log = FoodLog([bite(18, 50), bite(19, 30), bite(19, 35)], now: at(19, 5))
+        #expect(log.nextMeal(since: fast.start) == at(19, 35))
     }
 
     @Test func laterFoodStopsAfterTomorrow() {
         var nextWeek = dinner
         nextWeek.date = day.adding(days: 7).at(hour: 12, minute: 0)
         nextWeek.day = day.adding(days: 7)
-        let later = FoodLog([dinner, nextWeek], now: at(13, 0)).later(through: day.adding(days: 1))
+        let later = FoodLog([dinner, nextWeek], now: at(13, 0)).later(through: day.adding(days: 1), since: nil)
         #expect(later.map(\.date) == [at(18, 30)])
         #expect(later.first?.isMeal == true)
     }
@@ -221,6 +318,19 @@ struct FoodLogTests {
         let after = written.shown(at: at(18, 31))
         #expect(after.fast(at: at(18, 31)) == nil)
         #expect(after.lastMealEnd == at(18, 30))
+    }
+
+    @Test func smallFoodsLoggedForLaterEndAComplicationsFast() throws {
+        let fast = Fast(start: at(13, 0), goalHours: 16)
+        var settings = MacroSettings()
+        settings.tracksMealTiming = true
+        let state = MacroState(
+            profile: profile(), settings: settings, entries: [lunch, bite(18, 30), bite(18, 35)], fasts: [fast], today: day, now: at(14, 0))
+        let written = WristSnapshot(WristToday(state: state, analysis: MacroAnalyst.analyse(state)))
+        #expect(written.shown(at: at(18, 32)).fast(at: at(18, 32)) != nil)
+        let after = written.shown(at: at(18, 36))
+        #expect(after.fast(at: at(18, 36)) == nil)
+        #expect(after.lastMealEnd == at(18, 35))
     }
 
     @Test func aSnapshotWithLaterFoodSurvivesAndAnOlderOneReads() throws {

@@ -142,7 +142,7 @@ public struct WristToday: Hashable, Sendable {
         let targets = analysis.targets
         let eaten = analysis.intakeByDay[today] ?? .zero
         day = today
-        later = LaterFood.of(state.upcoming, through: today.adding(days: 1))
+        later = LaterFood.of(state.upcoming, after: state.entries, since: analysis.fast?.fast.start, through: today.adding(days: 1))
         mode = targets.mode
         badge = Self.badge(targets, assessment: analysis.assessment, phase: analysis.phase)
         note = targets.note

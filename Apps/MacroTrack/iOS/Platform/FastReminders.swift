@@ -21,7 +21,7 @@ enum FastReminders {
     static func wanted(_ model: AppModel, now: Date = Date()) -> [String: FastMilestone] {
         guard model.tracksMealTiming, model.fastAlerts, let fast = model.analysis?.fast?.fast else { return [:] }
         var wanted: [String: FastMilestone] = [:]
-        let meal = model.foodLog.nextMeal ?? .distantFuture
+        let meal = model.foodLog.nextMeal(since: fast.start) ?? .distantFuture
         for (index, milestone) in Fasting.milestones(fast).enumerated() where milestone.at > now && milestone.at < meal {
             // The time is in the id, so a changed goal or start replaces the notification.
             wanted["\(prefix)\(fast.id.uuidString)-\(index)-\(Int(milestone.at.timeIntervalSince1970))"] = milestone

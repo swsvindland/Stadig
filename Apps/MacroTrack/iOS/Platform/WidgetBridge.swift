@@ -14,7 +14,7 @@ enum WidgetBridge {
             day: model.today.iso, kcal: eaten.kcal, kcalTarget: t.kcal, protein: eaten.protein,
             proteinTarget: t.protein, carbs: eaten.carbs, carbsTarget: t.carbs, fat: eaten.fat, fatTarget: t.fat)
         snapshot.weighedToday = model.weighIns.contains { $0.day == model.today }
-        let later = model.foodLog.later(through: model.today.adding(days: 1))
+        let later = model.foodLog.later(through: model.today.adding(days: 1), since: analysis.fast?.fast.start)
         snapshot.later = later.isEmpty ? nil : later
         snapshot.badge =
             switch t.mode {

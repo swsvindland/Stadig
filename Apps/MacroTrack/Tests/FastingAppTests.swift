@@ -135,7 +135,21 @@ struct FastingAppTests {
                 nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20),
                 source: .search)
         ])
-        #expect(model.foodLog.nextMeal != nil)
+        #expect(FastReminders.wanted(model).values.map(\.at) == [first])
+    }
+
+    @Test func smallFoodsTogetherLoggedForLaterStopThem() throws {
+        let (model, _, _) = try model()
+        model.acknowledgeFastingScreen()
+        model.startFast(goalHours: 36)
+        let first = try #require(FastReminders.wanted(model).values.map(\.at).min())
+        // Milk in a coffee and a square of chocolate: neither's a meal, and together they are.
+        model.log(
+            ["Milk", "Chocolate"].enumerated().map { index, name in
+                FoodEntry(
+                    date: first.addingTimeInterval(60 + Double(index)), name: name, amountLabel: "1",
+                    nutrients: Nutrients(kcal: 30, protein: 1, carbs: 3, fat: 1), source: .search)
+            })
         #expect(FastReminders.wanted(model).values.map(\.at) == [first])
     }
 
