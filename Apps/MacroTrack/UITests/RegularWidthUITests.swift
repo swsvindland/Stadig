@@ -371,6 +371,74 @@ nonisolated final class RegularWidthUITests: XCTestCase {
         XCTAssertFalse(weigh.waitForExistence(timeout: 2), "nothing to weigh tomorrow")
     }
 
+    /// A weigh-in asked for from the menu opens over the pane, as the toolbar's does: the logger
+    /// isn't a sheet to clear away, and what's in it would be lost with it.
+    @MainActor
+    func testTheWeighInShortcutLeavesThePaneAsItIs() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-log", "search"])
+        let search = app.foodSearchField()
+        search.tap()
+        search.typeText("banana")
+        app.element("logger.food").waitToAppear()
+
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        app.element("weighIn.save").waitToAppear()
+        app.element("weighIn.cancel").tap()
+        app.element("weighIn.save").waitToDisappear()
+
+        XCTAssertEqual(app.foodSearchField().value as? String, "banana")
+    }
+
+    /// With the columns showing, a row's numbers are read out with their names.
+    @MainActor
+    func testARowsColumnsSayWhatTheyAre() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
+        let food = app.scrollTo(app.element("log.entry"), beside: app.element("log.list")).waitToAppear()
+        for word in ["calories", "grams protein", "grams carbs", "grams fat"] { XCTAssertTrue(food.label.contains(word), food.label) }
+    }
+
+    /// With no meals saved, Foods' Meals says where one's saved from, which isn't Today now.
+    @MainActor
+    func testFoodsMealsSaysWhereToSaveOne() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-sampleNoMeals", "-tab", "foods"])
+        app.element("foods.scope").waitToAppear().buttons["Meals"].tap()
+        let note = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'saved as a meal'")).firstMatch.waitToAppear()
+        XCTAssertTrue(note.label.contains("in Log"), note.label)
+        XCTAssertFalse(note.label.contains("Today"), note.label)
+    }
+
+    /// A food corrected from its row in the hours, under the same food in a review beside it: the
+    /// review comes back with the new numbers, which is what its Log says and what's logged.
+    @MainActor
+    func testACorrectionFromTheHoursReachesTheReviewBesideThem() {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedReview", "-tab", "log", "-log", "describe"])
+        // Logged once, so it's in the hours, and open again on a fresh review of it.
+        app.element("review.log").waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Logged Beef stew").waitToAppear()
+        app.element("logger.done").waitToAppear().tap()
+        app.toolbarItem("toolbar.describe", title: "Describe a Meal").tap()
+        let log = app.element("review.log").waitToAppear()
+        XCTAssertTrue(log.label.contains("300 kcal"), log.label)
+
+        app.scrollTo(app.logEntry(containing: "Beef stew"), beside: app.element("log.list")).waitToAppear().tap()
+        app.element("portion.editFood").waitToAppear().tap()
+        let kcal = app.element("foodEditor.kcal").waitToAppear()
+        // The number sits at the field's right edge, so a tap there leaves the cursor after it.
+        kcal.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        kcal.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3) + "360")
+        app.closeNumberPad()
+        let save = app.element("foodEditor.save").waitToAppear()
+        save.tap()
+        save.waitToDisappear()
+        app.element("entryEditor.cancel").waitToAppear().tap()
+
+        XCTAssertTrue(app.element("review.log", labelContaining: "360 kcal").waitToAppear().exists)
+    }
+
     @MainActor
     func testTheMealPlanShowsTheWeekGroceriesAndPrepTogether() {
         continueAfterFailure = false

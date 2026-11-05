@@ -168,6 +168,22 @@ final class LoggerSession {
         for index in items.indices where items[index].food?.id == food.id { review?.items[index].correct(to: food) }
     }
 
+    /// What the review has of each food, read again: a food changed anywhere else (from the hours,
+    /// from the meal, on another device) shows and logs its new numbers here too.
+    func refreshFoods(_ model: AppModel) {
+        guard let items = review?.items else { return }
+        for index in items.indices {
+            guard let food = items[index].food, let current = model.food(id: food.id), current != food else { continue }
+            review?.items[index].correct(to: current)
+        }
+    }
+
+    /// Another of what the model thought it might be, as that food stands now: what it thought was
+    /// read back when the photo was, and may have been corrected since.
+    func swap(_ item: UUID, to food: Food, _ model: AppModel) {
+        review?.items[id: item]?.swap(to: model.food(id: food.id) ?? food)
+    }
+
     /// Off to the search for one of the review's foods, keeping the review to come back to.
     func find(_ text: String, for item: UUID) {
         finding = item
@@ -249,11 +265,21 @@ struct MealReview {
             included = true
         }
 
-        /// The same food with the person's numbers, at the same amount. Its units are the same, but
-        /// one counted in calories holds a different amount now.
+        /// The same food with the person's numbers, at the same count of the same unit, as an amount
+        /// being picked for it keeps (`AmountDraft.use`), though one counted in calories holds a
+        /// different amount now. A food corrected to no calories can't be counted in them, so it
+        /// goes to its basis at the same amount.
         mutating func correct(to corrected: Food) {
             food = corrected
-            if let id = unit?.id, let same = FoodUnits.units(for: corrected).first(where: { $0.id == id }) { unit = same }
+            let units = FoodUnits.units(for: corrected)
+            guard let old = unit else { return }
+            if let same = units.first(where: { $0.id == old.id }) {
+                unit = same
+            } else if let basis = units.first(where: { $0.id == corrected.basis.rawValue }) {
+                let converted = FoodUnits.convert(count, from: old, to: basis)
+                if converted.isFinite { count = converted }
+                unit = basis
+            }
         }
     }
 

@@ -183,6 +183,9 @@ final class AppModel {
     }
     /// Bumped when the personal foods are rebuilt, for lists made from them off the main thread.
     private(set) var personalVersion = 0
+    /// Bumped when a correction or one of the person's own foods changes, here or on another device,
+    /// for whoever holds a copy of a food.
+    private(set) var foodsChanged = 0
     /// The one food that best fixes this week's shortest nutrient, ready to log.
     private(set) var microFix: MicroFix?
     /// A fermented food to log, while the week has had too few.
@@ -433,6 +436,7 @@ final class AppModel {
         }
         recompute()
         if entriesChanged || customChanged || favoritesChanged || correctionsChanged { refreshPersonal() }
+        if customChanged || correctionsChanged { foodsChanged &+= 1 }
         lastRevision = store.revision
     }
 

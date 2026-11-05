@@ -641,6 +641,109 @@ struct LoggerSessionTests {
         #expect(abs(kcal - 100) < 0.5, "\(kcal)")
     }
 
+    /// Bananas in calories, as a row and as the amount picked for it. They have to agree: the row is
+    /// what shows if the panel's closed, and the amount is what goes back if it's used.
+    @Test func aRowAndItsAmountTakeACorrectionAlike() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        let banana = try model.requireFood(Foods.bananaID)
+        let grams = try model.requireUnit(banana, "g")
+        let calories = try #require(FoodUnits.units(for: banana).first { $0.kind == .energy })
+        session.review = twoRows(of: banana, unit: calories, count: 120)
+        let item = try #require(session.review?.items[0])
+        var draft = model.draft(for: AmountRequest(purpose: .pick(item: item.id, count: item.count, unit: calories), food: banana))
+        let edited = model.saveCorrection(try #require(banana.correcting(kcal: 200, protein: 2, carbs: 50, fat: 0, count: 100, unit: grams)))
+
+        draft.use(edited)
+        session.useCorrection(edited)
+
+        let row = try #require(session.review?.items[0])
+        #expect(draft.amount.count == row.count)
+        #expect(draft.amount.count == 120)
+        #expect(draft.amount.unit?.id == row.unit?.id)
+        #expect(abs(draft.nutrients.kcal - row.nutrients.kcal) < 0.5)
+    }
+
+    /// Corrected to no calories it can't be counted in them any more, in a row or an amount.
+    @Test func aFoodCorrectedToNoCaloriesLeavesItsRowsCalorieUnit() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        let banana = try model.requireFood(Foods.bananaID)
+        let grams = try model.requireUnit(banana, "g")
+        let calories = try #require(FoodUnits.units(for: banana).first { $0.kind == .energy })
+        session.review = twoRows(of: banana, unit: calories, count: 120)
+        let item = try #require(session.review?.items[0])
+        var draft = model.draft(for: AmountRequest(purpose: .pick(item: item.id, count: item.count, unit: calories), food: banana))
+        let edited = model.saveCorrection(try #require(banana.correcting(kcal: 0, protein: 0, carbs: 0, fat: 0, count: 100, unit: grams)))
+
+        draft.use(edited)
+        session.useCorrection(edited)
+
+        let row = try #require(session.review?.items[0])
+        #expect(row.unit?.id == "g")
+        #expect(row.count == FoodUnits.convert(120, from: calories, to: grams), "the same bananas")
+        #expect(row.nutrients.kcal == 0)
+        #expect(draft.amount.unit?.id == row.unit?.id)
+        #expect(draft.amount.count == row.count)
+    }
+
+    /// A food corrected somewhere the session can't hear: from the hours beside the pane, from the
+    /// meal under the logger, or on another device. What the person sees goes by the food as it is.
+    @Test func foodsReadAgainTakeWhatChangedElsewhere() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        let stew = model.save(
+            customFood: Food(
+                id: "stew", name: "Beef stew", basis: .serving, nutrients: Nutrients(kcal: 300, protein: 25, carbs: 20, fat: 13), source: .custom))
+        let serving = try #require(FoodUnits.units(for: stew).first)
+        session.review = twoRows(of: stew, unit: serving, count: 1)
+        session.review?.items[0].count = 2
+        let changes = model.foodsChanged
+
+        model.saveCorrection(try #require(stew.correcting(kcal: 360, protein: 25, carbs: 20, fat: 13, count: 1, unit: serving)))
+        #expect(model.foodsChanged != changes, "what tells a logger to read them")
+        session.refreshFoods(model)
+
+        #expect(session.review?.items.map(\.nutrients.kcal) == [720, 360], "and at the amounts they were")
+        #expect(session.review?.items[0].count == 2)
+    }
+
+    @Test func aCorrectionTakenAwayElsewhereReachesTheReviewToo() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        let banana = try model.requireFood(Foods.bananaID)
+        let grams = try model.requireUnit(banana, "g")
+        let edited = model.saveCorrection(try #require(banana.correcting(kcal: 120, protein: 1, carbs: 28, fat: 0, count: 100, unit: grams)))
+        session.review = twoRows(of: edited, unit: grams, count: 100)
+
+        model.removeCorrection(of: banana.id)
+        session.refreshFoods(model)
+
+        #expect(session.review?.items[0].nutrients.kcal == banana.nutrients.kcal)
+    }
+
+    /// What the model thought a food might be is from when it read the photo. Picking one of those
+    /// after correcting it has to give the food as it is now, or the Log total says the old numbers.
+    @Test func aSwapToACorrectedFoodTakesItsNewNumbers() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        let banana = try model.requireFood(Foods.bananaID)
+        let grams = try model.requireUnit(banana, "g")
+        let coffee = try model.requireFood(Foods.coffeeID)
+        session.review = twoRows(of: coffee, unit: grams, count: 100)
+        let item = try #require(session.review?.items[0].id)
+        model.saveCorrection(try #require(banana.correcting(kcal: 120, protein: 1, carbs: 28, fat: 0, count: 100, unit: grams)))
+
+        session.swap(item, to: banana, model)
+
+        #expect(session.review?.items[0].nutrients.kcal == 120)
+    }
+
     @Test func aCorrectionToAnotherFoodLeavesTheReviewAlone() throws {
         let model = TestEnvironment().model()
         model.onboard()

@@ -43,13 +43,16 @@ struct AmountDraft {
     private(set) var units: [PortionUnit] = []
     /// The amount as it reopened, so a change of time alone saves the entry's own numbers.
     private var original: (unitID: String?, count: Double)?
+    /// Choosing an amount for a row that already has one, which stays beside its count.
+    private var picking = false
 
     init() {}
 
-    init(entry: FoodEntry?, food: Food?, amount: AmountEntry) {
+    init(entry: FoodEntry?, food: Food?, amount: AmountEntry, picking: Bool = false) {
         self.entry = entry
         self.food = food
         self.amount = amount
+        self.picking = picking
         original = (amount.unit?.id, amount.count ?? 1)
         if let food { units = Self.offered(FoodUnits.units(for: food), first: amount.unit) }
     }
@@ -75,14 +78,15 @@ struct AmountDraft {
     /// The food as corrected (or the catalog's again). Its units are the same ones, but calories
     /// hold a different amount now, and a food corrected to no calories can't be counted in them.
     mutating func use(_ corrected: Food) {
-        let kept = entry != nil && !amountChanged
+        let kept = picking || (entry != nil && !amountChanged)
         let all = FoodUnits.units(for: corrected)
         func current(_ unit: PortionUnit?) -> PortionUnit? { all.first { $0.id == unit?.id } }
         food = corrected
         units = Self.offered(all, first: current(units.first))
         if let unit = current(amount.unit) ?? all.first(where: { $0.id == corrected.basis.rawValue }) {
             // An entry staying as logged stays beside the number it was logged at, or the panel
-            // would read 150 kcal over a Save of 120.
+            // would read 150 kcal over a Save of 120. A review's row keeps its count the same way
+            // (`MealReview.Item.correct`), so closing the panel and tapping Use agree.
             if kept, unit.id == amount.unit?.id, let count = amount.count {
                 amount = AmountEntry(count: count, unit: unit)
             } else {
@@ -113,7 +117,7 @@ extension AppModel {
             return AmountDraft(entry: entry, food: found, amount: AmountEntry(count: reopened.count, unit: reopened.unit))
         }
         if case .pick(_, let count, let unit) = request.purpose {
-            return AmountDraft(entry: nil, food: request.food, amount: AmountEntry(count: count, unit: unit))
+            return AmountDraft(entry: nil, food: request.food, amount: AmountEntry(count: count, unit: unit), picking: true)
         }
         guard let food = request.food else { return AmountDraft(entry: nil, food: nil, amount: AmountEntry(count: 1, unit: nil)) }
         let personal = personalFood(food.id)

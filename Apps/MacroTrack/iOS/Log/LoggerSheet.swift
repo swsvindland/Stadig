@@ -60,6 +60,7 @@ struct LoggerSheet: View {
         // Asked for another way, the root presents that one's sheet in this one's place, and a
         // camera opening here would land on a sheet on its way out.
         .onChange(of: model.loggerRequest) { _, request in if request.mode == start { session.go(to: start) } }
+        .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
     }
 
     var content: some View { LoggerContent(session: session, covered: session.portion != nil, done: { dismiss() }) }
@@ -147,6 +148,7 @@ struct LoggerPane: View {
         .onChange(of: session.blurRequest) { _, _ in searchFocused = false }
         .onChange(of: session.portion) { _, request in if request == nil { searchFocused = true } }
         .onChange(of: model.loggerRequest) { _, request in if let mode = request.mode { session.go(to: mode) } }
+        .onChange(of: model.foodsChanged) { _, _ in session.refreshFoods(model) }
     }
 
     var searchField: some View {

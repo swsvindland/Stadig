@@ -273,6 +273,7 @@ struct MealReviewView: View {
 }
 
 private struct ReviewRow: View {
+    @Environment(AppModel.self) private var model
     @Binding var item: MealReview.Item
     let session: LoggerSession
 
@@ -319,7 +320,7 @@ private struct ReviewRow: View {
             Spacer(minLength: 0)
             Menu {
                 ForEach(item.seen.alternatives.filter { $0.food.id != item.food?.id }) { alt in
-                    Button(alt.food.title) { swap(to: alt.food) }
+                    Button(alt.food.title) { session.swap(item.id, to: alt.food, model) }
                 }
                 Divider()
                 Button("Search for “\(item.seen.seenName)”", systemImage: "magnifyingglass") { session.find(item.seen.seenName, for: item.id) }
@@ -343,6 +344,4 @@ private struct ReviewRow: View {
         let byTens = item.unit.map { FoodUnits.step(for: $0) >= 10 } ?? false
         return byTens ? step...max(5000, item.count * 4) : 0.25...max(50, item.count * 2)
     }
-
-    func swap(to food: Food) { item.swap(to: food) }
 }
