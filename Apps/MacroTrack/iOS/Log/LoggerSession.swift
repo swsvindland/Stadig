@@ -93,13 +93,16 @@ final class LoggerSession {
     /// Asked from outside for a way of logging: a widget, a control, a link, the menu or the toolbar.
     /// An amount or a saved meal over it closes, so the ask shows. Asked for the way it's on, what's
     /// there stays. Asked for the way a review is on, it's back at the review. Asked for another,
-    /// it starts on that one, without the review.
+    /// it starts on that one, without the review. The camera and the photo library are one way of
+    /// logging here too: which of them started a review doesn't decide whether it's kept.
     func go(to target: LogMode) {
         portion = nil
         openMeal = nil
-        if review?.mode == target, mode != target {
-            stopFinding()
-        } else if mode != target {
+        if let review, review.mode.isSameWay(as: target) {
+            if !mode.isSameWay(as: target) { stopFinding() }
+        } else if mode.isSameWay(as: target) {
+            mode = target
+        } else {
             review = nil
             finding = nil
             query = ""
@@ -193,6 +196,9 @@ final class LoggerSession {
 
 extension LogMode {
     var isPhoto: Bool { self == .camera || self == .photoLibrary }
+
+    /// The same way of logging, by either door.
+    func isSameWay(as other: LogMode) -> Bool { self == other || (isPhoto && other.isPhoto) }
 }
 
 /// What a read of a photo or a description came to.

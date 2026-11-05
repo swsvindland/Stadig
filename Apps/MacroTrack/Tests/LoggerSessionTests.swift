@@ -207,6 +207,41 @@ struct LoggerSessionTests {
     }
 
     /// In the pane an amount takes the logger's place, so left open it would hide what was asked for.
+    /// The ribbon's Photo says camera whatever the device has, the menu says photo library on a
+    /// Mac, and a photo dropped on an iPad says that too. They're doors to one way of logging, so
+    /// which of them started a review can't decide whether asking keeps it.
+    @Test(arguments: [(LogMode.camera, LogMode.photoLibrary), (.photoLibrary, .camera)])
+    func askedForTheOtherDoorToThePhotoItKeepsTheReview(started: LogMode, asked: LogMode) throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: started)
+        session.review = try review(model, mode: started)
+
+        session.go(to: asked)
+        #expect(session.review != nil, "on the review")
+
+        session.backToSearch()
+        session.go(to: asked)
+        #expect(session.review != nil, "and from the search")
+        #expect(session.mode.isPhoto, "back at it")
+    }
+
+    @Test func askedForTheOtherDoorToThePhotoItGoesThereWithNoReview() {
+        let session = LoggerSession(mode: .camera)
+        session.go(to: .photoLibrary)
+        #expect(session.mode == .photoLibrary)
+    }
+
+    @Test func askedForThePhotoALeftDescriptionStaysDropped() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.review = try review(model, mode: .describe)
+        session.go(to: .camera)
+        #expect(session.review == nil)
+        #expect(session.mode == .camera)
+    }
+
     @Test func anAmountOpenGivesWayToTheAsk() throws {
         let model = TestEnvironment().model()
         model.onboard()
