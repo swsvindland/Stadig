@@ -96,6 +96,65 @@ nonisolated final class LogTabUITests: XCTestCase {
         // The bars say "of" too, against their macro's target: only the day's total is in kcal.
         XCTAssertNotNil(line.range(of: #"[\d,]+ of [\d,]+ kcal"#, options: .regularExpression), "the day's total against its target: \(line)")
     }
+
+    /// Under a past day's hours: whether it was finished, and the doses and water it never got.
+    @MainActor
+    func testAPastDaysFootMarksItAndTakesItsDosesAndWater() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements", "-tab", "log", "-daysAgo", "1"])
+        let partial = app.scrollTo(app.element("today.dayState.partial")).waitToAppear()
+        app.shot("log-foot")
+        XCTAssertFalse(partial.isSelected)
+        partial.tap()
+        XCTAssertTrue(app.element("today.dayState.partial").isSelected)
+        XCTAssertFalse(app.element("today.dayState.complete").isSelected, "the sample's day was complete")
+
+        // Folded to one line if they were all taken that day.
+        let doses = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'supplements.dose', 'supplements.summary'}"))
+        app.scrollTo(doses.firstMatch).waitToAppear()
+        if app.element("supplements.summary").exists { app.element("supplements.summary").tap() }
+        let dose = app.element("supplements.dose").waitToAppear()
+        let before = dose.label
+        dose.tap()
+        dose.waitForLabel(toChangeFrom: before)
+
+        app.scrollTo(app.element("drinks.water")).waitToAppear().tap()
+        app.element("toast.message", labelContaining: "Water").waitToAppear()
+        app.shot("log-foot-water")
+        XCTAssertFalse(app.element("log.title").label.hasPrefix("Today"), "still on the day it went on")
+    }
+
+    /// Nothing eaten and nothing to catch up: the foot says the day was fasted.
+    @MainActor
+    func testAnEmptyPastDayCanBeMarkedFasted() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-sampleEmptyYesterday", "-tab", "log", "-daysAgo", "1"])
+        app.element("catchUp.logAll").waitToAppear()
+        app.scrollTo(app.element("today.dayState.fasting")).waitToAppear().tap()
+        app.element("catchUp.logAll").waitToDisappear()
+    }
+
+    /// Today has its own foot on Today, and a day ahead hasn't happened.
+    @MainActor
+    func testOnlyAPastDayHasAFoot() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-seedSupplements", "-tab", "log"])
+        app.element("log.title").waitToAppear()
+
+        let foot = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'today.dayState' OR identifier BEGINSWITH 'supplements.' OR identifier BEGINSWITH 'drinks.'"))
+        func expectNoFoot(_ place: String) {
+            app.scrollTo(app.element("log.add.23")).waitToAppear()
+            app.swipeUp()
+            XCTAssertEqual(foot.count, 0, place)
+        }
+        expectNoFoot("today")
+
+        let days = app.descendants(matching: .any).matching(identifier: "log.day")
+        days.element(boundBy: days.count - 1).tap()
+        expectNoFoot("tomorrow")
+    }
+
     /// A hold picks a food out, and a tap on an hour's name picks out the rest; the bar swaps in, and
     /// an hour's + becomes where they go.
     @MainActor

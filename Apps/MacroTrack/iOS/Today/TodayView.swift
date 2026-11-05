@@ -71,7 +71,7 @@ struct TodayFood: View {
 }
 
 /// Meal timing, the supplements (where a reminder's tap scrolls to), drinks, and today's
-/// food-quality suggestions.
+/// food-quality suggestions. A past day's foot on the Log tab is this too, without the suggestions.
 struct TodayMore: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -594,15 +594,19 @@ struct DayStateSection: View {
                         .buttonStyle(.bordered)
                         .choiceTint(state == choice)
                         .buttonBorderShape(.capsule)
+                        .accessibilityAddTraits(state == choice ? .isSelected : [])
                         .accessibilityIdentifier("today.dayState.\(choice.rawValue)")
                     }
                 }
+                // A plain list draws one under the last row too, from where the first button's words start.
+                .listRowSeparator(.hidden)
                 if Platform.isMac { Text(Self.note).font(.caption).foregroundStyle(.secondary) }
             } header: {
                 Text(day == model.today ? "Done logging today?" : "How complete is this day?")
             } footer: {
-                // The Mac's list footers are one line: there the note is a row of the section.
-                if !Platform.isMac { Text(Self.note) }
+                // The Mac's list footers are one line: there the note is a row of the section. A plain
+                // list, as the Log tab's foot is in, leaves a footer's text at the size of a row's.
+                if !Platform.isMac { Text(Self.note).font(.footnote).foregroundStyle(.secondary) }
             }
         }
     }

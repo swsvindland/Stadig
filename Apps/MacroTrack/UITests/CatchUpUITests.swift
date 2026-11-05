@@ -26,7 +26,9 @@ nonisolated final class CatchUpUITests: XCTestCase {
         app.element("toast.message", labelContaining: "Logged").waitToAppear()
         XCTAssertTrue(app.element("catchUp.logAll", labelContaining: "Log all 4").waitToAppear().exists)
 
-        // Lunch's time opens the logger there: lunch comes first, whatever the clock says.
+        // Lunch's time opens the logger there: lunch comes first, whatever the clock says. Breakfast's
+        // toast floats over the bottom of the list, so the tap waits for it to go.
+        app.element("toast.message").waitToDisappear()
         app.scrollTo(app.element("catchUp.time")).tap()
         XCTAssertTrue(app.element("logger.savedMeal").waitToAppear().label.contains("Chicken and rice"))
         let times = app.descendants(matching: .any).matching(identifier: "logger.usualTime")

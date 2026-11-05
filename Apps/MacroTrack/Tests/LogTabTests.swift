@@ -116,6 +116,28 @@ struct LogTabTests {
         #expect(model.selectedDay == yesterdayIn(model))
     }
 
+    /// What a past day's foot takes goes on that day, and leaves today alone.
+    @Test func aPastDaysDosesAndWaterGoOnThatDay() throws {
+        let model = model()
+        let yesterday = yesterdayIn(model)
+        let facts = SupplementFacts(
+            id: "custom:Multi", name: "Multi", unit: "tablet", ingredients: [SupplementIngredient(name: "Zinc", amount: 11, unit: "mg")],
+            source: .custom)
+        model.store.save(Supplement(facts: facts, doses: [Dose(time: .morning, count: 1)]))
+        model.reload()
+        model.show(day: yesterday)
+
+        model.take(model.doses(on: yesterday), on: yesterday)
+        model.addWater(ml: 250)
+        model.setState(.partial, for: yesterday)
+
+        #expect(model.doses(on: yesterday).map(\.taken) == [true])
+        #expect(model.doses(on: model.today).map(\.taken) == [false])
+        #expect(Day(try #require(model.water.last).date) == yesterday)
+        #expect(model.state(of: yesterday) == .partial)
+        #expect(model.state(of: model.today) == nil)
+    }
+
     @Test func theLastTabComesBackOnTheNextLaunch() throws {
         let defaults = try #require(UserDefaults(suiteName: "LogTabTests-\(UUID().uuidString)"))
         let environment = TestEnvironment()

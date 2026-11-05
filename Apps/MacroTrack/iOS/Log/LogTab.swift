@@ -19,7 +19,8 @@ extension AppModel {
 
 /// A day hour by hour: every hour has a +, an hour with nothing in it is thin, and the week and
 /// what's left stay pinned on top. It opens on the hour it is, or on another day's first food. With
-/// room (iPad, the Mac, Vision Pro) each food has its macros in fixed columns.
+/// room (iPad, the Mac, Vision Pro) each food has its macros in fixed columns. Under a past day's
+/// hours is its foot: how complete it was, its doses and its drinks.
 struct LogTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -56,6 +57,11 @@ struct LogTab: View {
                         }
                     } header: {
                         LogHeader(wide: showsColumns).textCase(nil)
+                    }
+                    // Today has today's foot, and a day ahead hasn't happened yet.
+                    if day < model.today {
+                        DayStateSection(day: day).textCase(nil)
+                        TodayMore(day: day).textCase(nil)
                     }
                 }
                 .listStyle(.plain)

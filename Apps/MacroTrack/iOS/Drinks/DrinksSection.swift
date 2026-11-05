@@ -3,8 +3,9 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Water and caffeine on Today, for people who turned drinks on: a tap for a glass, a tap for a
-/// coffee, today's caffeine against its limit and what will still be active at bedtime.
+/// Water and caffeine on Today, or under a past day's hours on the Log tab, for people who turned
+/// drinks on: a tap for a glass, a tap for a coffee, today's caffeine against its limit and what will
+/// still be active at bedtime.
 struct DrinksSection: View {
     @Environment(AppModel.self) private var model
     let day: Day
@@ -66,6 +67,7 @@ struct DrinksSection: View {
                     }
                     .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.cyan)
                     .accessibilityLabel("Add \(Format.volume(size.ml, ounces: ounces)) of water")
+                    .accessibilityIdentifier("drinks.water")
                 }
             }
             Bar(fraction: h.fraction, color: .cyan)
