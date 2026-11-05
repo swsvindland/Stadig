@@ -794,6 +794,7 @@ struct FoodHeader: View {
     let food: Food
     /// The numbers are the person's correction of the catalog's.
     var corrected = false
+    var nameFont: Font = .title3.weight(.semibold)
 
     static func sourceLabel(_ food: Food) -> String {
         switch food.source {
@@ -807,7 +808,7 @@ struct FoodHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(food.name).font(.title3.weight(.semibold))
+            Text(food.name).font(nameFont)
             if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
                 Text(brand).font(.subheadline).foregroundStyle(.secondary)
             }

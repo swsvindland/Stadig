@@ -63,6 +63,36 @@ nonisolated final class AmountUITests: XCTestCase {
         return ((quantity.value as? String) ?? "").split(separator: " ").first.map(String.init) ?? ""
     }
 
+    /// On an iPhone there's no Foods screen, so the amount is the one place to see a food's
+    /// vitamins and minerals and where its numbers came from before logging it.
+    @MainActor
+    func testAFoodsAmountSaysWhatTheFoodIs() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        XCTAssertEqual(app.element("food.source").waitToAppear().label, "USDA FoodData Central")
+        XCTAssertTrue(app.staticTexts["Whole food"].exists, "how processed it is")
+        app.shot("amount-food")
+
+        // All of it in view as it opens, rather than behind a drag that would resize the sheet.
+        let nutrients = app.staticTexts["Vitamins and minerals"].waitToAppear()
+        XCTAssertTrue(app.element("amount.summary").isHittable, "the macros clear the keypad")
+        XCTAssertTrue(nutrients.isHittable, "and so does what folds below them")
+        nutrients.tap()
+        app.shot("amount-food-nutrients")
+        XCTAssertTrue(app.staticTexts["Potassium"].waitForExistence(timeout: 5), "the food's minerals, unfolded")
+    }
+
+    /// A correction's note shows the moment it's saved, on the amount it was made from.
+    @MainActor
+    func testACorrectedFoodSaysSoOnItsAmount() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        openABanana(app)
+        correct(to: "150", in: app)
+        XCTAssertEqual(app.element("food.source").waitToAppear().label, "Your numbers, corrected from USDA FoodData Central")
+    }
+
     /// The meal sheet stops at half height for its own list. A food's amount needs more than that:
     /// the keypad and Save take it all, with nothing left to show the amount being typed.
     @MainActor

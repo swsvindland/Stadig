@@ -25,7 +25,6 @@ struct AmountPanel: View {
     @State private var draft = AmountDraft()
     @State private var date = Date()
     @State private var editingFood = false
-    @State private var showingNutrients = false
     @FocusState private var keysFocused: Bool
     #if os(macOS)
     @FocusState private var fieldFocused: Bool
@@ -57,13 +56,14 @@ struct AmountPanel: View {
                     quantity
                     unitRow
                     choices
-                    NutrientSummary(nutrients: nutrients)
+                    NutrientSummary(nutrients: nutrients).accessibilityIdentifier("amount.summary")
+                    if let food, let unit = amount.unit {
+                        // At no amount too, or it would fold up as the last digit's deleted.
+                        PortionNutrients(food: food, count: amount.count ?? 0, unit: unit)
+                    }
                     if isEditing, !isMealFood {
                         timeRow
                         if canTake { takeRow }
-                    }
-                    if showingNutrients, let food, let unit = amount.unit, let count = amount.count {
-                        PortionNutrients(food: food, count: count, unit: unit)
                     }
                 }
             }
@@ -88,10 +88,14 @@ struct AmountPanel: View {
 
     var header: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(food?.name ?? entry?.name ?? "").font(.headline).lineLimit(2)
-                if let brand = food?.brand ?? entry?.brand, brand.lowercased() != (food?.name ?? "").lowercased() {
-                    Text(brand).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            Group {
+                if let food {
+                    FoodHeader(food: food, corrected: model.isCorrected(food.id), nameFont: .headline).lineLimit(2)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry?.name ?? "").font(.headline).lineLimit(2)
+                        if let brand = entry?.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -349,7 +353,7 @@ extension View {
     /// A small sheet for the amount panel: all of it in view on a phone, with room to grow, and
     /// room for the time when it's changing an entry.
     func amountSheet(editing: Bool) -> some View {
-        presentationDetents([.height(editing ? 716 : 620), .large])
+        presentationDetents([.height(editing ? 796 : 700), .large])
             .presentationDragIndicator(.visible)
             .macSheetSize(width: 440, height: 520)
     }
