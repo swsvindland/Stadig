@@ -57,9 +57,9 @@ struct AmountPanel: View {
                     unitRow
                     choices
                     NutrientSummary(nutrients: nutrients).accessibilityIdentifier("amount.summary")
-                    if let food, let unit = amount.unit {
+                    if let food, let fold = draft.foldAmount {
                         // At no amount too, or it would fold up as the last digit's deleted.
-                        PortionNutrients(food: food, count: amount.count ?? 0, unit: unit)
+                        PortionNutrients(food: food, count: fold.count, unit: fold.unit)
                     }
                     if isEditing, !isMealFood {
                         timeRow

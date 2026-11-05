@@ -95,6 +95,24 @@ struct AmountDraftTests {
         #expect(model.edited(draft, at: eaten)?.amountLabel == entry.amountLabel)
     }
 
+    /// Calories hold a different amount once corrected, and the fold reads an amount: it stays on
+    /// what was logged, as Save does, until the amount's changed.
+    @Test func theFoldStaysOnWhatWasLoggedThroughACorrection() throws {
+        let model = model()
+        let entry = try logged(model, count: 120, unitID: "kcal")
+        var draft = model.draft(for: .edit(entry))
+
+        draft.use(try correctBanana(model, kcal: 200))
+
+        let fold = try #require(draft.foldAmount)
+        let food = try #require(draft.food)
+        #expect(FoodUnits.amount(fold.count, fold.unit) == entry.grams)
+        #expect(FoodUnits.micros(food, count: fold.count, unit: fold.unit)["potassium"] == entry.micros?["potassium"])
+
+        draft.amount.choose(60)
+        #expect(FoodUnits.amount(draft.foldAmount?.count ?? 0, draft.foldAmount?.unit ?? fold.unit) != entry.grams, "a new amount reads as one")
+    }
+
     @Test func aChangeOfTimeAloneKeepsTheEntrysNumbers() throws {
         let model = model()
         var entry = try logged(model, count: 100, unitID: "g")

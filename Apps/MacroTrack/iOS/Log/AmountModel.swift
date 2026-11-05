@@ -75,6 +75,15 @@ struct AmountDraft {
         return entry?.nutrients.scaled(count) ?? .zero
     }
 
+    /// The amount the fold of vitamins and minerals is for. While an entry keeps its numbers that's
+    /// what it was logged at: a food corrected since holds a different amount in its count of
+    /// calories, and the fold would say something other than what Save keeps.
+    var foldAmount: (count: Double, unit: PortionUnit)? {
+        guard let unit = amount.unit else { return nil }
+        if let grams = entry?.grams, !amountChanged, let basis = units.first(where: { $0.id == food?.basis.rawValue }) { return (grams, basis) }
+        return (amount.count ?? 0, unit)
+    }
+
     /// The food as corrected (or the catalog's again). Its units are the same ones, but calories
     /// hold a different amount now, and a food corrected to no calories can't be counted in them.
     mutating func use(_ corrected: Food) {
