@@ -81,13 +81,22 @@ struct SettingsView: View {
 
     @ViewBuilder
     var general: some View {
-        Section("Logging") {
+        Section {
             Toggle("Show carbs and fat", isOn: setting(\.showAllMacros))
                 .accessibilityIdentifier("settings.showAllMacros")
             Picker("Lately", selection: setting(\.dietHistory)) {
                 ForEach(DietHistory.allCases) { Text($0.label).tag($0) }
             }
             .accessibilityIdentifier("settings.dietHistory")
+            hourPicker("First hour on Log", selection: setting(\.logFirstHour), automatic: autoHours.lowerBound, identifier: "settings.logFirstHour")
+            hourPicker("Last hour on Log", selection: setting(\.logLastHour), automatic: autoHours.upperBound, identifier: "settings.logLastHour")
+        } header: {
+            Text("Logging")
+        } footer: {
+            Text(
+                model.rhythm == nil
+                    ? "Other hours stay a tap away under Earlier and Later, and food logged in them always shows."
+                    : "Automatic follows your sleep in Stadig. Other hours stay a tap away under Earlier and Later.")
         }
 
         Section {
@@ -329,6 +338,21 @@ struct SettingsView: View {
         }
         #endif
     }
+
+    /// The hours Automatic means right now, with neither set by hand.
+    private var autoHours: ClosedRange<Int> {
+        LogHours.window(wake: model.rhythm?.wake, bed: model.rhythm?.bed ?? model.settings.doseTimes?[.bedtime])
+    }
+
+    private func hourPicker(_ title: String, selection: Binding<Int?>, automatic: Int, identifier: String) -> some View {
+        Picker(title, selection: selection) {
+            Text("Automatic (\(Self.hourLabel(automatic)))").tag(Int?.none)
+            ForEach(0..<24, id: \.self) { Text(Self.hourLabel($0)).tag(Int?.some($0)) }
+        }
+        .accessibilityIdentifier(identifier)
+    }
+
+    private static func hourLabel(_ hour: Int) -> String { Day(year: 2026, month: 1, day: 1).at(hour: hour, minute: 0).formatted(.dateTime.hour()) }
 
     private func setting<T>(_ keyPath: WritableKeyPath<MacroSettings, T>) -> Binding<T> {
         Binding(

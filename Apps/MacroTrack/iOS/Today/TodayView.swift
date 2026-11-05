@@ -34,8 +34,10 @@ struct TodayView: View {
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
-                // A readable column, in margins of the list's own background.
-                .contentMargins(.horizontal, max(0, (width - 760) / 2), for: .scrollContent)
+                // A readable column, in margins of the list's own background. Nil until that's wider
+                // than the list's own inset: a margin of 0 takes the inset away, and on a phone the
+                // cards run to the edges of the screen.
+                .contentMargins(.horizontal, (width - 760) / 2 > 20 ? (width - 760) / 2 : nil, for: .scrollContent)
                 .onGeometryChange(for: CGFloat.self) {
                     $0.size.width
                 } action: {
