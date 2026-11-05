@@ -126,6 +126,30 @@ public struct WeekCommitments: Hashable, Sendable {
 
     public func on(_ weekday: Weekday) -> [Commitment] { days[weekday] ?? [] }
 
+    /// A date's commitments, with anything moved for just that day where it went.
+    public func on(_ day: Day, changes: [DayChange]) -> [Commitment] {
+        on(day.weekday).map { commitment in
+            var commitment = commitment
+            commitment.part = changes.movedPart(of: commitment.title, on: day) ?? commitment.part
+            return commitment
+        }
+    }
+
+    /// The same week with whatever the rhythm moved for good where it went. A placement for a class
+    /// that's gone from that day simply finds nothing.
+    public func placed(by rhythm: Rhythm?) -> WeekCommitments {
+        guard let rhythm, !rhythm.placements.isEmpty else { return self }
+        var moved = self
+        for (weekday, list) in days {
+            moved.days[weekday] = list.map { commitment in
+                var commitment = commitment
+                commitment.part = rhythm.placedPart(of: commitment.title, on: weekday) ?? commitment.part
+                return commitment
+            }.sorted { ($0.part, $0.title) < ($1.part, $1.title) }
+        }
+        return moved
+    }
+
     /// The part of the day lifts usually start in: the median of the last few, by the clock.
     static func liftingPart(_ sessions: [SessionSummary], before today: Day, timeZone: TimeZone) -> DayPart? {
         var clock = Calendar(identifier: .gregorian)

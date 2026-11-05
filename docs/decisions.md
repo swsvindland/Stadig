@@ -1,5 +1,16 @@
 # Decisions to check
 
+- **Stats and moving classes in the hub.** On 2026-11-05 you chose the list of eight stats and moving a class by tapping it. The details are my calls:
+  - **Two apps, one stat:** the average of their scores, each app's own number shown beneath it, and the worse of their trends.
+  - **The gym moves too,** by a button beside its row, since tapping the row opens Stadig Lift.
+  - **A move outranks a change in Stadig Lift:** set Muay Thai to midday here and later change its time in Lift, and the hub keeps midday until you put it back. Its button is on the move sheet.
+  - **"Back to the plan as it was"** also clears one-day moves from today on, and leaves weekly ones alone.
+
+- **Hybrid weeks in the hub.** On 2026-11-05 you asked for a hybrid option. The starting week and readings are my calls:
+  - **The starting week:** Monday to Wednesday at the office 9 to 3, an hour at home either side, Thursday and Friday at home 9 to 5, 40 hours. A sentence that gives only a count of days takes them from Monday.
+  - **Filling the day:** a sentence that doesn't say how the day divides makes up eight hours at home around the office.
+  - **The commute:** it pushes hours at home earlier or later rather than cutting them, and they don't move back if the commute shrinks.
+
 - **The Log tab as meal cards on iPhone.** On 2026-11-05 you chose meal cards from the mock over the hour grid, and said adding to other cards and filling in a past day at set times had to stay very fast. iPad, the Mac and Vision Pro keep the hours and macro columns, since you asked about the iPhone.
   - **Open hours show as one-tap slots** between cards rather than folding into a row, so "9, noon, 5" is three taps. You asked for settings for which hours appear, defaulting to about 7 AM to 8 PM, with sleep from the other apps as the default where known. So Automatic reads wake and bed from the hub's rhythm, then the caffeine bedtime, then 7 AM to 8 PM. The last hour is the one before bed. It uses the everyday times, so a shift pattern's own sleep isn't read yet.
   - **Meal names:** Snack under 200 kcal at any hour; otherwise Breakfast 4–11, Lunch 11–15, Dinner 16–22, Snack otherwise. Only drinks is Drink. A saved meal's own name wins.

@@ -115,6 +115,8 @@ final class AppModel {
     private(set) var recommendations: [Recommendation] = []
     /// A profile another app wrote before Stadig Lift was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
+    /// The hub's rhythm, for where it moved a class.
+    private(set) var rhythm: Rhythm?
     /// What's changed this week, from the hub.
     private(set) var dayChanges: [DayChange] = []
 
@@ -308,11 +310,13 @@ final class AppModel {
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
         let dayChanges = shared.read(.dayChanges) ?? []
+        let rhythm = shared.read(.rhythm)
         let changed =
             nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
-            || lifeModes != self.lifeModes || dayChanges != self.dayChanges
+            || lifeModes != self.lifeModes || dayChanges != self.dayChanges || rhythm != self.rhythm
         guard changed else { return }
         self.dayChanges = dayChanges
+        self.rhythm = rhythm
         self.nutrition = nutrition
         self.recommendations = recommendations
         self.sharedProfile = sharedProfile

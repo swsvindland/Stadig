@@ -183,4 +183,68 @@ struct AppModelTests {
         #expect(model.today == Day(year: 2026, month: 10, day: 14))
         #expect(model.part == .night)
     }
+
+    func withClass(_ model: AppModel) throws -> HubItem {
+        try model.shared.write(
+            SharedProfile(
+                schedule: TrainingSchedule(daysPerWeek: 0, minutesPerSession: 60, preferredDays: []),
+                recurring: [RecurringActivity(activity: .muayThai, weekdays: [.sunday], minutes: 60)], createdBy: .liftTrack),
+            to: .profile, by: .liftTrack)
+        setUp(model)
+        model.selectedDay = model.today.startOfWeek.adding(days: 6)
+        return try #require(muayThai(model))
+    }
+
+    func muayThai(_ model: AppModel) -> HubItem? { model.shownDay?.items.first { $0.title == "Muay Thai" } }
+
+    @Test func movingForEveryWeekPublishesTheRhythm() throws {
+        let model = TestApp.model()
+        let item = try withClass(model)
+        #expect(item.part == .evening)
+        #expect(!model.isMoved(item, on: model.selectedDay))
+        model.move(item, on: model.selectedDay, to: .midday, everyWeek: true)
+        #expect(muayThai(model)?.part == .midday)
+        #expect(model.shared.read(.rhythm)?.placements.count == 1)
+        #expect(model.isMoved(item, on: model.selectedDay))
+        model.move(item, on: model.selectedDay, to: .morning, everyWeek: true)
+        #expect(model.shared.read(.rhythm)?.placements.map(\.part) == [.morning])
+        model.putBack(item, on: model.selectedDay)
+        #expect(muayThai(model)?.part == .evening)
+        #expect(model.shared.read(.rhythm)?.placements.isEmpty == true)
+    }
+
+    @Test func movingOnceIsAChangeThatPutsBack() throws {
+        let model = TestApp.model()
+        let item = try withClass(model)
+        model.move(item, on: model.selectedDay, to: .midday, everyWeek: false)
+        #expect(muayThai(model)?.part == .midday)
+        #expect(model.shared.read(.rhythm)?.placements.isEmpty == true)
+        model.putBack(item, on: model.selectedDay)
+        #expect(muayThai(model)?.part == .evening)
+    }
+
+    /// A one-day move would otherwise go on hiding the new weekly place.
+    @Test func everyWeekReplacesAMoveForTheDay() throws {
+        let model = TestApp.model()
+        let item = try withClass(model)
+        model.move(item, on: model.selectedDay, to: .morning, everyWeek: false)
+        model.move(item, on: model.selectedDay, to: .midday, everyWeek: true)
+        #expect(muayThai(model)?.part == .midday)
+    }
+
+    @Test func statsComeFromEveryApp() throws {
+        let model = TestApp.model()
+        let now = TestApp.wednesday
+        try model.shared.write(
+            AppSummary(
+                app: .macroTrack, updated: now, stats: [StatReading(stat: .vitality, score: 80, label: "Logged", trend: .onPace, updated: now)]),
+            to: .summary(.macroTrack), by: .macroTrack)
+        try model.shared.write(
+            AppSummary(app: .knowledge, updated: now, stats: [StatReading(stat: .wisdom, score: 60, label: "Reading", trend: .ahead, updated: now)]),
+            to: .summary(.knowledge), by: .knowledge)
+        setUp(model)
+        #expect(model.stats.count == StatKind.allCases.count)
+        #expect(model.stats.filter(\.isKnown).map(\.stat) == [.vitality, .wisdom])
+        #expect(model.statsUpdated == now)
+    }
 }

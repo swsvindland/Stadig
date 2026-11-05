@@ -153,7 +153,10 @@ struct TodayView: View {
                 HStack {
                     Image(systemName: item.activity.symbol).font(.title3).frame(width: 32)
                     VStack(alignment: .leading) {
-                        Text("\(item.activity.label) \(item.timeOfDay.label.lowercased())").font(.headline)
+                        Text(
+                            "\(item.activity.label) \(item.part(on: model.today, rhythm: model.rhythm, changes: model.dayChanges).label.lowercased())"
+                        )
+                        .font(.headline)
                         Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.subheadline).foregroundStyle(
                             .secondary)
                     }

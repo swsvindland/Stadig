@@ -1,3 +1,4 @@
+import HubEngine
 import SwiftUI
 import SystemCore
 
@@ -37,7 +38,7 @@ struct HubApp: App {
     }
 }
 
-/// stadig://today, stadig://week, stadig://rhythm.
+/// stadig://today, stadig://week, stadig://stats, stadig://rhythm.
 enum DeepLink {
     @MainActor
     static func open(_ url: URL, model: AppModel) {
@@ -55,6 +56,13 @@ enum DebugLaunch {
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
         if let tab = launch.value(after: "-tab").flatMap(AppTab.init(rawValue:)) { model.tab = tab }
         if launch.has("-showPlansChanged") { model.showPlansChanged = true }
+        // -day sun picks a day; -showMove "Muay Thai" opens the move sheet for that class on it.
+        if let name = launch.value(after: "-day"),
+            let day = (0..<7).map(model.today.startOfWeek.adding(days:)).first(where: { $0.weekday.short.lowercased() == name })
+        {
+            model.selectedDay = day
+        }
+        if let title = launch.value(after: "-showMove") { model.moving = model.shownDay?.items.first { $0.title == title } }
     }
 }
 #endif

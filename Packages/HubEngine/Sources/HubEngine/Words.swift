@@ -152,6 +152,12 @@ public enum RhythmSummary {
         if let meals = inputs.meals, HubPlanner.fresh(meals.updated, inputs), !meals.usual.isEmpty {
             let parts = meals.usual.map(\.label).joined(separator: ", ")
             out.append(RhythmLine(label: "Meals", value: parts, source: AppID.macroTrack.displayName))
+        } else if let meals = inputs.meals, HubPlanner.fresh(meals.updated, inputs) {
+            out.append(
+                RhythmLine(label: "Meals", value: "Your usual times show up after a few days of logging", source: AppID.macroTrack.displayName))
+        } else if inputs.macro.map({ HubPlanner.fresh($0.updated, inputs) }) == true {
+            // It's in use, but this build of it doesn't publish meal times, or hasn't since it updated.
+            out.append(RhythmLine(label: "Meals", value: "Nothing yet. Update Stadig Macro and open it once", source: AppID.macroTrack.displayName))
         }
         if let ask = inputs.ask, HubPlanner.fresh(ask.updated, inputs), !ask.courses.isEmpty {
             let courses = ask.courses.map { "\(HubPlanner.title($0.id)) \($0.blocks)" }.joined(separator: ", ")
@@ -191,7 +197,23 @@ extension WorkPattern {
             let kept = spans.filter { $0.kind != .commute }
             let away = kept.filter { $0.kind == .work || $0.kind == .school }
             guard minutes > 0, let first = away.map(\.start).min(), let last = away.map(\.end).max() else { return kept }
-            return [DaySpan(.commute, "Commute", from: max(0, first - minutes), to: first)] + kept + [
+            // Hours worked at home happen before leaving and after getting back, so the commute
+            // pushes them out of its way rather than running over them.
+            let moved = kept.map { span -> DaySpan in
+                guard span.kind == .home else { return span }
+                var span = span
+                let early = span.end - (first - minutes)
+                let late = last + minutes - span.start
+                if span.end <= first, early > 0 {
+                    span.start -= early
+                    span.end -= early
+                } else if span.start >= last, late > 0 {
+                    span.start += late
+                    span.end += late
+                }
+                return span
+            }
+            return [DaySpan(.commute, "Commute", from: max(0, first - minutes), to: first)] + moved + [
                 DaySpan(.commute, "Commute", from: last, to: last + minutes)
             ]
         }
@@ -205,6 +227,7 @@ extension WorkPattern {
 extension SchedulePreset {
     /// The preset a pattern is, if it's still one, whatever its commute.
     public static func matching(_ pattern: WorkPattern) -> SchedulePreset? {
-        allCases.first { $0.pattern(anchor: pattern.anchor).withCommute(pattern.commuteMinutes) == pattern }
+        if HybridWeek(pattern) != nil { return .hybrid }
+        return allCases.first { $0.pattern(anchor: pattern.anchor).withCommute(pattern.commuteMinutes) == pattern }
     }
 }

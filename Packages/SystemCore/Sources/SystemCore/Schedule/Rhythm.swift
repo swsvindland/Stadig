@@ -5,7 +5,9 @@ import Foundation
 /// An end past 1440 runs into the next day, which is how a night shift is written.
 public struct DaySpan: Hashable, Codable, Sendable {
     public enum Kind: String, Codable, Sendable {
-        case work, school, commute, sleep
+        /// `home` is work done at home: as busy as any, with no commute to it. Older builds read it as
+        /// `work`, by the rule below, so it needed no schema bump.
+        case work, school, commute, sleep, home
 
         /// A kind from a newer build counts as busy, the safe way round.
         public init(from decoder: Decoder) throws {
@@ -65,6 +67,21 @@ public struct WorkPattern: Hashable, Codable, Sendable {
     }
 }
 
+/// Where a class or the gym sits on one weekday, every week. Stadig Lift keeps what's on and for how
+/// long; this is only when, which is the hub's to say.
+public struct ClassPlacement: Hashable, Codable, Sendable {
+    /// A commitment's title.
+    public var title: String
+    public var weekday: Weekday
+    public var part: DayPart
+
+    public init(title: String, weekday: Weekday, part: DayPart) {
+        self.title = title
+        self.weekday = weekday
+        self.part = part
+    }
+}
+
 /// The repeating shape of someone's weeks, set in the hub and read by every app.
 public struct Rhythm: Hashable, Codable, Sendable {
     public static let schemaVersion = 1
@@ -79,23 +96,27 @@ public struct Rhythm: Hashable, Codable, Sendable {
     public var bed: Int
     /// Evenings a week kept clear of anything flexible.
     public var clearEvenings: Int
+    /// Classes and the gym moved for good. Optional in the file, and still schema 1: a bump would stop
+    /// older apps reading the rhythm at all, and they lose nothing but the move by skipping it.
+    public var placements: [ClassPlacement]
     /// The hour a study day starts, so that every app turns over together.
     public var dayStart: Int
     public var updated: Date
 
     public init(
         pattern: WorkPattern? = nil, wake: Int = standardWake, bed: Int = standardBed, clearEvenings: Int = standardClearEvenings, dayStart: Int = 4,
-        updated: Date = Date()
+        placements: [ClassPlacement] = [], updated: Date = Date()
     ) {
         self.pattern = pattern
         self.wake = wake
         self.bed = bed
         self.clearEvenings = clearEvenings
         self.dayStart = dayStart
+        self.placements = placements
         self.updated = updated
     }
 
-    enum CodingKeys: String, CodingKey { case pattern, wake, bed, clearEvenings, dayStart, updated }
+    enum CodingKeys: String, CodingKey { case pattern, wake, bed, clearEvenings, dayStart, placements, updated }
 
     /// Fills anything missing with its default, so a field added later never fails a file.
     public init(from decoder: Decoder) throws {
@@ -105,7 +126,13 @@ public struct Rhythm: Hashable, Codable, Sendable {
         bed = try c.decodeIfPresent(Int.self, forKey: .bed) ?? Self.standardBed
         clearEvenings = try c.decodeIfPresent(Int.self, forKey: .clearEvenings) ?? Self.standardClearEvenings
         dayStart = try c.decodeIfPresent(Int.self, forKey: .dayStart) ?? 4
+        placements = try c.decodeIfPresent([ClassPlacement].self, forKey: .placements) ?? []
         updated = try c.decodeIfPresent(Date.self, forKey: .updated) ?? .distantPast
+    }
+
+    /// Where a commitment was moved to on a weekday, if it was.
+    public func placedPart(of title: String, on weekday: Weekday) -> DayPart? {
+        placements.first { $0.title == title && $0.weekday == weekday }?.part
     }
 }
 
@@ -117,6 +144,7 @@ public struct DayChange: Hashable, Codable, Sendable, Identifiable {
     /// and a schema bump would leave the older apps reading nothing at all.
     public static let out = "out"
     public static let lighter = "lighter"
+    public static let moved = "moved"
     /// Changes a week older than this no longer matter to anyone.
     public static let keptDays = 42
 
@@ -124,16 +152,21 @@ public struct DayChange: Hashable, Codable, Sendable, Identifiable {
     public var kind: String
     /// The day it's for: a lighter week's Monday.
     public var day: Day
-    /// The parts it clears, by name.
+    /// The parts it clears, by name. For a move, the one part it goes to.
     public var parts: [String]
+    /// What a move moves: a commitment's title. Absent from other kinds and from older files.
+    public var title: String?
     public var updatedAt: Date
     public var deletedAt: Date?
 
-    public init(id: UUID = UUID(), kind: String, day: Day, parts: [String] = [], updatedAt: Date = Date(), deletedAt: Date? = nil) {
+    public init(
+        id: UUID = UUID(), kind: String, day: Day, parts: [String] = [], title: String? = nil, updatedAt: Date = Date(), deletedAt: Date? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.day = day
         self.parts = parts
+        self.title = title
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
     }
@@ -151,6 +184,11 @@ public struct DayChange: Hashable, Codable, Sendable, Identifiable {
 
     public static func lighterWeek(of day: Day, at date: Date = Date()) -> DayChange {
         DayChange(kind: lighter, day: day.startOfWeek, updatedAt: date)
+    }
+
+    /// A class or the gym in another part, on this one day.
+    public static func move(_ title: String, on day: Day, to part: DayPart, at date: Date = Date()) -> DayChange {
+        DayChange(kind: moved, day: day, parts: [part.rawValue], title: title, updatedAt: date)
     }
 
     /// A session's minutes in a lighter week: two thirds, to the nearest five, and no less than half
@@ -194,6 +232,12 @@ extension Array where Element == DayChange {
     /// The parts cleared on a day.
     public func closedParts(on day: Day) -> Set<DayPart> {
         Set(live.filter { $0.kind == DayChange.out && $0.day == day }.flatMap(\.parts).compactMap(DayPart.init(rawValue:)))
+    }
+
+    /// Where a commitment was moved to on this one day, if it was. The latest move stands.
+    public func movedPart(of title: String, on day: Day) -> DayPart? {
+        live.filter { $0.kind == DayChange.moved && $0.day == day && $0.title == title }.max { $0.updatedAt < $1.updatedAt }?
+            .parts.first.flatMap(DayPart.init(rawValue:))
     }
 
     public func isLighter(_ day: Day) -> Bool { live.contains { $0.kind == DayChange.lighter && $0.day == day.startOfWeek } }
@@ -306,7 +350,7 @@ public enum DayShape {
     public static func studyParts(on day: Day, rhythm: Rhythm, changes: [DayChange], commitments: WeekCommitments) -> [DayPart]? {
         guard let open = openParts(on: day, rhythm: rhythm, changes: changes) else { return nil }
         guard !isPacked(day.weekday, commitments: commitments) else { return [] }
-        let held = Set(commitments.on(day.weekday).map(\.part))
+        let held = Set(commitments.on(day, changes: changes).map(\.part))
         return open.filter { !held.contains($0) }
     }
 
