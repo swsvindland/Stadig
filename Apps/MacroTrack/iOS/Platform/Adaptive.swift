@@ -287,18 +287,68 @@ extension View {
         #endif
     }
 
-    /// Someone going to another app and coming back. On the Mac a window stays `.active` behind
-    /// another app's, so the scene phase only changes if it's hidden or minimized, and the app's own
-    /// activation has to say. On iPhone, iPad and Vision Pro the scene phase already does.
-    func onMacAppSwitch(left: @escaping () -> Void, returned: @escaping () -> Void) -> some View {
+    /// Someone going to something else and coming back, in the ways the scene phase doesn't see,
+    /// since a window left in sight stays `.active`: another app in front of it on the Mac, or beside
+    /// or over it on an iPad, and the Mac going to sleep with the app in front.
+    func onGoingAway(left: @escaping () -> Void, returned: @escaping () -> Void) -> some View {
+        modifier(GoingAway(left: left, returned: returned))
+    }
+
+    /// The Delete key on a list's selection, on the Mac. A click on a row doesn't give a list the
+    /// keyboard, and a field beside it keeps it, so each change to the selection takes it there.
+    /// Elsewhere a selection is deleted from its bar.
+    func onDeleteKey(selection: Set<UUID>, perform: @escaping () -> Void) -> some View {
         #if os(macOS)
-        return onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in left() }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in returned() }
+        return modifier(DeleteKey(selection: selection, delete: perform))
         #else
         return self
         #endif
     }
 }
+
+private struct GoingAway: ViewModifier {
+    let left: () -> Void
+    let returned: () -> Void
+    @Environment(\.appearsActive) private var appearsActive
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        let workspace = NSWorkspace.shared.notificationCenter
+        content
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in left() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in returned() }
+            // The display too: a Mac on power can stay awake with nobody at it.
+            .onReceive(workspace.publisher(for: NSWorkspace.willSleepNotification)) { _ in left() }
+            .onReceive(workspace.publisher(for: NSWorkspace.screensDidSleepNotification)) { _ in left() }
+            .onReceive(workspace.publisher(for: NSWorkspace.didWakeNotification)) { _ in woke() }
+            .onReceive(workspace.publisher(for: NSWorkspace.screensDidWakeNotification)) { _ in woke() }
+        #else
+        content.onChange(of: appearsActive) { _, active in if active { returned() } else { left() } }
+        #endif
+    }
+
+    #if os(macOS)
+    /// Waking with another app in front isn't coming back to this one: that's still to come, and
+    /// activation will say so.
+    private func woke() { if NSApp.isActive { returned() } }
+    #endif
+}
+
+#if os(macOS)
+private struct DeleteKey: ViewModifier {
+    let selection: Set<UUID>
+    let delete: () -> Void
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focused($focused)
+            .onDeleteCommand(perform: delete)
+            // On any change, not only the first: a field clicked into since has the keyboard.
+            .onChange(of: selection) { _, selection in if !selection.isEmpty { focused = true } }
+    }
+}
+#endif
 
 extension SearchFieldPlacement {
     /// A search field that stays in view under the title on iPhone, iPad and Vision Pro, and sits
