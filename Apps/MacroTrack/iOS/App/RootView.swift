@@ -138,7 +138,7 @@ struct QuickLogBar: View {
                 .frame(maxHeight: .infinity)
                 .contentShape(.rect)
             }
-            .accessibilityLabel("Search foods")
+            .accessibilityLabel(model.logTargetTitle)
             .accessibilityIdentifier("quickLog.search")
             icon("camera", "Log a photo", .camera)
             icon("barcode.viewfinder", "Scan a barcode", .scan)

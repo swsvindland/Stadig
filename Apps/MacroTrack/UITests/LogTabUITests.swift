@@ -288,7 +288,7 @@ nonisolated final class LogTabUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData", "-tab", "log", "-daysAgo", "1"])
         let bar = app.element("quickLog.search").waitToAppear()
         app.shot("log-bar")
-        XCTAssertTrue(bar.exists)
+        XCTAssertTrue(bar.label.hasPrefix("Log to "), bar.label)
     }
 
     /// Cancel leaves the day where it was.

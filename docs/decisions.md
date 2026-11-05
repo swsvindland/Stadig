@@ -165,6 +165,10 @@ The plan and your decisions are in `~/.claude/plans/so-we-have-been-binary-emers
 - **Today on iPad, the Mac and Vision Pro is one centered column**, 760 pt, rather than two panes: with the table gone there's nothing to sit beside it, and the sidebar keeps Log a click away. Say if you'd rather use the width.
 - **With a tab bar along the top, an iPad's toolbar folds its later items into a … menu.** That now includes Weigh In and Settings on Today. Weigh In is also on Today's card.
 - **Selection's bar names the targets, and Move or Copy is a toggle in it**, with Move first. With the tab bar minimised the targets fold into a menu, since the bar is 252 pt wide there.
+- **The log bar is icons only when the tab bar minimises**, as it always was, so its "Log to Mon" goes with the rest of the words. The title and the week strip still name the day, and VoiceOver and Voice Control hear the bar's name either way.
+- **⇧-click goes from the last food clicked**, through what's on screen between the two, so a sorted day extends by rows. If that food's no longer picked out, or isn't on the day being looked at, it goes from the nearest that is.
+- **Log again's chips take their order once a visit**: on changing tab and on going away, which on a Mac means another app in front. They hold still while they're tapped, however the row comes and goes, and on a day that rolls over to a new hour they stay as they were until then.
+- **The macro columns go at accessibility text sizes**, with the Sort menu, and the phone's rows take over. Below those sizes a long number shrinks to fit its column.
 - **To Now is a meal eaten now**: in order, a second apart, ending at now. Keeping an afternoon's gaps would run into the evening. In the first seconds after midnight they go closer together than that, as a batch does, so they stay on today.
 - **Moving to several dates at once** moves to the earliest and leaves copies on the rest. One Undo does the whole of it: the food goes back and the copies go. Its toast names a fast the copies ended, as a move's does.
 - **Leaving the Log tab clears the selection**, as it does the day.
