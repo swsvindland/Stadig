@@ -81,9 +81,7 @@ struct LogTab: View {
                     listWidth = $0.width
                     listHeight = $0.height
                 }
-                #if os(macOS)
-                .onDeleteCommand { model.deleteSelection() }
-                #endif
+                .onDeleteKey(selection: model.selection.ids) { model.deleteSelection() }
                 .onAppear {
                     guard !anchored else { return }
                     anchored = true
