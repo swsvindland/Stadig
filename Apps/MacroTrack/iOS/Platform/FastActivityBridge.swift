@@ -9,7 +9,19 @@ import ActivityKit
 /// about 8 hours, so one is started again whenever the app is opened while the fast runs.
 @MainActor
 enum FastActivityBridge {
-    private static var lastState: FastActivityAttributes.ContentState?
+    /// What an activity was last sent. The stale date counts for itself: a meal planned or removed
+    /// within one phase changes when the activity goes out of date, and nothing it shows.
+    struct Sent: Equatable {
+        var state: FastActivityAttributes.ContentState
+        var staleDate: Date?
+
+        init(_ status: FastStatus, nextMeal: Date?) {
+            state = FastActivityBridge.content(status)
+            staleDate = FastActivityBridge.staleDate(state, nextMeal: nextMeal)
+        }
+    }
+
+    private static var lastSent: Sent?
 
     static func update(_ model: AppModel) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
@@ -17,7 +29,7 @@ enum FastActivityBridge {
             end()
             return
         }
-        let state = content(status)
+        let sent = Sent(status, nextMeal: model.foodLog.nextMeal(since: status.fast.start))
         let id = status.fast.id
         let live = Activity<FastActivityAttributes>.activities.filter { $0.activityState == .active }
         // Another fast's activity, left from before this one started. Activities aren't Sendable, so
@@ -31,11 +43,11 @@ enum FastActivityBridge {
         }
         // The system can't be told to end it when a meal logged for later comes, with the app closed:
         // at that time it reads as out of date, and the next open ends it.
-        let content = ActivityContent(state: state, staleDate: Self.staleDate(state, nextMeal: model.foodLog.nextMeal(since: status.fast.start)))
+        let content = ActivityContent(state: sent.state, staleDate: sent.staleDate)
         if !live.contains(where: { $0.attributes.id == id }) {
             do {
                 let started = try Activity.request(attributes: FastActivityAttributes(id: id), content: content).id
-                lastState = state
+                lastSent = sent
                 // One the system ended (at 8 hours) can stay on the Lock Screen: it goes now the new one is up.
                 Task.detached {
                     for activity in Activity<FastActivityAttributes>.activities where activity.attributes.id == id && activity.id != started {
@@ -44,10 +56,10 @@ enum FastActivityBridge {
                 }
             } catch {
                 // Only the app in front can start one; the next time it's opened it will.
-                lastState = nil
+                lastSent = nil
             }
-        } else if state != lastState {
-            lastState = state
+        } else if sent != lastSent {
+            lastSent = sent
             Task.detached {
                 for activity in Activity<FastActivityAttributes>.activities where activity.attributes.id == id {
                     await activity.update(content)
@@ -61,7 +73,7 @@ enum FastActivityBridge {
     }
 
     static func end() {
-        lastState = nil
+        lastSent = nil
         guard !Activity<FastActivityAttributes>.activities.isEmpty else { return }
         Task.detached {
             for activity in Activity<FastActivityAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }

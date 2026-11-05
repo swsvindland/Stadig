@@ -153,6 +153,29 @@ struct FastingAppTests {
         #expect(FastReminders.wanted(model).values.map(\.at) == [first])
     }
 
+    #if os(iOS)
+    @Test func aMealPlannedWithinAPhaseReachesTheLiveActivity() throws {
+        let (model, _, _) = try model()
+        model.startFast(goalHours: 16)
+        let status = try #require(model.analysis?.fast)
+        let sent = FastActivityBridge.Sent(status, nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        // Before the next phase, so nothing the activity shows changes.
+        let lunch = try #require(status.nextPhaseAt).addingTimeInterval(-600)
+        model.log([
+            FoodEntry(date: lunch, name: "Lunch", amountLabel: "1", nutrients: Nutrients(kcal: 700, protein: 40, carbs: 70, fat: 20), source: .search)
+        ])
+
+        let planned = FastActivityBridge.Sent(try #require(model.analysis?.fast), nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        #expect(planned.state == sent.state)
+        #expect(same(planned.staleDate, lunch))
+        #expect(planned != sent, "it has to hear that it goes out of date at lunch")
+
+        model.delete(entries: model.foodLog.upcoming.map(\.id))
+        let removed = FastActivityBridge.Sent(try #require(model.analysis?.fast), nextMeal: model.foodLog.nextMeal(since: status.fast.start))
+        #expect(removed == sent, "and that it no longer does")
+    }
+    #endif
+
     @Test func aDrinkLoggedForLaterDoesntStopThem() throws {
         let (model, _, _) = try model()
         model.acknowledgeFastingScreen()
