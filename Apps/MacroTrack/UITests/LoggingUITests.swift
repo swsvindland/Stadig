@@ -51,7 +51,8 @@ nonisolated final class LoggingUITests: XCTestCase {
     @MainActor
     func testAnAmountIsTypedOnThePanelAndTheKeyboardComesBack() throws {
         continueAfterFailure = false
-        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search"])
+        // A long toast: the check below reads it, and it's two slow queries on an iPad.
+        let app = XCUIApplication.launched(["-seedSampleData", "-log", "search", "-toastSeconds", "30"])
         let search = app.foodSearchField()
         search.tap()
         search.typeText("banana")

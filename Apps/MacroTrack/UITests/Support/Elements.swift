@@ -92,13 +92,17 @@ extension XCUIApplication {
     /// Each drag holds at its end, so the list stops where it's let go (a tap on a list that's still
     /// gliding only stops it), and a row left above the middle is dragged back down: a list drops
     /// the rows it has scrolled well past. The drags run down the middle of the screen, or of the
-    /// column `beside` is in (an iPad's Today has its summary in a column beside the log).
+    /// column `beside` is in (an iPad's Today has its summary in a column beside the log). A row
+    /// behind the Log tab's pinned week and line counts as out of reach: XCUITest calls it hittable,
+    /// and the tap lands on them.
     @MainActor
     @discardableResult
     func scrollTo(_ element: XCUIElement, drags: Int = 15, beside: XCUIElement? = nil) -> XCUIElement {
         var left = drags
         let x = beside.map { $0.waitToAppear().frame.midX / frame.width } ?? 0.5
-        while !(element.exists && element.isHittable), left > 0 {
+        let pinned = self.element("log.header")
+        func reachable() -> Bool { element.exists && element.isHittable && !(pinned.exists && element.frame.midY < pinned.frame.maxY) }
+        while !reachable(), left > 0 {
             let back = element.exists && element.frame.maxY < frame.midY
             let start = coordinate(withNormalizedOffset: CGVector(dx: x, dy: back ? 0.35 : 0.7))
             let end = coordinate(withNormalizedOffset: CGVector(dx: x, dy: back ? 0.7 : 0.35))

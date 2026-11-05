@@ -30,6 +30,8 @@ struct LogTab: View {
     /// the list where it was.
     @State private var anchored = false
     @State private var listWidth: CGFloat = .infinity
+    @State private var listHeight: CGFloat = 0
+    @State private var headerHeight: CGFloat = 0
     @State private var order = DayOrder.time
 
     /// The Mac reports no size class: it always has room.
@@ -56,7 +58,13 @@ struct LogTab: View {
                             }
                         }
                     } header: {
-                        LogHeader(wide: showsColumns).textCase(nil)
+                        LogHeader(wide: showsColumns)
+                            .textCase(nil)
+                            .onGeometryChange(for: CGFloat.self) {
+                                $0.size.height
+                            } action: {
+                                headerHeight = $0
+                            }
                     }
                     // Today has today's foot, and a day ahead hasn't happened yet.
                     if day < model.today {
@@ -67,10 +75,11 @@ struct LogTab: View {
                 .listStyle(.plain)
                 .environment(\.defaultMinListRowHeight, 26)
                 .accessibilityIdentifier("log.list")
-                .onGeometryChange(for: CGFloat.self) {
-                    $0.size.width
+                .onGeometryChange(for: CGSize.self) {
+                    $0.size
                 } action: {
-                    listWidth = $0
+                    listWidth = $0.width
+                    listHeight = $0.height
                 }
                 #if os(macOS)
                 .onDeleteCommand { model.deleteSelection() }
@@ -79,6 +88,13 @@ struct LogTab: View {
                     guard !anchored else { return }
                     anchored = true
                     anchor(proxy, groups)
+                    // Before its first layout the list only estimates its rows, and a scroll past
+                    // what it's estimated stops short: at 10 PM, an evening's hours were still off
+                    // the bottom of the screen. So again, on what it's laid out.
+                    Task {
+                        await Task.yield()
+                        anchor(proxy, DayHours.groups(on: day, entries: model.allEntries(on: day)))
+                    }
                 }
                 // After a turn of the main thread: the new day's rows aren't in the list yet, and a
                 // scroll to a row that isn't there is dropped. A change, not a task: a task would
@@ -161,11 +177,12 @@ struct LogTab: View {
         }
     }
 
-    /// To the hour the day opens on. On the Mac the pinned line sits over the list's top row, so an
-    /// hour earlier leaves that hour in view.
+    /// To the hour the day opens on, just under what's pinned. iOS leaves room for a pinned header
+    /// by itself; on the Mac the header sits over the list's top row, so the room is asked for.
     func anchor(_ proxy: ScrollViewProxy, _ groups: [HourGroup]) {
-        guard let opening = DayHours.opening(groups, now: Date()), let index = groups.firstIndex(of: opening) else { return }
-        proxy.scrollTo(groups[Platform.isMac ? max(0, index - 1) : index].id, anchor: .top)
+        guard let opening = DayHours.opening(groups, now: Date()) else { return }
+        let under = Platform.isMac && listHeight > headerHeight ? (headerHeight + 8) / listHeight : 0
+        proxy.scrollTo(opening.id, anchor: UnitPoint(x: 0.5, y: under))
     }
 
     @ToolbarContentBuilder
@@ -248,6 +265,8 @@ struct LogHeader: View {
             if wide { LogColumns.header }
         }
         .padding(.vertical, 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("log.header")
     }
 }
 

@@ -16,6 +16,8 @@ What the package tests cover, suite by suite, is in [package-tests.md](package-t
 
 Stadig Macro's app tests run one at a time (`parallelizable` in its test plan, from the generator). Nearly all of them are on the main actor, so Swift Testing starting them together only queues them for it with each one's clock already running: a test's `eventually`, or the plan's 120-second allowance, could run out behind the rest of the suite. A run took 133 s with 45 timeouts that way, and takes 19 s now.
 
+A row can rest behind the Log tab's pinned week and line, where XCUITest still calls it hittable and a tap at its middle lands on them. `scrollTo` knows that, so use it to reach a row, rather than `tap()` on what happens to exist.
+
 ## Running tests
 
 ```sh
