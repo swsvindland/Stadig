@@ -145,7 +145,9 @@ struct LogTabTests {
         let model = model()
         let day = yesterdayIn(model)
         func food(_ name: String, kcal: Double) -> FoodEntry {
-            FoodEntry(date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), source: .search)
+            FoodEntry(
+                date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1),
+                source: .search)
         }
         model.log([food("Oats", kcal: 300), food("Yogurt", kcal: 120)])
         let before = model.logAgainChips.map(\.template.name)
@@ -166,7 +168,9 @@ struct LogTabTests {
         let model = model()
         let day = yesterdayIn(model)
         func food(_ name: String, kcal: Double) -> FoodEntry {
-            FoodEntry(date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1), source: .search)
+            FoodEntry(
+                date: day.at(hour: 8, minute: 0), name: name, amountLabel: "1", nutrients: Nutrients(kcal: kcal, protein: 1, carbs: 1, fat: 1),
+                source: .search)
         }
         model.log([food("Oats", kcal: 300), food("Yogurt", kcal: 120)])
         let last = try #require(model.logAgainChips.last)

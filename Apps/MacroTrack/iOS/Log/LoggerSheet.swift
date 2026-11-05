@@ -747,7 +747,9 @@ struct PortionAmount: Equatable {
     mutating func use(_ corrected: Food) {
         guard let old = unit else { return }
         let units = FoodUnits.units(for: corrected)
-        guard let next = units.first(where: { $0.id == old.id }) ?? units.first(where: { $0.id == corrected.basis.rawValue }), next != old else { return }
+        guard let next = units.first(where: { $0.id == old.id }) ?? units.first(where: { $0.id == corrected.basis.rawValue }), next != old else {
+            return
+        }
         let converted = FoodUnits.convert(count, from: old, to: next)
         self = PortionAmount(count: converted.isFinite ? converted : count, unit: next)
     }

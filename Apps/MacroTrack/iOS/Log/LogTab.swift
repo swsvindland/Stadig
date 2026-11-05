@@ -397,22 +397,23 @@ enum LogColumns {
         HStack(spacing: 0) {
             Text("Food")
             Spacer()
-            cells(["kcal", "P", "C", "F"], spoken: ["Calories", "Protein", "Carbs", "Fat"])
+            cells(["kcal", "P", "C", "F"])
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
     }
 
-    /// `spoken` is what VoiceOver reads for each: a row's numbers mean nothing without their names.
-    static func cells(_ values: [String], spoken: [String]) -> some View {
+    /// `spoken` is what VoiceOver reads for each, where it isn't what's shown: a row's numbers mean
+    /// nothing without their names.
+    static func cells(_ values: [String], spoken: [String]? = nil) -> some View {
         HStack(spacing: 0) {
-            ForEach(Array(zip(values, spoken).enumerated()), id: \.offset) { _, cell in
-                Text(cell.0)
+            ForEach(values.indices, id: \.self) { index in
+                Text(values[index])
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(width: width, alignment: .trailing)
                     .monospacedDigit()
-                    .accessibilityLabel(cell.1)
+                    .accessibilityLabel(spoken?[index] ?? values[index])
             }
         }
     }

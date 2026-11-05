@@ -109,8 +109,9 @@ struct MealSheet: View {
                 }
             }
         }
-        // A food's amount covers this too, and its few seconds shouldn't run out behind it.
-        .toastOverlay(showing: editing == nil)
+        // A food's amount covers this too, and its few seconds shouldn't run out behind it. Over the
+        // list, clear of the bar at the foot: a toast that's just come here would sit on Save as Meal.
+        .toastOverlay(bottomPadding: 92, showing: editing == nil)
         .presentationDetents([.medium, .large])
         .macSheetSize(width: 440, height: 560)
     }

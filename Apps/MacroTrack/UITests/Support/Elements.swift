@@ -101,7 +101,8 @@ extension XCUIApplication {
         var left = drags
         let x = beside.map { $0.waitToAppear().frame.midX / frame.width } ?? 0.5
         let pinned = self.element("log.header")
-        func reachable() -> Bool { element.exists && element.isHittable && !(pinned.exists && element.frame.midY < pinned.frame.maxY) }
+        // A little past it: the section's padding is outside the frame it reports, and takes a tap too.
+        func reachable() -> Bool { element.exists && element.isHittable && !(pinned.exists && element.frame.midY < pinned.frame.maxY + 20) }
         while !reachable(), left > 0 {
             let back = element.exists && element.frame.maxY < frame.midY
             let start = coordinate(withNormalizedOffset: CGVector(dx: x, dy: back ? 0.35 : 0.7))
