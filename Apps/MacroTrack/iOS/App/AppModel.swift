@@ -1228,7 +1228,9 @@ final class AppModel {
             usual: LogAgain.usual(at: time, entries: suggestionEntries, logged: allEntries(on: Day(time)), today: today))
     }
 
-    func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) {
+    /// Returns whether it was saved.
+    @discardableResult
+    func quickAdd(name: String, nutrients: Nutrients, date: Date? = nil) -> Bool {
         log([
             FoodEntry(
                 date: date ?? logDate(), name: name.isEmpty ? "Quick add" : name, amountLabel: "1 serving", nutrients: nutrients,

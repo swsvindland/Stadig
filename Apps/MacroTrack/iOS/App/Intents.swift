@@ -99,6 +99,18 @@ struct LogWeightIntent: AppIntent {
     }
 }
 
+extension AppModel {
+    /// A quick add from Siri or Shortcuts, and what to say about it. If it didn't save it says so.
+    func quickAddInWords(kcal: Int, protein: Int) async -> String {
+        selectedDay = today
+        // Now, whatever time an open logger has picked.
+        let nutrients = Nutrients(kcal: Double(kcal), protein: Double(protein), carbs: 0, fat: 0)
+        guard quickAdd(name: "Quick add", nutrients: nutrients, date: Date()) else { return "Couldn't save that. Open Stadig Macro and try again." }
+        await analysisFinished(within: .seconds(3))
+        return "Added \(Format.kcal(Double(kcal))). \(remainingSentence)"
+    }
+}
+
 struct QuickAddIntent: AppIntent {
     static let title: LocalizedStringResource = "Quick Add Calories"
     static let description = IntentDescription("Adds calories and protein without picking a food.")
@@ -116,11 +128,7 @@ struct QuickAddIntent: AppIntent {
         let model = AppModel.shared
         model.refreshDay()
         guard model.onboarded else { return .result(dialog: "Open Stadig Macro to set it up first.") }
-        model.selectedDay = model.today
-        // Now, whatever time an open logger has picked.
-        model.quickAdd(name: "Quick add", nutrients: Nutrients(kcal: Double(kcal), protein: Double(protein), carbs: 0, fat: 0), date: Date())
-        await model.analysisFinished(within: .seconds(3))
-        return .result(dialog: IntentDialog(stringLiteral: "Added \(Format.kcal(Double(kcal))). \(model.remainingSentence)"))
+        return .result(dialog: IntentDialog(stringLiteral: await model.quickAddInWords(kcal: kcal, protein: protein)))
     }
 }
 

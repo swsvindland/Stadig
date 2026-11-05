@@ -61,6 +61,13 @@ struct FailedSaveTests {
         #expect(model.foodLog.all.isEmpty)
     }
 
+    @Test func siriDoesntSayItAddedCaloriesThatDidntSave() async {
+        let (model, _) = failing()
+        let reply = await model.quickAddInWords(kcal: 500, protein: 0)
+        #expect(reply.hasPrefix("Couldn't save"), "\(reply)")
+        #expect(model.foodLog.all.isEmpty)
+    }
+
     @Test func aMoveWhoseCopiesDidntSaveMovesNothing() throws {
         let (model, store) = failing()
         store.nextSaveFailure = nil
