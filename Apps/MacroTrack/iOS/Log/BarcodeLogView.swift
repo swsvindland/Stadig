@@ -217,8 +217,7 @@ struct LabelReviewView: View {
     var body: some View {
         Form {
             Section("Food") {
-                TextField("Name", text: $name)
-                TextField("Brand", text: $brand)
+                FoodNameFields(name: $name, brand: $brand, identifier: "labelFood")
             }
             Section {
                 field("Calories", $kcal, "kcal")
@@ -286,7 +285,7 @@ struct LabelReviewView: View {
         HStack {
             Text(title)
             Spacer()
-            TextField("0", text: text).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
+            TextField("0", text: text, prompt: Text("0")).labelsHidden().fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
             Text(unit).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
         }
     }

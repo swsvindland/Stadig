@@ -180,11 +180,7 @@ struct MealFoodRow: View {
         let label = FoodLabel.parts(of: entry.name)
         HStack(spacing: 10) {
             if later { LaterMark() }
-            Text(FoodMarker.of(entry.name))
-                .font(.title3)
-                .frame(width: 36, height: 36)
-                .background(.insetBackground, in: .rect(cornerRadius: 11))
-                .accessibilityHidden(true)
+            FoodTile(name: entry.name)
             VStack(alignment: .leading, spacing: 1) {
                 Text(label.title).lineLimit(1)
                 Text([entry.amountLabel, entry.brand, label.detail].compactMap { $0 }.joined(separator: " · "))

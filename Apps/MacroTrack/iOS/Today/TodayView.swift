@@ -547,8 +547,9 @@ struct EntryRow: View {
 
     var body: some View {
         let later = isLogged && model.foodLog.isUpcoming(entry)
-        HStack(alignment: .firstTextBaseline) {
+        HStack(spacing: 10) {
             if later { LaterMark() }
+            FoodTile(name: entry.name)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name).font(.body).lineLimit(1)
                 Text([entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · "))

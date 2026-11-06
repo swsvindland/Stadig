@@ -646,19 +646,22 @@ struct FoodRow: View {
         let n = FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
         HStack(spacing: 12) {
             Button(action: open) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(food.name).lineLimit(2)
-                        if personal?.favorite == true { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow) }
+                HStack(spacing: 10) {
+                    FoodTile(name: food.name)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(food.name).lineLimit(2)
+                            if personal?.favorite == true { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow) }
+                        }
+                        Text(
+                            [
+                                food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 },
+                                FoodUnits.label(count: suggestion.count, unit: suggestion.unit),
+                                "\(Format.whole(n.kcal)) kcal", "\(Format.grams(n.protein)) P",
+                            ].compactMap { $0 }.joined(separator: " · ")
+                        )
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    Text(
-                        [
-                            food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 },
-                            FoodUnits.label(count: suggestion.count, unit: suggestion.unit),
-                            "\(Format.whole(n.kcal)) kcal", "\(Format.grams(n.protein)) P",
-                        ].compactMap { $0 }.joined(separator: " · ")
-                    )
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
@@ -686,13 +689,16 @@ struct RecentRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: open) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.template.name).lineLimit(1)
-                    Text(
-                        [item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
-                            .compactMap { $0 }.joined(separator: " · ")
-                    )
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                HStack(spacing: 10) {
+                    FoodTile(name: item.template.name)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.template.name).lineLimit(1)
+                        Text(
+                            [item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
+                                .compactMap { $0 }.joined(separator: " · ")
+                        )
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
@@ -720,7 +726,8 @@ struct UsualMomentRow: View {
         Button {
             model.logAgain(moment)
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
+                MealTile()
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name).lineLimit(1)
                     Text("\(Format.time(moment.start)) · \(moment.entries.count) foods · \(Format.kcal(moment.nutrients.kcal))")
@@ -859,15 +866,18 @@ struct FoodHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(food.name).font(nameFont)
-            if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
-                Text(brand).font(.subheadline).foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 12) {
+            FoodTile(name: food.name, size: TileSize.header)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(food.name).font(nameFont)
+                if let brand = food.brand, brand.lowercased() != food.name.lowercased() {
+                    Text(brand).font(.subheadline).foregroundStyle(.secondary)
+                }
+                Text(corrected ? "Your numbers, corrected from \(Self.sourceLabel(food))" : Self.sourceLabel(food))
+                    .font(.caption).foregroundStyle(.tertiary)
+                    .accessibilityIdentifier("food.source")
+                FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
             }
-            Text(corrected ? "Your numbers, corrected from \(Self.sourceLabel(food))" : Self.sourceLabel(food))
-                .font(.caption).foregroundStyle(.tertiary)
-                .accessibilityIdentifier("food.source")
-            FoodQualityTags(processing: food.processing, fermented: food.fermented ?? Fermented.isFermented(food.name))
         }
     }
 }
@@ -881,7 +891,7 @@ struct FavoriteButton: View {
         Button {
             model.toggleFavorite(foodID)
         } label: {
-            Image(systemName: model.isFavorite(foodID) ? "star.fill" : "star")
+            HeaderIcon(symbol: model.isFavorite(foodID) ? "star.fill" : "star")
         }
         .accessibilityLabel(model.isFavorite(foodID) ? "Remove from favorites" : "Add to favorites")
         .accessibilityIdentifier("portion.favorite")

@@ -46,8 +46,7 @@ struct FoodEditor: View {
         NavigationStack {
             Form {
                 Section("Food") {
-                    TextField("Name", text: $name).accessibilityIdentifier("foodEditor.name")
-                    TextField("Brand", text: $brand).accessibilityIdentifier("foodEditor.brand")
+                    FoodNameFields(name: $name, brand: $brand, identifier: "foodEditor")
                 }
                 Section {
                     field("Calories", $kcal, "kcal", "foodEditor.kcal")
@@ -109,7 +108,8 @@ struct FoodEditor: View {
         HStack {
             Text(title)
             Spacer()
-            TextField("0", text: text)
+            TextField("0", text: text, prompt: Text("0"))
+                .labelsHidden()
                 .fieldKeyboard(.decimal)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 90)
@@ -165,7 +165,7 @@ struct EditFoodButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "pencil")
+            HeaderIcon(symbol: "pencil")
         }
         .accessibilityLabel("Edit this food's numbers")
         .accessibilityIdentifier("portion.editFood")

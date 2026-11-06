@@ -213,12 +213,12 @@ struct SavedMealRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: open) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "fork.knife").font(.caption).foregroundStyle(Color.accentColor)
+                HStack(spacing: 10) {
+                    MealTile()
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(meal.name).lineLimit(1)
+                        Text(Self.detail(meal)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    Text(Self.detail(meal)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)

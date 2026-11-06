@@ -412,6 +412,7 @@ struct FoodNameCell: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            FoodTile(name: listing.food.name, size: TileSize.table).padding(.trailing, 2)
             VStack(alignment: .leading, spacing: 1) {
                 Text(listing.food.name).lineLimit(1)
                 if let brand = listing.food.brand, brand.lowercased() != listing.food.name.lowercased() {

@@ -91,25 +91,28 @@ struct AmountPanel: View {
             Group {
                 if let food {
                     FoodHeader(food: food, corrected: model.isCorrected(food.id), nameFont: .headline).lineLimit(2)
-                } else {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry?.name ?? "").font(.headline).lineLimit(2)
-                        if let brand = entry?.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
+                } else if let entry {
+                    HStack(alignment: .top, spacing: 12) {
+                        FoodTile(name: entry.name, size: TileSize.header)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.name).font(.headline).lineLimit(2)
+                            if let brand = entry.brand { Text(brand).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if let food {
-                if !isMealFood, amount.unit != nil { EditFoodButton { editingFood = true }.buttonStyle(.borderless) }
-                if !isEditing, !isPicking { FavoriteButton(foodID: food.id).buttonStyle(.borderless) }
+            HStack(spacing: 4) {
+                if let food {
+                    if !isMealFood, amount.unit != nil { EditFoodButton { editingFood = true }.buttonStyle(.borderless) }
+                    if !isEditing, !isPicking { FavoriteButton(foodID: food.id).buttonStyle(.borderless) }
+                }
+                Button(action: close) { HeaderIcon(symbol: "xmark") }
+                    .buttonStyle(.borderless)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityLabel(isEditing ? "Cancel" : "Close")
+                    .accessibilityIdentifier(isEditing ? "entryEditor.cancel" : "portion.close")
             }
-            Button(action: close) {
-                Image(systemName: "xmark").font(.body.weight(.semibold)).frame(width: 30, height: 30).contentShape(.circle)
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut(.cancelAction)
-            .accessibilityLabel(isEditing ? "Cancel" : "Close")
-            .accessibilityIdentifier(isEditing ? "entryEditor.cancel" : "portion.close")
         }
     }
 
@@ -353,7 +356,7 @@ extension View {
     /// A small sheet for the amount panel: all of it in view on a phone, with room to grow, and
     /// room for the time when it's changing an entry.
     func amountSheet(editing: Bool) -> some View {
-        presentationDetents([.height(editing ? 796 : 700), .large])
+        presentationDetents([.height(editing ? 804 : 700), .large])
             .presentationDragIndicator(.visible)
             .macSheetSize(width: 440, height: 520)
     }
