@@ -15,9 +15,11 @@ enum TileSize {
 struct FoodTile: View {
     let name: String
     var size = TileSize.row
+    /// For a row sitting straight on the page, which the inset colour would vanish into.
+    var fill = Color.insetBackground
 
     var body: some View {
-        Text(FoodMarker.of(name)).font(.system(size: size * 0.56)).tile(size)
+        Text(FoodMarker.of(name)).font(.system(size: size * 0.56)).tile(size, fill: fill)
     }
 }
 
@@ -26,14 +28,15 @@ struct MealTile: View {
     var size = TileSize.row
 
     var body: some View {
-        Image(systemName: "fork.knife").font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(Color.accentColor).tile(size)
+        Image(systemName: "fork.knife").font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(Color.accentColor).tile(
+            size, fill: .insetBackground)
     }
 }
 
 extension View {
-    fileprivate func tile(_ size: CGFloat) -> some View {
+    fileprivate func tile(_ size: CGFloat, fill: Color) -> some View {
         frame(width: size, height: size)
-            .background(.insetBackground, in: .rect(cornerRadius: size * 0.3))
+            .background(fill, in: .rect(cornerRadius: size * 0.3))
             .accessibilityHidden(true)
     }
 }

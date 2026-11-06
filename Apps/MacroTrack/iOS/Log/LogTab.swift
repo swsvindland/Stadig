@@ -648,6 +648,7 @@ struct LogEntryRow: View {
         let n = entry.nutrients
         return HStack(spacing: 8) {
             if later { LaterMark() }
+            FoodTile(name: entry.name, size: TileSize.table, fill: .cardBackground)
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.name).lineLimit(1)
                 Text([showsTime ? Format.time(entry.date) : nil, entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · ")).font(
