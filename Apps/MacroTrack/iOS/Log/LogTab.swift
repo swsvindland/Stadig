@@ -32,8 +32,6 @@ struct LogTab: View {
     /// the list where it was.
     @State private var anchored = false
     @State private var listWidth: CGFloat = .infinity
-    @State private var listHeight: CGFloat = 0
-    @State private var headerHeight: CGFloat = 0
     @State private var order = DayOrder.time
 
     /// The Mac reports no size class: it always has room.
@@ -49,11 +47,10 @@ struct LogTab: View {
                 }
                 .environment(\.defaultMinListRowHeight, 26)
                 .accessibilityIdentifier("log.list")
-                .onGeometryChange(for: CGSize.self) {
-                    $0.size
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
                 } action: {
-                    listWidth = $0.width
-                    listHeight = $0.height
+                    listWidth = $0
                 }
                 .onDeleteKey(selection: model.selection.ids) { model.deleteSelection() }
                 .onAppear {
@@ -127,9 +124,9 @@ struct LogTab: View {
         }
     }
 
-    /// The day hour by hour, with each food's macros in columns, or sorted by one of them. A
-    /// section's header: it pins, and it's laid out with the rows, so its columns are theirs on
-    /// every platform.
+    /// The day hour by hour, with each food's macros in columns, or sorted by one of them. The header
+    /// sits over the list here too: a section's header has nothing behind it on iPad, so the hours
+    /// scroll through it. Its columns line up with the rows' by the gutter they share.
     var hoursList: some View {
         let groups = DayHours.groups(on: day, entries: model.allEntries(on: day))
         let listed = order.listed(model.allEntries(on: day))
@@ -138,23 +135,25 @@ struct LogTab: View {
             Section {
                 if let listed {
                     ForEach(listed) { LogEntryRow(entry: $0, wide: true, showsTime: true, order: order, editing: editingFood) }
+                        .logColumnRow()
                 } else {
                     ForEach(groups) { group in
                         HourRows(group: group, gaps: group.gaps(gaps), wide: true, editing: editingFood)
                     }
                 }
-            } header: {
-                LogHeader(wide: true)
-                    .textCase(nil)
-                    .onGeometryChange(for: CGFloat.self) {
-                        $0.size.height
-                    } action: {
-                        headerHeight = $0
-                    }
             }
             foot
         }
         .listStyle(.plain)
+        // The page's colour behind the rows too, or the header's a band of another shade.
+        .scrollContentBackground(.hidden)
+        .background(.pageBackground)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            LogHeader(wide: true)
+                .padding(.horizontal, LogColumns.gutter)
+                .background(.pageBackground)
+                .overlay(alignment: .bottom) { Divider() }
+        }
     }
 
     /// Today has today's foot, and a day ahead hasn't happened yet.
@@ -209,16 +208,14 @@ struct LogTab: View {
         }
     }
 
-    /// To the hour the day opens on, just under what's pinned. iOS leaves room for a pinned header
-    /// by itself; on the Mac the header sits over the list's top row, so the room is asked for.
+    /// To the hour the day opens on, just under what's pinned.
     func anchor(_ proxy: ScrollViewProxy, _ day: Day) {
         guard showsColumns else {
             if let opening = DayCards.opening(model.dayItems(on: day)) { proxy.scrollTo(opening.id, anchor: .top) }
             return
         }
         guard let opening = DayHours.opening(DayHours.groups(on: day, entries: model.allEntries(on: day)), now: Date()) else { return }
-        let under = Platform.isMac && listHeight > headerHeight ? (headerHeight + 8) / listHeight : 0
-        proxy.scrollTo(opening.id, anchor: UnitPoint(x: 0.5, y: under))
+        proxy.scrollTo(opening.id, anchor: .top)
     }
 
     @ToolbarContentBuilder
@@ -423,6 +420,14 @@ struct DaySummaryLine: View {
 /// the column headers are labels, since the grid is in time order.
 enum LogColumns {
     static let width: CGFloat = 56
+    /// From the list's edges to the first and last columns, in the header and every row.
+    static let gutter: CGFloat = 16
+
+    /// A row's insets, for that gutter.
+    static func rowInsets(vertical: CGFloat = 6) -> EdgeInsets {
+        let side = gutter - Platform.listRowMargin
+        return EdgeInsets(top: vertical, leading: side, bottom: vertical, trailing: side)
+    }
 
     /// Whether the columns can show. They need the room, so beside a pane in the Mac's smallest
     /// window the phone's rows take over, and at accessibility sizes no scale factor saves them.
@@ -454,6 +459,13 @@ enum LogColumns {
     }
 }
 
+extension View {
+    /// A row of the hours, on the page like the header over it, to the gutter they share.
+    func logColumnRow(vertical: CGFloat = 6) -> some View {
+        listRowInsets(LogColumns.rowInsets(vertical: vertical)).listRowBackground(Color.clear)
+    }
+}
+
 /// One hour of the day: its label and +, what's usual or planned then, its foods, and the foods to
 /// log again if it's the hour it is.
 struct HourRows: View {
@@ -468,14 +480,17 @@ struct HourRows: View {
         HourHeader(group: group, gaps: gaps)
             .id(group.id)
             // Thin: a whole day of hours fits in a couple of scrolls.
-            .listRowInsets(EdgeInsets(top: 1, leading: 16, bottom: 1, trailing: 8))
+            .logColumnRow(vertical: 1)
             .listRowSeparator(group.entries.isEmpty ? .hidden : .automatic)
-        ForEach(usual) { CatchUpRow(usual: $0) }
-        ForEach(planned, id: \.meal.id) { PlannedMealRow(meal: $0.meal, recipe: $0.recipe, plan: $0.plan) }
-        ForEach(group.entries) { entry in
-            LogEntryRow(entry: entry, wide: wide, editing: $editing)
+        Group {
+            ForEach(usual) { CatchUpRow(usual: $0) }
+            ForEach(planned, id: \.meal.id) { PlannedMealRow(meal: $0.meal, recipe: $0.recipe, plan: $0.plan) }
+            ForEach(group.entries) { entry in
+                LogEntryRow(entry: entry, wide: wide, editing: $editing)
+            }
+            if isNow, !model.logAgainChips.isEmpty { LogAgainChips() }
         }
-        if isNow, !model.logAgainChips.isEmpty { LogAgainChips() }
+        .logColumnRow()
     }
 
     var isNow: Bool { model.selectedDay == model.today && group.start <= Date() && Date() < group.end }
@@ -505,7 +520,9 @@ struct HourHeader: View {
             Spacer(minLength: 0)
             if kcal > 0 { Text(Format.kcal(kcal)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
             Button(action: add) {
-                Image(systemName: model.placeSymbol).font(.caption.weight(.bold)).frame(width: 36, height: 26).contentShape(.rect)
+                // To the frame's end: over the last column, however big the target around it.
+                Image(systemName: model.placeSymbol).font(.caption.weight(.bold)).frame(width: 36, height: 26, alignment: .trailing)
+                    .contentShape(.rect)
             }
             .buttonStyle(.borderless)
             .accessibilityLabel(model.placeLabel(at: group.start))

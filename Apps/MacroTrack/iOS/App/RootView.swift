@@ -102,6 +102,10 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         #if os(iOS)
+        #if DEBUG
+        // -sidebar opens an iPad on its sidebar, where the screens have the least room.
+        .defaultAdaptableTabBarPlacement(ProcessInfo.processInfo.arguments.contains("-sidebar") ? .sidebar : .automatic)
+        #endif
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(isEnabled: !wide) {
             if model.selection.isEmpty { QuickLogBar() } else { SelectionBar() }

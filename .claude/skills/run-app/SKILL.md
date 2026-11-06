@@ -48,6 +48,6 @@ swift Scripts/window-shot.swift "Stadig Lift" /tmp/mac.png    # just the app's w
 osascript -e 'quit app id "dev.svindland.stadig.lift"'   # by bundle id: the app's name doesn't reach a debug build
 ```
 
-The same launch arguments work. The Mac app is on the person's screen while it runs: launch it in the background (`-g`), capture only its window, and quit it when done.
+The same launch arguments work, with `-NSTreatUnknownArgumentsAsOpen NO` beside any that takes a value (`-tab log`): AppKit reads the bare word as a file to open, and no window comes up. The Mac app is on the person's screen while it runs: launch it in the background (`-g`), capture only its window, and quit it when done. The person may have the App Store or TestFlight copy open, which has the same bundle id and window name, so check first: `window-shot.swift` can capture theirs, and quitting by bundle id can quit it.
 
 When you report what you saw, say which simulator (or the Mac), which launch arguments, and attach the screenshot.

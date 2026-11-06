@@ -44,6 +44,9 @@ struct MacroTrackApp: App {
         }
         if let days = launch.number(after: "-daysAgo") { model.show(day: model.today.adding(days: -days)) }
         if let mode = launch.value(after: "-log") { model.logger = LogMode(rawValue: mode) }
+        if let hour = launch.number(after: "-logHour") {
+            model.loggerTime = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
+        }
         if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.
