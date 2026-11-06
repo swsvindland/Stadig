@@ -21,7 +21,7 @@ actor SessionPool {
 
 /// One of Apple's models answering the meal requests with guided generation.
 @available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
-struct FoundationMealModel: MealModel {
+struct FoundationMealModel: MealModel, CompletionModel {
     let engine: MealEngine
     let model: any LanguageModel
     let pool: SessionPool
@@ -70,6 +70,24 @@ struct FoundationMealModel: MealModel {
             trace("pick", session, warm: warm, since: start)
             return reply.content.entries.enumerated().map { Pick(food: $0.offset + 1, entry: $0.element) }
         }
+    }
+
+    func choose(instructions: String, prompt: String, options: Int) async throws -> [Int] {
+        try await attempt {
+            let (session, warm) = await session(instructions)
+            let start = ContinuousClock.now
+            let reply = try await session.respond(
+                to: prompt, generating: CompletionOutput.self, options: self.options(16 + options * 4),
+                contextOptions: context())
+            trace("completions", session, warm: warm, since: start)
+            // The next pause in the typing starts as warm as this one.
+            await pool.prewarm(instructions, model: model)
+            return reply.content.order
+        }
+    }
+
+    func prewarmChoosing() async {
+        await pool.prewarm(CompletionChoice.instructions, model: model)
     }
 
     /// A prewarmed session for these instructions when one is ready, else a new one.

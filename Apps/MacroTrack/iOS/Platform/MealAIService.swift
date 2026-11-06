@@ -15,6 +15,7 @@ final class MealAIService {
 
     @ObservationIgnored private var engine: AnyObject?
     @ObservationIgnored private var engineAllowsCloud: Bool?
+    @ObservationIgnored private var completer: AnyObject?
 
     var canDescribe: Bool { availability.descriptions }
     var canSeePhotos: Bool { availability.photos }
@@ -30,6 +31,7 @@ final class MealAIService {
             return
         }
         availability = MealAI.availability(allowCloud: allowCloud)
+        completer = availability.onDevice ? (completer ?? SearchCompletionAI()) : nil
         if engineAllowsCloud != allowCloud || engine == nil {
             engine = MealAI(catalog: catalog, allowCloud: allowCloud)
             engineAllowsCloud = allowCloud
@@ -39,7 +41,21 @@ final class MealAIService {
     /// Loads the model ahead of a likely request (the logger opening), so the answer comes faster.
     func prewarm() {
         guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else { return }
-        Task { await ai.prewarm() }
+        let completer = completer as? SearchCompletionAI
+        Task {
+            await completer?.prewarm()
+            await ai.prewarm()
+        }
+    }
+
+    /// Whether the device's own model can order a search's suggestions.
+    var canRankCompletions: Bool { completer != nil }
+
+    /// A search's suggestions in the order this person likely wants, or nil without the device's
+    /// model. Private Cloud Compute is never asked: this runs as someone types.
+    func rankCompletions(_ options: [String], typed: String, past: [String]) async -> [String]? {
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = completer as? SearchCompletionAI else { return nil }
+        return await ai.rank(typed: typed, options: options, past: past, at: Date())
     }
 
     func recognize(photo: CGImage, note: String?, personal: [PersonalFood]) async throws -> MealGuess {

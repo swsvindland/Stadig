@@ -18,6 +18,8 @@ final class LoggerSession {
     /// Which query `results` were found for, and a Return waiting for its rows.
     @ObservationIgnored private var searchReturn = FoodSearchReturn()
     private(set) var searching = false
+    /// Where what's typed might be heading, in the order to offer them.
+    private(set) var completions: [String] = []
     var portion: AmountRequest?
     var openMeal: SavedMeal.ID?
     /// What the model saw, being checked. It lasts until it's logged, however many other foods go
@@ -52,6 +54,7 @@ final class LoggerSession {
         searchReturn.typed(asked)
         guard !text.isEmpty else {
             results = []
+            completions = []
             _ = searchReturn.arrived(asked, rows: [], selection: nil)
             return
         }
@@ -65,7 +68,20 @@ final class LoggerSession {
         guard !Task.isCancelled else { return }
         results = model.corrected(found)
         searching = false
-        if searchReturn.arrived(asked, rows: results.map(\.food.id), selection: nil).log, let food = results.first?.food { add(food, model) }
+        let options = AppModel.completions(for: text, in: results)
+        completions = options
+        if searchReturn.arrived(asked, rows: results.map(\.food.id), selection: nil).log, let food = results.first?.food {
+            add(food, model)
+            return
+        }
+        // Cancelled by the next key, so the model is only asked once the typing stops.
+        if let ranked = await model.rankedCompletions(options, for: text), !Task.isCancelled { completions = ranked }
+    }
+
+    /// A suggestion taken: it's what's typed now, and the search goes on from there.
+    func complete(with text: String) {
+        query = text
+        focusSearch()
     }
 
     /// Return in the search: the best match of what's typed. Until those rows are in, the ones on

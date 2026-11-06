@@ -796,3 +796,39 @@ struct LoggerSessionTests {
         #expect(item.unit?.id == "g")
     }
 }
+
+/// Search suggestions through a real logger search.
+@MainActor
+struct SearchCompletionAppTests {
+    @Test func typingOffersWhereItMightBeHeading() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "chick"
+        await session.search(model)
+        #expect(session.completions.contains("chicken breast"))
+    }
+
+    @Test func takingOneMakesItWhatsTyped() {
+        let session = LoggerSession(mode: .search)
+        session.query = "chick"
+        session.complete(with: "chicken breast")
+        #expect(session.query == "chicken breast")
+    }
+
+    @Test func clearingTheSearchClearsThem() async {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "chick"
+        await session.search(model)
+        session.query = ""
+        await session.search(model)
+        #expect(session.completions.isEmpty)
+    }
+
+    @Test func withoutAModelTheSearchsOrderStands() async {
+        let model = TestEnvironment().model()
+        #expect(await model.rankedCompletions(["a", "b"], for: "x") == nil)
+    }
+}

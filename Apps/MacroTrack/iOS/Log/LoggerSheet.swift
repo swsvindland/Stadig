@@ -207,7 +207,7 @@ struct LoggerContent: View {
         }
     }
 
-    /// Hidden while something's typed, when the room is the results'.
+    /// Hidden while something's typed, when the room is the suggestions'.
     var showsRibbon: Bool { session.mode != .search || session.query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var bottom: some View {
@@ -227,7 +227,18 @@ struct LoggerContent: View {
 
     var methodsRow: some View {
         HStack(spacing: 8) {
-            if showsRibbon { MethodRibbon(session: session) } else { Spacer(minLength: 0) }
+            if showsRibbon {
+                MethodRibbon(session: session)
+            } else if session.completions.isEmpty {
+                Spacer(minLength: 0)
+            } else {
+                // In the ribbon's place: over the keyboard, under the thumb that's typing.
+                SearchCompletionChips(options: session.completions, pick: session.complete)
+                    .padding(4)
+                    .background(Color.cardBackground.opacity(0.75), in: .capsule)
+                    .clipShape(.capsule)
+                    .floatingGlass(in: .capsule)
+            }
             Button(action: done) {
                 Text("Done").font(.headline).padding(.horizontal, 18).frame(minHeight: 44).contentShape(.capsule)
             }

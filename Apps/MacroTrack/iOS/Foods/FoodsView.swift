@@ -19,6 +19,8 @@ struct FoodsView: View {
     @State private var listings: [FoodListing] = []
     @State private var shown: [FoodListing] = []
     @State private var searching = false
+    /// Where what's typed might be heading, in the order to offer them.
+    @State private var completions: [String] = []
     @State private var selection: FoodListing.ID?
     /// Which query the rows shown were found for, and a Return waiting for the current one's.
     @State private var searchReturn = FoodSearchReturn()
@@ -35,7 +37,18 @@ struct FoodsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if showingMeals { mealList } else { table.overlay { empty } }
+                if showingMeals {
+                    mealList
+                } else {
+                    VStack(spacing: 8) {
+                        SearchCompletionChips(options: completions) { text in
+                            query = text
+                            searchFocused = true
+                        }
+                        .padding(.horizontal)
+                        table.overlay { empty }
+                    }
+                }
             }
             .navigationTitle("Foods")
             .searchable(text: $query, prompt: "Search foods")
@@ -328,19 +341,26 @@ struct FoodsView: View {
         let found = await Task.detached(priority: .userInitiated) {
             if scope == .all, !text.isEmpty {
                 let matches = AppModel.corrected(catalog.search(text, personal: personal, limit: 100), by: corrections)
-                return FoodBrowser.listings(matches, personal: personal, custom: custom)
+                return (FoodBrowser.listings(matches, personal: personal, custom: custom), AppModel.completions(for: text, in: matches))
             }
-            return FoodBrowser.listings(scope, query: text, personal: personal, custom: custom)
+            return (FoodBrowser.listings(scope, query: text, personal: personal, custom: custom), [String]())
         }.value
         guard !Task.isCancelled else { return }
-        listings = found
-        shown = found.sorted(using: sortOrder)
+        listings = found.0
+        shown = listings.sorted(using: sortOrder)
+        let options = found.1
+        completions = options
         searching = false
         // The best match is ready for Return, and a Return pressed while these were on their way logs it.
         let next = searchReturn.arrived(asked, rows: shown.map(\.id), selection: selection)
         selection = next.selection
         resetAmount()
-        if next.log { logSelected() }
+        if next.log {
+            logSelected()
+            return
+        }
+        // Cancelled by the next key, so the model is only asked once the typing stops.
+        if let ranked = await model.rankedCompletions(options, for: text), !Task.isCancelled { completions = ranked }
     }
 
     /// The selected food's usual portion, eaten now, each time the selection moves to another food.

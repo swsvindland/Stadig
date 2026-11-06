@@ -46,6 +46,14 @@ struct PicksOutput {
     var entries: [Int]
 }
 
+/// Numbers again, for the same reason: this one runs while someone waits at a keyboard.
+@available(iOS 26.0, macOS 26.0, *)
+@Generable(description: "The suggestions' numbers, the likeliest first")
+struct CompletionOutput {
+    @Guide(description: "Suggestion numbers, the likeliest first", .maximumCount(12))
+    var order: [Int]
+}
+
 @available(iOS 26.0, macOS 26.0, *)
 @Generable(description: "A packaged food's name")
 struct LabelNameOutput {
