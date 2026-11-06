@@ -10,8 +10,6 @@ struct TodayView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    @State private var width: CGFloat = 0
-
     /// The Mac reports no size class: it always has room.
     var wide: Bool { sizeClass != .compact }
 
@@ -34,15 +32,12 @@ struct TodayView: View {
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
-                // A readable column, in margins of the list's own background. Nil until that's wider
-                // than the list's own inset: a margin of 0 takes the inset away, and on a phone the
-                // cards run to the edges of the screen.
-                .contentMargins(.horizontal, (width - 760) / 2 > 20 ? (width - 760) / 2 : nil, for: .scrollContent)
-                .onGeometryChange(for: CGFloat.self) {
-                    $0.size.width
-                } action: {
-                    width = $0
-                }
+                // A readable column, on the page. By its frame rather than the list's content margins:
+                // those are measured from under a sidebar beside it, which pushes the column off centre.
+                // Not on the Mac, whose title bar would show a band as wide as the column.
+                .scrollContentBackground(.hidden)
+                .readableWidth(Platform.isMac ? .infinity : 800)
+                .background(.pageBackground)
                 // A reminder can be tapped with Today not built yet: the request waits for it.
                 .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
                     guard pending else { return }

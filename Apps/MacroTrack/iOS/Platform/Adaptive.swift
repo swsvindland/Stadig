@@ -51,6 +51,9 @@ enum Platform {
         #endif
     }
 
+    /// What a list adds around a row's own insets: the Mac's table keeps a margin, the others none.
+    static var listRowMargin: CGFloat { isMac ? 8 : 0 }
+
     /// Whether an amount is typed on the panel's own keypad. The Mac has a real keyboard and a
     /// focused, selected field instead.
     static var usesAmountKeypad: Bool { !isMac }

@@ -329,55 +329,90 @@ struct LogTimeBar: View {
     @State private var picking = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        Group {
             if model.selectedDay == model.today {
-                chip("Now", selected: model.loggerTime == nil) { model.loggerTime = nil }
-                ForEach(LogTime.recent, id: \.self) { minutes in
-                    chip(LogTime.short(minutes), selected: LogTime.label(model) == LogTime.ago(minutes)) {
-                        model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60)
-                    }
-                }
-            } else if usual.isEmpty {
-                Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.medium)).padding(.leading, 8)
-                Spacer(minLength: 0)
-            } else {
-                // Catching up a day: the times this person usually eats, so "noon, then 3, then 7"
-                // is a tap each, with the search's suggestions following.
-                ScrollView(.horizontal) {
+                // Side by side while they fit. A chip won't shrink, so in a pane with a time picked
+                // they'd widen the bar, and everything stacked with it, past the pane's edges.
+                ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
-                        ForEach(usual, id: \.self) { time in
-                            chip(Format.time(time), selected: model.loggerTime == time) { model.loggerTime = time }
-                                .accessibilityIdentifier("logger.usualTime")
+                        recentChips
+                        clock
+                    }
+                    HStack(spacing: 6) {
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 6) { recentChips }
                         }
+                        .scrollIndicators(.hidden)
+                        clock
                     }
                 }
-                .scrollIndicators(.hidden)
-            }
-            Button {
-                picking = true
-            } label: {
-                Group {
-                    if let custom {
-                        Label(custom, systemImage: "clock").labelStyle(.titleAndIcon)
-                    } else {
-                        Image(systemName: "clock")
-                    }
+            } else {
+                HStack(spacing: 6) {
+                    otherDayTimes
+                    clock
                 }
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 10)
-                .frame(height: 32)
-                .background(custom != nil ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
             }
-            .buttonStyle(.plain)
-            .hoverHighlight()
-            .accessibilityLabel("Pick a time")
-            .accessibilityIdentifier("logger.pickTime")
         }
         .padding(6)
         .floatingGlass(in: Capsule(), interactive: false)
         .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
+    }
+
+    /// Today: now, and a little while ago.
+    @ViewBuilder
+    var recentChips: some View {
+        chip("Now", selected: model.loggerTime == nil) { model.loggerTime = nil }
+        ForEach(LogTime.recent, id: \.self) { minutes in
+            chip(LogTime.short(minutes), selected: LogTime.label(model) == LogTime.ago(minutes)) {
+                model.loggerTime = Date().addingTimeInterval(-Double(minutes) * 60)
+            }
+        }
+    }
+
+    /// Another day: its name, or the times to catch up on.
+    @ViewBuilder
+    var otherDayTimes: some View {
+        if usual.isEmpty {
+            Text(Format.day(model.selectedDay, style: .dateTime.weekday(.wide))).font(.subheadline.weight(.medium)).padding(.leading, 8)
+            Spacer(minLength: 0)
+        } else {
+            // Catching up a day: the times this person usually eats, so "noon, then 3, then 7"
+            // is a tap each, with the search's suggestions following.
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(usual, id: \.self) { time in
+                        chip(Format.time(time), selected: model.loggerTime == time) { model.loggerTime = time }
+                            .accessibilityIdentifier("logger.usualTime")
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    /// Any other time. It stays in sight beside chips that scroll: it's where a picked time shows.
+    var clock: some View {
+        Button {
+            picking = true
+        } label: {
+            Group {
+                if let custom {
+                    Label(custom, systemImage: "clock").labelStyle(.titleAndIcon)
+                } else {
+                    Image(systemName: "clock")
+                }
+            }
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .background(custom != nil ? Color.accentColor.opacity(0.2) : Color.clear, in: .capsule)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityLabel("Pick a time")
+        .accessibilityIdentifier("logger.pickTime")
     }
 
     /// A past day's usual times, as chips.
@@ -795,6 +830,9 @@ struct AmountFields: View {
                     }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
+                    // As the panel's own: on a line each, in a pane's width.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .choiceTint(abs(amount.count - value) < 0.001)
                     .accessibilityIdentifier("portion.quick")
                 }
