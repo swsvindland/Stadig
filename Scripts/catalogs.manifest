@@ -3,8 +3,8 @@
 #   Scripts/publish-catalogs.sh   uploads the local catalogs as a new release and rewrites this file
 #   Scripts/fetch-catalogs.sh     downloads and checks them (Xcode Cloud runs it from ci_post_clone.sh)
 # Lines: path from the repo root, then the SHA-256 of the uncompressed file.
-release catalogs-20261028-1433
-Apps/MacroTrack/Catalogs/off.db 66b19bd96f9b60aaf3e37b4ee02c78d84a94c7eb5fa2886a39d82720340a732c
+release catalogs-20261107-0100
+Apps/MacroTrack/Catalogs/off.db 637a7fb32e3419758b71b5d9b4a8e603cdf73ba21c6eef363a23fca5458ff68a
 Apps/MacroTrack/Catalogs/supplements.db f2145aaa1810627e95f57fc85911bf0c0fe7e8faffa0bf23aff99600099bb589
 Apps/MindTrack/Catalogs/japanese.db 473de94b41459734517fe838856e49be63c6e73c35d874c760c4915312ee2b69
 Apps/MindTrack/Catalogs/spanish.db a91391a73b5c2d80f240e5d1ab6c725a35c73457533d1709eb501353ee3e7f5f

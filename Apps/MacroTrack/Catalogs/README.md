@@ -16,6 +16,12 @@ to rebuild only `off.db`. For a quick start, `Scripts/install-food-catalogs.sh`
 clones an older catalog from `../macro-track` instead; it works, but has no processing or
 fermented data. Without either the app still works with the USDA catalog.
 
+The build repairs Open Food Facts calories only where the mistake can be named, and marks the other
+foods more than 10% from their macros as suspect (`Scripts/food_energy.py`). Check a built catalog,
+and list what doesn't add up, with:
+
+    python3 Scripts/validate-food-catalog.py --report calories.csv
+
 Open Food Facts data is under the ODbL: keep the in-app notice, per-food attribution and public
 access to the matching database and its build recipe (see `ATTRIBUTION.md` in FoodDatabase).
 

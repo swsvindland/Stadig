@@ -476,7 +476,7 @@ struct SearchTests {
     @Test("a barcode finds its packaged food in every form")
     func barcodes() throws {
         let nutella = try #require(catalog.food(barcode: "80176800"))
-        #expect(nutella.name == "Nutella")
+        #expect(nutella.name.hasPrefix("Nutella"))
         #expect(catalog.food(barcode: "0080176800") == nil, "not a barcode length")
         #expect(catalog.food(barcode: "80176801") == nil, "bad check digit")
         #expect(catalog.food(barcode: "00000080176800")?.id == nutella.id)

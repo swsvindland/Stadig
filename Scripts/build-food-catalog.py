@@ -32,6 +32,8 @@ from pathlib import Path
 import sqlite3
 import zipfile
 
+import food_energy
+
 ROOT = Path(__file__).resolve().parent.parent
 USDA_DESTINATION = ROOT / "Packages" / "FoodDatabase" / "Sources" / "FoodDatabase" / "Resources"
 OFF_DESTINATION = ROOT / "Apps" / "MacroTrack" / "Catalogs"
@@ -308,6 +310,12 @@ def label_nutrition(raw):
             continue
         nutriments[f"{key}_100g"] = value
         bases[key] = basis
+        # OFF fills a label's missing kilojoules in from its macros and shows them as the value, so
+        # only a figure in what was entered is a second opinion on the calories.
+        if key == "energy-kj" and any(((given.get("nutrients") or {}).get(name) or {}).get("value") is not None
+                                      for name in ("energy-kj", "energy")):
+            nutriments["energy-kj-entered_100g"] = value
+            bases["energy-kj-entered"] = basis
     energy = "energy-kcal" if "energy-kcal" in bases else "energy-kj"
     core = {bases.get(key) for key in (energy, "proteins", "carbohydrates", "fat")}
     basis = core.pop() if len(core) == 1 else None
@@ -410,6 +418,20 @@ def check_servings():
         found = [(p["label"], p["amount"]) for p in portions]
         if found != expected:
             raise SystemExit(f"serving_portion({fields}, {basis!r}) gives {found}, not {expected}")
+
+
+def check_entered_energy():
+    """Kilojoules only count as the label's when someone entered them, not when OFF computed them."""
+    def nutrients(kj_entered):
+        macros = {key: {"value": 10, "unit": "g", "source_index": 0, "source": "packaging", "source_per": "100g"}
+                  for key in ("proteins", "carbohydrates", "fat")}
+        energy = {"unit": "kJ", "value": 900, "source_index": 0, "source": "packaging", "source_per": "100g"}
+        calories = {**energy, "unit": "kcal", "value": 50}
+        entered = {"energy-kj": {"unit": "kJ", "value": 900} if kj_entered else {"unit": "kJ", "value_computed": 900}}
+        return {"nutrition": {"input_sets": [{"preparation": "as_sold", "nutrients": entered}], "aggregated_set": {
+            "nutrients": {**macros, "energy-kj": energy, "energy-kcal": calories}}}}
+    assert label_nutrition(nutrients(True))[1].get("energy-kj-entered_100g") == 900
+    assert "energy-kj-entered_100g" not in label_nutrition(nutrients(False))[1]
 
 
 def number(value):
@@ -739,6 +761,16 @@ def fndds_foods(path, stats):
                "also": also}
 
 
+def reconcile_energy(nutrients, name, kj, serving=None):
+    """Repairs `nutrients`' calories in place where that's safe; the verdict, or None without numbers."""
+    if any(nutrients[key] is None for key in ("calories", "protein", "carbs", "fat")):
+        return None
+    verdict = food_energy.assess(nutrients["calories"], nutrients["protein"], nutrients["carbs"], nutrients["fat"],
+                                 nutrients["fiber"], name, kj, serving)
+    nutrients["calories"] = verdict[1]
+    return verdict
+
+
 def off_food(raw, limits, stats):
     """One Open Food Facts product as a catalog food, or None and the reason in `stats`."""
     stats["sourceRecords"] += 1
@@ -773,6 +805,9 @@ def off_food(raw, limits, stats):
     nutrients = {"calories": energy, "protein": number(v.get("proteins_100g")),
                  "carbs": number(v.get("carbohydrates_100g")), "fat": number(v.get("fat_100g")),
                  "fiber": number(v.get("fiber_100g")), "sodium": sodium * 1000 if sodium is not None else None}
+    # First, so kilojoules typed as calories over the 1,000 limit below are repaired, not dropped.
+    energy_kj = number(v.get("energy-kj-entered_100g"))
+    verdict = reconcile_energy(nutrients, name, energy_kj)
     if not valid_nutrients(nutrients):
         stats["excludedNutrition"] += 1
         return None
@@ -791,6 +826,13 @@ def off_food(raw, limits, stats):
     portions, read = serving_portion(raw, basis)
     if read:
         stats[read] += 1
+    if verdict and verdict[0] == food_energy.SUSPECT and portions:
+        verdict = reconcile_energy(nutrients, name, energy_kj, portions[0]["amount"])
+    if verdict and verdict[0] != food_energy.OK:
+        stats[f"energy{verdict[0].capitalize()}"] += 1
+        if verdict[0] == food_energy.REPAIRED:
+            stats[f"energyRepaired{verdict[2][0].upper()}{verdict[2][1:]}"] += 1
+    suspect = bool(verdict) and verdict[0] == food_energy.SUSPECT
     micros = {}
     for key, _, columns, factor in MICROS:
         value = next((number(v.get(f"{c}_100g")) for c in columns
@@ -807,7 +849,8 @@ def off_food(raw, limits, stats):
             "basis": basis, "nutrients": nutrients,
             "micros": checked_micros(nutrients, micros, limits, stats),
             "portions": portions, "popularity": round(math.log1p(scans), 2),
-            "nova": off_processing(raw), "traits": TRAIT_FERMENTED if off_fermented(raw, name) else 0}
+            "nova": off_processing(raw),
+            "traits": (TRAIT_FERMENTED if off_fermented(raw, name) else 0) | (TRAIT_ENERGY_SUSPECT if suspect else 0)}
 
 
 def off_foods(path, limits, stats):
@@ -826,6 +869,8 @@ def off_foods(path, limits, stats):
 
 # Bits of the traits column.
 TRAIT_FERMENTED = 1
+# Calories too far from the macros to trust, with no way to tell which is wrong (food_energy.py).
+TRAIT_ENERGY_SUSPECT = 2
 
 CORE = ("calories", "protein", "carbs", "fat", "fiber", "sodium")
 # A row's values by position, the commonest first so that most rows end early. The order is
@@ -865,7 +910,8 @@ def food_values(data, order):
 def build(source, path, destination, limits=None, fndds=None):
     destination.mkdir(parents=True, exist_ok=True)
     digest = sha256_file(path)
-    recipe = sha256_file(Path(__file__))
+    # The recipe is both files: food_energy.py changes what the catalog holds.
+    recipe = hashlib.sha256((sha256_file(Path(__file__)) + sha256_file(Path(food_energy.__file__))).encode()).hexdigest()
     fndds_digest = sha256_file(fndds) if fndds else None
     version = f"{source}-v{SCHEMA_VERSION}-{digest[:12]}-{recipe[:8]}"
     if fndds_digest:
@@ -1003,6 +1049,7 @@ if __name__ == "__main__":
     parser.add_argument("--check", action="store_true", help="Only check how sample labels' servings are read.")
     args = parser.parse_args()
     check_servings()
+    check_entered_energy()
     if args.check:
         raise SystemExit
     if not args.usda and not args.off:

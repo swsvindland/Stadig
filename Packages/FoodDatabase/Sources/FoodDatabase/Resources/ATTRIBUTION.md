@@ -17,7 +17,7 @@ Individual contents are available under the
 
 `off.db` is a derivative database: a filtered, worldwide subset of the full
 [Open Food Facts JSONL export](https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz),
-downloaded October 16, 2026. It is distributed under the ODbL 1.0, and is publicly offered with
+downloaded November 6, 2026. It is distributed under the ODbL 1.0, and is publicly offered with
 the method that made it:
 
 - `off.db` — the derivative database exactly as the app ships it.
@@ -51,7 +51,10 @@ diary or Apple Health / Health Connect stay private to them and are not public u
 ## Transformations
 
 The builder uses only values printed on the label, not ones Open Food Facts estimates from the
-ingredients; it retains source calories, rejects incomplete core macros and ambiguous portion bases,
+ingredients; it retains source calories unless they disagree with the macros by more than 10% and the
+mistake can be named (the label's own kilojoules agree, kilojoules were entered as calories, or a
+serving's calories sit beside per-100 values), and marks the rest of such foods as suspect without
+changing them; it rejects incomplete core macros and ambiguous portion bases,
 converts sodium and micronutrients to their label units (mg or µg), drops micronutrient values above
 twice the richest USDA food's (unit slips) or larger than their whole (saturated fat over total fat),
 keeps an Open Food Facts zero only for nutrients a US label must list, rounds values to four
