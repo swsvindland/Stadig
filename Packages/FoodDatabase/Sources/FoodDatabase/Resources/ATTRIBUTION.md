@@ -21,8 +21,8 @@ downloaded November 6, 2026. It is distributed under the ODbL 1.0, and is public
 the method that made it:
 
 - `off.db` — the derivative database exactly as the app ships it.
-- `Scripts/build-food-catalog.py` — the complete transformation recipe, which rebuilds `off.db`
-  (and `usda.db`) from the source exports.
+- `Scripts/build-catalogs.py` with `food_catalog.py` and `food_energy.py` — the complete
+  transformation recipe, which rebuilds `off.db` (and `usda.db`) from the source exports.
 - `Packages/FoodDatabase/catalog-manifest.json` — source URLs, source and recipe SHA-256 hashes,
   filtering counts and sizes.
 
@@ -74,4 +74,4 @@ each food's group and name. They guide; they don't certify.
 From the [Dietary Supplement Label Database](https://dsld.od.nih.gov) of the NIH Office of Dietary
 Supplements, a US government work in the public domain. Use of the data doesn't suggest endorsement
 by the NIH or ODS. `supplements.db` keeps one label per barcode (the one on the market, else the
-newest) and labels without one while on the market; it's built by `Scripts/build-supplement-catalog.py`.
+newest) and labels without one while on the market; it's built by `Scripts/build-catalogs.py`.

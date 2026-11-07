@@ -14,6 +14,7 @@ Internal TestFlight builds need nothing: every push to `main` that touches an ap
 - `docs/decisions.md`: list the calls still waiting on sign-off that this release ships, for the owner to confirm.
 - First release only: everything in `docs/app-store-connect.md`: the agreements, the app record, both products, and both attached to the version.
 - Catalogs: the manifest's release holds the catalogs this version should ship (`Scripts/catalogs.manifest`).
+- Stadig Macro, App Store releases: `off.db` and its recipe are publicly reachable and the app links to them (`docs/decisions.md`, "Public access to `off.db`"). Stop and raise it if they aren't.
 - Privacy strings: every Info.plist usage description (in the generator) still says truthfully what the app does.
 - Screenshots: if a screen in the store set changed, `Scripts/store-screenshots.sh <app>`, then `storeassets -C Store/<app> validate` and `export` (and `Store/<app>-watch` for Stadig Lift and Stadig Macro); the owner uploads them in App Store Connect. `Store/README.md`.
 

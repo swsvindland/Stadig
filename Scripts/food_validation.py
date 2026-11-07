@@ -1,29 +1,19 @@
-#!/usr/bin/env python3
-"""Check a built food catalog's calories against its macros. Python standard library only.
+"""Checks a built food catalog's calories against its macros, for Scripts/build-catalogs.py.
+Python standard library only.
 
-Usage: python3 Scripts/validate-food-catalog.py [catalog.db ...] [--tolerance 0.1] [--report out.csv]
-       python3 Scripts/validate-food-catalog.py --check   # only the rules, on sample foods
-
-With no catalogs, checks usda.db and off.db. Reports how many foods agree, how many are explained
-(alcohol, sweeteners, vinegars), how many could still be repaired and how many are suspect, with the
-most scanned examples. --report writes every row that doesn't agree. Exits 1 when Open Food Facts rows
-could still be repaired, which means off.db was built before the builder repaired them: USDA's are
-reported but never changed. The rules are in food_energy.py.
+Reports how many foods agree, how many are explained (alcohol, sweeteners, vinegars), how many could
+still be repaired and how many are suspect, with the most scanned examples. A report can list every
+row that doesn't agree. Open Food Facts rows that could still be repaired mean off.db was built before
+the builder repaired them: USDA's are reported but never changed. The rules are in food_energy.py.
 """
-import argparse
 import collections
 import csv
 import json
-from pathlib import Path
 import sqlite3
-import sys
 
 import food_energy
 from food_energy import EXPLAINED, OK, REPAIRED, SUSPECT
 
-ROOT = Path(__file__).resolve().parent.parent
-CATALOGS = [ROOT / "Packages" / "FoodDatabase" / "Sources" / "FoodDatabase" / "Resources" / "usda.db",
-            ROOT / "Apps" / "MacroTrack" / "Catalogs" / "off.db"]
 # Each row is `verdict, the kcal a repair would give, then what it's handed`.
 SAMPLES = [
     (OK, None, dict(kcal=165, protein=31, carbs=0, fat=3.6)),                       # chicken breast
@@ -101,34 +91,18 @@ def validate(path, tolerance, writer):
     return counts[REPAIRED]
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("catalogs", nargs="*", type=Path)
-    parser.add_argument("--tolerance", type=float, default=food_energy.TOLERANCE)
-    parser.add_argument("--report", type=Path, help="Write every food that doesn't agree to this CSV.")
-    parser.add_argument("--check", action="store_true", help="Only check the rules on sample foods.")
-    args = parser.parse_args()
-    check()
-    if args.check:
-        return 0
-    paths = args.catalogs or [path for path in CATALOGS if path.exists()]
-    report = args.report.open("w", newline="", encoding="utf-8") if args.report else None
-    writer = csv.writer(report) if report else None
+def validate_all(paths, tolerance=food_energy.TOLERANCE, report=None):
+    """Reports on each catalog; how many packaged foods could still be repaired."""
+    handle = report.open("w", newline="", encoding="utf-8") if report else None
+    writer = csv.writer(handle) if handle else None
     if writer:
         writer.writerow(["catalog", "id", "name", "brand", "popularity", "verdict", "reason", "kcal", "macrosLeast",
                          "macrosMost", "repairedKcal", "protein", "carbs", "fat", "fiber", "serving"])
     unrepaired = 0
     for path in paths:
-        repairable = validate(path, args.tolerance, writer)
+        repairable = validate(path, tolerance, writer)
         if "usda" not in path.name:
             unrepaired += repairable
-    if report:
-        report.close()
-    if unrepaired:
-        print(f"\n{unrepaired:,} packaged foods can still be repaired: rebuild off.db", file=sys.stderr)
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    if handle:
+        handle.close()
+    return unrepaired

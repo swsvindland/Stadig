@@ -81,7 +81,7 @@ Scripts/leaks.sh lift               # after building an app: run `leaks` on its 
 Scripts/store-screenshots.sh lift   # recapture an app's App Store screenshots into Store/ (then storeassets; Store/README.md)
 python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
 swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons, make-mind-icons for the others)
-Scripts/validate-food-catalog.py    # check built food catalogs' calories against their macros
+python3 Scripts/build-catalogs.py update|build|validate   # Stadig Macro's catalogs: what's newer upstream, rebuild, check calories against macros
 Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest
 ```
 

@@ -10,7 +10,7 @@ struct SupplementTests {
     static let catalogURL = Catalogs.package.appending(path: "../../Apps/MacroTrack/Catalogs/supplements.db").standardizedFileURL
     static var hasCatalog: Bool { FileManager.default.fileExists(atPath: catalogURL.path) }
 
-    /// A supplements.db laid out as `Scripts/build-supplement-catalog.py` writes one, rows in DSLD id
+    /// A supplements.db laid out as `Scripts/build-catalogs.py` writes one, rows in DSLD id
     /// order, each label a magnesium capsule.
     static func catalog(_ labels: [(id: Int, name: String, market: Bool)]) throws -> URL {
         let url = FileManager.default.temporaryDirectory.appending(path: "supplements-\(UUID().uuidString).db")

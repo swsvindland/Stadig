@@ -1,7 +1,7 @@
 """Whether a food's calories agree with its macros, and which disagreements can be repaired.
 
-Used by Scripts/build-food-catalog.py, which repairs Open Food Facts rows as it reads them, and by
-Scripts/validate-food-catalog.py, which reports on a built catalog. Python standard library only.
+Used by food_catalog.py, which repairs Open Food Facts rows and flags any source's as it reads them,
+and by food_validation.py, which reports on a built catalog. Python standard library only.
 
 Macros can't overrule calories on their own. When the two disagree either may be the mistake: a soy
 sauce at 77 kcal with 3.2 g of carbs has the calories right and the carbs wrong, so recomputing

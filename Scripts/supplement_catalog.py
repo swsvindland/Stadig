@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Build Stadig Macro's offline supplement catalog from the NIH Dietary Supplement Label Database.
-Python standard library only.
+"""Stadig Macro's offline supplement catalog, from the NIH Dietary Supplement Label Database.
+Python standard library only. Run by Scripts/build-catalogs.py.
 
-Usage: python3 Scripts/build-supplement-catalog.py [--dsld /path/DSLD-full-database-CSV.zip]
-
-Writes supplements.db into Apps/MacroTrack/Catalogs (bundled from there, not in git) and records
-its source and counts in Packages/FoodDatabase/catalog-manifest.json. Without --dsld, the export
-is downloaded once (about 90 MB) into ~/Library/Caches/SystemFoodCatalog/dsld.
+Writes supplements.db, bundled from Apps/MacroTrack/Catalogs (not in git). It isn't one of the food
+catalogs: a label is a printed serving and ingredient lines, not nutrients per 100 g.
 
 Each label keeps its serving as printed ("2 Softgel(s)") and its Supplement Facts lines as
 [name, amount, unit], in label order. The app reads names and units into nutrients itself
@@ -16,36 +13,23 @@ while on the market, for search by name.
 
 The DSLD is a US government work in the public domain (dsld.od.nih.gov).
 """
-import argparse
 import csv
 import datetime
-import hashlib
 import io
 import json
 import re
 import sqlite3
-import urllib.request
 import zipfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-DESTINATION = ROOT / "Apps" / "MacroTrack" / "Catalogs" / "supplements.db"
-MANIFEST = ROOT / "Packages" / "FoodDatabase" / "catalog-manifest.json"
-CACHE = Path.home() / "Library" / "Caches" / "SystemFoodCatalog" / "dsld"
+from food_catalog import sha256_file
+
 DSLD_URL = "https://api.ods.od.nih.gov/dsld/s3/data/DSLD-full-database-CSV.zip"
 SCHEMA_VERSION = 1
 # A label lists more than this only for blends of herbs; the rest add nothing to a dose.
 MAX_LINES = 60
 
 csv.field_size_limit(1 << 30)
-
-
-def sha256_file(path):
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def rows(archive, prefix):
@@ -84,7 +68,9 @@ def compact(value):
     return round(value, 4) if value != int(value) else int(value)
 
 
-def build(source):
+def build(source, destination):
+    """Writes `supplements.pending.db` into `destination` for the caller to install. Returns its
+    manifest entry."""
     archive = zipfile.ZipFile(source)
     products = {}
     for row in rows(archive, "ProductOverview"):
@@ -133,8 +119,8 @@ def build(source):
             chosen[code] = (dsld, product)
     kept = sorted(list(chosen.values()) + loose, key=lambda item: item[0])
 
-    DESTINATION.parent.mkdir(parents=True, exist_ok=True)
-    temporary = DESTINATION.with_suffix(".tmp")
+    destination.mkdir(parents=True, exist_ok=True)
+    temporary = destination / "supplements.pending.db"
     temporary.unlink(missing_ok=True)
     db = sqlite3.connect(temporary)
     db.executescript("""
@@ -156,7 +142,7 @@ def build(source):
         INSERT INTO supplement_search(supplement_search) VALUES ('optimize');
     """)
     source_hash = sha256_file(source)
-    recipe_hash = sha256_file(__file__)
+    recipe_hash = sha256_file(Path(__file__))
     version = f"dsld-v{SCHEMA_VERSION}-{source_hash[:12]}-{recipe_hash[:8]}"
     meta = {
         "version": version,
@@ -169,15 +155,14 @@ def build(source):
     db.commit()
     db.execute("VACUUM")
     db.close()
-    temporary.replace(DESTINATION)
 
-    counts = {
+    return {
         "version": version,
         "sourceUrl": DSLD_URL,
         "recipeSha256": recipe_hash,
         "sourceSha256": source_hash,
-        "sha256": sha256_file(DESTINATION),
-        "bytes": DESTINATION.stat().st_size,
+        "sha256": sha256_file(temporary),
+        "bytes": temporary.stat().st_size,
         "license": "Public domain",
         "sourceRecords": len(products),
         "included": len(kept),
@@ -185,27 +170,3 @@ def build(source):
         "onMarket": sum(p["market"] for _, p in kept),
         "lines": sum(len(p["lines"]) for _, p in kept),
     }
-    manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
-    manifest["dsld"] = counts
-    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(json.dumps(counts, indent=2))
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dsld", type=Path, help="the DSLD full-database CSV export (.zip); downloaded when left out")
-    args = parser.parse_args()
-    source = args.dsld
-    if source is None:
-        CACHE.mkdir(parents=True, exist_ok=True)
-        source = CACHE / "DSLD-full-database-CSV.zip"
-        if not source.exists():
-            print(f"Downloading {DSLD_URL}")
-            partial = source.with_suffix(".part")
-            urllib.request.urlretrieve(DSLD_URL, partial)
-            partial.replace(source)
-    build(source)
-
-
-if __name__ == "__main__":
-    main()

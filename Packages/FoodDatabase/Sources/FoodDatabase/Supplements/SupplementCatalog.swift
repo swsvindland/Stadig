@@ -2,7 +2,7 @@ import Foundation
 import SystemCore
 
 /// The NIH Dietary Supplement Label Database, offline: US supplement labels by barcode and by name,
-/// with their Supplement Facts. Built by `Scripts/build-supplement-catalog.py` into `supplements.db`,
+/// with their Supplement Facts. Built by `Scripts/build-catalogs.py` into `supplements.db`,
 /// which the app bundles when it's there. Read-only and thread-safe.
 public final class SupplementCatalog: Sendable {
     public let version: String

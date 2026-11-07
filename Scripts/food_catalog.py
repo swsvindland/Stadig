@@ -1,24 +1,22 @@
-#!/usr/bin/env python3
-"""Build source-separated, indexed offline catalogs for Stadig Macro. Python standard library only.
+"""The food catalogs: every source read into one `Food`, written to a file per licence and shipping.
+Python standard library only. Run by Scripts/build-catalogs.py.
 
-Usage: python3 Scripts/build-food-catalog.py [--usda /path/sr.zip --fndds /path/fndds.zip] [--off /path/off.jsonl[.gz]]
-       python3 Scripts/build-food-catalog.py --check   # only how sample serving labels are read
-
-Writes usda.db (SR Legacy, and FNDDS's fast-food and restaurant foods) into
-Packages/FoodDatabase/Sources/FoodDatabase/Resources (bundled, in git) and off.db
-into Apps/MacroTrack/Catalogs (bundled from there, not in git). Sources, hashes and counts are
-recorded in Packages/FoodDatabase/catalog-manifest.json. Never processes user data.
+usda.db holds SR Legacy and FNDDS's fast-food and restaurant foods, and is bundled from
+Packages/FoodDatabase/Sources/FoodDatabase/Resources (in git). off.db holds Open Food Facts, under
+the ODbL, and is bundled from Apps/MacroTrack/Catalogs (not in git). The two stay apart so that the
+app works without off.db and so nothing else takes on its licence. Never processes user data.
 
 Each food also carries how processed it is (NOVA 1 whole or minimally processed, 2 a culinary
 ingredient, 3 processed, 4 ultra-processed; Open Food Facts' own group, or for USDA an estimate
-from the food's category and name) and whether it's a fermented food with live cultures.
+from the food's category and name), whether it's a fermented food with live cultures, and whether
+its calories fit its macros (food_energy.py).
 
 The older CSV export (--off /path/off.csv[.gz]) is still read, but it leaves out the nutrition of
 every product kept in Open Food Facts' newer format. Ported from the React Native Macro Track.
 """
-import argparse
 import collections
 import csv
+import dataclasses
 import functools
 import gzip
 import hashlib
@@ -37,7 +35,6 @@ import food_energy
 ROOT = Path(__file__).resolve().parent.parent
 USDA_DESTINATION = ROOT / "Packages" / "FoodDatabase" / "Sources" / "FoodDatabase" / "Resources"
 OFF_DESTINATION = ROOT / "Apps" / "MacroTrack" / "Catalogs"
-MANIFEST = ROOT / "Packages" / "FoodDatabase" / "catalog-manifest.json"
 # The ODbL asks that the derived database and the recipe that builds it be public: this script
 # and the built off.db must be published where this points before a release ships.
 RECIPE_URL = "https://github.com/swsvindland/macro-track/tree/main/assets/food"
@@ -139,6 +136,26 @@ LABELED = {"sugar", "addedSugar", "saturatedFat", "transFat", "cholesterol", "po
            "iron", "vitaminD"}
 FL_OZ_ML = 29.5735
 OZ_G = 28.3495
+
+
+@dataclasses.dataclass(slots=True)
+class Food:
+    """One food from any source: what the catalogs hold, whichever file it's written to. `nutrients`
+    are per 100 of `basis` ("g" or "ml"), `id` starts with its source ("usda:", "off:") and `also`
+    is other names to search by."""
+    id: str
+    name: str
+    brand: str
+    barcode: str | None
+    basis: str
+    nutrients: dict
+    micros: dict
+    portions: list
+    popularity: float
+    markets: str
+    nova: int | None
+    traits: int
+    also: list = dataclasses.field(default_factory=list)
 
 
 def sha256_file(path):
@@ -631,6 +648,20 @@ def usda_processing(category, name):
     return 1
 
 
+def fdc_nutrients(raw):
+    """A FoodData Central record's nutrients and micronutrients, as SR Legacy and FNDDS both give them."""
+    values = {n["nutrient"]["id"]: number(n.get("amount")) for n in raw["foodNutrients"]}
+    nutrients = dict(zip(("calories", "protein", "carbs", "fat", "fiber", "sodium"),
+                         (values.get(i) for i in (1008, 1003, 1005, 1004, 1079, 1093))))
+    micros = {}
+    for key, ids, _, _ in MICROS:
+        parts = [next((values[i] for i in (part if isinstance(part, tuple) else (part,))
+                       if values.get(i) is not None), None) for part in ids]
+        if parts and parts[0] is not None:
+            micros[key] = sum(part or 0 for part in parts)
+    return nutrients, micros
+
+
 def usda_foods(path, stats):
     with zipfile.ZipFile(path) as archive:
         with archive.open(next(n for n in archive.namelist() if n.endswith(".json"))) as src:
@@ -638,18 +669,10 @@ def usda_foods(path, stats):
     for raw in records:
         stats["sourceRecords"] += 1
         category = (raw.get("foodCategory") or {}).get("description")
-        values = {n["nutrient"]["id"]: number(n.get("amount")) for n in raw["foodNutrients"]}
-        nutrients = dict(zip(("calories", "protein", "carbs", "fat", "fiber", "sodium"),
-                             (values.get(i) for i in (1008, 1003, 1005, 1004, 1079, 1093))))
+        nutrients, micros = fdc_nutrients(raw)
         if not valid_nutrients(nutrients):
             stats["excludedNutrition"] += 1
             continue
-        micros = {}
-        for key, ids, _, _ in MICROS:
-            parts = [next((values[i] for i in (part if isinstance(part, tuple) else (part,))
-                           if values.get(i) is not None), None) for part in ids]
-            if parts and parts[0] is not None:
-                micros[key] = sum(part or 0 for part in parts)
         portions = []
         for p in raw.get("foodPortions", []):
             grams = number(p.get("gramWeight"))
@@ -660,11 +683,10 @@ def usda_foods(path, stats):
         name = raw["description"]
         fermented = (bool(USDA_FERMENTED.search(name)) and not NOT_LIVE.search(name)
                      and (category or "").lower() not in NOT_LIVE_GROUPS)
-        yield {"id": f"usda:{raw['fdcId']}", "name": name, "brand": "",
-               "barcode": None, "basis": "g", "nutrients": nutrients,
-               "micros": checked_micros(nutrients, micros, {}, stats),
-               "portions": portions[:12], "popularity": 0, "markets": "",
-               "nova": usda_processing(category, name), "traits": TRAIT_FERMENTED if fermented else 0}
+        yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
+                   micros=checked_micros(nutrients, micros, {}, stats), portions=portions[:12], popularity=0,
+                   markets="", nova=usda_processing(category, name),
+                   traits=(TRAIT_FERMENTED if fermented else 0) | usda_energy_trait(nutrients, name, stats))
 
 
 # SR Legacy's chain items are from 2006 to 2012; FNDDS, the survey database that replaced its
@@ -732,18 +754,10 @@ def fndds_foods(path, stats):
         also = fndds_also(raw)
         if not FNDDS_RESTAURANT.search(name) and not FNDDS_CHAIN.search(name) and not also:
             continue
-        values = {n["nutrient"]["id"]: number(n.get("amount")) for n in raw["foodNutrients"]}
-        nutrients = dict(zip(("calories", "protein", "carbs", "fat", "fiber", "sodium"),
-                             (values.get(i) for i in (1008, 1003, 1005, 1004, 1079, 1093))))
+        nutrients, micros = fdc_nutrients(raw)
         if not valid_nutrients(nutrients):
             stats["fnddsExcludedNutrition"] += 1
             continue
-        micros = {}
-        for key, ids, _, _ in MICROS:
-            parts = [next((values[i] for i in (part if isinstance(part, tuple) else (part,))
-                           if values.get(i) is not None), None) for part in ids]
-            if parts and parts[0] is not None:
-                micros[key] = sum(part or 0 for part in parts)
         # Read as SR Legacy's groups of the same name: fast food is ultra-processed, and a dish
         # from a restaurant, from either ("Black beans, from fast food / restaurant") or a chain's
         # item under a plain name ("Frozen coffee drink") is processed unless its name says
@@ -753,22 +767,42 @@ def fndds_foods(path, stats):
         stats["fnddsIncluded"] += 1
         stats["fnddsWithChainNames"] += bool(also)
         stats["fnddsChainNames"] += len(also)
-        yield {"id": f"usda:{raw['fdcId']}", "name": name, "brand": "",
-               "barcode": None, "basis": "g", "nutrients": nutrients,
-               "micros": checked_micros(nutrients, micros, {}, stats),
-               "portions": fndds_portions(raw)[:12], "popularity": 0, "markets": "",
-               "nova": usda_processing("fast foods" if fast else "restaurant foods", dish), "traits": 0,
-               "also": also}
+        yield Food(id=f"usda:{raw['fdcId']}", name=name, brand="", barcode=None, basis="g", nutrients=nutrients,
+                   micros=checked_micros(nutrients, micros, {}, stats), portions=fndds_portions(raw)[:12],
+                   popularity=0, markets="",
+                   nova=usda_processing("fast foods" if fast else "restaurant foods", dish),
+                   traits=usda_energy_trait(nutrients, name, stats), also=also)
+
+
+def assess_energy(nutrients, name, kj=None, serving=None):
+    """What food_energy makes of `nutrients`, or None without the numbers to tell."""
+    if any(nutrients[key] is None for key in ("calories", "protein", "carbs", "fat")):
+        return None
+    return food_energy.assess(nutrients["calories"], nutrients["protein"], nutrients["carbs"], nutrients["fat"],
+                              nutrients["fiber"], name, kj, serving)
 
 
 def reconcile_energy(nutrients, name, kj, serving=None):
     """Repairs `nutrients`' calories in place where that's safe; the verdict, or None without numbers."""
-    if any(nutrients[key] is None for key in ("calories", "protein", "carbs", "fat")):
-        return None
-    verdict = food_energy.assess(nutrients["calories"], nutrients["protein"], nutrients["carbs"], nutrients["fat"],
-                                 nutrients["fiber"], name, kj, serving)
-    nutrients["calories"] = verdict[1]
+    verdict = assess_energy(nutrients, name, kj, serving)
+    if verdict:
+        nutrients["calories"] = verdict[1]
     return verdict
+
+
+def count_energy(verdict, stats):
+    if verdict and verdict[0] != food_energy.OK:
+        stats[f"energy{verdict[0].capitalize()}"] += 1
+        if verdict[0] == food_energy.REPAIRED:
+            stats[f"energyRepaired{verdict[2][0].upper()}{verdict[2][1:]}"] += 1
+
+
+def usda_energy_trait(nutrients, name, stats):
+    """USDA's numbers are laboratory data and are never changed, but one that doesn't fit its macros
+    is flagged like anyone else's, and that includes a row the rules would call repairable."""
+    verdict = assess_energy(nutrients, name)
+    count_energy(verdict, stats)
+    return TRAIT_ENERGY_SUSPECT if verdict and verdict[0] in (food_energy.SUSPECT, food_energy.REPAIRED) else 0
 
 
 def off_food(raw, limits, stats):
@@ -828,10 +862,7 @@ def off_food(raw, limits, stats):
         stats[read] += 1
     if verdict and verdict[0] == food_energy.SUSPECT and portions:
         verdict = reconcile_energy(nutrients, name, energy_kj, portions[0]["amount"])
-    if verdict and verdict[0] != food_energy.OK:
-        stats[f"energy{verdict[0].capitalize()}"] += 1
-        if verdict[0] == food_energy.REPAIRED:
-            stats[f"energyRepaired{verdict[2][0].upper()}{verdict[2][1:]}"] += 1
+    count_energy(verdict, stats)
     suspect = bool(verdict) and verdict[0] == food_energy.SUSPECT
     micros = {}
     for key, _, columns, factor in MICROS:
@@ -844,13 +875,11 @@ def off_food(raw, limits, stats):
     scans = number(raw.get("unique_scans_n")) or 0
     markets = {COUNTRIES.get(tag.split(":", 1)[-1].lower())
                for tag in raw.get("countries_tags") or []}
-    return {"id": f"off:{raw['code']}", "name": name, "brand": brand, "barcode": code,
-            "markets": " ".join(sorted(markets - {None})),
-            "basis": basis, "nutrients": nutrients,
-            "micros": checked_micros(nutrients, micros, limits, stats),
-            "portions": portions, "popularity": round(math.log1p(scans), 2),
-            "nova": off_processing(raw),
-            "traits": (TRAIT_FERMENTED if off_fermented(raw, name) else 0) | (TRAIT_ENERGY_SUSPECT if suspect else 0)}
+    return Food(id=f"off:{raw['code']}", name=name, brand=brand, barcode=code, basis=basis, nutrients=nutrients,
+                micros=checked_micros(nutrients, micros, limits, stats), portions=portions,
+                popularity=round(math.log1p(scans), 2), markets=" ".join(sorted(markets - {None})),
+                nova=off_processing(raw),
+                traits=(TRAIT_FERMENTED if off_fermented(raw, name) else 0) | (TRAIT_ENERGY_SUSPECT if suspect else 0))
 
 
 def off_foods(path, limits, stats):
@@ -891,13 +920,13 @@ def row_data(food):
     catalog's size: [basis, values per 100 g or ml in ORDER (null where unknown, trailing ones
     left off), portions as [label, amount] when there are any].
     """
-    values = {**food["nutrients"], **food["micros"]}
+    values = {**food.nutrients, **food.micros}
     row = [compact(values.get(key)) for key in ORDER]
     while row[-1] is None:
         row.pop()
-    data = [food["basis"], row]
-    if food["portions"]:
-        data.append([[p["label"], compact(p["amount"])] for p in food["portions"]])
+    data = [food.basis, row]
+    if food.portions:
+        data.append([[p["label"], compact(p["amount"])] for p in food.portions])
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -908,6 +937,8 @@ def food_values(data, order):
 
 
 def build(source, path, destination, limits=None, fndds=None):
+    """Writes `<source>.pending.db` into `destination` for the caller to check and install. Returns
+    its manifest entry and its richest amount of each micronutrient."""
     destination.mkdir(parents=True, exist_ok=True)
     digest = sha256_file(path)
     # The recipe is both files: food_energy.py changes what the catalog holds.
@@ -916,7 +947,6 @@ def build(source, path, destination, limits=None, fndds=None):
     version = f"{source}-v{SCHEMA_VERSION}-{digest[:12]}-{recipe[:8]}"
     if fndds_digest:
         version = f"{source}-v{SCHEMA_VERSION}-{digest[:12]}-{fndds_digest[:8]}-{recipe[:8]}"
-    output = destination / f"{source}.db"
     temporary = destination / f"{source}.pending.db"
     temporary.unlink(missing_ok=True)
     connection = sqlite3.connect(temporary)
@@ -949,24 +979,24 @@ def build(source, path, destination, limits=None, fndds=None):
         foods = off_foods(path, limits, stats)
     with connection:
         for food in foods:
-            values = (food["id"], food["name"], food["brand"], food["barcode"], food["popularity"],
-                      food["markets"], row_data(food), food["nova"], food["traits"])
+            values = (food.id, food.name, food.brand, food.barcode, food.popularity,
+                      food.markets, row_data(food), food.nova, food.traits)
             if also:
-                values += ("\n".join(food.get("also", [])),)
+                values += ("\n".join(food.also),)
             result = connection.execute(f"INSERT OR IGNORE INTO staged VALUES ({', '.join('?' * len(values))})", values)
             if not result.rowcount:
                 stats["duplicates"] += 1
                 continue
             stats["included"] += 1
-            stats["microValues"] += len(food["micros"])
-            stats["withMicros"] += bool(food["micros"])
-            stats["withPortions"] += bool(food["portions"])
-            if food["nova"] is not None:
-                stats[f"nova{food['nova']}"] += 1
+            stats["microValues"] += len(food.micros)
+            stats["withMicros"] += bool(food.micros)
+            stats["withPortions"] += bool(food.portions)
+            if food.nova is not None:
+                stats[f"nova{food.nova}"] += 1
             else:
                 stats["novaUnknown"] += 1
-            stats["fermented"] += bool(food["traits"] & TRAIT_FERMENTED)
-            for key, value in food["micros"].items():
+            stats["fermented"] += bool(food.traits & TRAIT_FERMENTED)
+            for key, value in food.micros.items():
                 peaks[key] = max(peaks[key], value)
         # A search ranks the first matches in row order, so the most scanned foods come first.
         # The 14-digit barcode is kept as a number, and an id that is "off:" and the barcode's
@@ -1005,10 +1035,9 @@ def build(source, path, destination, limits=None, fndds=None):
     assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     connection.execute("VACUUM")
     connection.close()
-    temporary.replace(output)
     manifest = {"version": version, "sourceUrl": url,
                 "recipeSha256": recipe, "sourceSha256": digest,
-                "sha256": sha256_file(output), "bytes": output.stat().st_size,
+                "sha256": sha256_file(temporary), "bytes": temporary.stat().st_size,
                 "license": license_id, "developmentSample": url == OFF_SAMPLE_URL, **dict(stats)}
     if fndds:
         manifest.update({"fnddsUrl": FNDDS_URL, "fnddsSha256": fndds_digest})
@@ -1037,41 +1066,13 @@ def catalog_peaks(path):
     return dict(peaks)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--usda", type=Path,
-                        help="USDA SR Legacy JSON zip. Without it the bundled USDA catalog is kept, "
-                             "since SR Legacy no longer changes, and only Open Food Facts is rebuilt.")
-    parser.add_argument("--fndds", type=Path,
-                        help="USDA FNDDS (Survey Foods) JSON zip, whose fast-food and restaurant foods "
-                             "join SR Legacy's in usda.db. Needed with --usda.")
-    parser.add_argument("--off", type=Path, help="Open Food Facts export. Without it only usda.db is rebuilt.")
-    parser.add_argument("--check", action="store_true", help="Only check how sample labels' servings are read.")
-    args = parser.parse_args()
+def micro_limits(peaks):
+    """A packaged food holding over twice the richest USDA food's amount is a unit slip (micrograms
+    entered as grams), not food. Added sugar has no USDA value; its whole limits it."""
+    return {key: peak * 2 for key, peak in peaks.items()}
+
+
+def check():
     check_servings()
     check_entered_energy()
-    if args.check:
-        raise SystemExit
-    if not args.usda and not args.off:
-        parser.error("give --usda and --fndds, --off, or all three")
-    if args.usda and not args.fndds:
-        parser.error("--usda needs --fndds too, or usda.db loses its restaurant foods")
-    previous = json.loads(MANIFEST.read_text())
-    if args.usda:
-        usda, peaks = build("usda", args.usda, USDA_DESTINATION, fndds=args.fndds)
-    else:
-        usda = previous["usda"]
-        kept = USDA_DESTINATION / "usda.db"
-        if hashlib.sha256(kept.read_bytes()).hexdigest() != usda["sha256"]:
-            raise SystemExit(f"{kept} doesn't match its manifest entry; rebuild it with --usda.")
-        peaks = catalog_peaks(kept)
-    # A packaged food holding over twice the richest USDA food's amount is a unit slip
-    # (micrograms entered as grams), not food. Added sugar has no USDA value; its whole limits it.
-    if args.off:
-        off, _ = build("off", args.off, OFF_DESTINATION, {key: peak * 2 for key, peak in peaks.items()})
-    else:
-        off = previous["off"]
-    # The supplements builder records its catalog here too.
-    manifest = {**previous, "schemaVersion": SCHEMA_VERSION, "usda": usda, "off": off}
-    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(json.dumps(manifest, indent=2))
+    print(f"{len(SERVING_SAMPLES)} serving labels and entered energy read as expected")

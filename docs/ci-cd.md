@@ -80,4 +80,4 @@ The repo carries everything Xcode Cloud needs (shared schemes, test plans, `ci_s
 
 ## Catalogs
 
-The catalogs (`off.db`, `supplements.db`, `japanese.db`, `spanish.db`) aren't in git. After rebuilding one, run `Scripts/publish-catalogs.sh` (uploads them all as a new private release and rewrites `Scripts/catalogs.manifest`) and commit the manifest; CI and Xcode Cloud then fetch the new ones. Whether the ODbL catalog is published publicly is still undecided.
+The catalogs (`off.db`, `supplements.db`, `japanese.db`, `spanish.db`) aren't in git. After rebuilding one, run `Scripts/publish-catalogs.sh` (uploads them all as a new private release and rewrites `Scripts/catalogs.manifest`) and commit the manifest; CI and Xcode Cloud then fetch the new ones. They stay private while the repo is, which TestFlight doesn't mind: `CATALOG_TOKEN` reads them. They must be public before the App Store release (`docs/decisions.md`, "Public access to `off.db`").

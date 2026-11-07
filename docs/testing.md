@@ -9,7 +9,7 @@ The logic is the product, so most tests live with the logic in the packages. The
 | Integration: an app's model over an in-memory store, everything it publishes to the shared container, cross-app contracts | `Apps/<App>/Tests` | Swift Testing, hosted in the app | `Scripts/build.sh unit lift\|macro\|mind`, on the Mac with `… mac` | Xcode Cloud (the `<App>` test plan) |
 | End to end: first run, the offer and the tabs, on a simulator | `Apps/<App>/UITests` | XCTest (XCUITest) | `Scripts/build.sh ui lift\|macro\|mind`, the iPad layout with `… ipad` | Xcode Cloud Main and Release (the `<App>UI` test plan) |
 | Sanitizers: the package tests under TSan and ASan | | | `SANITIZE=thread Scripts/build.sh test` | GitHub, Mondays |
-| Catalog build: real packaged foods' serving fields and the portion each must get | `SERVING_SAMPLES` in `Scripts/build-food-catalog.py` | | `python3 Scripts/build-food-catalog.py --check`, and before every catalog build | |
+| Catalog build: real packaged foods' serving fields and the portion each must get | `SERVING_SAMPLES` in `Scripts/food_catalog.py` | | `python3 Scripts/build-catalogs.py check`, and before every catalog build | |
 | Leaks: `leaks` on each app's seeded screens, counting only leaks whose allocation runs through the app's own code | `Scripts/leaks.sh`, `Scripts/classify-leaks.py` | | `Scripts/leaks.sh lift\|macro\|mind` after `Scripts/build.sh ios\|macro\|mind` | by hand, before a release |
 
 What the package tests cover, suite by suite, is in [package-tests.md](package-tests.md).
