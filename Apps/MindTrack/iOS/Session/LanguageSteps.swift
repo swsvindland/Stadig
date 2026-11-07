@@ -33,11 +33,19 @@ struct SpeakView: View {
                         Spacer()
                         if task.kind == .test { Pill(text: "Test", symbol: "gauge.with.dots.needle.50percent") }
                     }
+                    if let gloss = task.gloss {
+                        Text("“\(gloss)”").font(.title3.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("speak.gloss")
+                    }
                     PromptView(prompt: task.prompt, revealed: feedback != nil)
                     if let hint = task.hint, feedback == nil {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Say this").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                             ScaffoldedText(text: hint, size: 24)
+                            if let romaji = task.romaji {
+                                Text(romaji).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("speak.romaji")
+                            }
                         }
                         .card()
                     }
@@ -280,6 +288,7 @@ private struct SpokenFeedback: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 SpeakButton(text: task.answer, language: task.language, label: task.answer, font: .title3)
+                if let romaji = task.romaji { Text(romaji).font(.subheadline).fixedSize(horizontal: false, vertical: true) }
                 if let meaning = task.meaning { Text(meaning).font(.subheadline).foregroundStyle(.secondary) }
             }
             if !feedback.correct, task.mode == .say {

@@ -11,14 +11,19 @@ public struct Dialogue: Hashable, Sendable, Identifiable {
         public var text: String
         /// Kana for a Japanese line with kanji.
         public var reading: String?
+        /// How a Japanese line of yours is said, for someone still learning kana. Written by hand,
+        /// because kana by kana gets real speech wrong: the particle は is "wa", and nothing says
+        /// where the words break.
+        public var romaji: String?
         public var english: String
         /// Other ways of saying it that count.
         public var accept: [String]
 
-        public init(_ speaker: Speaker, _ text: String, reading: String? = nil, _ english: String, accept: [String] = []) {
+        public init(_ speaker: Speaker, _ text: String, reading: String? = nil, romaji: String? = nil, _ english: String, accept: [String] = []) {
             self.speaker = speaker
             self.text = text
             self.reading = reading
+            self.romaji = romaji
             self.english = english
             self.accept = accept
         }
@@ -164,95 +169,105 @@ public enum Dialogues {
             id: "hajimemashite", language: .japanese, level: 1, title: "Meeting someone (you're Alex)",
             lines: [
                 .init(.them, "はじめまして。田中です。", reading: "はじめまして。たなかです。", "Nice to meet you. I'm Tanaka."),
-                .init(.you, "はじめまして。アレックスです。", "Nice to meet you. I'm Alex.", accept: ["はじめまして"]),
+                .init(.you, "はじめまして。アレックスです。", romaji: "Hajimemashite. Arekkusu desu.", "Nice to meet you. I'm Alex.", accept: ["はじめまして"]),
                 .init(.them, "どちらから来ましたか。", reading: "どちらからきましたか。", "Where are you from?"),
-                .init(.you, "イギリスから来ました。", reading: "いぎりすからきました。", "I'm from the UK.", accept: ["から来ました", "からきました"]),
+                .init(
+                    .you, "イギリスから来ました。", reading: "いぎりすからきました。", romaji: "Igirisu kara kimashita.", "I'm from the UK.", accept: ["から来ました", "からきました"]),
                 .init(.them, "そうですか。よろしくお願いします。", reading: "そうですか。よろしくおねがいします。", "I see. Pleased to meet you."),
                 .init(
-                    .you, "こちらこそ、よろしくお願いします。", reading: "こちらこそ、よろしくおねがいします。", "Pleased to meet you too.",
+                    .you, "こちらこそ、よろしくお願いします。", reading: "こちらこそ、よろしくおねがいします。", romaji: "Kochira koso, yoroshiku onegai shimasu.",
+                    "Pleased to meet you too.",
                     accept: ["よろしくお願いします", "よろしくおねがいします", "こちらこそ"]),
             ]),
         Dialogue(
             id: "kafe", language: .japanese, level: 1, title: "At a café",
             lines: [
                 .init(.them, "いらっしゃいませ。ご注文は？", reading: "いらっしゃいませ。ごちゅうもんは？", "Welcome. What would you like?"),
-                .init(.you, "コーヒーをひとつください。", "One coffee, please.", accept: ["コーヒーを一つください", "コーヒーをください", "コーヒーください"]),
+                .init(
+                    .you, "コーヒーをひとつください。", romaji: "Koohii o hitotsu kudasai.", "One coffee, please.",
+                    accept: ["コーヒーを一つください", "コーヒーをください", "コーヒーください"]),
                 .init(.them, "ホットとアイス、どちらにしますか。", "Hot or iced?"),
-                .init(.you, "ホットでお願いします。", reading: "ほっとでおねがいします。", "Hot, please.", accept: ["ホットで"]),
+                .init(.you, "ホットでお願いします。", reading: "ほっとでおねがいします。", romaji: "Hotto de onegai shimasu.", "Hot, please.", accept: ["ホットで"]),
                 .init(.them, "四百円です。", reading: "よんひゃくえんです。", "That's four hundred yen."),
-                .init(.you, "はい、どうぞ。", "Here you are.", accept: ["どうぞ"]),
+                .init(.you, "はい、どうぞ。", romaji: "Hai, douzo.", "Here you are.", accept: ["どうぞ"]),
             ]),
         Dialogue(
             id: "eki", language: .japanese, level: 1, title: "Asking the way",
             lines: [
                 .init(
-                    .you, "すみません、駅はどこですか。", reading: "すみません、えきはどこですか。", "Excuse me, where's the station?",
+                    .you, "すみません、駅はどこですか。", reading: "すみません、えきはどこですか。", romaji: "Sumimasen, eki wa doko desu ka.", "Excuse me, where's the station?",
                     accept: ["駅はどこですか", "えきはどこですか"]),
                 .init(
                     .them, "まっすぐ行って、二つ目の角を右です。", reading: "まっすぐいって、ふたつめのかどをみぎです。",
                     "Go straight on; it's right at the second corner."),
-                .init(.you, "遠いですか。", reading: "とおいですか。", "Is it far?"),
+                .init(.you, "遠いですか。", reading: "とおいですか。", romaji: "Tooi desu ka.", "Is it far?"),
                 .init(.them, "いいえ、歩いて五分ぐらいです。", reading: "いいえ、あるいてごふんぐらいです。", "No, it's about five minutes' walk."),
-                .init(.you, "ありがとうございます。", "Thank you very much.", accept: ["ありがとう"]),
+                .init(.you, "ありがとうございます。", romaji: "Arigatou gozaimasu.", "Thank you very much.", accept: ["ありがとう"]),
             ]),
         Dialogue(
             id: "resutoran", language: .japanese, level: 2, title: "At a restaurant",
             lines: [
                 .init(.them, "何名様ですか。", reading: "なんめいさまですか。", "How many of you?"),
-                .init(.you, "二人です。", reading: "ふたりです。", "Two."),
+                .init(.you, "二人です。", reading: "ふたりです。", romaji: "Futari desu.", "Two."),
                 .init(.them, "こちらへどうぞ。メニューです。", "This way, please. Here's the menu."),
-                .init(.you, "おすすめは何ですか。", reading: "おすすめはなんですか。", "What do you recommend?", accept: ["おすすめは"]),
+                .init(.you, "おすすめは何ですか。", reading: "おすすめはなんですか。", romaji: "Osusume wa nan desu ka.", "What do you recommend?", accept: ["おすすめは"]),
                 .init(.them, "今日は天ぷらがおすすめです。", reading: "きょうはてんぷらがおすすめです。", "Today the tempura is very good."),
-                .init(.you, "じゃあ、それにします。", "Then I'll have that.", accept: ["それにします"]),
+                .init(.you, "じゃあ、それにします。", romaji: "Jaa, sore ni shimasu.", "Then I'll have that.", accept: ["それにします"]),
             ]),
         Dialogue(
             id: "shuumatsu", language: .japanese, level: 2, title: "Weekend plans",
             lines: [
                 .init(.them, "週末は何をしますか。", reading: "しゅうまつはなにをしますか。", "What are you doing at the weekend?"),
                 .init(
-                    .you, "友達と映画を見に行きます。", reading: "ともだちとえいがをみにいきます。", "I'm going to see a film with friends.",
+                    .you, "友達と映画を見に行きます。", reading: "ともだちとえいがをみにいきます。", romaji: "Tomodachi to eiga o mi ni ikimasu.",
+                    "I'm going to see a film with friends.",
                     accept: ["映画を見に行きます", "えいがをみにいきます"]),
                 .init(.them, "いいですね。何の映画ですか。", reading: "いいですね。なんのえいがですか。", "Nice. Which film?"),
-                .init(.you, "まだ決めていません。", reading: "まだきめていません。", "We haven't decided yet.", accept: ["まだ決めてない", "まだきめてない"]),
+                .init(
+                    .you, "まだ決めていません。", reading: "まだきめていません。", romaji: "Mada kimete imasen.", "We haven't decided yet.",
+                    accept: ["まだ決めてない", "まだきめてない"]),
                 .init(.them, "楽しんでくださいね。", reading: "たのしんでくださいね。", "Have fun."),
             ]),
         Dialogue(
             id: "kaimono", language: .japanese, level: 2, title: "Shopping for clothes",
             lines: [
                 .init(
-                    .you, "これのもう少し大きいサイズはありますか。", reading: "これのもうすこしおおきいさいずはありますか。",
+                    .you, "これのもう少し大きいサイズはありますか。", reading: "これのもうすこしおおきいさいずはありますか。", romaji: "Kore no mou sukoshi ookii saizu wa arimasu ka.",
                     "Do you have this in a slightly bigger size?", accept: ["大きいサイズはありますか", "おおきいさいずはありますか"]),
                 .init(.them, "はい、少々お待ちください。", reading: "はい、しょうしょうおまちください。", "Yes, one moment, please."),
-                .init(.you, "試着してもいいですか。", reading: "しちゃくしてもいいですか。", "May I try it on?"),
+                .init(.you, "試着してもいいですか。", reading: "しちゃくしてもいいですか。", romaji: "Shichaku shite mo ii desu ka.", "May I try it on?"),
                 .init(.them, "どうぞ。試着室はあちらです。", reading: "どうぞ。しちゃくしつはあちらです。", "Go ahead. The fitting room is over there."),
-                .init(.you, "ちょうどいいです。これをください。", "It's just right. I'll take this.", accept: ["これをください"]),
+                .init(.you, "ちょうどいいです。これをください。", romaji: "Choudo ii desu. Kore o kudasai.", "It's just right. I'll take this.", accept: ["これをください"]),
             ]),
         Dialogue(
             id: "byouin", language: .japanese, level: 3, title: "At the doctor's",
             lines: [
                 .init(.them, "どうしましたか。", "What seems to be the problem?"),
                 .init(
-                    .you, "三日前から頭が痛いんです。", reading: "みっかまえからあたまがいたいんです。", "I've had a headache for three days.",
+                    .you, "三日前から頭が痛いんです。", reading: "みっかまえからあたまがいたいんです。", romaji: "Mikka mae kara atama ga itai n desu.",
+                    "I've had a headache for three days.",
                     accept: ["頭が痛い", "あたまがいたい"]),
                 .init(.them, "熱はありますか。", reading: "ねつはありますか。", "Do you have a temperature?"),
                 .init(
                     .you, "熱はないと思いますが、とても疲れています。", reading: "ねつはないとおもいますが、とてもつかれています。",
+                    romaji: "Netsu wa nai to omoimasu ga, totemo tsukarete imasu.",
                     "I don't think so, but I'm very tired.", accept: ["とても疲れています", "とてもつかれています"]),
                 .init(
                     .them, "薬を出しておきますね。ゆっくり休んでください。", reading: "くすりをだしておきますね。ゆっくりやすんでください。",
                     "I'll give you some medicine. Get plenty of rest."),
-                .init(.you, "ありがとうございました。", "Thank you very much.", accept: ["ありがとうございます"]),
+                .init(.you, "ありがとうございました。", romaji: "Arigatou gozaimashita.", "Thank you very much.", accept: ["ありがとうございます"]),
             ]),
         Dialogue(
             id: "shigoto", language: .japanese, level: 3, title: "Talking about work",
             lines: [
                 .init(.them, "お仕事は何をされていますか。", reading: "おしごとはなにをされていますか。", "What do you do for work?"),
                 .init(
-                    .you, "ソフトウェアの会社で働いています。", reading: "そふとうぇあのかいしゃではたらいています。", "I work at a software company.",
+                    .you, "ソフトウェアの会社で働いています。", reading: "そふとうぇあのかいしゃではたらいています。", romaji: "Sofutowea no kaisha de hataraite imasu.",
+                    "I work at a software company.",
                     accept: ["会社で働いています", "かいしゃではたらいています"]),
                 .init(.them, "大変ですか。", reading: "たいへんですか。", "Is it hard work?"),
                 .init(
-                    .you, "忙しいですが、楽しいです。", reading: "いそがしいですが、たのしいです。", "It's busy, but fun.",
+                    .you, "忙しいですが、楽しいです。", reading: "いそがしいですが、たのしいです。", romaji: "Isogashii desu ga, tanoshii desu.", "It's busy, but fun.",
                     accept: ["楽しいです", "たのしいです"]),
                 .init(.them, "それはいいですね。", "That's good to hear."),
             ]),

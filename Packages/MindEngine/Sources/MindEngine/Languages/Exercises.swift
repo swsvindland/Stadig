@@ -19,6 +19,7 @@ struct PracticeRunner: PartRunner {
     /// Sessions the dialogue was practised in before: its lines stop being shown after two.
     var dialogueSeen: Int
     var line = 0
+    var phrase = 0
     var turn = 0
     var usedWords: Set<Int> = []
     var usedSentences = 0
@@ -44,6 +45,7 @@ struct PracticeRunner: PartRunner {
 
     mutating func next(_ run: inout StudyRun) -> StudyRun.Step? {
         current = nil
+        if let dialogue, !muted, let step = phraseStep(dialogue, run: run) { return step }
         if let dialogue, line < dialogue.lines.count {
             line += 1
             return dialogueStep(dialogue, line - 1, run: run)
@@ -104,7 +106,8 @@ struct PracticeRunner: PartRunner {
             guard let sentence = nextSentence(short: true) else { return nil }
             return speak(LanguageQuiz.produce(sentence, deck: deck, mode: exercise == .sayBack ? .say : .write, kind: .learn, seed: seed))
         case .script:
-            guard language.pack.script == .kanaKanji,
+            // Still on the first hiragana, written forms would be guesses, as readings would.
+            guard language.pack.script == .kanaKanji, LanguagePlan.asksReading(run.settings, has: { run.cards[$0] != nil }),
                 let word = nextWord(where: { $0.hasKanji || $0.hasKatakana }),
                 let question = LanguageQuiz.script(word, deck: deck, kind: .learn, seed: seed)
             else { return nil }
@@ -146,12 +149,36 @@ struct PracticeRunner: PartRunner {
         }
     }
 
+    /// A line of yours in writing, with its romaji for someone who can't read its kana yet.
+    func written(_ line: Dialogue.Line, seen: Int, run: StudyRun) -> (hint: Scaffolded, romaji: String?) {
+        let context = run.scaffolds(language)
+        if let romaji = Scaffolds.romaji(line, context) { return (.plain(line.text, language), romaji) }
+        return (Scaffolds.line(line.text, reading: line.reading, language: language, seen: seen, context), nil)
+    }
+
+    /// Before a dialogue's first run-through, each line of yours on its own: what it means, how it
+    /// sounds, then said back. The conversation then asks for phrases that have been taught.
+    mutating func phraseStep(_ dialogue: Dialogue, run: StudyRun) -> StudyRun.Step? {
+        let yours = dialogue.lines.filter { $0.speaker == .you }
+        guard dialogueSeen == 0, phrase < yours.count else { return nil }
+        let line = yours[phrase]
+        phrase += 1
+        let written = written(line, seen: 0, run: run)
+        return speak(
+            SpeakingTask(
+                id: "\(dialogue.key.raw).phrase.\(phrase).\(run.today.iso)", key: dialogue.key, language: language, kind: .learn,
+                instruction: "Repeat after me", gloss: line.english, prompt: .audio(line.text, language), hint: written.hint,
+                romaji: written.romaji, expected: line.expected, shape: .sentence(line.text, words: []), answer: line.text,
+                meaning: line.english, expectedSeconds: 10))
+    }
+
     mutating func dialogueStep(_ dialogue: Dialogue, _ index: Int, run: StudyRun) -> StudyRun.Step {
         let line = dialogue.lines[index]
         var rng = SeededRandom(run.seed, dialogue.id, "\(index)")
         let others = Dialogues.dialogues(language).filter { $0.id != dialogue.id }.shuffled(using: &rng).flatMap(\.lines)
         let id = "\(dialogue.key.raw).\(index).\(run.today.iso)"
         let options = Self.wrongOptions(for: line, in: dialogue.lines + others, language: language)
+        let romaji = Scaffolds.romaji(line, run.scaffolds(language))
         switch line.speaker {
         case .them:
             let wrong = options.map(\.english)
@@ -162,22 +189,19 @@ struct PracticeRunner: PartRunner {
                     expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
         case .you:
             if muted {
-                let wrong = options.filter { $0.speaker == .you }.map(\.text)
+                let yours = options.filter { $0.speaker == .you }
+                let wrong = yours.map { romaji == nil ? $0.text : $0.romaji ?? $0.text }
                 return .question(
                     .choosing(
                         id: id, key: dialogue.key, kind: .learn, instruction: "\(dialogue.title): what would you say?",
-                        prompt: .text("“\(line.english)”"), correct: line.text, wrong: wrong.shuffled(using: &rng),
-                        style: .foreign, expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
+                        prompt: .text("“\(line.english)”"), correct: romaji ?? line.text, wrong: wrong.shuffled(using: &rng),
+                        style: romaji == nil ? .foreign : .text, expectedSeconds: 10, reveal: .note("\(line.text)\n\(line.english)"), rng: &rng))
             }
-            let hint =
-                dialogueSeen < 2
-                ? Scaffolds.line(
-                    line.text, reading: line.reading, language: language, seen: dialogueSeen,
-                    run.scaffolds(language)) : nil
+            let written = dialogueSeen < 2 ? written(line, seen: dialogueSeen, run: run) : nil
             return speak(
                 SpeakingTask(
                     id: id, key: dialogue.key, language: language, kind: .learn, instruction: "\(dialogue.title): your turn",
-                    prompt: .text("“\(line.english)”"), hint: hint, expected: line.expected,
+                    prompt: .text("“\(line.english)”"), hint: written?.hint, romaji: romaji, expected: line.expected,
                     shape: .sentence(line.text, words: []), answer: line.text, meaning: line.english,
                     expectedSeconds: 10))
         }

@@ -124,6 +124,14 @@ public enum Scaffolds {
         return Scaffolded(language: language, segments: kana(text, context))
     }
 
+    /// A dialogue line in romaji, for someone learning kana while any kana in it isn't mastered.
+    /// Nil once all of it can be read.
+    public static func romaji(_ line: Dialogue.Line, _ context: Context) -> String? {
+        guard context.romaji, let romaji = line.romaji else { return nil }
+        let unread = [line.text, line.reading].compactMap(\.self).contains { text in kana(text, context).contains { $0.help != nil } }
+        return unread ? romaji : nil
+    }
+
     // MARK: Japanese
 
     /// The kanji part of a word and how it's read, with the kana either side: 食べる is お-less

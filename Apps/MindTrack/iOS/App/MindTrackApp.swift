@@ -111,6 +111,11 @@ enum DebugLaunch {
         // -seedSampleData fills an empty store with eight and a half weeks of study; -tab plan|progress
         // opens a tab; -startSession starts today's session; -showSettings opens Settings.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        // -learningKana makes this someone who doesn't read kana yet, whatever was seeded.
+        if launch.has("-learningKana"), var settings = model.settings {
+            settings.readsKana = false
+            model.save(settings: settings)
+        }
         // -courses maths,writing keeps only those courses (as Main), to reach their screens without
         // scrolling; with -onboarded, the first session is theirs alone. A course can name its mode:
         // -courses japanese,reading,maths:secondary,writing:maintenance.
@@ -162,6 +167,14 @@ enum DebugLaunch {
         // -checkIn writing starts a check-in of that subject now, whatever the calendar says.
         if let domain = launch.value(after: "-checkIn").flatMap(Domain.init(rawValue:)) {
             model.debugCheckIn([domain])
+        }
+        // -stepsUntil "Repeat after me" answers steps until a speaking step has that instruction.
+        if let instruction = launch.value(after: "-stepsUntil") {
+            for _ in 0..<2000 {
+                guard let run = model.run, run.step != nil else { break }
+                if run.feedback == nil, case .speak(let task)? = run.step, task.instruction == instruction { break }
+                model.debugSteps(1)
+            }
         }
         for (i, argument) in launch.arguments.enumerated() where argument == "-steps" || argument == "-skipParts" {
             guard let count = launch.arguments.indices.contains(i + 1) ? Int(launch.arguments[i + 1]) : nil, count > 0 else { continue }

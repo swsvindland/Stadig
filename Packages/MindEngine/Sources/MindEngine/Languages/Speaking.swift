@@ -23,11 +23,15 @@ public struct SpeakingTask: Hashable, Sendable, Identifiable {
     public var kind: AttemptKind
     public var mode: Mode
     public var instruction: String
+    /// What it means, shown above a prompt that's played: English, then the language.
+    public var gloss: String?
     /// What's shown or played: say this, repeat this, or answer this.
     public var prompt: Prompt
     /// Shown under the prompt as support, fading as the item is mastered: the line to say, in a
     /// dialogue's first run-throughs.
     public var hint: Scaffolded?
+    /// The line in romaji for someone who can't read its kana yet: under the hint, and the answer.
+    public var romaji: String?
     /// Answers that count, in the language's script.
     public var expected: [String]
     public var shape: Shape
@@ -39,8 +43,8 @@ public struct SpeakingTask: Hashable, Sendable, Identifiable {
     public var band: Int?
 
     public init(
-        id: String, key: CardKey, language: Language, kind: AttemptKind, mode: Mode = .say, instruction: String, prompt: Prompt,
-        hint: Scaffolded? = nil, expected: [String], shape: Shape = .phrase, answer: String? = nil, meaning: String? = nil,
+        id: String, key: CardKey, language: Language, kind: AttemptKind, mode: Mode = .say, instruction: String, gloss: String? = nil, prompt: Prompt,
+        hint: Scaffolded? = nil, romaji: String? = nil, expected: [String], shape: Shape = .phrase, answer: String? = nil, meaning: String? = nil,
         expectedSeconds: Double, test: TestKind? = nil, band: Int? = nil
     ) {
         self.id = id
@@ -49,8 +53,10 @@ public struct SpeakingTask: Hashable, Sendable, Identifiable {
         self.kind = kind
         self.mode = mode
         self.instruction = instruction
+        self.gloss = gloss
         self.prompt = prompt
         self.hint = hint
+        self.romaji = romaji
         self.expected = expected
         self.shape = shape
         self.answer = answer ?? expected.first ?? ""

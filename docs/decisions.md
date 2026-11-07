@@ -1,5 +1,11 @@
 # Decisions to check
 
+- **Dialogues while learning kana.** On 2026-11-06 you said a lesson asked you to say full sentences in kana you hadn't seen. The fix is mine to check:
+  - **Romaji for the whole line,** hand-written, under the line in the "Say this" card and in place of it among the choices with speaking off, until every kana in it is mastered. Not kana by kana as elsewhere, which would read the particle は as "ha" and run the words together.
+  - **Telling written forms apart** waits for the first hiragana, as asking a reading already does.
+  - **Phrases first:** you asked for English, then Japanese, then repeat after me. Every line of yours gets that once, before a dialogue's first run, in every language and at every level, and only your lines, not theirs. One go each, with the usual marking, and a miss doesn't repeat it. Dialogues still open at 15 known words.
+  - **Left as it was:** writing words and dictation still come up while kana is new.
+
 - **Stats and moving classes in the hub.** On 2026-11-05 you chose the list of eight stats and moving a class by tapping it. The details are my calls:
   - **Two apps, one stat:** the average of their scores, each app's own number shown beneath it, and the worse of their trends.
   - **The gym moves too,** by a button beside its row, since tapping the row opens Stadig Lift.

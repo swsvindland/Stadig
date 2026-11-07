@@ -750,3 +750,134 @@ extension LanguageContentTests {
         }
     }
 }
+
+@Suite("Dialogues while learning kana")
+struct KanaLearnerDialogueTests {
+    let deck = Fixtures.deck()
+    let day = Fixtures.monday.adding(days: 1)
+
+    /// Thirty words in, and not one kana mastered: the first block a dialogue reaches.
+    func store(readsKana: Bool, speaking: Bool = true) -> Store {
+        var settings = Fixtures.settings([.japanese], readsKana: readsKana)
+        settings.speaking = speaking
+        var store = Store(settings: settings)
+        let now = Fixtures.monday.date()
+        // Someone who reads kana is placed first, and a dialogue comes the block after.
+        if readsKana { store.tests = [TestResult(test: .vocabulary, date: now, score: 30, placement: true)] }
+        for word in deck.words.prefix(30) {
+            store.cards[word.key] = MemoryCard(key: word.key, memory: Scheduler.known(stability: 20, at: now), introduced: now)
+        }
+        return store
+    }
+
+    func practice(_ store: Store) -> Driver {
+        let state = store.state(on: day)
+        let catalogs = Fixtures.catalogs(deck)
+        var run = StudyRun(plan: SessionPlanner.block(.japanese, state: state, catalogs: catalogs), state: state, catalogs: catalogs, now: state.now)
+        var driver = Driver(student: Student(vocabulary: 30, mathsLevel: 0, writingLevel: 0, deck: deck))
+        driver.run(&run, from: state.now)
+        return driver
+    }
+
+    @Test("every line you're asked to say comes with its romaji, and the kana line isn't left to read alone")
+    func saying() {
+        let lines = practice(store(readsKana: false)).tasks.filter { $0.key.raw.hasPrefix("jp.dialogue.") }
+        #expect(!lines.isEmpty)
+        for task in lines {
+            #expect(task.romaji != nil, "\(task.answer)")
+            #expect(task.hint?.hasHelp == false, "\(task.answer)")
+        }
+    }
+
+    @Test("someone who reads kana keeps the reading over the line, and no romaji")
+    func readers() {
+        let lines = practice(store(readsKana: true)).tasks.filter { $0.key.raw.hasPrefix("jp.dialogue.") }
+        #expect(!lines.isEmpty)
+        #expect(lines.allSatisfy { $0.romaji == nil })
+        #expect(lines.contains { $0.hint?.hasHelp == true })
+    }
+
+    @Test("with speaking off, the lines to pick from are in romaji too")
+    func picking() {
+        let picks = practice(store(readsKana: false, speaking: false)).questions.filter { $0.instruction.contains("would you say") }
+        #expect(!picks.isEmpty)
+        for pick in picks {
+            #expect(pick.choices.allSatisfy { $0.allSatisfy(\.isASCII) }, "\(pick.choices)")
+        }
+    }
+
+    @Test("telling written forms apart waits for the first hiragana, as readings do")
+    func writtenForms() {
+        let questions = practice(store(readsKana: false)).questions
+        #expect(!questions.contains { $0.instruction == "Which is it written?" || $0.instruction == "Which spells it?" })
+    }
+
+    @Test("a dialogue's first run starts by teaching each line of yours: its English, then heard, then repeated")
+    func phrases() throws {
+        let tasks = practice(store(readsKana: false)).tasks
+        let taught = tasks.prefix { $0.instruction == "Repeat after me" }
+        let dialogue = try #require(Dialogues.dialogues(.japanese).first { tasks.first?.key == $0.key })
+        let yours = dialogue.lines.filter { $0.speaker == .you }
+        #expect(taught.map(\.answer) == yours.map(\.text))
+        for (task, line) in zip(taught, yours) {
+            #expect(task.gloss == line.english)
+            #expect(task.prompt == .audio(line.text, .japanese))
+            #expect(task.romaji == line.romaji)
+        }
+        #expect(tasks.dropFirst(taught.count).first?.key == dialogue.key, "then the conversation, with phrases it has taught")
+    }
+
+    @Test("phrases are taught once: a dialogue that's been run through goes straight to the conversation")
+    func phrasesOnce() throws {
+        var store = store(readsKana: false)
+        for dialogue in Dialogues.dialogues(.japanese) {
+            let now = Fixtures.monday.date()
+            let attempt = Attempt(key: dialogue.key, kind: .learn, correct: true, seconds: 5, at: now)
+            store.sessions.append(
+                StudySession(purpose: .regular, start: now, plannedMinutes: 25, domains: [.japanese], planned: true, attempts: [attempt]))
+        }
+        #expect(!practice(store).tasks.contains { $0.instruction == "Repeat after me" })
+    }
+
+    @Test("nothing's repeated with speaking off, or once \"Can't speak now\" is tapped")
+    func phrasesMuted() {
+        #expect(!practice(store(readsKana: false, speaking: false)).tasks.contains { $0.instruction == "Repeat after me" })
+        let state = store(readsKana: false).state(on: day)
+        let catalogs = Fixtures.catalogs(deck)
+        var run = StudyRun(plan: SessionPlanner.block(.japanese, state: state, catalogs: catalogs), state: state, catalogs: catalogs, now: state.now)
+        var driver = Driver(student: Student(vocabulary: 30, mathsLevel: 0, writingLevel: 0, deck: deck))
+        driver.speak = { _ in .skip }
+        driver.run(&run, from: state.now)
+        #expect(driver.tasks.filter { $0.instruction == "Repeat after me" }.count == 1)
+    }
+
+    @Test("a line's romaji goes once every kana in it is mastered")
+    func fades() throws {
+        let line = try #require(Dialogues.dialogues(.japanese).flatMap(\.lines).first { $0.text == "はい、どうぞ。" })
+        #expect(Scaffolds.romaji(line, Scaffolds.Context(cards: [:], frontier: 0, readsKana: false)) == "Hai, douzo.")
+        #expect(Scaffolds.romaji(line, Scaffolds.Context(cards: [:], frontier: 0, readsKana: true)) == nil)
+        let now = Fixtures.monday.date()
+        var cards: [CardKey: MemoryCard] = [:]
+        for kana in KanaTable.all {
+            cards[kana.key] = MemoryCard(key: kana.key, memory: Memory(stability: 30, difficulty: 5, lastReview: now, due: now), introduced: now)
+        }
+        #expect(Scaffolds.romaji(line, Scaffolds.Context(cards: cards, frontier: 0, readsKana: false)) == nil)
+    }
+
+    @Test("the hand-written romaji of every line of yours says the line's kana, spaces and particles aside")
+    func romajiMatchesKana() throws {
+        func fold(_ text: String) -> String {
+            text.lowercased().filter(\.isLetter).replacingOccurrences(of: "wa", with: "ha").replacingOccurrences(of: "wo", with: "o")
+        }
+        let lines = Dialogues.dialogues(.japanese).flatMap(\.lines).filter { $0.speaker == .you }
+        #expect(!lines.isEmpty)
+        for line in lines {
+            let written = try #require(line.romaji, "\(line.text)")
+            let kana = (line.reading ?? line.text).filter { $0 != "。" && $0 != "、" }
+            // The table has no small ぇ, so ソフトウェア can't be spelled out here.
+            guard !kana.contains("ぇ") else { continue }
+            let table = try #require(KanaTable.romaji(kana), "\(line.text)")
+            #expect(fold(written) == fold(table), "\(line.text)")
+        }
+    }
+}
