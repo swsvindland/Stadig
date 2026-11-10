@@ -7,25 +7,52 @@ extension MathCurriculum {
         MathTopic(
             id: "angles", title: "Angles in polygons", level: 3, prerequisites: ["order-of-operations"],
             lesson:
-                #"The interior angles of an $n$-sided polygon add to $(n - 2) \times 180°$. In a regular polygon they're all equal, and each exterior angle is $\frac{360°}{n}$."#,
+                #"An interior angle is the angle inside one corner of a shape. Cut a shape with $n$ sides into triangles from one corner and you get $n - 2$ of them; each triangle's angles add to $180°$, so all the corners together add to $(n - 2) \times 180°$. A regular shape has equal sides and equal corners, so each corner is that total shared by $n$. An exterior angle is how far you turn at a corner as you walk around the edge: one lap turns $360°$, so in a regular shape each turn is $\frac{360°}{n}$."#,
             seconds: 35
         ) { rng in
             let n = rng.pick([3, 4, 5, 6, 8, 9, 10, 12])
+            // The name alone ("a nonagon") is a vocabulary test, so the side count always goes with it.
+            let shape: String =
+                switch n {
+                case 3: "triangle"
+                case 4: "quadrilateral"
+                case 5: "pentagon"
+                case 6: "hexagon"
+                case 8: "octagon"
+                case 9: "nonagon"
+                case 10: "decagon"
+                default: "dodecagon"
+                }
+            // Nobody says "a regular quadrilateral".
+            let regular = n == 3 ? "equilateral triangle" : n == 4 ? "square" : "regular \(shape)"
+            let triangles = n - 2
+            let total = triangles * 180
+            let cut =
+                triangles == 1
+                ? "A triangle is already one triangle: its corners add to $180°$."
+                : #"Cut it into triangles from one corner: $\#(n) - 2 = \#(triangles)$ triangles, each adding to $180°$, so $\#(triangles) \times 180 = \#(total)$."#
             switch rng.int(0...2) {
             case 0:
-                let value = (n - 2) * 180
                 return .number(
-                    #"What do the interior angles of a \#(n)-sided polygon add to, in degrees?"#, value,
-                    steps: [#"$(\#(n) - 2) \times 180 = \#(value)$."#])
+                    "\(shape == "octagon" ? "An" : "A") \(shape) has \(n) sides and \(n) corners. Add up the angles inside all \(n) corners: what is the total, in degrees?",
+                    total,
+                    steps: [cut])
             case 1:
-                let value = (n - 2) * 180 / n
+                let value = total / n
                 return .number(
-                    #"What is each interior angle of a regular \#(n)-sided polygon, in degrees?"#, value,
-                    steps: [#"Total $(\#(n) - 2) \times 180 = \#((n - 2) * 180)$."#, #"Shared by $\#(n)$: $\#(value)$."#])
+                    "\(n == 3 ? "An" : "A") \(regular) has \(n) equal sides and \(n) equal corners. What is the angle inside one corner, in degrees?",
+                    value,
+                    steps: [
+                        cut,
+                        #"They're equal, so each is $\frac{\#(total)}{\#(n)} = \#(value)$."#,
+                    ])
             default:
                 return .number(
-                    #"What is each exterior angle of a regular \#(n)-sided polygon, in degrees?"#, 360 / n,
-                    steps: [#"Exterior angles add to $360°$: $\frac{360}{\#(n)} = \#(360 / n)$."#])
+                    "Walk once around the edge of \(n == 3 ? "an" : "a") \(regular) (\(n) equal sides). You turn by the same amount at each of the \(n) corners. How many degrees is each turn?",
+                    360 / n,
+                    steps: [
+                        #"One lap turns $360°$ in all, shared by \#(n) corners: $\frac{360}{\#(n)} = \#(360 / n)$. That turn is the exterior angle."#
+                    ])
             }
         },
         MathTopic(
