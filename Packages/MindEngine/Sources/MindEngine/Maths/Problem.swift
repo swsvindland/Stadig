@@ -14,6 +14,8 @@ public struct Problem: Hashable, Sendable {
     public var expectedSeconds: Double
     /// A small chart the problem is about, when it has one.
     public var figure: DataFigure?
+    /// How it's meant to be worked: the topic's, or in your head for numeracy.
+    public var tool: MathsTool = .paper
 
     init(prompt: String, answer: Answer, choices: [String] = [], steps: [String], figure: DataFigure? = nil) {
         topic = ""
@@ -49,7 +51,7 @@ public struct Problem: Hashable, Sendable {
         Question(
             id: id, key: .topic(topic), kind: kind, instruction: choices.isEmpty ? "Type the answer" : "Choose the answer",
             prompt: .math(prompt), choices: choices, choiceStyle: .math, answer: answer, expectedSeconds: expectedSeconds,
-            reveal: .steps(steps), figure: figure)
+            reveal: .steps(steps), figure: figure, tool: tool)
     }
 
     /// The same problem with its chart.
@@ -73,13 +75,15 @@ public struct MathTopic: Sendable, Identifiable {
     /// About how long a problem takes someone who knows the topic.
     public let seconds: Double
     public let strand: MathsStrand
+    /// How its problems are meant to be worked.
+    public let tool: MathsTool
     let make: @Sendable (inout SeededRandom) -> Problem
     /// A problem about the person's own numbers, when the System apps have published enough.
     private(set) var personal: (@Sendable (inout SeededRandom, SystemData) -> Problem?)?
 
     init(
         id: String, title: String, level: Int, prerequisites: [String], lesson: String, seconds: Double,
-        strand: MathsStrand = .classic, make: @escaping @Sendable (inout SeededRandom) -> Problem
+        strand: MathsStrand = .classic, tool: MathsTool = .paper, make: @escaping @Sendable (inout SeededRandom) -> Problem
     ) {
         self.id = id
         self.title = title
@@ -88,6 +92,7 @@ public struct MathTopic: Sendable, Identifiable {
         self.lesson = lesson
         self.seconds = seconds
         self.strand = strand
+        self.tool = tool
         self.make = make
     }
 
@@ -109,6 +114,7 @@ public struct MathTopic: Sendable, Identifiable {
         if let personal, !data.isEmpty, rng.chance(0.5) { problem = personal(&rng, data) }
         var made = problem ?? make(&rng)
         made.topic = id
+        made.tool = tool
         made.expectedSeconds = seconds * (made.figure == nil ? 1 : 1.2)
         return made
     }
@@ -118,6 +124,7 @@ public struct MathTopic: Sendable, Identifiable {
         var rng = SeededRandom("maths", id, "personal", seed)
         guard var problem = personal?(&rng, data) else { return nil }
         problem.topic = id
+        problem.tool = tool
         problem.expectedSeconds = seconds * (problem.figure == nil ? 1 : 1.2)
         return problem
     }

@@ -706,7 +706,7 @@ extension MathCurriculum {
             id: "significance", title: "Significance and p-values", level: 9, prerequisites: ["normal-distribution", "independence"],
             lesson:
                 "A p-value is how often results at least this extreme would turn up if there were no effect at all. It isn't the chance the finding is wrong. Run enough tests and some come out \"significant\" by luck.",
-            seconds: 55, strand: .discrete
+            seconds: 55, strand: .discrete, tool: .calculator
         ) { rng in
             switch rng.int(0...2) {
             case 0:

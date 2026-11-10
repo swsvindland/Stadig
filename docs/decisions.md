@@ -1,5 +1,12 @@
 # Decisions to check
 
+- **How each maths problem is meant to be worked.** On 2026-11-10 you asked for every problem to say whether it's in your head, pen and paper, or a calculator. Which gets which is my call:
+  - **In your head:** all of numeracy (drills, placement problems and its check-in test), since doing it unaided is the skill.
+  - **Calculator:** only the quadratic formula (two decimal places), exponential growth (compound rates over up to ten years) and significance, where one problem asks for 0.95ⁿ. Their answers already allow rounding.
+  - **Pen and paper:** every other topic. They're written with exact answers and numbers that come out, so a calculator would skip the point. Trig ratios, standard deviation and least squares stay here.
+  - **Per topic, not per problem:** significance's other two problems don't need a calculator but say it's fine, so a topic never switches tools from one question to the next.
+  - **Nothing enforces it:** the app can't see a calculator. Topic timings weren't changed.
+
 - **Dialogues while learning kana.** On 2026-11-06 you said a lesson asked you to say full sentences in kana you hadn't seen. The fix is mine to check:
   - **Romaji for the whole line,** hand-written, under the line in the "Say this" card and in place of it among the choices with speaking off, until every kana in it is mastered. Not kana by kana as elsewhere, which would read the particle は as "ha" and run the words together.
   - **Telling written forms apart** waits for the first hiragana, as asking a reading already does.

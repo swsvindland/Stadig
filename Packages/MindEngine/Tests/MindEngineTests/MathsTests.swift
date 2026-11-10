@@ -265,6 +265,33 @@ struct MathsTests {
         #expect(Array(maths.map(\.kind).prefix(2)) == [.custom("numeracy"), .placement] && maths[1].detail.hasPrefix("statistics"), "\(later.parts)")
     }
 
+    @Test(
+        "every maths question says how to work it: numeracy in your head, topics with pen and paper, a calculator only where powers or roots need decimals"
+    )
+    func tools() throws {
+        for skill in NumeracySkill.allCases {
+            #expect(skill.question(level: 4, seed: "tool", kind: .learn).tool == .head, "\(skill)")
+        }
+        let calculator = Set(MathCurriculum.topics.filter { $0.tool == .calculator }.map(\.id))
+        #expect(calculator == ["quadratic-formula", "exponential-growth", "significance"])
+        #expect(MathCurriculum.topics.allSatisfy { $0.tool != .head }, "mental work is numeracy's")
+        for topic in MathCurriculum.topics {
+            for seed in 0..<5 {
+                let question = topic.problem(seed: "\(seed)").question(kind: .learn, id: "tool.\(topic.id).\(seed)")
+                #expect(question.tool == topic.tool, "\(topic.id)")
+            }
+        }
+
+        // Today's parts say it too, before the session starts.
+        var store = placedStore(numeracy: 6)
+        store.settings.mathsStrands = [.numeracy, .classic]
+        let plan = SessionPlanner.block(.maths, state: store.state(on: monday.adding(days: 30)), catalogs: Catalogs())
+        let numeracy = try #require(plan.parts.first { $0.kind == .custom("numeracy") })
+        let topic = try #require(plan.parts.first { $0.kind == .learn })
+        #expect(numeracy.detail.hasPrefix("Timed, in your head:"), "\(numeracy.detail)")
+        #expect(topic.detail.hasSuffix(", with pen and paper"), "\(topic.detail)")
+    }
+
     @Test("a first-version placement keeps the ladder: only numeracy and statistics are placed")
     func firstVersion() throws {
         var store = Store(settings: Fixtures.settings([.maths]))

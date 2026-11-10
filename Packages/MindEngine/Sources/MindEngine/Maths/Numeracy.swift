@@ -55,6 +55,7 @@ public enum NumeracySkill: String, CaseIterable, Codable, Sendable, Identifiable
             case .units: Numeracy.units(level, &rng)
             }
         problem.topic = "numeracy.\(rawValue)"
+        problem.tool = .head
         problem.expectedSeconds = target(level)
         return problem
     }

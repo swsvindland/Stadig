@@ -107,11 +107,14 @@ public struct Question: Hashable, Sendable, Identifiable {
     public var figure: DataFigure?
     /// Scored on speed as well as accuracy (numeracy): a right answer moves straight on.
     public var timed: Bool
+    /// How a maths problem is meant to be worked; nil outside maths.
+    public var tool: MathsTool?
 
     public init(
         id: String, key: CardKey, kind: AttemptKind, instruction: String, prompt: Prompt, choices: [String] = [],
         choiceStyle: ChoiceStyle = .text, answer: Answer, allowsDontKnow: Bool = false, expectedSeconds: Double,
-        reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil, figure: DataFigure? = nil, timed: Bool = false
+        reveal: Reveal? = nil, test: TestKind? = nil, band: Int? = nil, figure: DataFigure? = nil, timed: Bool = false,
+        tool: MathsTool? = nil
     ) {
         self.id = id
         self.key = key
@@ -128,6 +131,7 @@ public struct Question: Hashable, Sendable, Identifiable {
         self.band = band
         self.figure = figure
         self.timed = timed
+        self.tool = tool
     }
 
     public var correctChoice: Int? {

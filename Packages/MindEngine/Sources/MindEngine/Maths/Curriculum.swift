@@ -471,7 +471,7 @@ extension MathCurriculum {
             id: "quadratic-formula", title: "The quadratic formula", level: 6, prerequisites: ["quadratic-equations", "surds"],
             lesson:
                 #"$ax^{2} + bx + c = 0$ has solutions $x = \frac{-b \pm \sqrt{b^{2} - 4ac}}{2a}$. The discriminant $b^{2} - 4ac$ says how many: positive two, zero one, negative none."#,
-            seconds: 75
+            seconds: 75, tool: .calculator
         ) { rng in
             var a = 1
             var b = 0
@@ -604,7 +604,7 @@ extension MathCurriculum {
             id: "exponential-growth", title: "Exponential growth and decay", level: 6, prerequisites: ["percentages", "powers"],
             lesson:
                 #"Growing by $r\%$ a year multiplies by $1 + \frac{r}{100}$ each year: after $t$ years, $P(1 + \frac{r}{100})^{t}$. Falling by $r\%$ multiplies by $1 - \frac{r}{100}$."#,
-            seconds: 60
+            seconds: 60, tool: .calculator
         ) { rng in
             let p = rng.pick([100, 200, 500, 1000, 2500])
             let r = rng.pick([2, 3, 4, 5, 8, 10, 12])

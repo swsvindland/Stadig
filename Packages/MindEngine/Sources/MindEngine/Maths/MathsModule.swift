@@ -37,8 +37,8 @@ enum MathsModule: SubjectModule {
             PlanPart(
                 kind: .custom(numeracyKind), domain: .maths, minutes: block, title: "Numeracy",
                 detail: kind == .review
-                    ? "Timed, at today's levels: practice only this week"
-                    : "Timed: \(levels.weakest.label.lowercased()) first, level \(levels[levels.weakest])")
+                    ? "Timed, in your head, at today's levels: practice only this week"
+                    : "Timed, in your head: \(levels.weakest.label.lowercased()) first, level \(levels[levels.weakest])")
         ]
         if weak && kind != .review {
             notes.append("Numeracy is at level \(levels.overall) of 10, so its block runs five minutes until the everyday basics are quick.")
@@ -62,7 +62,7 @@ enum MathsModule: SubjectModule {
             parts.append(
                 PlanPart(
                     kind: .learn, domain: .maths, minutes: left, title: strand.label,
-                    detail: carrying ? "Carrying on: \(next.title)" : "Next: \(next.title)"))
+                    detail: "\(carrying ? "Carrying on" : "Next"): \(next.title), \(next.tool.phrase)"))
         } else if unplaced.isEmpty {
             parts.append(
                 PlanPart(
@@ -78,7 +78,9 @@ enum MathsModule: SubjectModule {
         var parts: [PlanPart] = []
         if MathsPlan.placed(.numeracy, state) {
             parts.append(
-                PlanPart(kind: .test(.numeracy), domain: .maths, minutes: 3, title: "Numeracy", detail: "Eight timed problems, stepping up and down"))
+                PlanPart(
+                    kind: .test(.numeracy), domain: .maths, minutes: 3, title: "Numeracy",
+                    detail: "Eight timed problems in your head, stepping up and down"))
         }
         for strand in state.settings.strands where strand != .numeracy && MathsPlan.known(state.cards, strand: strand).count >= 3 {
             let count = checkSize(strand)

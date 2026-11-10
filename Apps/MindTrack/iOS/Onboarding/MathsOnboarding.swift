@@ -25,7 +25,7 @@ struct MathsOnboarding: View {
                             Text(strand.label).font(.headline)
                             Text(strand.detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                             if strand == .numeracy {
-                                Text("Always on: a few timed minutes open every maths session, whatever else you're working on.")
+                                Text("Always on: a few timed minutes in your head open every maths session, whatever else you're working on.")
                                     .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                             }
                         }

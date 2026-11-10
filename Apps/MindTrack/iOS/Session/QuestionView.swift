@@ -265,6 +265,9 @@ struct QuestionView: View {
             if question.kind == .test { Pill(text: "Test", symbol: "gauge.with.dots.needle.50percent") }
             if question.kind == .probe { Pill(text: "Quick check", symbol: "bolt") }
             if question.timed && question.kind != .test { Pill(text: "Timed", symbol: "stopwatch") }
+            if let tool = question.tool {
+                Pill(text: tool.label, symbol: tool.symbol).accessibilityIdentifier("question.tool")
+            }
         }
     }
 
