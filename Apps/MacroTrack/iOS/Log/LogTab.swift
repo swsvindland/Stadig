@@ -189,8 +189,16 @@ struct LogTab: View {
             })
     }
 
+    /// Built only where there's room. On an iPhone the inspector is never shown, but SwiftUI still
+    /// builds its content: a logger there was a second, hidden scanner beside the sheet's, and the
+    /// two setting up the same camera at once hung it (a white scanner, and a dead photo camera
+    /// until the app was quit).
     @ViewBuilder
     var pane: some View {
+        if wide { paneContent }
+    }
+
+    var paneContent: some View {
         ZStack {
             if let mode = model.logger {
                 // The same one however it's asked for again: it goes where it's asked, and keeps

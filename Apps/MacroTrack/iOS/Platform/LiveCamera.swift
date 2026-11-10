@@ -17,7 +17,10 @@ nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVide
     }
 
     let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "dev.svindland.stadig.macro.camera")
+    /// One queue for every scanner: two sessions setting up the same camera on two queues at once
+    /// deadlock inside AVFoundation, and then no camera in the app works until it's quit.
+    private static let queue = DispatchQueue(label: "dev.svindland.stadig.macro.camera")
+    private var queue: DispatchQueue { Self.queue }
     private let handlers = Mutex(Handlers())
     private var device: AVCaptureDevice?
     private var configured = false
@@ -33,6 +36,9 @@ nonisolated final class LiveCamera: NSObject, @unchecked Sendable, AVCaptureVide
     /// Asks for the camera if it hasn't been allowed, then starts. False when it's not allowed.
     func start(frame: @escaping @Sendable (CVPixelBuffer) -> Void, barcode: @escaping @Sendable (String, Barcode.Symbology?) -> Void) async -> Bool {
         guard await AVCaptureDevice.requestAccess(for: .video) else { return false }
+        // Closed while the answer came: its stop has already run, and starting now would leave a
+        // session running that nobody stops, holding the camera.
+        guard !Task.isCancelled else { return true }
         handlers.withLock { $0 = Handlers(frame: frame, barcode: barcode) }
         queue.async { [self] in
             configure()
