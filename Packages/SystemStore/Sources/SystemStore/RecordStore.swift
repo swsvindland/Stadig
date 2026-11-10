@@ -38,11 +38,12 @@ public final class RecordStore {
     @ObservationIgnored private var context: ModelContext?
     /// Decoded `all` results by record kind, each a `DecodedKind`. A local save or delete patches its
     /// own kind in place, so logging a food decodes that food and not every other, and leaves the
-    /// other kinds alone. An erase, a remote change, a restore, a big batch or a save that failed
-    /// drops them instead, to be read again.
-    @ObservationIgnored private var cache: [String: Any] = [:]
-    /// The `revision` at which each kind last changed, and at which every kind did (an erase or a
-    /// remote change).
+    /// other kinds alone. A remote change patches in the records it touched, read from the store's
+    /// history. An erase, a restore, a big batch, a remote change too big or too unclear to patch
+    /// (one that removed rows outright), or a save that failed drops them instead, to be read again.
+    @ObservationIgnored private var cache: [String: any CachedKind] = [:]
+    /// The `revision` at which each kind last changed, and at which every kind did (an erase, or a
+    /// remote change that couldn't be patched).
     @ObservationIgnored private var kindRevisions: [String: Int] = [:]
     @ObservationIgnored private var everyKindRevision = 0
     @ObservationIgnored private var remoteObserver: NotificationObservation?
@@ -67,6 +68,10 @@ public final class RecordStore {
     /// import still shows up as it lands.
     static let remoteQuietPeriod: Duration = .milliseconds(250)
     static let remoteMaxDelay: Duration = .seconds(1)
+    /// The most rows a remote change patches into the caches. Past it (a new device's first sync, a
+    /// restore on another device) reading each changed kind whole is quicker than placing each
+    /// record in turn.
+    static let remotePatchLimit = 256
     private static let rowEntity = Schema.entityName(for: RecordRow.self)
 
     /// `cloudKitContainer`: e.g. "iCloud.dev.svindland.stadig.lift"; nil or `inMemory` keeps the data on
@@ -174,8 +179,8 @@ public final class RecordStore {
     // MARK: Observing
 
     /// The `revision` at which records of this type last changed: a local save, delete or import of
-    /// the kind, an erase, or a remote change (which may touch any kind). An app model can skip
-    /// re-reading the kinds that didn't move.
+    /// the kind, an erase, or a remote change that touched the kind (or one too big to tell, which
+    /// counts for every kind). An app model can skip re-reading the kinds that didn't move.
     public func revision<T: StoredRecord>(of type: T.Type) -> Int {
         _ = revision
         return max(kindRevisions[T.kind] ?? 0, everyKindRevision)
@@ -183,7 +188,7 @@ public final class RecordStore {
 
     /// Calls `handler` on the main actor when changes made elsewhere arrive (CloudKit importing
     /// another device's edits, or another process writing the store), once per burst, after
-    /// `revision` has moved and the caches are cleared. This store's own writes don't call it: the
+    /// `revision` has moved and the caches are brought up to date. This store's own writes don't call it: the
     /// caller made them and knows. Keep the returned token alive; releasing it stops the calls.
     public func observeChanges(_ handler: @escaping @MainActor @Sendable () -> Void) -> AnyObject {
         let observation = RecordStoreObservation(handler)
@@ -216,7 +221,7 @@ public final class RecordStore {
         let decoder = SystemJSON.decoder()
         var decoded = DecodedKind<T>()
         for version in newest.values.filter({ !$0.deleted }).sorted(by: { RecordOrder($0).comesBefore(RecordOrder($1)) }) {
-            if let record = decode(T.self, version, decoder) { decoded.append(record, at: RecordOrder(version)) }
+            if let record = Self.decode(T.self, version, decoder) { decoded.append(record, at: RecordOrder(version)) }
         }
         return decoded
     }
@@ -241,7 +246,7 @@ public final class RecordStore {
     public func get<T: StoredRecord>(_ type: T.Type, id: UUID) -> T? {
         _ = revision
         guard let row = Self.newest(fetchRows(kind: T.kind, uuid: id)) else { return nil }
-        return decode(T.self, RecordVersion(row), SystemJSON.decoder())
+        return Self.decode(T.self, RecordVersion(row), SystemJSON.decoder())
     }
 
     // MARK: Writing
@@ -331,7 +336,7 @@ public final class RecordStore {
                 kind: T.kind, uuid: record.id, updatedAt: stamped.updatedAt, schemaVersion: T.schemaVersion, payload: payload, deleted: false)
             _ = write(version, into: [], context: context)
             written.append(version)
-            if let saved = decode(T.self, version, decoder) { stored.append(saved) }
+            if let saved = Self.decode(T.self, version, decoder) { stored.append(saved) }
         }
         let saved = commit(written.count, kind: T.kind, context, patch: written.count > 32 ? nil : { self.patchCache(T.self, with: written) })
         return saved ? stored : []
@@ -523,7 +528,7 @@ public final class RecordStore {
         }
     }
 
-    private func decode<T: StoredRecord>(_ type: T.Type, _ version: RecordVersion, _ decoder: JSONDecoder) -> T? {
+    nonisolated static func decode<T: StoredRecord>(_ type: T.Type, _ version: RecordVersion, _ decoder: JSONDecoder) -> T? {
         guard !version.deleted else { return nil }
         do {
             return try RecordCoding.decode(T.self, payload: version.payload, schemaVersion: version.schemaVersion, decoder: decoder)
@@ -587,13 +592,14 @@ public final class RecordStore {
     /// decoded from the payload it was stored as, so the cache holds what a fresh read would, dates
     /// to the millisecond and all.
     private func patchCache<T: StoredRecord>(_ type: T.Type, with versions: [RecordVersion]) {
-        guard var decoded = cache.removeValue(forKey: T.kind) as? DecodedKind<T> else { return }
-        let decoder = SystemJSON.decoder()
-        for version in versions {
-            decoded.remove(version.uuid)
-            if let record = decode(T.self, version, decoder) { decoded.insert(record, at: RecordOrder(version)) }
-        }
-        cache[T.kind] = decoded
+        patchCache(kind: T.kind, with: versions)
+    }
+
+    /// `patchCache` for a kind known only by name, as a remote change names them.
+    private func patchCache(kind: String, with versions: [RecordVersion]) {
+        guard var decoded = cache.removeValue(forKey: kind) else { return }
+        decoded.patch(with: versions, decoder: SystemJSON.decoder())
+        cache[kind] = decoded
     }
 
     /// Records that `kinds` changed (nil: every kind), dropping their decoded caches unless the
@@ -668,11 +674,19 @@ public final class RecordStore {
         remoteRefresh = nil
         remoteChangeNoticed = nil
         let newest = newestHistoryToken()
-        let foreign = hasForeignChanges(since: historyToken)
+        let foreign = foreignChanges(since: historyToken)
         historyToken = newest ?? historyToken
-        guard foreign else { return }
+        guard foreign != .none else { return }
         if let container { context = Self.makeContext(container, author: author) }
-        changed(kinds: nil)
+        // A CloudKit import is usually a few records from another device. Re-reading every kind for
+        // them decoded years of records on the main thread at each import, which is most of what
+        // opening an app after using another device cost.
+        if case .rows(let ids) = foreign, let versions = newestVersions(ofRows: ids) {
+            for (kind, changes) in versions { patchCache(kind: kind, with: changes) }
+            changed(kinds: Set(versions.keys), cachePatched: true)
+        } else {
+            changed(kinds: nil)
+        }
         changeObservers.removeAll { $0.observation == nil }
         for observer in changeObservers {
             observer.observation?.handler()
@@ -691,11 +705,21 @@ public final class RecordStore {
         }
     }
 
-    /// Whether a transaction after `token` by anyone but this instance changed a record row; one that
-    /// only touches CloudKit's bookkeeping doesn't count. The nil check is spelled out because the
-    /// predicate runs as SQL, where `author != x` is false for a NULL author.
-    private func hasForeignChanges(since token: DefaultHistoryToken?) -> Bool {
-        guard let context else { return false }
+    /// What the transactions after `token` by anyone but this instance did to record rows; ones that
+    /// only touch CloudKit's bookkeeping don't count.
+    private enum ForeignChanges: Equatable {
+        case none
+        /// Rows inserted or updated, and nothing else.
+        case rows(Set<PersistentIdentifier>)
+        /// Rows removed outright (which says nothing of their kind), more than `remotePatchLimit`, or
+        /// a history that couldn't be read: every kind may have moved.
+        case unknown
+    }
+
+    /// The nil check is spelled out because the predicate runs as SQL, where `author != x` is false
+    /// for a NULL author.
+    private func foreignChanges(since token: DefaultHistoryToken?) -> ForeignChanges {
+        guard let context else { return .none }
         let author = self.author
         let predicate: Predicate<DefaultHistoryTransaction>
         if let token {
@@ -703,14 +727,51 @@ public final class RecordStore {
         } else {
             predicate = #Predicate { $0.author == nil || $0.author != author }
         }
+        let transactions: [DefaultHistoryTransaction]
         do {
-            return try context.fetchHistory(HistoryDescriptor(predicate: predicate)).contains { transaction in
-                transaction.changes.contains { $0.changedPersistentIdentifier.entityName == Self.rowEntity }
-            }
+            transactions = try context.fetchHistory(HistoryDescriptor(predicate: predicate))
         } catch {
             // Can't tell whose they are: refresh, the safe side.
             storeLog.error("\(self.name, privacy: .public): couldn't read the store's history: \(String(describing: error), privacy: .public)")
-            return true
+            return .unknown
+        }
+        var ids: Set<PersistentIdentifier> = []
+        for transaction in transactions {
+            for change in transaction.changes where change.changedPersistentIdentifier.entityName == Self.rowEntity {
+                if case .delete = change { return .unknown }
+                ids.insert(change.changedPersistentIdentifier)
+            }
+        }
+        // Without a token (a store that was empty at launch) every foreign transaction came back,
+        // which the limit keeps to a size worth patching.
+        guard ids.count <= Self.remotePatchLimit else { return .unknown }
+        return ids.isEmpty ? .none : .rows(ids)
+    }
+
+    /// The version that now speaks for each record the rows belong to, by kind, read from every row
+    /// of those records (CloudKit may hold a second copy that still wins). Nil when a row can't be
+    /// found any more or the store can't be read, so the caller reads everything again.
+    private func newestVersions(ofRows ids: Set<PersistentIdentifier>) -> [String: [RecordVersion]]? {
+        guard let context else { return nil }
+        let wanted = Array(ids)
+        do {
+            let changed = try context.fetch(FetchDescriptor<RecordRow>(predicate: #Predicate { wanted.contains($0.persistentModelID) }))
+            guard changed.count == ids.count else { return nil }
+            let uuids = Array(Set(changed.map(\.uuid)))
+            let keys = Set(changed.map { RowKey(kind: $0.kind, uuid: $0.uuid) })
+            let rows = try context.fetch(FetchDescriptor<RecordRow>(predicate: #Predicate { uuids.contains($0.uuid) }))
+            var newest: [RowKey: RecordVersion] = [:]
+            for row in rows {
+                let key = RowKey(kind: row.kind, uuid: row.uuid)
+                guard keys.contains(key) else { continue }
+                let version = RecordVersion(row)
+                if let current = newest[key], !current.precedes(version) { continue }
+                newest[key] = version
+            }
+            return Dictionary(grouping: newest.values, by: \.kind)
+        } catch {
+            storeLog.error("\(self.name, privacy: .public): couldn't read the changed rows: \(String(describing: error), privacy: .public)")
+            return nil
         }
     }
 
@@ -756,8 +817,15 @@ struct RecordOrder {
     }
 }
 
+/// A kind's decoded `all`, patched without knowing its record type, as a remote change does.
+protocol CachedKind {
+    /// Brings it up to date with the versions that now speak for these records: each takes its
+    /// place in the order, and a deletion or a payload that won't decode leaves.
+    mutating func patch(with versions: [RecordVersion], decoder: JSONDecoder)
+}
+
 /// One kind's `all`, with where each record sits, so a local write can patch it in place.
-struct DecodedKind<T: StoredRecord> {
+struct DecodedKind<T: StoredRecord>: CachedKind {
     private(set) var records: [T] = []
     /// Parallel to `records`.
     private var order: [RecordOrder] = []
@@ -784,6 +852,13 @@ struct DecodedKind<T: StoredRecord> {
         }
         records.insert(record, at: low)
         order.insert(position, at: low)
+    }
+
+    mutating func patch(with versions: [RecordVersion], decoder: JSONDecoder) {
+        for version in versions {
+            remove(version.uuid)
+            if let record = RecordStore.decode(T.self, version, decoder) { insert(record, at: RecordOrder(version)) }
+        }
     }
 }
 
