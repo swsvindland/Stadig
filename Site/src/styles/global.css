@@ -8,10 +8,8 @@
   --line: #e2dfd6;
   --lift: #d9472f;
   --macro: #238a58;
-  --mind: #4f52cc;
   --lift-soft: #fbe9e4;
   --macro-soft: #e3f3ea;
-  --mind-soft: #e8e8fa;
   --max: 72rem;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -26,10 +24,8 @@
     --line: #2b2b27;
     --lift: #f06a52;
     --macro: #3fb878;
-    --mind: #8486f0;
     --lift-soft: #2a1a16;
     --macro-soft: #14261c;
-    --mind-soft: #1b1b31;
   }
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -76,7 +72,6 @@ section + section { border-top: 1px solid var(--line); }
 .tag { display: inline-block; font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); color: var(--ink-2); }
 .accent-lift { --accent: var(--lift); --accent-soft: var(--lift-soft); }
 .accent-macro { --accent: var(--macro); --accent-soft: var(--macro-soft); }
-.accent-mind { --accent: var(--mind); --accent-soft: var(--mind-soft); }
 .dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--accent); display: inline-block; }
 ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
 ol.steps li { counter-increment: s; padding: 1.25rem 1.25rem 1.25rem 3.4rem; position: relative; border: 1px solid var(--line); border-radius: 1rem; background: var(--bg-2); }

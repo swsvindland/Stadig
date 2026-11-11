@@ -1,5 +1,0 @@
-# Generated output; re-create with `storeassets render` / `storeassets export`.
-renders/
-exports/
-preview/
-.cache/

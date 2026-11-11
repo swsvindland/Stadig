@@ -1,6 +1,9 @@
 import Foundation
 
 /// The apps in the System. Each owns its own data and publishes summaries for the others.
+/// `knowledge` is Stadig Mind, which left the family: the case stays because shared containers, iCloud
+/// and life modes on people's devices still name it, and they have to go on decoding. Nothing here
+/// reads what it published.
 public enum AppID: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable {
     case liftTrack, macroTrack, knowledge, hub
 
@@ -10,7 +13,6 @@ public enum AppID: String, CaseIterable, Codable, CodingKeyRepresentable, Sendab
         switch self {
         case .liftTrack: "Stadig Lift"
         case .macroTrack: "Stadig Macro"
-        // The design doc's "Knowledge" app; people know it as Stadig Mind.
         case .knowledge: "Stadig Mind"
         case .hub: "Stadig"
         }

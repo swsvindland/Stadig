@@ -1,12 +1,12 @@
 #!/bin/zsh
-# Usage: Scripts/leaks.sh lift|macro|mind [launch arguments...]
+# Usage: Scripts/leaks.sh lift|macro [launch arguments...]
 # Launches the app on the test simulator with seeded data (and any extra DEBUG launch arguments, such
 # as -tab plan or -startSession), lets it settle, and runs `leaks` on the running process. With no
 # extra arguments it walks a set of screens for that app. Exits non-zero if any launch leaks.
-# Build the app first (Scripts/build.sh ios|macro|mind|hub); SIMULATOR picks a simulator as there.
+# Build the app first (Scripts/build.sh ios|macro); SIMULATOR picks a simulator as there.
 set -u
 cd "${0:A:h}/.."
-APP=${1:?lift, macro or mind}
+APP=${1:?lift or macro}
 shift
 # The same per-checkout DerivedData and simulator Scripts/build.sh uses.
 CHECKOUT=$(print -r -- $PWD | shasum | cut -c1-6)
@@ -18,10 +18,6 @@ case $APP in
         screens=("" "-tab plan" "-tab progress" "-tab body" "-startSession") ;;
   macro) name=MacroTrack id=dev.svindland.stadig.macro
          screens=("" "-tab plan" "-tab progress" "-log search" "-seedSupplements -showSupplements" "-showSettings") ;;
-  mind) name=MindTrack id=dev.svindland.stadig.mind
-        screens=("" "-tab plan" "-tab progress" "-startSession" "-showShelf" "-showSettings") ;;
-  hub) name=Hub id=dev.svindland.stadig.hub
-       screens=("" "-tab week" "-tab rhythm" "-showPlansChanged") ;;
   *) print -u2 "Unknown app '$APP'"; exit 2 ;;
 esac
 (( $# )) && screens=("$*")

@@ -1,7 +1,8 @@
 import Foundation
 
 /// The stats of the System. Technique and Craft are shelved; Social is never scored. There is no
-/// overall level: each stat moves only on real-world outcomes.
+/// overall level: each stat moves only on real-world outcomes. Intelligence and Wisdom were Stadig
+/// Mind's; they stay so that what it published still decodes, and the hub doesn't show them.
 public enum StatKind: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable {
     case strength, physique, endurance, vitality, agility, discipline, intelligence, wisdom
 

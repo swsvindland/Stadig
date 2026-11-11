@@ -66,14 +66,12 @@ jobs:
         with:
           path: |
             Apps/MacroTrack/Catalogs/*.db
-            Apps/MindTrack/Catalogs/*.db
           key: catalogs-${{ hashFiles('Scripts/catalogs.manifest') }}
 
       - name: Fetch catalogs
         # Through Xcode Cloud's own post-clone step, so that path is exercised on every push.
         run: |
           Scripts/xcode-cloud.sh post-clone MacroTrack
-          Scripts/xcode-cloud.sh post-clone MindTrack
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -107,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [lift, macro, mind, hub]
+        app: [lift, macro]
     steps:
       - uses: actions/checkout@v5
 
@@ -116,7 +114,6 @@ jobs:
         with:
           path: |
             Apps/MacroTrack/Catalogs/*.db
-            Apps/MindTrack/Catalogs/*.db
           key: catalogs-${{ hashFiles('Scripts/catalogs.manifest') }}
 
       - name: Fetch catalogs

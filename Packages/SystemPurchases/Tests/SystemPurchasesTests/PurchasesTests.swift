@@ -211,7 +211,7 @@ struct StoreKitFileTests {
         .deletingLastPathComponent().deletingLastPathComponent()
 
     @Test(
-        "Each app's file sells what its configuration asks for", arguments: [("LiftTrack", "lift"), ("MacroTrack", "macro"), ("MindTrack", "mind")])
+        "Each app's file sells what its configuration asks for", arguments: [("LiftTrack", "lift"), ("MacroTrack", "macro")])
     func products(app: String, slug: String) throws {
         let url = Self.repo.appending(path: "Apps/\(app)/\(app).storekit")
         let json = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])

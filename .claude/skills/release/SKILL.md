@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release of Stadig Lift, Stadig Macro or Stadig Mind to TestFlight and the App Store: version bump, release branch, pre-release checks and what Xcode Cloud does. Use when asked to ship, release, submit for review, bump a version, or prepare a TestFlight build for external testers.
+description: Cut a release of Stadig Lift or Stadig Macro to TestFlight and the App Store: version bump, release branch, pre-release checks and what Xcode Cloud does. Use when asked to ship, release, submit for review, bump a version, or prepare a TestFlight build for external testers.
 ---
 
 # Release an app
@@ -21,7 +21,7 @@ Internal TestFlight builds need nothing: every push to `main` that touches an ap
 ## Cut it
 
 ```sh
-git switch -c release/lift-1.1 main          # macro-…, mind-…
+git switch -c release/lift-1.1 main          # macro-…
 # Scripts/generate-project.py: VERSIONS["LiftTrack"] = "1.1"
 python3 Scripts/generate-project.py
 Scripts/build.sh lint && Scripts/build.sh unit lift && Scripts/build.sh ui lift && Scripts/build.sh ui lift ipad

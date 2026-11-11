@@ -10,9 +10,6 @@ public struct HubInputs: Sendable {
     public var lift: AppSummary?
     /// Stadig Macro's summary, which says it's in use even before it has meal times to give.
     public var macro: AppSummary?
-    /// Stadig Mind's summary, for the stats.
-    public var mind: AppSummary?
-    public var ask: BlockAsk?
     public var meals: MealRhythm?
     public var today: Day
     public var now: Date
@@ -20,16 +17,13 @@ public struct HubInputs: Sendable {
 
     public init(
         rhythm: Rhythm, changes: [DayChange] = [], profile: SharedProfile? = nil, lift: AppSummary? = nil, macro: AppSummary? = nil,
-        mind: AppSummary? = nil, ask: BlockAsk? = nil, meals: MealRhythm? = nil,
-        today: Day, now: Date, timeZone: TimeZone = .current
+        meals: MealRhythm? = nil, today: Day, now: Date, timeZone: TimeZone = .current
     ) {
         self.rhythm = rhythm
         self.changes = changes.live
         self.profile = profile
         self.lift = lift
         self.macro = macro
-        self.mind = mind
-        self.ask = ask
         self.meals = meals
         self.today = today
         self.now = now
@@ -39,7 +33,7 @@ public struct HubInputs: Sendable {
 
 /// One thing in a part of a day.
 public struct HubItem: Hashable, Sendable, Identifiable {
-    public enum Kind: String, Hashable, Sendable { case lift, activity, meal, study, work, commute }
+    public enum Kind: String, Hashable, Sendable { case lift, activity, meal, work, commute }
 
     public var id: String
     public var title: String
@@ -97,19 +91,15 @@ public struct HubDay: Hashable, Sendable, Identifiable {
     public var id: Day { day }
     public var items: [HubItem] { parts.flatMap(\.items) }
     public var freeMinutes: Int { parts.map(\.freeMinutes).reduce(0, +) }
-    public var studyBlocks: Int { items.filter { $0.kind == .study }.count }
 }
 
 public struct HubWeek: Hashable, Sendable {
     public var monday: Day
     public var days: [HubDay]
-    /// Blocks that no longer fit this week.
-    public var leftovers: Int
     /// Evenings with at least this free count as clear.
     public static let clearMinutes = 150
 
     public var gym: Int { days.flatMap(\.items).filter { $0.kind == .lift }.count }
-    public var study: Int { days.map(\.studyBlocks).reduce(0, +) }
     public var freeMinutes: Int { days.map(\.freeMinutes).reduce(0, +) }
 
     /// Evenings with no class and room to breathe.
@@ -134,44 +124,17 @@ public enum HubPlanner {
     public static func week(of day: Day, _ inputs: HubInputs) -> HubWeek {
         let monday = day.startOfWeek
         let commitments = commitments(inputs)
-        let blocks = study(monday: monday, inputs, commitments: commitments)
-        return HubWeek(
-            monday: monday, days: (0..<7).map { self.day(on: monday.adding(days: $0), inputs, commitments: commitments, blocks: blocks.blocks) },
-            leftovers: blocks.leftovers)
+        return HubWeek(monday: monday, days: (0..<7).map { self.day(on: monday.adding(days: $0), inputs, commitments: commitments) })
     }
 
-    public static func day(on day: Day, _ inputs: HubInputs) -> HubDay {
-        let commitments = commitments(inputs)
-        return self.day(on: day, inputs, commitments: commitments, blocks: study(monday: day.startOfWeek, inputs, commitments: commitments).blocks)
-    }
+    public static func day(on day: Day, _ inputs: HubInputs) -> HubDay { self.day(on: day, inputs, commitments: commitments(inputs)) }
 
     static func commitments(_ inputs: HubInputs) -> WeekCommitments {
         let lift = inputs.lift.flatMap { fresh($0.updated, inputs) ? $0 : nil }
         return WeekCommitments(profile: inputs.profile, lift: lift, before: inputs.today, timeZone: inputs.timeZone).placed(by: inputs.rhythm)
     }
 
-    /// Stadig Mind's week, laid out by the same function Mind uses, or the week it last published if
-    /// the two builds don't lay out alike. Within today the blocks hold their parts.
-    static func study(monday: Day, _ inputs: HubInputs, commitments: WeekCommitments) -> (blocks: [PlacedBlock], leftovers: Int) {
-        guard let published = inputs.ask, fresh(published.updated, inputs) else { return ([], 0) }
-        let ask = published.lightened(by: inputs.changes)
-        guard ask.algorithm == BlockAsk.currentAlgorithm else {
-            let planned = ask.planned.map { PlacedBlock(day: $0.day, part: $0.part, course: $0.course) }
-            let finished = ask.finished.map { PlacedBlock(day: $0.day, part: $0.part, course: $0.course, done: true) }
-            return (planned + finished, 0)
-        }
-        let today = max(inputs.today, monday)
-        let layout = BlockPlanner.layout(ask, today: today, firstPart: nil) { day in
-            DayShape.studyParts(on: day, rhythm: inputs.rhythm, changes: inputs.changes, commitments: commitments)
-                ?? DayShape.usualParts(day.weekday).filter { !inputs.changes.closedParts(on: day).contains($0) }
-        }
-        return (layout.blocks, layout.leftovers.values.reduce(0, +))
-    }
-
-    /// What a course's id reads as on screen.
-    static func title(_ course: String) -> String { course.prefix(1).uppercased() + course.dropFirst() }
-
-    static func day(on day: Day, _ inputs: HubInputs, commitments: WeekCommitments, blocks: [PlacedBlock]) -> HubDay {
+    static func day(on day: Day, _ inputs: HubInputs, commitments: WeekCommitments) -> HubDay {
         let busy = DayShape.busy(on: day, rhythm: inputs.rhythm)
         let closed = inputs.changes.closedParts(on: day)
         var items: [HubItem] = []
@@ -254,14 +217,6 @@ public enum HubPlanner {
             }
         }
 
-        for block in blocks where block.day == day {
-            _ = take(inputs.ask?.courses.isEmpty == false ? 25 : 0, from: block.part)
-            items.append(
-                HubItem(
-                    id: block.id, title: title(block.course), kind: .study, part: block.part, minutes: 25, done: block.done, app: .knowledge,
-                    order: slot(in: block.part)))
-        }
-
         // Within a part, in the order they happen; what shares a place stays in the order it was added.
         let ordered = items.enumerated().sorted { ($0.element.order, $0.offset) < ($1.element.order, $1.offset) }.map(\.element)
         let parts = DayPart.allCases.map { part in
@@ -282,14 +237,13 @@ public enum HubPlanner {
 
 extension HubInputs {
     /// What's published now, or nil if the person doesn't use the hub. Every app can ask, and they all
-    /// get the same day.
+    /// get the same day. What Stadig Mind published (its summary and its week of blocks) may still be
+    /// in the container, and stays there unread: the hub plans and scores fitness only.
     public init?(shared: SharedContainer, today: Day, now: Date, timeZone: TimeZone = .current) {
         guard let rhythm = shared.read(.rhythm) else { return nil }
         self.init(
             rhythm: rhythm, changes: shared.read(.dayChanges) ?? [], profile: shared.read(.profile), lift: shared.read(.summary(.liftTrack)),
-            macro: shared.read(.summary(.macroTrack)), mind: shared.read(.summary(.knowledge)), ask: shared.read(.blockAsk),
-            meals: shared.read(.mealRhythm), today: today, now: now,
-            timeZone: timeZone)
+            macro: shared.read(.summary(.macroTrack)), meals: shared.read(.mealRhythm), today: today, now: now, timeZone: timeZone)
     }
 }
 

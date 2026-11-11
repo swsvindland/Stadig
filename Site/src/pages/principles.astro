@@ -7,14 +7,14 @@ const description = `The seven principles behind every ${brand.name} app: prescr
   <section class="wrap">
     <p class="eyebrow">Principles</p>
     <h1>Steady, by design.</h1>
-    <p class="lede">{brand.name} is Norwegian for steady. The apps are built for the long game: years of training, eating and learning, not a thirty-day challenge. These are the rules every app follows, and the ones we check new work against.</p>
+    <p class="lede">{brand.name} is Norwegian for steady. The apps are built for the long game: years of training and eating, not a thirty-day challenge. These are the rules every app follows, and the ones we check new work against.</p>
   </section>
   <section class="wrap prose">
     {principles.map((p, i) => <><h2>{i + 1}. {p.title}</h2><p>{p.body}</p></>)}
     <h2>The stats, and what moves them</h2>
-    <p>Every app publishes a few honest readings. They move only on the tests below.</p>
+    <p>Each app shows the stats it decides: Strength, Physique, Endurance, Agility and Discipline in Stadig Lift, Vitality and Discipline in Stadig Macro. With both set up, each app shows all six and says which app decides each one. They move only on the tests below.</p>
     <ul>{stats.map((s) => <li><strong>{s.name}</strong>: {s.source}.</li>)}</ul>
     <h2>Discipline, defined</h2>
-    <p>Discipline is the one stat every app shares. It is a rolling four-week adherence rate against the planned days, with a target band of 80 to 90 percent. Going above the band earns nothing extra. One miss barely moves it. Rest days are planned days and count as kept. A day with nothing logged is unknown, not a failure. Vacation, illness and exempt crunch days never count either way.</p>
+    <p>Discipline is the one stat both apps share. It is a rolling four-week adherence rate against the planned days, with a target band of 80 to 90 percent. Going above the band earns nothing extra. One miss barely moves it. Rest days are planned days and count as kept. A day with nothing logged is unknown, not a failure. Vacation, illness and exempt crunch days never count either way.</p>
   </section>
 </Base>

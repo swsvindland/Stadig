@@ -2,7 +2,7 @@
 # The App Store screenshots: captures each app's store screens on simulators of this checkout's own
 # and imports them into its storeassets project (Store/<app>), which frames and exports them.
 #
-#   Scripts/store-screenshots.sh [lift|macro|mind ...]    (all three when none is named)
+#   Scripts/store-screenshots.sh [lift|macro ...]    (both when none is named)
 #
 # The iPhone (6.9") and iPad (13") screens come from the app's StoreScreenshots UI test, run on both
 # at once over sample data; the Watch screens (Stadig Lift and Stadig Macro) from the Watch app's
@@ -58,7 +58,7 @@ capture_devices() {
   # An app left in front would put its "◂ Stadig …" back link in the first screenshot's status bar.
   local device bundle
   for device in $PHONE $PAD; do
-    for bundle in dev.svindland.stadig.{lift,macro,mind}; do xcrun simctl terminate $device $bundle 2> /dev/null; done
+    for bundle in dev.svindland.stadig.{lift,macro}; do xcrun simctl terminate $device $bundle 2> /dev/null; done
   done
   TEST_RUNNER_STORE_SCREENSHOTS=$folder xcodebuild test -project $project -scheme $scheme -testPlan ${scheme}UI \
     -only-testing:${scheme}UITests/StoreScreenshots -destination id=$PHONE -destination id=$PAD \
@@ -93,7 +93,7 @@ watch_app() {
   xcrun simctl install $WATCH $DD/Build/Products/Debug-watchsimulator/$scheme.app
 }
 
-(( $# )) || set -- lift macro mind
+(( $# )) || set -- lift macro
 PHONE=$(shots_simulator iPhone)
 PAD=$(shots_simulator iPad)
 WATCH=${WATCH:-}
@@ -122,8 +122,7 @@ for app in $@; do
         watch_screen macro-watch $M weigh $MACRO_SEED -page weigh
       fi
       ;;
-    mind) capture_devices mind Apps/MindTrack/MindTrack.xcodeproj MindTrack ;;
-    *) print -u2 "Unknown app '$app': choose lift, macro or mind"; exit 2 ;;
+    *) print -u2 "Unknown app '$app': choose lift or macro"; exit 2 ;;
   esac
 done
 exit $STATUS

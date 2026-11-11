@@ -26,7 +26,7 @@ const jsonLd = [
   <section class="hero wrap">
     <p class="eyebrow">{apps.map((a) => a.name).join(" · ")}</p>
     <h1>Apps that tell you<br/>what to do next.</h1>
-    <p class="lede">Training, nutrition and study, prescribed from your own data. Every set, target and lesson adjusted to how the last one went. Offline, private, and yours for one payment each.</p>
+    <p class="lede">Training and nutrition, prescribed from your own data. Every set and target adjusted to how the last one went. Offline, private, and yours for one payment each.</p>
     <div class="ctas">
       <a class="btn" href="#apps">See the apps</a>
       <a class="btn ghost" href="/principles">Read the principles</a>
@@ -34,9 +34,9 @@ const jsonLd = [
   </section>
 
   <section id="apps" class="wrap">
-    <p class="eyebrow">Three apps, one system</p>
+    <p class="eyebrow">Two apps, one system</p>
     <h2>Each one works alone. Together they share a calendar, a profile and a plan.</h2>
-    <div class="grid three" style="margin-top:2rem">
+    <div class="grid two" style="margin-top:2rem">
       {apps.map((a) => <AppCard app={a} />)}
     </div>
   </section>
@@ -49,14 +49,14 @@ const jsonLd = [
       </div>
       <div class="lede-col">
         <p class="lede">Most health apps are notebooks with charts. You do the thinking, they do the remembering. {brand.name} apps run the thinking: they assess you, write the plan, adjust it to every result, and put one concrete action on the screen.</p>
-        <p class="lede">The feedback loop is the same in all three. Assess, prescribe, do, rate, adjust. Lifting calls it autoregulation. Nutrition calls it a weekly check-in. Study calls it spaced repetition. It is one idea.</p>
+        <p class="lede">The feedback loop is the same in both. Assess, prescribe, do, rate, adjust. Lifting calls it autoregulation. Nutrition calls it a weekly check-in. It is one idea.</p>
       </div>
     </div>
     <ol class="steps" style="margin-top:2.5rem">
-      <li><h3>Assess</h3><p>A short block finds your real level: anchors in the gym, weigh-ins against intake, placements per subject.</p></li>
-      <li><h3>Prescribe</h3><p>One plan, not a menu. The next set, this week's targets, today's 25 minutes. With a Why.</p></li>
-      <li><h3>Rate</h3><p>Easy, Just right, Missed. Right or wrong. The scale. Nothing self-graded that can be fudged.</p></li>
-      <li><h3>Adjust</h3><p>Weights, targets and new material move on the evidence. Stalls get read in context. Deloads come early when signals stack.</p></li>
+      <li><h3>Assess</h3><p>A short block finds your real level: anchors in the gym, weigh-ins against intake.</p></li>
+      <li><h3>Prescribe</h3><p>One plan, not a menu. The next set, this week's targets. With a Why.</p></li>
+      <li><h3>Rate</h3><p>Easy, Just right, Missed. The scale. Nothing self-graded that can be fudged.</p></li>
+      <li><h3>Adjust</h3><p>Weights and targets move on the evidence. Stalls get read in context. Deloads come early when signals stack.</p></li>
     </ol>
   </section>
 
@@ -72,7 +72,7 @@ const jsonLd = [
     <p class="eyebrow">Honest measures</p>
     <div class="grid two">
       <div>
-        <h2>Eight stats. None of them move because you opened the app.</h2>
+        <h2>Six stats. None of them move because you opened the app.</h2>
         <p class="lede">No XP. No streaks. No levels. Every number comes from a real-world test, and rest days are part of the plan, not a break in it.</p>
       </div>
       <dl class="stats">
@@ -96,7 +96,7 @@ const jsonLd = [
         <h2>Free for 21 days. Then pay once, or by the month.</h2>
       </div>
       <div>
-        <p class="lede">Logging, export and backups are free in every app, so the apps are useful before you pay and your data is never held hostage. Buying an app or subscribing pays for the part that thinks: the generated programs, the phase plan, the study sessions.</p>
+        <p class="lede">Logging, export and backups are free in every app, so the apps are useful before you pay and your data is never held hostage. Buying an app or subscribing pays for the part that thinks: the generated programs and the phase plan.</p>
         <div class="ctas">{apps.map((a) => <a class="btn ghost" href={`/${a.slug}#get`}>{a.name}</a>)}</div>
       </div>
     </div>

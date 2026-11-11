@@ -1,7 +1,6 @@
 import FoodDatabase
 import Foundation
 import HealthBridge
-import HubEngine
 import MealPlanner
 import NutritionEngine
 import OSLog
@@ -274,8 +273,6 @@ final class AppModel {
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
     var today: Day = .today
-    /// What's left of today, for someone who uses the hub.
-    private(set) var dayAhead: String?
     /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
     /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
     /// launch, at midnight, on coming back after a while away, and from anywhere outside the app.
@@ -523,7 +520,6 @@ final class AppModel {
     /// What other apps and the hub published. Our own writes notify us too, so this only
     /// recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
-        dayAhead = HubPlanner.ahead(shared: shared, today: today, now: Date())
         let lift = shared.read(.summary(.liftTrack))
         let calendar = shared.read(.calendar)
         let sharedProfile = shared.read(.profile)

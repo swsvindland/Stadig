@@ -1,6 +1,6 @@
 # App Store screenshots
 
-The screenshots for Stadig Lift, Stadig Macro and Stadig Mind, kept as [storeassets](https://github.com/swsvindland/screenshot) projects: the raw captures, the captions and the brand, which storeassets frames into every size App Store Connect asks for. One project per app for the iPhone and iPad, and one for each Watch app (a storeassets slot renders for every size its project has, and the Watch set is its own few screens).
+The screenshots for Stadig Lift and Stadig Macro, kept as [storeassets](https://github.com/swsvindland/screenshot) projects: the raw captures, the captions and the brand, which storeassets frames into every size App Store Connect asks for. One project per app for the iPhone and iPad, and one for each Watch app (a storeassets slot renders for every size its project has, and the Watch set is its own few screens).
 
 | Project | Sizes | Screens |
 | --- | --- | --- |
@@ -8,7 +8,6 @@ The screenshots for Stadig Lift, Stadig Macro and Stadig Mind, kept as [storeass
 | `lift-watch` | Apple Watch (422×514) | set, rating, rest, conditioning, home |
 | `macro` | iPhone 6.9", iPad 13" | today, log, search, scan, plan, progress, meal prep |
 | `macro-watch` | Apple Watch | today, log again, water, supplements, weigh-in |
-| `mind` | iPhone 6.9", iPad 13" | plan, japanese, maths, progress, shelf |
 
 App Store Connect scales the 6.9" set down for smaller iPhones and the 13" set for smaller iPads. Mac and Vision Pro screenshots aren't here yet.
 
@@ -17,14 +16,13 @@ App Store Connect scales the 6.9" set down for smaller iPhones and the 13" set f
 After a change to a screen that's in the set:
 
 ```sh
-Scripts/store-screenshots.sh lift          # or macro, mind; all three by default
+Scripts/store-screenshots.sh lift          # or macro; both by default
 ```
 
 It runs the app's `StoreScreenshots` UI test (`Apps/<App>/UITests/StoreScreenshots.swift`) on a Pro Max iPhone and a 13-inch iPad Pro at once, over `-seedSampleData`, and the Watch app on an Apple Watch Ultra 3 with its sample launch arguments, then imports every capture into the project, replacing the old one by name. The simulators are this checkout's own ("Stadig Shots iPhone|iPad|Watch <checkout>"), light mode, 9:41. The test skips itself in every other run, so the UI test plans carry it without running it.
 
 Take Stadig Macro's during the day. Its Today shows the food logged so far, so before breakfast it reads "0 of 2,200 kcal", and its Log slot is yesterday, which looks the same at any hour.
 
-Stadig Mind's Today isn't in the set: on a rest day it says so, and which day is a rest day depends on when the screenshots are taken.
 
 ## Framing, checking and exporting
 

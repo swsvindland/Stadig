@@ -92,7 +92,6 @@ struct TodayView: View {
     /// What ends in an action around the session: next steps, quests, steps and outside training.
     @ViewBuilder
     private func around(_ analysis: LiftAnalysis) -> some View {
-        if let line = model.dayAhead { HubStrip(line: line).card(padding: 12) }
         if !analysis.actions.isEmpty {
             SectionHeader(title: "Do this next")
             ForEach(analysis.actions.prefix(3)) { action in ActionCard(action: action) { perform(action) } }

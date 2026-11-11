@@ -27,27 +27,15 @@ struct HubPlannerTests {
             createdBy: .liftTrack)
     }
 
-    func ask(_ finished: [FinishedBlock] = []) -> BlockAsk {
-        var units: [String: Int] = [:]
-        for offset in 0..<14 { units[monday.adding(days: offset).iso] = 2 }
-        let courses = [
-            BlockCourse(id: "japanese", blocks: 4, fit: [.night, .evening, .afternoon, .midday, .morning, .early]),
-            BlockCourse(id: "maths", blocks: 2, fit: [.morning, .midday, .early, .afternoon, .evening, .night]),
-        ]
-        return BlockAsk(monday: monday, since: monday.adding(weeks: -4), courses: courses, units: units, finished: finished, updated: now)
-    }
-
     func liftSummary(_ sessions: [SessionSummary] = []) -> AppSummary {
         AppSummary(app: .liftTrack, updated: now, sessions: sessions)
     }
 
     func inputs(
-        _ rhythm: Rhythm, changes: [DayChange] = [], profile: SharedProfile? = nil, lift: AppSummary? = nil, ask: BlockAsk? = nil,
-        meals: MealRhythm? = nil,
+        _ rhythm: Rhythm, changes: [DayChange] = [], profile: SharedProfile? = nil, lift: AppSummary? = nil, meals: MealRhythm? = nil,
         today: Day? = nil
     ) -> HubInputs {
-        HubInputs(
-            rhythm: rhythm, changes: changes, profile: profile, lift: lift, ask: ask, meals: meals, today: today ?? monday, now: now, timeZone: utc)
+        HubInputs(rhythm: rhythm, changes: changes, profile: profile, lift: lift, meals: meals, today: today ?? monday, now: now, timeZone: utc)
     }
 
     @Test func aDayShowsWorkAcrossItsParts() {
@@ -56,15 +44,6 @@ struct HubPlannerTests {
         #expect(work.map(\.part) == [.morning, .midday, .afternoon])
         #expect(work.map(\.minutes).reduce(0, +) == 480)
         #expect(work.allSatisfy { !$0.isYours && $0.app == nil })
-    }
-
-    @Test func packedDaysHaveNoStudyAndEveryBlockLandsOutsideWork() {
-        let week = HubPlanner.week(of: monday, inputs(rhythm(), profile: profile(), lift: liftSummary(), ask: ask()))
-        #expect(week.days[0].studyBlocks == 0)
-        #expect(week.study == 6)
-        for day in week.days.prefix(5) {
-            #expect(day.items.filter { $0.kind == .study }.allSatisfy { $0.part != .midday && $0.part != .afternoon }, "\(day.day)")
-        }
     }
 
     @Test func aHubAloneShowsOnlyWhatItKnows() {
@@ -91,17 +70,16 @@ struct HubPlannerTests {
         #expect(HubPlanner.next(in: day, at: .night)?.part == .evening)
     }
 
-    @Test func outTonightDropsTheClassAndMovesTheStudy() {
+    @Test func outTonightDropsTheClass() {
         var profile = profile()
         profile.recurring = [RecurringActivity(activity: .muayThai, weekdays: [.friday], minutes: 90)]
         let friday = monday.adding(days: 4)
-        let before = HubPlanner.week(of: monday, inputs(rhythm(), profile: profile, lift: liftSummary(), ask: ask()))
-        let after = HubPlanner.week(
-            of: monday, inputs(rhythm(), changes: [.outTonight(on: friday)], profile: profile, lift: liftSummary(), ask: ask()))
+        let before = HubPlanner.week(of: monday, inputs(rhythm(), profile: profile, lift: liftSummary()))
+        let after = HubPlanner.week(of: monday, inputs(rhythm(), changes: [.outTonight(on: friday)], profile: profile, lift: liftSummary()))
         #expect(before.days[4].items.contains { $0.kind == .activity })
         #expect(!after.days[4].items.contains { $0.kind == .activity }, "the class passes with no mark")
         #expect(after.days[4].parts.first { $0.part == .evening }?.items.isEmpty == true)
-        #expect(after.study == before.study, "the study went elsewhere")
+        #expect(after.gym == before.gym, "the gym found another part")
     }
 
     @Test func aLiftInsideAShiftGoesToTheDaysNextRoom() {
@@ -122,24 +100,9 @@ struct HubPlannerTests {
     }
 
     @Test func staleDataIsLeftOut() {
-        var old = ask()
-        old.updated = monday.adding(days: -40).date(timeZone: utc)
         let meals = MealRhythm(usual: [.morning], day: monday.adding(days: -40), eaten: [], updated: monday.adding(days: -40).date(timeZone: utc))
-        let day = HubPlanner.day(on: monday, inputs(rhythm(), ask: old, meals: meals))
+        let day = HubPlanner.day(on: monday, inputs(rhythm(), meals: meals))
         #expect(day.items.allSatisfy { $0.kind == .work })
-    }
-
-    @Test func aDifferentBuildShowsWhatMindLastPlanned() {
-        var other = ask()
-        other.algorithm = BlockAsk.currentAlgorithm + 1
-        other.planned = [FinishedBlock(course: "maths", day: monday, part: .night)]
-        let day = HubPlanner.day(on: monday, inputs(rhythm(), ask: other))
-        #expect(day.items.filter { $0.kind == .study }.map(\.title) == ["Maths"])
-    }
-
-    @Test func nextWeekIsLaidOutFromThisWeeksAsk() {
-        let week = HubPlanner.week(of: monday.adding(weeks: 1), inputs(rhythm(), ask: ask()))
-        #expect(week.study == 6)
     }
 
     @Test func aFullWeekCountsItsClearEvenings() {
@@ -241,15 +204,18 @@ struct WordsTests {
         let out = [DayChange.outTonight(on: monday)]
         #expect(HubText.note(on: monday, changes: out) == "Out tonight. Whatever was tonight moves on.")
         #expect(HubText.note(on: monday.adding(days: 1), changes: out) == nil)
-        #expect(HubText.note(on: monday.adding(days: 3), changes: [.lighterWeek(of: monday)])?.hasPrefix("Lighter week") == true)
+        #expect(HubText.note(on: monday.adding(days: 3), changes: [.lighterWeek(of: monday)]) == "Lighter week, ends Sunday. A shorter gym session.")
         #expect(HubText.note(on: monday, changes: [DayChange.outTonight(on: monday).deleted()]) == nil)
     }
 
     @Test func onlyWhatAnAppTracksOpensOne() {
-        let study = HubItem(id: "a", title: "Japanese", kind: .study, part: .evening, minutes: 25, app: .knowledge)
-        #expect(study.action == "Open Stadig Mind")
+        let gym = HubItem(id: "a", title: "Gym", kind: .lift, part: .evening, minutes: 60, app: .liftTrack)
+        #expect(gym.action == "Open Stadig Lift")
         #expect(HubItem(id: "b", title: "Work", kind: .work, part: .morning, minutes: 180).action == nil)
-        #expect(HubLink.url(for: .knowledge)?.scheme == "mindtrack")
+        #expect(HubLink.url(for: .liftTrack)?.scheme == "lifttrack")
+        #expect(HubLink.url(for: .macroTrack)?.scheme == "macrotrack")
+        // Stadig Mind left the family: nothing opens it.
+        #expect(HubLink.url(for: .knowledge) == nil)
         #expect(HubLink.url(for: .hub) == nil)
     }
 
@@ -257,11 +223,11 @@ struct WordsTests {
         let items = [
             HubItem(id: "1", title: "Work", kind: .work, part: .morning, minutes: 180),
             HubItem(id: "2", title: "Work", kind: .work, part: .midday, minutes: 180),
-            HubItem(id: "3", title: "Japanese", kind: .study, part: .evening, minutes: 25),
+            HubItem(id: "3", title: "Meal", kind: .meal, part: .evening, minutes: 30),
         ]
         let part = HubPart(part: .morning, items: items, freeMinutes: 0, isClosed: false)
         #expect(
-            HubDay(day: monday, parts: [part], isKnown: true).bar == [BarSegment(kind: .work, minutes: 360), BarSegment(kind: .study, minutes: 25)])
+            HubDay(day: monday, parts: [part], isKnown: true).bar == [BarSegment(kind: .work, minutes: 360), BarSegment(kind: .meal, minutes: 30)])
     }
 
     @Test func theCommuteFollowsWorkAroundIt() {
@@ -367,31 +333,6 @@ struct WordsTests {
         #expect(draft?.pattern.weeks.first?.first?.first?.start == 540)
     }
 
-    @Test func aLighterWeekShowsWithMindUnopened() {
-        // Published before the change, so it still says a full week.
-        let ask = ScenarioTests().ask(monday, finished: [], now: monday.date())
-        let full = HubInputs(rhythm: Rhythm(), ask: ask, today: monday, now: monday.date())
-        let lighter = HubInputs(rhythm: Rhythm(), changes: [.lighterWeek(of: monday)], ask: ask, today: monday, now: monday.date())
-        #expect(HubPlanner.week(of: monday, full).study == 10)
-        #expect(HubPlanner.week(of: monday, lighter).study == 6)
-        // And it ends on Sunday.
-        let next = monday.adding(weeks: 1)
-        #expect(
-            HubPlanner.week(of: next, HubInputs(rhythm: Rhythm(), changes: [.lighterWeek(of: monday)], ask: ask, today: next, now: next.date())).study
-                == 10)
-    }
-
-    @Test func aLighterWeeksReviewDaysDontStack() {
-        var ask = ScenarioTests().ask(monday, finished: [], now: monday.date())
-        ask.units[monday.iso] = 1
-        ask.units[monday.adding(days: 1).iso] = 0
-        let lightened = ask.lightened(by: [.lighterWeek(of: monday)])
-        #expect(lightened.units[monday.iso] == 1)
-        #expect(lightened.units[monday.adding(days: 1).iso] == 0, "a paused day stays paused")
-        #expect(lightened.units[monday.adding(days: 2).iso] == 1)
-        #expect(lightened.units[monday.adding(days: 7).iso] == 2, "next week isn't lighter")
-    }
-
     @Test func aLighterWeeksGymIsShorter() {
         let lift = AppSummary(app: .liftTrack, updated: monday.date(), sessions: [])
         let profile = SharedProfile(
@@ -401,7 +342,7 @@ struct WordsTests {
     }
 
     @Test func somethingStillThereFromEarlierIsntNext() {
-        let item = HubItem(id: "a", title: "Japanese", kind: .study, part: .morning, minutes: 25)
+        let item = HubItem(id: "a", title: "Meal", kind: .meal, part: .morning, minutes: 30)
         #expect(HubText.heading(item, at: .morning) == "Now, morning")
         #expect(HubText.heading(item, at: .early) == "Next, morning")
         #expect(HubText.heading(item, at: .afternoon) == "Still today")

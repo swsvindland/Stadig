@@ -1,11 +1,11 @@
 ---
 name: ui-tests
-description: Run and debug the few XCUITest tests in Apps/<App>/UITests (first run, the offer and the tabs) and the App Store screenshots beside them, for Stadig Lift, Stadig Macro and Stadig Mind. Use when onboarding or the offer changes, when a UI test fails or is flaky, or when a screen in the store set moves.
+description: Run and debug the few XCUITest tests in Apps/<App>/UITests (first run, the offer and the tabs) and the App Store screenshots beside them, for Stadig Lift and Stadig Macro. Use when onboarding or the offer changes, when a UI test fails or is flaky, or when a screen in the store set moves.
 ---
 
 # UI tests
 
-Each app has `Apps/<App>/UITests` (XCTest; Swift Testing can't drive UI) in the `<App>UI` test plan, which retries a failed test once. There are few on purpose: first run, the offer and a seeded launch through every tab, beside `StoreScreenshots`, which isn't a test. Run one class with `ONLY=<TestClass> Scripts/build.sh ui lift|macro|mind` after a change to onboarding or the offer; leave off `ONLY` for all of them, which is for releases.
+Each app has `Apps/<App>/UITests` (XCTest; Swift Testing can't drive UI) in the `<App>UI` test plan, which retries a failed test once. There are few on purpose: first run, the offer and a seeded launch through every tab, beside `StoreScreenshots`, which isn't a test. Run one class with `ONLY=<TestClass> Scripts/build.sh ui lift|macro` after a change to onboarding or the offer; leave off `ONLY` for all of them, which is for releases.
 
 Don't add a UI test for a new flow. What it decides goes in a unit test (`Apps/<App>/Tests` or the engine package), and the screen gets looked at in the running app (the `run-app` skill). The suites went from 127 tests to 22 on 2026-11-05, and [docs/testing.md](../../../docs/testing.md) says why: one that's added has to be a flow the owner never sees in daily use, where a break costs a new user or a sale.
 

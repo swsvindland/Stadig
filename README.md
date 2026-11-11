@@ -1,11 +1,9 @@
-# Stadig: Stadig Lift, Stadig Macro, Stadig Mind and the hub
+# Stadig: Stadig Lift and Stadig Macro
 
-**Stadig** (STAH-dig, Norwegian for steady; "the System" in the design doc and the code) is a small family of fast, offline-first apps (Stadig Lift, Stadig Macro and Stadig Mind) with an optional hub on top. The apps don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
+**Stadig** (STAH-dig, Norwegian for steady; "the System" in the design doc and the code) is a small family of fast, offline-first fitness apps, Stadig Lift and Stadig Macro. The apps don't just chart trends. They tell you what to do next, and every insight ends in a concrete action.
 
 - **Stadig Lift** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 - **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
-- **Stadig**, the hub, plans a day around work or school: the gym, meals, study and protected free time. It logs nothing and its buttons open the apps. It adapts from silence, with one optional tap for a night out or a lighter week. See [docs/hub.md](docs/hub.md).
-- **Stadig Mind** is the doc's Knowledge app, "Stadig Lift for the mind": focused 25-minute blocks of Japanese, maths, writing and reading, one subject at a time. Two weeks find a level in each, each subject gets its own blocks a week around Stadig Lift's days and classes, spaced repetition brings things back just before they'd be forgotten, and something new comes only once the last thing has stuck. Intelligence and Wisdom move only on check-in tests and finished books. It's at its best at a desk: on the Mac and an iPad with a keyboard, sessions run full-width and entirely from the keyboard. iPhone, iPad, Mac and Apple Vision Pro, with widgets.
 
 This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. Each app is free for 21 days, then a one-time purchase or a monthly subscription (`SystemPurchases`, and [docs/app-store-connect.md](docs/app-store-connect.md) for the store's side). No third-party dependencies.
 
@@ -25,13 +23,9 @@ Packages/             Local Swift packages: all the logic, each with its own tes
                       and the NIH supplement label catalog with its Supplement Facts parser
   FoodIntelligence/   Meal photos, descriptions and label photos through Apple's models; nutrients from the catalog
   MealPlanner/        A week of prep-friendly meals sized to the targets, the grocery list and a timed prep day
-  MindEngine/         Stadig Mind's engine: spaced repetition, courses and the week's blocks, language packs, one module and
-                      part runner per subject, the maths skill graph, the writing bank, the reading ladder, analysis
-  SystemAI/           The one interface to a language model: Apple's on-device model first, Private Cloud Compute
-                      for heavier jobs when allowed, a plain reason when neither can answer
-  HubEngine/          The hub: work and school schedules, reading one from a sentence, and a day and a week put
-                      together from what the apps published
-Apps/<App>/           LiftTrack, MacroTrack, MindTrack, Hub: thin SwiftUI shells over the packages
+  HubEngine/          The stats both apps show, merged from what each publishes (StatsBoard), and the planner
+                      of the hub app that used to sit on top, which nothing calls now
+Apps/<App>/           LiftTrack, MacroTrack: thin SwiftUI shells over the packages
   iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
                       per feature; Platform/Adaptive.swift spells what differs between platforms
   Tests/              The app's unit and integration tests (Swift Testing, hosted in the app)
@@ -39,7 +33,7 @@ Apps/<App>/           LiftTrack, MacroTrack, MindTrack, Hub: thin SwiftUI shells
   Widgets/, Shared/   Widgets and Live Activities, and the snapshot they share with the app
   Watch/, WatchWidgets/   Stadig Lift's and Stadig Macro's Watch apps and their complications
   Records/            Stadig Macro's records that its iPhone and Watch apps both compile
-  Catalogs/           Stadig Macro's and Stadig Mind's bundled catalogs (not in git; see the README there)
+  Catalogs/           Stadig Macro's bundled catalogs (not in git; see the README there)
   Config/             Info plists and entitlements (the Mac's in <App>-macOS.entitlements)
   ci_scripts/         What Xcode Cloud runs around each build (one line each, calling Scripts/xcode-cloud.sh)
   <App>.xcodeproj, <App>.xctestplan, <App>UI.xctestplan   Written by Scripts/generate-project.py: don't edit
@@ -51,14 +45,14 @@ Store/                The App Store screenshots: a storeassets project per app a
 .github/workflows/    GitHub Actions: lint and package tests on every push, the site build
 ```
 
-The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Mind on the Mac sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase and day-by-day logging, and Stadig Lift publishes its training calendar, measurements and strength. Stadig Mind reads that calendar (Stadig Lift's deloads are its review weeks) and the shared life modes, and publishes its Intelligence and Wisdom readings, study sessions, Discipline and its week's blocks. Stadig Macro publishes when you usually eat. The **hub** publishes your rhythm and what changed, and each app can see what's left of your day. [docs/hub.md](docs/hub.md) has the contract.
+The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Macro on the iPad sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase, day-by-day logging and when you usually eat, and Stadig Lift publishes its training calendar, measurements and strength. Each publishes its stats, which either app can read merged with the other's. [docs/shared-container.md](docs/shared-container.md) has the contract, and what the hub app and Stadig Mind, which both left this repo, wrote that may still be on devices.
 
 ## Getting started
 
 You need Xcode 27 (its Swift 6.4 toolchain includes `swift-format`), nothing else: there are no third-party dependencies.
 
 ```sh
-Scripts/fetch-catalogs.sh           # once: download the catalogs Stadig Macro and Stadig Mind bundle (needs gh signed in)
+Scripts/fetch-catalogs.sh           # once: download the catalogs Stadig Macro bundles (needs gh signed in)
 Scripts/build.sh test               # every package's tests
 open Apps/LiftTrack/LiftTrack.xcodeproj
 ```
@@ -71,23 +65,23 @@ Each app's scheme builds and runs it on whichever device you pick (an iPhone or 
 Scripts/build.sh lint               # swift-format, strict: what CI checks
 Scripts/build.sh format             # fix formatting in place
 Scripts/build.sh test [Package]     # package tests (all, or one)
-Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift, macro, mind)
+Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift or macro)
 Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
 ONLY=PurchaseUITests Scripts/build.sh ui lift   # one class of them
-Scripts/build.sh ios|watch|macro|macro-watch|mind   # build one app for the iOS simulator (or a Watch app)
+Scripts/build.sh ios|watch|macro|macro-watch   # build one app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build
 Scripts/leaks.sh lift               # after building an app: run `leaks` on its seeded screens
 Scripts/store-screenshots.sh lift   # recapture an app's App Store screenshots into Store/ (then storeassets; Store/README.md)
 python3 Scripts/generate-project.py # rewrite the Xcode projects, schemes and test plans after changing the generator
-swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons, make-mind-icons for the others)
+swift Scripts/make-icons.swift      # redraw Stadig Lift's icons (make-macro-icons for Stadig Macro's)
 python3 Scripts/build-catalogs.py update|build|validate   # Stadig Macro's catalogs: what's newer upstream, rebuild, check calories against macros
 Scripts/publish-catalogs.sh         # after rebuilding a catalog: upload them all as a new release, then commit the manifest
 ```
 
 New Swift files in an app's folders need no project change: the targets use synchronized folders. Only new targets, packages, build settings or Info.plist keys go through `Scripts/generate-project.py`.
 
-Building the catalogs from source instead of downloading them: `Apps/MacroTrack/Catalogs/README.md` and `Apps/MindTrack/Catalogs/README.md`.
+Building the catalogs from source instead of downloading them: `Apps/MacroTrack/Catalogs/README.md`.
 
 ## Quality bar
 
@@ -99,7 +93,8 @@ Building the catalogs from source instead of downloading them: `Apps/MacroTrack/
 
 ## Docs
 
-- [Stadig Lift](docs/lift-track.md), [Stadig Macro](docs/macro-track.md), [Stadig Mind](docs/mind-track.md): how the design doc maps to the code, and each app's DEBUG launch arguments
+- [Stadig Lift](docs/lift-track.md), [Stadig Macro](docs/macro-track.md): how the design doc maps to the code, and each app's DEBUG launch arguments
+- [The shared container](docs/shared-container.md): what the apps publish for each other, what the hub and Stadig Mind left behind, and the stats
 - [Testing](docs/testing.md) and [what the package tests cover](docs/package-tests.md)
 - [CI/CD](docs/ci-cd.md): GitHub Actions, Xcode Cloud workflows, branches and releases
 - [Decisions to check](docs/decisions.md): product calls made without sign-off, and what isn't built yet
@@ -118,4 +113,4 @@ Building the catalogs from source instead of downloading them: `Apps/MacroTrack/
 | In-app purchases | `dev.svindland.stadig.lift.unlock` (non-consumable), `dev.svindland.stadig.lift.monthly` (subscription) | `dev.svindland.stadig.macro.unlock` (non-consumable), `dev.svindland.stadig.macro.monthly` (subscription) |
 | URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
 
-Stadig Mind is `dev.svindland.stadig.mind` (`.widgets`), with `iCloud.dev.svindland.stadig.mind` (and the family's), `dev.svindland.stadig.mind.unlock` and `dev.svindland.stadig.mind.monthly`. Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack`, `mindtrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
+Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).

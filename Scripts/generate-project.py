@@ -3,7 +3,7 @@
 linked to the local Swift packages in Packages/. Run from the repo root:
 
     python3 Scripts/generate-project.py              # every app
-    python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack, MacroTrack, MindTrack or Hub)
+    python3 Scripts/generate-project.py MacroTrack   # just one (LiftTrack or MacroTrack)
 """
 import hashlib
 import json
@@ -16,7 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "9HAG9PT8LJ"
 # Each app's version (CFBundleShortVersionString), shared by its extensions and Watch app as the App
 # Store requires. Bump it here when cutting a release branch, then run this script.
-VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0", "MindTrack": "1.0", "Hub": "1.0"}
+VERSIONS = {"LiftTrack": "1.0", "MacroTrack": "1.0"}
 
 
 def q(v):
@@ -342,82 +342,7 @@ MACRO = {
     "schemes": [("MacroTrack", "MacroTrack", "MacroTrack.app", True), ("MacroTrackWatch", "MacroTrackWatch", "MacroTrackWatch.app", False)],
 }
 
-# MARK: - Stadig Mind
-
-mind_app = {**swift_common, **ios_app_common, **{
-    "CODE_SIGN_ENTITLEMENTS": "Config/MindTrack.entitlements",
-    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/MindTrack-macOS.entitlements",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Mind",
-    "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.education",
-    # Xcode moved this out of Config/Info.plist into build settings.
-    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
-    # Speaking exercises, ISBN and cover scans, and handwritten pages.
-    "INFOPLIST_KEY_NSMicrophoneUsageDescription": "Stadig Mind listens when you answer a speaking exercise out loud, so it can check what you said.",
-    "INFOPLIST_KEY_NSSpeechRecognitionUsageDescription": "Speaking exercises are checked by on-device speech recognition. What you say stays on this device.",
-    "INFOPLIST_KEY_NSCameraUsageDescription": "Stadig Mind uses the camera to scan a book's barcode or cover, and to read a page you wrote by hand.",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind",
-}}
-
-mind_widgets = dict(swift_common, **ios_widgets_common, **{
-    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig Mind",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.mind.widgets",
-})
-
-MIND_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "SystemAI", "MindEngine", "HubEngine"]
-
-MIND = {
-    "name": "MindTrack",
-    "id_prefix": "4E3F",
-    "packages": MIND_PACKAGES,
-    "targets": [
-        ("MindTrack", "MindTrack.app", "com.apple.product-type.application", "wrapper.application", mind_app,
-         ["iOS", "Shared", "Catalogs"], MIND_PACKAGES),
-        ("MindTrackWidgets", "MindTrackWidgets.appex", "com.apple.product-type.app-extension", "wrapper.app-extension",
-         mind_widgets, ["Widgets", "Shared"], ["SystemCore"]),
-    ] + test_targets("MindTrack", "dev.svindland.stadig.mind"),
-    "embeds": [("MindTrack", "MindTrackWidgets", "Embed Foundation Extensions", 13, "", None)],
-    "config_files": ["Info.plist", "Widgets-Info.plist", "MindTrack.entitlements", "MindTrack-macOS.entitlements",
-                     "Widgets.entitlements", "Widgets-macOS.entitlements"],
-    "groups": ["iOS", "Shared", "Widgets", "Catalogs", "Tests", "UITests"],
-    # The catalog folder holds japanese.db (built by Scripts/build-japanese-catalog.py, not in git) and its README.
-    "exceptions": [("Catalogs", "MindTrack", [".gitignore", "README.md"])],
-    "extra_files": ["MindTrack.storekit", "MindTrack.xctestplan", "MindTrackUI.xctestplan"],
-    "test_plans": [("MindTrack", ["MindTrackTests"]), ("MindTrackUI", ["MindTrackUITests"])],
-    "schemes": [("MindTrack", "MindTrack", "MindTrack.app", True)],
-}
-
-# MARK: - Stadig (the hub)
-
-hub_app = {**swift_common, **ios_app_common, **{
-    "CODE_SIGN_ENTITLEMENTS": "Config/Hub.entitlements",
-    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Config/Hub-macOS.entitlements",
-    "INFOPLIST_KEY_CFBundleDisplayName": "Stadig",
-    "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.productivity",
-    # Xcode moved this out of Config/Info.plist into build settings.
-    "INFOPLIST_KEY_ITSAppUsesNonExemptEncryption": "NO",
-    "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.hub",
-}}
-
-HUB_PACKAGES = ["SystemCore", "SystemStore", "HubEngine"]
-
-HUB = {
-    "name": "Hub",
-    "id_prefix": "4A5B",
-    "packages": HUB_PACKAGES,
-    "targets": [
-        ("Hub", "Hub.app", "com.apple.product-type.application", "wrapper.application", hub_app, ["iOS"], HUB_PACKAGES),
-    ] + test_targets("Hub", "dev.svindland.stadig.hub"),
-    "embeds": [],
-    "config_files": ["Info.plist", "Hub.entitlements", "Hub-macOS.entitlements"],
-    "groups": ["iOS", "Tests", "UITests"],
-    "exceptions": [],
-    "extra_files": ["Hub.xctestplan", "HubUI.xctestplan"],
-    "test_plans": [("Hub", ["HubTests"]), ("HubUI", ["HubUITests"])],
-    # Nothing to buy, so no StoreKit configuration.
-    "schemes": [("Hub", "Hub", "Hub.app", False)],
-}
-
-APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO, "MindTrack": MIND, "Hub": HUB}
+APPS = {"LiftTrack": LIFT, "MacroTrack": MACRO}
 
 project_debug = {
     "ALWAYS_SEARCH_USER_PATHS": "NO", "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",

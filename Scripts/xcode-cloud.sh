@@ -30,7 +30,6 @@ case $STAGE in
       # Xcode Cloud's Macs are virtual, like GitHub's: no Neural Engine for real Vision OCR.
       NO_VISION_OCR=1 STRICT=1 Scripts/build.sh test $PACKAGES
     fi
-    # The hub has nothing to buy, so it has no such file.
     if [[ $action == archive && ${CI_BRANCH:-} == release/* && -f Apps/$APP/iOS/Purchase/Purchases.swift ]] \
       && grep -q 'enabled: false' Apps/$APP/iOS/Purchase/Purchases.swift; then
       print -u2 "error: $APP's purchases are switched off (enabled: false) on ${CI_BRANCH}: the release would ship unlocked. Set it to true (see docs/ci-cd.md)."

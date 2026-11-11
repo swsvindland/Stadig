@@ -352,13 +352,6 @@ extension SharedKey where T == [DayChange] {
     public static var dayChanges: SharedKey<[DayChange]> { SharedKey(path: "hub/changes.json", schemaVersion: DayChange.schemaVersion) }
 }
 
-extension SharedKey where T == BlockAsk {
-    /// What Stadig Mind's week asks for, so the hub can lay out the same week without it running.
-    public static var blockAsk: SharedKey<BlockAsk> {
-        SharedKey(path: "apps/\(AppID.knowledge.rawValue)/blocks.json", schemaVersion: BlockAsk.schemaVersion)
-    }
-}
-
 extension SharedKey where T == MealRhythm {
     /// When someone usually eats. Published by Stadig Macro.
     public static var mealRhythm: SharedKey<MealRhythm> {

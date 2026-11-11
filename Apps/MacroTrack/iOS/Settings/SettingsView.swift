@@ -64,7 +64,7 @@ struct SettingsView: View {
                         let summary = try await model.restore(from: url)
                         message = "Restored \(summary.records) records."
                     } catch {
-                        // Another app's backup is refused by name ("This backup is from Stadig Mind").
+                        // Another app's backup is refused by name ("This backup is from Stadig Lift").
                         message = error.localizedDescription
                     }
                 }
@@ -96,7 +96,7 @@ struct SettingsView: View {
             Text(
                 model.rhythm == nil
                     ? "Other hours stay a tap away under Earlier and Later, and food logged in them always shows."
-                    : "Automatic follows your sleep in Stadig. Other hours stay a tap away under Earlier and Later.")
+                    : "Automatic follows your usual sleep. Other hours stay a tap away under Earlier and Later.")
         }
 
         Section {

@@ -7,7 +7,7 @@ const jsonLd = [{
   mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
 }];
 ---
-<Base title="FAQ" description={`Questions about the ${brand.name} apps: Stadig Lift, Stadig Macro and Stadig Mind. Pricing, offline use, privacy, devices and the ideas behind them.`} jsonLd={jsonLd}>
+<Base title="FAQ" description={`Questions about the ${brand.name} apps: Stadig Lift and Stadig Macro. Pricing, offline use, privacy, devices and the ideas behind them.`} jsonLd={jsonLd}>
   <section class="wrap">
     <p class="eyebrow">FAQ</p>
     <h1>Questions, answered plainly.</h1>

@@ -11,7 +11,7 @@ let package = Package(
     dependencies: [.package(path: "../SystemCore"), .package(path: "../SystemStore")],
     targets: [
         .target(name: "HubEngine", dependencies: ["SystemCore", "SystemStore"]),
-        .testTarget(name: "HubEngineTests", dependencies: ["HubEngine"]),
+        .testTarget(name: "HubEngineTests", dependencies: ["HubEngine", "SystemCore", "SystemStore"]),
     ],
     swiftLanguageModes: [.v6]
 )

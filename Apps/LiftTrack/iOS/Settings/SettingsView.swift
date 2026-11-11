@@ -248,7 +248,7 @@ struct DataSections: View {
         PurchaseSection { prompts.paywall = true }
         Section {
             Text(
-                "Stadig Lift is one of the Stadig apps: \(AppID.macroTrack.displayName) for nutrition, \(AppID.knowledge.displayName) for study, and the hub that ties them together. Each works on its own; together they share setup, life modes and deloads."
+                "Stadig Lift is one of the Stadig apps, with \(AppID.macroTrack.displayName) for nutrition. Each works on its own; together they share setup, life modes and deloads."
             )
             .font(.footnote).foregroundStyle(.secondary)
         }

@@ -18,11 +18,9 @@ Proceeds at 15%: about $25.49 per $29.99 purchase and $2.54 per month of subscri
 
 **Apps → + → New App**, or check they're already there from TestFlight:
 
-| | Stadig Lift | Stadig Macro | Stadig Mind | Stadig (the hub) |
-|---|---|---|---|---|
-| Bundle id | `dev.svindland.stadig.lift` | `dev.svindland.stadig.macro` | `dev.svindland.stadig.mind` | `dev.svindland.stadig.hub` |
-
-The hub has no purchases, so sections 3, 4 and 6 don't apply to it until how it's sold is decided ([decisions.md](decisions.md)). On developer.apple.com its identifier needs iCloud and App Groups, with the family container `iCloud.dev.svindland.stadig`, the App Group and a container of its own, `iCloud.dev.svindland.stadig.hub`.
+| | Stadig Lift | Stadig Macro |
+|---|---|---|
+| Bundle id | `dev.svindland.stadig.lift` | `dev.svindland.stadig.macro` |
 
 - **Platforms:** add macOS and visionOS on each app's page (**Add Platform**), so one purchase covers every device.
 - **Pricing and Availability:** the app itself is **Free**. The money is all in-app purchases.
@@ -32,13 +30,13 @@ The hub has no purchases, so sections 3, 4 and 6 don't apply to it until how it'
 
 **The app → Monetization → In-App Purchases → +**
 
-| Field | Stadig Lift | Stadig Macro | Stadig Mind |
-|---|---|---|---|
-| Type | Non-Consumable | Non-Consumable | Non-Consumable |
-| Reference Name | `Stadig Lift unlock` | `Stadig Macro unlock` | `Stadig Mind unlock` |
-| Product ID | `dev.svindland.stadig.lift.unlock` | `dev.svindland.stadig.macro.unlock` | `dev.svindland.stadig.mind.unlock` |
-| Display Name | `Stadig Lift` | `Stadig Macro` | `Stadig Mind` |
-| Description | `Stadig Lift, yours for good.` | `Stadig Macro, yours for good.` | `Stadig Mind, yours for good.` |
+| Field | Stadig Lift | Stadig Macro |
+|---|---|---|
+| Type | Non-Consumable | Non-Consumable |
+| Reference Name | `Stadig Lift unlock` | `Stadig Macro unlock` |
+| Product ID | `dev.svindland.stadig.lift.unlock` | `dev.svindland.stadig.macro.unlock` |
+| Display Name | `Stadig Lift` | `Stadig Macro` |
+| Description | `Stadig Lift, yours for good.` | `Stadig Macro, yours for good.` |
 
 Then, on the same page:
 
@@ -55,16 +53,16 @@ A product id can't be changed once it's created, so copy them exactly. A typo me
 
 **The app → Monetization → Subscriptions → Subscription Groups → +**
 
-1. **Group:** Reference Name `Stadig Lift` (or `Stadig Macro`, `Stadig Mind`). Under **Localization** add a group display name, the same name, English (U.S.). Each app has its own group.
+1. **Group:** Reference Name `Stadig Lift` (or `Stadig Macro`). Under **Localization** add a group display name, the same name, English (U.S.). Each app has its own group.
 2. **Subscription, in that group:**
 
-| Field | Stadig Lift | Stadig Macro | Stadig Mind |
-|---|---|---|---|
-| Reference Name | `Stadig Lift monthly` | `Stadig Macro monthly` | `Stadig Mind monthly` |
-| Product ID | `dev.svindland.stadig.lift.monthly` | `dev.svindland.stadig.macro.monthly` | `dev.svindland.stadig.mind.monthly` |
-| Duration | 1 Month | 1 Month | 1 Month |
-| Display Name | `Stadig Lift Monthly` | `Stadig Macro Monthly` | `Stadig Mind Monthly` |
-| Description | `All of Stadig Lift, month to month.` | `All of Stadig Macro, month to month.` | `All of Stadig Mind, month to month.` |
+| Field | Stadig Lift | Stadig Macro |
+|---|---|---|
+| Reference Name | `Stadig Lift monthly` | `Stadig Macro monthly` |
+| Product ID | `dev.svindland.stadig.lift.monthly` | `dev.svindland.stadig.macro.monthly` |
+| Duration | 1 Month | 1 Month |
+| Display Name | `Stadig Lift Monthly` | `Stadig Macro Monthly` |
+| Description | `All of Stadig Lift, month to month.` | `All of Stadig Macro, month to month.` |
 
 3. **Subscription Prices:** United States, **$2.99**. Let Apple work out the rest.
 4. **Availability:** as for the one-time purchase.

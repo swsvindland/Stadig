@@ -1,6 +1,6 @@
 ---
 name: add-feature
-description: The end-to-end way to add or change a feature in Stadig Lift, Stadig Macro or Stadig Mind: engine logic and tests in the package first, then the SwiftUI screen and identifiers, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
+description: The end-to-end way to add or change a feature in Stadig Lift or Stadig Macro: engine logic and tests in the package first, then the SwiftUI screen and identifiers, then docs. Use when building a new screen, rule, recommendation or flow, or changing how an existing one behaves.
 ---
 
 # Add or change a feature
@@ -10,8 +10,8 @@ Work in this order. Each step is small and checked before the next.
 ## 1. Find where it belongs
 
 - Read the app's `docs/<app>.md` section for the area, and the design doc if the owner pointed at it. Product behaviour comes from there; if the doc is silent and you have to choose, choose, then record it in `docs/decisions.md`.
-- Logic (a rule, a number, a plan, a parse) goes in the app's engine package, or `SystemCore` if another app or the hub must agree with it. The app gets views, model wiring and platform glue.
-- Look for an existing type that already models the concept before adding one. The three apps mirror each other (`AppModel`, `StoredRecords`, `SampleData`, `Purchases`, `Platform/`): copy the established shape.
+- Logic (a rule, a number, a plan, a parse) goes in the app's engine package, or `SystemCore` if the other app must agree with it. The app gets views, model wiring and platform glue.
+- Look for an existing type that already models the concept before adding one. The apps mirror each other (`AppModel`, `StoredRecords`, `SampleData`, `Purchases`, `Platform/`): copy the established shape.
 
 ## 2. Engine first, with tests
 

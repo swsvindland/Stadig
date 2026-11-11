@@ -53,7 +53,7 @@ public struct WorkPattern: Hashable, Codable, Sendable {
     }
 
     /// The spans on a day. Nil when it isn't known: past a term's end, or a roster day with no entry.
-    /// Unknown is never free, or study would land in a shift nobody wrote down.
+    /// Unknown is never free, or something flexible would land in a shift nobody wrote down.
     public func spans(on day: Day) -> [DaySpan]? {
         if let set = overrides[day.iso] { return set }
         if isRoster { return nil }
@@ -330,28 +330,6 @@ public enum DayShape {
             if longestRun(.evening, busy: busy) >= minimumRun || longestRun(.night, busy: busy) >= minimumRun { out.insert(day) }
         }
         return out
-    }
-
-    /// The parts a weekday offers before anything else is known: a day job is assumed, so weekdays
-    /// offer the ends of the day and weekends all of it.
-    public static func usualParts(_ weekday: Weekday) -> [DayPart] {
-        switch weekday {
-        case .saturday, .sunday: DayPart.allCases
-        default: [.early, .evening, .night]
-        }
-    }
-
-    /// Two commitments fill a day: with the gym in the morning and a class in the evening, there's no
-    /// study to fit around them.
-    public static func isPacked(_ weekday: Weekday, commitments: WeekCommitments) -> Bool { commitments.on(weekday).count >= 2 }
-
-    /// The parts of a date a block can go in, given what the week already holds. Nil when the rhythm
-    /// doesn't know the day.
-    public static func studyParts(on day: Day, rhythm: Rhythm, changes: [DayChange], commitments: WeekCommitments) -> [DayPart]? {
-        guard let open = openParts(on: day, rhythm: rhythm, changes: changes) else { return nil }
-        guard !isPacked(day.weekday, commitments: commitments) else { return [] }
-        let held = Set(commitments.on(day, changes: changes).map(\.part))
-        return open.filter { !held.contains($0) }
     }
 
     /// Minutes in a part with nothing on, whether or not they run together.

@@ -1,6 +1,6 @@
 ---
 name: build-and-test
-description: Build, lint and test Stadig Lift, Stadig Macro, Stadig Mind, the hub and their Swift packages, and read the failures. Use after any code change before calling it done, when a build or test fails, or when asked to run the tests, check warnings, or run the sanitizers.
+description: Build, lint and test Stadig Lift, Stadig Macro and their Swift packages, and read the failures. Use after any code change before calling it done, when a build or test fails, or when asked to run the tests, check warnings, or run the sanitizers.
 ---
 
 # Build and test
@@ -21,7 +21,7 @@ Everything goes through `Scripts/build.sh` from the repo root. It prints only er
 | Widgets, Live Activity, the Watch apps | `Scripts/build.sh ios` / `watch` / `macro` / `macro-watch` |
 | Anything, before committing | `Scripts/build.sh lint` |
 
-`<app>` is `lift`, `macro` or `mind`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything.
+`<app>` is `lift` or `macro`. Package dependents: ExerciseLibrary → LiftEngine; FoodDatabase → FoodIntelligence, MealPlanner; NutritionEngine → MealPlanner; SystemCore → everything.
 
 One suite or test: `cd Packages/<Package> && swift test --filter <SuiteOrTestName>`.
 
@@ -37,7 +37,7 @@ The first `unit`/`ui` run in a checkout builds the app and its packages (a few m
 
 ## Catalog tests
 
-FoodDatabase, FoodIntelligence, MealPlanner and MindEngine have tests that need the catalogs in `Apps/MacroTrack/Catalogs` and `Apps/MindTrack/Catalogs`. Without them those tests skip. `Scripts/fetch-catalogs.sh` downloads them (needs `gh` signed in). In a fresh worktree, clone them from the main checkout instead: `cp -c <main>/Apps/MacroTrack/Catalogs/*.db Apps/MacroTrack/Catalogs/` (APFS clone, instant, no extra space), same for MindTrack.
+FoodDatabase, FoodIntelligence and MealPlanner have tests that need the catalogs in `Apps/MacroTrack/Catalogs`. Without them those tests skip. `Scripts/fetch-catalogs.sh` downloads them (needs `gh` signed in). In a fresh worktree, clone them from the main checkout instead: `cp -c <main>/Apps/MacroTrack/Catalogs/*.db Apps/MacroTrack/Catalogs/` (APFS clone, instant, no extra space).
 
 ## Sanitizers
 

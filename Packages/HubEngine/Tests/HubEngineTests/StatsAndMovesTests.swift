@@ -10,8 +10,8 @@ struct StatsBoardTests {
     let monday = Day(year: 2026, month: 11, day: 2)
     var now: Date { monday.at(hour: 10, minute: 0, timeZone: utc) }
 
-    func inputs(lift: AppSummary? = nil, macro: AppSummary? = nil, mind: AppSummary? = nil) -> HubInputs {
-        HubInputs(rhythm: Rhythm(), lift: lift, macro: macro, mind: mind, today: monday, now: now, timeZone: utc)
+    func inputs(lift: AppSummary? = nil, macro: AppSummary? = nil) -> HubInputs {
+        HubInputs(rhythm: Rhythm(), lift: lift, macro: macro, today: monday, now: now, timeZone: utc)
     }
 
     func reading(_ stat: StatKind, _ score: Double?, _ label: String, _ trend: Trajectory = .onPace) -> StatReading {
@@ -20,10 +20,21 @@ struct StatsBoardTests {
 
     @Test func everyStatHasALineInTheSameOrder() {
         let lines = StatsBoard.lines(inputs())
-        #expect(lines.map(\.stat) == StatKind.allCases)
+        #expect(lines.map(\.stat) == [.strength, .physique, .endurance, .vitality, .agility, .discipline])
         #expect(lines.filter(\.isKnown).isEmpty)
         #expect(lines.first?.label == "Nothing from Stadig Lift yet")
-        #expect(lines.first { $0.stat == .wisdom }?.label == "Nothing from Stadig Mind yet")
+        #expect(lines.first { $0.stat == .vitality }?.label == "Nothing from Stadig Macro yet")
+    }
+
+    /// Only fitness is scored. A summary that still carries Stadig Mind's stats (an old file, or a
+    /// stat credited by mistake) adds no line for them.
+    @Test func intelligenceAndWisdomAreNeverShown() {
+        let lift = AppSummary(
+            app: .liftTrack, updated: now,
+            stats: [reading(.strength, 62, "Intermediate"), reading(.wisdom, 60, "Reading"), reading(.intelligence, 58, "Maths")])
+        let lines = StatsBoard.lines(inputs(lift: lift))
+        #expect(lines.filter(\.isKnown).map(\.stat) == [.strength])
+        #expect(!lines.contains { $0.stat == .wisdom || $0.stat == .intelligence })
     }
 
     @Test func oneAppSpeaksForAStat() throws {
@@ -138,19 +149,6 @@ struct MoveTests {
         meal.commitment = "Lift"
         meal.done = true
         #expect(!meal.canMove)
-    }
-
-    /// Study has to leave the part a class moved into, in every app, for just the day or for good.
-    @Test func studyKeepsOutOfTheNewPart() throws {
-        let rhythm = Rhythm(pattern: SchedulePreset.nothingFixed.pattern(anchor: monday), clearEvenings: 0, placements: [toMidday])
-        let commitments = WeekCommitments(profile: profile, lift: nil, before: monday).placed(by: rhythm)
-        let weekly = try #require(DayShape.studyParts(on: sunday, rhythm: rhythm, changes: [], commitments: commitments))
-        #expect(!weekly.contains(.midday))
-        #expect(weekly.contains(.evening))
-        let change = DayChange.move("Muay Thai", on: sunday, to: .morning, at: now)
-        let once = try #require(DayShape.studyParts(on: sunday, rhythm: rhythm, changes: [change], commitments: commitments))
-        #expect(!once.contains(.morning))
-        #expect(once.contains(.midday))
     }
 
     /// What Stadig Lift's Today says.

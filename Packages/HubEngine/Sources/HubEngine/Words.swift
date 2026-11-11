@@ -40,13 +40,10 @@ public enum HubText {
         return "\(item.part == part ? "Now" : "Next"), \(item.part.label.lowercased())"
     }
 
-    /// A line under the day's name: what's on it, then the room left.
+    /// A line under the day's name: the room left.
     public static func summary(_ day: HubDay) -> String {
-        let blocks = day.studyBlocks
-        let study = blocks == 0 ? nil : blocks == 1 ? "1 study block" : "\(blocks) study blocks"
         // A day you've gone out of isn't full, and the note above it already says so.
-        let room = day.parts.contains(where: \.isClosed) && day.freeMinutes < 30 ? nil : free(day.freeMinutes)
-        return [study, room].compactMap(\.self).joined(separator: ", ")
+        day.parts.contains(where: \.isClosed) && day.freeMinutes < 30 ? "" : free(day.freeMinutes)
     }
 
     /// A word on what's different about a day, if anything is. It never says what's been skipped or
@@ -57,7 +54,7 @@ public enum HubText {
         switch (tonight, lighter) {
         case (true, true): return "Out tonight, in a lighter week. Whatever was tonight moves on."
         case (true, false): return "Out tonight. Whatever was tonight moves on."
-        case (false, true): return "Lighter week, ends Sunday. Fewer study blocks and a shorter gym session."
+        case (false, true): return "Lighter week, ends Sunday. A shorter gym session."
         case (false, false): return nil
         }
     }
@@ -75,8 +72,8 @@ public enum HubLink {
         switch app {
         case .liftTrack: URL(string: "lifttrack://today")
         case .macroTrack: URL(string: "macrotrack://today")
-        case .knowledge: URL(string: "mindtrack://today")
-        case .hub: nil
+        // Stadig Mind isn't one of the family's apps any more: nothing in the hub opens it.
+        case .knowledge, .hub: nil
         }
     }
 }
@@ -158,10 +155,6 @@ public enum RhythmSummary {
         } else if inputs.macro.map({ HubPlanner.fresh($0.updated, inputs) }) == true {
             // It's in use, but this build of it doesn't publish meal times, or hasn't since it updated.
             out.append(RhythmLine(label: "Meals", value: "Nothing yet. Update Stadig Macro and open it once", source: AppID.macroTrack.displayName))
-        }
-        if let ask = inputs.ask, HubPlanner.fresh(ask.updated, inputs), !ask.courses.isEmpty {
-            let courses = ask.courses.map { "\(HubPlanner.title($0.id)) \($0.blocks)" }.joined(separator: ", ")
-            out.append(RhythmLine(label: "Study", value: courses, source: AppID.knowledge.displayName))
         }
         return out
     }

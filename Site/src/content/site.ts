@@ -6,7 +6,7 @@ export const brand = {
   domain: "https://stadig.dev",
   tagline: "Apps that tell you what to do next.",
   description:
-    "Stadig is three fast, offline-first apps for training, nutrition and study on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift, Stadig Macro and Stadig Mind. They prescribe your next session, meal target and lesson from your own data. No streaks, no account, and a price you can pay once.",
+    "Stadig is two fast, offline-first apps for training and nutrition on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift and Stadig Macro. They prescribe your next session and meal target from your own data. No streaks, no account, and a price you can pay once.",
   pronunciation: "STAH-dig",
   meaning: "Norwegian for steady.",
   publisher: "Sam Svindland",
@@ -134,57 +134,6 @@ export const apps: App[] = [
     free: "Logging, photo and description logging, the assessment, export and backup are free. Buying it or subscribing unlocks the phase plan.",
     keywords: ["calorie tracking app", "macro tracker", "adaptive TDEE", "maintenance calories", "barcode scanner nutrition", "AI food logging", "offline food database", "supplement tracker"],
   },
-  {
-    slug: "mind",
-    name: "Stadig Mind",
-    short: "Study",
-    oneLiner: "Training for the mind. 25-minute blocks, one subject at a time.",
-    description:
-      "Stadig Mind is a study app for iPhone, iPad, Mac and Apple Vision Pro that runs focused 25-minute blocks of Japanese, maths, writing and reading, one subject at a time. A two-week assessment finds your level in each, subjects rotate across the week like a training split, spaced repetition brings things back just before you'd forget them, and new material comes only once the last thing has stuck.",
-    platforms: ["iPhone", "iPad", "Mac", "Apple Vision Pro"],
-    category: "EducationalApplication",
-    accent: "mind",
-    appStoreUrl: null,
-    headline: "Progressive overload for your head.",
-    intro: [
-      "Study apps hand you a pile of cards and a streak. Stadig Mind hands you a block. One subject for 25 minutes: its reviews first, then new material, then practice, ending when the timer does.",
-      "It finds your level in each subject, adds new material at a rate your recall can carry, and measures you only on tests. Time spent counts for nothing.",
-    ],
-    features: [
-      {
-        title: "A split, like training",
-        body: "Japanese twice a week, maths with writing and reading the rest, never the same group two days running. A subject that slips gets an extra day.",
-      },
-      {
-        title: "Spaced repetition you don't grade",
-        body: "The open FSRS model at 90% recall. Right or wrong and how long it took decide the grade, so you can't be kind to yourself.",
-      },
-      {
-        title: "Mastery before more",
-        body: "A maths topic or writing skill is mastered at four of the last five right, ending on a right one. Two missed reviews put it back into learning, and what builds on it waits.",
-      },
-      {
-        title: "Japanese from 20,000 words",
-        body: "Ordered by how often real sentences use them, taught with kanji and an example at your level, asked by meaning, reading and ear with Apple's Japanese voice. 85,000 graded sentences, 3,100 kanji, all offline.",
-      },
-      {
-        title: "Maths with endless problems",
-        body: "49 topics in ten levels from order of operations to integration by parts, each with a lesson, a generator of fresh problems with exact answers, and worked steps when you miss.",
-      },
-      {
-        title: "A reading ladder",
-        body: "112 books in ten tiers of real difficulty across seven genres. Your comfort tier comes from books you've finished. The next suggestion is one step up, in the genres you like.",
-      },
-    ],
-    how: [
-      { title: "Each subject's first block is its placement", body: "A vocabulary test from common words to rare, a maths placement that walks the skill graph in a dozen problems, one writing item per skill." },
-      { title: "Two weeks of assessment", body: "Weekly notes say what was learned. Then the block starts." },
-      { title: "Blocks around your week", body: "Choose how many blocks each subject gets. They land in the open parts of your week, around Stadig Lift's days and classes, and a missed one moves forward." },
-      { title: "Review weeks and check-ins", body: "Every sixth week, or whenever Stadig Lift deloads: nothing new, reading for pleasure, and a check-in that moves Intelligence and Wisdom." },
-    ],
-    free: "Reviews, the catalogs, export and backup are free. Buying it or subscribing unlocks blocks after the assessment.",
-    keywords: ["spaced repetition app", "FSRS", "learn Japanese app", "maths practice app", "study planner", "reading ladder", "deliberate practice"],
-  },
 ];
 
 export const principles = [
@@ -194,7 +143,7 @@ export const principles = [
   },
   {
     title: "Real-world tests, not in-app activity",
-    body: "Strength moves on lifts, Endurance on benchmarks, Intelligence on check-in tests, Wisdom on finished books. Opening the app, logging, or time on task moves nothing.",
+    body: "Strength moves on lifts, Endurance on benchmarks, Agility on mobility tests, Physique on the tape. Opening the app, logging, or time on task moves nothing.",
   },
   {
     title: "No XP, streaks or levels",
@@ -202,7 +151,7 @@ export const principles = [
   },
   {
     title: "Offline first",
-    body: "The exercise library, the food and supplement catalogs and the Japanese dictionary ship inside the apps. They work on a plane and in a basement gym. iCloud sync is there for your own devices.",
+    body: "The exercise library and the food and supplement catalogs ship inside the apps. They work on a plane and in a basement gym. iCloud sync is there for your own devices.",
   },
   {
     title: "Private by construction",
@@ -224,9 +173,7 @@ export const stats = [
   { name: "Endurance", source: "Heart-rate benchmarks and recovery" },
   { name: "Vitality", source: "Sleep, HRV and resting heart rate from Health" },
   { name: "Agility", source: "Five mobility tests" },
-  { name: "Discipline", source: "Four-week adherence, shared by every app" },
-  { name: "Intelligence", source: "Check-in tests in Japanese, maths and writing" },
-  { name: "Wisdom", source: "The highest reading tier finished comfortably" },
+  { name: "Discipline", source: "Four-week adherence, shared by both apps" },
 ];
 
 export const together = [
@@ -235,27 +182,23 @@ export const together = [
     body: "A cut shortens the block and reads stalls as expected. A bulk lengthens it. Stadig Lift waits with a neutral block while Stadig Macro is still deciding.",
   },
   {
-    title: "Stadig Lift's deloads are Stadig Mind's review weeks.",
-    body: "One calendar. When the body rests, the mind consolidates: nothing new, reviews ahead of schedule, reading for pleasure.",
-  },
-  {
     title: "Steps are judged with the diet in mind.",
     body: "Stadig Lift sets a daily step aim from your usual count, never a universal 10,000. When steps fall in a cut, Stadig Macro reads that before it cuts calories.",
   },
   {
     title: "Life modes are shared.",
-    body: "Say you're on vacation, ill or in crunch once. Every app reflows: the block, the targets, the study plan. None of those days count against you.",
+    body: "Say you're on vacation, ill or in crunch once. Every app reflows: the block and the targets. None of those days count against you.",
   },
 ];
 
 export const faq = [
   {
     q: "What is Stadig?",
-    a: "Stadig is three apps for training, nutrition and study on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift, Stadig Macro and Stadig Mind. They share one idea: use your own data to prescribe the next thing to do, instead of charting what you did. The name is Norwegian for steady.",
+    a: "Stadig is two apps for training and nutrition on iPhone, iPad, Mac and Apple Vision Pro: Stadig Lift and Stadig Macro. They share one idea: use your own data to prescribe the next thing to do, instead of charting what you did. The name is Norwegian for steady.",
   },
   {
-    q: "Do I need all three apps?",
-    a: "No. Each app works alone. Together they share a profile, life modes and a calendar, so Stadig Macro's phase shapes Stadig Lift's block and Stadig Lift's deloads become Stadig Mind's review weeks.",
+    q: "Do I need both apps?",
+    a: "No. Each app works alone. Together they share a profile, life modes and a calendar, so Stadig Macro's phase shapes Stadig Lift's block and Stadig Lift's step count is read before Stadig Macro cuts calories.",
   },
   {
     q: "What does it cost?",
@@ -263,7 +206,7 @@ export const faq = [
   },
   {
     q: "Do the apps work offline?",
-    a: "Yes. The exercise library, the food and supplement catalogs and the Japanese dictionary ship inside the apps. Sync between your own devices uses iCloud when you're online.",
+    a: "Yes. The exercise library and the food and supplement catalogs ship inside the apps. Sync between your own devices uses iCloud when you're online.",
   },
   {
     q: "Where does my data go?",
@@ -271,7 +214,7 @@ export const faq = [
   },
   {
     q: "What does \"prescribe, don't describe\" mean?",
-    a: "A tracker describes: here is your volume, here is your calorie average. Stadig apps prescribe: add 2.5 kg to the next set, eat 150 kcal less this week, review these 12 words then learn 15 new ones. Every screen ends in an action.",
+    a: "A tracker describes: here is your volume, here is your calorie average. Stadig apps prescribe: add 2.5 kg to the next set, eat 150 kcal less this week. Every screen ends in an action.",
   },
   {
     q: "Why no streaks?",
@@ -279,7 +222,7 @@ export const faq = [
   },
   {
     q: "What devices are supported?",
-    a: "All three run on iPhone, iPad, Mac and Apple Vision Pro, and one purchase or subscription covers every device. Stadig Lift and Stadig Macro also have Apple Watch apps. On the iPad and the Mac each does more than on the phone: Stadig Lift lays out your program and exercise library, Stadig Macro compares foods and plans the week, and Stadig Mind runs sessions from the keyboard. Your data syncs between your devices through iCloud.",
+    a: "Both run on iPhone, iPad, Mac and Apple Vision Pro, and one purchase or subscription covers every device. Both also have Apple Watch apps. On the iPad and the Mac each does more than on the phone: Stadig Lift lays out your program and exercise library, and Stadig Macro compares foods and plans the week. Your data syncs between your devices through iCloud.",
   },
   {
     q: "Which AI models do the apps use?",
@@ -294,7 +237,6 @@ export const faq = [
 export const nav = [
   { href: "/lift", label: "Stadig Lift" },
   { href: "/macro", label: "Stadig Macro" },
-  { href: "/mind", label: "Stadig Mind" },
   { href: "/principles", label: "Principles" },
   { href: "/faq", label: "FAQ" },
 ];

@@ -1,7 +1,6 @@
 import ExerciseLibrary
 import Foundation
 import HealthBridge
-import HubEngine
 import LiftEngine
 import OSLog
 import Observation
@@ -154,8 +153,6 @@ final class AppModel {
     /// either changes, not on every redraw.
     private(set) var historyRows: [HistoryRow] = []
     var today: Day = .today
-    /// What's left of today, for someone who uses the hub.
-    private(set) var dayAhead: String?
 
     /// The shared container mirrored to the person's other devices through the family's CloudKit
     /// database; nil when nothing is kept (tests, UI tests, `-inMemoryStore`).
@@ -304,7 +301,6 @@ final class AppModel {
     /// What other apps and the hub published. Our own writes notify us too, so this only
     /// recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
-        dayAhead = HubPlanner.ahead(shared: shared, today: today, now: Date())
         let nutrition = shared.read(.nutrition)
         let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .liftTrack && $0.isActive() }
         let sharedProfile = shared.read(.profile)
