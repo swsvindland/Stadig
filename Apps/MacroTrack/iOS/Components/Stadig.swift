@@ -45,16 +45,17 @@ enum Ink {
 }
 
 extension Color {
-    /// A colour for each appearance, from 0xRRGGBB.
-    init(light: UInt32, dark: UInt32, lightAlpha: Double = 1, darkAlpha: Double = 1) {
+    /// A colour for each appearance, from 0xRRGGBB. Nonisolated, and its provider `@Sendable`:
+    /// SwiftUI resolves colours on its render thread too, where a main-actor closure traps.
+    nonisolated init(light: UInt32, dark: UInt32, lightAlpha: Double = 1, darkAlpha: Double = 1) {
         #if canImport(UIKit)
         self.init(
-            uiColor: UIColor { traits in
+            uiColor: UIColor { @Sendable traits in
                 traits.userInterfaceStyle == .dark ? UIColor(rgb: dark, alpha: darkAlpha) : UIColor(rgb: light, alpha: lightAlpha)
             })
         #else
         self.init(
-            nsColor: NSColor(name: nil) { appearance in
+            nsColor: NSColor(name: nil) { @Sendable appearance in
                 appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
                     ? NSColor(rgb: dark, alpha: darkAlpha) : NSColor(rgb: light, alpha: lightAlpha)
             })
@@ -64,14 +65,14 @@ extension Color {
 
 #if canImport(UIKit)
 extension UIColor {
-    fileprivate convenience init(rgb: UInt32, alpha: Double) {
+    fileprivate nonisolated convenience init(rgb: UInt32, alpha: Double) {
         self.init(
             red: Double((rgb >> 16) & 0xFF) / 255, green: Double((rgb >> 8) & 0xFF) / 255, blue: Double(rgb & 0xFF) / 255, alpha: alpha)
     }
 }
 #else
 extension NSColor {
-    fileprivate convenience init(rgb: UInt32, alpha: Double) {
+    fileprivate nonisolated convenience init(rgb: UInt32, alpha: Double) {
         self.init(
             srgbRed: Double((rgb >> 16) & 0xFF) / 255, green: Double((rgb >> 8) & 0xFF) / 255, blue: Double(rgb & 0xFF) / 255, alpha: alpha)
     }
