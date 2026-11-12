@@ -42,6 +42,10 @@ struct RootView: View {
         .sheet(isPresented: $model.showSupplements) {
             SupplementsView().macSheetSize(width: 520, height: 640)
         }
+        // Prep day at the counter, over everything (a large sheet on the Mac).
+        .cover(isPresented: $model.showPrepCounter) {
+            if let run = model.prepRun { PrepCounter(run: run) }
+        }
         #if !os(macOS)
         // The Mac's settings are a window of their own (⌘,).
         .sheet(isPresented: $model.showSettings) {

@@ -1,3 +1,4 @@
+import AudioToolbox
 import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
@@ -100,6 +101,17 @@ enum Platform {
         #endif
     }
 
+    /// A kitchen timer running out: the system's alert sound (and a buzz on a device that has one).
+    /// The Mac's is its alert sound.
+    @MainActor
+    static func chime() {
+        #if os(macOS)
+        NSSound.beep()
+        #else
+        AudioServicesPlayAlertSound(SystemSoundID(1005))
+        #endif
+    }
+
     /// UI tests tap faster than animations finish; nothing to wait on is steadier.
     static func disableAnimations() {
         #if canImport(UIKit)
@@ -173,6 +185,10 @@ extension View {
         return fullScreenCover(isPresented: isPresented, content: content)
         #endif
     }
+
+    /// Keeps the display on while this is on screen: counter mode on the counter, with hands too busy
+    /// to wake it. The Mac holds off display sleep the same way.
+    func keepsScreenAwake() -> some View { modifier(KeepAwake()) }
 
     func cover<Item: Identifiable, Content: View>(item: Binding<Item?>, @ViewBuilder content: @escaping (Item) -> Content) -> some View {
         #if os(macOS)
@@ -348,6 +364,33 @@ extension View {
         #else
         return self
         #endif
+    }
+}
+
+private struct KeepAwake: ViewModifier {
+    #if os(macOS)
+    @State private var activity: (any NSObjectProtocol)?
+    #endif
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                #if os(macOS)
+                if activity == nil {
+                    activity = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled, .userInitiated], reason: "Prep day")
+                }
+                #else
+                UIApplication.shared.isIdleTimerDisabled = true
+                #endif
+            }
+            .onDisappear {
+                #if os(macOS)
+                if let activity { ProcessInfo.processInfo.endActivity(activity) }
+                activity = nil
+                #else
+                UIApplication.shared.isIdleTimerDisabled = false
+                #endif
+            }
     }
 }
 
