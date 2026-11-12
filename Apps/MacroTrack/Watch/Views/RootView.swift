@@ -39,7 +39,7 @@ struct RootView: View {
                 if today.tracksMealTiming {
                     FastPage(today: today).tag(WristPage.fast)
                 }
-                LogAgainPage(today: today).tag(WristPage.logAgain)
+                LogAgainPage(today: today, showing: page == .logAgain).tag(WristPage.logAgain)
                 if let water = today.water {
                     WaterPage(water: water, glasses: today.glasses).tag(WristPage.water)
                 }

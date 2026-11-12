@@ -2,43 +2,71 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// The usual foods for this time of day, one tap each: yesterday's meal around now first, then
-/// single foods by how often and how recently they're eaten at this hour.
+/// The usual foods for this time of day, a face each: yesterday's meal around now first, then
+/// single foods by how often and how recently they're eaten at this hour. The Digital Crown moves
+/// from one to the next (and on to the next page after the last); Log, or Double Tap, logs the one
+/// in view at its usual amount.
 struct LogAgainPage: View {
     @Environment(WristModel.self) private var model
     let today: WristToday
+    /// This page is the one showing: Double Tap logs only a food that's in view.
+    let showing: Bool
+    /// The face in view; nil until the crown moves, which is the first.
+    @State private var shown: String?
+
+    static let usualID = "usual"
 
     var body: some View {
-        List {
-            if let usual = today.sameAsUsual {
-                Button {
-                    model.log(usual)
-                } label: {
-                    FoodRow(
-                        title: "Same as \(Self.relative(Day(usual.start), today: today.day))",
-                        detail: usual.entries.map(\.name).joined(separator: ", "), kcal: usual.nutrients.kcal, symbol: "arrow.clockwise")
+        let ids = (today.sameAsUsual == nil ? [] : [Self.usualID]) + today.logAgain.map(\.id)
+        let first = ids.first
+        // A face logged away (the list moves on after a log) leaves the first one current.
+        let current = shown.flatMap { ids.contains($0) ? $0 : nil } ?? first
+        Group {
+            if first == nil {
+                ScrollView {
+                    Text("Foods you log show up here, ready to log again with a tap.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("logAgain.empty")
                 }
-                .listItemTint(Color.accentColor.opacity(0.35))
-                .accessibilityIdentifier("logAgain.usual")
-                .accessibilityLabel(
-                    "Log the same as \(Self.relative(Day(usual.start), today: today.day)): \(usual.entries.map(\.name).joined(separator: ", ")), \(WristFormat.kcal(usual.nutrients.kcal))"
-                )
-            }
-            ForEach(Array(today.logAgain.enumerated()), id: \.element.id) { index, item in
-                Button {
-                    model.log(item)
-                } label: {
-                    FoodRow(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal, symbol: nil)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        if let usual = today.sameAsUsual {
+                            let when = Self.relative(Day(usual.start), today: today.day)
+                            let names = usual.entries.map { FoodLabel.title($0.name) }.joined(separator: ", ")
+                            FoodFace(
+                                eyebrow: "Same as \(when)", marker: usual.entries.prefix(3).map { FoodMarker.of($0.name) }.joined(),
+                                amount: "\(usual.entries.count)", unit: usual.entries.count == 1 ? "food" : "foods", title: names,
+                                nutrients: usual.nutrients, left: today.kcal.left, active: showing && current == Self.usualID,
+                                identifier: "logAgain.usual",
+                                label: "Log the same as \(when): \(names), \(WristFormat.kcal(usual.nutrients.kcal))"
+                            ) {
+                                model.log(usual)
+                            }
+                            .id(Self.usualID)
+                        }
+                        ForEach(Array(today.logAgain.enumerated()), id: \.element.id) { index, item in
+                            let food = item.template
+                            let amount = Self.amount(food.amountLabel)
+                            FoodFace(
+                                eyebrow: "Usually now", marker: FoodMarker.of(food.name), amount: amount.value, unit: amount.unit,
+                                title: FoodLabel.short(food.name), nutrients: food.nutrients, left: today.kcal.left,
+                                active: showing && current == item.id, identifier: "logAgain.food.\(index)",
+                                label: "Log \(FoodLabel.short(food.name)), \(food.amountLabel), \(WristFormat.kcal(food.nutrients.kcal))"
+                            ) {
+                                model.log(item)
+                            }
+                            .id(item.id)
+                        }
+                    }
+                    .scrollTargetLayout()
                 }
-                .accessibilityIdentifier("logAgain.food.\(index)")
-                .accessibilityLabel("Log \(item.template.name), \(item.template.amountLabel), \(WristFormat.kcal(item.template.nutrients.kcal))")
-            }
-            if today.logAgain.isEmpty, today.sameAsUsual == nil {
-                Text("Foods you log show up here, ready to log again with a tap.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("logAgain.empty")
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $shown)
+                // A face reaches the foot of the screen, so the next one doesn't show under its Log.
+                .ignoresSafeArea(edges: .bottom)
             }
         }
         .navigationTitle("Log Again")
@@ -48,31 +76,90 @@ struct LogAgainPage: View {
     static func relative(_ day: Day, today: Day) -> String {
         day.days(until: today) == 1 ? "yesterday" : day.date().formatted(.dateTime.weekday(.wide))
     }
+
+    /// "170 g" as the number and its unit, set apart; a label that isn't a number and a word
+    /// ("2 large · 92 g") is said whole.
+    static func amount(_ label: String) -> (value: String, unit: String?) {
+        let words = label.split(separator: " ")
+        guard words.count == 2, Double(words[0].replacingOccurrences(of: ",", with: "")) != nil else { return (label, nil) }
+        return (String(words[0]), String(words[1]))
+    }
 }
 
-struct FoodRow: View {
+/// One food (or meal) to log again, filling the screen: what it is and how much, big, then its
+/// calories and protein, and Log at the foot with what's left after it. Double Tap logs it while
+/// it's the face in view.
+struct FoodFace: View {
+    let eyebrow: String
+    let marker: String
+    let amount: String
+    let unit: String?
     let title: String
-    let detail: String
-    let kcal: Double
-    let symbol: String?
+    let nutrients: Nutrients
+    let left: Double?
+    let active: Bool
+    let identifier: String
+    let label: String
+    let log: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text("\(detail) · \(WristFormat.whole(kcal))")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: symbol ?? "plus")
-                .font(.footnote.weight(.semibold))
+        VStack(alignment: .leading, spacing: 3) {
+            Text(eyebrow)
+                .font(.caption2.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(0.6)
                 .foregroundStyle(.tint)
-                .accessibilityHidden(true)
+                .lineLimit(1)
+            HStack(alignment: .center, spacing: 8) {
+                Text(marker)
+                    .font(.title3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(width: 38, height: 38)
+                    .background(.white.opacity(0.12), in: .rect(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(amount)
+                        .font(.system(size: unit == nil ? 22 : 34, weight: .bold).monospacedDigit())
+                        .tracking(-0.8)
+                    if let unit { Text(unit).font(.footnote.weight(.semibold)).foregroundStyle(.secondary) }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            }
+            Text(title)
+                .font(.headline)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+            Text("\(WristFormat.kcal(nutrients.kcal)) · \(WristFormat.grams(nutrients.protein)) protein")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 4)
+            Button(action: log) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Log").font(.headline)
+                    Spacer(minLength: 4)
+                    if let left {
+                        let after = left - nutrients.kcal
+                        Text("\(WristFormat.whole(abs(after))) \(after <= -1 ? "over" : "left")").font(.footnote.monospacedDigit())
+                    }
+                }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, minHeight: 46)
+                .background(Color.accentColor, in: .rect(cornerRadius: 23, style: .continuous))
+                .contentShape(.rect(cornerRadius: 23))
+            }
+            .buttonStyle(.plain)
+            .handGestureShortcut(.primaryAction, isEnabled: active)
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel(label)
         }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 8)
+        .containerRelativeFrame(.vertical)
     }
 }
 

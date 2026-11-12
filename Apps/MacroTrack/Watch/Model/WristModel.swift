@@ -259,13 +259,13 @@ final class WristModel {
     /// One tap in Log Again: the same food and amount, now.
     func log(_ item: LogAgainItem) {
         let entry = LogAgain.copy(item.template, to: Date())
-        save([entry], message: "Logged \(entry.name)")
+        save([entry], message: "Logged \(FoodLabel.short(entry.name))")
     }
 
     /// Yesterday's meal again: every food of it, now.
     func log(_ moment: Moment) {
         let copies = LogAgain.copy(moment, to: Date())
-        save(copies, message: copies.count == 1 ? "Logged \(copies[0].name)" : "Logged \(copies.count) foods")
+        save(copies, message: copies.count == 1 ? "Logged \(FoodLabel.short(copies[0].name))" : "Logged \(copies.count) foods")
     }
 
     private func save(_ new: [FoodEntry], message: String) {
