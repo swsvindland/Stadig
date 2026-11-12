@@ -67,6 +67,7 @@ struct DataSettings: View {
 /// Training, physique and Apple Health.
 struct TrainingSections: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(FloorMode.automaticKey) private var floorAutomatic = true
 
     var body: some View {
         Section {
@@ -91,6 +92,18 @@ struct TrainingSections: View {
             Text(
                 "With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest)."
             )
+        }
+        if Platform.hasFloorMode {
+            Section {
+                Toggle("Floor mode when set down", isOn: $floorAutomatic)
+                    .accessibilityIdentifier("settings.floorMode")
+            } header: {
+                Text("Session")
+            } footer: {
+                Text(
+                    "Lay your iPhone flat during a session and the set fills the screen: tap anywhere for Just right, swipe up for Easy, down for Missed. Pick it up to change the weight. The session's menu turns it on at any angle."
+                )
+            }
         }
         Section {
             NavigationLink {
