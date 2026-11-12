@@ -20,14 +20,23 @@ enum Ink {
     static let surface = Color(light: 0xFFFFFF, dark: 0x17191C)
     static let raised = Color(light: 0xEBE8E1, dark: 0x212429)
     static let track = Color(light: 0xE4E1DA, dark: 0x2A2D32)
-    static let hairline = Color(light: 0x16171A, dark: 0xFFFFFF, lightAlpha: 0.10, darkAlpha: 0.09)
     /// The ruler's tick marks, cut into the fill.
     static let tick = Color(light: 0xFFFFFF, dark: 0x0D0E10, lightAlpha: 0.7, darkAlpha: 0.55)
 
+    #if os(visionOS)
+    // Vision Pro's windows are glass over a lit room, not ink: greys that read on ink vanish there,
+    // so words and lines are white at strengths the glass carries.
+    static let hairline = Color.white.opacity(0.2)
+    static let text = Color.white
+    static let text2 = Color.white.opacity(0.8)
+    static let text3 = Color.white.opacity(0.68)
+    #else
+    static let hairline = Color(light: 0x16171A, dark: 0xFFFFFF, lightAlpha: 0.10, darkAlpha: 0.09)
     static let text = Color(light: 0x16171A, dark: 0xF4F2EE)
     /// Every grey that carries words passes 4.5:1 on both grounds.
     static let text2 = Color(light: 0x55575A, dark: 0xB1B2AD)
     static let text3 = Color(light: 0x6C6E70, dark: 0x8D8F8A)
+    #endif
 
     static let good = Color(light: 0x12804F, dark: 0x3ECF8E)
     static let ok = Color(light: 0xA86400, dark: 0xF5B544)
