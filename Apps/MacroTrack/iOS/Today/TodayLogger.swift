@@ -219,7 +219,8 @@ struct TodayLogger: View {
 // MARK: - Header
 
 /// What's left: calories as the hero numeral over a tall ruler, then protein, carbs and fat in grams.
-private struct LeftHeader: View {
+/// The phone's Today header, and the summary card of the wide one.
+struct LeftHeader: View {
     let targets: DailyTargets?
     let eaten: Nutrients
     let showAllMacros: Bool

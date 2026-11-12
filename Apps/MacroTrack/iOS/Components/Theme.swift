@@ -150,7 +150,7 @@ struct ProgressRing: View {
     }
 }
 
-/// One macro as a labelled bar: eaten of target.
+/// One macro as a labelled thin ruler: eaten of target.
 struct MacroBar: View {
     let macro: Macro
     let eaten: Double
@@ -167,15 +167,7 @@ struct MacroBar: View {
                     Text(Format.grams(eaten)).font(.caption.weight(.semibold).monospacedDigit())
                 }
             }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(macro.color.opacity(0.16))
-                    if let target, target > 0 {
-                        Capsule().fill(macro.color.gradient).frame(width: max(6, proxy.size.width * min(1, eaten / target)))
-                    }
-                }
-            }
-            .frame(height: 7)
+            Ruler.thin(target.map { $0 > 0 ? eaten / $0 : 0 } ?? 0, color: macro.color)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(macro.label): \(Format.grams(eaten))\(target.map { " of \(Format.grams($0))" } ?? "")")

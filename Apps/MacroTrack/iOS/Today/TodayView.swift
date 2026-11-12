@@ -111,48 +111,19 @@ struct SettingsButton: View {
     }
 }
 
-/// Calories left as a ring, with protein (and carbs and fat, if shown) as bars.
+/// Calories left as the hero numeral over a ruler, with protein (and carbs and fat, if shown) in
+/// grams left over thin rulers: the phone's Today header, in a card.
 struct SummaryCard: View {
     @Environment(AppModel.self) private var model
     let day: Day
 
     var body: some View {
         if let analysis = model.analysis {
-            let targets = analysis.targets
-            let eaten = analysis.intakeByDay[day] ?? .zero
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 18) {
-                    ZStack {
-                        ProgressRing(value: eaten.kcal, target: targets.kcal, lineWidth: 13)
-                        VStack(spacing: 0) {
-                            if let kcal = targets.kcal {
-                                let left = kcal - eaten.kcal
-                                Text(Format.whole(abs(left))).font(.title.weight(.bold).monospacedDigit()).contentTransition(.numericText())
-                                Text(left >= 0 ? "kcal left" : "kcal over").font(.caption).foregroundStyle(.secondary)
-                            } else {
-                                Text(Format.whole(eaten.kcal)).font(.title.weight(.bold).monospacedDigit()).contentTransition(.numericText())
-                                Text("kcal eaten").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        .minimumScaleFactor(0.7)
-                    }
-                    .frame(width: 124, height: 124)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("today.calories")
-
-                    VStack(alignment: .leading, spacing: 11) {
-                        MacroBar(macro: .protein, eaten: eaten.protein, target: targets.protein)
-                        if model.settings.showAllMacros {
-                            MacroBar(macro: .carbs, eaten: eaten.carbs, target: targets.carbs)
-                            MacroBar(macro: .fat, eaten: eaten.fat, target: targets.fat)
-                        }
-                        if let kcal = targets.kcal {
-                            Text("\(Format.whole(eaten.kcal)) of \(Format.kcal(kcal))").font(.caption).foregroundStyle(.secondary)
-                                .accessibilityIdentifier("today.eatenOfTarget")
-                        }
-                    }
-                }
-                ModeLine(targets: targets, assessment: analysis.assessment)
+                LeftHeader(
+                    targets: analysis.targets, eaten: analysis.intakeByDay[day] ?? .zero, showAllMacros: model.settings.showAllMacros,
+                    justLogged: nil)
+                ModeLine(targets: analysis.targets, assessment: analysis.assessment)
             }
             .card(padding: 18)
         }
