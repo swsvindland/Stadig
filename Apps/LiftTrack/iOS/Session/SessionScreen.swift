@@ -29,7 +29,11 @@ struct SessionScreen: View {
                 .environment(\.sessionScale, sizeClass.isWide ? .large : .compact)
                 .navigationTitle(live.plan.title)
                 .inlineTitle()
-                .toolbar { toolbar(live) }
+                #if os(iOS)
+                // The phone draws its own bar over the exercise strip.
+                .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+                #endif
+                .toolbar { if sizeClass.isWide { toolbar(live) } }
                 .sheet(isPresented: $showFeedback) { FeedbackSheet() }
                 .sheet(item: $swapping) { target in SwapSheet(index: target.index) }
                 .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
@@ -55,44 +59,72 @@ struct SessionScreen: View {
         }
     }
 
-    /// The phone's layout: every exercise in one scrolling column, the logger at the bottom.
+    /// The phone's layout: the exercise in front of you under the session's bar, and the dock at the
+    /// bottom that logs its set or runs the rest.
     private func column(_ live: LiveSession) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
-                        Text(note).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    // In the session's order, which the person can change; a heading where the block changes.
-                    ForEach(Array(live.items.enumerated()), id: \.element.id) { index, item in
-                        if index == 0 || live.items[index - 1].plan.block != item.plan.block {
-                            Label(item.plan.block.label, systemImage: item.plan.block.symbol)
-                                .font(.headline)
-                                .foregroundStyle(item.plan.block.color)
-                                .padding(.top, 6)
+        let index = live.current?.item ?? live.items.indices.last
+        return VStack(spacing: 0) {
+            SessionTopBar(live: live, menu: AnyView(options(live)))
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 8)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if live.progress == 0 {
+                            ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
+                                Text(note).font(.subheadline).foregroundStyle(Ink.text2).padding(.horizontal, 4)
+                            }
                         }
-                        ItemCard(
-                            index: index, item: item, current: live.current?.item == index,
-                            swap: { swapping = SwapTarget(index: index) },
-                            edit: { set in editing = SetTarget(item: index, set: set) }
-                        )
-                        .id(item.id)
+                        if let index, live.items.indices.contains(index) {
+                            FocusedExercise(
+                                live: live, index: index, swap: { swapping = SwapTarget(index: $0) },
+                                edit: { set in editing = SetTarget(item: index, set: set) }
+                            )
+                            .id("focus")
+                        }
+                        Color.clear.frame(height: 12)
                     }
-                    Color.clear.frame(height: 24)
+                    .padding(.horizontal, 16)
+                    .readableWidth()
                 }
-                .padding()
-                .readableWidth()
-            }
-            .accessibilityIdentifier("session.screen")
-            .background(.pageBackground)
-            .onChange(of: live.current?.item) { _, item in
-                guard let item else { return }
-                withAnimation { proxy.scrollTo(live.items[item].id, anchor: .top) }
+                .scrollIndicators(.hidden)
+                .onChange(of: live.current?.item) { _, _ in
+                    withAnimation { proxy.scrollTo("focus", anchor: .top) }
+                }
             }
         }
+        .accessibilityIdentifier("session.screen")
+        .background(.pageBackground)
         .safeAreaInset(edge: .bottom) {
             BottomPanel(finish: { showFeedback = true })
+                // What scrolls under the dock fades into the ground rather than showing round its corners.
+                .background(alignment: .bottom) {
+                    LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.25))
+                        .padding(.top, -24)
+                        .ignoresSafeArea(edges: .bottom)
+                }
         }
+    }
+
+    /// The session's menu: the current exercise's own choices, then Finish and Discard.
+    @ViewBuilder
+    private func options(_ live: LiveSession) -> some View {
+        if let index = live.current?.item {
+            let item = live.items[index]
+            if item.plan.isStrength {
+                Button("Swap exercise", systemImage: "arrow.triangle.2.circlepath") { swapping = SwapTarget(index: index) }
+            }
+            if item.takesMoreSets {
+                Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
+            }
+            Button("Skip exercise", systemImage: "forward") { model.update { $0.skip(item: index) } }
+            Divider()
+        }
+        Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
+            .accessibilityIdentifier("session.finishNow")
+        Button("Discard session", systemImage: "trash", role: .destructive) { confirmDiscard = true }
+            .accessibilityIdentifier("session.discard")
     }
 
     @ToolbarContentBuilder
@@ -458,6 +490,7 @@ struct SetRow: View {
 /// The bottom of the screen: the rest timer, or the current set's controls, or Finish.
 struct BottomPanel: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.sessionScale) private var scale
     let finish: () -> Void
 
     var body: some View {
@@ -472,8 +505,8 @@ struct BottomPanel: View {
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
+        .padding(.horizontal, scale.isLarge ? 16 : 8)
+        .padding(.bottom, scale.isLarge ? 8 : 0)
     }
 
     @ViewBuilder
@@ -482,18 +515,22 @@ struct BottomPanel: View {
             SetLogger(itemIndex: position.item, setIndex: position.set)
                 .id(live.items[position.item].sets[position.set].id)
         } else {
-            Button(action: finish) {
-                Label("Finish session", systemImage: "flag.checkered").font(.headline).frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Every set is done").eyebrow()
+                Button(action: finish) {
+                    Label("Finish session", systemImage: "flag.checkered").frame(maxWidth: .infinity)
+                }
+                .primaryAction()
+                .controlSize(.large)
+                .accessibilityIdentifier("session.finish")
             }
-            .primaryAction()
-            .controlSize(.large)
-            .accessibilityIdentifier("session.finish")
-            .padding(.vertical, 8)
+            .sessionDock()
         }
     }
 }
 
-/// Rest: the countdown, the adjustment just made, ±15 s and skip.
+/// Rest, in the dock where the logger was: the countdown large, a ruler draining under it, heart
+/// rate when the Watch is on, ±15 s and skip, a drill to use the time, and the set that's next.
 struct RestPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.sessionScale) private var scale
@@ -501,40 +538,116 @@ struct RestPanel: View {
     let message: String?
 
     var body: some View {
-        VStack(spacing: 10) {
-            if let message { Text(message).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center) }
-            HStack(alignment: .center, spacing: 16) {
+        let total = max(1, rest.endsAt.timeIntervalSince(rest.started))
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Rest").eyebrow()
+                if let message {
+                    Text(message).font(.footnote).foregroundStyle(Ink.text2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(alignment: .lastTextBaseline) {
+                Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
+                    .numeral(scale.isLarge ? 120 : 84, weight: .heavy)
+                    .foregroundStyle(Ink.text)
+                    .accessibilityLabel("Rest left")
+                Spacer(minLength: 8)
+                if let bpm = model.currentHeartRate {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "heart").font(.subheadline.weight(.bold)).foregroundStyle(Ink.bad)
+                            Text("\(Int(bpm))").numeral(28)
+                        }
+                        Text("bpm").font(.caption).foregroundStyle(Ink.text2)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Heart rate \(Int(bpm))")
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Ruler(value: max(0, rest.endsAt.timeIntervalSince(context.date)) / total, height: 28)
+                }
+                HStack {
+                    Text("of \(Format.duration(Int(total.rounded())))")
+                    Spacer()
+                    if rest.plan.heartRateGuided, model.currentHeartRate != nil { Text("Ends early when your heart rate recovers") }
+                }
+                .font(.caption2.weight(.semibold)).textCase(.uppercase).foregroundStyle(Ink.text3)
+            }
+            HStack(spacing: 8) {
                 Button {
                     model.update { $0.extendRest(by: -15) }
                 } label: {
-                    Text("−15").frame(width: 44)
+                    Text("−15").frame(maxWidth: .infinity)
                 }
-                .secondaryAction()
                 .accessibilityLabel("Fifteen seconds less")
                 .accessibilityIdentifier("rest.less")
-                VStack(spacing: 0) {
-                    Text("Rest").font(.caption).foregroundStyle(.secondary)
-                    Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
-                        .font(.system(size: scale.restSize, weight: .semibold, design: .rounded).monospacedDigit())
-                }
-                .frame(maxWidth: .infinity)
                 Button {
                     model.update { $0.extendRest(by: 15) }
                 } label: {
-                    Text("+15").frame(width: 44)
+                    Text("+15").frame(maxWidth: .infinity)
                 }
-                .secondaryAction()
                 .accessibilityLabel("Fifteen seconds more")
                 .accessibilityIdentifier("rest.more")
-            }
-            if let filler = rest.filler {
-                Label("Use the rest: \(model.catalog.resolve(filler).name)", systemImage: "figure.flexibility").font(.footnote)
-            }
-            Button("Skip rest") { model.update { $0.endRest() } }.font(scale.isLarge ? .headline : .subheadline)
+                Button {
+                    model.update { $0.endRest() }
+                } label: {
+                    Text("Skip").frame(maxWidth: .infinity)
+                }
                 .keyboardShortcut(scale.shortcut(.space))
+                .accessibilityLabel("Skip rest")
                 .accessibilityIdentifier("rest.skip")
+            }
+            .secondaryAction()
+            .controlSize(.large)
+            VStack(spacing: 0) {
+                if let filler = rest.filler {
+                    Rectangle().fill(Ink.hairline).frame(height: 1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Use the rest").font(.caption).foregroundStyle(Ink.text2)
+                        Text(model.catalog.resolve(filler).name).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                }
+                if let next = nextSet {
+                    Rectangle().fill(Ink.hairline).frame(height: 1)
+                    next.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                }
+            }
         }
-        .padding()
-        .floatingGlass(in: RoundedRectangle(cornerRadius: 28), interactive: false)
+        .sessionDock()
+    }
+
+    /// The set after the rest: which, its target, and the plates.
+    private var nextSet: AnyView? {
+        guard let live = model.live, let position = live.current else { return nil }
+        let item = live.items[position.item]
+        guard item.sets.indices.contains(position.set), item.plan.conditioning == nil else { return nil }
+        let set = item.sets[position.set]
+        let exercise = model.catalog.resolve(item.exerciseID)
+        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let work = item.sets.filter { $0.prescription.kind != .warmup }
+        let number = item.sets[...position.set].filter { $0.prescription.kind != .warmup }.count
+        var label =
+            set.prescription.kind == .warmup
+            ? "Next · warm-up"
+            : "Next · set \(number) of \(work.count)"
+        if set.prescription.kind == .repOut { label += " · as many as you can" }
+        if live.items[position.item].id != rest.itemID { label += " · \(exercise.name)" }
+        let plates =
+            exercise.equipment.platePaired ? Format.plates(increments.platesPerSide(set.prescription.loadKg ?? 0), unit: increments.gym.unit) : nil
+        let target = Format.set(set.prescription, exercise: exercise, unit: model.gym.unit) + (set.prescription.kind == .repOut ? "+" : "")
+        return AnyView(
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                    Text(target).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
+                }
+                Spacer()
+                if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
+            }
+            .accessibilityElement(children: .combine))
     }
 }

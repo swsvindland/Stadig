@@ -33,8 +33,7 @@ struct SetLogger: View {
                     strengthControls(set: set, exercise: exercise)
                 }
             }
-            .padding()
-            .floatingGlass(in: RoundedRectangle(cornerRadius: 28), interactive: false)
+            .sessionDock()
             .onAppear { prepare(set: set, exercise: exercise, item: item) }
         }
     }
@@ -58,9 +57,22 @@ struct SetLogger: View {
                     : "Finding your weight · set \(position) of \(work.count)"
             default: "Set \(position) of \(work.count)"
             }
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(exercise.name).font(scale.titleFont).lineLimit(1)
-            Text(label).font(.subheadline).foregroundStyle(.secondary)
+        // The phone names the exercise above the dock: the dock says which set, and what it was last time.
+        let last = set.prescription.kind == .warmup ? nil : model.lastTime(exercise, setNumber: position)
+        let increments = model.gymForToday.increments(for: exercise.equipment)
+        let plates =
+            exercise.equipment.platePaired && item.plan.isStrength ? Format.plates(increments.platesPerSide(load), unit: increments.gym.unit) : nil
+        return VStack(alignment: .leading, spacing: 4) {
+            if scale.isLarge {
+                Text(exercise.name).font(scale.titleFont).lineLimit(1)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(last.map { "\(label) · last time \(Format.logged($0, exercise: exercise, unit: model.gym.unit))" } ?? label)
+                    .eyebrow()
+                    .lineLimit(2)
+                Spacer(minLength: 4)
+                if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
+            }
             if let note = set.note { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(.tint) }
         }
     }
@@ -69,23 +81,19 @@ struct SetLogger: View {
         let increments = model.gymForToday.increments(for: exercise.equipment)
         let hasLoad = exercise.loadBasis != .none
         return VStack(spacing: 12) {
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 if hasLoad {
                     LoadControl(
                         title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
-                        identifier: "logger.load", keys: (.downArrow, .upArrow))
+                        identifier: "logger.load", keys: (.downArrow, .upArrow), showsTitle: scale.isLarge || exercise.loadBasis != .external)
                 }
                 Stepperish(
                     title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
                     minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
                     entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
-                    identifier: "logger.reps", keys: ("-", "=")
+                    identifier: "logger.reps", keys: ("-", "="), showsTitle: scale.isLarge || set.prescription.kind == .repOut
                 )
-                .frame(maxWidth: hasLoad ? (scale.isLarge ? 260 : 140) : .infinity)
-            }
-            if let plates = increments.platesPerSide(load), !plates.isEmpty, exercise.equipment.platePaired {
-                Text("Per side: \(plates.map { Format.number($0, digits: 2) }.joined(separator: " + ")) \(increments.gym.unit.symbol)")
-                    .font(.caption).foregroundStyle(.secondary)
+                .frame(maxWidth: hasLoad ? (scale.isLarge ? 260 : 132) : .infinity)
             }
             switch set.prescription.kind {
             case .warmup:
@@ -107,6 +115,12 @@ struct SetLogger: View {
                 .keyboardShortcut(scale.shortcut(.return))
                 .accessibilityIdentifier("logger.logRepOut")
             default:
+                if !scale.isLarge {
+                    Text("How did it feel? One tap logs the set and starts your rest.")
+                        .font(.caption).foregroundStyle(Ink.text2)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
                 RatingButtons { rating in
                     if rating == .red, reps >= set.prescription.targetReps { askMissed = true } else { log(rating: rating) }
                 }
@@ -258,17 +272,19 @@ struct LoadControl: View {
     var identifier: String?
     /// The keys for − and + in the session's large layout.
     var keys: (minus: KeyEquivalent, plus: KeyEquivalent)?
+    var showsTitle = true
 
     var body: some View {
         let unit = increments.gym.unit
+        let parts = Format.load(load, unit: unit, basis: basis).split(separator: " ", maxSplits: 1).map(String.init)
         Stepperish(
-            title: title, value: Format.load(load, unit: unit, basis: basis),
+            title: title, value: parts.first ?? "", unit: parts.count > 1 ? parts[1] : nil,
             minus: { load = increments.step(load, direction: -1) },
             plus: { load = increments.step(load, direction: 1) },
             entry: .init(unit: unit.symbol, text: Format.number(unit.fromKilograms(load), digits: 2), decimal: true) { text in
                 if let typed = Self.typedLoad(text, increments: increments) { load = typed }
             },
-            identifier: identifier, keys: keys)
+            identifier: identifier, keys: keys, showsTitle: showsTitle)
     }
 
     /// A typed load in kilograms, rounded to what the gym can make; nil for anything that isn't a
@@ -295,6 +311,8 @@ struct Stepperish: View {
 
     let title: String
     let value: String
+    /// Set smaller beside the value: "kg".
+    var unit: String?
     let minus: () -> Void
     let plus: () -> Void
     var entry: Entry?
@@ -303,6 +321,8 @@ struct Stepperish: View {
     var identifier: String?
     /// The keys for − and + in the session's large layout.
     var keys: (minus: KeyEquivalent, plus: KeyEquivalent)?
+    /// The title over the value; the phone's dock leaves it off, where the unit says enough.
+    var showsTitle = true
     @Environment(\.sessionScale) private var scale
     @State private var typing = false
     @State private var typed = ""
@@ -314,41 +334,52 @@ struct Stepperish: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(title).font(scale.isLarge ? .subheadline : .caption).foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                Button(action: minus) { Image(systemName: "minus").frame(width: scale.stepButton, height: scale.stepButton) }
-                    .buttonStyle(.bordered).buttonBorderShape(.circle)
-                    .buttonRepeatBehavior(.enabled)
-                    .keyboardShortcut(keys.flatMap { scale.shortcut($0.minus) })
-                    .accessibilityLabel("Less \(title.lowercased())")
-                    .accessibilityIdentifier(identifier.map { "\($0)Less" } ?? "")
+        VStack(spacing: 0) {
+            if showsTitle { Text(title).eyebrow().padding(.top, 6) }
+            HStack(spacing: 0) {
+                Button(action: minus) {
+                    Image(systemName: "minus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: scale.stepButton).contentShape(
+                        .rect)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Ink.text2)
+                .buttonRepeatBehavior(.enabled)
+                .hoverHighlight()
+                .keyboardShortcut(keys.flatMap { scale.shortcut($0.minus) })
+                .accessibilityLabel("Less \(title.lowercased())")
+                .accessibilityIdentifier(identifier.map { "\($0)Less" } ?? "")
                 Button {
                     guard let entry else { return }
                     typed = entry.text
                     typing = true
                 } label: {
-                    Text(value)
-                        .font(scale.valueFont)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                        .frame(minWidth: 28, maxWidth: .infinity)
-                        .contentShape(.rect)
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(value).numeral(scale.isLarge ? 64 : 44, weight: .heavy).foregroundStyle(Ink.text)
+                        if let unit { Text(unit).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2).lineLimit(1) }
+                    }
+                    .frame(minWidth: 28, maxWidth: .infinity)
+                    .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .hoverHighlight()
                 .disabled(entry == nil)
-                // The number wins the space over the round buttons.
+                // The number wins the space over the buttons.
                 .layoutPriority(1)
                 .accessibilityHint(entry == nil ? "" : "Type a value")
                 .accessibilityIdentifier(identifier ?? "")
-                Button(action: plus) { Image(systemName: "plus").frame(width: scale.stepButton, height: scale.stepButton) }
-                    .buttonStyle(.bordered).buttonBorderShape(.circle)
-                    .buttonRepeatBehavior(.enabled)
-                    .keyboardShortcut(keys.flatMap { scale.shortcut($0.plus) })
-                    .accessibilityLabel("More \(title.lowercased())")
-                    .accessibilityIdentifier(identifier.map { "\($0)More" } ?? "")
+                Button(action: plus) {
+                    Image(systemName: "plus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: scale.stepButton).contentShape(
+                        .rect)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Ink.text2)
+                .buttonRepeatBehavior(.enabled)
+                .hoverHighlight()
+                .keyboardShortcut(keys.flatMap { scale.shortcut($0.plus) })
+                .accessibilityLabel("More \(title.lowercased())")
+                .accessibilityIdentifier(identifier.map { "\($0)More" } ?? "")
             }
+            .frame(minHeight: scale.isLarge ? 96 : 72)
         }
         .alert(title, isPresented: $typing) {
             TextField(entry?.unit ?? "", text: $typed)
@@ -360,11 +391,11 @@ struct Stepperish: View {
         } message: {
             if let unit = entry?.unit { Text("In \(unit)") }
         }
-        .padding(8)
-        .background(.insetBackground, in: .rect(cornerRadius: 16))
+        .padding(.horizontal, 2)
+        .background(.insetBackground, in: .rect(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
-        .accessibilityValue(value)
+        .accessibilityValue(unit.map { "\(value) \($0)" } ?? value)
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: plus()
