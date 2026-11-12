@@ -46,6 +46,13 @@ extension WatchModel {
             skip(item: 0)
             log(item: 1, set: 0, reps: 10, loadKg: nil, rating: nil)
             endRest()
+            if screen == "saving" {
+                // Heavier than last week's 77.5 × 8, so the summary has a lift that moved.
+                log(item: 1, set: 1, reps: 5, loadKg: nil, rating: nil)
+                endRest()
+                log(item: 1, set: 2, reps: 8, loadKg: 82.5, rating: .orange)
+                endRest()
+            }
             wrapUp()
             if screen == "saving" { finish(feedback: nil) }
         default:

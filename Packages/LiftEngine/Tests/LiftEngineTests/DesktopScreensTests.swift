@@ -191,6 +191,41 @@ struct ExerciseRecordTests {
     }
 }
 
+@Suite("What a session moved")
+struct EstimateMoveTests {
+    func set(_ id: String, _ day: Day, load: Double, reps: Int, kind: SetKind = .working, rating: SetRating? = .orange) -> LoggedSet {
+        LoggedSet(
+            exerciseID: id, date: day.date().addingTimeInterval(18 * 3600), kind: kind, loadKg: load, reps: reps, targetReps: reps, rating: rating,
+            bodyweightKg: 80)
+    }
+
+    @Test func aHeavierSessionMovesTheEstimateAndAMatchingOneDoesNot() throws {
+        let trust = TrustState(prior: 0.5)
+        let today = Fixture.start.adding(days: 21)
+        let history = [
+            "barbell-bench-press": [0, 7, 14].map { set("barbell-bench-press", Fixture.start.adding(days: $0), load: 80, reps: 6) },
+            "barbell-row": [0, 7, 14].map { set("barbell-row", Fixture.start.adding(days: $0), load: 70, reps: 8) },
+        ]
+        let session = [
+            set("barbell-bench-press", today, load: 60, reps: 5, kind: .warmup, rating: nil),
+            set("barbell-bench-press", today, load: 82.5, reps: 6),
+            // The row only matches what it did before.
+            set("barbell-row", today, load: 70, reps: 8),
+            // Nothing to move from: never done before.
+            set("db-curl", today, load: 14, reps: 12),
+        ]
+        let moves = EstimateMove.moves(history: history, session: session, trust: trust) { Fixture.catalog[$0]?.loadBasis }
+        #expect(moves.map(\.exerciseID) == ["barbell-bench-press"])
+        let bench = try #require(moves.first)
+        #expect(bench.beforeKg == StrengthEstimator.current(history["barbell-bench-press"] ?? [], basis: .external, trust: trust))
+        #expect(bench.afterKg > bench.beforeKg)
+        // A lighter day leaves the estimate where the recent best had it.
+        let lighter = [set("barbell-bench-press", today, load: 75, reps: 6)]
+        let none = EstimateMove.moves(history: history, session: lighter, trust: trust) { Fixture.catalog[$0]?.loadBasis }
+        #expect(none.isEmpty)
+    }
+}
+
 @Suite("History rows")
 struct HistoryRowTests {
     @Test func sessionsAndActivitiesNewestFirstWithTheirColumns() throws {

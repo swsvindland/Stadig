@@ -2,14 +2,20 @@ import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
+import WatchKit
 
-/// One loaded set: what to do, the crown on the load (snapped to loads the gym can make) or the
-/// reps, and Done.
+/// One loaded set, as the design's face: the exercise and where the set sits, the set as one big
+/// "70 × 7" (the crown on the load, snapped to loads the gym can make, or on the reps), and the band
+/// at the foot that Double Tap presses: Just right for a rated set, Done or Log reps otherwise. The
+/// band's other half opens Easy and Missed. The set's note, the hint and the crown's toggle are below.
 struct SetView: View {
     @Environment(WatchModel.self) private var model
     let item: Int
     let set: Int
+    /// The band: logs the set Just right (or, unrated, as it is).
     let done: (SetDraft) -> Void
+    /// Easy or Missed instead.
+    let rate: (SetDraft) -> Void
 
     private enum Field { case load, reps }
 
@@ -27,37 +33,37 @@ struct SetView: View {
             let liveItem = live.items[item]
             let liveSet = liveItem.sets[set]
             let exercise = model.exercise(item)
+            let draft = SetDraft(
+                item: item, set: set, loadKg: exercise.loadBasis == .none ? nil : loadKg, reps: reps,
+                seconds: timedSeconds(exercise, liveSet: liveSet, planned: liveItem.plan.seconds))
+            let rated = Self.isRated(liveSet.prescription.kind) && draft.seconds == nil
             ScrollView {
-                VStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     NoticeRow()
-                    Text("\(liveItem.plan.block.label) · \(WatchFormat.setPosition(set, in: liveItem.sets))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                     Text(exercise.name)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                    values(exercise: exercise, liveSet: liveSet, plannedSeconds: liveSet.prescription.seconds ?? liveItem.plan.seconds)
-                    Button {
-                        done(
-                            SetDraft(
-                                item: item, set: set, loadKg: exercise.loadBasis == .none ? nil : loadKg, reps: reps,
-                                seconds: timedSeconds(exercise, liveSet: liveSet, planned: liveItem.plan.seconds)))
-                    } label: {
-                        Label("Done", systemImage: "checkmark")
-                            .frame(maxWidth: .infinity)
+                        .font(.system(size: Self.small ? 12 : 14, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+                        .foregroundStyle(Color.accentColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .accessibilityAddTraits(.isHeader)
+                    HStack(spacing: 6) {
+                        SetDots(index: set, sets: liveItem.sets)
+                        if let kind = Self.kindWord(liveSet.prescription.kind) {
+                            Text(kind).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.glassProminent)
-                    .handGestureShortcut(.primaryAction)
+                    values(exercise: exercise, liveSet: liveSet, plannedSeconds: liveSet.prescription.seconds ?? liveItem.plan.seconds)
+                        .padding(.top, Self.small ? 0 : 4)
                     if let note = liveSet.note {
                         Text(note)
                             .font(.footnote)
-                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
                     }
                     Text(WatchFormat.hint(liveSet.prescription))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
                     // The toggle between weight and reps, and a reminder of what the crown does.
                     if exercise.loadBasis != .none, !exercise.timed {
                         Button {
@@ -72,25 +78,66 @@ struct SetView: View {
                     }
                 }
             }
+            // The band stays at the foot of the face, whatever the screen's size; the rest scrolls above it.
+            .safeAreaInset(edge: .bottom, spacing: 4) {
+                ActionBand(title: bandTitle(liveSet.prescription.kind, timed: draft.seconds != nil)) {
+                    done(draft)
+                } trailing: {
+                    if rated {
+                        Button {
+                            rate(draft)
+                        } label: {
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 15, weight: .bold))
+                                .frame(width: 40, height: 40)
+                                .background(WatchInk.onAccent.opacity(0.16), in: .circle)
+                                .contentShape(.circle)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Easy or missed")
+                    }
+                }
+                .ignoresSafeArea(.container, edges: .bottom)
+            }
             .onAppear { prepare(exercise: exercise, prescription: liveSet.prescription) }
+        }
+    }
+
+    /// The smallest Watches (40 and 41 mm), where the set and the band only fit one screen smaller.
+    private static let small = WKInterfaceDevice.current().screenBounds.width < 180
+    /// The big numbers' size.
+    private static let numberSize: CGFloat = small ? 38 : 54
+
+    /// Sets that are rated: everything but warm-ups and rep-outs, which log as done.
+    private static func isRated(_ kind: SetKind) -> Bool { kind != .warmup && kind != .repOut }
+
+    private func bandTitle(_ kind: SetKind, timed: Bool) -> String {
+        if timed || kind == .warmup { return "Done" }
+        return kind == .repOut ? "Log reps" : SetRating.orange.label
+    }
+
+    /// A word beside the dots for sets that aren't plain work.
+    private static func kindWord(_ kind: SetKind) -> String? {
+        switch kind {
+        case .warmup: "Warm-up"
+        case .repOut: "Rep-out"
+        case .findingWeight: "Finding weight"
+        case .deload: "Deload"
+        case .working: nil
         }
     }
 
     // MARK: Values
 
+    /// The set as one big "70 × 7": each number over a line and its unit, the one the crown moves
+    /// underlined in the accent. A tap on either gives it the crown.
     private func values(exercise: Exercise, liveSet: LiveSet, plannedSeconds: Int?) -> some View {
         let hasLoad = exercise.loadBasis != .none
         let seconds = timedSeconds(exercise, liveSet: liveSet, planned: plannedSeconds)
-        return VStack(spacing: 4) {
+        let load = WatchFormat.loadParts(loadKg, unit: model.unit, basis: exercise.loadBasis)
+        return HStack(alignment: .top, spacing: 6) {
             if hasLoad {
-                Text(WatchFormat.load(loadKg, unit: model.unit, basis: exercise.loadBasis))
-                    .font(.title2.weight(.semibold).monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .overlay { selection(editing == .load) }
-                    .contentShape(.capsule)
+                number(load.value, unit: load.unit, selected: editing == .load && !loads.isEmpty)
                     .onTapGesture { select(.load) }
                     .accessibilityLabel("Weight")
                     .accessibilityValue(WatchFormat.load(loadKg, unit: model.unit, basis: exercise.loadBasis))
@@ -99,17 +146,18 @@ struct SetView: View {
                         select(.load)
                         nudge(direction == .increment ? 1 : -1)
                     }
+                Text("×")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 14)
+                    .accessibilityHidden(true)
             }
             if let seconds {
-                Text("for \(WatchFormat.duration(seconds))")
-                    .font(.headline)
+                number(seconds < 60 ? "\(seconds)" : WatchFormat.clock(seconds), unit: seconds < 60 ? "seconds" : "minutes", selected: false)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("For \(WatchFormat.duration(seconds))")
             } else {
-                Text(hasLoad ? "× \(reps) reps" : "\(reps) reps")
-                    .font(hasLoad ? .headline.monospacedDigit() : .title2.weight(.semibold).monospacedDigit())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .overlay { selection(editing == .reps) }
-                    .contentShape(.capsule)
+                number("\(reps)", unit: liveSet.prescription.kind == .repOut ? "or more" : "reps", selected: editing == .reps)
                     .onTapGesture { select(.reps) }
                     .accessibilityLabel("Reps")
                     .accessibilityValue("\(reps)")
@@ -130,10 +178,26 @@ struct SetView: View {
         .onChange(of: crown) { apply() }
     }
 
-    private func selection(_ selected: Bool) -> some View {
-        Capsule()
-            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
-            .accessibilityHidden(true)
+    private func number(_ value: String, unit: String, selected: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Self.small ? 2 : 4) {
+            // A fixed height, so a long load shrunk to fit keeps its line and unit level with the reps'.
+            Text(value)
+                .font(.system(size: Self.numberSize, weight: .bold))
+                .monospacedDigit()
+                .tracking(-2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.45)
+                .frame(height: Self.numberSize + 2, alignment: .bottom)
+            Capsule()
+                .fill(selected ? Color.accentColor : .clear)
+                .frame(height: 3)
+            Text(unit)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(selected ? Color.accentColor : .secondary)
+                .lineLimit(1)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .contentShape(.rect)
     }
 
     private var crownUpperBound: Double {

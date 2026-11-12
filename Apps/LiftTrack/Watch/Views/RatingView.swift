@@ -3,52 +3,67 @@ import LiftEngine
 import SwiftUI
 import SystemCore
 
-/// The three-tap rating. Each button carries its symbol and words as well as its colour.
+/// The rating as three big stacked zones: Easy above, Just right in the middle in the accent (Double
+/// Tap presses it), Missed below. Each carries its words and a mark as well as its colour. A miss asks
+/// how many reps were done.
 struct RatingView: View {
     @Environment(WatchModel.self) private var model
     let draft: SetDraft
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                Text(summary)
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                ForEach(SetRating.allCases) { rating in
-                    if rating == .red, let target, draft.reps >= target {
-                        // A miss asks how many reps were done: the next set is set from them.
-                        NavigationLink(value: SessionRoute.reps(missed(target: target), .red)) { label(rating) }
-                            .buttonStyle(.glassProminent)
-                            .tint(rating.tint)
-                            .accessibilityLabel("\(rating.label): \(rating.detail)")
-                    } else {
-                        Button {
-                            model.log(item: draft.item, set: draft.set, reps: draft.reps, loadKg: draft.loadKg, rating: rating)
-                        } label: {
-                            label(rating)
-                        }
-                        .buttonStyle(.glassProminent)
-                        .tint(rating.tint)
+        VStack(spacing: 3) {
+            ForEach(SetRating.allCases) { rating in
+                if rating == .red, let target, draft.reps >= target {
+                    // A miss asks how many reps were done: the next set is set from them.
+                    NavigationLink(value: SessionRoute.reps(missed(target: target), .red)) { zone(rating) }
+                        .buttonStyle(.plain)
                         .accessibilityLabel("\(rating.label): \(rating.detail)")
+                } else {
+                    Button {
+                        model.log(item: draft.item, set: draft.set, reps: draft.reps, loadKg: draft.loadKg, rating: rating)
+                    } label: {
+                        zone(rating)
                     }
+                    .buttonStyle(.plain)
+                    .handGestureShortcut(.primaryAction, isEnabled: rating == .orange)
+                    .accessibilityLabel("\(rating.label): \(rating.detail)")
                 }
             }
         }
-        .navigationTitle("How was it?")
+        .frame(maxHeight: .infinity)
+        .navigationTitle(summary)
     }
 
-    private func label(_ rating: SetRating) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: rating.symbol)
-                .font(.title3)
-                .accessibilityHidden(true)
+    /// Easy and Missed share what's left of the face; Just right is the band between them.
+    private func zone(_ rating: SetRating) -> some View {
+        let middle = rating == .orange
+        return HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(rating.label).font(.headline)
-                Text(rating.detail).font(.caption2).opacity(0.85)
+                Text(rating.label)
+                    .font(.system(size: middle ? 19 : 22, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(middle ? WatchInk.onAccent : rating.tint)
+                Text(rating.detail)
+                    .font(.system(size: 12, weight: middle ? .semibold : .regular))
+                    .foregroundStyle(middle ? WatchInk.onAccent : .secondary)
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             Spacer(minLength: 0)
+            Group {
+                switch rating {
+                case .green: Image(systemName: "chevron.up").font(.system(size: 17, weight: .bold))
+                case .orange: DoubleTapGlyph(size: 20)
+                case .red: Image(systemName: "chevron.down").font(.system(size: 17, weight: .bold))
+                }
+            }
+            .foregroundStyle(middle ? WatchInk.onAccent : rating.tint)
+            .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, minHeight: middle ? 50 : 44, maxHeight: middle ? 54 : .infinity)
+        .background(middle ? Color.accentColor : rating.tint.opacity(0.17), in: .rect(cornerRadius: 16, style: .continuous))
+        .contentShape(.rect)
     }
 
     private var target: Int? {
