@@ -2,6 +2,12 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Macro's audit.** On 2026-11-12 you asked for an audit: no bugs, high quality. Calls made fixing what it found, mine to check:
+  - **Onboarding, Settings, Fasting, Supplements and Weigh In are on the ink ground,** reversing last night's "keep the system background"; onboarding gained a back button and a progress ruler. The fast, time since a meal, water and caffeine are rulers: no rings are left on the phone or the Watch. Water is drawn in the accent.
+  - **At the largest text sizes Today keeps room for the day:** the header and the foot stop growing at the largest standard size, and two tiles show instead of four.
+  - **USDA's "NLEA serving" reads as "serving"** wherever a food's portion shows.
+  - **Left as they are:** Today's Undo in a meal's header is 30 points tall (44 would make the header jump as it comes and goes); Vision Pro's tab ornament shows two icons, not looked into; Return's scroll to the new food works around the list's keyboard insets rather than fixing their cause.
+
 - **The hub is gone entirely.** On 2026-11-12 you said to fully remove the hub. How that was done is mine to check:
   - **`HubEngine` is deleted.** The six stats moved: the merging (`StatsBoard`, `StatLine`, `shown`, 28 days to go stale) is in `SystemCore`, since both apps must give the same answer, and the reader of the shared container (`StatsBoard.lines(shared:)`, `bothApps(shared:)`) is in `SystemStore`. Same names, same tests. The planner, schedules, hybrid weeks and their wording went with the package.
   - **Neither app reads `hub/rhythm.json`, `hub/changes.json` or `hub/recommendations.json` any more** (this settles the open question in the entry below about editing a rhythm). For someone who had them: Stadig Lift shows a class at its own time of day, and a lighter week no longer shortens the session; Stadig Macro's automatic Log hours run from 7 AM to the hour before the caffeine bedtime, or 8 PM without one, and Settings no longer says "Automatic follows your usual sleep". The files stay on devices and in iCloud untouched; no payload or schema changed. `AppID.hub` and the hub's priority source stay as cases so old data decodes.
