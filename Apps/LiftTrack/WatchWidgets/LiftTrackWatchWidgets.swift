@@ -54,6 +54,16 @@ struct NextSessionView: View {
     @Environment(\.widgetFamily) private var family
     let snapshot: WidgetSnapshot
 
+    var body: some View { NextSessionComplication(snapshot: snapshot, family: family) }
+}
+
+/// The complication in the family given, in Stadig's look: an accent eyebrow over the session's name
+/// as the hero, and numbers set heavy and tabular. Only the eyebrow and the symbols are accentable, so
+/// a tinted face keeps the name in its plain colour.
+struct NextSessionComplication: View {
+    let snapshot: WidgetSnapshot
+    let family: WidgetFamily
+
     var body: some View {
         switch family {
         case .accessoryCircular: circular
@@ -63,54 +73,51 @@ struct NextSessionView: View {
         }
     }
 
-    /// "Upper A · 60 min" or "Rest day · Next: …", for the line under the title.
+    /// "Upper A · 60 min" or "Rest day · Next: …", for VoiceOver.
     private var line: String {
         [snapshot.badge, snapshot.detail, snapshot.minutes.map { "\($0) min" }].compactMap(\.self).joined(separator: " · ")
     }
 
     private var rectangular: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Label(snapshot.title, systemImage: "dumbbell.fill")
-                .font(.headline)
-                .widgetAccentable()
+        VStack(alignment: .leading, spacing: 0) {
             Text(line)
-                .font(.caption)
+                .eyebrow()
+                .foregroundStyle(.tint)
+                .widgetAccentable()
+            Text(snapshot.title)
+                .font(.system(size: 22, weight: .bold))
+                .tracking(-0.6)
+                .minimumScaleFactor(0.7)
             if !snapshot.exercises.isEmpty {
                 Text(snapshot.exercises.joined(separator: " · "))
-                    .font(.caption2)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
+            } else if snapshot.plannedThisWeek > 0 {
+                WeekStrip(done: snapshot.doneThisWeek, planned: snapshot.plannedThisWeek)
+                    .padding(.top, 4)
             }
         }
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(snapshot.title), \(line)"))
     }
 
-    @ViewBuilder private var circular: some View {
-        if snapshot.plannedThisWeek > 0 {
-            Gauge(value: Double(min(snapshot.doneThisWeek, snapshot.plannedThisWeek)), in: 0...Double(snapshot.plannedThisWeek)) {
+    private var circular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 0) {
                 Image(systemName: "dumbbell.fill")
-            } currentValueLabel: {
-                Text("\(snapshot.doneThisWeek)")
-            }
-            .gaugeStyle(.accessoryCircularCapacity)
-            .widgetAccentable()
-            .accessibilityLabel("\(snapshot.doneThisWeek) of \(snapshot.plannedThisWeek) sessions this week")
-        } else {
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Image(systemName: "dumbbell.fill")
-                        .font(.body)
-                        .widgetAccentable()
-                    if let minutes = snapshot.minutes {
-                        Text("\(minutes)m").font(.caption2.monospacedDigit())
-                    }
+                    .font(.system(size: snapshot.minutes == nil ? 20 : 12, weight: .semibold))
+                    .widgetAccentable()
+                if let minutes = snapshot.minutes {
+                    Text("\(minutes)").numeral(20)
+                    Text("min").eyebrow(size: 8).foregroundStyle(.secondary)
                 }
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(snapshot.title), \(line)")
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(snapshot.title), \(line)"))
     }
 
     private var inline: some View {
@@ -122,6 +129,6 @@ struct NextSessionView: View {
             .font(.title3)
             .widgetAccentable()
             .widgetLabel(snapshot.minutes.map { "\(snapshot.title) · \($0)m" } ?? snapshot.title)
-            .accessibilityLabel("\(snapshot.title), \(line)")
+            .accessibilityLabel(Text("\(snapshot.title), \(line)"))
     }
 }
