@@ -101,11 +101,8 @@ struct ProgressTab: View {
     /// The stats in a grid, and each lift's trend as a list beside a large chart.
     private func wide(_ analysis: LiftAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            YourShape(lines: model.stats, analysis: analysis) { stat in
-                if stat == .physique { model.tab = .body }
-            }
-            .frame(maxWidth: 560)
-            .card(padding: 20)
+            YourShape(lines: model.stats, analysis: analysis, open: { stat in if stat == .physique { model.tab = .body } }, sideBySide: true)
+                .card(padding: 20)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 16, alignment: .top)], spacing: 16) {
                 StrengthCard(analysis: analysis)
                 DisciplineCard(score: analysis.discipline)
@@ -253,13 +250,20 @@ struct StrengthCard: View {
                     .accessibilityElement(children: .combine)
                     VStack(spacing: 6) {
                         Ruler(value: overall / 100, height: 28, divisions: 5)
-                        HStack(spacing: 0) {
-                            ForEach(Self.levels, id: \.self) { level in
-                                Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(Ink.text3)
-                                    .lineLimit(1).minimumScaleFactor(0.7)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                        // Each level's name under the line where it starts; the one reached in the text colour.
+                        GeometryReader { geometry in
+                            ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
+                                let reached = StrengthStandards.level(for: overall) == level
+                                let label = Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                                    .fixedSize()
+                                if index == Self.levels.count - 1 {
+                                    label.frame(width: geometry.size.width, alignment: .trailing)
+                                } else {
+                                    label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+                                }
                             }
                         }
+                        .frame(height: 13)
                         .accessibilityHidden(true)
                     }
                     if let next = nextLevel(overall) {
@@ -339,6 +343,9 @@ struct YourShape: View {
 
     private var macroSetUp: Bool { lines.contains { $0.apps.contains(.macroTrack) } }
 
+    /// The figure beside its rows rather than over them, where there's room.
+    var sideBySide = false
+
     var body: some View {
         let axes = ScoreShape.axes(lines)
         let waiting = axes.contains { $0.score == nil && $0.stat == .vitality } && !macroSetUp
@@ -350,6 +357,20 @@ struct YourShape: View {
             )
             .font(.subheadline).foregroundStyle(Ink.text2)
             .padding(.horizontal, 4)
+            if sideBySide {
+                HStack(alignment: .center, spacing: 32) {
+                    figure(axes, waiting: waiting).frame(maxWidth: 400)
+                    rows.frame(maxWidth: 520)
+                }
+            } else {
+                figure(axes, waiting: waiting)
+                rows.padding(.top, 4)
+            }
+        }
+    }
+
+    private func figure(_ axes: [ScoreShape.Axis], waiting: Bool) -> some View {
+        VStack(spacing: 10) {
             ScoreShape(axes: axes)
                 .frame(maxWidth: 380)
                 .frame(maxWidth: .infinity)
@@ -366,15 +387,17 @@ struct YourShape: View {
                 .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
             }
-            VStack(spacing: 0) {
-                ForEach(Array(ScoreShape.order.enumerated()), id: \.element) { index, stat in
-                    if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                    row(stat, line: lines.first { $0.stat == stat })
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
         }
+    }
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(ScoreShape.order.enumerated()), id: \.element) { index, stat in
+                if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                row(stat, line: lines.first { $0.stat == stat })
+            }
+        }
+        .padding(.horizontal, 4)
     }
 
     private func row(_ stat: StatKind, line: StatLine?) -> some View {
@@ -386,7 +409,7 @@ struct YourShape: View {
         } label: {
             HStack(spacing: 12) {
                 Text(score.map(String.init) ?? "–").numeral(20).foregroundStyle(score == nil ? Ink.text3 : Ink.text)
-                    .frame(width: 36, alignment: .leading)
+                    .frame(width: 40, alignment: .leading)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
                         Text(stat.label).font(.body.weight(.semibold)).foregroundStyle(score == nil ? Ink.text2 : Ink.text)

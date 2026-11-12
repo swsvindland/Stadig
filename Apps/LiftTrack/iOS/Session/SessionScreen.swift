@@ -261,6 +261,8 @@ private struct SessionOutline: View {
                 Text(Platform.isMac ? "Drag an exercise to change the order." : "Touch and hold an exercise, then drag, to change the order.")
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(.pageBackground)
         .accessibilityIdentifier("session.outline")
     }
 
