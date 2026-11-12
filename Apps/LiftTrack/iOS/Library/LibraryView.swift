@@ -338,11 +338,11 @@ struct ExerciseDetailView: View {
     @ViewBuilder
     private var asideButton: some View {
         if model.settings.avoid.contains(exercise.id) {
-            Button("Allow back") { model.setAside(exercise.id, false) }
+            Button(sizeClass.isWide ? "Allow Back" : "Allow back") { model.setAside(exercise.id, false) }
                 .help("Let the program use it again")
                 .accessibilityIdentifier("library.allowBack")
         } else if exercise.kind == .strength {
-            Button("Set aside") { model.setAside(exercise.id, true) }
+            Button(sizeClass.isWide ? "Set Aside" : "Set aside") { model.setAside(exercise.id, true) }
                 .help("Never programme it; today's session swaps it out")
                 .accessibilityIdentifier("library.setAside")
         }
@@ -442,7 +442,7 @@ struct ExerciseDetailView: View {
                                 if let next = LevelRuler.next(score) { Text(next).font(.caption).foregroundStyle(Ink.text2) }
                             }
                             .accessibilityElement(children: .combine)
-                            LevelRuler(score: score, height: 14)
+                            LevelRuler(score: score, height: 14, short: true)
                         }
                     }
                 }
@@ -572,12 +572,14 @@ private struct EstimateLine: View {
     let points: [ExerciseDetailContent.Point]
     let domain: ClosedRange<Double>
 
+    private static let fill = LinearGradient(
+        colors: [Color.accentColor.opacity(0.22), Color.accentColor.opacity(0.03)], startPoint: .top, endPoint: .bottom)
+
     var body: some View {
         Chart {
             ForEach(points) { point in
                 AreaMark(x: .value("Day", point.date), yStart: .value("Floor", domain.lowerBound), yEnd: .value("Estimate", point.value))
-                    .foregroundStyle(
-                        LinearGradient(colors: [Color.accentColor.opacity(0.22), Color.accentColor.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(Self.fill)
                 LineMark(x: .value("Day", point.date), y: .value("Estimate", point.value))
                     .foregroundStyle(Color.accentColor)
                     .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))

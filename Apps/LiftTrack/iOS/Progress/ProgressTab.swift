@@ -757,6 +757,8 @@ struct SessionSetsList: View {
 struct LevelRuler: View {
     let score: Double
     var height: CGFloat = 28
+    /// "Intermed." for a ruler in a narrow card, as the design's exercise page has it.
+    var short = false
 
     static let levels = ["Beginner", "Novice", "Intermediate", "Advanced", "Elite"]
 
@@ -766,7 +768,8 @@ struct LevelRuler: View {
             GeometryReader { geometry in
                 ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
                     let reached = StrengthStandards.level(for: score) == level
-                    let label = Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                    let name = short && level == "Intermediate" ? "Intermed." : level
+                    let label = Text(name).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
                         .fixedSize()
                     if index == Self.levels.count - 1 {
                         label.frame(width: geometry.size.width, alignment: .trailing)
