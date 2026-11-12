@@ -71,7 +71,7 @@ struct SessionView: View {
         case .rest:
             RestView()
         case .set(let item, let set):
-            SetView(item: item, set: set, done: setDone)
+            SetView(item: item, set: set, done: setDone, rate: { path.append(.rate($0)) })
                 .id(stepID(item, set))
         case .timed(let item, let set):
             TimedView(item: item, set: set)
@@ -91,7 +91,8 @@ struct SessionView: View {
         "\(model.live?.items[item].id.uuidString ?? "")-\(set)"
     }
 
-    /// Warm-ups and timed sets log straight away; rep-outs ask for the reps; the rest are rated.
+    /// The set face's band. Warm-ups and timed sets log straight away; rep-outs ask for the reps; the
+    /// rest log Just right, the rating the phone's dock fills too (Easy and Missed are a tap away).
     private func setDone(_ draft: SetDraft) {
         guard let live = model.live else { return }
         let prescription = live.items[draft.item].sets[draft.set].prescription
@@ -100,7 +101,7 @@ struct SessionView: View {
         } else if prescription.kind == .repOut {
             path.append(.reps(draft, nil))
         } else {
-            path.append(.rate(draft))
+            model.log(item: draft.item, set: draft.set, reps: draft.reps, loadKg: draft.loadKg, rating: .orange)
         }
     }
 

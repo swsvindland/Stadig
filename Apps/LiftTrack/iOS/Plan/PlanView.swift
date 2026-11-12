@@ -10,6 +10,8 @@ struct PlanView: View {
     @State private var planning = false
     @State private var lifeMode: LifeModeKindChoice?
     @State private var editing: LifeModePeriod?
+    /// An exercise sent to Library from a narrow window, which has no Library: it opens here.
+    @State private var focused: String?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +33,13 @@ struct PlanView: View {
             .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
             #endif
             .navigationDestination(for: DayRoute.self) { route in DayDetail(route: route) }
+            .navigationDestination(item: $focused) { id in PushedExerciseDetail(exerciseID: id) }
+            .onChange(of: model.libraryFocus, initial: true) { _, focus in
+                // Plan is the tab a narrow window shows for Library (`AppTab.tabBarFallback`).
+                guard !sizeClass.isWide, let focus else { return }
+                focused = focus
+                model.libraryFocus = nil
+            }
             .sheet(isPresented: $planning) { NextBlockView() }
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }

@@ -22,6 +22,19 @@ enum WatchFormat {
         }
     }
 
+    /// The load as the set face's big number and the word under it: ("70", "kg"), ("20", "kg each"),
+    /// ("+10", "kg added"), ("20", "kg assist"), ("BW", "bodyweight"); ("–", "pick a weight") with none.
+    static func loadParts(_ kg: Double?, unit: WeightUnit, basis: LoadBasis) -> (value: String, unit: String) {
+        guard let kg else { return ("–", "pick a weight") }
+        let value = number(unit.fromKilograms(kg))
+        switch basis {
+        case .external, .none: return (value, unit.symbol)
+        case .perHand: return (value, "\(unit.symbol) each")
+        case .bodyweightPlus: return kg <= 0 ? ("BW", "bodyweight") : ("+\(value)", "\(unit.symbol) added")
+        case .assisted: return kg <= 0 ? ("BW", "bodyweight") : (value, "\(unit.symbol) assist")
+        }
+    }
+
     /// "80 kg × 8", "8 reps", or "45 s" for timed work.
     static func prescription(_ prescription: SetPrescription, exercise: Exercise, unit: WeightUnit, plannedSeconds: Int? = nil) -> String {
         if exercise.timed || exercise.kind != .strength, let seconds = prescription.seconds ?? plannedSeconds {
@@ -84,9 +97,9 @@ extension SetRating {
     /// The rating's colour; it always travels with its symbol and label.
     var tint: Color {
         switch self {
-        case .green: .green
-        case .orange: .orange
-        case .red: .red
+        case .green: WatchInk.good
+        case .orange: WatchInk.ok
+        case .red: WatchInk.bad
         }
     }
 }

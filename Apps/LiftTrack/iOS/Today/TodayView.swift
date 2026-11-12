@@ -93,12 +93,29 @@ struct TodayView: View {
     /// The phone's Today: the date and the week, the session to start, the scores, and the few
     /// things worth doing next.
     private func column(_ analysis: LiftAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let plan = model.live == nil && analysis.next != nil ? model.plan(minutes: minutes) : nil
+        // The planner puts the assessment's own note first: it goes on the assessment's card.
+        let assessmentNote = plan?.assessment == true ? plan?.notes.first : nil
+        return VStack(alignment: .leading, spacing: 12) {
             header
             ThisWeekStrip(days: model.weekStrip)
             banners(analysis)
-            hero(analysis)
-            if let status = analysis.assessment { AssessmentCard(status: status) }
+            hero(analysis, plan: plan)
+            if let plan, let next = analysis.next {
+                let notes = heroNotes(plan: plan, next: next, life: analysis.life, skipping: assessmentNote == nil ? 0 : 1)
+                if !notes.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(notes, id: \.self) { note in
+                            Text(note).font(.footnote).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 2)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("today.heroNotes")
+                }
+            }
+            if let status = analysis.assessment { AssessmentCard(status: status, note: assessmentNote) }
             ScoresCard(lines: model.stats) { model.tab = .progress }
             next(analysis)
         }
@@ -137,8 +154,10 @@ struct TodayView: View {
         .padding(.top, 8)
     }
 
+    /// The session as the one accent card: its eyebrow, its name, one line of what's in it, Start or
+    /// Resume, and Short on time. What's worth saying about the day goes under it, quietly.
     @ViewBuilder
-    private func hero(_ analysis: LiftAnalysis) -> some View {
+    private func hero(_ analysis: LiftAnalysis, plan: SessionPlan?) -> some View {
         if let live = model.live {
             SessionHero(
                 eyebrow: "In progress", trailing: nil, title: live.plan.title,
@@ -152,14 +171,12 @@ struct TodayView: View {
                 .buttonStyle(HeroButtonStyle())
                 .accessibilityIdentifier("today.resumeSession")
             }
-        } else if let next = analysis.next, let plan = model.plan(minutes: minutes) {
+        } else if let next = analysis.next, let plan {
             SessionHero(
                 eyebrow: HeroLine.eyebrow(plan: plan, next: next), trailing: "~\(plan.estimatedMinutes) min", title: plan.title,
-                subtitle: HeroLine.contents(plan: plan, catalog: model.catalog), progress: nil
+                subtitle: HeroLine.contents(plan: plan, catalog: model.catalog),
+                shortSubtitle: HeroLine.contents(plan: plan, catalog: model.catalog, names: 1), progress: nil
             ) {
-                ForEach(heroNotes(plan: plan, next: next, life: analysis.life), id: \.self) { note in
-                    Text(note).font(.subheadline).opacity(0.85).fixedSize(horizontal: false, vertical: true)
-                }
                 Button {
                     model.start(plan)
                 } label: {
@@ -195,16 +212,16 @@ struct TodayView: View {
         }
     }
 
-    /// What the hero says under the session's name: a rest day, a day off, the plan's notes and what
-    /// moved to later.
-    private func heroNotes(plan: SessionPlan, next: NextSession, life: LifeModeEffects) -> [String] {
+    /// What's said under the hero: a rest day, a day off, the plan's notes (less the ones `skipping`
+    /// leaves to the assessment's card) and what moved to later.
+    private func heroNotes(plan: SessionPlan, next: NextSession, life: LifeModeEffects, skipping: Int) -> [String] {
         var notes: [String] = []
         if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
             notes.append(
                 "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along.")
         }
         if !life.trainingExpected { notes.append("Nothing is expected today. If you train anyway, keep it easy.") }
-        notes += plan.notes.prefix(2)
+        notes += plan.notes.dropFirst(skipping).prefix(2)
         let later = plan.quests.filter { quest in !(model.analysis?.quests.contains { $0.id == quest.id } ?? false) }
         notes += later.map { "Moved to later: \($0.title.lowercased())" }
         return notes
@@ -423,6 +440,8 @@ struct SessionHero<Actions: View>: View {
     let trailing: String?
     let title: String
     let subtitle: String
+    /// The subtitle when it doesn't fit on one line: fewer names.
+    var shortSubtitle: String?
     let progress: Double?
     @ViewBuilder let actions: Actions
 
@@ -435,7 +454,17 @@ struct SessionHero<Actions: View>: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).numeral(46, weight: .heavy).accessibilityAddTraits(.isHeader)
-                Text(subtitle).font(.subheadline).opacity(0.85).lineLimit(2)
+                // One line of what's in it, as the design has it; two only when even the short one won't fit.
+                ViewThatFits(in: .horizontal) {
+                    Text(subtitle).lineLimit(1)
+                    if let shortSubtitle {
+                        Text(shortSubtitle).lineLimit(1)
+                        Text(shortSubtitle).lineLimit(2)
+                    } else {
+                        Text(subtitle).lineLimit(2)
+                    }
+                }
+                .font(.subheadline).opacity(0.85)
             }
             if let progress {
                 Ruler(value: progress, color: Ink.onAccent, height: 10).opacity(0.9)
@@ -470,10 +499,10 @@ enum HeroLine {
         return parts.joined(separator: " · ")
     }
 
-    /// "Barbell Bench Press, Barbell Row and 4 more · 19 sets".
-    static func contents(plan: SessionPlan, catalog: ExerciseCatalog) -> String {
+    /// "Barbell Bench Press, Barbell Row and 4 more · 19 sets", naming the first `names` lifts.
+    static func contents(plan: SessionPlan, catalog: ExerciseCatalog, names count: Int = 2) -> String {
         let lifts = plan.items.filter(\.isStrength).filter { $0.block == .main || $0.block == .accessory }
-        let names = lifts.prefix(2).map { catalog.resolve($0.exerciseID).name }
+        let names = lifts.prefix(count).map { catalog.resolve($0.exerciseID).name }
         let more = plan.items.count - names.count
         let sets = plan.items.reduce(0) { $0 + $1.workSets.count }
         var line = names.joined(separator: ", ")
@@ -800,6 +829,8 @@ struct SessionCard: View {
 /// The assessment: how far along, and what's been learned so far.
 struct AssessmentCard: View {
     let status: AssessmentStatus
+    /// What this week of it is for, from today's plan (the phone's Today moves it here off the hero).
+    var note: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -809,6 +840,10 @@ struct AssessmentCard: View {
                 Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
             }
             Ruler(value: status.complete ? 1 : status.progress, height: 10, divisions: max(1, status.totalWeeks))
+            if let note {
+                Text(note).font(.subheadline).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.assessmentNote")
+            }
             Text("What we've learned").eyebrow().padding(.top, 4)
             ForEach(Array(status.learned.enumerated()), id: \.offset) { _, line in
                 Label(line, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline).foregroundStyle(Ink.text2)

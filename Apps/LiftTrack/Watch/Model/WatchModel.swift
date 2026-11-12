@@ -49,8 +49,10 @@ struct SessionSummary: Equatable {
     var averageHeartRate: Double?
     /// The iPhone ran the session and saved it; this Watch logged into it.
     var savedOnPhone: Bool
+    /// The lifts whose estimated one-rep max it raised, from what this Watch knew going in.
+    var moved: [EstimateMove]
 
-    init(_ record: SessionRecord, savedOnPhone: Bool = false) {
+    init(_ record: SessionRecord, savedOnPhone: Bool = false, known: PhoneContext? = nil, catalog: ExerciseCatalog? = nil) {
         title = record.title
         minutes = record.minutes
         exercises = record.exercises.count
@@ -59,6 +61,13 @@ struct SessionSummary: Equatable {
         conditioningMinutes = record.conditioning.map(\.minutes).reduce(0, +)
         averageHeartRate = record.averageHeartRate
         self.savedOnPhone = savedOnPhone
+        if let known, let catalog {
+            moved = EstimateMove.moves(history: known.history, session: record.exercises.flatMap(\.sets), trust: known.trust) {
+                catalog[$0]?.loadBasis
+            }
+        } else {
+            moved = []
+        }
     }
 }
 
@@ -411,7 +420,8 @@ final class WatchModel {
         }
         PhoneLink.shared.send(record)
         Self.markFinished(stored.live.plan)
-        summary = SessionSummary(record)
+        // The stored session's context drops its history; the phone's latest still has it.
+        summary = SessionSummary(record, known: context, catalog: catalog)
         close()
         Task { _ = await workout.end() }
     }
@@ -632,7 +642,7 @@ final class WatchModel {
         remember(left: copy.session.id)
         if saved {
             let record = copy.session.record(feedback: nil)
-            if record.hasContent { summary = SessionSummary(record, savedOnPhone: true) }
+            if record.hasContent { summary = SessionSummary(record, savedOnPhone: true, known: mirroredContext ?? context, catalog: catalog) }
         }
         mirrored = nil
         mirroredContext = nil

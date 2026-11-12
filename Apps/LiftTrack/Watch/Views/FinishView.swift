@@ -1,3 +1,4 @@
+import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
@@ -85,7 +86,9 @@ struct FinishView: View {
     }
 }
 
-/// What the session came to, once it's saved and on its way to the phone.
+/// What the session came to, once it's saved and on its way to the phone: its name and minutes, what
+/// moved (each lift whose estimated one-rep max it raised, before and after), then the sets and their
+/// ratings, conditioning and heart rate.
 struct SummaryView: View {
     @Environment(WatchModel.self) private var model
     let summary: SessionSummary
@@ -93,12 +96,26 @@ struct SummaryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Saved", systemImage: "checkmark.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.green)
-                Text(summary.title)
-                    .font(.title3.weight(.semibold))
-                Text("\(summary.minutes) min · ^[\(summary.workSets) set](inflect: true) · ^[\(summary.exercises) exercise](inflect: true)")
+                Text("\(summary.title) · \(summary.minutes) min")
+                    .font(.system(size: 13, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                if summary.moved.isEmpty {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .font(.headline)
+                        .foregroundStyle(WatchInk.good)
+                } else {
+                    Text("What moved")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                    ForEach(summary.moved, id: \.exerciseID) { move in
+                        moved(move)
+                    }
+                    Divider()
+                }
+                Text("^[\(summary.workSets) set](inflect: true) · ^[\(summary.exercises) exercise](inflect: true)")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 ForEach(SetRating.allCases) { rating in
@@ -129,6 +146,31 @@ struct SummaryView: View {
             }
         }
         .navigationTitle("Summary")
+    }
+
+    /// "Bench Press est. 1RM" over "91 → 92.5 kg".
+    private func moved(_ move: EstimateMove) -> some View {
+        let unit = model.unit
+        return VStack(alignment: .leading, spacing: 1) {
+            Text("\(model.catalog[move.exerciseID]?.name ?? move.exerciseID) est. 1RM")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(WatchFormat.number(unit.fromKilograms(move.beforeKg), digits: 1))
+                    .foregroundStyle(.secondary)
+                Text("→").foregroundStyle(.secondary)
+                Text(WatchFormat.number(unit.fromKilograms(move.afterKg), digits: 1))
+                Text(unit.symbol).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+            }
+            .font(.system(size: 22, weight: .bold).monospacedDigit())
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(model.catalog[move.exerciseID]?.name ?? move.exerciseID), estimated one-rep max up from \(WatchFormat.number(unit.fromKilograms(move.beforeKg), digits: 1)) to \(WatchFormat.number(unit.fromKilograms(move.afterKg), digits: 1)) \(unit.symbol)"
+        )
     }
 }
 

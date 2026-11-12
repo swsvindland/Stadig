@@ -250,6 +250,7 @@ struct FocusedExercise: View {
 /// A row of the whole session: its name, how far along, and its menu.
 private struct OtherExerciseRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.showExercise) private var showExercise
     let live: LiveSession
     let index: Int
     let isCurrent: Bool
@@ -289,6 +290,7 @@ private struct OtherExerciseRow: View {
                     Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
                 }
                 if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
+                Button("About this exercise", systemImage: "info.circle") { showExercise?(item.exerciseID) }
             } label: {
                 Image(systemName: "ellipsis").font(.body.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: 44, height: 44)
                     .contentShape(.rect)

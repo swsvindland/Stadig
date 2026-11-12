@@ -66,3 +66,53 @@ public struct ExerciseRecord: Sendable {
         }
     }
 }
+
+extension ExerciseRecord {
+    /// How the estimate has moved along its line: the current estimate against the first session's,
+    /// over the days from the first session to the last.
+    public struct Movement: Hashable, Sendable {
+        public var kg: Double
+        public var days: Int
+    }
+
+    /// Nil until two sessions have an estimate.
+    public var movement: Movement? {
+        guard trend.count >= 2, let first = trend.first, let last = trend.last, let current else { return nil }
+        return Movement(kg: current - first.e1rm, days: first.day.days(until: last.day))
+    }
+
+    /// The line in one plain sentence: "Up 4 kg in 6 weeks", "Down 2.5 kg in 3 weeks", "Level over 5
+    /// weeks", or, with one session, that the line starts with the next. Nil without any estimate
+    /// (never done, or work an estimate means nothing for). Changes are rounded to what a gym loads
+    /// (half a kilogram, a pound), so a change smaller than that reads as level.
+    public func trendSentence(unit: WeightUnit) -> String? {
+        guard !trend.isEmpty else { return nil }
+        guard let movement else { return "One session so far: the line starts with the next." }
+        let step = unit == .kg ? 0.5 : 1
+        let change = (unit.fromKilograms(abs(movement.kg)) / step).rounded() * step
+        let span = Self.span(days: movement.days)
+        guard change > 0 else { return "Level over \(span)" }
+        let amount = change.formatted(.number.precision(.fractionLength(0...1)))
+        return "\(movement.kg > 0 ? "Up" : "Down") \(amount) \(unit.symbol) in \(span)"
+    }
+
+    /// "5 days", "6 weeks", "4 months", "2 years": weeks from a fortnight, months from three of them.
+    static func span(days: Int) -> String {
+        func count(_ n: Int, _ unit: String) -> String { "\(n) \(unit)\(n == 1 ? "" : "s")" }
+        switch days {
+        case ..<14: return count(max(1, days), "day")
+        case ..<91: return count(Int((Double(days) / 7).rounded()), "week")
+        case ..<730: return count(Int((Double(days) / 30.44).rounded()), "month")
+        default: return count(Int((Double(days) / 365.25).rounded()), "year")
+        }
+    }
+
+    /// The current estimate as a strength score (the standards' 0–100, where 20 is beginner and 100
+    /// elite), for a free-weight lift the standards know; nil for anything else or with no estimate.
+    /// It's this exercise's own score, which can be below its category's on Progress when another
+    /// variant scores higher.
+    public func score(for exercise: Exercise, bodyweightKg: Double, sex: BiologicalSex) -> Double? {
+        guard let mapping = exercise.strength, let current else { return nil }
+        return StrengthStandards.score(mapping.category, oneRepMaxKg: current * mapping.factor, bodyweightKg: bodyweightKg, sex: sex)
+    }
+}

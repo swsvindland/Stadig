@@ -115,6 +115,70 @@ struct ExerciseRecordTests {
         #expect(record.trend.isEmpty && record.bestSets.isEmpty && record.current == nil && record.change == nil)
     }
 
+    @Test func theLineInOneSentence() throws {
+        let exercise = try #require(Fixture.catalog["barbell-bench-press"])
+        let trust = TrustState(prior: 0.5)
+        // Six weeks from the first session to the last, the estimate rising.
+        let rising = [
+            set(Fixture.start, load: 80, reps: 6), set(Fixture.start.adding(days: 21), load: 82.5, reps: 6),
+            set(Fixture.start.adding(days: 42), load: 85, reps: 6),
+        ]
+        let record = ExerciseRecord.of(rising, exercise: exercise, trust: trust)
+        let movement = try #require(record.movement)
+        #expect(movement.days == 42)
+        #expect(movement.kg == (record.current ?? 0) - (record.trend.first?.e1rm ?? 0))
+        let kg = (movement.kg / 0.5).rounded() * 0.5
+        #expect(record.trendSentence(unit: .kg) == "Up \(kg.formatted(.number.precision(.fractionLength(0...1)))) kg in 6 weeks")
+        #expect(record.trendSentence(unit: .lb)?.hasPrefix("Up ") == true)
+        #expect(record.trendSentence(unit: .lb)?.hasSuffix(" lb in 6 weeks") == true)
+
+        // The current estimate is the best of the last three sessions, so one off day reads as level and
+        // three lighter ones as down; the same set again reads as level.
+        let offDay = ExerciseRecord.of(
+            [set(Fixture.start, load: 85, reps: 6), set(Fixture.start.adding(days: 10), load: 75, reps: 6)], exercise: exercise, trust: trust)
+        #expect(offDay.trendSentence(unit: .kg) == "Level over 10 days")
+        let falling = ExerciseRecord.of(
+            [0, 7, 14, 21].map { set(Fixture.start.adding(days: $0), load: $0 == 0 ? 85 : 75, reps: 6) }, exercise: exercise, trust: trust)
+        #expect(falling.trendSentence(unit: .kg)?.hasPrefix("Down ") == true)
+        #expect(falling.trendSentence(unit: .kg)?.hasSuffix(" kg in 3 weeks") == true)
+        let level = ExerciseRecord.of(
+            [set(Fixture.start, load: 80, reps: 6), set(Fixture.start.adding(days: 120), load: 80, reps: 6)], exercise: exercise, trust: trust)
+        #expect(level.trendSentence(unit: .kg) == "Level over 4 months")
+
+        // One session isn't a line yet; nothing at all says nothing.
+        let once = ExerciseRecord.of([set(Fixture.start, load: 80, reps: 6)], exercise: exercise, trust: trust)
+        #expect(once.movement == nil)
+        #expect(once.trendSentence(unit: .kg) == "One session so far: the line starts with the next.")
+        #expect(ExerciseRecord.of([], exercise: exercise, trust: trust).trendSentence(unit: .kg) == nil)
+    }
+
+    @Test func spansReadInTheirOwnUnit() {
+        #expect(ExerciseRecord.span(days: 1) == "1 day")
+        #expect(ExerciseRecord.span(days: 13) == "13 days")
+        #expect(ExerciseRecord.span(days: 14) == "2 weeks")
+        #expect(ExerciseRecord.span(days: 84) == "12 weeks")
+        #expect(ExerciseRecord.span(days: 91) == "3 months")
+        #expect(ExerciseRecord.span(days: 365) == "12 months")
+        #expect(ExerciseRecord.span(days: 730) == "2 years")
+    }
+
+    @Test func aMappedLiftScoresItsOwnEstimate() throws {
+        let bench = try #require(Fixture.catalog["barbell-bench-press"])
+        let trust = TrustState(prior: 0.5)
+        let sets = [set(Fixture.start, load: 80, reps: 6), set(Fixture.start.adding(days: 7), load: 82.5, reps: 6)]
+        let record = ExerciseRecord.of(sets, exercise: bench, trust: trust)
+        let score = try #require(record.score(for: bench, bodyweightKg: 80, sex: .male))
+        // The same number Progress gives the category when this is the only lift in it.
+        let profile = StrengthEstimator.profile(
+            history: [bench.id: sets], exercises: [bench.id: bench], trust: trust, bodyweightKg: 80, sex: .male, today: Fixture.start.adding(days: 7))
+        #expect(abs(score - (profile[.horizontalPress]?.score ?? 0)) < 0.001)
+        // Nothing the standards don't know, and nothing without an estimate.
+        let curl = try #require(Fixture.catalog["db-curl"])
+        #expect(ExerciseRecord.of([], exercise: bench, trust: trust).score(for: bench, bodyweightKg: 80, sex: .male) == nil)
+        #expect(curl.strength == nil)
+        #expect(record.score(for: curl, bodyweightKg: 80, sex: .male) == nil)
+    }
+
     @Test func timedWorkRanksByRepsWithoutAnEstimate() throws {
         let plank = try #require(Fixture.catalog["plank"])
         let sets = [10, 30, 20].enumerated().map { index, reps in
@@ -124,6 +188,41 @@ struct ExerciseRecordTests {
         #expect(record.sessions == 3)
         #expect(record.bestSets.map(\.set.reps) == [30, 20, 10])
         #expect(record.trend.isEmpty)
+    }
+}
+
+@Suite("What a session moved")
+struct EstimateMoveTests {
+    func set(_ id: String, _ day: Day, load: Double, reps: Int, kind: SetKind = .working, rating: SetRating? = .orange) -> LoggedSet {
+        LoggedSet(
+            exerciseID: id, date: day.date().addingTimeInterval(18 * 3600), kind: kind, loadKg: load, reps: reps, targetReps: reps, rating: rating,
+            bodyweightKg: 80)
+    }
+
+    @Test func aHeavierSessionMovesTheEstimateAndAMatchingOneDoesNot() throws {
+        let trust = TrustState(prior: 0.5)
+        let today = Fixture.start.adding(days: 21)
+        let history = [
+            "barbell-bench-press": [0, 7, 14].map { set("barbell-bench-press", Fixture.start.adding(days: $0), load: 80, reps: 6) },
+            "barbell-row": [0, 7, 14].map { set("barbell-row", Fixture.start.adding(days: $0), load: 70, reps: 8) },
+        ]
+        let session = [
+            set("barbell-bench-press", today, load: 60, reps: 5, kind: .warmup, rating: nil),
+            set("barbell-bench-press", today, load: 82.5, reps: 6),
+            // The row only matches what it did before.
+            set("barbell-row", today, load: 70, reps: 8),
+            // Nothing to move from: never done before.
+            set("db-curl", today, load: 14, reps: 12),
+        ]
+        let moves = EstimateMove.moves(history: history, session: session, trust: trust) { Fixture.catalog[$0]?.loadBasis }
+        #expect(moves.map(\.exerciseID) == ["barbell-bench-press"])
+        let bench = try #require(moves.first)
+        #expect(bench.beforeKg == StrengthEstimator.current(history["barbell-bench-press"] ?? [], basis: .external, trust: trust))
+        #expect(bench.afterKg > bench.beforeKg)
+        // A lighter day leaves the estimate where the recent best had it.
+        let lighter = [set("barbell-bench-press", today, load: 75, reps: 6)]
+        let none = EstimateMove.moves(history: history, session: lighter, trust: trust) { Fixture.catalog[$0]?.loadBasis }
+        #expect(none.isEmpty)
     }
 }
 
