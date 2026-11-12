@@ -5,7 +5,7 @@
 - **Stadig Lift** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 - **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 
-This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on, so one purchase covers them all. Each app is free for 21 days, then a one-time purchase or a monthly subscription (`SystemPurchases`, and [docs/app-store-connect.md](docs/app-store-connect.md) for the store's side). No third-party dependencies.
+This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on. Both apps are free and open source: purchases are switched off (`enabled: false` in each app's `Purchase/Purchases.swift`), and [docs/app-store-connect.md](docs/app-store-connect.md) says what's left to change on the store's side. The look is in [docs/design.md](docs/design.md). No third-party dependencies.
 
 ## Layout
 
@@ -15,7 +15,7 @@ Packages/             Local Swift packages: all the logic, each with its own tes
   ExerciseLibrary/    332 tagged exercises, substitutions, injury filtering, drills
   SystemStore/        Each app's CloudKit-synced database, the shared App Group container (and FamilySync, which
                       carries it to the person's other devices), backups, CSV
-  SystemPurchases/    How each app is paid for: the free days, StoreKit, and the one paywall they all show
+  SystemPurchases/    How each app was paid for (free days, StoreKit, the paywall); switched off, both apps are free
   HealthBridge/       HealthKit read/write, and the Watch's live workout session
   LiftEngine/         Stadig Lift's engine: gyms, generator, assessment, session planner, live session, analysis
   NutritionEngine/    Stadig Macro's engine: weight trend, maintenance, assessment, phase planner, check-ins, targets
@@ -67,7 +67,7 @@ Scripts/build.sh format             # fix formatting in place
 Scripts/build.sh test [Package]     # package tests (all, or one)
 Scripts/build.sh unit lift [ipad|vision|mac]   # an app's unit and integration tests (lift or macro)
 Scripts/build.sh ui lift [ipad|vision]         # an app's UI tests
-ONLY=PurchaseUITests Scripts/build.sh ui lift   # one class of them
+ONLY=LaunchAndOnboardingUITests Scripts/build.sh ui lift   # one class of them
 Scripts/build.sh ios|watch|macro|macro-watch   # build one app for the iOS simulator (or a Watch app)
 Scripts/build.sh mac|vision lift    # build an app for the Mac (it runs on this Mac) or Vision Pro
 Scripts/build.sh all                # lint, every package's tests, every app build
@@ -110,7 +110,7 @@ Building the catalogs from source instead of downloading them: `Apps/MacroTrack/
 | Bundle ids | `dev.svindland.stadig.lift` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) | `dev.svindland.stadig.macro` (`.widgets`, `.watchkitapp`, `.watchkitapp.widgets`) |
 | iCloud containers | `iCloud.dev.svindland.stadig.lift`, and the family's `iCloud.dev.svindland.stadig` | `iCloud.dev.svindland.stadig.macro`, and the family's |
 | App Group | `group.dev.svindland.stadig`, shared by the whole family | same |
-| In-app purchases | `dev.svindland.stadig.lift.unlock` (non-consumable), `dev.svindland.stadig.lift.monthly` (subscription) | `dev.svindland.stadig.macro.unlock` (non-consumable), `dev.svindland.stadig.macro.monthly` (subscription) |
+| In-app purchases (off) | `dev.svindland.stadig.lift.unlock` (non-consumable), `dev.svindland.stadig.lift.monthly` (subscription) | `dev.svindland.stadig.macro.unlock` (non-consumable), `dev.svindland.stadig.macro.monthly` (subscription) |
 | URL scheme | `lifttrack://start` | `macrotrack://log`, `scan`, `camera`, `describe`, `quickadd`, `weigh`, `plan`, `supplements` |
 
 Each bundle id covers the iPhone, iPad, Mac and Vision Pro builds. The ids moved under `dev.svindland.stadig` on 2026-10-18, before anything reached App Store Connect. Before that they were `dev.svindland.lifttrack`, `macrotrack` and `group.dev.svindland.system`. Health still treats samples from the old ids as the app's own (`AppModel.ownBundlePrefixes`).
