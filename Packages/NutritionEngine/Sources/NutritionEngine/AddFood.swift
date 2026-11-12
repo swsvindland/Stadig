@@ -9,7 +9,7 @@ public enum AddFoodText {
     /// Every part of what's typed, in order. An empty part after a comma is the person still typing
     /// (`.typing`); empty parts between commas are dropped.
     public static func parse(_ text: String) -> [AddFoodPart] {
-        let raw = text.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let raw = pieces(text).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         var parts: [AddFoodPart] = []
         for (index, piece) in raw.enumerated() {
             let last = index == raw.count - 1
@@ -21,6 +21,24 @@ public enum AddFoodText {
             parts.append(part(piece))
         }
         return parts
+    }
+
+    /// The text between commas, except a comma between two digits: "rice 1,5 kg" is one food.
+    static func pieces(_ text: String) -> [String] {
+        let characters = Array(text)
+        var pieces: [String] = []
+        var current = ""
+        for (index, character) in characters.enumerated() {
+            let between = index > 0 && index + 1 < characters.count && characters[index - 1].isNumber && characters[index + 1].isNumber
+            if character == ",", !between {
+                pieces.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+        }
+        pieces.append(current)
+        return pieces
     }
 
     /// The parts that name something to log: what Return logs.
@@ -50,18 +68,27 @@ public enum AddFoodText {
                     index += 2
                     continue
                 }
-                if amount == nil {
+                // "2 x 150 g": a multiple of the amount that follows it.
+                let times = amount.flatMap { $0.multiplier ? $0.count : nil }
+                if amount == nil || times != nil {
+                    let count = value * (times ?? 1)
                     if let next, case .word(let word) = next, let unit = AddFoodUnit(word: word) {
-                        amount = AddFoodAmount(count: value, unit: unit, multiplier: false)
+                        amount = AddFoodAmount(count: count, unit: unit, multiplier: false)
                         // "2 eggs": the word names the food as well as counting it.
                         if unit.namesFood { words.append(word) }
                         index += 2
                         continue
                     }
-                    amount = AddFoodAmount(count: value, unit: nil, multiplier: false)
+                    amount = AddFoodAmount(count: count, unit: nil, multiplier: false)
+                    index += 1
+                    continue
                 }
-                // A second number is noise to the search ("2 x 150 g"): it's left out.
-                index += 1
+                // A second number is noise to the search: it's left out, with its unit.
+                if let next, case .word(let word) = next, let unit = AddFoodUnit(word: word), !unit.namesFood {
+                    index += 2
+                } else {
+                    index += 1
+                }
             case .times:
                 // "yogurt x2", "yogurt × 2"
                 if let next, case .number(let value) = next, amount == nil {
@@ -92,8 +119,9 @@ public enum AddFoodText {
     static func tokenize(_ text: String) -> [Token] {
         var tokens: [Token] = []
         let folded = text.lowercased().folding(options: [.diacriticInsensitive, .widthInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-        for raw in folded.split(whereSeparator: { $0.isWhitespace }) {
-            var piece = String(raw)
+        let raws = folded.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        for (position, raw) in raws.enumerated() {
+            var piece = raw
             if piece == "x" || piece == "×" || piece == "*" {
                 tokens.append(.times)
                 continue
@@ -116,8 +144,16 @@ public enum AddFoodText {
                 tokens.append(.number(value))
                 continue
             }
+            // "half a banana", "half cup oats", "couple of eggs"; but "half and half" and "quarter
+            // pounder" are foods.
+            if let value = partWords[piece], position + 1 < raws.count,
+                ["a", "an", "of"].contains(raws[position + 1]) || AddFoodUnit(word: raws[position + 1]) != nil
+            {
+                tokens.append(.number(value))
+                continue
+            }
             // "200g", "1.5kg", "330ml", "½cup": a number with a unit stuck on.
-            if let split = piece.firstIndex(where: { !($0.isNumber || $0 == "." || $0 == "/" || fractionGlyphs[$0] != nil) }),
+            if let split = piece.firstIndex(where: { !($0.isNumber || $0 == "." || $0 == "," || $0 == "/" || fractionGlyphs[$0] != nil) }),
                 split > piece.startIndex, let value = number(String(piece[..<split]))
             {
                 let rest = String(piece[split...])
@@ -132,31 +168,47 @@ public enum AddFoodText {
         return tokens
     }
 
-    /// "200", "1.5", ".5", "1/2", "1 ½" (as "1½"), "½": a positive number, or nil.
+    /// The most any amount can be: nobody eats more than 100 kg of anything at once.
+    static let most = 100_000.0
+
+    /// "200", "1.5", ".5", "1,5", "1,000", "1/2", "1½", "½": a positive number up to `most`, or nil.
     static func number(_ text: String) -> Double? {
-        guard !text.isEmpty else { return nil }
+        let value: Double?
         if let glyph = text.last.flatMap({ fractionGlyphs[$0] }) {
-            let whole = text.dropLast()
-            if whole.isEmpty { return glyph }
-            guard let value = Double(whole), value >= 0 else { return nil }
-            return value + glyph
+            let whole = String(text.dropLast())
+            value = whole.isEmpty ? glyph : plain(whole).map { $0 + glyph }
+        } else if let slash = text.firstIndex(of: "/") {
+            guard let top = plain(String(text[..<slash])), let bottom = plain(String(text[text.index(after: slash)...])), bottom > 0 else {
+                return nil
+            }
+            value = top / bottom
+        } else {
+            value = plain(text)
         }
-        if let slash = text.firstIndex(of: "/") {
-            guard let top = Double(text[..<slash]), let bottom = Double(text[text.index(after: slash)...]), bottom > 0 else { return nil }
-            return top / bottom
-        }
-        guard text.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == ".") }), text.filter({ $0 == "." }).count <= 1, text != "." else {
-            return nil
-        }
-        guard let value = Double(text.hasPrefix(".") ? "0" + text : text), value.isFinite, value > 0, value <= 100_000 else { return nil }
+        guard let value, value.isFinite, value > 0, value <= most else { return nil }
         return value
+    }
+
+    /// ASCII digits with at most one point: "1.5", ".5", "1,5" (a decimal comma) and "1,000" (a
+    /// thousands one). Nothing signed, nothing in exponents, no "inf".
+    static func plain(_ text: String) -> Double? {
+        var text = text
+        if text.contains(",") {
+            let groups = text.split(separator: ",", omittingEmptySubsequences: false)
+            let thousands = groups.count > 1 && (1...3).contains(groups[0].count) && groups.dropFirst().allSatisfy { $0.count == 3 }
+            text = thousands ? groups.joined() : text.replacingOccurrences(of: ",", with: ".")
+        }
+        guard !text.isEmpty, text != ".", text.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == ".") }), text.filter({ $0 == "." }).count <= 1
+        else { return nil }
+        return Double(text.hasPrefix(".") ? "0" + text : text)
     }
 
     static let fractionGlyphs: [Character: Double] = ["¼": 0.25, "⅓": 1.0 / 3, "½": 0.5, "⅔": 2.0 / 3, "¾": 0.75]
     static let numberWords: [String: Double] = [
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-        "half": 0.5, "quarter": 0.25, "couple": 2,
     ]
+    /// Amount words that are also in foods' names, read as amounts only before "a", "of" or a unit.
+    static let partWords: [String: Double] = ["half": 0.5, "quarter": 0.25, "couple": 2]
     static let energyWords: Set<String> = ["kcal", "cal", "cals", "calorie", "calories", "kcals"]
     /// Words that say nothing about which food: "a bowl of oats" is oats.
     static let fillers: Set<String> = ["a", "an", "of", "some", "and", "the", "my"]

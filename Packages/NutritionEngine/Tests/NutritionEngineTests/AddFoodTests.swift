@@ -116,6 +116,51 @@ struct AddFoodTests {
         #expect(one("7up").amount == nil)
     }
 
+    @Test("numbers that aren't amounts aren't read as any: too big, not finite, signed, zero")
+    func badNumbers() {
+        for text in ["rice 99999999999999999999/1", "inf/1 kcal", "nan/1 kcal", "rice 1e30½", "rice -1/2", "rice 0/3", "rice 1/0", "rice 200000"] {
+            let parts = AddFoodText.parse(text)
+            #expect(parts.allSatisfy { $0.amount == nil }, "\(text): \(parts)")
+            #expect(parts.allSatisfy { if case .quickAdd = $0.kind { false } else { true } }, "\(text)")
+        }
+        #expect(AddFoodText.number(".") == nil)
+        #expect(AddFoodText.number("") == nil)
+        #expect(AddFoodText.number("1.2.3") == nil)
+        #expect(AddFoodText.number("100000") == 100_000)
+    }
+
+    @Test("a comma between digits is a decimal or thousands comma, not a new food")
+    func decimalComma() {
+        let rice = AddFoodText.parse("rice 1,5 kg")
+        #expect(rice.count == 1)
+        #expect(rice[0].amount == AddFoodAmount(count: 1.5, unit: .kilogram, multiplier: false))
+        #expect(one("1,000 kcal").kind == .quickAdd(kcal: 1000))
+        #expect(one("milk 2,5 cups").amount == AddFoodAmount(count: 2.5, unit: .cup, multiplier: false))
+        // A comma after a word still separates foods.
+        #expect(AddFoodText.parse("eggs,2 toast").map(\.words) == [["eggs"], ["toast"]])
+    }
+
+    @Test("a multiple of an amount multiplies it, and a stray number takes its unit with it")
+    func multiples() {
+        let part = one("2 x 150 g chicken")
+        #expect(part.words == ["chicken"])
+        #expect(part.amount == AddFoodAmount(count: 300, unit: .gram, multiplier: false))
+        let stray = one("chicken 200 g 150 g")
+        #expect(stray.words == ["chicken"])
+        #expect(stray.amount == AddFoodAmount(count: 200, unit: .gram, multiplier: false))
+    }
+
+    @Test("half, quarter and couple are amounts before a, of or a unit, and words in a food's name")
+    func amountWords() {
+        #expect(one("half a banana").amount?.count == 0.5)
+        #expect(one("half a banana").words == ["banana"])
+        #expect(one("half cup oats").amount == AddFoodAmount(count: 0.5, unit: .cup, multiplier: false))
+        #expect(one("couple of eggs").amount?.count == 2)
+        #expect(one("half and half").words == ["half", "half"])
+        #expect(one("half and half").amount == nil)
+        #expect(one("quarter pounder").words == ["quarter", "pounder"])
+    }
+
     @Test("a typed word matches the start of a word of the name, plurals included")
     func prefixMatching() {
         #expect(AddFoodRanking.matches(["chick"], name: "Chicken breast, roasted"))
