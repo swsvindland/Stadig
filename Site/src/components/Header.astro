@@ -14,7 +14,7 @@ const current = (href: string) => (href === path ? "page" : undefined);
   </nav>
   <div class="navend">
     <details class="menu">
-      <summary class="navbtn" aria-label="Menu">Menu</summary>
+      <summary class="navbtn">Menu</summary>
       <nav aria-label="Main">
         <a href="/" aria-current={current("/")}>Home</a>
         {nav.map((n) => <a href={n.href} aria-current={current(n.href)}>{n.label}</a>)}

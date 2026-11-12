@@ -144,4 +144,4 @@ If it's rejected on those grounds, reply in Resolution Center first: point out t
 
 ## Changing a price later
 
-Monetization → the product → Price Schedule. It needs no new build, because the app shows what the App Store says. Then update the prices on the site (`Site/src/content/site.ts`, `Site/src/pages/[app].astro`), and the `.storekit` files so local testing matches. The site states the prices in words; nothing else in the repo does.
+Monetization → the product → Price Schedule. It needs no new build, because the app shows what the App Store says. Then update the `.storekit` files so local testing matches. The site says both apps are free and names no price; if a price comes back, it goes in `Site/src/content/site.ts` and the `offers` in the JSON-LD (`Site/src/pages/index.astro`, `Site/src/pages/[app].astro`).
