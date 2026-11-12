@@ -2,6 +2,10 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Counter mode for prep day, and Vision Pro's tab ornament.** The calls, mine to check:
+  - **Counter mode runs the Meal plan's prep like a ticket rail** on the iPad and the Mac (wherever the window is regular width), from "Start Prep": the step in enormous type, live timers as draining rulers, Next, and what the scale read. A reading is saved into the plan, so a container logged later is what was cooked; readings outside a quarter to four times the recipe are ignored. A timer starts at its step's Next. A run lives in memory only, and the screen stays awake. **Left out:** voice ("next", a reading said aloud), which would need microphone and speech permissions; the iPhone, which is portrait only.
+  - **Vision Pro's tab ornament showed blank buttons** for both apps' tab sections (Food and Review; Training and Records): a section header is now a label with a symbol on Vision Pro, and the iPad's tab bar and the sidebars read as before.
+
 - **Undo for a set, and the iPad scoreboard, in Stadig Lift.** The calls, mine to check:
   - **Undo restores the set just logged:** the set back to unlogged with the weight and reps it was logged with, the rest it replaced, the next sets' targets and message, a finding weight carried on and a drill counted done. Calibration reads only saved sets and Health is written at the session's end, so neither needs reversing. It's offered in the rest dock, Floor mode's rest, the scoreboard's rest and beside Finish once every set is done, and it ends with the next set logged, a skip, swap, added set, correction or Do This Now.
   - **Only a set logged on this device can be undone:** the Watch's copy has no undo, and if the Watch logs the same set before it hears of one, the Watch's log wins (tests show both devices agree after).
