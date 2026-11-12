@@ -233,7 +233,6 @@ final class AppModel {
         didSet { if loggerTime != oldValue { refreshTimedSuggestions() } }
     }
     var showSettings = false
-    var showPaywall = false
     var showWeighIn = false
     /// The fast screen: start one, or follow the one running.
     var showFast = false
@@ -1047,13 +1046,6 @@ final class AppModel {
         return droppedPhoto
     }
 
-    /// Brings the offer up if it's due, on opening the app. Never over a sheet someone is in the
-    /// middle of: it waits for the next time they open the app.
-    func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings, openWork.isEmpty else { return }
-        showPaywall = true
-    }
-
     func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
@@ -1066,7 +1058,6 @@ final class AppModel {
         showFast = false
         showSupplements = false
         showSettings = false
-        showPaywall = false
     }
 
     /// When something logged now was eaten: the time picked in the open logger, else now; on a

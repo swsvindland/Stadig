@@ -4,7 +4,6 @@ import HealthBridge
 import NutritionEngine
 import SwiftUI
 import SystemCore
-import SystemPurchases
 import SystemStore
 import UniformTypeIdentifiers
 
@@ -29,8 +28,6 @@ struct SettingsView: View {
     @State private var busy: String?
     @State private var message: String?
     @State private var editingLifeMode: LifeModePeriod?
-    /// The paywall, from here: the root's sheets can't show while Settings is up.
-    @State private var unlocking = false
 
     private func shows(_ section: SettingsPane) -> Bool { pane == nil || pane == section }
 
@@ -50,9 +47,6 @@ struct SettingsView: View {
         }
         .sheet(item: $editingLifeMode) { period in
             LifeModeEditor(period: period).macSheetSize(width: 440, height: 380)
-        }
-        .sheet(isPresented: $unlocking) {
-            PaywallView()
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "macrobackup") ?? .json, .json]) { result in
             switch result {
@@ -328,8 +322,6 @@ struct SettingsView: View {
                 "Open Food Facts data is available under the Open Database License (opendatacommons.org/licenses/odbl). USDA FoodData Central is in the public domain."
             )
         }
-
-        PurchaseSection { unlocking = true }
 
         #if DEBUG
         Section("Debug") {

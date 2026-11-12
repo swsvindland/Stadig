@@ -1,7 +1,6 @@
 import NutritionEngine
 import SwiftUI
 import SystemCore
-import SystemPurchases
 
 /// The assessment while it runs, then one recommendation with its reasons, then the plan in force
 /// with its weekly check-ins.
@@ -177,7 +176,6 @@ struct RangeBar: View {
 /// One recommendation, its reasons and how sure it is.
 struct RecommendationCard: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     let plan: PhasePlan
     let ready: Bool
     @State private var choosing = false
@@ -191,7 +189,7 @@ struct RecommendationCard: View {
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
             if ready {
                 Button {
-                    if purchases.unlocked { model.start(plan) } else { model.showPaywall = true }
+                    model.start(plan)
                 } label: {
                     Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity).padding(
                         .vertical, 4)
@@ -266,7 +264,6 @@ extension PhaseKind {
 /// The person's own choice over the recommendation.
 struct PhaseChooser: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
     let recommended: PhasePlan
 
@@ -274,11 +271,6 @@ struct PhaseChooser: View {
         NavigationStack {
             List(PhaseKind.allCases.filter { $0 != .dietBreak }) { kind in
                 Button {
-                    guard purchases.unlocked else {
-                        dismiss()
-                        model.showPaywall = true
-                        return
-                    }
                     let weeks = kind == .miniCut ? 5 : kind == .reverseDiet ? 6 : 8
                     model.start(
                         PhasePlan(

@@ -1,12 +1,12 @@
 import SystemPurchases
 
 extension PurchaseConfiguration {
-    /// What Stadig Macro sells and says about it. How it's paid for is `SystemPurchases`. Logging (search,
-    /// scan, photo, description), the assessment, export and backup always work without paying: your
-    /// data is yours. Starting the plan after the assessment needs it.
+    /// Stadig Macro is free and open source: purchases are off, so everything is unlocked and no screen
+    /// offers to sell anything. `SystemPurchases` stays linked, with what it would say, should that
+    /// ever change.
     static let macro = PurchaseConfiguration(
         appName: "Stadig Macro",
-        enabled: true,
+        enabled: false,
         slug: "macro",
         benefits: [
             .init("Your phase plan: cut, bulk or maintain, chosen from your data", symbol: "map"),
