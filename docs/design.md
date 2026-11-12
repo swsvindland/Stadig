@@ -16,7 +16,7 @@ The six scores (Strength, Endurance, Agility, Vitality, Discipline, Physique, cl
 
 ## Where it is in code
 
-`Apps/<App>/iOS/Components/Stadig.swift`, the same file in both apps (there's no shared UI package, so change both together): the `Ink` palette, `.numeral(_:)`, `Measure`, `.eyebrow()`, `Ruler`, `.inkCard()`, `.inkGround()`, `SourceChip` and `ScoreShape`. Each app's accent is its asset catalog's `AccentColor`, in the app, its widgets and its Watch app. `Components/Theme.swift` maps the app's older names onto these.
+`Apps/<App>/iOS/Components/Stadig.swift`, the same file in both apps (there's no shared UI package, so change both together): the `Ink` palette, `.numeral(_:)`, `Measure`, `.eyebrow()`, `Ruler`, `.inkCard()`, `.inkGround()`, `SourceChip` and `ScoreShape`. Each app's accent is its asset catalog's `AccentColor`, in the app, its widgets and its Watch app. Widget extensions can't see the app's files, so each has a `WidgetInk.swift` with a commented copy of the palette, type and ruler it uses: change them with `Stadig.swift`. `Components/Theme.swift` maps the app's older names onto these.
 
 ## One job per device
 
