@@ -236,7 +236,7 @@ lift_watch = watch_app("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp", "
 
 lift_watch_widgets = watch_widgets("Stadig Lift", "dev.svindland.stadig.lift.watchkitapp.widgets")
 
-LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "SystemPurchases", "HealthBridge", "LiftEngine", "HubEngine"]
+LIFT_PACKAGES = ["SystemCore", "ExerciseLibrary", "SystemStore", "SystemPurchases", "HealthBridge", "LiftEngine"]
 lift_embeds = [
     # (host, embedded, phase name, dstSubfolderSpec, dstPath, platform filter or None for every platform)
     ("LiftTrack", "LiftTrackWidgets", "Embed Foundation Extensions", 13, "", None),
@@ -299,7 +299,7 @@ macro_widgets = dict(swift_common, **ios_widgets_common, **{
     "PRODUCT_BUNDLE_IDENTIFIER": "dev.svindland.stadig.macro.widgets",
 })
 
-MACRO_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner", "HubEngine"]
+MACRO_PACKAGES = ["SystemCore", "SystemStore", "SystemPurchases", "HealthBridge", "NutritionEngine", "FoodDatabase", "FoodIntelligence", "MealPlanner"]
 
 # The Watch app reads and writes the same CloudKit records as the phone (Records/), with no food
 # catalog: an entry carries its own numbers, and FoodIntelligence and MealPlanner don't build for

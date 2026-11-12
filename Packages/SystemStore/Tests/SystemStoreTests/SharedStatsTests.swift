@@ -1,12 +1,11 @@
 import Foundation
 import SystemCore
-import SystemStore
 import Testing
 
-@testable import HubEngine
+@testable import SystemStore
 
 /// What either app calls for its stats: the six fitness stats merged from what Stadig Lift and Stadig
-/// Macro publish, each saying which app it comes from. No hub and no rhythm needed.
+/// Macro publish to the shared container, each saying which app it comes from.
 @Suite("The stats each app shows")
 struct SharedStatsTests {
     let utc = TimeZone(identifier: "UTC")!
