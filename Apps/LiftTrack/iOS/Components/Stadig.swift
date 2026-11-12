@@ -102,6 +102,21 @@ extension View {
     }
 }
 
+/// A unit beside a numeral: grows with Dynamic Type like the numeral does, to the same cap.
+private struct UnitStyle: ViewModifier {
+    @ScaledMetric private var scaled: CGFloat
+    private let size: CGFloat
+
+    init(size: CGFloat) {
+        _scaled = ScaledMetric(wrappedValue: size, relativeTo: .body)
+        self.size = size
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: min(scaled, size * 1.5), weight: .semibold))
+    }
+}
+
 private struct NumeralStyle: ViewModifier {
     @ScaledMetric private var scaled: CGFloat
     private let size: CGFloat
@@ -136,7 +151,7 @@ struct Measure: View {
             Text(value).numeral(size, weight: weight)
             if let unit, !unit.isEmpty {
                 Text(unit)
-                    .font(.system(size: max(12, size * 0.36), weight: .semibold))
+                    .modifier(UnitStyle(size: max(12, size * 0.36)))
                     .foregroundStyle(Ink.text2)
                     .lineLimit(1)
             }
@@ -294,13 +309,17 @@ struct ScoreShape: View {
                 }
                 let values = axes.map { $0.score.map(Double.init) }
                 polygon(center: center, radius: radius, values: values).fill(Color.accentColor.opacity(0.16))
-                polygon(center: center, radius: radius, values: values)
-                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
+                outline(center: center, radius: radius, values: values, acrossGaps: false)
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                // Where a score isn't measured yet the figure stays open: a faint dashed edge
+                // jumps the gap instead of a solid side through the missing corner.
+                outline(center: center, radius: radius, values: values, acrossGaps: true)
+                    .stroke(Color.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [2, 4]))
                 ForEach(Array(axes.enumerated()), id: \.element.id) { index, axis in
                     if let score = axis.score {
                         Circle()
                             .fill(dotColor(axis.apps))
-                            .overlay(Circle().stroke(Ink.ground, lineWidth: 1.6))
+                            .overlay { Circle().stroke(Ink.ground, lineWidth: 1.6) }
                             .frame(width: 8, height: 8)
                             .position(point(center: center, radius: radius * Double(score) / 100, index: index))
                     }
@@ -376,7 +395,23 @@ struct ScoreShape: View {
         }
     }
 
-    /// The figure through every known corner; an unknown one is skipped, leaving that side open.
+    /// The figure's edges: between neighbouring known corners, or (`acrossGaps`) only the edges
+    /// that jump over an unknown one.
+    private func outline(center: CGPoint, radius: Double, values: [Double?], acrossGaps: Bool) -> Path {
+        Path { path in
+            let known = values.indices.filter { values[$0] != nil }
+            guard known.count > 1 else { return }
+            for (offset, index) in known.enumerated() {
+                let next = known[(offset + 1) % known.count]
+                let neighbours = (next - index + values.count) % values.count == 1
+                guard neighbours != acrossGaps, let from = values[index], let to = values[next] else { continue }
+                path.move(to: point(center: center, radius: radius * from / 100, index: index))
+                path.addLine(to: point(center: center, radius: radius * to / 100, index: next))
+            }
+        }
+    }
+
+    /// The filled figure through every known corner; an unknown one is skipped.
     private func polygon(center: CGPoint, radius: Double, values: [Double?]) -> Path {
         Path { path in
             let corners = values.enumerated().compactMap { index, value in
