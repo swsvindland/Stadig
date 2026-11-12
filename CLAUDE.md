@@ -35,6 +35,7 @@ Before calling a change done: lint clean, zero warnings, and the tests for what 
 - Swift 6 language mode, strict concurrency. App targets default to `@MainActor` isolation; packages are nonisolated by default. Heavy work (catalog queries, analysis over long histories, image and OCR work, JSON for big files) runs off the main actor.
 - State is `@Observable` (Observation), injected with `.environment`. No `ObservableObject`/`@Published` in new code.
 - Anything that outlives a call (NotificationCenter observers, timers, `Task`s that loop or await streams, delegates) captures `[weak self]`, is stored, and is cancelled or removed when its owner goes away. Long-lived singletons are the exception, and say so in a comment.
+- Screens are built from `Components/Stadig.swift` (the same file in both apps; change both): the `Ink` palette, `.numeral`, `Ruler`, `.inkCard`, `SourceChip`, `ScoreShape`. No system grouped greys, rings or extra accent colours on redesigned screens.
 - Keep `body` cheap: no formatting, sorting or filtering of large collections inside it; compute in the model. Create formatters once (static), not per call.
 - No force unwraps or `try!` on data from users, files, the network or the store; `fatalError` only for programmer errors that can't ship. Don't swallow errors that matter with `try?`: log them (`Logger`) or show them.
 - Dates: pass `now`/`today` and a `Calendar` in; never compare `Date()` deep in logic. Mind time zones and DST.
@@ -52,7 +53,8 @@ Swift Testing for everything but UI tests (XCTest). Engine behaviour gets packag
 - A product call made without the owner's sign-off: `docs/decisions.md`. Don't bury decisions in code.
 - What was checked by hand on a simulator or device: `docs/verification.md`.
 - New tests worth knowing about: `docs/package-tests.md`.
-- Build, CI or release changes: `README.md`, `docs/ci-cd.md`, and this file. What's sold, and how: `docs/app-store-connect.md`.
+- Build, CI or release changes: `README.md`, `docs/ci-cd.md`, and this file. Both apps are free (purchases off); App Store Connect: `docs/app-store-connect.md`.
+- The look (palette, numerals, the ruler, Your shape, what each device is for): `docs/design.md`.
 
 ## Working alongside other sessions
 

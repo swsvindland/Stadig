@@ -30,7 +30,7 @@ git commit -am "Stadig Lift 1.1"              # in a worktree; in the shared che
 
 Then on `main`, bump `VERSIONS["LiftTrack"]` to the next version ("1.2") and commit: TestFlight rejects builds of an already-approved version, so `main`'s internal builds must always be ahead of what shipped.
 
-A release-branch archive with `enabled: false` in the app's `Purchase/Purchases.swift` fails on purpose in `ci_pre_xcodebuild.sh`; that's the guard against shipping the paid app unlocked.
+Both apps are free: `enabled: false` in each app's `Purchase/Purchases.swift` is intended, and nothing in the release checks it any more.
 
 Push only when the owner says to. The push starts the app's Release workflow: package tests, both test plans, archive, upload to TestFlight for the external group. The owner submits it for review in App Store Connect.
 
