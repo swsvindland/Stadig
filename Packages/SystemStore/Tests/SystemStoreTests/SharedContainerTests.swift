@@ -129,19 +129,23 @@ struct SharedContainerTests {
     @Test func allFilesRestoreRoundTrip() throws {
         let source = temporarySharedContainer()
         let profile = SharedProfile(createdBy: .liftTrack, createdAt: t0, updatedAt: t0)
-        let recommendation = Recommendation(to: .liftTrack, kind: .deloadNow, subject: nil, reason: "Fatigue is high", created: t0)
+        let calendar = SystemCalendar(currentBlock: nil, deloads: [], checkIns: [], updated: t0, publishedBy: .liftTrack)
         try source.write(profile, to: .profile, by: .liftTrack)
-        try source.write([recommendation], to: .recommendations, by: .hub)
+        try source.write(calendar, to: .calendar, by: .liftTrack)
         try source.write(AppSummary(app: .liftTrack, updated: t0), to: .summary(.liftTrack), by: .liftTrack)
+        // A file nothing has a key for any more (the hub's) goes along by its path.
+        try writeRaw(
+            ["schemaVersion": 1, "writtenBy": "hub", "writtenAt": t0.wholeMilliseconds, "payload": ["wake": 360, "bed": 1350]],
+            to: "hub/rhythm.json", in: source)
         try Data("ignored".utf8).write(to: source.directory.appending(path: ".DS_Store"))
 
         let files = source.allFiles()
-        #expect(Set(files.keys) == ["core/profile.json", "hub/recommendations.json", "apps/liftTrack/summary.json"])
+        #expect(Set(files.keys) == ["core/profile.json", "core/calendar.json", "hub/rhythm.json", "apps/liftTrack/summary.json"])
 
         let target = temporarySharedContainer()
         try target.restore(files)
         #expect(target.read(.profile) == profile)
-        #expect(target.read(.recommendations) == [recommendation])
+        #expect(target.read(.calendar) == calendar)
         #expect(target.allFiles() == files)
 
         // Restoring merges: a copy on disk written after the backup's stays.
@@ -243,7 +247,7 @@ struct SharedContainerTests {
         let counter = Counter()
         let token = SharedContainer.observeChanges { counter.value += 1 }
         let shared = temporarySharedContainer()
-        try shared.write([Quest](), to: .hubQuests, by: .hub)
+        try shared.write([LifeModePeriod](), to: .lifeModes, by: .liftTrack)
         for _ in 0..<40 where counter.value == 0 {
             try await Task.sleep(for: .milliseconds(50))
         }

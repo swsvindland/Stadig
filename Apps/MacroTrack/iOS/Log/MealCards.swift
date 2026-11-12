@@ -26,11 +26,9 @@ extension AppModel {
         return selection.intent == .move ? "Move here, \(time)" : "Copy here, \(time)"
     }
 
-    /// The hours the Log tab offers: the person's own, else from sleep in the hub, or the bedtime
-    /// set here for caffeine.
+    /// The hours the Log tab offers: the person's own, else up to the bedtime set here for caffeine.
     var logHours: ClosedRange<Int> {
-        LogHours.window(
-            first: settings.logFirstHour, last: settings.logLastHour, wake: rhythm?.wake, bed: rhythm?.bed ?? settings.doseTimes?[.bedtime])
+        LogHours.window(first: settings.logFirstHour, last: settings.logLastHour, bed: settings.doseTimes?[.bedtime])
     }
 
     /// The plan's meals in an hour of the selected day.

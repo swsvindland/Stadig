@@ -226,13 +226,13 @@ struct GeneratorTests {
 
     @Test func glutePriorityAddsAHipThrust() {
         let before = ProgramGenerator.generate(Fixture.input(Fixture.profile()))
-        var input = Fixture.input(Fixture.profile())
-        input.recommendations = [Recommendation(to: .liftTrack, kind: .prioritise, subject: .physique(.glutes), reason: "Glutes are lagging.")]
-        let after = ProgramGenerator.generate(input)
+        var settings = LiftSettings()
+        settings.focus = [.glutes]
+        let after = ProgramGenerator.generate(Fixture.input(Fixture.profile(), settings: settings))
         #expect(Fixture.directGluteSets(after) > Fixture.directGluteSets(before))
         let thrusts = after.days.flatMap(\.strengthSlots).filter { Fixture.catalog.resolve($0.exerciseID).pattern == .hipThrust }
         #expect(thrusts.count >= 2)
-        #expect(thrusts.contains { $0.reason == "Glutes are lagging." })
+        #expect(thrusts.contains { $0.reason == "You chose glutes as a focus." })
     }
 
     @Test func chosenFocusLeadsEvenWithoutAutoPrioritising() {

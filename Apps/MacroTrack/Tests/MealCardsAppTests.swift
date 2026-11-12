@@ -105,19 +105,26 @@ struct MealCardsAppTests {
         #expect(after.first?.entries.map(\.name) == ["Soup", "Oats"])
     }
 
-    @Test func theLogsHoursComeFromSleepInTheHubUntilSetByHand() throws {
+    /// The hub's last rhythm stays on devices and in iCloud. Its sleep used to set the hours; now
+    /// they're 7 AM to 8 PM until set by hand, and the file is left as it was.
+    @Test func theLogsHoursLeaveTheHubsSleepAloneUntilSetByHand() throws {
         let model = model()
         #expect(model.logHours == 7...20)
 
-        try model.shared.write(Rhythm(wake: 6 * 60, bed: 22 * 60 + 30), to: .rhythm, by: .macroTrack)
+        let rhythm = Data(
+            #"{"schemaVersion":1,"writtenBy":"hub","writtenAt":1793613600000,"payload":{"wake":360,"bed":1350,"updated":1793613600000}}"#.utf8)
+        let url = model.shared.directory.appending(path: "hub/rhythm.json")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try rhythm.write(to: url)
         model.readShared()
-        #expect(model.logHours == 6...22)
+        #expect(model.logHours == 7...20)
 
         model.updateSettings { $0.logFirstHour = 8 }
-        #expect(model.logHours == 8...22)
+        #expect(model.logHours == 8...20)
+        #expect(try Data(contentsOf: url) == rhythm)
     }
 
-    @Test func theLogsHoursUseTheBedtimeSetHereWithoutTheHub() {
+    @Test func theLogsHoursUseTheBedtimeSetHere() {
         let model = model()
         model.updateSettings { $0.doseTimes = [.bedtime: 23 * 60] }
         #expect(model.logHours == 7...22)

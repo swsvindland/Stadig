@@ -28,7 +28,6 @@ public struct LiftState: Sendable {
     public var restingHeartRate: Double?
     /// Stadig Macro's summary, when it's installed.
     public var nutrition: NutritionSummary?
-    public var recommendations: [Recommendation]
     public var today: Day
     /// The moment the analysis is for, on `today`: how far into a fast it is.
     public var now: Date
@@ -39,7 +38,7 @@ public struct LiftState: Sendable {
         benchmarks: [BenchmarkResult] = [], mesocycles: [Mesocycle] = [], lifeModes: [LifeModePeriod] = [],
         recovery: [RecoveryDay] = [], steps: [StepDay] = [], bodyweightKg: Double? = nil, bodyweightDate: Date? = nil,
         bodyFatPercent: Double? = nil, vo2Max: Double? = nil, restingHeartRate: Double? = nil, nutrition: NutritionSummary? = nil,
-        recommendations: [Recommendation] = [], today: Day = .today, now: Date = Date()
+        today: Day = .today, now: Date = Date()
     ) {
         self.profile = profile
         self.settings = settings
@@ -61,7 +60,6 @@ public struct LiftState: Sendable {
         self.vo2Max = vo2Max
         self.restingHeartRate = restingHeartRate
         self.nutrition = nutrition
-        self.recommendations = recommendations
         self.today = today
         self.now = now
     }
@@ -538,7 +536,7 @@ public enum Analyst {
 
     // MARK: Publishing
 
-    /// The small summary published to the shared container for the hub and the other apps.
+    /// The small summary published to the shared container for Stadig Macro and the stats.
     public static func summary(_ state: LiftState, _ a: LiftAnalysis) -> AppSummary {
         let today = state.today
         var stats: [StatReading] = []

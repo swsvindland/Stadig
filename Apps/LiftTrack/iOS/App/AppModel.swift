@@ -109,15 +109,10 @@ final class AppModel {
     var vo2Max: Double?
     var restingHeartRate: Double?
 
-    // From the other apps and the hub.
+    // From the shared container.
     private(set) var nutrition: NutritionSummary?
-    private(set) var recommendations: [Recommendation] = []
     /// A profile another app wrote before Stadig Lift was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
-    /// The hub's rhythm, for where it moved a class.
-    private(set) var rhythm: Rhythm?
-    /// What's changed this week, from the hub.
-    private(set) var dayChanges: [DayChange] = []
     /// What Stadig Macro published, for the scores it measures.
     private(set) var macroSummary: AppSummary?
 
@@ -303,25 +298,18 @@ final class AppModel {
         if store.revision != lastRevision { reload() }
     }
 
-    /// What other apps and the hub published. Our own writes notify us too, so this only
-    /// recomputes when something actually changed.
+    /// What Stadig Macro published, and the profile and life modes both apps share. Our own writes
+    /// notify us too, so this only recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
         let nutrition = shared.read(.nutrition)
-        let recommendations = (shared.read(.recommendations) ?? []).filter { $0.to == .liftTrack && $0.isActive() }
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
-        let dayChanges = shared.read(.dayChanges) ?? []
-        let rhythm = shared.read(.rhythm)
         let macroSummary = shared.read(.summary(.macroTrack))
         let changed =
-            nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
-            || lifeModes != self.lifeModes || dayChanges != self.dayChanges || rhythm != self.rhythm || macroSummary != self.macroSummary
+            nutrition != self.nutrition || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes || macroSummary != self.macroSummary
         guard changed else { return }
         self.macroSummary = macroSummary
-        self.dayChanges = dayChanges
-        self.rhythm = rhythm
         self.nutrition = nutrition
-        self.recommendations = recommendations
         self.sharedProfile = sharedProfile
         self.lifeModes = lifeModes
         if again { recompute() }
@@ -356,8 +344,7 @@ final class AppModel {
             profile: profile, settings: settings, gym: gym, catalog: catalog, sessions: sessions, activities: activities,
             measurements: measurements, mobility: mobility, benchmarks: benchmarks, mesocycles: mesocycles,
             lifeModes: lifeModes, recovery: recovery, steps: steps, bodyweightKg: bodyweightKg, bodyweightDate: bodyweightDate,
-            bodyFatPercent: bodyFatPercent, vo2Max: vo2Max, restingHeartRate: restingHeartRate, nutrition: nutrition,
-            recommendations: recommendations, today: today)
+            bodyFatPercent: bodyFatPercent, vo2Max: vo2Max, restingHeartRate: restingHeartRate, nutrition: nutrition, today: today)
     }
 
     func recompute() {
@@ -383,8 +370,7 @@ final class AppModel {
         }
     }
 
-    /// Small summaries for the other apps, the hub, the widgets and the Watch, written only when
-    /// they change.
+    /// Small summaries for Stadig Macro, the widgets and the Watch, written only when they change.
     private func publish(_ state: LiftState, _ analysis: LiftAnalysis) {
         // Without their stamps: compared with what was last published here, then with the files on
         // disk (after a relaunch), so readers are woken and "updated" moves only when something did.
@@ -669,7 +655,7 @@ final class AppModel {
     }
 
     /// Everything the generator weighs, from what's known now: a new block and a day refitted to
-    /// other minutes see the same fatigue, priorities and recommendations. Internal for the tests.
+    /// other minutes see the same fatigue and priorities. Internal for the tests.
     func generatorInput(
         profile: SharedProfile, gym: Gym, kind: BlockKind, start: Day, loadingWeeks: Int,
         phase: NutritionPhase
@@ -677,7 +663,7 @@ final class AppModel {
         GeneratorInput(
             profile: profile, settings: settings, gym: gym, catalog: catalog, kind: kind, start: start, loadingWeeks: loadingWeeks, phase: phase,
             strength: analysis?.strength, physique: analysis?.physique, agility: analysis?.agility, endurance: analysis?.endurance,
-            fatigue: analysis?.fatigue, recommendations: recommendations, injuries: analysis?.life.injuries ?? [],
+            fatigue: analysis?.fatigue, injuries: analysis?.life.injuries ?? [],
             // The block running now, not one already accepted to follow it.
             previous: analysis?.mesocycle ?? mesocycles.last,
             stalled: Set(analysis?.stalls.filter { $0.reading == .programming }.map(\.exerciseID) ?? []),
@@ -736,7 +722,7 @@ final class AppModel {
     }
 
     /// A day of a block fitted to other minutes, for a look at it before the day comes: the same
-    /// fatigue, priorities and recommendations a new block weighs, in the person's usual gym.
+    /// fatigue and priorities a new block weighs, in the person's usual gym.
     /// Nothing is saved; Today's "Short on time?" is what refits a session.
     func refitted(_ day: PlannedDay, of mesocycle: Mesocycle, minutes: Int) -> PlannedDay? {
         guard let profile, let analysis else { return nil }
@@ -839,11 +825,6 @@ final class AppModel {
         var day = planned
         var minutesAvailable = minutes
         if let cap = analysis.life.maxMinutes { minutesAvailable = min(minutesAvailable ?? cap, cap) }
-        // A lighter week, from the hub: a shorter session, and the week's quota as it was.
-        if dayChanges.isLighter(today) {
-            let cap = DayChange.lighterMinutes(next.mesocycle.minutesPerSession)
-            minutesAvailable = min(minutesAvailable ?? cap, cap)
-        }
         if let minutesAvailable, minutesAvailable != next.mesocycle.minutesPerSession {
             var input = generatorInput(
                 profile: profile, gym: gymForToday, kind: next.mesocycle.block.kind, start: next.mesocycle.block.start,

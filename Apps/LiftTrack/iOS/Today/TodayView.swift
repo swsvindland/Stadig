@@ -270,10 +270,8 @@ struct TodayView: View {
             let logged = todays.contains { $0.type == item.activity }
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(
-                        "\(item.activity.label) \(item.part(on: model.today, rhythm: model.rhythm, changes: model.dayChanges).label.lowercased())"
-                    )
-                    .font(.body.weight(.semibold))
+                    Text("\(item.activity.label) \(item.timeOfDay.label.lowercased())")
+                        .font(.body.weight(.semibold))
                     Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.caption).foregroundStyle(Ink.text2)
                 }
                 Spacer()

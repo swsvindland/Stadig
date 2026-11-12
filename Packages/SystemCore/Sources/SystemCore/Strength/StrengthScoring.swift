@@ -125,6 +125,8 @@ public struct TrainingPriority: Hashable, Codable, Sendable, Identifiable {
     public var reason: String
     public var source: Source
 
+    /// `hub` was the hub app's recommendations, which nothing sends now; it stays so a block saved
+    /// with one still decodes.
     public enum Source: String, Codable, Sendable { case strength, physique, agility, endurance, hub, person }
 
     public var id: String { "\(target)-\(source.rawValue)" }

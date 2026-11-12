@@ -17,8 +17,6 @@ public struct GeneratorInput: Sendable {
     public var agility: AgilityAnalysis?
     public var endurance: EnduranceAnalysis?
     public var fatigue: FatigueAssessment?
-    /// The hub's recommendations addressed to Stadig Lift.
-    public var recommendations: [Recommendation]
     public var injuries: [Injury]
     public var previous: Mesocycle?
     /// Exercises stalled long enough to rotate out.
@@ -29,7 +27,7 @@ public struct GeneratorInput: Sendable {
         profile: SharedProfile, settings: LiftSettings, gym: Gym, catalog: ExerciseCatalog, kind: BlockKind, start: Day,
         loadingWeeks: Int, phase: NutritionPhase, strength: StrengthProfile? = nil, physique: PhysiqueAnalysis? = nil,
         agility: AgilityAnalysis? = nil, endurance: EnduranceAnalysis? = nil, fatigue: FatigueAssessment? = nil,
-        recommendations: [Recommendation] = [], injuries: [Injury] = [], previous: Mesocycle? = nil, stalled: Set<String> = [],
+        injuries: [Injury] = [], previous: Mesocycle? = nil, stalled: Set<String> = [],
         trust: TrustState
     ) {
         self.profile = profile
@@ -45,7 +43,6 @@ public struct GeneratorInput: Sendable {
         self.agility = agility
         self.endurance = endurance
         self.fatigue = fatigue
-        self.recommendations = recommendations
         self.injuries = injuries
         self.previous = previous
         self.stalled = stalled
@@ -267,21 +264,8 @@ struct Builder {
                         : "Your aerobic base is light, so the post-lift block is steady Zone 2.",
                     source: .endurance))
         }
-        for rec in input.recommendations where rec.to == .liftTrack && rec.isActive() {
-            guard let subject = rec.subject else { continue }
-            let sign: Double = rec.kind == .deprioritise ? -0.7 : 1
-            let target: TrainingPriority.Target? =
-                switch subject {
-                case .strength(let c): .category(c)
-                case .physique(let p): .physique(p)
-                case .mobility(let m): .mobility(m)
-                case .conditioning: .conditioning
-                case .muscle(let m): .physique(m.physiqueRegion)
-                case .stat: nil
-                }
-            if let target, rec.kind != .deloadNow { list.append(TrainingPriority(target: target, emphasis: sign, reason: rec.reason, source: .hub)) }
-        }
-        // Two sources can name the same target (two hub recommendations, say); one priority each.
+        // Should one source name a target twice, it's one priority, so lists keyed by id never
+        // repeat one.
         priorities = list.mergedByID()
     }
 
@@ -1036,7 +1020,7 @@ struct Builder {
         case .minimumEffective:
             headline = "The minimum effective dose: short sessions that keep strength and muscle."
         case .standard:
-            let lead = priorities.filter { $0.emphasis > 0 && [.person, .strength, .physique, .hub].contains($0.source) }
+            let lead = priorities.filter { $0.emphasis > 0 && [.person, .strength, .physique].contains($0.source) }
             if let first = lead.first {
                 let plural = if case .physique(let p) = first.target { [.shoulders, .arms, .glutes, .thighs, .calves].contains(p) } else { false }
                 headline = "\(first.label) \(plural ? "come" : "comes") first this block. \(input.loadingWeeks) weeks of loading, then a deload."

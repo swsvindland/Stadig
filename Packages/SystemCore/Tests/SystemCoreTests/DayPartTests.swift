@@ -3,15 +3,8 @@ import Testing
 
 @testable import SystemCore
 
-@Suite("Day parts and commitments")
+@Suite("Day parts and the shared profile")
 struct DayPartTests {
-    let utc = TimeZone(identifier: "UTC")!
-    let monday = Day(year: 2026, month: 11, day: 2)
-
-    func lift(on day: Day, hour: Int) -> SessionSummary {
-        SessionSummary(id: UUID(), app: .liftTrack, kind: .strength, start: day.at(hour: hour, minute: 0, timeZone: utc), minutes: 60, planned: true)
-    }
-
     func profile(days: [Weekday], recurring: [RecurringActivity] = []) -> SharedProfile {
         SharedProfile(
             schedule: TrainingSchedule(daysPerWeek: days.count, minutesPerSession: 90, preferredDays: days), recurring: recurring,
@@ -31,44 +24,6 @@ struct DayPartTests {
 
     @Test func thePublishedWordRoundTripsThroughItsOwnPart() {
         for time in TimeOfDay.allCases { #expect(DayPart(time).timeOfDay == time) }
-    }
-
-    @Test func aPackedMondayHasTheLiftAndBothClasses() {
-        let classes = [
-            RecurringActivity(activity: .bjj, weekdays: [.monday, .wednesday], minutes: 60),
-            RecurringActivity(activity: .muayThai, weekdays: [.monday, .wednesday], minutes: 60),
-        ]
-        let lifts = (1...8).map { lift(on: monday.adding(days: -$0), hour: 6) }
-        let week = WeekCommitments(
-            profile: profile(days: [.monday, .wednesday, .friday], recurring: classes),
-            lift: AppSummary(app: .liftTrack, sessions: lifts), before: monday, timeZone: utc)
-        #expect(week.on(.monday).map(\.title) == ["Lift", "BJJ", "Muay Thai"])
-        #expect(week.on(.monday).map(\.part) == [.early, .evening, .evening])
-        #expect(week.on(.friday).map(\.title) == ["Lift"])
-        #expect(week.on(.tuesday).isEmpty)
-    }
-
-    /// Stadig Macro can write the profile first, with the default three days nobody chose.
-    @Test func noLiftsBeforeStadigLiftHasPublished() {
-        let classes = [RecurringActivity(activity: .bjj, weekdays: [.tuesday])]
-        let week = WeekCommitments(profile: profile(days: [.monday], recurring: classes), lift: nil, before: monday, timeZone: utc)
-        #expect(week.on(.monday).isEmpty)
-        #expect(week.on(.tuesday).map(\.title) == ["BJJ"])
-    }
-
-    @Test func aLiftWithNoHistoryIsTakenToBeInTheEvening() {
-        let week = WeekCommitments(profile: profile(days: [.monday]), lift: AppSummary(app: .liftTrack), before: monday, timeZone: utc)
-        #expect(week.on(.monday).map(\.part) == [.evening])
-    }
-
-    @Test func todaysLiftDoesntMoveThePlanUnderTheDay() {
-        let usual = (1...4).map { lift(on: monday.adding(days: -$0), hour: 6) }
-        let tonight = lift(on: monday, hour: 21)
-        #expect(WeekCommitments.liftingPart(usual + [tonight], before: monday, timeZone: utc) == .early)
-    }
-
-    @Test func noProfileMeansNoCommitments() {
-        #expect(WeekCommitments(profile: nil, lift: AppSummary(app: .liftTrack), before: monday) == .none)
     }
 
     @Test func stadigLiftFillsAMissingFileAndRepairsAWrongOne() {

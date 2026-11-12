@@ -1,9 +1,9 @@
 import Foundation
 
-/// The apps in the System. Each owns its own data and publishes summaries for the others.
-/// `knowledge` is Stadig Mind, which left the family: the case stays because shared containers, iCloud
-/// and life modes on people's devices still name it, and they have to go on decoding. Nothing here
-/// reads what it published.
+/// The apps in the System. Each owns its own data and publishes summaries for the other.
+/// `knowledge` is Stadig Mind and `hub` the hub app, which both left the family: the cases stay
+/// because shared containers, iCloud and life modes on people's devices still name them, and they
+/// have to go on decoding. Nothing here reads what either published.
 public enum AppID: String, CaseIterable, Codable, CodingKeyRepresentable, Sendable, Identifiable {
     case liftTrack, macroTrack, knowledge, hub
 
@@ -204,11 +204,6 @@ public struct RecurringActivity: Hashable, Codable, Sendable, Identifiable {
     public var summary: String {
         "\(activity.label) · \(weekdays.map(\.short).joined(separator: "/")) \(timeOfDay.label.lowercased())s"
     }
-
-    /// The part of a date it's in: where the hub moved it, or its own time of day.
-    public func part(on day: Day, rhythm: Rhythm?, changes: [DayChange]) -> DayPart {
-        changes.movedPart(of: activity.label, on: day) ?? rhythm?.placedPart(of: activity.label, on: day.weekday) ?? DayPart(timeOfDay)
-    }
 }
 
 /// Setup answers, asked once and shared through the core. A second app reads these instead of
@@ -264,3 +259,4 @@ public struct SharedProfile: Hashable, Codable, Sendable {
     /// Declared outside training on a day.
     public func declared(on day: Day) -> [RecurringActivity] { recurring.filter { $0.weekdays.contains(day.weekday) } }
 }
+

@@ -12,19 +12,34 @@ import Testing
 @MainActor
 @Suite("App model")
 struct AppModelTests {
-    @Test("A lighter week from the hub shortens the session and goes when it's undone")
-    func lighterWeek() throws {
+    /// The hub left its last rhythm and changes on devices and in iCloud. A lighter week in them used
+    /// to shorten the session; nothing reads them now, and nothing rewrites or deletes them either.
+    @Test("What the hub left doesn't shorten a session, and stays as it was")
+    func hubFilesAreIgnored() throws {
         let app = TestApp()
         let model = app.onboarded()
         let full = try #require(model.plan())
-        let change = DayChange.lighterWeek(of: model.today)
-        try app.shared.write([change], to: .dayChanges, by: .hub)
+        let written = [
+            "hub/changes.json": """
+            {"schemaVersion":1,"writtenBy":"hub","writtenAt":1793613600000,"payload":[{"id":"\(UUID().uuidString)","kind":"lighter",\
+            "day":"\(model.today.startOfWeek.iso)","parts":[],"updatedAt":1793613600000}]}
+            """,
+            "hub/rhythm.json": """
+            {"schemaVersion":1,"writtenBy":"hub","writtenAt":1793613600000,"payload":{"wake":360,"bed":1350,"clearEvenings":2,"dayStart":4,\
+            "placements":[{"title":"Lift","weekday":\(model.today.weekday.rawValue),"part":"early"}],"updated":1793613600000}}
+            """,
+        ]
+        for (path, json) in written {
+            let url = app.shared.directory.appending(path: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(json.utf8).write(to: url)
+        }
         model.readShared()
-        let lighter = try #require(model.plan())
-        #expect(lighter.estimatedMinutes < full.estimatedMinutes, "\(lighter.estimatedMinutes) of \(full.estimatedMinutes)")
-        try app.shared.write([change.deleted()], to: .dayChanges, by: .hub)
-        model.readShared()
+        model.recompute()
         #expect(try #require(model.plan()).estimatedMinutes == full.estimatedMinutes)
+        for (path, json) in written {
+            #expect(try Data(contentsOf: app.shared.directory.appending(path: path)) == Data(json.utf8), "\(path)")
+        }
     }
 
     @Test("A fresh install isn't onboarded and has nothing to plan")
