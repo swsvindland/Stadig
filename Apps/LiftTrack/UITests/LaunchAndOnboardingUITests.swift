@@ -17,8 +17,11 @@ nonisolated final class LaunchAndOnboardingUITests: XCTestCase {
         XCTAssertTrue(app.element("plan.day").waitForExistence(timeout: 5), "The block's days are listed")
 
         app.openTab("Progress")
-        app.element("progress.screen").waitToAppear()
-        XCTAssertTrue(app.element("progress.history").waitForExistence(timeout: 5))
+        let progress = app.element("progress.screen").waitToAppear()
+        // On the iPad it's the last card of a lazy grid, made only once it's scrolled near.
+        let history = app.element("progress.history")
+        for _ in 0..<4 where !history.waitForExistence(timeout: 3) { progress.swipeUp() }
+        XCTAssertTrue(history.exists)
 
         app.openTab("Body")
         app.element("body.screen").waitToAppear()
