@@ -35,6 +35,7 @@ struct MacroTrackApp: App {
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }
+        if launch.has("-seedToday") { SampleData.seedToday(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
         if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }

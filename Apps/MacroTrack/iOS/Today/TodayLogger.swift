@@ -190,6 +190,8 @@ struct TodayLogger: View {
             if model.toast != nil, freshIDs.isEmpty { ToastSlot().padding(.horizontal, -16) }
             if showsMatches {
                 ComposerMatches(composer: composer)
+            } else if showsTiles, !composer.fits.isEmpty, composer.earlier.isEmpty {
+                WhatFitsRows(composer: composer, targets: model.analysis?.targets, eaten: model.dayIntake(on: model.today).eaten)
             } else if showsTiles {
                 UsualTiles(composer: composer)
             }
@@ -445,6 +447,73 @@ private struct UsualTiles: View {
                 }
             }
         }
+    }
+}
+
+/// "What fits tonight": one or two of the usual foods that finish the day, each with what it leaves,
+/// and the calories and protein after it on thin rulers.
+private struct WhatFitsRows: View {
+    let composer: TodayComposer
+    let targets: DailyTargets?
+    let eaten: Nutrients
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("What fits tonight").eyebrow()
+                Spacer()
+                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text2)
+            }
+            .padding(.horizontal, 4)
+            ForEach(Array(composer.fits.enumerated()), id: \.element.id) { index, option in
+                Button {
+                    composer.log(option)
+                } label: {
+                    row(option)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("today.fits.\(index)")
+            }
+        }
+    }
+
+    func row(_ option: WhatFits.Option) -> some View {
+        HStack(spacing: 12) {
+            FoodTile(name: option.items.first?.name ?? "", fill: Ink.raised)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(option.items.map { TodayComposer.short($0.name) }.joined(separator: " + "))
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1)
+                Text(
+                    "\(option.items.map(\.amountLabel).joined(separator: " + ")) · \(Format.kcal(option.nutrients.kcal)) · \(Format.whole(option.nutrients.protein)) P"
+                )
+                .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            VStack(alignment: .trailing, spacing: 4) {
+                if let kcal = targets?.kcal, kcal > 0 {
+                    Ruler.thin((eaten.kcal + option.nutrients.kcal) / kcal).frame(width: 64)
+                }
+                if let protein = targets?.protein, protein > 0 {
+                    Ruler.thin((eaten.protein + option.nutrients.protein) / protein, color: Ink.protein).frame(width: 64)
+                }
+                if option.onTarget {
+                    Label("On target", systemImage: "checkmark").font(.caption2.weight(.semibold)).foregroundStyle(Ink.good)
+                } else {
+                    Text("leaves \(Format.whole(option.leaves))").font(.caption2).foregroundStyle(Ink.text2)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 60)
+        .background(option.onTarget ? Color.accentColor.opacity(0.12) : Color.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+        .overlay {
+            if option.onTarget { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor, lineWidth: 1.5) }
+        }
+        .contentShape(.rect(cornerRadius: 18))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Log \(option.items.map(\.name).joined(separator: " and ")), \(Format.kcal(option.nutrients.kcal)), \(option.onTarget ? "on target" : "leaves \(Format.whole(option.leaves)) kcal")"
+        )
     }
 }
 

@@ -23,6 +23,9 @@ final class TodayComposer {
     /// One-tap foods above the field, and what they're for.
     private(set) var tiles: [LogAgainItem] = []
     private(set) var tilesTitle = "Usually around now"
+    /// In the evening, with no meal open: one or two usual foods that finish the day, in the
+    /// tiles' place.
+    private(set) var fits: [WhatFits.Option] = []
     /// Return pressed, the foods it logs being found.
     private(set) var submitting = false
 
@@ -274,6 +277,30 @@ final class TodayComposer {
             offered = model.logAgain.filter { !inMeal.contains(Self.key($0.template)) }
         }
         tiles = Array(offered.prefix(4))
+        fits = open == nil ? Self.fits(model: model, now: now, offered: offered) : []
+    }
+
+    /// The most left that "What fits tonight" finishes: more than this is a meal or two to plan.
+    static let mostLeftToFit = 1200.0
+
+    /// What fits what's left tonight, from the foods usually eaten now.
+    static func fits(model: AppModel, now: Date, offered: [LogAgainItem]) -> [WhatFits.Option] {
+        guard WhatFits.isEvening(now), let targets = model.analysis?.targets, let kcal = targets.kcal else { return [] }
+        let eaten = model.dayIntake(on: model.today, now: now).eaten
+        let left = Nutrients(
+            kcal: kcal - eaten.kcal, protein: max(0, (targets.protein ?? 0) - eaten.protein), carbs: max(0, (targets.carbs ?? 0) - eaten.carbs),
+            fat: max(0, (targets.fat ?? 0) - eaten.fat))
+        guard left.kcal <= mostLeftToFit else { return [] }
+        // Pairs from the last eight weeks: what's eaten together now, not years ago.
+        let since = model.today.adding(days: -56)
+        return WhatFits.options(offered.map(\.template), left: left, history: model.entries.filter { $0.day >= since })
+    }
+
+    /// An option of "What fits tonight": its foods at their usual amounts, now.
+    func log(_ option: WhatFits.Option) {
+        guard let model else { return }
+        let now = Date()
+        log(option.items.map { LogAgain.copy($0, to: now) }, unmatched: [], model: model)
     }
 
     static func key(_ entry: FoodEntry) -> String { entry.foodID ?? entry.name.lowercased() }
