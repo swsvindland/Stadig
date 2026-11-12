@@ -222,24 +222,14 @@ struct BulletLabelStyle: LabelStyle {
     }
 }
 
-/// Discipline as a gauge with the 80–90% band shaded "in the zone". Past 90% earns nothing more.
+/// Discipline as a ruler, ticked every tenth so the 80–90% zone reads off it, with the zone's start
+/// marked. Past 90% earns nothing more.
 struct DisciplineGauge: View {
     let score: DisciplineScore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.15))
-                    Rectangle().fill(Color.green.opacity(0.25)).frame(width: width * 0.1).offset(x: width * 0.8)
-                    if let rate = score.rate {
-                        Capsule().fill(score.band == .below ? Color.orange : Color.green).frame(width: max(8, width * min(1, rate)))
-                    }
-                }
-                .clipShape(.capsule)
-            }
-            .frame(height: 12)
+            Ruler(value: score.rate ?? 0, color: score.band == .below ? Ink.ok : Ink.good, height: 14, marker: 0.8)
             HStack {
                 Text(score.rate.map(Format.percent) ?? "—").font(.headline.monospacedDigit())
                 Text(score.band?.label ?? "Nothing to score yet").font(.subheadline).foregroundStyle(.secondary)

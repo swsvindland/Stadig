@@ -3,8 +3,9 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// The weight trend, intake against target, and the habit. With room, the cards sit side by side,
-/// the charts are wider with one range for both, and the vitamins and minerals are a table.
+/// Your shape (the six scores, `YourShapeCard`), then the weight trend, intake against target, and
+/// the habit. With room, the cards sit side by side, the charts are wider with one range for both,
+/// and the vitamins and minerals are a table.
 struct ProgressTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -46,6 +47,7 @@ struct ProgressTab: View {
 
     func list(_ analysis: MacroAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 16) {
+            YourShapeCard()
             WeightCard(trend: analysis.trend, weeklyChange: analysis.weeklyChange, range: $range)
             IntakeCard(analysis: analysis)
             QualityCard(report: analysis.quality, fiber: analysis.micros.reading("fiber"))
@@ -59,6 +61,9 @@ struct ProgressTab: View {
 
     func board(_ analysis: MacroAnalysis) -> some View {
         Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 16) {
+            GridRow {
+                YourShapeCard().gridCellColumns(2)
+            }
             GridRow {
                 WeightCard(trend: analysis.trend, weeklyChange: analysis.weeklyChange, range: $range, chartHeight: 280, showsRange: false)
                     .gridCellColumns(2)
@@ -108,7 +113,12 @@ struct DisciplineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Discipline").font(.headline)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Nutrition discipline").font(.headline)
+                Spacer()
+                if let rate = analysis.discipline.rate { Text(Format.whole(rate * 100)).numeral(30) }
+            }
+            .accessibilityElement(children: .combine)
             DisciplineGauge(score: analysis.discipline)
             Text(analysis.discipline.note).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let rate = analysis.loggingRate {
@@ -141,15 +151,16 @@ struct WeightCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Weight trend").font(.headline)
+                    Text("Weight trend").eyebrow()
                     if let latest = trend.latest {
-                        Text(Format.weight(latest.trend, unit: unit)).font(.title.weight(.bold).monospacedDigit())
+                        Measure(value: Format.number(unit.fromKilograms(latest.trend)), unit: unit.symbol, size: 52)
                             .accessibilityIdentifier("progress.trendWeight")
                     }
                 }
                 Spacer()
                 if let weeklyChange {
-                    Text(Format.weeklyChange(weeklyChange, unit: unit)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    Text(Format.weeklyChange(weeklyChange, unit: unit)).font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Color.accentColor)
                 }
             }
             if points.count >= 2 {
@@ -158,7 +169,7 @@ struct WeightCard: View {
                         if let scale = p.scale {
                             PointMark(x: .value("Day", p.day.date()), y: .value("Scale", unit.fromKilograms(scale)))
                                 .symbolSize(18)
-                                .foregroundStyle(.secondary.opacity(0.5))
+                                .foregroundStyle(Ink.text3)
                         }
                         LineMark(x: .value("Day", p.day.date()), y: .value("Trend", unit.fromKilograms(p.trend)))
                             .interpolationMethod(.monotone)
@@ -212,15 +223,15 @@ struct IntakeCard: View {
                     }
                 }
                 if let kcal = analysis.targets.kcal {
-                    RuleMark(y: .value("Target", kcal)).foregroundStyle(.secondary).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    RuleMark(y: .value("Target", kcal)).foregroundStyle(Ink.text2).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
                 }
-                RuleMark(y: .value("Maintenance", analysis.maintenance.kcal)).foregroundStyle(.orange.opacity(0.7))
+                RuleMark(y: .value("Maintenance", analysis.maintenance.kcal)).foregroundStyle(Ink.ok)
             }
             .frame(height: chartHeight)
             HStack(spacing: 14) {
                 legend(Color.accentColor, "Complete day")
                 legend(Color.accentColor.opacity(0.35), "Partial")
-                legend(.orange, "Maintenance")
+                legend(Ink.ok, "Maintenance")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
