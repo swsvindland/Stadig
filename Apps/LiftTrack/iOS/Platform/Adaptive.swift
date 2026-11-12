@@ -55,6 +55,20 @@ enum Platform {
         #endif
     }
 
+    /// Floor mode: an iPhone set down on the gym floor or a bench becomes the session's one big
+    /// button. Only the iPhone: an iPad is propped up and read where it stands, the Mac sits on a
+    /// desk, and Vision Pro is worn.
+    static var hasFloorMode: Bool { isPhone }
+
+    /// Keeps the screen from dimming and locking while it's read from a metre or two away, or lets
+    /// it again. Nothing else in the app holds it awake, so letting go restores the system's default.
+    @MainActor
+    static func keepScreenAwake(_ awake: Bool) {
+        #if os(iOS)
+        UIApplication.shared.isIdleTimerDisabled = awake
+        #endif
+    }
+
     /// What to call this device in a sentence: "Photos are read on your iPad."
     static var deviceName: String {
         #if os(macOS)
@@ -225,6 +239,28 @@ extension View {
         return buttonStyle(.bordered)
         #else
         return buttonStyle(.glass)
+        #endif
+    }
+}
+
+extension View {
+    /// A screen read from across the room (Floor mode): no status bar and the Home indicator out of
+    /// the way. Floor mode is the iPhone's; elsewhere nothing changes.
+    func hidesSystemChrome(_ hidden: Bool) -> some View {
+        #if os(iOS)
+        return statusBarHidden(hidden).persistentSystemOverlays(hidden ? .hidden : .automatic)
+        #else
+        return self
+        #endif
+    }
+
+    /// Home and Notification Centre, swiped from the screen's edges, wait for a second swipe, so a
+    /// swipe up or down on the glass stays the app's.
+    func defersEdgeSwipes() -> some View {
+        #if os(iOS)
+        return defersSystemGestures(on: .vertical)
+        #else
+        return self
         #endif
     }
 }

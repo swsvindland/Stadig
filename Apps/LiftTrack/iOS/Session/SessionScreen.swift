@@ -9,11 +9,20 @@ import SystemCore
 struct SessionScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The set's load, reps and clock, shared by the dock and Floor mode.
+    @State private var draft = SetDraft()
+    @State private var floor = FloorMode()
+    @AppStorage(FloorMode.automaticKey) private var floorAutomatic = true
     @State private var showFeedback = false
     @State private var swapping: SwapTarget?
     @State private var editing: SetTarget?
     @State private var confirmDiscard = false
     @State private var about: ExerciseAbout?
+    /// Missed on the floor with the reps at the target: how many there were.
+    @State private var floorMiss: SetTarget?
+    @State private var askFloorMiss = false
 
     var body: some View {
         NavigationStack {
@@ -24,9 +33,10 @@ struct SessionScreen: View {
                             live: live, swap: { swapping = SwapTarget(index: $0) }, edit: { editing = SetTarget(item: $0, set: $1) },
                             finish: { showFeedback = true })
                     } else {
-                        column(live)
+                        phone(live)
                     }
                 }
+                .environment(draft)
                 .environment(\.sessionScale, sizeClass.isWide ? .large : .compact)
                 .navigationTitle(live.plan.title)
                 .inlineTitle()
@@ -62,6 +72,70 @@ struct SessionScreen: View {
         }
     }
 
+    /// The phone's session, and Floor mode over it while the phone lies on the floor or a bench: the
+    /// set or the rest filling the screen, which is the button.
+    private func phone(_ live: LiveSession) -> some View {
+        let shown = floorShown
+        return ZStack {
+            column(live)
+                .accessibilityHidden(shown != nil)
+            if let shown {
+                FloorScreen(content: shown, floor: floor) { target in
+                    floorMiss = target
+                    askFloorMiss = true
+                }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .confirmationDialog("How many did you get?", isPresented: $askFloorMiss, titleVisibility: .visible, presenting: floorMiss) { target in
+            // The dock's question, the same answers.
+            let reps = targetReps(target)
+            ForEach((max(0, reps - 6)..<reps).reversed(), id: \.self) { n in
+                Button("\(n) reps") {
+                    draft.reps = n
+                    draft.log(item: target.item, set: target.set, rating: .red, model: model)
+                    floor.logged()
+                }
+            }
+        } message: { _ in
+            Text("Missed reps are just data. The next set adjusts.")
+        }
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.35), value: shown != nil)
+        .hidesSystemChrome(shown != nil)
+        // A set logged, or a rest skipped or changed, felt through the glass with the eyes elsewhere.
+        .sensoryFeedback(.success, trigger: floor.logs)
+        .sensoryFeedback(.impact(weight: .medium), trigger: floor.nudges)
+        .onAppear { floor.start(automatic: floorAutomatic) }
+        .onDisappear { floor.stop() }
+        .onChange(of: floorAutomatic) { _, automatic in floor.setAutomatic(automatic) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { floor.start(automatic: floorAutomatic) } else { floor.stop() }
+        }
+        // Using the normal screen (changing the weight, logging, a sheet up) isn't setting it down.
+        .onChange(of: live.updatedAt) { floor.touched() }
+        .onChange(of: draft.load) { floor.touched() }
+        .onChange(of: draft.reps) { floor.touched() }
+        .onChange(of: presenting) { floor.touched() }
+    }
+
+    /// The reps a set asked for, or none when it's no longer there.
+    private func targetReps(_ target: SetTarget) -> Int {
+        guard let live = model.live, live.items.indices.contains(target.item), live.items[target.item].sets.indices.contains(target.set)
+        else { return 0 }
+        return live.items[target.item].sets[target.set].prescription.targetReps
+    }
+
+    /// What Floor mode shows, while the phone is set down and nothing is open over the session.
+    private var floorShown: FloorContent? {
+        guard floor.isOn, !presenting else { return nil }
+        return model.floorContent
+    }
+
+    /// A sheet or a question over the session.
+    private var presenting: Bool {
+        showFeedback || swapping != nil || editing != nil || about != nil || confirmDiscard
+    }
+
     /// The phone's layout: the exercise in front of you under the session's bar, and the dock at the
     /// bottom that logs its set or runs the rest.
     private func column(_ live: LiveSession) -> some View {
@@ -92,6 +166,9 @@ struct SessionScreen: View {
                     .readableWidth()
                 }
                 .scrollIndicators(.hidden)
+                .onScrollPhaseChange { _, phase in
+                    if phase != .idle { floor.touched() }
+                }
                 .onChange(of: live.current?.item) { _, _ in
                     withAnimation { proxy.scrollTo("focus", anchor: .top) }
                 }
@@ -127,6 +204,11 @@ struct SessionScreen: View {
             }
             Button("Skip exercise", systemImage: "forward") { model.update { $0.skip(item: index) } }
             Divider()
+        }
+        // On now, whatever the angle (propped on a bag, leaning on a bottle); picked up, it's off.
+        if Platform.hasFloorMode, model.floorContent != nil {
+            Button("Floor mode", systemImage: "tray.and.arrow.down") { floor.turnOn() }
+                .accessibilityIdentifier("session.floorMode")
         }
         Button("Finish now", systemImage: "flag.checkered") { showFeedback = true }
             .accessibilityIdentifier("session.finishNow")
@@ -638,23 +720,11 @@ struct RestPanel: View {
 
     /// The set after the rest: which, its target, and the plates.
     private var nextSet: AnyView? {
-        guard let live = model.live, let position = live.current else { return nil }
-        let item = live.items[position.item]
-        guard item.sets.indices.contains(position.set), item.plan.conditioning == nil else { return nil }
-        let set = item.sets[position.set]
-        let exercise = model.catalog.resolve(item.exerciseID)
-        let increments = model.gymForToday.increments(for: exercise.equipment)
-        let work = item.sets.filter { $0.prescription.kind != .warmup }
-        let number = item.sets[...position.set].filter { $0.prescription.kind != .warmup }.count
-        var label =
-            set.prescription.kind == .warmup
-            ? "Next · warm-up"
-            : "Next · set \(number) of \(work.count)"
-        if set.prescription.kind == .repOut { label += " · as many as you can" }
-        if live.items[position.item].id != rest.itemID { label += " · \(exercise.name)" }
-        let plates =
-            exercise.equipment.platePaired ? Format.plates(increments.platesPerSide(set.prescription.loadKg ?? 0), unit: increments.gym.unit) : nil
-        let target = Format.set(set.prescription, exercise: exercise, unit: model.gym.unit) + (set.prescription.kind == .repOut ? "+" : "")
+        guard let next = model.nextSet(after: rest) else { return nil }
+        var label = next.label
+        if next.repOut { label += " · as many as you can" }
+        if let exercise = next.exercise { label += " · \(exercise)" }
+        let plates = Format.plates(next.plates, unit: next.plateUnit)
         // The plates under the set at the largest text sizes, where side by side cuts both short.
         let large = dynamicType.isAccessibilitySize
         let layout = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
@@ -662,12 +732,48 @@ struct RestPanel: View {
             layout {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label).font(.caption).foregroundStyle(Ink.text2).lineLimit(large ? 2 : 1)
-                    Text(target).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
+                    Text(next.target).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
                 }
                 if !large { Spacer() }
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             .accessibilityElement(children: .combine))
+    }
+}
+
+/// The set after a rest, as the rest's dock and Floor mode name it.
+struct NextSet {
+    /// "Next · set 3 of 3", "Next · warm-up".
+    var label: String
+    /// The exercise's name, when the set is another exercise's: a superset's partner, the next exercise.
+    var exercise: String?
+    var repOut: Bool
+    var stopAtFormBreakdown: Bool
+    /// "70 kg × 7", with a "+" for a rep-out.
+    var target: String
+    /// A side's plates, for a barbell.
+    var plates: [Double]?
+    var plateUnit: WeightUnit
+}
+
+extension AppModel {
+    /// The set that comes after a rest, or nil when there's none or it's a conditioning piece.
+    func nextSet(after rest: RestState) -> NextSet? {
+        guard let live, let position = live.current else { return nil }
+        let item = live.items[position.item]
+        guard item.sets.indices.contains(position.set), item.plan.conditioning == nil else { return nil }
+        let set = item.sets[position.set]
+        let exercise = catalog.resolve(item.exerciseID)
+        let increments = gymForToday.increments(for: exercise.equipment)
+        let work = item.sets.filter { $0.prescription.kind != .warmup }
+        let number = item.sets[...position.set].filter { $0.prescription.kind != .warmup }.count
+        return NextSet(
+            label: set.prescription.kind == .warmup ? "Next · warm-up" : "Next · set \(number) of \(work.count)",
+            exercise: item.id != rest.itemID ? exercise.name : nil, repOut: set.prescription.kind == .repOut,
+            stopAtFormBreakdown: set.prescription.stopAtFormBreakdown,
+            target: Format.set(set.prescription, exercise: exercise, unit: gym.unit) + (set.prescription.kind == .repOut ? "+" : ""),
+            plates: exercise.equipment.platePaired ? increments.platesPerSide(set.prescription.loadKg ?? 0) : nil,
+            plateUnit: increments.gym.unit)
     }
 }
 

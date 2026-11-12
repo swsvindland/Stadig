@@ -11,11 +11,9 @@ struct SetLogger: View {
     let itemIndex: Int
     let setIndex: Int
 
-    @State private var load: Double = 0
-    @State private var reps: Int = 0
+    /// The load, reps and a timed set's clock, shared with Floor mode.
+    @Environment(SetDraft.self) private var draft
     @State private var askMissed = false
-    @State private var timerStart: Date?
-    @State private var prepared = false
 
     var body: some View {
         if let live = model.live, live.items.indices.contains(itemIndex), live.items[itemIndex].sets.indices.contains(setIndex) {
@@ -35,7 +33,7 @@ struct SetLogger: View {
                 }
             }
             .sessionDock()
-            .onAppear { prepare(set: set, exercise: exercise, item: item) }
+            .onAppear { draft.prepare(item: itemIndex, set: setIndex, model: model) }
         }
     }
 
@@ -62,7 +60,8 @@ struct SetLogger: View {
         let last = set.prescription.kind == .warmup ? nil : model.lastTime(exercise, setNumber: position)
         let increments = model.gymForToday.increments(for: exercise.equipment)
         let plates =
-            exercise.equipment.platePaired && item.plan.isStrength ? Format.plates(increments.platesPerSide(load), unit: increments.gym.unit) : nil
+            exercise.equipment.platePaired && item.plan.isStrength
+            ? Format.plates(increments.platesPerSide(draft.load), unit: increments.gym.unit) : nil
         return VStack(alignment: .leading, spacing: 4) {
             if scale.isLarge {
                 Text(exercise.name).font(scale.titleFont).lineLimit(1)
@@ -84,19 +83,20 @@ struct SetLogger: View {
     }
 
     private func strengthControls(set: LiveSet, exercise: Exercise) -> some View {
+        @Bindable var draft = draft
         let increments = model.gymForToday.increments(for: exercise.equipment)
         let hasLoad = exercise.loadBasis != .none
         return VStack(spacing: 12) {
             HStack(spacing: 8) {
                 if hasLoad {
                     LoadControl(
-                        title: loadTitle(exercise), load: $load, increments: increments, basis: exercise.loadBasis,
+                        title: loadTitle(exercise), load: $draft.load, increments: increments, basis: exercise.loadBasis,
                         identifier: "logger.load", keys: (.downArrow, .upArrow), showsTitle: scale.isLarge || exercise.loadBasis != .external)
                 }
                 Stepperish(
-                    title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(reps)",
-                    minus: { reps = max(0, reps - 1) }, plus: { reps += 1 },
-                    entry: .init(unit: "reps", text: "\(reps)") { text in if let n = Stepperish.typedReps(text) { reps = n } },
+                    title: set.prescription.kind == .repOut ? "Reps done" : "Reps", value: "\(draft.reps)",
+                    minus: { draft.reps = max(0, draft.reps - 1) }, plus: { draft.reps += 1 },
+                    entry: .init(unit: "reps", text: "\(draft.reps)") { text in if let n = Stepperish.typedReps(text) { draft.reps = n } },
                     identifier: "logger.reps", keys: ("-", "="), showsTitle: scale.isLarge || set.prescription.kind == .repOut
                 )
                 .frame(maxWidth: hasLoad ? (scale.isLarge ? 260 : 132) : .infinity)
@@ -115,7 +115,7 @@ struct SetLogger: View {
                 Button {
                     log(rating: nil)
                 } label: {
-                    Text("Log \(reps) reps").font(.headline).frame(maxWidth: .infinity)
+                    Text("Log \(draft.reps) reps").font(.headline).frame(maxWidth: .infinity)
                 }
                 .primaryAction().controlSize(.large)
                 .keyboardShortcut(scale.shortcut(.return))
@@ -129,12 +129,12 @@ struct SetLogger: View {
                         .multilineTextAlignment(.center)
                 }
                 RatingButtons { rating in
-                    if rating == .red, reps >= set.prescription.targetReps { askMissed = true } else { log(rating: rating) }
+                    if rating == .red, draft.reps >= set.prescription.targetReps { askMissed = true } else { log(rating: rating) }
                 }
                 .confirmationDialog("How many did you get?", isPresented: $askMissed, titleVisibility: .visible) {
                     ForEach((max(0, set.prescription.targetReps - 6)..<set.prescription.targetReps).reversed(), id: \.self) { n in
                         Button("\(n) reps") {
-                            reps = n
+                            draft.reps = n
                             log(rating: .red)
                         }
                     }
@@ -161,14 +161,14 @@ struct SetLogger: View {
                 HeartRateLine(aim: item.plan.block == .warmup ? 1...2 : nil)
             }
             if let seconds = set.prescription.seconds {
-                if let timerStart {
+                if let timerStart = draft.timerStart {
                     let end = timerStart.addingTimeInterval(TimeInterval(seconds))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
                         .font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
                         .frame(maxWidth: .infinity)
                 } else {
                     Button {
-                        timerStart = Date()
+                        draft.timerStart = Date()
                     } label: {
                         Label("Start \(Format.duration(seconds))", systemImage: "timer").frame(maxWidth: .infinity)
                     }
@@ -179,13 +179,7 @@ struct SetLogger: View {
                 Text("\(set.prescription.targetReps) reps\(exercise.unilateral ? " each side" : "")").font(.title3.monospacedDigit())
             }
             Button {
-                let elapsed = timerStart.map { Int(Date().timeIntervalSince($0)) }
-                model.update { live in
-                    live.log(
-                        item: itemIndex, set: setIndex, reps: set.prescription.targetReps, loadKg: nil, rating: nil,
-                        seconds: elapsed ?? set.prescription.seconds, environment: environment, now: Date())
-                }
-                timerStart = nil
+                draft.logTimed(item: itemIndex, set: setIndex, model: model)
             } label: {
                 Text("Done").font(.headline).frame(maxWidth: .infinity)
             }
@@ -200,13 +194,13 @@ struct SetLogger: View {
         VStack(spacing: 10) {
             Text(plan.summary).font(.headline.monospacedDigit())
             HeartRateLine(aim: plan.zones)
-            if let timerStart {
+            if let timerStart = draft.timerStart {
                 Text(timerStart, style: .timer).font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
             }
             HStack {
-                if timerStart == nil {
+                if draft.timerStart == nil {
                     Button {
-                        timerStart = Date()
+                        draft.timerStart = Date()
                     } label: {
                         Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
                     }
@@ -215,13 +209,13 @@ struct SetLogger: View {
                 }
                 Button {
                     let now = Date()
-                    let minutes = timerStart.map { max(1, Int(now.timeIntervalSince($0) / 60)) } ?? plan.minutes
-                    let start = timerStart ?? now.addingTimeInterval(-Double(minutes * 60))
+                    let minutes = draft.timerStart.map { max(1, Int(now.timeIntervalSince($0) / 60)) } ?? plan.minutes
+                    let start = draft.timerStart ?? now.addingTimeInterval(-Double(minutes * 60))
                     // With the Watch measuring: the average and the minutes in each zone.
                     let average = model.live?.averageHeartRate(from: start, to: now)
                     let zones = model.live?.zoneMinutes(from: start, to: now, zones: model.heartRateZones) ?? [:]
                     model.update { $0.logConditioning(item: itemIndex, minutes: minutes, averageHeartRate: average, zoneMinutes: zones) }
-                    timerStart = nil
+                    draft.timerStart = nil
                 } label: {
                     Text("Done").font(.headline).frame(maxWidth: .infinity)
                 }
@@ -240,32 +234,8 @@ struct SetLogger: View {
 
     // MARK: Logic
 
-    private var environment: SessionEnvironment {
-        model.environment
-            ?? SessionEnvironment(
-                catalog: model.catalog, gym: model.gym, trust: TrustState(prior: 0.5),
-                phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: nil, history: [:],
-                enduranceScore: nil, heartRateGuidedRest: false)
-    }
-
-    /// Fills load and reps from the prescription, or a sensible starting guess when the person
-    /// is picking a weight.
-    private func prepare(set: LiveSet, exercise: Exercise, item: LiveItem) {
-        guard !prepared else { return }
-        prepared = true
-        reps = set.prescription.targetReps
-        load = model.startingLoad(for: set, at: setIndex, of: item, exercise: exercise)
-    }
-
     private func log(rating: SetRating?) {
-        let exercise = model.catalog.resolve(model.live?.items[itemIndex].exerciseID ?? "")
-        let peak: Double? = nil
-        model.update { live in
-            live.log(
-                item: itemIndex, set: setIndex, reps: reps, loadKg: exercise.loadBasis == .none ? 0 : load, rating: rating,
-                heartRatePeak: peak, environment: environment, now: Date())
-        }
-        AccessibilityNotification.Announcement(model.live?.message ?? "Logged").post()
+        draft.log(item: itemIndex, set: setIndex, rating: rating, model: model)
     }
 }
 
