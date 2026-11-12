@@ -136,6 +136,45 @@ struct EstimateInPlaceTests {
         #expect(ThreadEstimates.unconfirmed(model.estimates).isEmpty, "nothing left to say Looks right about")
     }
 
+    @Test func vagueWordsAreAskedAboutBeforeAnythingIsLogged() async throws {
+        let setup = try setup()
+        let model = setup.model
+        model.estimate(["whatever was in the fridge"], at: Date())
+        setup.gate.open()
+        await settle(model)
+
+        // What the model made of it is shown, not logged.
+        let row = try #require(model.estimates.first { $0.words == "whatever was in the fridge" })
+        let proposal = try #require(row.proposal)
+        #expect(proposal.count == 1)
+        #expect(model.entries(on: model.today).isEmpty)
+        #expect(row.isRow)
+
+        model.acceptEstimate(row.id)
+
+        // "Log" logs it as shown, asked and answered: not an estimate any more, with the usual Undo.
+        let logged = model.entries(on: model.today)
+        #expect(logged.count == 1)
+        #expect(logged.allSatisfy { !$0.isEstimate && !$0.amountLabel.hasPrefix("≈") })
+        #expect(logged.map(\.nutrients) == proposal.map(\.nutrients))
+        #expect(Set(model.toast?.undo ?? []) == Set(logged.map(\.id)))
+        #expect(!model.estimates.contains { $0.id == row.id })
+    }
+
+    @Test func aVagueGuessPutAwayLogsNothing() async throws {
+        let setup = try setup()
+        let model = setup.model
+        model.estimate(["a big dinner"], at: Date())
+        setup.gate.open()
+        await settle(model)
+        let row = try #require(model.estimates.first { $0.proposal != nil })
+
+        model.dismissEstimate(row.id)
+
+        #expect(model.entries(on: model.today).isEmpty)
+        #expect(!model.estimates.contains { $0.id == row.id })
+    }
+
     @Test func aFailedReadSaysSoAndOpensTheLogger() async throws {
         let setup = try setup(throwing: .busy)
         let model = setup.model

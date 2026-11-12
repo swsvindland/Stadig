@@ -67,4 +67,38 @@ struct ThreadEstimateTests {
         // A label without the mark is left as it is.
         #expect(entry("Rice", at: 15, estimate: false).confirmed(at: now).amountLabel == "1 bowl · 450 g")
     }
+
+    @Test(arguments: [
+        "whatever was in the fridge", "something sweet", "stuff from the freezer", "a sandwich and something else", "random bits",
+        "a big dinner", "lunch out", "fast food", "leftovers", "dinner at a restaurant", "snack at work", "takeout",
+        "the usual lunch",
+    ])
+    func wordsThatNameNoFoodAreVague(_ words: String) {
+        #expect(VagueWords.isVague(words), "\(words)")
+    }
+
+    @Test(arguments: [
+        "burrito bowl", "leftover pizza", "chicken dinner", "pizza for dinner", "a slice of birthday cake", "pad thai from work",
+        "fast food burger", "stuffed peppers", "dinner rolls", "",
+    ])
+    func wordsThatNameAFoodAreNot(_ words: String) {
+        #expect(!VagueWords.isVague(words), "\(words)")
+    }
+
+    @Test func aVagueEstimateAsksFirstAndStaysARowUntilLogged() {
+        let rice = entry("Rice", at: 19)
+        let vague = ThreadEstimate(words: "whatever was in the fridge", asked: day.at(hour: 19, minute: 5))
+        #expect(vague.asksFirst)
+        #expect(!ThreadEstimate(words: "burrito bowl", asked: day.at(hour: 19, minute: 5)).asksFirst)
+
+        var proposed = vague
+        proposed.state = .proposed([rice])
+        // Not logged: a row of its own, nothing waiting for "Looks right", and kept until the day ends.
+        #expect(proposed.isRow)
+        #expect(proposed.proposal == [rice])
+        #expect(!proposed.logs(any: [rice]))
+        #expect(ThreadEstimates.unconfirmed([proposed]).isEmpty)
+        #expect(ThreadEstimates.current([proposed], entries: [], today: day, calendar: calendar) == [proposed])
+        #expect(ThreadEstimates.current([proposed], entries: [], today: day.adding(days: 1), calendar: calendar).isEmpty)
+    }
 }

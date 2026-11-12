@@ -1090,11 +1090,16 @@ final class AppModel {
                     for: corrected(food), count: item.count, unit: unit, source: .description, confidence: item.confidence,
                     date: estimate.asked.addingTimeInterval(Double(offset) * 0.1))
             }
-            guard log(entries) else {
-                estimates[index].state = .failed("Couldn't save it. Try again from the logger.")
-                return
+            if estimate.asksFirst {
+                // Words that name no food: what the model made of them is shown, not logged.
+                estimates[index].state = entries.isEmpty ? .failed("The model couldn't name a food in it. Try naming each one.") : .proposed(entries)
+            } else {
+                guard log(entries) else {
+                    estimates[index].state = .failed("Couldn't save it. Try again from the logger.")
+                    return
+                }
+                estimates[index].state = .logged(entries.map(\.id))
             }
-            estimates[index].state = .logged(entries.map(\.id))
             // What the catalog has nothing for stays on the thread, a tap from the logger.
             if !missed.isEmpty {
                 estimates.append(
@@ -1113,6 +1118,15 @@ final class AppModel {
         let confirmed = foodLog.all.filter { waiting.contains($0.id) }.map { $0.confirmed(at: now) }
         estimates = ThreadEstimates.confirming(waiting, in: estimates)
         update(confirmed)
+    }
+
+    /// "Log" on what the model made of vague words: its foods logged as they were shown, at the time
+    /// Return was pressed, with the usual Undo. Asked and answered, they aren't estimates any more.
+    func acceptEstimate(_ id: UUID) {
+        guard let index = estimates.firstIndex(where: { $0.id == id }), let entries = estimates[index].proposal else { return }
+        let now = Date()
+        guard log(entries.map { $0.confirmed(at: now) }) else { return }
+        estimates.removeAll { $0.id == id }
     }
 
     /// An estimate's row put away: its read stopped, if it's still working.
