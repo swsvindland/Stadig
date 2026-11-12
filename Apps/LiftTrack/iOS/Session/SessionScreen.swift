@@ -15,6 +15,11 @@ struct SessionScreen: View {
     @State private var draft = SetDraft()
     @State private var floor = FloorMode()
     @AppStorage(FloorMode.automaticKey) private var floorAutomatic = true
+    /// The iPad's scoreboard in landscape, or the two panes: chosen on this device, not synced, since
+    /// it's about where this iPad stands.
+    @AppStorage(Self.scoreboardKey) private var scoreboardOn = true
+    /// Whether the session's window is wider than it's tall, where the iPad shows the scoreboard.
+    @State private var landscape = false
     @State private var showFeedback = false
     @State private var swapping: SwapTarget?
     @State private var editing: SetTarget?
@@ -28,7 +33,9 @@ struct SessionScreen: View {
         NavigationStack {
             if let live = model.live {
                 Group {
-                    if sizeClass.isWide {
+                    if showsScoreboard {
+                        Scoreboard(live: live, finish: { showFeedback = true })
+                    } else if sizeClass.isWide {
                         SessionWorkspace(
                             live: live, swap: { swapping = SwapTarget(index: $0) }, edit: { editing = SetTarget(item: $0, set: $1) },
                             finish: { showFeedback = true })
@@ -70,7 +77,37 @@ struct SessionScreen: View {
                     .toolbar { Button("Close") { model.showSession = false }.accessibilityIdentifier("session.close") }
             }
         }
+        // Measured round the whole screen, which stays put while the session inside it changes
+        // between the board and the panes (measured inside, each change measured again from nothing
+        // and flipped it back), and read on appearing as well as on turning: the iPad may already
+        // lie on its side when the session opens.
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { measure(proxy.size) }
+                    .onChange(of: proxy.size) { _, size in measure(size) }
+            }
+        }
     }
+
+    private func measure(_ size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        landscape = size.width > size.height
+    }
+
+    static let scoreboardKey = "session.scoreboard"
+
+    /// Whether the scoreboard can show here: an iPad, a wide window, landscape (or `-scoreboard`,
+    /// which shows it whichever way the iPad is turned).
+    private var scoreboardFits: Bool {
+        guard Platform.hasScoreboard, sizeClass.isWide else { return false }
+        #if DEBUG
+        if LaunchOptions.current.has("-scoreboard") { return true }
+        #endif
+        return landscape
+    }
+
+    private var showsScoreboard: Bool { scoreboardFits && scoreboardOn }
 
     /// The phone's session, and Floor mode over it while the phone lies on the floor or a bench: the
     /// set or the rest filling the screen, which is the button.
@@ -242,6 +279,17 @@ struct SessionScreen: View {
                             .accessibilityLabel("Heart rate \(Int(bpm))")
                     }
                 }
+            }
+        }
+        if scoreboardFits {
+            ToolbarItem(placement: .barTrailing) {
+                // Back to the two panes (to reorder, swap or correct a set), and to the board again.
+                Toggle(isOn: $scoreboardOn) {
+                    Label("Scoreboard", systemImage: "sportscourt")
+                }
+                .toggleStyle(.button)
+                .help("Show the session as a scoreboard, to read from across the room")
+                .accessibilityIdentifier("session.scoreboardToggle")
             }
         }
         ToolbarItem(placement: .barTrailing) {
@@ -791,6 +839,8 @@ struct NextSet {
     /// A side's plates, for a barbell.
     var plates: [Double]?
     var plateUnit: WeightUnit
+    /// The empty bar the plates go on, in the gym's unit.
+    var plateBar: Double?
 }
 
 extension AppModel {
@@ -810,7 +860,8 @@ extension AppModel {
             stopAtFormBreakdown: set.prescription.stopAtFormBreakdown,
             target: Format.set(set.prescription, exercise: exercise, unit: gym.unit) + (set.prescription.kind == .repOut ? "+" : ""),
             plates: exercise.equipment.platePaired ? increments.platesPerSide(set.prescription.loadKg ?? 0) : nil,
-            plateUnit: increments.gym.unit)
+            plateUnit: increments.gym.unit,
+            plateBar: exercise.equipment.platePaired ? increments.gym.unit.fromKilograms(increments.barKg) : nil)
     }
 }
 

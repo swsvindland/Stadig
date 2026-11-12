@@ -116,8 +116,11 @@ public struct SessionPlan: Codable, Hashable, Sendable, Identifiable {
     public var estimatedMinutes: Int {
         let seconds = items.filter { $0.block != .recovery }.map { item -> Int in
             if let c = item.conditioning { return c.minutes * 60 }
-            let work = item.seconds ?? (item.repRange.middle * 3 + 15)
-            return item.sets.map { $0.kind == .warmup ? 60 : work + item.rest.target }.reduce(0, +) + (item.isStrength ? 45 : 0)
+            let sets = item.sets.map { set in
+                let (work, rest) = item.estimatedSeconds(of: set)
+                return work + rest
+            }
+            return sets.reduce(0, +) + (item.isStrength ? PlannedItem.setupSeconds : 0)
         }.reduce(0, +)
         return max(5, Int((Double(seconds) / 60).rounded()))
     }

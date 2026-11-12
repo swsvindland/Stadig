@@ -60,6 +60,10 @@ enum Platform {
     /// desk, and Vision Pro is worn.
     static var hasFloorMode: Bool { isPhone }
 
+    /// The session's scoreboard: an iPad propped against the wall, read from across the gym. Only the
+    /// iPad: the Mac's session window sits on a desk, and Vision Pro puts the session where you look.
+    static var hasScoreboard: Bool { isPad }
+
     /// Keeps the screen from dimming and locking while it's read from a metre or two away, or lets
     /// it again. Nothing else in the app holds it awake, so letting go restores the system's default.
     @MainActor

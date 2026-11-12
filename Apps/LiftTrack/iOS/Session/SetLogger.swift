@@ -90,7 +90,7 @@ struct SetLogger: View {
             HStack(spacing: 8) {
                 if hasLoad {
                     LoadControl(
-                        title: loadTitle(exercise), load: $draft.load, increments: increments, basis: exercise.loadBasis,
+                        title: Self.loadTitle(exercise), load: $draft.load, increments: increments, basis: exercise.loadBasis,
                         identifier: "logger.load", keys: (.downArrow, .upArrow), showsTitle: scale.isLarge || exercise.loadBasis != .external)
                 }
                 Stepperish(
@@ -145,7 +145,7 @@ struct SetLogger: View {
         }
     }
 
-    func loadTitle(_ exercise: Exercise) -> String {
+    static func loadTitle(_ exercise: Exercise) -> String {
         switch exercise.loadBasis {
         case .bodyweightPlus: "Added"
         case .assisted: "Assistance"
