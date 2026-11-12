@@ -10,6 +10,7 @@ import SystemCore
 /// is below the thread.
 struct TodayLogger: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @State private var composer = TodayComposer()
     @FocusState private var typing: Bool
     @State private var editing: FoodEntry?
@@ -71,15 +72,33 @@ struct TodayLogger: View {
         }
         .task(id: composer.text) { await composer.search() }
         // The fresh meal's Undo is in its header here, for a while longer than a toast's.
-        .task(id: model.toast?.id) {
-            guard let toast = model.toast, !fresh.isEmpty else { return }
+        // Not while a sheet or the logger is over it: its seconds start again when it's back.
+        .task(id: ToastWait(toast: model.toast?.id, covered: covered)) {
+            guard let toast = model.toast, !fresh.isEmpty, !covered else { return }
             await model.expire(toast, after: .seconds(6))
         }
+        // "Goes with" lasts while a meal's open and "What fits tonight" starts at five: the clock
+        // moves them, as well as the log.
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                composer.refreshTiles()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { composer.refreshTiles() } }
         .sheet(item: $editing) { entry in EntryEditor(entry: entry) }
         .notesWork(editing != nil)
         // Typing closes a food opened in place, which saves it.
         .onChange(of: typing) { _, typing in if typing { opened = nil } }
         .animation(.snappy, value: typing)
+    }
+
+    /// The logger or a sheet is over Today, where a toast's seconds would run out unseen.
+    var covered: Bool { model.logger != nil || model.toastCovered }
+
+    struct ToastWait: Equatable {
+        var toast: UUID?
+        var covered: Bool
     }
 
     /// What was just logged, while its Undo lasts: only food on today's thread.
@@ -160,9 +179,9 @@ struct TodayLogger: View {
                     if opened == entry.id {
                         InlineAmount(
                             entry: entry, close: { withAnimation(.snappy) { opened = nil } },
-                            more: {
+                            more: { current in
                                 opened = nil
-                                editing = entry
+                                editing = current
                             }
                         )
                         .listRowBackground(Color.clear)
@@ -222,7 +241,7 @@ struct TodayLogger: View {
         let showsMatches = !composer.text.trimmingCharacters(in: .whitespaces).isEmpty && !composer.matches.isEmpty
         let showsTiles = !composer.tiles.isEmpty && (composer.text.trimmingCharacters(in: .whitespaces).isEmpty || active?.kind == .typing)
         return VStack(alignment: .leading, spacing: 8) {
-            if model.toast != nil, freshIDs.isEmpty { ToastSlot().padding(.horizontal, -16) }
+            if model.toast != nil, freshIDs.isEmpty, !covered { ToastSlot().padding(.horizontal, -16) }
             if showsMatches {
                 ComposerMatches(composer: composer)
             } else if showsTiles, !composer.fits.isEmpty, composer.earlier.isEmpty {
@@ -666,6 +685,7 @@ private struct ComposerChips: View {
 /// microphone to say it.
 private struct ComposerField: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @Bindable var composer: TodayComposer
     var typing: FocusState<Bool>.Binding
 

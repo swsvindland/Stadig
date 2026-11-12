@@ -90,8 +90,9 @@ final class TodayComposer {
         guard !Task.isCancelled else { return }
         for query in queries {
             let found = await Self.find(query, catalog: model.catalog, personal: personal)
-            guard !Task.isCancelled else { return }
+            // Kept even when the next key cancelled this: the next search for it is free.
             answers[query] = model.corrected(found)
+            guard !Task.isCancelled else { return }
         }
         reread()
     }
@@ -150,19 +151,29 @@ final class TodayComposer {
     /// logger, to be described or searched there.
     func submit() async {
         guard let model, !submitting else { return }
-        let typed = AddFoodText.loggable(AddFoodText.parse(text))
+        let submitted = text
+        let typed = AddFoodText.loggable(AddFoodText.parse(submitted))
         guard !typed.isEmpty else { return }
         submitting = true
         defer { submitting = false }
         var entries: [FoodEntry] = []
         var unmatched: [String] = []
+        var unfinished: [String] = []
         for part in typed {
             switch part.kind {
             case .typing: continue
             case .quickAdd(let kcal): entries.append(Self.quickAdd(part, kcal: kcal, model: model))
             case .food:
-                // "2 eggs, t": a letter on its own is a food still being typed, not one to find.
-                guard Self.searchable(part) else { continue }
+                // "2 eggs, t": a letter on its own is a food still being typed, unless it's the end
+                // of one of the person's own ("special k"). Otherwise it stays in the field.
+                guard Self.searchable(part) else {
+                    if let own = foods(for: part).first {
+                        entries.append(Self.entry(part, food: own.food, model: model))
+                    } else {
+                        unfinished.append(part.text)
+                    }
+                    continue
+                }
                 var found = answers[part.query]
                 if found == nil {
                     let answer = model.corrected(await Self.find(part.query, catalog: model.catalog, personal: personal))
@@ -176,12 +187,13 @@ final class TodayComposer {
                 }
             }
         }
-        log(entries, unmatched: unmatched, model: model)
+        log(entries, unmatched: unmatched, model: model, from: submitted, keeping: unfinished.joined(separator: ", "))
     }
 
-    /// A match tapped: the parts before it as they'd be logged, and this one.
+    /// A match tapped: the parts before it as they'd be logged, and this one. Not while Return is
+    /// finding foods: it's logging these already.
     func log(_ candidate: Candidate) {
-        guard let model else { return }
+        guard let model, !submitting else { return }
         let before = earlier.compactMap(\.entry)
         switch candidate.kind {
         case .food, .quickAdd: log(before + [candidate.entry], unmatched: earlier.compactMap(\.unmatched), model: model)
@@ -191,11 +203,13 @@ final class TodayComposer {
 
     /// A tile: the parts typed before it, and its food at its usual amount, now.
     func log(_ tile: LogAgainItem) {
-        guard let model else { return }
+        guard let model, !submitting else { return }
         log(earlier.compactMap(\.entry) + [LogAgain.copy(tile.template, to: Date())], unmatched: earlier.compactMap(\.unmatched), model: model)
     }
 
-    private func log(_ entries: [FoodEntry], unmatched: [String], model: AppModel) {
+    /// Logs `entries` now and hands `unmatched` words to the logger. The field clears for the next
+    /// food (keeping what wasn't logged), unless the person typed on while the foods were found.
+    private func log(_ entries: [FoodEntry], unmatched: [String], model: AppModel, from submitted: String? = nil, keeping: String = "") {
         // Today is always today, whichever day the Log tab was left on. A meal's foods go in a
         // second apart, so they keep the order they were typed in.
         let now = Date()
@@ -205,7 +219,7 @@ final class TodayComposer {
             entry.day = Day(entry.date)
             return entry
         }
-        text = ""
+        if text == (submitted ?? text) { text = keeping }
         if !timed.isEmpty { model.log(timed) }
         if !unmatched.isEmpty { model.openLogger(with: unmatched.joined(separator: ", ")) }
     }
@@ -238,22 +252,26 @@ final class TodayComposer {
         case .times(let factor):
             return (usual.unit, usual.count * factor)
         case .basis(let grams):
-            if let basis = unit("g") ?? unit("ml") { return (basis, grams) }
-            return times
+            // Grams or millilitres, whichever the food is counted in. A food counted only in
+            // servings can't take a weight: it's the usual amount, never 300 servings.
+            let own = food.basis == .g || food.basis == .ml ? unit(food.basis.rawValue) : nil
+            if let basis = own ?? unit("g") ?? unit("ml") { return (basis, grams) }
+            return usual
         case .measure(let id, let count):
-            if let measure = unit(id) { return (measure, count) }
+            // A drink's ounces are fluid ounces.
+            if let measure = (id == "oz" && food.basis == .ml ? unit("floz") : nil) ?? unit(id) { return (measure, count) }
             // Ounces and pounds are grams by another name, and a spoon or a cup is millilitres.
             let grams = ["oz": 28.3495, "lb": 453.592][id]
-            let millilitres = ["cup": 240.0, "tbsp": 15, "tsp": 5][id]
-            if let grams, let g = unit("g") { return (g, count * grams) }
+            let millilitres = ["oz": 29.5735, "cup": 240.0, "tbsp": 15, "tsp": 5][id]
+            if let grams, food.basis != .ml, let g = unit("g") { return (g, count * grams) }
             if let millilitres, let ml = unit("ml") ?? unit("g") { return (ml, count * millilitres) }
-            return times
+            return count <= AddFoodAmount.mostPieces ? times : usual
         case .pieces(let word, let count):
             let portions = units.filter { $0.kind == .portion }
             if let word, let named = portions.first(where: { $0.label.lowercased().contains(word) }) { return (named, count) }
             if counted { return (usual.unit, count) }
             if let piece = portions.first ?? unit("serving") { return (piece, count) }
-            return times
+            return count <= AddFoodAmount.mostPieces ? times : usual
         }
     }
 
@@ -306,7 +324,7 @@ final class TodayComposer {
 
     /// An option of "What fits tonight": its foods at their usual amounts, now.
     func log(_ option: WhatFits.Option) {
-        guard let model else { return }
+        guard let model, !submitting else { return }
         let now = Date()
         log(option.items.map { LogAgain.copy($0, to: now) }, unmatched: [], model: model)
     }

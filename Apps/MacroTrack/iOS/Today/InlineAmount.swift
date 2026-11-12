@@ -11,7 +11,8 @@ struct InlineAmount: View {
     @Environment(AppModel.self) private var model
     let entry: FoodEntry
     let close: () -> Void
-    let more: () -> Void
+    /// The full amount panel, with the entry as this left it.
+    let more: (FoodEntry) -> Void
     @State private var draft = AmountDraft()
     @State private var count = 0.0
     @State private var opened = false
@@ -65,7 +66,11 @@ struct InlineAmount: View {
                     }
                     Spacer(minLength: 4)
                     Menu {
-                        Button("Units, Time and Nutrients…", systemImage: "slider.horizontal.3", action: more)
+                        Button("Units, Time and Nutrients…", systemImage: "slider.horizontal.3") {
+                            // Saved first, so the panel opens on the new amount rather than writing the old back.
+                            save()
+                            more(model.current(entry) ?? entry)
+                        }
                         Button("Delete", systemImage: "trash", role: .destructive, action: delete)
                     } label: {
                         Image(systemName: "ellipsis").font(.body.weight(.semibold)).foregroundStyle(Ink.text2)
@@ -110,11 +115,14 @@ struct InlineAmount: View {
             Ruler(value: count / most, height: 18)
                 .frame(maxHeight: .infinity)
                 .contentShape(.rect)
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 0).onChanged { drag in
-                        let fraction = min(1, max(0, drag.location.x / max(1, geometry.size.width)))
-                        set(fraction * most, unit: unit)
-                    })
+                // Across sets the amount; up and down is the list's, to scroll.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 6).onChanged { drag in
+                        guard abs(drag.translation.width) > abs(drag.translation.height) else { return }
+                        set(min(1, max(0, drag.location.x / max(1, geometry.size.width))) * most, unit: unit)
+                    }
+                )
+                .onTapGesture { location in set(min(1, max(0, location.x / max(1, geometry.size.width))) * most, unit: unit) }
         }
         .frame(height: 34)
         .accessibilityElement()
