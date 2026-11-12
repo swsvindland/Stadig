@@ -15,7 +15,7 @@ extension View {
         .background(.regularMaterial, in: .rect(cornerRadius: 32, style: .continuous))
             #else
         .background(Ink.surface, in: .rect(cornerRadius: 32, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1))
+        .overlay { RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1) }
             #endif
     }
 }

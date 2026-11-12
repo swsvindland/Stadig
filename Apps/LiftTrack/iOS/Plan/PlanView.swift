@@ -320,11 +320,16 @@ struct WeekStrip: View {
                         Text(state(week, current: current, done: done, away: away)).font(.caption2).foregroundStyle(Ink.text3)
                     }
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    // Seven weeks across a small phone leave each about 38 points.
+                    .minimumScaleFactor(0.6)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(label(week, index: index))\(current ? ", this week" : "")\(away ? ", vacation" : "")")
+                // Its name and state, as drawn ("Week 3, Now"); a week away this week says both.
+                .accessibilityLabel(
+                    [label(week, index: index), state(week, current: current, done: done, away: away), away && current ? "this week" : ""]
+                        .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                        .joined(separator: ", "))
             }
         }
         .card(padding: 14)

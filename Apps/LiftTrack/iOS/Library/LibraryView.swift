@@ -233,6 +233,8 @@ struct ExerciseDetailView: View {
     /// Shows another exercise in the library: a substitute picked here.
     let select: (String) -> Void
     @State private var shown: ExerciseDetailContent?
+    /// The design's 30 points, growing with the text size like the words round it.
+    @ScaledMetric(relativeTo: .title) private var nameSize: CGFloat = 30
 
     /// What the screen's numbers depend on: a change to any of it works them out again.
     private struct Key: Hashable {
@@ -299,7 +301,7 @@ struct ExerciseDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(eyebrow).eyebrow(.accentColor)
             Text(exercise.name)
-                .font(.system(size: 30, weight: .bold)).tracking(-0.8)
+                .font(.system(size: nameSize, weight: .bold)).tracking(-0.8)
                 .foregroundStyle(Ink.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
