@@ -2,21 +2,36 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-// Liquid Glass belongs to the controls that float over content (the quick-log bar, the toast).
-// Content sits on quiet grouped surfaces so the glass has something to refract.
+// Liquid Glass belongs to the controls that float over content (the composer, the toast). Content
+// sits on Stadig's ink ground (paper in light mode, Stadig.swift), so the glass has something to
+// refract. Vision Pro keeps its window's glass as the page.
 
 extension ShapeStyle where Self == Color {
-    static var pageBackground: Color { .groupedBackground }
+    static var pageBackground: Color {
+        #if os(visionOS)
+        return .groupedBackground
+        #else
+        return Ink.ground
+        #endif
+    }
     /// On the Mac the window's and the controls' backgrounds are nearly the same, so a card is a
     /// faint fill over the page instead.
     static var cardBackground: Color {
         #if os(macOS)
         return Color(nsColor: .quaternarySystemFill)
-        #else
+        #elseif os(visionOS)
         return .secondaryGroupedBackground
+        #else
+        return Ink.surface
         #endif
     }
-    static var insetBackground: Color { .tertiaryGroupedBackground }
+    static var insetBackground: Color {
+        #if os(visionOS)
+        return .tertiaryGroupedBackground
+        #else
+        return Ink.raised
+        #endif
+    }
 }
 
 /// One colour per macro, used everywhere the macro appears.
@@ -26,9 +41,9 @@ enum Macro: CaseIterable {
     var color: Color {
         switch self {
         case .kcal: .accentColor
-        case .protein: .pink
-        case .carbs: .blue
-        case .fat: .orange
+        case .protein: Ink.protein
+        case .carbs: Ink.carbs
+        case .fat: Ink.fat
         }
     }
 
@@ -135,7 +150,7 @@ struct ProgressRing: View {
     }
 }
 
-/// One macro as a labelled bar: eaten of target.
+/// One macro as a labelled thin ruler: eaten of target.
 struct MacroBar: View {
     let macro: Macro
     let eaten: Double
@@ -152,15 +167,7 @@ struct MacroBar: View {
                     Text(Format.grams(eaten)).font(.caption.weight(.semibold).monospacedDigit())
                 }
             }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(macro.color.opacity(0.16))
-                    if let target, target > 0 {
-                        Capsule().fill(macro.color.gradient).frame(width: max(6, proxy.size.width * min(1, eaten / target)))
-                    }
-                }
-            }
-            .frame(height: 7)
+            Ruler.thin(target.map { $0 > 0 ? eaten / $0 : 0 } ?? 0, color: macro.color)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(macro.label): \(Format.grams(eaten))\(target.map { " of \(Format.grams($0))" } ?? "")")
@@ -207,24 +214,14 @@ struct BulletLabelStyle: LabelStyle {
     }
 }
 
-/// Discipline as a gauge with the 80–90% band shaded "in the zone". Past 90% earns nothing more.
+/// Discipline as a ruler, ticked every tenth so the 80–90% zone reads off it, with the zone's start
+/// marked. Past 90% earns nothing more.
 struct DisciplineGauge: View {
     let score: DisciplineScore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.15))
-                    Rectangle().fill(Color.green.opacity(0.25)).frame(width: width * 0.1).offset(x: width * 0.8)
-                    if let rate = score.rate {
-                        Capsule().fill(score.band == .below ? Color.orange : Color.green).frame(width: max(8, width * min(1, rate)))
-                    }
-                }
-                .clipShape(.capsule)
-            }
-            .frame(height: 12)
+            Ruler(value: score.rate ?? 0, color: score.band == .below ? Ink.ok : Ink.good, height: 14, marker: 0.8)
             HStack {
                 Text(score.rate.map(Format.percent) ?? "—").font(.headline.monospacedDigit())
                 Text(score.band?.label ?? "Nothing to score yet").font(.subheadline).foregroundStyle(.secondary)

@@ -1,6 +1,5 @@
 import NutritionEngine
 import SwiftUI
-import SystemPurchases
 import SystemStore
 
 /// Today for the day at a glance, Log for its food hour by hour, Plan for the phase and targets,
@@ -22,8 +21,7 @@ struct RootView: View {
         @Bindable var model = model
         Group {
             if model.onboarded {
-                // The offer ends onboarding: the app opens once it's answered.
-                if model.purchases.firstChoiceDue { PaywallView() } else { tabs }
+                tabs
             } else if let arrival = model.arrival, arrival.isWaiting {
                 ICloudWaitView(arrival: arrival)
             } else {
@@ -50,9 +48,6 @@ struct RootView: View {
             NavigationStack { SettingsView() }
         }
         #endif
-        .sheet(isPresented: $model.showPaywall) {
-            PaywallView()
-        }
         .onChange(of: wide, initial: true) { _, wide in
             model.usesSidebar = wide
             // Widened with a logger open (or launched with one): its pane is on the Log tab.
@@ -107,13 +102,18 @@ struct RootView: View {
         .defaultAdaptableTabBarPlacement(ProcessInfo.processInfo.arguments.contains("-sidebar") ? .sidebar : .automatic)
         #endif
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory(isEnabled: !wide) {
+        // On a phone's Today the composer is the way to log; every other tab keeps the bar.
+        .tabViewBottomAccessory(isEnabled: !wide && model.tab != .today) {
             if model.selection.isEmpty { QuickLogBar() } else { SelectionBar() }
         }
         #endif
         // Clear of the selection bar where it's at the foot of the screen. The logger shows its own, in with the meal: one behind it would be a second Undo nobody can
         // reach. It takes over when the logger closes, with its few seconds starting again.
-        .toastOverlay(bottomPadding: wide ? (model.selection.isEmpty ? 24 : 92) : 130, showing: model.logger == nil && !model.toastCovered)
+        // A phone's Today shows its own, over the composer, and an Undo in the meal just logged.
+        .toastOverlay(
+            bottomPadding: wide ? (model.selection.isEmpty ? 24 : 92) : 130,
+            showing: model.logger == nil && !model.toastCovered && (wide || model.tab != .today)
+        )
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in
             if let photo = images.first?.data { model.logDroppedPhoto(photo) }

@@ -48,6 +48,8 @@ struct LoggerSheet: View {
         }
         .onAppear {
             model.ai.prewarm()
+            // Words typed on Today that matched nothing: searched here (a description takes its own).
+            if session.mode == .search, let text = model.takeLoggerText() { session.query = text }
             #if DEBUG
             SampleData.seedReview(session, model)
             #endif

@@ -24,15 +24,24 @@ nonisolated final class StoreScreenshots: XCTestCase {
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("\(name).png"))
     }
 
-    /// Today with a saved meal just logged from Log Again, so the ring has a meal in it.
+    /// Today with food in it: on the iPhone a usual food logged with one tap, its Undo gone; on the
+    /// iPad a saved meal logged from Log Again.
     @MainActor
     func testToday() throws {
         let app = XCUIApplication.launched(Self.seed)
         app.element("today.calories").waitToAppear()
-        let meal = app.buttons.matching(identifier: "today.logMeal").firstMatch
-        if meal.waitForExistence(timeout: 5) {
-            meal.tap()
-            app.element("toast.message").waitToAppear().waitToDisappear()
+        if XCUIApplication.isPad {
+            let meal = app.buttons.matching(identifier: "today.logMeal").firstMatch
+            if meal.waitForExistence(timeout: 5) {
+                meal.tap()
+                app.element("toast.message").waitToAppear().waitToDisappear()
+            }
+        } else {
+            let usual = app.element("today.usual.0")
+            if usual.waitForExistence(timeout: 5) {
+                usual.tap()
+                app.element("today.undo").waitToAppear().waitToDisappear()
+            }
         }
         try save("today")
     }

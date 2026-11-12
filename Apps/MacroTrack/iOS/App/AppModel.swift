@@ -233,7 +233,6 @@ final class AppModel {
         didSet { if loggerTime != oldValue { refreshTimedSuggestions() } }
     }
     var showSettings = false
-    var showPaywall = false
     var showWeighIn = false
     /// The fast screen: start one, or follow the one running.
     var showFast = false
@@ -272,6 +271,8 @@ final class AppModel {
     var toastTime: Duration = .seconds(4)
     /// A photo dropped on the window, waiting for the photo logger to read it.
     @ObservationIgnored private var droppedPhoto: Data?
+    /// What was typed on Today that no food matched, for the logger that opens with it to take.
+    @ObservationIgnored private var loggerText: String?
     var today: Day = .today
     /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
     /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
@@ -1047,11 +1048,17 @@ final class AppModel {
         return droppedPhoto
     }
 
-    /// Brings the offer up if it's due, on opening the app. Never over a sheet someone is in the
-    /// middle of: it waits for the next time they open the app.
-    func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, logger == nil, !showWeighIn, !showFast, !showSupplements, !showSettings, openWork.isEmpty else { return }
-        showPaywall = true
+    /// Words typed on Today that matched no food: described to the model where it can read them,
+    /// else searched in the logger, which shows the ways on from there.
+    func openLogger(with text: String) {
+        loggerText = text
+        openLogger(ai.canDescribe ? .describe : .search)
+    }
+
+    /// The words Today handed over, once: the logger that opens with them takes them.
+    func takeLoggerText() -> String? {
+        defer { loggerText = nil }
+        return loggerText
     }
 
     func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }
@@ -1066,7 +1073,6 @@ final class AppModel {
         showFast = false
         showSupplements = false
         showSettings = false
-        showPaywall = false
     }
 
     /// When something logged now was eaten: the time picked in the open logger, else now; on a
@@ -1214,8 +1220,8 @@ final class AppModel {
     /// Takes a toast down after its few seconds on screen. A slot leaving the screen cancels this,
     /// and a cancelled wait isn't those seconds up: the toast stays for the next slot to show, with
     /// its few seconds starting again.
-    func expire(_ toast: Toast) async {
-        try? await Task.sleep(for: toastTime)
+    func expire(_ toast: Toast, after time: Duration? = nil) async {
+        try? await Task.sleep(for: time ?? toastTime)
         guard !Task.isCancelled, self.toast?.id == toast.id else { return }
         self.toast = nil
     }

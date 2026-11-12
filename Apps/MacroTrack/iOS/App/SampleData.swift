@@ -137,6 +137,21 @@ enum SampleData {
         model.reload()
     }
 
+    /// Today eaten as yesterday was up to 5 PM, where that time has passed: breakfast, lunch and the
+    /// afternoon snacks, so an evening has dinner left to fit (-seedToday).
+    @MainActor
+    static func seedToday(_ model: AppModel, now: Date = Date()) {
+        let yesterday = model.today.adding(days: -1)
+        let copies = model.allEntries(on: yesterday).compactMap { entry -> FoodEntry? in
+            let clock = Calendar.current.dateComponents([.hour, .minute], from: entry.date)
+            guard (clock.hour ?? 0) < 17 else { return nil }
+            let date = model.today.at(hour: clock.hour ?? 0, minute: clock.minute ?? 0)
+            return date < now ? LogAgain.copy(entry, to: date) : nil
+        }
+        model.store.save(copies)
+        model.reload()
+    }
+
     /// Years of the same log (`LongHistory`), through the real store, to see the app with a long
     /// history and measure it. Debug builds only (-seedLongHistory, 5 years unless a number follows).
     @MainActor

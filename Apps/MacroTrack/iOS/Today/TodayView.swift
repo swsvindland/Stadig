@@ -3,10 +3,21 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Today at a glance, always today: what's left, the weight, anything the plan asks, the ways to
-/// log in a tap, then meal timing, supplements, drinks and the week's food-quality suggestions. The
-/// day's food is on the Log tab.
+/// Today, always today. On a phone (a compact width) it's the logger (`TodayLogger`); with room
+/// it's the dashboard beside the sidebar.
 struct TodayView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        // The Mac reports no size class: it always has room.
+        if sizeClass == .compact { TodayLogger() } else { TodayDashboard() }
+    }
+}
+
+/// Today at a glance where there's room: what's left, the weight, anything the plan asks, the
+/// ways to log in a tap, then meal timing, supplements, drinks and the week's food-quality
+/// suggestions. The day's food is on the Log tab, beside the logger.
+struct TodayDashboard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -100,48 +111,19 @@ struct SettingsButton: View {
     }
 }
 
-/// Calories left as a ring, with protein (and carbs and fat, if shown) as bars.
+/// Calories left as the hero numeral over a ruler, with protein (and carbs and fat, if shown) in
+/// grams left over thin rulers: the phone's Today header, in a card.
 struct SummaryCard: View {
     @Environment(AppModel.self) private var model
     let day: Day
 
     var body: some View {
         if let analysis = model.analysis {
-            let targets = analysis.targets
-            let eaten = analysis.intakeByDay[day] ?? .zero
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 18) {
-                    ZStack {
-                        ProgressRing(value: eaten.kcal, target: targets.kcal, lineWidth: 13)
-                        VStack(spacing: 0) {
-                            if let kcal = targets.kcal {
-                                let left = kcal - eaten.kcal
-                                Text(Format.whole(abs(left))).font(.title.weight(.bold).monospacedDigit()).contentTransition(.numericText())
-                                Text(left >= 0 ? "kcal left" : "kcal over").font(.caption).foregroundStyle(.secondary)
-                            } else {
-                                Text(Format.whole(eaten.kcal)).font(.title.weight(.bold).monospacedDigit()).contentTransition(.numericText())
-                                Text("kcal eaten").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        .minimumScaleFactor(0.7)
-                    }
-                    .frame(width: 124, height: 124)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("today.calories")
-
-                    VStack(alignment: .leading, spacing: 11) {
-                        MacroBar(macro: .protein, eaten: eaten.protein, target: targets.protein)
-                        if model.settings.showAllMacros {
-                            MacroBar(macro: .carbs, eaten: eaten.carbs, target: targets.carbs)
-                            MacroBar(macro: .fat, eaten: eaten.fat, target: targets.fat)
-                        }
-                        if let kcal = targets.kcal {
-                            Text("\(Format.whole(eaten.kcal)) of \(Format.kcal(kcal))").font(.caption).foregroundStyle(.secondary)
-                                .accessibilityIdentifier("today.eatenOfTarget")
-                        }
-                    }
-                }
-                ModeLine(targets: targets, assessment: analysis.assessment)
+                LeftHeader(
+                    targets: analysis.targets, eaten: analysis.intakeByDay[day] ?? .zero, showAllMacros: model.settings.showAllMacros,
+                    justLogged: nil)
+                ModeLine(targets: analysis.targets, assessment: analysis.assessment)
             }
             .card(padding: 18)
         }
@@ -449,6 +431,8 @@ struct ActionRow: View {
 /// time of day.
 struct LogAgainSection: View {
     @Environment(AppModel.self) private var model
+    /// Single foods too; the phone's Today has its own tiles for them.
+    var foods = true
 
     var body: some View {
         let meals = model.usualMeals
@@ -477,7 +461,7 @@ struct LogAgainSection: View {
                         .accessibilityIdentifier("today.logMeal")
                         .accessibilityLabel("Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))")
                     }
-                    ForEach(model.logAgain.prefix(10)) { item in
+                    ForEach(model.logAgain.prefix(foods ? 10 : 0)) { item in
                         chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
                             model.logAgain(item)
                         }

@@ -35,6 +35,7 @@ struct MacroTrackApp: App {
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }
+        if launch.has("-seedToday") { SampleData.seedToday(model) }
         if launch.has("-showSupplements") { model.showSupplements = true }
         if launch.has("-showSettings") { model.showSettings = true }
         if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }
@@ -94,12 +95,6 @@ struct MacroTrackApp: App {
             .environment(model.purchases)
             .onOpenURL { url in DeepLink.open(url, model: model) }
             .task {
-                await model.purchases.start()
-                model.askForPurchaseIfDue()
-            }
-            // Not after StoreKit, which can take its time on a slow network: a scale's weigh-in
-            // would go unheard until it answered.
-            .task {
                 // Unless becoming active just did.
                 await model.refreshHealthIfStale()
                 model.startHealthObserving()
@@ -117,10 +112,6 @@ struct MacroTrackApp: App {
                     model.healthBackfill?.run()
                     // The system ends a fast's Live Activity after about 8 hours; opening the app starts it again.
                     if model.usesSystemServices { FastActivityBridge.update(model) }
-                    Task {
-                        await model.purchases.refresh()
-                        model.askForPurchaseIfDue()
-                    }
                 case .background:
                     model.wentToBackground()
                     releaseCatalogMemory(model)

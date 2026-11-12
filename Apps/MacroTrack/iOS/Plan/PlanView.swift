@@ -1,7 +1,6 @@
 import NutritionEngine
 import SwiftUI
 import SystemCore
-import SystemPurchases
 
 /// The assessment while it runs, then one recommendation with its reasons, then the plan in force
 /// with its weekly check-ins.
@@ -101,7 +100,7 @@ struct AssessmentCard: View {
                 Text("Day \(assessment.day) of \(assessment.totalDays)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     .accessibilityIdentifier("plan.assessmentDay")
             }
-            ProgressView(value: assessment.progress).tint(.accentColor)
+            Ruler(value: assessment.progress, height: 12, divisions: 3)
             Text("Eat as you normally do, log it, and weigh in each morning. Nothing changes until the data says what your maintenance is.")
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
@@ -177,7 +176,6 @@ struct RangeBar: View {
 /// One recommendation, its reasons and how sure it is.
 struct RecommendationCard: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     let plan: PhasePlan
     let ready: Bool
     @State private var choosing = false
@@ -191,7 +189,7 @@ struct RecommendationCard: View {
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
             if ready {
                 Button {
-                    if purchases.unlocked { model.start(plan) } else { model.showPaywall = true }
+                    model.start(plan)
                 } label: {
                     Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity).padding(
                         .vertical, 4)
@@ -244,9 +242,9 @@ struct PhaseChips: View {
 extension PhaseKind {
     var color: Color {
         switch energy {
-        case .deficit: .orange
-        case .maintenance: .teal
-        case .surplus: .blue
+        case .deficit: Ink.ok
+        case .maintenance: Ink.good
+        case .surplus: Ink.carbs
         }
     }
 
@@ -266,7 +264,6 @@ extension PhaseKind {
 /// The person's own choice over the recommendation.
 struct PhaseChooser: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
     let recommended: PhasePlan
 
@@ -274,11 +271,6 @@ struct PhaseChooser: View {
         NavigationStack {
             List(PhaseKind.allCases.filter { $0 != .dietBreak }) { kind in
                 Button {
-                    guard purchases.unlocked else {
-                        dismiss()
-                        model.showPaywall = true
-                        return
-                    }
                     let weeks = kind == .miniCut ? 5 : kind == .reverseDiet ? 6 : 8
                     model.start(
                         PhasePlan(
@@ -321,23 +313,27 @@ struct CurrentPhaseCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let phase = analysis.phase {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(phase.kind.label).font(.title2.weight(.bold))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(phase.kind.label).numeral(40)
                         .accessibilityIdentifier("plan.currentPhase")
-                    Spacer()
-                    Text("Week \(phase.week(on: model.today)) of \(phase.weeks)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    Text("week \(phase.week(on: model.today)) of \(phase.weeks)").font(.title3.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Ink.text2)
                         .accessibilityIdentifier("plan.week")
+                    Spacer(minLength: 0)
                 }
-                ProgressView(value: Double(max(0, phase.start.days(until: model.today))), total: Double(phase.weeks * 7)).tint(phase.kind.color)
+                // A division a week: where the phase is, read off the ruler.
+                Ruler(
+                    value: Double(max(0, phase.start.days(until: model.today))) / Double(max(1, phase.weeks * 7)), color: phase.kind.color,
+                    height: 12, divisions: phase.weeks)
                 Text(phase.summary).font(.subheadline).foregroundStyle(.secondary)
             }
             Divider()
             HStack {
                 stat("Calories", analysis.targets.kcal.map(Format.whole) ?? "—", "kcal")
-                stat("Protein", analysis.targets.protein.map(Format.grams) ?? "—", nil)
+                stat("Protein", analysis.targets.protein.map(Format.grams) ?? "—", nil, color: Ink.protein)
                 if model.settings.showAllMacros {
-                    stat("Carbs", analysis.targets.carbs.map(Format.grams) ?? "—", nil)
-                    stat("Fat", analysis.targets.fat.map(Format.grams) ?? "—", nil)
+                    stat("Carbs", analysis.targets.carbs.map(Format.grams) ?? "—", nil, color: Ink.carbs)
+                    stat("Fat", analysis.targets.fat.map(Format.grams) ?? "—", nil, color: Ink.fat)
                 }
             }
             if let change = analysis.weeklyChange {
@@ -349,15 +345,16 @@ struct CurrentPhaseCard: View {
         .card()
     }
 
-    func stat(_ title: String, _ value: String, _ unit: String?) -> some View {
+    func stat(_ title: String, _ value: String, _ unit: String?, color: Color = Ink.text2) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).font(.headline.monospacedDigit())
-                if let unit { Text(unit).font(.caption).foregroundStyle(.secondary) }
+                Text(value).numeral(24)
+                if let unit { Text(unit).font(.caption).foregroundStyle(Ink.text2) }
             }
+            Text(title).font(.caption).foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 

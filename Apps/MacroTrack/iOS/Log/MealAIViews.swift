@@ -194,7 +194,15 @@ struct DescribeLogView: View {
                     .padding()
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.ai.canDescribe)
                 }
-                .onAppear { focused = true }
+                .onAppear {
+                    // Words typed on Today that matched no food: read straight away.
+                    if let typed = model.takeLoggerText() {
+                        text = typed
+                        analyze()
+                    } else {
+                        focused = true
+                    }
+                }
             }
         }
         .navigationTitle("Describe")

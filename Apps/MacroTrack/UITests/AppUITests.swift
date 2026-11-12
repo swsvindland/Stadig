@@ -8,7 +8,7 @@ nonisolated final class AppUITests: XCTestCase {
         let app = XCUIApplication.launched(["-seedSampleData"])
 
         app.element("today.calories").waitToAppear()
-        XCTAssertTrue(app.logButton("search").exists, "logging is one tap away on Today")
+        XCTAssertTrue(app.todayLogging.exists, "logging is one tap away on Today")
 
         app.openTab("Log")
         app.element("log.list").waitToAppear()
@@ -62,7 +62,7 @@ nonisolated final class AppUITests: XCTestCase {
         app.element("onboarding.notNow").tap()
 
         app.element("today.calories").waitToAppear()
-        XCTAssertTrue(app.logButton("search").exists)
+        XCTAssertTrue(app.todayLogging.exists)
         let weight = app.element("today.weight").waitToAppear()
         XCTAssertTrue(weight.label.contains("181.4 lb"), "the first weigh-in is today's: \(weight.label)")
     }
