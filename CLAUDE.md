@@ -32,6 +32,8 @@ Before calling a change done: lint clean, zero warnings, and the tests for what 
 
 ## Swift and SwiftUI conventions
 
+Write and review SwiftUI with the `swiftui-pro` skill (`.claude/skills/swiftui-pro`, Paul Hudson's). Where it and this file differ (one type per file, hard-coded spacing, the design's custom numerals), this file and `docs/design.md` win.
+
 - Swift 6 language mode, strict concurrency. App targets default to `@MainActor` isolation; packages are nonisolated by default. Heavy work (catalog queries, analysis over long histories, image and OCR work, JSON for big files) runs off the main actor.
 - State is `@Observable` (Observation), injected with `.environment`. No `ObservableObject`/`@Published` in new code.
 - Anything that outlives a call (NotificationCenter observers, timers, `Task`s that loop or await streams, delegates) captures `[weak self]`, is stored, and is cancelled or removed when its owner goes away. Long-lived singletons are the exception, and say so in a comment.
