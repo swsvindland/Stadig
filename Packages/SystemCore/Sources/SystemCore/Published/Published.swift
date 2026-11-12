@@ -1,61 +1,7 @@
 import Foundation
 
-// What travels between the apps and the hub. Apps write sessions and summaries; the hub writes
-// recommendations back. Every app still works on its own without any of it.
-
-/// What a recommendation is about.
-public enum RecommendationSubject: Hashable, Codable, Sendable {
-    case strength(StrengthCategory)
-    case muscle(Muscle)
-    case physique(PhysiqueRegion)
-    case mobility(MobilityTarget)
-    case conditioning
-    case stat(StatKind)
-
-    public var label: String {
-        switch self {
-        case .strength(let category): category.label
-        case .muscle(let muscle): muscle.label
-        case .physique(let region): region.label
-        case .mobility(let target): target.label
-        case .conditioning: "Conditioning"
-        case .stat(let stat): stat.label
-        }
-    }
-}
-
-public enum RecommendationKind: String, Codable, Sendable {
-    case prioritise, deprioritise, deloadNow
-}
-
-/// "Priority: vertical pull; deprioritise horizontal press." Written by the hub, read by an app
-/// when it plans.
-public struct Recommendation: Hashable, Codable, Sendable, Identifiable {
-    public var id: UUID
-    public var from: AppID
-    public var to: AppID
-    public var kind: RecommendationKind
-    public var subject: RecommendationSubject?
-    public var reason: String
-    public var created: Date
-    public var expires: Date?
-
-    public init(
-        id: UUID = UUID(), from: AppID = .hub, to: AppID, kind: RecommendationKind, subject: RecommendationSubject?,
-        reason: String, created: Date = Date(), expires: Date? = nil
-    ) {
-        self.id = id
-        self.from = from
-        self.to = to
-        self.kind = kind
-        self.subject = subject
-        self.reason = reason
-        self.created = created
-        self.expires = expires
-    }
-
-    public func isActive(at date: Date = Date()) -> Bool { expires.map { date < $0 } ?? true }
-}
+// What the apps publish for each other in the shared container: sessions, summaries, the training
+// calendar and nutrition. Each app still works on its own without any of it.
 
 public enum QuestStatus: String, Codable, Sendable { case open, done, skipped }
 
@@ -203,7 +149,7 @@ public struct SessionSummary: Hashable, Codable, Sendable, Identifiable {
     public var day: Day { Day(start) }
 }
 
-/// A stat as one app sees it. The hub combines them; there's no overall level.
+/// A stat as one app sees it. `StatsBoard` combines them; there's no overall level.
 public struct StatReading: Hashable, Codable, Sendable {
     public var stat: StatKind
     /// 0–100 where available.
@@ -298,7 +244,7 @@ public struct PublishedFast: Hashable, Codable, Sendable {
     public func hours(at date: Date) -> Double { max(0, date.timeIntervalSince(start) / 3600) }
 }
 
-/// What each app publishes to the shared container for the others and the hub: small, recent and
+/// What each app publishes to the shared container for the other: small, recent and
 /// self-describing. The app's own database stays private.
 public struct AppSummary: Hashable, Codable, Sendable {
     public static let schemaVersion = 1
@@ -308,7 +254,8 @@ public struct AppSummary: Hashable, Codable, Sendable {
     public var stats: [StatReading]
     /// The last few weeks of sessions, in the shared format.
     public var sessions: [SessionSummary]
-    /// Work that didn't fit, offered to the hub for free time blocks.
+    /// The day's quests. Nothing reads them from the file now; they stay so the payload keeps the
+    /// shape every copy of either app reads.
     public var quests: [Quest]
     public var strength: StrengthProfile?
     public var fatigue: FatigueStatus?

@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Stadig ("The System"): two fitness apps (Stadig Lift and Stadig Macro), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (each with a Watch app), as thin shells over eleven local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
+Stadig ("The System"): two fitness apps (Stadig Lift and Stadig Macro), each one multiplatform SwiftUI target for iPhone, iPad, the Mac and Apple Vision Pro (each with a Watch app), as thin shells over ten local Swift packages, plus the marketing site in `Site/`. The design doc ("The System — Hub Design") is the source of truth for product behaviour; [README.md](README.md) has the layout and commands, `docs/` the detail.
 
-Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift and Stadig Macro, never "Lift Track", "Macro Track" or "The System"; the family is Stadig. Code keeps its old names (`Apps/LiftTrack`, `LiftEngine`, `HubEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
+Names: anything a person reads (app text, Info.plist, StoreKit, the site, docs) says Stadig Lift and Stadig Macro, never "Lift Track", "Macro Track" or "The System"; the family is Stadig. Code keeps its old names (`Apps/LiftTrack`, `LiftEngine`, `AppID.knowledge`, `SystemCore`), and identifiers (bundle and product IDs, the App Group, CloudKit containers) never change.
 
 ## Commands
 
@@ -25,7 +25,7 @@ Before calling a change done: lint clean, zero warnings, and the tests for what 
 ## Where code goes
 
 - **One target per app, every platform.** Screens choose layouts by size class (compact keeps the iPhone design; regular, on iPad, the Mac and Vision Pro, gets the desktop one) and spell platform differences through `Platform/Adaptive.swift`, not scattered `#if`. Hardware a platform lacks (camera, Pencil, Health on the Mac) gets that platform's substitute, never a dead control.
-- **Logic lives in a package, with tests.** Rules, calculations, planning, parsing, anything with a right answer: the engine package for that app (`LiftEngine`, `NutritionEngine`, …), or `SystemCore` when both apps must agree (`HubEngine` holds the stats both show). Apps hold views, the app model, platform glue (Health, notifications, camera, widgets) and DEBUG seeding.
+- **Logic lives in a package, with tests.** Rules, calculations, planning, parsing, anything with a right answer: the engine package for that app (`LiftEngine`, `NutritionEngine`, …), or `SystemCore` when both apps must agree (the stats both show are its `StatsBoard`). Apps hold views, the app model, platform glue (Health, notifications, camera, widgets) and DEBUG seeding.
 - **Shared contracts** between apps go through `SystemCore` models and `SystemStore`'s shared container, which `FamilySync` carries to the person's other devices through the family CloudKit container. Changing a published payload means a schema version bump and a migration test ([docs/shared-container.md](docs/shared-container.md) has the files, including what the removed hub and Stadig Mind left on devices).
 - **No third-party dependencies**, in apps or packages. Apple frameworks only.
 - **Never edit `*.xcodeproj`, schemes or `*.xctestplan` by hand.** `Scripts/generate-project.py` writes them (CI fails if they drift). New files in an app's folders need nothing: targets use synchronized folders.

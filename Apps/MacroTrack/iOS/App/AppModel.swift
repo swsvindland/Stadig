@@ -107,8 +107,8 @@ struct Toast: Identifiable, Equatable {
     }
 }
 
-/// The app's state: Stadig Macro's own synced records, what Stadig Lift and the hub published, what
-/// Health knows, and the analysis computed from all of it.
+/// The app's state: Stadig Macro's own synced records, what Stadig Lift published, what Health
+/// knows, and the analysis computed from all of it.
 @MainActor @Observable
 final class AppModel {
     static let shared = AppModel(launch: .current)
@@ -159,7 +159,7 @@ final class AppModel {
     /// Foods eaten together, saved under a name to log in one tap.
     private(set) var savedMeals: [SavedMeal] = []
 
-    // From the other apps and the hub.
+    // From the shared container.
     private(set) var lift: AppSummary?
     private(set) var calendar: SystemCalendar?
     /// A profile another app wrote before Stadig Macro was set up: onboarding reuses it.
@@ -306,7 +306,6 @@ final class AppModel {
     @ObservationIgnored private var foodCache: [String: Food] = [:]
     @ObservationIgnored private var personalTask: Task<Void, Never>?
     @ObservationIgnored private var fixTask: Task<Void, Never>?
-    @ObservationIgnored private var mealRhythmTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
@@ -515,23 +514,14 @@ final class AppModel {
         if ai.allowCloud != settings.allowCloudAI { ai.configure(catalog: catalog, allowCloud: settings.allowCloudAI) }
     }
 
-    /// Work or school and sleep, from the hub. Nil without it.
-    private(set) var rhythm: Rhythm?
-
-    /// What other apps and the hub published. Our own writes notify us too, so this only
-    /// recomputes when something actually changed.
+    /// What Stadig Lift published, and the profile and life modes both apps share. Our own writes
+    /// notify us too, so this only recomputes when something actually changed.
     func readShared(recompute again: Bool = true) {
         let lift = shared.read(.summary(.liftTrack))
         let calendar = shared.read(.calendar)
         let sharedProfile = shared.read(.profile)
         let lifeModes = syncLifeModes()
         let adopted = adopt(sharedProfile)
-        var rhythm = shared.read(.rhythm)
-        #if DEBUG
-        if LaunchOptions.current.has("-seedRhythm") { rhythm = Rhythm(wake: 6 * 60, bed: 22 * 60) }
-        #endif
-        // Only changes which hours show, so nothing needs working out again.
-        if rhythm != self.rhythm { self.rhythm = rhythm }
         let changed = adopted || lift != self.lift || calendar != self.calendar || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes
         guard changed else { return }
         self.lift = lift
@@ -747,7 +737,7 @@ final class AppModel {
 
     @ObservationIgnored private var lastPublished: (nutrition: NutritionSummary, summary: AppSummary)?
 
-    /// The phase and day-by-day nutrition for Stadig Lift and the hub, written only when they change.
+    /// The phase and day-by-day nutrition for Stadig Lift, and the stats, written only when they change.
     private func publish(_ state: MacroState) {
         let interval = LogPath.begin("publish")
         defer { LogPath.end(interval) }
@@ -770,27 +760,6 @@ final class AppModel {
             }
         }
         WidgetBridge.update(self)
-        publishMeals()
-    }
-
-    /// When this person eats, for the hub. Off the main actor: it reads four weeks of food, and
-    /// publishing mustn't slow the log.
-    private func publishMeals() {
-        let entries = suggestionEntries
-        let today = today
-        let now = Date()
-        let shared = shared
-        let log = appLog
-        mealRhythmTask?.cancel()
-        mealRhythmTask = Task.detached(priority: .utility) {
-            let rhythm = UsualMeals.rhythm(entries: entries, today: today, now: now)
-            guard !Task.isCancelled else { return }
-            do {
-                try shared.writeIfChanged(rhythm, to: .mealRhythm, by: .macroTrack, stamp: \.updated, now: now)
-            } catch {
-                log.error("Couldn't publish meal times: \(error.localizedDescription)")
-            }
-        }
     }
 
     // MARK: Foods

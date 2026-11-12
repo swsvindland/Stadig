@@ -87,10 +87,7 @@ struct SettingsView: View {
         } header: {
             Text("Logging")
         } footer: {
-            Text(
-                model.rhythm == nil
-                    ? "Other hours stay a tap away under Earlier and Later, and food logged in them always shows."
-                    : "Automatic follows your usual sleep. Other hours stay a tap away under Earlier and Later.")
+            Text("Other hours stay a tap away under Earlier and Later, and food logged in them always shows.")
         }
 
         Section {
@@ -333,7 +330,7 @@ struct SettingsView: View {
 
     /// The hours Automatic means right now, with neither set by hand.
     private var autoHours: ClosedRange<Int> {
-        LogHours.window(wake: model.rhythm?.wake, bed: model.rhythm?.bed ?? model.settings.doseTimes?[.bedtime])
+        LogHours.window(bed: model.settings.doseTimes?[.bedtime])
     }
 
     private func hourPicker(_ title: String, selection: Binding<Int?>, automatic: Int, identifier: String) -> some View {

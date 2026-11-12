@@ -458,7 +458,7 @@ public enum MacroAnalyst {
 
     // MARK: Publishing
 
-    /// What Stadig Lift and the hub read: the phase, maintenance, and day-by-day logging and targets.
+    /// What Stadig Lift reads: the phase, maintenance, and day-by-day logging and targets.
     public static func nutritionSummary(_ state: MacroState, _ a: MacroAnalysis) -> NutritionSummary {
         let phase = a.phase.map {
             NutritionPhase(kind: $0.kind, ratePerWeek: $0.ratePerWeek, plannedWeeks: $0.weeks, start: $0.start, source: .macroTrack)

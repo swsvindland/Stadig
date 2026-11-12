@@ -29,20 +29,15 @@ struct SharedContainerTests {
         #expect(app.shared.envelope(.calendar)?.writtenAt == calendar.writtenAt)
     }
 
-    @Test("Stadig Macro's phase and the hub's recommendations for Stadig Lift are read")
+    @Test("Stadig Macro's phase is read")
     func readsOtherApps() throws {
         let app = TestApp()
         let model = app.onboarded()
         let other = TestApp.container(in: app.folder)
         let phase = NutritionPhase(kind: .cut, ratePerWeek: -0.5, start: Day.today.adding(days: -10), source: .macroTrack)
         try other.write(NutritionSummary(phase: phase, maintenanceKcal: 2_600, days: []), to: .nutrition, by: .macroTrack)
-        let mine = Recommendation(to: .liftTrack, kind: .deloadNow, subject: nil, reason: "Sleep has been short")
-        let theirs = Recommendation(to: .macroTrack, kind: .deloadNow, subject: nil, reason: "Not for Stadig Lift")
-        let expired = Recommendation(to: .liftTrack, kind: .deloadNow, subject: nil, reason: "Old", expires: Date().addingTimeInterval(-60))
-        try other.write([mine, theirs, expired], to: .recommendations, by: .hub)
         model.readShared()
         #expect(model.nutrition?.phase?.kind == .cut)
-        #expect(model.recommendations.map(\.id) == [mine.id])
         #expect(model.analysis?.phase.kind == .cut)
     }
 

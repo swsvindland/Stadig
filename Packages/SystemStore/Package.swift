@@ -2,7 +2,7 @@
 import PackageDescription
 
 /// Each app's own CloudKit-synced database (one SwiftData model holding versioned JSON records), the
-/// shared App Group container the apps and the hub publish small summaries through, and the
+/// shared App Group container the apps publish small summaries through for each other, and the
 /// portable exports: a full backup file and CSV. Depends only on SystemCore and Apple frameworks.
 let package = Package(
     name: "SystemStore",

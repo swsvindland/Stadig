@@ -5,13 +5,14 @@
 - **Stadig Lift** is the training app: every session prescribed, and every set adjusted to how it went. On the iPad and the Mac it's also where you study the program, the exercise library and your history; an iPad in the gym runs the session in two panes. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 - **Stadig Macro** is the nutrition app. It learns your real maintenance from logging and weigh-ins, recommends one phase (cut, bulk, maintenance and the rest) with its reasons, and adapts targets each week. It's built so a visit can be a glance and a tap: search, scan, a photo or a sentence, with Apple's on-device model and Private Cloud Compute doing the reading. Turned on, it reads meal timing from the log (the gaps between meals, the overnight fast) and runs fasts toward a goal, with their phases on the Lock Screen and the Watch. On the iPad and the Mac it adds a food table to search and compare, the meal plan as a week, and a history of every day; the Watch logs from the wrist. iPhone, iPad, Mac, Apple Vision Pro and Apple Watch.
 
-This repo is built from the System hub design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on. Both apps are free and open source: purchases are switched off (`enabled: false` in each app's `Purchase/Purchases.swift`), and [docs/app-store-connect.md](docs/app-store-connect.md) says what's left to change on the store's side. The look is in [docs/design.md](docs/design.md). No third-party dependencies.
+This repo is built from the design doc ("The System — Hub Design", Oct 15, 2026), which is the source of truth: one repo, with the apps as thin shells over shared local Swift packages. Each app is one native target for every device it runs on. Both apps are free and open source: purchases are switched off (`enabled: false` in each app's `Purchase/Purchases.swift`), and [docs/app-store-connect.md](docs/app-store-connect.md) says what's left to change on the store's side. The look is in [docs/design.md](docs/design.md). No third-party dependencies.
 
 ## Layout
 
 ```
 Packages/             Local Swift packages: all the logic, each with its own tests
-  SystemCore/         Shared models and every rule that must give the same answer everywhere
+  SystemCore/         Shared models and every rule that must give the same answer everywhere, the stats both
+                      apps show (StatsBoard) among them
   ExerciseLibrary/    332 tagged exercises, substitutions, injury filtering, drills
   SystemStore/        Each app's CloudKit-synced database, the shared App Group container (and FamilySync, which
                       carries it to the person's other devices), backups, CSV
@@ -23,8 +24,6 @@ Packages/             Local Swift packages: all the logic, each with its own tes
                       and the NIH supplement label catalog with its Supplement Facts parser
   FoodIntelligence/   Meal photos, descriptions and label photos through Apple's models; nutrients from the catalog
   MealPlanner/        A week of prep-friendly meals sized to the targets, the grocery list and a timed prep day
-  HubEngine/          The stats both apps show, merged from what each publishes (StatsBoard), and the planner
-                      of the hub app that used to sit on top, which nothing calls now
 Apps/<App>/           LiftTrack, MacroTrack: thin SwiftUI shells over the packages
   iOS/                The app for iPhone, iPad, the Mac and Vision Pro (one multiplatform target), one folder
                       per feature; Platform/Adaptive.swift spells what differs between platforms
@@ -45,7 +44,7 @@ Store/                The App Store screenshots: a storeassets project per app a
 .github/workflows/    GitHub Actions: lint and package tests on every push, the site build
 ```
 
-The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Macro on the iPad sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase, day-by-day logging and when you usually eat, and Stadig Lift publishes its training calendar, measurements and strength. Each publishes its stats, which either app can read merged with the other's. [docs/shared-container.md](docs/shared-container.md) has the contract, and what the hub app and Stadig Mind, which both left this repo, wrote that may still be on devices.
+The apps talk to each other through the shared container, which reaches the person's other devices through the family iCloud container (so Stadig Macro on the iPad sees what Stadig Lift wrote on the iPhone): Stadig Macro publishes the nutrition phase and day-by-day logging, and Stadig Lift publishes its training calendar, measurements and strength. Each publishes its stats, which either app can read merged with the other's. [docs/shared-container.md](docs/shared-container.md) has the contract, and what the hub app and Stadig Mind, which both left this repo, wrote that may still be on devices.
 
 ## Getting started
 

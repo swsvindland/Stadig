@@ -4,7 +4,7 @@ import SystemCore
 import notify
 
 /// The shared App Group container: small JSON files, each in a versioned envelope
-/// `{schemaVersion, writtenBy, writtenAt, payload}`, that the apps and the hub publish for each other.
+/// `{schemaVersion, writtenBy, writtenAt, payload}`, that the apps publish for each other.
 /// Synchronous, coordinated file IO; the files are small.
 public struct SharedContainer: Sendable {
     public static let groupID = "group.dev.svindland.stadig"
@@ -332,33 +332,6 @@ extension SharedKey where T == SystemCalendar {
     public static var calendar: SharedKey<SystemCalendar> { SharedKey(path: "core/calendar.json", schemaVersion: 1) }
 }
 
-extension SharedKey where T == [Recommendation] {
-    /// Written by the hub, read by the apps when they plan.
-    public static var recommendations: SharedKey<[Recommendation]> { SharedKey(path: "hub/recommendations.json", schemaVersion: 1) }
-}
-
-extension SharedKey where T == [Quest] {
-    public static var hubQuests: SharedKey<[Quest]> { SharedKey(path: "hub/quests.json", schemaVersion: 1) }
-}
-
-extension SharedKey where T == Rhythm {
-    /// Someone's work or school and sleep. Written by the hub, read by every app that plans.
-    public static var rhythm: SharedKey<Rhythm> { SharedKey(path: "hub/rhythm.json", schemaVersion: Rhythm.schemaVersion) }
-}
-
-extension SharedKey where T == [DayChange] {
-    /// "I'm out tonight" and lighter weeks, tombstones included. Written by the hub, merged a change
-    /// at a time from each device's own records, since a whole file would lose what another just said.
-    public static var dayChanges: SharedKey<[DayChange]> { SharedKey(path: "hub/changes.json", schemaVersion: DayChange.schemaVersion) }
-}
-
-extension SharedKey where T == MealRhythm {
-    /// When someone usually eats. Published by Stadig Macro.
-    public static var mealRhythm: SharedKey<MealRhythm> {
-        SharedKey(path: "apps/\(AppID.macroTrack.rawValue)/meals.json", schemaVersion: MealRhythm.schemaVersion)
-    }
-}
-
 extension SharedKey where T == NutritionSummary {
     /// Published by Stadig Macro.
     public static var nutrition: SharedKey<NutritionSummary> {
@@ -367,7 +340,7 @@ extension SharedKey where T == NutritionSummary {
 }
 
 extension SharedKey where T == AppSummary {
-    /// Each app's published summary, for the others and the hub.
+    /// Each app's published summary, for the other app.
     public static func summary(_ app: AppID) -> SharedKey<AppSummary> {
         SharedKey(path: "apps/\(app.rawValue)/summary.json", schemaVersion: AppSummary.schemaVersion)
     }

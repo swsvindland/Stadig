@@ -25,8 +25,8 @@ struct LifeModeTombstoneTests {
 
     @Test func twoSourcesNamingOneTargetGiveOnePriority() {
         let priorities = [
-            TrainingPriority(target: .conditioning, emphasis: 1, reason: "Fitter for the season", source: .hub),
-            TrainingPriority(target: .conditioning, emphasis: 0.5, reason: "Coach note", source: .hub),
+            TrainingPriority(target: .conditioning, emphasis: 1, reason: "Fitter for the season", source: .endurance),
+            TrainingPriority(target: .conditioning, emphasis: 0.5, reason: "Engine is light", source: .endurance),
         ].mergedByID()
         #expect(priorities.count == 1)
         #expect(Set(priorities.map(\.id)).count == priorities.count)
