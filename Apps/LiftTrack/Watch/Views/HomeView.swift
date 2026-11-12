@@ -35,7 +35,7 @@ struct HomeView: View {
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
-                    .glassEffect(.regular.tint(.orange.opacity(0.4)), in: .capsule)
+                    .glassEffect(.regular.tint(Color.accentColor.opacity(0.4)), in: .capsule)
             }
             Text(plan.title)
                 .font(.title3.weight(.semibold))
@@ -46,7 +46,7 @@ struct HomeView: View {
             if model.finishedToday {
                 Label("Done today", systemImage: "checkmark.circle.fill")
                     .font(.footnote)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(WatchInk.good)
             }
             Button {
                 model.start(plan)

@@ -14,6 +14,7 @@ struct OnboardingView: View {
         case welcome, goals, focus, schedule, equipment, experience, outside, body, phase, health, ready
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @State private var step: Step = .welcome
     @State private var profile = SharedProfile(createdBy: .liftTrack)
     @State private var settings = LiftSettings()
@@ -35,12 +36,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if step != .welcome {
-                // By order, so a step that dropped out of the list (Stadig Macro took the phase) still has a place.
-                ProgressView(value: Double(steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0), total: Double(steps.count - 1))
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-            }
+            if step != .welcome { topBar }
             ScrollView {
                 content
                     .padding()
@@ -81,23 +77,46 @@ struct OnboardingView: View {
         }
     }
 
-    private var footer: some View {
-        HStack {
-            if step != .welcome {
-                Button("Back") { move(-1) }.secondaryAction()
-                    .accessibilityIdentifier("onboarding.back")
+    /// Back, and how far along: "2 of 9". The welcome isn't counted.
+    private var topBar: some View {
+        // By order, so a step that dropped out of the list (Stadig Macro took the phase) still has a place.
+        let position = steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0
+        return HStack(spacing: 14) {
+            Button {
+                move(-1)
+            } label: {
+                CircleIcon(symbol: "chevron.left")
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+            .accessibilityIdentifier("onboarding.back")
+            Text("\(position) of \(steps.count - 1)")
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(Ink.text2)
+                .accessibilityLabel("Step \(position) of \(steps.count - 1)")
             Spacer()
-            Button(step == .ready ? "Start the assessment" : (step == .welcome ? "Get started" : "Next")) {
-                if step == .ready { finish() } else { move(1) }
-            }
-            .primaryAction()
-            .disabled(!canContinue)
-            // One identifier for every step, so a test can walk through them.
-            .accessibilityIdentifier("onboarding.next")
         }
-        .padding()
-        .background(.bar)
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .readableWidth(620)
+    }
+
+    /// The one way on, full width at the foot, on the ground.
+    private var footer: some View {
+        Button {
+            if step == .ready { finish() } else { move(1) }
+        } label: {
+            Text(step == .ready ? "Start the assessment" : (step == .welcome ? "Get started" : "Continue")).frame(maxWidth: .infinity)
+        }
+        .primaryAction()
+        .controlSize(.large)
+        .disabled(!canContinue)
+        // One identifier for every step, so a test can walk through them.
+        .accessibilityIdentifier("onboarding.next")
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .readableWidth(620)
     }
 
     private var canContinue: Bool {
@@ -122,9 +141,11 @@ struct OnboardingView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.tint)
                 .padding(.top, 40)
-            Text("Stadig Lift").font(.largeTitle.bold())
+                .accessibilityHidden(true)
+            Text("Stadig Lift").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
+                .accessibilityAddTraits(.isHeader)
             Text("Every session prescribed, every set adjusted to how it went, and a plan that tells you what to do next.")
-                .font(.title3)
+                .font(.title3).foregroundStyle(Ink.text)
             VStack(alignment: .leading, spacing: 14) {
                 Label("Rate each set Easy, Just right or Missed. That's all.", systemImage: "hand.tap")
                 Label("The first weeks find your working weights and how well your ratings match what you can do.", systemImage: "scope")
@@ -132,6 +153,8 @@ struct OnboardingView: View {
                 Label("Free and open source. Your data stays yours.", systemImage: "lock.open")
             }
             .font(.body)
+            .foregroundStyle(Ink.text2)
+            .labelStyle(AccentIconLabelStyle())
             if reusedProfile {
                 Label("Your setup from another app in the family is already here. Nothing to re-enter.", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Ink.good)
@@ -143,15 +166,29 @@ struct OnboardingView: View {
     private var goals: some View {
         VStack(alignment: .leading, spacing: 16) {
             header("What are you after?", "Outcomes only. Stadig Lift picks the program, and Stadig Macro (if you use it) picks the diet phase.")
-            ForEach(OutcomeGoal.allCases) { goal in
-                let selected = profile.goals.contains(goal)
-                ChoiceCard(
-                    title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected,
-                    identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)"
-                ) {
-                    if selected { profile.goals.removeAll { $0 == goal } } else { profile.goals.append(goal) }
+            let goals = OutcomeGoal.allCases
+            if dynamicType.isAccessibilitySize {
+                ForEach(goals) { goal in goalCard(goal, stacked: false) }
+            } else {
+                // Two by two, as the design has them, each row's cards as tall as each other.
+                Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                    ForEach(Array(stride(from: 0, to: goals.count, by: 2)), id: \.self) { start in
+                        GridRow {
+                            ForEach(goals[start..<min(start + 2, goals.count)]) { goal in goalCard(goal, stacked: true) }
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private func goalCard(_ goal: OutcomeGoal, stacked: Bool) -> some View {
+        let selected = profile.goals.contains(goal)
+        return ChoiceCard(
+            title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected, stacked: stacked,
+            identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)"
+        ) {
+            if selected { profile.goals.removeAll { $0 == goal } } else { profile.goals.append(goal) }
         }
     }
 
@@ -366,10 +403,13 @@ struct OnboardingView: View {
     }
 
     private func header(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.title.bold())
-            Text(detail).font(.body).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(detail).font(.subheadline).foregroundStyle(Ink.text2)
         }
+        .padding(.top, 8)
         .padding(.bottom, 4)
     }
 
@@ -387,34 +427,85 @@ struct OnboardingView: View {
 
 // MARK: - Shared editors
 
-/// One answer to a one-tap question, with its check.
+/// One answer to a one-tap question, with its check: picked, it's outlined in the accent.
 struct ChoiceCard: View {
     let title: String
     var detail: String?
     var symbol: String?
     let selected: Bool
+    /// The symbol and check over the words, for a card in a grid.
+    var stacked = false
     /// Required, so no card is left out of the UI tests.
     let identifier: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: symbol == nil ? nil : 14) {
-                if let symbol { Image(systemName: symbol).font(.title2).frame(width: 36) }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.headline)
-                    if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+            Group {
+                if stacked {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .top) {
+                            if let symbol { icon(symbol) }
+                            Spacer()
+                            check
+                        }
+                        Spacer(minLength: 0)
+                        words
+                    }
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
+                } else {
+                    HStack(spacing: 14) {
+                        if let symbol { icon(symbol).frame(width: 36) }
+                        words
+                        Spacer(minLength: 4)
+                        check
+                    }
                 }
-                Spacer()
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(
-                    selected ? Color.accentColor : .secondary)
             }
-            .card()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                selected ? AnyShapeStyle(Color.accentColor.opacity(0.14)) : AnyShapeStyle(.cardBackground),
+                in: .rect(cornerRadius: 20, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5)
+            }
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier(identifier)
+    }
+
+    private func icon(_ symbol: String) -> some View {
+        Image(systemName: symbol).font(.title2).foregroundStyle(selected ? Color.accentColor : Ink.text2).accessibilityHidden(true)
+    }
+
+    private var words: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.headline).foregroundStyle(Ink.text)
+            if let detail { Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true) }
+        }
+    }
+
+    private var check: some View {
+        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+            .font(.title2)
+            .foregroundStyle(selected ? Color.accentColor : Ink.text3)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A label whose icon is in the accent and whose words keep the text's colour.
+struct AccentIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            configuration.icon.foregroundStyle(.tint).frame(width: 24)
+            configuration.title
+        }
     }
 }
 
@@ -475,9 +566,9 @@ struct WeekdayPicker: View {
                 } label: {
                     Text(day.short.prefix(2))
                         .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(on ? Color.accentColor : Color.secondary.opacity(0.12), in: .rect(cornerRadius: 10))
-                        .foregroundStyle(on ? .white : .primary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(on ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 10, style: .continuous))
+                        .foregroundStyle(on ? Ink.onAccent : Ink.text)
                 }
                 .buttonStyle(.plain)
                 .hoverHighlight()

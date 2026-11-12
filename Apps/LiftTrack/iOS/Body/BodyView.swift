@@ -711,6 +711,7 @@ struct MeasurementEditor: View {
                     .accessibilityIdentifier("measurements.delete")
                 }
             }
+            .inkList()
             .navigationTitle("Measurements")
             .inlineTitle()
             .toolbar {
@@ -796,6 +797,7 @@ struct MeasuringGuide: View {
                 .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .inkList()
         .navigationTitle("Where the tape goes")
         .inlineTitle()
     }

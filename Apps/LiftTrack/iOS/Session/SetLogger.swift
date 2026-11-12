@@ -7,6 +7,7 @@ import SystemCore
 struct SetLogger: View {
     @Environment(AppModel.self) private var model
     @Environment(\.sessionScale) private var scale
+    @Environment(\.dynamicTypeSize) private var dynamicType
     let itemIndex: Int
     let setIndex: Int
 
@@ -66,11 +67,15 @@ struct SetLogger: View {
             if scale.isLarge {
                 Text(exercise.name).font(scale.titleFont).lineLimit(1)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // The plates under the set at the largest text sizes, where side by side cuts both short.
+            let layout =
+                dynamicType.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+            layout {
                 Text(last.map { "\(label) · last time \(Format.logged($0, exercise: exercise, unit: model.gym.unit))" } ?? label)
                     .eyebrow()
-                    .lineLimit(2)
-                Spacer(minLength: 4)
+                    .lineLimit(dynamicType.isAccessibilitySize ? 3 : 2)
+                if !dynamicType.isAccessibilitySize { Spacer(minLength: 4) }
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             // The phone's set list says it under the set marked Now.
@@ -116,7 +121,8 @@ struct SetLogger: View {
                 .keyboardShortcut(scale.shortcut(.return))
                 .accessibilityIdentifier("logger.logRepOut")
             default:
-                if !scale.isLarge {
+                // Left out at the largest text sizes, where the dock already fills most of the screen.
+                if !scale.isLarge && !dynamicType.isAccessibilitySize {
                     Text("How did it feel? One tap logs the set and starts your rest.")
                         .font(.caption).foregroundStyle(Ink.text2)
                         .frame(maxWidth: .infinity)
@@ -334,13 +340,15 @@ struct Stepperish: View {
         return min(n, 100)
     }
 
+    private var height: CGFloat { scale.isLarge ? 96 : 72 }
+
     var body: some View {
         VStack(spacing: 0) {
             if showsTitle { Text(title).eyebrow().padding(.top, 6) }
             HStack(spacing: 0) {
                 Button(action: minus) {
-                    Image(systemName: "minus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: scale.stepButton).contentShape(
-                        .rect)
+                    // The control's full height to hit, though the glyph is small.
+                    Image(systemName: "minus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: height).contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Ink.text2)
@@ -369,8 +377,7 @@ struct Stepperish: View {
                 .accessibilityHint(entry == nil ? "" : "Type a value")
                 .accessibilityIdentifier(identifier ?? "")
                 Button(action: plus) {
-                    Image(systemName: "plus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: scale.stepButton).contentShape(
-                        .rect)
+                    Image(systemName: "plus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: height).contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Ink.text2)
@@ -380,7 +387,7 @@ struct Stepperish: View {
                 .accessibilityLabel("More \(title.lowercased())")
                 .accessibilityIdentifier(identifier.map { "\($0)More" } ?? "")
             }
-            .frame(minHeight: scale.isLarge ? 96 : 72)
+            .frame(minHeight: height)
         }
         .alert(title, isPresented: $typing) {
             TextField(entry?.unit ?? "", text: $typed)
@@ -455,6 +462,7 @@ struct FeedbackSheet: View {
                     )
                 }
             }
+            .inkList()
             .navigationTitle("How was it?")
             .inlineTitle()
             .toolbar {
@@ -512,6 +520,7 @@ struct SwapSheet: View {
                     }
                 }
             }
+            .inkList()
             .searchable(text: $query, prompt: "Search exercises")
             .navigationTitle("Swap exercise")
             .inlineTitle()
@@ -569,6 +578,7 @@ struct EditSetSheet: View {
                         }
                     }
                 }
+                .inkList()
                 .navigationTitle(exercise.name)
                 .inlineTitle()
                 .toolbar {

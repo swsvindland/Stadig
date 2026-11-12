@@ -352,6 +352,9 @@ struct YourShape: View {
     private func figure(_ axes: [ScoreShape.Axis], waiting: Bool) -> some View {
         VStack(spacing: 10) {
             ScoreShape(axes: axes)
+                // Its corner labels sit at a fixed distance from the figure, so past this size they
+                // run into it and off the screen; each score is in the rows below at full size.
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .frame(maxWidth: 380)
                 .frame(maxWidth: .infinity)
             if waiting {
@@ -450,6 +453,8 @@ struct LiftTrendCard: View {
     }
 
     var body: some View {
+        // Worked out once a render, not for each use below.
+        let options = self.options
         let selected = exerciseID.flatMap { id in options.first { $0.id == id } } ?? options.first
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -496,7 +501,7 @@ struct DisciplineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Training discipline", systemImage: StatKind.discipline.symbol).font(.headline).foregroundStyle(StatKind.discipline.color)
+            Text("Training discipline").eyebrow().accessibilityAddTraits(.isHeader)
             DisciplineGauge(score: score)
             Text(
                 "\(score.completed) of \(score.planned) planned in the last four weeks\(score.exemptDays > 0 ? ", \(score.exemptDays) days exempt" : "")."
@@ -516,10 +521,12 @@ struct EnduranceCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("Endurance", systemImage: StatKind.endurance.symbol).font(.headline).foregroundStyle(StatKind.endurance.color)
-                Spacer()
-                if let score = analysis.score { Text("\(Int(score.rounded()))").font(.headline.monospacedDigit()) }
+            // As Strength's card: the eyebrow, the score large, a ruler under it.
+            Text("Endurance").eyebrow().accessibilityAddTraits(.isHeader)
+            if let score = analysis.score {
+                Text("\(Int(score.rounded()))").numeral(44, weight: .heavy).foregroundStyle(Ink.text)
+                    .accessibilityLabel("Score \(Int(score.rounded()))")
+                Ruler(value: score / 100, height: 10, divisions: 5).padding(.bottom, 4)
             }
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
@@ -564,7 +571,7 @@ struct AgilityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Agility", systemImage: StatKind.agility.symbol).font(.headline).foregroundStyle(StatKind.agility.color)
+                Text("Agility").eyebrow().accessibilityAddTraits(.isHeader)
                 Spacer()
                 if let limiter = analysis.limiter { Pill(text: "Limiter: \(limiter.label)", color: Ink.ok) }
             }
@@ -601,7 +608,7 @@ struct RatingsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Your ratings", systemImage: "hand.tap").font(.headline)
+            Text("Your ratings").eyebrow().accessibilityAddTraits(.isHeader)
             Text(trust.label).font(.subheadline.weight(.semibold))
             if let tendency = trust.tendency { Text(tendency).font(.subheadline) }
             Text(
@@ -673,6 +680,7 @@ struct HistoryView: View {
                 }
             }
         }
+        .inkList()
         .navigationTitle("History")
         .overlay { if entries.isEmpty { ContentUnavailableView("Nothing yet", systemImage: "clock") } }
     }
@@ -748,6 +756,7 @@ struct SessionSetsList: View {
                 }
             }
         }
+        .inkList()
     }
 }
 

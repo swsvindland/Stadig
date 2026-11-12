@@ -15,7 +15,7 @@ extension View {
         .background(.regularMaterial, in: .rect(cornerRadius: 32, style: .continuous))
             #else
         .background(Ink.surface, in: .rect(cornerRadius: 32, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1))
+        .overlay { RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1) }
             #endif
     }
 }
@@ -137,6 +137,8 @@ struct ExerciseStrip: View {
 /// The exercise in front of you: what it is and how to do it today, its sets, and what's next.
 struct FocusedExercise: View {
     @Environment(AppModel.self) private var model
+    /// The design's 30 points, growing with the text size like the words round it.
+    @ScaledMetric(relativeTo: .title) private var nameSize: CGFloat = 30
     let live: LiveSession
     let index: Int
     let swap: (Int) -> Void
@@ -149,7 +151,7 @@ struct FocusedExercise: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(eyebrow(item, exercise)).eyebrow(.accentColor)
                 Text(exercise.name)
-                    .font(.system(size: 30, weight: .bold)).tracking(-0.8)
+                    .font(.system(size: nameSize, weight: .bold)).tracking(-0.8)
                     .foregroundStyle(Ink.text)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
@@ -461,6 +463,8 @@ struct SetValue: View {
     let exercise: Exercise
     let unit: WeightUnit
     let quiet: Bool
+    @ScaledMetric(relativeTo: .title3) private var bigSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .footnote) private var smallSize: CGFloat = 13
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
@@ -483,8 +487,8 @@ struct SetValue: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func big(_ text: String) -> some View { Text(text).font(.system(size: 20, weight: .bold)) }
-    private func small(_ text: String) -> some View { Text(text).font(.system(size: 13, weight: .semibold)).foregroundStyle(Ink.text2) }
+    private func big(_ text: String) -> some View { Text(text).font(.system(size: bigSize, weight: .bold)) }
+    private func small(_ text: String) -> some View { Text(text).font(.system(size: smallSize, weight: .semibold)).foregroundStyle(Ink.text2) }
 }
 
 /// A small capsule: "Now", "As many as you can".

@@ -112,6 +112,7 @@ struct LibraryView: View {
                 .accessibilityIdentifier("library.row")
             }
         }
+        .inkList()
         .searchable(text: $query, prompt: "Exercises, muscles, equipment")
         .overlay {
             if results.isEmpty { ContentUnavailableView.search(text: query) }
@@ -232,6 +233,8 @@ struct ExerciseDetailView: View {
     /// Shows another exercise in the library: a substitute picked here.
     let select: (String) -> Void
     @State private var shown: ExerciseDetailContent?
+    /// The design's 30 points, growing with the text size like the words round it.
+    @ScaledMetric(relativeTo: .title) private var nameSize: CGFloat = 30
 
     /// What the screen's numbers depend on: a change to any of it works them out again.
     private struct Key: Hashable {
@@ -298,7 +301,7 @@ struct ExerciseDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(eyebrow).eyebrow(.accentColor)
             Text(exercise.name)
-                .font(.system(size: 30, weight: .bold)).tracking(-0.8)
+                .font(.system(size: nameSize, weight: .bold)).tracking(-0.8)
                 .foregroundStyle(Ink.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -533,7 +536,9 @@ struct ExerciseDetailView: View {
                                         .padding(.horizontal, 14)
                                         .frame(minHeight: 36)
                                         .background(.cardBackground, in: .capsule)
-                                        .contentShape(.capsule)
+                                        // A fingertip's height to hit, round a slimmer chip.
+                                        .frame(minHeight: 44)
+                                        .contentShape(.rect)
                                 }
                                 .buttonStyle(.plain)
                                 .hoverHighlight()

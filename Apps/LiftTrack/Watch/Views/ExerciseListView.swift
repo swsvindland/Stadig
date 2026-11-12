@@ -37,7 +37,7 @@ struct ExerciseListView: View {
                 systemName: item.skipped
                     ? "forward.fill" : item.isDone ? "checkmark.circle.fill" : current ? "arrow.right.circle.fill" : item.plan.block.symbol
             )
-            .foregroundStyle(item.isDone && !item.skipped ? .green : current ? Color.accentColor : .secondary)
+            .foregroundStyle(item.isDone && !item.skipped ? WatchInk.good : current ? Color.accentColor : .secondary)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.catalog.resolve(item.exerciseID).name)

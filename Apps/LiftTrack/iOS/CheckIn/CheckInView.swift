@@ -113,6 +113,7 @@ struct CheckInView: View {
                     Text("Every four weeks or so, the same test. A stalled benchmark puts intervals in the post-lift block.")
                 }
             }
+            .inkList()
             .navigationTitle("Check-in")
             .inlineTitle()
             .toolbar {

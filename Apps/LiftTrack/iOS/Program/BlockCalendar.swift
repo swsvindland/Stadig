@@ -48,7 +48,9 @@ private struct DayCell: View {
                 if day.vacation {
                     Image(systemName: "airplane").font(.system(size: 9)).foregroundStyle(Ink.text)
                 } else if day.checkIn {
-                    Image(systemName: "checklist").font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.accentColor)
+                    // On a trained day's accent fill, in the ink that reads on it.
+                    Image(systemName: "checklist").font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(day.trained ? Ink.onAccent : Color.accentColor)
                 } else if day.trained {
                     Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Ink.onAccent)
                 }
@@ -71,7 +73,7 @@ private struct DayCell: View {
         if day.vacation { return Ink.raised }
         if day.trained { return .accentColor }
         if day.week.isDeload { return Ink.track }
-        return .secondary.opacity(0.12)
+        return Ink.raised
     }
 
     private var description: String {

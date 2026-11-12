@@ -105,34 +105,43 @@ struct SessionSummaryView: View {
         .sheetFrame()
     }
 
-    /// Every exercise's work sets in a line each, with their ratings.
+    /// Every exercise's work sets in a line each, with their ratings. Nothing when nothing was lifted
+    /// or heated (conditioning only), rather than an empty card.
+    @ViewBuilder
     private var sets: some View {
+        // Only exercises with work sets, so a warm-up first leaves no line at the top.
+        let logs = record.exercises.filter { $0.sets.contains { $0.kind.countsAsWork } }
+        let heat = record.heat ?? []
+        if !logs.isEmpty || !heat.isEmpty {
+            setsCard(logs, heat: heat)
+        }
+    }
+
+    private func setsCard(_ logs: [ExerciseLog], heat: [HeatLog]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(record.exercises.enumerated()), id: \.element.id) { index, log in
+            ForEach(Array(logs.enumerated()), id: \.element.id) { index, log in
                 let exercise = model.catalog.resolve(log.exerciseID)
                 let work = log.sets.filter { $0.kind.countsAsWork }
-                if !work.isEmpty {
-                    if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-                        HStack(spacing: 10) {
-                            ForEach(work) { set in
-                                HStack(spacing: 4) {
-                                    RatingMark(rating: set.rating)
-                                    Text(Format.short(load: set.loadKg, reps: set.reps, exercise: exercise, unit: model.gym.unit))
-                                        .font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
-                                }
+                if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.name).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                    HStack(spacing: 10) {
+                        ForEach(work) { set in
+                            HStack(spacing: 4) {
+                                RatingMark(rating: set.rating)
+                                Text(Format.short(load: set.loadKg, reps: set.reps, exercise: exercise, unit: model.gym.unit))
+                                    .font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
                             }
                         }
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
                     }
-                    .padding(.vertical, 10)
-                    .accessibilityElement(children: .combine)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 }
+                .padding(.vertical, 10)
+                .accessibilityElement(children: .combine)
             }
-            ForEach(Array((record.heat ?? []).enumerated()), id: \.offset) { _, heat in
-                Rectangle().fill(Ink.hairline).frame(height: 1)
+            ForEach(Array(heat.enumerated()), id: \.offset) { index, heat in
+                if index > 0 || !logs.isEmpty { Rectangle().fill(Ink.hairline).frame(height: 1) }
                 HStack {
                     Text(model.catalog.resolve(heat.exerciseID).name).font(.subheadline.weight(.semibold))
                     Spacer()

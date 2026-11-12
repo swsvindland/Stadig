@@ -242,6 +242,7 @@ private struct BlockPane: View {
                     }
                 }
             }
+            .inkList()
             .contextMenu(forSelectionType: ProgramRow.ID.self) { ids in
                 if let id = ids.first, let row = days.flatMap(\.rows).first(where: { $0.id == id }) {
                     if editable && row.isStrength {
@@ -391,6 +392,7 @@ private struct BlockOverview: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .inkList()
         .formStyle(.grouped)
     }
 }
@@ -438,6 +440,7 @@ private struct SlotInspector: View {
             }
             RefitSection(mesocycle: mesocycle, day: day)
         }
+        .inkList()
         .formStyle(.grouped)
         .accessibilityIdentifier("program.inspector")
     }

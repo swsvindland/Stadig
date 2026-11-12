@@ -49,24 +49,29 @@ struct TimedView: View {
             let ends = timer.started.addingTimeInterval(TimeInterval(seconds))
             TimelineView(.periodic(from: timer.started, by: 1)) { context in
                 let remaining = max(0, ends.timeIntervalSince(context.date))
-                ZStack {
-                    Circle().stroke(.tint.opacity(0.25), lineWidth: 6)
-                    Circle()
-                        .trim(from: 0, to: remaining / Double(max(seconds, 1)))
-                        .stroke(.tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .animation(.linear(duration: 1), value: remaining)
+                VStack(spacing: 6) {
                     if remaining > 0 {
                         Text(timerInterval: timer.started...ends, countsDown: true)
-                            .font(.system(.title2, design: .rounded).weight(.semibold).monospacedDigit())
+                            .font(.system(size: 44, weight: .bold).monospacedDigit())
+                            .tracking(-1.5)
                             .multilineTextAlignment(.center)
                     } else {
                         Image(systemName: "checkmark")
-                            .font(.title2.weight(.semibold))
-                            .accessibilityLabel("Time")
+                            .font(.system(size: 36, weight: .bold))
+                            .frame(height: 52)
                     }
+                    // The time left as a fill on a track, as the phone's rulers draw it: no rings.
+                    GeometryReader { geometry in
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .frame(width: geometry.size.width * remaining / Double(max(seconds, 1)))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(WatchInk.track, in: .capsule)
+                            .animation(.linear(duration: 1), value: remaining)
+                    }
+                    .frame(height: 6)
                 }
-                .frame(width: 84, height: 84)
+                .padding(.horizontal, 4)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Time left")
                 .accessibilityValue(WatchFormat.clock(Int(remaining.rounded(.up))))
