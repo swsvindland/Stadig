@@ -116,58 +116,9 @@ struct WeighInSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    HStack(spacing: 12) {
-                        nudge(-1)
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            TextField("0.0", text: $value)
-                                .fieldKeyboard(.decimal)
-                                .multilineTextAlignment(.center)
-                                .font(.largeTitle.weight(.semibold).monospacedDigit())
-                                .focused($focused)
-                                .accessibilityIdentifier("weighIn.value")
-                            Text(model.units.weight.symbol).font(.title3).foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        nudge(1)
-                    }
-                    .padding(.vertical, 4)
-                    DatePicker("When", selection: $date, in: ...Date()).accessibilityIdentifier("weighIn.date")
-                } footer: {
-                    Text("Daily, first thing, after the bathroom and before eating. Single readings are mostly water; the trend is what counts.")
-                }
-                let recent = model.weighIns.suffix(10).reversed()
-                if !recent.isEmpty {
-                    Section("Recent") {
-                        ForEach(Array(recent)) { w in
-                            HStack {
-                                Text(Format.day(w.day))
-                                Spacer()
-                                Text(Format.weight(w.kg, unit: model.units.weight)).monospacedDigit()
-                                    .accessibilityIdentifier("weighIn.recent")
-                                    .strikethrough(w.excluded)
-                                    .foregroundStyle(w.excluded ? .secondary : .primary)
-                                if case .health = w.source { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink) }
-                            }
-                            .swipeActions {
-                                Button(w.excluded ? "Use" : "Ignore") { model.setExcluded(!w.excluded, weighIn: w) }.tint(.orange)
-                                if case .manual = w.source {
-                                    Button("Delete", role: .destructive) { model.delete(weighIn: w) }
-                                }
-                            }
-                            // A pointer has no swipe.
-                            .contextMenu {
-                                Button(w.excluded ? "Use" : "Ignore", systemImage: w.excluded ? "checkmark.circle" : "eye.slash") {
-                                    model.setExcluded(!w.excluded, weighIn: w)
-                                }
-                                if case .manual = w.source {
-                                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(weighIn: w) }
-                                }
-                            }
-                        }
-                    }
-                }
+                Group { weighInSections }.inkRows()
             }
+            .inkForm()
             .navigationTitle("Weigh in")
             .inlineTitle()
             .toolbar {
@@ -192,6 +143,61 @@ struct WeighInSheet: View {
     static func nudged(_ value: String, by direction: Double, in unit: WeightUnit) -> String {
         let step = unit == .kg ? 0.1 : 0.2
         return Format.editable(max(0, (Format.parse(value) ?? 0) + direction * step), digits: 1)
+    }
+
+    @ViewBuilder
+    var weighInSections: some View {
+        Section {
+            HStack(spacing: 12) {
+                nudge(-1)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    TextField("0.0", text: $value)
+                        .fieldKeyboard(.decimal)
+                        .multilineTextAlignment(.center)
+                        .font(.largeTitle.weight(.semibold).monospacedDigit())
+                        .focused($focused)
+                        .accessibilityIdentifier("weighIn.value")
+                    Text(model.units.weight.symbol).font(.title3).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                nudge(1)
+            }
+            .padding(.vertical, 4)
+            DatePicker("When", selection: $date, in: ...Date()).accessibilityIdentifier("weighIn.date")
+        } footer: {
+            Text("Daily, first thing, after the bathroom and before eating. Single readings are mostly water; the trend is what counts.")
+        }
+        let recent = model.weighIns.suffix(10).reversed()
+        if !recent.isEmpty {
+            Section("Recent") {
+                ForEach(Array(recent)) { w in
+                    HStack {
+                        Text(Format.day(w.day))
+                        Spacer()
+                        Text(Format.weight(w.kg, unit: model.units.weight)).monospacedDigit()
+                            .accessibilityIdentifier("weighIn.recent")
+                            .strikethrough(w.excluded)
+                            .foregroundStyle(w.excluded ? .secondary : .primary)
+                        if case .health = w.source { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink) }
+                    }
+                    .swipeActions {
+                        Button(w.excluded ? "Use" : "Ignore") { model.setExcluded(!w.excluded, weighIn: w) }.tint(.orange)
+                        if case .manual = w.source {
+                            Button("Delete", role: .destructive) { model.delete(weighIn: w) }
+                        }
+                    }
+                    // A pointer has no swipe.
+                    .contextMenu {
+                        Button(w.excluded ? "Use" : "Ignore", systemImage: w.excluded ? "checkmark.circle" : "eye.slash") {
+                            model.setExcluded(!w.excluded, weighIn: w)
+                        }
+                        if case .manual = w.source {
+                            Button("Delete", systemImage: "trash", role: .destructive) { model.delete(weighIn: w) }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     func nudge(_ direction: Double) -> some View {

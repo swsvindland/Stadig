@@ -123,7 +123,7 @@ struct MaintenanceCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Maintenance").font(.headline)
                 Spacer()
-                Pill(text: estimate.label, color: estimate.spread >= 350 ? .orange : estimate.spread >= 200 ? .blue : .green)
+                Pill(text: estimate.label, color: estimate.spread >= 350 ? Ink.ok : estimate.spread >= 200 ? Ink.text2 : Ink.good)
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(Format.whole(estimate.kcal)).font(.largeTitle.weight(.bold).monospacedDigit())

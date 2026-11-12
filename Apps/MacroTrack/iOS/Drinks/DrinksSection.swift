@@ -49,7 +49,7 @@ struct DrinksSection: View {
         let ounces = model.fluidOunces
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                Image(systemName: "drop.fill").foregroundStyle(.cyan).frame(width: 24)
+                Image(systemName: "drop.fill").foregroundStyle(Color.accentColor).frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Format.volume(h.total, ounces: ounces)).font(.subheadline.weight(.semibold).monospacedDigit())
                     Text(
@@ -65,26 +65,26 @@ struct DrinksSection: View {
                     } label: {
                         Text("+ \(size.label)").font(.caption.weight(.semibold)).lineLimit(1).fixedSize()
                     }
-                    .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.cyan)
+                    .buttonStyle(.bordered).buttonBorderShape(.capsule)
                     .accessibilityLabel("Add \(Format.volume(size.ml, ounces: ounces)) of water")
                     .accessibilityIdentifier("drinks.water")
                 }
             }
-            Bar(fraction: h.fraction, color: .cyan)
+            Ruler.thin(h.fraction).accessibilityHidden(true)
         }
     }
 
     func caffeineRow(_ c: CaffeineReport) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                Image(systemName: "bolt.fill").foregroundStyle(.brown).frame(width: 24)
+                Image(systemName: "bolt.fill").foregroundStyle(Ink.text2).frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(Format.mg(c.total)) caffeine of \(Format.mg(c.limit))").font(.subheadline.weight(.semibold).monospacedDigit())
                     Text(caffeineDetail(c)).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
-            Bar(fraction: c.limit > 0 ? c.total / c.limit : 0, color: c.over ? .orange : .brown)
+            Ruler.thin(c.limit > 0 ? c.total / c.limit : 0, color: c.over ? Ink.ok : Ink.text3).accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
     }
@@ -157,23 +157,6 @@ struct DrinksSection: View {
         .buttonStyle(.plain)
         .hoverHighlight()
         .accessibilityLabel("Log \(title)\(detail.map { ", \($0)" } ?? "")")
-    }
-}
-
-private struct Bar: View {
-    let fraction: Double
-    let color: Color
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(color.opacity(0.16))
-                Capsule().fill(color.gradient).frame(width: max(fraction > 0 ? 6 : 0, proxy.size.width * min(1, fraction)))
-            }
-        }
-        .frame(height: 6)
-        .animation(.snappy, value: fraction)
-        .accessibilityHidden(true)
     }
 }
 
