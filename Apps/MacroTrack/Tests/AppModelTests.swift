@@ -170,7 +170,7 @@ struct AppModelTests {
         let after = try #require(model.analysis).todayIntake
         #expect(abs(after.kcal - before - 106.8) < 0.5)
         #expect(abs(after.protein - 1.308) < 0.01)
-        #expect(model.toast?.message == "Logged Bananas, raw · 107 kcal")
+        #expect(model.toast?.message == "Logged Bananas · 107 kcal")
         #expect(model.toast?.undo == [banana.id])
         #expect(banana.day == model.today)
         #expect(banana.unitID == "g")
