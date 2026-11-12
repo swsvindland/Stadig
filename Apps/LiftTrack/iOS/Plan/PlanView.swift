@@ -26,20 +26,25 @@ struct PlanView: View {
             .accessibilityIdentifier("plan.screen")
             .background(.pageBackground)
             .navigationTitle("Plan")
+            #if os(iOS)
+            // The phone draws its own header: when the block ends over a large title.
+            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            #endif
             .navigationDestination(for: DayRoute.self) { route in DayDetail(route: route) }
             .sheet(isPresented: $planning) { NextBlockView() }
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .toolbar {
-                SettingsToolbarItem(identifier: "plan.settings")
+                if sizeClass.isWide { SettingsToolbarItem(identifier: "plan.settings") }
             }
             .sessionResumeToolbar()
         }
     }
 
-    /// The phone's single column, unchanged.
+    /// The phone's single column.
     private var column: some View {
         VStack(alignment: .leading, spacing: 16) {
+            phoneHeader
             if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
                 header(mesocycle, block: block, analysis: analysis)
                 WeekStrip(block: block, today: model.today, vacations: vacations)
@@ -53,6 +58,30 @@ struct PlanView: View {
             lifeModes
         }
         .readableWidth()
+    }
+
+    private var phoneHeader: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let block = model.analysis?.block {
+                    Text("Current block · ends \(Format.day(block.range.end, style: .dateTime.day().month(.abbreviated)))").eyebrow()
+                }
+                Text("Plan").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
+            }
+            Spacer()
+            #if !os(macOS)
+            Button {
+                model.showSettings = true
+            } label: {
+                CircleIcon(symbol: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .accessibilityIdentifier("plan.settings")
+            #endif
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, -8)
     }
 
     /// The block and life beside its days, which sit in a grid.
@@ -113,7 +142,7 @@ struct PlanView: View {
             HStack {
                 Text(block.kind.label).font(.title2.bold())
                 Spacer()
-                Text(Format.range(block.range)).font(.subheadline).foregroundStyle(.secondary)
+                Text(Format.range(block.range)).font(.subheadline).foregroundStyle(Ink.text2)
             }
             Text(mesocycle.rationale.headline).font(.body)
             HStack(spacing: 6) {
@@ -167,8 +196,10 @@ struct PlanView: View {
             }
             ForEach(mesocycle.priorities.filter { $0.emphasis != 0 }) { priority in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: priority.emphasis > 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                        .foregroundStyle(priority.emphasis > 0 ? Color.green : Color.secondary)
+                    Image(systemName: priority.emphasis > 0 ? "arrow.up" : "arrow.down")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(priority.emphasis > 0 ? Color.accentColor : Ink.text3)
+                        .accessibilityLabel(priority.emphasis > 0 ? "More" : "Less")
                     VStack(alignment: .leading, spacing: 2) {
                         Text(priority.label).font(.subheadline.weight(.semibold))
                         Text(priority.reason).font(.caption).foregroundStyle(.secondary)
@@ -191,6 +222,7 @@ struct PlanView: View {
             .hoverHighlight()
             Toggle("Prioritise automatically", isOn: model.setting(\.autoPrioritise))
                 .font(.subheadline)
+                .tint(.accentColor)
             Text("Takes effect at the next block.").font(.caption).foregroundStyle(.secondary)
         }
         .card()
@@ -246,7 +278,8 @@ struct DayRoute: Hashable {
     let dayID: UUID
 }
 
-/// The block's weeks: loading, deload, vacations, today.
+/// The block's weeks as bars of their load: rising through the loading weeks, short for the
+/// deload. The weeks done are grey, this week is the accent, a vacation carries a plane.
 struct WeekStrip: View {
     let block: TrainingBlock
     let today: Day
@@ -254,44 +287,63 @@ struct WeekStrip: View {
 
     var body: some View {
         let weeks = max(1, block.weeksTotal)
-        HStack(spacing: 6) {
+        HStack(alignment: .bottom, spacing: 8) {
             ForEach(0..<weeks, id: \.self) { index in
                 let start = block.start.adding(weeks: index)
+                let range = DayRange(start, start.adding(days: 6))
                 let week = block.week(of: start)
-                let current = DayRange(start, start.adding(days: 6)).contains(today)
-                let away = vacations.contains { $0.overlaps(DayRange(start, start.adding(days: 6))) }
-                VStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(color(week, away: away))
-                        .frame(height: 28)
-                        .overlay {
-                            if away { Image(systemName: "airplane").font(.caption2).foregroundStyle(.white) }
-                        }
-                        .overlay { if current { RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary, lineWidth: 2) } }
-                    Text(label(week, index: index)).font(.caption2).foregroundStyle(.secondary)
+                let current = range.contains(today)
+                let done = range.end < today
+                let away = vacations.contains { $0.overlaps(range) }
+                VStack(alignment: .leading, spacing: 6) {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(current ? Color.accentColor : (done ? Ink.text3 : Ink.track))
+                            .frame(height: 44 * height(week))
+                            .overlay {
+                                if away { Image(systemName: "airplane").font(.caption2).foregroundStyle(current ? Ink.onAccent : Ink.text) }
+                            }
+                    }
+                    .frame(height: 44)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(label(week, index: index)).font(.caption.weight(.semibold)).foregroundStyle(current ? Ink.text : Ink.text2)
+                        Text(state(week, current: current, done: done, away: away)).font(.caption2).foregroundStyle(Ink.text3)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(label(week, index: index))\(current ? ", this week" : "")\(away ? ", vacation" : "")")
             }
         }
-        .card(padding: 12)
+        .card(padding: 14)
     }
 
-    private func color(_ week: BlockWeek, away: Bool) -> Color {
-        if away { return .teal }
+    /// How tall a week's bar is: its share of the block's heaviest load.
+    private func height(_ week: BlockWeek) -> Double {
         switch week {
-        case .deload: return .mint.opacity(0.6)
-        case .loading(let i): return .orange.opacity(0.35 + 0.6 * Double(i + 1) / Double(max(1, block.loadingWeeks)))
-        default: return .secondary.opacity(0.2)
+        case .deload: 0.46
+        case .loading(let i): 0.55 + 0.45 * Double(i + 1) / Double(max(1, block.loadingWeeks))
+        default: 0.5
         }
     }
 
     private func label(_ week: BlockWeek, index: Int) -> String {
         switch week {
         case .deload: "Deload"
-        case .loading(let i): "W\(i + 1)"
-        default: "W\(index + 1)"
+        case .loading(let i): "Week \(i + 1)"
+        default: "Week \(index + 1)"
         }
+    }
+
+    private func state(_ week: BlockWeek, current: Bool, done: Bool, away: Bool) -> String {
+        if away { return "Away" }
+        if current { return "Now" }
+        if done { return "Done" }
+        if case .loading(let i) = week, i + 1 == block.loadingWeeks, block.loadingWeeks > 1 { return "Heaviest" }
+        return " "
     }
 }
 
