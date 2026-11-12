@@ -332,13 +332,6 @@ extension SharedKey where T == SystemCalendar {
     public static var calendar: SharedKey<SystemCalendar> { SharedKey(path: "core/calendar.json", schemaVersion: 1) }
 }
 
-extension SharedKey where T == MealRhythm {
-    /// When someone usually eats. Published by Stadig Macro.
-    public static var mealRhythm: SharedKey<MealRhythm> {
-        SharedKey(path: "apps/\(AppID.macroTrack.rawValue)/meals.json", schemaVersion: MealRhythm.schemaVersion)
-    }
-}
-
 extension SharedKey where T == NutritionSummary {
     /// Published by Stadig Macro.
     public static var nutrition: SharedKey<NutritionSummary> {

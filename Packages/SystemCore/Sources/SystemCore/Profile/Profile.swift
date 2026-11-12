@@ -260,3 +260,19 @@ public struct SharedProfile: Hashable, Codable, Sendable {
     public func declared(on day: Day) -> [RecurringActivity] { recurring.filter { $0.weekdays.contains(day.weekday) } }
 }
 
+extension SharedProfile {
+    /// What Stadig Lift should leave in the shared file: the file as it stands, with Stadig Lift's
+    /// training days and classes. Stadig Lift owns those two and edits them nowhere else, and other
+    /// apps plan around them, so a copy another app or a freshly set-up device wrote mustn't stand.
+    /// Nil when the file already has them, or when it's newer and came from Stadig Lift itself: an
+    /// edit on another device, whose profile record is still on its way here.
+    public func sharing(over file: SharedProfile?, writtenBy: @autoclosure () -> AppID?, now: Date) -> SharedProfile? {
+        guard var file else { return self }
+        guard file.schedule != schedule || file.recurring != recurring else { return nil }
+        if file.updatedAt > updatedAt, writtenBy() == .liftTrack { return nil }
+        file.schedule = schedule
+        file.recurring = recurring
+        file.updatedAt = now
+        return file
+    }
+}

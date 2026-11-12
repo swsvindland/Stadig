@@ -306,7 +306,6 @@ final class AppModel {
     @ObservationIgnored private var foodCache: [String: Food] = [:]
     @ObservationIgnored private var personalTask: Task<Void, Never>?
     @ObservationIgnored private var fixTask: Task<Void, Never>?
-    @ObservationIgnored private var mealRhythmTask: Task<Void, Never>?
     @ObservationIgnored private var fixKey: String?
     @ObservationIgnored private var fermentedTask: Task<Void, Never>?
     @ObservationIgnored private var plannerCache: MealPlanner?
@@ -761,27 +760,6 @@ final class AppModel {
             }
         }
         WidgetBridge.update(self)
-        publishMeals()
-    }
-
-    /// When this person eats, for the hub. Off the main actor: it reads four weeks of food, and
-    /// publishing mustn't slow the log.
-    private func publishMeals() {
-        let entries = suggestionEntries
-        let today = today
-        let now = Date()
-        let shared = shared
-        let log = appLog
-        mealRhythmTask?.cancel()
-        mealRhythmTask = Task.detached(priority: .utility) {
-            let rhythm = UsualMeals.rhythm(entries: entries, today: today, now: now)
-            guard !Task.isCancelled else { return }
-            do {
-                try shared.writeIfChanged(rhythm, to: .mealRhythm, by: .macroTrack, stamp: \.updated, now: now)
-            } catch {
-                log.error("Couldn't publish meal times: \(error.localizedDescription)")
-            }
-        }
     }
 
     // MARK: Foods

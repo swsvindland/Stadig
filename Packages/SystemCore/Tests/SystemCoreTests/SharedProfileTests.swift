@@ -3,27 +3,13 @@ import Testing
 
 @testable import SystemCore
 
-@Suite("Day parts and the shared profile")
-struct DayPartTests {
+/// The shared profile as Stadig Lift leaves it: its training days and classes, whoever wrote the file.
+@Suite("The shared profile")
+struct SharedProfileTests {
     func profile(days: [Weekday], recurring: [RecurringActivity] = []) -> SharedProfile {
         SharedProfile(
             schedule: TrainingSchedule(daysPerWeek: days.count, minutesPerSession: 90, preferredDays: days), recurring: recurring,
             createdBy: .liftTrack)
-    }
-
-    @Test func hoursFallInOnePartEach() {
-        #expect(DayPart(hour: 6) == .early)
-        #expect(DayPart(hour: 8) == .morning)
-        #expect(DayPart(hour: 13) == .midday)
-        #expect(DayPart(hour: 14) == .afternoon)
-        #expect(DayPart(hour: 19) == .evening)
-        #expect(DayPart(hour: 22) == .night)
-        // The small hours are the night before's, as a study day's are.
-        #expect(DayPart(hour: 1) == .night)
-    }
-
-    @Test func thePublishedWordRoundTripsThroughItsOwnPart() {
-        for time in TimeOfDay.allCases { #expect(DayPart(time).timeOfDay == time) }
     }
 
     @Test func stadigLiftFillsAMissingFileAndRepairsAWrongOne() {
