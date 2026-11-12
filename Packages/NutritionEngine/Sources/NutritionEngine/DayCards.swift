@@ -135,7 +135,8 @@ public enum FoodLabel {
     private static let notes = #"\s*\((?i:includes|for reference)[^)]*\)"#
 
     public static func parts(of name: String) -> (title: String, detail: String?) {
-        let name = name.replacingOccurrences(of: notes, with: "", options: .regularExpression)
+        // Most names have no brackets, and a marker reads every row's name: skip the pattern for them.
+        let name = name.contains("(") ? name.replacingOccurrences(of: notes, with: "", options: .regularExpression) : name
         var parts = name.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         // A restaurant's name is written first and in capitals: "McDONALD'S, BIG MAC" stays whole.
         guard parts.count > 1, parts[1] != parts[1].uppercased() else { return (name, nil) }
