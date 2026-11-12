@@ -149,7 +149,7 @@ struct SessionScreen: View {
                     if let bpm = model.currentHeartRate {
                         Label("\(Int(bpm))", systemImage: "heart.fill")
                             .font(.caption.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Ink.bad)
                             .accessibilityLabel("Heart rate \(Int(bpm))")
                     }
                 }
@@ -295,7 +295,7 @@ private struct OutlineRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(exercise.name).fontWeight(current ? .semibold : .regular).lineLimit(1)
-                    if item.plan.supersetGroup != nil { Pill(text: "Superset", color: .purple) }
+                    if item.plan.supersetGroup != nil { Pill(text: "Superset", color: .accentColor) }
                 }
                 Text(
                     item.plan.conditioning?.summary
@@ -306,7 +306,7 @@ private struct OutlineRow: View {
             Spacer()
             if item.isDone {
                 Image(systemName: item.skipped ? "forward.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(item.skipped ? Color.secondary : Color.green)
+                    .foregroundStyle(item.skipped ? Color.secondary : Ink.good)
                     .accessibilityLabel(item.skipped ? "Skipped" : "Done")
             } else if current {
                 Image(systemName: "arrowtriangle.right.fill").foregroundStyle(.tint).accessibilityLabel("Now")
@@ -356,14 +356,14 @@ struct ItemCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(exercise.name).font(.headline)
-                        if item.plan.supersetGroup != nil { Pill(text: "Superset", color: .purple) }
+                        if item.plan.supersetGroup != nil { Pill(text: "Superset", color: .accentColor) }
                     }
                     if exercise.kind == .strength { MuscleLine(exercise: exercise) }
                 }
                 Spacer()
                 if item.isDone {
                     Image(systemName: item.skipped ? "forward.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(item.skipped ? Color.secondary : Color.green)
+                        .foregroundStyle(item.skipped ? Color.secondary : Ink.good)
                         .accessibilityLabel(item.skipped ? "Skipped" : "Done")
                 }
                 Menu {
@@ -459,7 +459,7 @@ struct SetRow: View {
                 .foregroundStyle(isCurrent ? .white : .primary)
             if let logged = set.logged {
                 Text(Format.logged(logged, exercise: exercise, unit: model.gym.unit)).font(.body.monospacedDigit())
-                if set.prescription.kind == .repOut { Pill(text: "Rep-out", color: .purple) }
+                if set.prescription.kind == .repOut { Pill(text: "Rep-out", color: .accentColor) }
                 Spacer()
                 RatingMark(rating: logged.rating)
                 if editable { Image(systemName: "pencil").font(.caption).foregroundStyle(.tertiary) }
@@ -475,9 +475,9 @@ struct SetRow: View {
                 }
                 Spacer()
                 switch set.prescription.kind {
-                case .repOut: Pill(text: set.prescription.stopAtFormBreakdown ? "To form breakdown" : "As many as you can", color: .purple)
-                case .findingWeight: Pill(text: "Find weight", color: .blue)
-                case .deload: Pill(text: "Easy", color: .teal)
+                case .repOut: Pill(text: set.prescription.stopAtFormBreakdown ? "To form breakdown" : "As many as you can", color: .accentColor)
+                case .findingWeight: Pill(text: "Find weight", color: .accentColor)
+                case .deload: Pill(text: "Easy", color: .accentColor)
                 default: EmptyView()
                 }
             }

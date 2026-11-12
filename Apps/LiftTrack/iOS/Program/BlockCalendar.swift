@@ -46,16 +46,16 @@ private struct DayCell: View {
             .fill(fill)
             .overlay {
                 if day.vacation {
-                    Image(systemName: "airplane").font(.system(size: 9)).foregroundStyle(.white)
+                    Image(systemName: "airplane").font(.system(size: 9)).foregroundStyle(Ink.text)
                 } else if day.checkIn {
-                    Image(systemName: "checklist").font(.system(size: 9, weight: .semibold)).foregroundStyle(.purple)
+                    Image(systemName: "checklist").font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.accentColor)
                 } else if day.trained {
-                    Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                    Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Ink.onAccent)
                 }
             }
             .overlay {
                 if day.training && !day.trained {
-                    RoundedRectangle(cornerRadius: 5).strokeBorder(Color.orange, lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor, lineWidth: 1.5)
                 }
             }
             .overlay {
@@ -68,9 +68,9 @@ private struct DayCell: View {
     }
 
     private var fill: Color {
-        if day.vacation { return .teal }
-        if day.trained { return .orange }
-        if day.week.isDeload { return .mint.opacity(0.35) }
+        if day.vacation { return Ink.raised }
+        if day.trained { return .accentColor }
+        if day.week.isDeload { return Ink.track }
         return .secondary.opacity(0.12)
     }
 
@@ -114,13 +114,13 @@ struct BlockCalendarKey: View {
         .accessibilityHidden(true)
     }
 
-    private var trained: some View { key(Color.orange, "Trained") }
-    private var deload: some View { key(Color.mint.opacity(0.35), "Deload") }
-    private var vacation: some View { key(Color.teal, "Vacation") }
+    private var trained: some View { key(Color.accentColor, "Trained") }
+    private var deload: some View { key(Ink.track, "Deload") }
+    private var vacation: some View { key(Ink.raised, "Vacation") }
 
     private var trainingDay: some View {
         HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 3).strokeBorder(Color.orange, lineWidth: 1.5).frame(width: 12, height: 12)
+            RoundedRectangle(cornerRadius: 3).strokeBorder(Color.accentColor, lineWidth: 1.5).frame(width: 12, height: 12)
             Text("Training day")
         }
     }

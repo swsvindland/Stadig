@@ -613,11 +613,11 @@ struct HeartRateLine: View {
                 let zone = model.heartRateZones.zone(for: bpm)
                 let inside = aim.map { $0.contains(zone) } ?? true
                 HStack(spacing: 8) {
-                    Image(systemName: "heart.fill").foregroundStyle(.red).symbolEffect(.pulse)
+                    Image(systemName: "heart.fill").foregroundStyle(Ink.bad).symbolEffect(.pulse)
                     Text("\(Int(bpm))").font(.title2.weight(.semibold).monospacedDigit())
                     Text("Zone \(zone)").font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background((inside ? Color.green : Color.orange).opacity(0.18), in: .capsule)
+                        .background((inside ? Ink.good : Ink.ok).opacity(0.18), in: .capsule)
                     Spacer()
                     if let aim {
                         let low = Int(model.heartRateZones.range(zone: aim.lowerBound).lowerBound)
@@ -705,13 +705,20 @@ struct HeatControls: View {
             let reading = temperatureC ?? HeatDose.plan(model.environment?.heat ?? [], room: room).temperatureC
             model.update { $0.logHeat(item: itemIndex, minutes: (spent * 2).rounded() / 2, temperatureC: reading, rating: value, now: end) }
         } label: {
+            // As the set's ratings: a dot in its colour, Just right the filled accent.
+            let filled = value == .orange
             VStack(spacing: 4) {
-                Text(label).font(.subheadline.weight(.semibold))
-                Text(detail).font(.caption2).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).lineLimit(2)
+                HStack(spacing: 6) {
+                    if !filled { Circle().fill(value.color).frame(width: 8, height: 8) }
+                    Text(label).font(.subheadline.weight(.semibold))
+                }
+                Text(detail).font(.caption2).foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2).multilineTextAlignment(.center)
+                    .lineLimit(2)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(filled ? Ink.onAccent : Ink.text)
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, minHeight: scale.isLarge ? 96 : 64)
-            .background(value.color.gradient, in: .rect(cornerRadius: 16))
+            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .hoverHighlight()

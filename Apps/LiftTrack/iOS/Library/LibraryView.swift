@@ -199,7 +199,7 @@ private struct LibraryRow: View {
                 Image(systemName: "calendar").foregroundStyle(.tint).help("In this block").accessibilityLabel("In this block")
             }
             if ruledOut {
-                Image(systemName: "bandage").foregroundStyle(.orange).help("Ruled out by an injury").accessibilityLabel("Ruled out by an injury")
+                Image(systemName: "bandage").foregroundStyle(Ink.ok).help("Ruled out by an injury").accessibilityLabel("Ruled out by an injury")
             }
             if setAside {
                 Image(systemName: "nosign").foregroundStyle(.secondary).help("Set aside").accessibilityLabel("Set aside")

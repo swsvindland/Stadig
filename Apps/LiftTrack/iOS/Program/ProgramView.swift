@@ -343,7 +343,7 @@ private struct ExerciseCell: View {
                 Image(systemName: row.blockKind.symbol).foregroundStyle(row.blockKind.color).frame(width: 18)
                 Text(row.exercise).fontWeight(row.blockKind == .main ? .semibold : .regular)
                 if !row.superset.isEmpty {
-                    Pill(text: "Superset \(row.superset)", color: .purple)
+                    Pill(text: "Superset \(row.superset)", color: .accentColor)
                         .help("Done in turn with the other \(row.superset) slot of the day")
                 }
                 if row.setAside {
@@ -458,7 +458,7 @@ private struct WeekSetsRow: View {
                     }
                     .frame(minWidth: 34)
                     .padding(.vertical, 4)
-                    .background((week.isDeload ? Color.mint : Color.orange).opacity(0.15), in: .rect(cornerRadius: 8))
+                    .background((week.isDeload ? Ink.raised : Color.accentColor.opacity(0.15)), in: .rect(cornerRadius: 8))
                 }
             }
             Text("Working sets of \(reps) reps").font(.caption).foregroundStyle(.secondary)
@@ -535,7 +535,7 @@ private struct RefitSection: View {
                         ForEach(block.slots) { slot in
                             HStack {
                                 Text(model.catalog.resolve(slot.exerciseID).name)
-                                if slot.supersetGroup != nil { Pill(text: "Superset", color: .purple) }
+                                if slot.supersetGroup != nil { Pill(text: "Superset", color: .accentColor) }
                                 Spacer()
                                 if slot.role == .main || slot.role == .accessory {
                                     Text("\(slot.sets(week: 0)) × \(slot.repRange.label)").monospacedDigit().foregroundStyle(.secondary)

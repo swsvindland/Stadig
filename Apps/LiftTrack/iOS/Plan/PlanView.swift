@@ -418,7 +418,7 @@ struct DayDetail: View {
                             }
                             .swipeActions {
                                 if slot.role == .main || slot.role == .accessory {
-                                    Button("Swap") { swapping = slot }.tint(.blue)
+                                    Button("Swap") { swapping = slot }.tint(.accentColor)
                                 }
                             }
                             .contextMenu { menu(slot) }
