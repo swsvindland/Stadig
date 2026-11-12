@@ -128,7 +128,8 @@ struct MealPlanView: View {
         }
     }
 
-    /// Week, groceries or prep, behind the segmented picker.
+    /// Week, groceries or prep, behind the segmented picker, as cards on the ink ground; the week
+    /// ends on Start prep, which opens prep day's steps.
     func pages(_ plan: MealPlan) -> some View {
         List {
             Section {
@@ -140,13 +141,37 @@ struct MealPlanView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
             }
-            switch page {
-            case .week: week(plan)
-            case .groceries: GroceryPage(plan: plan)
-            case .prep: PrepPage(plan: plan)
+            Group {
+                switch page {
+                case .week: week(plan)
+                case .groceries: GroceryPage(plan: plan)
+                case .prep: PrepPage(plan: plan)
+                }
             }
+            .listRowBackground(Color.cardBackground)
         }
         .insetGroupedList()
+        .sectionSpacing(14)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if page == .week {
+                Button {
+                    withAnimation(.snappy) { page = .prep }
+                } label: {
+                    Text("Start prep")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Ink.ground)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(Color.accentColor, in: .rect(cornerRadius: 18, style: .continuous))
+                        .contentShape(.rect(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+                .background(Ink.ground.ignoresSafeArea(edges: .bottom))
+                .accessibilityIdentifier("mealPlan.startPrep")
+            }
+        }
     }
 
     /// "No fish, more spicy": read by Apple's model and applied to the dishes still to come.
@@ -172,57 +197,85 @@ struct MealPlanView: View {
 
     @ViewBuilder
     func week(_ plan: MealPlan) -> some View {
+        let guide = PrepGuide.make(for: plan)
+        let groceries = Groceries.list(for: plan).filter { !$0.pantry }.count
+        let prep = Format.prepDay(plan.prepDay, today: model.today)
+        Section {
+            WeekHeader(plan: plan, containers: guide.containers)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
+        }
+
+        Section {
+            let swappable = Set(model.swappableRecipes(in: plan))
+            ForEach(plan.recipes) { recipe in
+                DishRow(recipe: recipe, swap: swappable.contains(recipe.id) ? { model.swap(recipe.id, in: plan) } : nil)
+            }
+        } header: {
+            Text("Dishes").eyebrow()
+        }
+
+        Section {
+            pageRow("Grocery list", symbol: "cart", detail: groceries == 1 ? "1 item" : "\(groceries) items", identifier: "mealPlan.groceryList") {
+                page = .groceries
+            }
+            pageRow(
+                "Prep day", symbol: "clock",
+                detail: "\(prep.prefix(1).uppercased() + prep.dropFirst()) · \(Format.duration(guide.minutes))",
+                identifier: "mealPlan.prepDay"
+            ) {
+                page = .prep
+            }
+        }
+
         Section {
             requestField(plan)
         } footer: {
-            Text("Swap any dish below with one tap, or say what you'd like in your own words.")
+            Text("Swap any dish above with one tap, or say what you'd like in your own words.").foregroundStyle(Ink.text3)
         }
 
         Section {
-            let day = plan.planned(on: plan.start)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(Format.kcal(day.kcal)) and \(Format.grams(day.protein)) protein planned a day")
-                    .font(.subheadline.weight(.semibold))
-                Text("Sized to \(Format.kcal(plan.targets.kcal)) and \(Format.grams(plan.targets.protein)) protein.")
-                    .font(.caption).foregroundStyle(.secondary)
-                ForEach(plan.unplanned(on: plan.start), id: \.slot) { open in
-                    Label(
-                        "\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
-                        systemImage: open.slot.symbol
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-
-        Section("Dishes") {
-            let swappable = Set(model.swappableRecipes(in: plan))
-            ForEach(plan.recipes) { recipe in
-                RecipeRow(recipe: recipe, swap: swappable.contains(recipe.id) ? { model.swap(recipe.id, in: plan) } : nil)
-            }
-        }
-
-        Section("Days") {
             ForEach(plan.days, id: \.self) { day in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(Format.day(day)).font(.subheadline.weight(.semibold))
+                    Text(Format.day(day)).font(.subheadline.weight(.semibold)).foregroundStyle(day == model.today ? Color.accentColor : Ink.text)
                     ForEach(plan.meals(on: day)) { meal in
                         HStack(spacing: 6) {
-                            Image(systemName: meal.slot.symbol).foregroundStyle(.secondary).frame(width: 18)
-                            Text(plan.recipe(meal.recipeID)?.title ?? "").font(.caption).lineLimit(1)
+                            Image(systemName: meal.slot.symbol).foregroundStyle(Ink.text3).frame(width: 18)
+                            Text(plan.recipe(meal.recipeID)?.title ?? "").font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
                             Spacer(minLength: 4)
                             if meal.storage == .freezer {
-                                Image(systemName: "snowflake").font(.caption2).foregroundStyle(.cyan).accessibilityLabel("Frozen")
+                                Image(systemName: "snowflake").font(.caption2).foregroundStyle(Ink.carbs).accessibilityLabel("Frozen")
                             }
                             if model.isLogged(meal, in: plan) {
-                                Image(systemName: "checkmark.circle.fill").font(.caption).foregroundStyle(.green).accessibilityLabel("Logged")
+                                Image(systemName: "checkmark.circle.fill").font(.caption).foregroundStyle(Ink.good).accessibilityLabel("Logged")
                             }
                         }
                     }
                 }
                 .padding(.vertical, 2)
             }
+        } header: {
+            Text("Days").eyebrow()
         }
+    }
+
+    /// A row that opens another page: the grocery list, prep day.
+    func pageRow(_ title: String, symbol: String, detail: String, identifier: String, open: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.snappy) { open() }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).foregroundStyle(Ink.text2).frame(width: 22)
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                Spacer(minLength: 8)
+                Text(detail).font(.subheadline).foregroundStyle(Ink.text2).lineLimit(1)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
+            }
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 
     func change(_ plan: MealPlan) {
@@ -237,6 +290,112 @@ struct MealPlanView: View {
                 request = ""
             } else {
                 changed = "Nothing in that matched the plan's foods. Try naming a food or a flavour."
+            }
+        }
+    }
+}
+
+/// The week at a glance, over the dishes: when, how many dishes and containers, what they cover
+/// and what they're sized to, and the meals left to the person.
+private struct WeekHeader: View {
+    let plan: MealPlan
+    let containers: Int
+
+    var body: some View {
+        let day = plan.planned(on: plan.start)
+        let slots = Set(plan.meals.map(\.slot)).sorted().map(\.label)
+        let range =
+            "\(Format.day(plan.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(plan.end, style: .dateTime.month(.abbreviated).day()))"
+        VStack(alignment: .leading, spacing: 6) {
+            // Tracked capitals start a point left of the text's frame, which the List cell clips.
+            Text("Meal prep · \(range)").eyebrow(Color.accentColor).padding(.leading, 2)
+            Text(
+                "\(plan.recipes.count) \(plan.recipes.count == 1 ? "dish" : "dishes")\n\(containers) \(containers == 1 ? "container" : "containers")"
+            )
+            .font(.system(.largeTitle, weight: .bold))
+            .tracking(-0.6)
+            .foregroundStyle(Ink.text)
+            .fixedSize(horizontal: false, vertical: true)
+            Text(
+                "\(Self.list(slots)), \(Format.span(plan.days)). Sized to \(Format.kcal(plan.targets.kcal)) and \(Format.grams(plan.targets.protein)) protein a day; \(Format.kcal(day.kcal)) and \(Format.grams(day.protein)) of it planned."
+            )
+            .font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            ForEach(plan.unplanned(on: plan.start), id: \.slot) { open in
+                Label(
+                    "\(open.slot.label) is yours: about \(Format.kcal(open.room.kcal)), \(Format.grams(open.room.protein)) protein",
+                    systemImage: open.slot.symbol
+                )
+                .font(.caption).foregroundStyle(Ink.text3)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("mealPlan.summary")
+    }
+
+    /// "Lunch and dinner", "Breakfast, lunch and dinner".
+    static func list(_ labels: [String]) -> String {
+        guard let last = labels.last else { return "" }
+        let words = labels.enumerated().map { $0.offset == 0 ? $0.element : $0.element.lowercased() }
+        return labels.count == 1 ? last : "\(words.dropLast().joined(separator: ", ")) and \(words[words.count - 1])"
+    }
+}
+
+/// A dish on the phone's week: how many containers of it, big; its calories and protein a portion
+/// and what's in one; and Swap while it's still to come.
+private struct DishRow: View {
+    @Environment(AppModel.self) private var model
+    let recipe: PlannedRecipe
+    let swap: (() -> Void)?
+
+    var body: some View {
+        let n = recipe.nutrients
+        HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text("\(recipe.servings)").numeral(30).foregroundStyle(Ink.text)
+                Text("×").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2)
+            }
+            .frame(width: 46, alignment: .leading)
+            .accessibilityLabel("\(recipe.servings) containers")
+            VStack(alignment: .leading, spacing: 3) {
+                Text(recipe.title).font(.body.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
+                Text("\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.protein)) a portion")
+                    .font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
+                Text(
+                    recipe.items.filter { !$0.onTheDay }.map { "\(Format.portion($0.grams, unit: model.units.weight)) \($0.name.lowercased())" }
+                        .joined(separator: " · ")
+                )
+                .font(.caption2).foregroundStyle(Ink.text3).lineLimit(2)
+                let topping = recipe.items.filter(\.onTheDay)
+                if !topping.isEmpty {
+                    Text("When eating: \(topping.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: ", "))")
+                        .font(.caption2).foregroundStyle(Ink.text3)
+                }
+                if recipe.madeOnTheDay || recipe.items.contains(where: { $0.fermented == true }) {
+                    HStack(spacing: 8) {
+                        if recipe.madeOnTheDay { Text("Made on the day").font(.caption2.weight(.medium)).foregroundStyle(Ink.text2) }
+                        if recipe.items.contains(where: { $0.fermented == true }) { FoodQualityTags(processing: nil, fermented: true) }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let swap {
+                Button(action: swap) {
+                    Text("Swap").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 40)
+                        .background(Ink.raised, in: .rect(cornerRadius: 14, style: .continuous))
+                        .contentShape(.rect(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Swap \(recipe.title)")
+                .accessibilityIdentifier("mealPlan.swap")
+            }
+        }
+        .padding(.vertical, 6)
+        .contextMenu {
+            if let swap {
+                Button("Swap for something else", systemImage: "arrow.triangle.2.circlepath", action: swap)
             }
         }
     }
