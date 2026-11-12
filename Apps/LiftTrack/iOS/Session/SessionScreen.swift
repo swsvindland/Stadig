@@ -94,6 +94,8 @@ struct SessionScreen: View {
                 }
             }
         }
+        // A container of its own, so the identifier isn't given to every element in it.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.screen")
         .background(.pageBackground)
         .safeAreaInset(edge: .bottom) {

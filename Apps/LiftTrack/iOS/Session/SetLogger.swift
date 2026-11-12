@@ -73,7 +73,8 @@ struct SetLogger: View {
                 Spacer(minLength: 4)
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
-            if let note = set.note { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(.tint) }
+            // The phone's set list says it under the set marked Now.
+            if let note = set.note, scale.isLarge { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(.tint) }
         }
     }
 
