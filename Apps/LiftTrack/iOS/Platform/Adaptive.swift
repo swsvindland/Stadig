@@ -191,7 +191,11 @@ extension View {
         }
         #else
         return inspector(isPresented: isPresented) {
-            content().inspectorColumnWidth(min: minWidth, ideal: idealWidth, max: maxWidth)
+            content()
+                // On the ink ground like the rest of the window, an empty one included, not the system's grey.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.pageBackground)
+                .inspectorColumnWidth(min: minWidth, ideal: idealWidth, max: maxWidth)
         }
         #endif
     }

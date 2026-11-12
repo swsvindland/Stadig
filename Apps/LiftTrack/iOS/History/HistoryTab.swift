@@ -87,6 +87,7 @@ struct HistoryTable: View {
         #if os(macOS)
         .onDeleteCommand { delete(selection, confirm: true) }
         #endif
+        .inkList()
         .searchable(text: $query, prompt: "Sessions, exercises, activities")
         .navigationTitle("History")
         .navigationSubtitleIfAvailable("\(model.sessions.count) sessions · \(model.activities.count) activities")

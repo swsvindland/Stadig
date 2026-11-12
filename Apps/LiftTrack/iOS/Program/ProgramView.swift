@@ -242,6 +242,7 @@ private struct BlockPane: View {
                     }
                 }
             }
+            .inkList()
             .contextMenu(forSelectionType: ProgramRow.ID.self) { ids in
                 if let id = ids.first, let row = days.flatMap(\.rows).first(where: { $0.id == id }) {
                     if editable && row.isStrength {
