@@ -57,6 +57,63 @@ final class SetDraft {
         }
         timerStart = nil
     }
+
+    /// Takes back the set just logged (Undo in the rest, on the floor and on the scoreboard): the
+    /// session puts it back as it was (`LiveSession.undoLastSet`), and the numbers here are the ones
+    /// it was logged with, so logging it again is one tap even after the next set's were filled in.
+    func undo(model: AppModel) {
+        guard let live = model.live, let (item, set, logged) = live.undoableSet else { return }
+        let name = model.justLogged(item: item, set: set)?.name ?? "Set"
+        model.update { $0.undoLastSet() }
+        setID = live.items[item].sets[set].id
+        load = logged.loadKg
+        reps = logged.reps
+        timerStart = nil
+        AccessibilityNotification.Announcement("\(name) undone").post()
+    }
+}
+
+/// The set a rest follows, as the rest names it ("Set 2 logged · Just right"), and whether Undo
+/// takes it back.
+struct JustLogged: Equatable {
+    /// "Set 2", "Warm-up".
+    var name: String
+    var rating: SetRating?
+    /// The rating, or a rep-out's reps.
+    var detail: String?
+    var undoable: Bool
+
+    /// "Set 2 logged · Just right".
+    var text: String { "\(name) logged" + (detail.map { " · \($0)" } ?? "") }
+}
+
+extension AppModel {
+    /// The set last logged in an exercise (the one a rest follows), or nil when none is.
+    func justLogged(after rest: RestState) -> JustLogged? {
+        guard let live, let index = live.item(rest.itemID) else { return nil }
+        let sets = live.items[index].sets
+        let logged = sets.indices.filter { sets[$0].logged != nil }
+        guard let set = logged.max(by: { (sets[$0].logged?.date ?? .distantPast) < (sets[$1].logged?.date ?? .distantPast) }) else { return nil }
+        return justLogged(item: index, set: set)
+    }
+
+    /// The set Undo would take back, when there's one: what the dock shows once every set is done.
+    var undoable: JustLogged? {
+        guard let live, let (item, set, _) = live.undoableSet else { return nil }
+        return justLogged(item: item, set: set)
+    }
+
+    func justLogged(item index: Int, set: Int) -> JustLogged? {
+        guard let live, live.items.indices.contains(index), live.items[index].sets.indices.contains(set),
+            let logged = live.items[index].sets[set].logged
+        else { return nil }
+        let sets = live.items[index].sets
+        let undoable = live.undoableSet.map { $0.item == index && $0.set == set } ?? false
+        if logged.kind == .warmup { return JustLogged(name: "Warm-up", undoable: undoable) }
+        let number = sets[...set].filter { $0.prescription.kind != .warmup }.count
+        let detail = logged.rating?.label ?? (logged.kind == .repOut ? "\(logged.reps) reps" : nil)
+        return JustLogged(name: "Set \(number)", rating: logged.rating, detail: detail, undoable: undoable)
+    }
 }
 
 extension AppModel {

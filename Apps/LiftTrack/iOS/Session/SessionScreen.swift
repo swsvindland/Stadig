@@ -613,7 +613,12 @@ struct BottomPanel: View {
                 .id(live.items[position.item].sets[position.set].id)
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Every set is done").eyebrow()
+                HStack {
+                    Text("Every set is done").eyebrow()
+                    Spacer()
+                    // The last set can be taken back too: there's no rest after it to hold Undo.
+                    if let undoable = model.undoable { UndoButton(logged: undoable, identifier: "session.undo") }
+                }
                 Button(action: finish) {
                     Label("Finish session", systemImage: "flag.checkered").frame(maxWidth: .infinity)
                 }
@@ -637,9 +642,14 @@ struct RestPanel: View {
 
     var body: some View {
         let total = max(1, rest.endsAt.timeIntervalSince(rest.started))
+        let logged = model.justLogged(after: rest)
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Rest").eyebrow()
+                HStack(alignment: .firstTextBaseline) {
+                    Text(logged.map { "Rest · \($0.name) logged" } ?? "Rest").eyebrow()
+                    Spacer(minLength: 8)
+                    if let logged, logged.undoable { UndoButton(logged: logged, identifier: "rest.undo") }
+                }
                 if let message {
                     Text(message).font(.footnote).foregroundStyle(Ink.text2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
@@ -738,6 +748,33 @@ struct RestPanel: View {
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             .accessibilityElement(children: .combine))
+    }
+}
+
+/// Undo for the set just logged, top right of the rest's dock (and of the dock once every set is
+/// done): the set is open again with the numbers it was logged with.
+struct UndoButton: View {
+    @Environment(AppModel.self) private var model
+    @Environment(SetDraft.self) private var draft
+    @Environment(\.sessionScale) private var scale
+    let logged: JustLogged
+    let identifier: String
+
+    var body: some View {
+        Button("Undo") { draft.undo(model: model) }
+            .font((scale.isLarge ? Font.body : .subheadline).weight(.semibold))
+            .foregroundStyle(Ink.text2)
+            .buttonStyle(.plain)
+            // A fingertip's room round a short word, without pushing the eyebrow down.
+            .padding(.horizontal, 10)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+            .padding(.vertical, -14)
+            .padding(.trailing, -10)
+            .hoverHighlight()
+            .accessibilityLabel("Undo \(logged.name.lowercased())")
+            .accessibilityHint("\(logged.text). Takes it back to log again.")
+            .accessibilityIdentifier(identifier)
     }
 }
 

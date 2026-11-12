@@ -55,6 +55,54 @@ struct FloorModeTests {
         #expect(model.floorContent == .rest)
     }
 
+    @Test("Undo opens the set again with the numbers it was logged with, though the next set's were filled in")
+    func undoKeepsTheNumbers() throws {
+        let model = try atFirstWorkSet()
+        let (i, s) = try #require(model.live?.current)
+        let draft = SetDraft()
+        draft.prepare(item: i, set: s, model: model)
+        draft.load += 2.5
+        draft.reps -= 1
+        let changed = (load: draft.load, reps: draft.reps)
+        let before = try #require(model.live)
+        draft.log(item: i, set: s, rating: .green, model: model)
+        let once = try #require(model.live)
+        let rest = try #require(once.rest)
+        #expect(model.justLogged(after: rest) == JustLogged(name: "Set 1", rating: .green, detail: "Easy", undoable: true))
+        #expect(model.justLogged(after: rest)?.text == "Set 1 logged · Easy")
+        // The rest ran out, and the next set came up in the dock with its own numbers.
+        let (ni, ns) = try #require(once.current)
+        draft.prepare(item: ni, set: ns, model: model)
+
+        draft.undo(model: model)
+        #expect(model.live?.items == before.items && model.live?.rest == before.rest)
+        #expect(model.live?.current?.item == i && model.live?.current?.set == s)
+        #expect(model.undoable == nil && model.floorContent == .set(item: i, set: s, kind: .rated))
+        #expect(draft.setID == before.items[i].sets[s].id && draft.load == changed.load && draft.reps == changed.reps)
+        // The dock or the floor coming up for it keeps them, and the same tap logs the same set.
+        draft.prepare(item: i, set: s, model: model)
+        draft.log(item: i, set: s, rating: .green, model: model)
+        let again = try #require(model.live?.items[i])
+        #expect(again.sets[s].logged?.loadKg == changed.load && again.sets[s].logged?.reps == changed.reps)
+        #expect(again.sets.map(\.prescription) == once.items[i].sets.map(\.prescription))
+    }
+
+    @Test("Once every set is done, the last one can still be taken back")
+    func undoTheLastSet() throws {
+        let model = try atFirstWorkSet()
+        let lift = try #require(model.live?.current?.item)
+        // The main lift is all that's left.
+        model.update { live in
+            for index in live.items.indices where index != lift && !live.items[index].isDone { live.skip(item: index) }
+        }
+        for _ in 0..<20 where model.live?.current != nil { model.logNext(1) }
+        #expect(model.live?.isComplete == true && model.floorContent == nil)
+        let last = try #require(model.undoable)
+        SetDraft().undo(model: model)
+        #expect(model.live?.isComplete == false && model.undoable == nil)
+        #expect(model.live?.current != nil, "\(last.text) is the set to do again")
+    }
+
     @Test("The next set starts again from its own prescription")
     func nextSetStartsAgain() throws {
         let model = try atFirstWorkSet()

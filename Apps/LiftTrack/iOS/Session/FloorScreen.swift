@@ -416,6 +416,7 @@ private struct FloorHero: View {
 /// the countdown and the set that's next. A tap skips it; swipes give or take 15 seconds.
 private struct FloorRest: View {
     @Environment(AppModel.self) private var model
+    @Environment(SetDraft.self) private var draft
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let live: LiveSession
     let rest: RestState
@@ -423,6 +424,7 @@ private struct FloorRest: View {
 
     var body: some View {
         let total = max(1, rest.endsAt.timeIntervalSince(rest.started))
+        let logged = model.justLogged(after: rest)
         GeometryReader { outer in
             let insets = outer.safeAreaInsets
             TimelineView(.periodic(from: rest.started, by: 1)) { context in
@@ -461,9 +463,32 @@ private struct FloorRest: View {
                     @unknown default: break
                     }
                 }
+                .modifier(UndoAction(logged: logged, undo: undo))
                 .accessibilityIdentifier("floor.rest")
             }
         }
+        // Undo is drawn on the gauge, twice like everything on it; this is the button over it, so a
+        // tap there takes the set back rather than skipping the rest.
+        .overlayPreferenceValue(UndoBounds.self) { anchor in
+            GeometryReader { proxy in
+                if let anchor, let logged, logged.undoable {
+                    let rect = proxy[anchor]
+                    Button(action: undo) {
+                        Color.clear.contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: rect.width + 40, height: max(56, rect.height + 28))
+                    .position(x: rect.midX - 8, y: rect.midY)
+                    .accessibilityLabel("Undo \(logged.name.lowercased())")
+                    .accessibilityIdentifier("floor.undo")
+                }
+            }
+        }
+    }
+
+    private func undo() {
+        draft.undo(model: model)
+        floor.nudged()
     }
 
     /// Everything on the gauge, in the ground's colours or the accent's ink: drawn twice and cut at
@@ -473,7 +498,7 @@ private struct FloorRest: View {
         let secondary = onFill ? Ink.onAccent.opacity(0.85) : Ink.text2
         return ZStack(alignment: .topLeading) {
             Ticks(total: total, color: onFill ? Ink.onAccent.opacity(0.6) : Ink.text3)
-            FloorRestContent(live: live, rest: rest, seconds: seconds, primary: primary, secondary: secondary)
+            FloorRestContent(live: live, rest: rest, seconds: seconds, primary: primary, secondary: secondary, onFill: onFill)
                 .padding(insets)
         }
     }
@@ -498,15 +523,24 @@ private struct FloorRestContent: View {
     let seconds: Int
     let primary: Color
     let secondary: Color
+    /// The copy on the accent's fill, which says where Undo is for the button over it.
+    let onFill: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FloorEdge(text: "Swipe up · 15 s more", up: true)
                 .foregroundStyle(secondary)
-            if let logged = loggedLine {
+            if let logged = model.justLogged(after: rest) {
                 HStack(spacing: 8) {
                     if let rating = logged.rating { Circle().fill(rating.color).frame(width: 9, height: 9) }
-                    Text(logged.text).font(.headline)
+                    Text(logged.text).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                    Spacer(minLength: 12)
+                    if logged.undoable {
+                        Text("Undo")
+                            .font(.headline)
+                            .foregroundStyle(onFill ? Ink.onAccent : Color.accentColor)
+                            .anchorPreference(key: UndoBounds.self, value: .bounds) { onFill ? $0 : nil }
+                    }
                 }
                 .foregroundStyle(primary)
                 .padding(.top, 20)
@@ -554,23 +588,25 @@ private struct FloorRestContent: View {
         .padding(.trailing, 20)
         .padding(.vertical, 8)
     }
+}
 
-    /// "Set 2 logged · Just right", for the set the rest follows.
-    private var loggedLine: (text: String, rating: SetRating?)? {
-        guard let item = live.items.first(where: { $0.id == rest.itemID }) else { return nil }
-        let logged = item.sets.indices.filter { item.sets[$0].logged != nil }
-        guard let index = logged.max(by: { (item.sets[$0].logged?.date ?? .distantPast) < (item.sets[$1].logged?.date ?? .distantPast) }),
-            let set = item.sets[index].logged
-        else { return nil }
-        if set.kind == .warmup { return ("Warm-up logged", nil) }
-        let number = item.sets[...index].filter { $0.prescription.kind != .warmup }.count
-        var text = "Set \(number) logged"
-        if let rating = set.rating {
-            text += " · \(rating.label)"
-        } else if set.kind == .repOut {
-            text += " · \(set.reps) reps"
+/// Where the rest's Undo is drawn, for the button over it.
+private struct UndoBounds: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) { value = value ?? nextValue() }
+}
+
+/// Undo as one of the rest's actions for VoiceOver, while there's a set to take back.
+private struct UndoAction: ViewModifier {
+    let logged: JustLogged?
+    let undo: () -> Void
+
+    func body(content: Content) -> some View {
+        if let logged, logged.undoable {
+            content.accessibilityAction(named: "Undo \(logged.name.lowercased())", undo)
+        } else {
+            content
         }
-        return (text, set.rating)
     }
 }
 

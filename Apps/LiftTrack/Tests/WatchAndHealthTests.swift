@@ -186,6 +186,38 @@ struct WatchAndHealthTests {
         #expect(watch.copies.count == 3)
     }
 
+    @Test("An undo on the phone reaches the Watch in the next copy, which carries no undo; a set the Watch logs can't be undone here")
+    func undoAndTheWatch() async throws {
+        let watch = FakeWatch()
+        let model = TestApp().onboarded()
+        model.workoutHandOff = watch.handOff
+        model.start(try #require(model.plan()))
+        model.watchJoined()
+        await model.watchShare?.value
+        let context = try #require(watch.copies.last?.context)
+        let environment = context.environment(catalog: model.catalog)
+        let (item, set) = try #require(model.live?.current)
+
+        model.logNext(1)
+        await model.watchShare?.value
+        #expect(model.live?.undoableSet?.set == set)
+        #expect(watch.copies.last?.session.undo == nil)
+        SetDraft().undo(model: model)
+        await model.watchShare?.value
+        let undone = try #require(watch.copies.last)
+        #expect(undone.session.items[item].sets[set].isOpen)
+        #expect(undone.session == model.live?.withoutHeartRate)
+
+        // The Watch logs that set: it lands here, and there's nothing for the phone to undo.
+        var copy = MirroredSession(undone.session, sentAt: undone.sentAt)
+        let kind = SessionChange.Kind.log(
+            item: copy.session.items[item].id, set: set, reps: 5, loadKg: 40, rating: nil, seconds: 30, heartRatePeak: nil)
+        _ = copy.make(kind, environment: environment)
+        model.fromWatch([try #require(MirrorMessage.changes(copy.pending).encoded())])
+        #expect(model.live?.items[item].sets[set].logged?.reps == 5)
+        #expect(model.undoable == nil)
+    }
+
     @Test("When the mirrored workout drops, the Watch that joined still gets copies, and the session's end, the other way")
     func mirrorDrops() async throws {
         let watch = FakeWatch()
