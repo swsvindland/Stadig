@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Lift's audit.** The same day, the same ask. Calls made fixing what it found, mine to check:
+  - **A freeze fixed:** the rest alert called the notification centre on the main thread, and with the permission prompt still waiting a session change could block the app on a black screen. Those calls now run in order off the main thread (`Bridges.swift`).
+  - **No system grey left:** Settings and its editors, History, every sheet, check-in, life modes, Body's editors, Library and the iPad and Mac tables and inspectors are on the ink ground (`inkList()`), and switches take the accent instead of system green.
+  - **Onboarding follows the design:** a back circle with the step count, goals two by two, picked cards outlined in the accent, a full-width Continue.
+  - **At accessibility text sizes** the rating buttons drop their second line, the dock's lines wrap instead of being cut, and Your shape stops growing at xLarge; the dock's − and + are the control's full height, and chips are 44 points.
+  - **Left as they are:** the Watch's "What moved" can over-report after two Watch-only sessions of a lift with no phone in between (the Watch would need to keep its own finished sets); Watch text doesn't follow Dynamic Type; Today runs the session planner on every redraw, which predates the redesign and wasn't measured.
+
 - **Stadig Macro's audit.** On 2026-11-12 you asked for an audit: no bugs, high quality. Calls made fixing what it found, mine to check:
   - **Onboarding, Settings, Fasting, Supplements and Weigh In are on the ink ground,** reversing last night's "keep the system background"; onboarding gained a back button and a progress ruler. The fast, time since a meal, water and caffeine are rulers: no rings are left on the phone or the Watch. Water is drawn in the accent.
   - **At the largest text sizes Today keeps room for the day:** the header and the foot stop growing at the largest standard size, and two tiles show instead of four.
