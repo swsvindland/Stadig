@@ -49,6 +49,7 @@ struct MacroTrackApp: App {
             model.loggerTime = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
         }
         if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
+        if launch.has("-stubDescribe") { SampleData.stubDescribe(model) }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.
         model.backgroundAnalysis = true

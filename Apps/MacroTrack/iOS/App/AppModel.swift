@@ -1,4 +1,5 @@
 import FoodDatabase
+import FoodIntelligence
 import Foundation
 import HealthBridge
 import MealPlanner
@@ -273,6 +274,11 @@ final class AppModel {
     @ObservationIgnored private var droppedPhoto: Data?
     /// What was typed on Today that no food matched, for the logger that opens with it to take.
     @ObservationIgnored private var loggerText: String?
+    /// Words typed on Today that matched no food, on today's thread while Apple's model works them
+    /// out, and their foods until "Looks right".
+    private(set) var estimates: [ThreadEstimate] = []
+    /// The model's read of each estimate still working, to stop when its row is dismissed.
+    @ObservationIgnored private var estimateReads: [UUID: Task<Void, Never>] = [:]
     var today: Day = .today
     /// The day the Log tab shows and everything logs to: today, unless the Log tab or Foods has moved
     /// it. It's the one place the day is kept, and it comes back to today on leaving those two, on
@@ -583,6 +589,11 @@ final class AppModel {
         if today != .today {
             selectedDay = .today
             today = .today
+        }
+        // An Undo or a delete takes an estimate's foods, and midnight its rows.
+        if !estimates.isEmpty {
+            let current = ThreadEstimates.current(estimates, entries: allEntries(on: today), today: today)
+            if current != estimates { estimates = current }
         }
         // Every recompute reads the clock, so this is where a food's time passing is noticed.
         if foodLog.isStale(at: now) {
@@ -1028,6 +1039,88 @@ final class AppModel {
     func takeLoggerText() -> String? {
         defer { loggerText = nil }
         return loggerText
+    }
+
+    // MARK: Estimates in place
+
+    /// Words Today's composer matched to no food. Where Apple's model can read a description, each
+    /// is a row on the thread at once, worked out off to the side and logged in its place as
+    /// estimates, at `date` (when Return was pressed), with the usual Undo. Without the model they
+    /// go on to the logger as before.
+    func estimate(_ words: [String], at date: Date) {
+        let words = words.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !words.isEmpty else { return }
+        guard ai.canDescribe else { return openLogger(with: words.joined(separator: ", ")) }
+        ai.prewarm()
+        for (index, text) in words.enumerated() {
+            // A second apart, after the foods typed with them, so they keep the order typed.
+            let estimate = ThreadEstimate(words: text, asked: date.addingTimeInterval(Double(index)))
+            estimates.append(estimate)
+            estimateReads[estimate.id] = Task { [weak self] in await self?.read(estimate) }
+        }
+    }
+
+    /// The model's read of an estimate's words, logged in its row's place or said there.
+    private func read(_ estimate: ThreadEstimate) async {
+        let outcome: InPlaceEstimate.Outcome
+        do {
+            let guess = try await ai.recognize(description: estimate.words, personal: personal)
+            outcome = InPlaceEstimate.outcome(of: guess, words: estimate.words)
+        } catch is CancellationError {
+            return
+        } catch {
+            appLog.error("An estimate in place failed: \(error.localizedDescription, privacy: .public)")
+            outcome = .nothing(MealAIMessages.text(for: error))
+        }
+        estimateReads[estimate.id] = nil
+        // Dismissed meanwhile, or the day it was for is over.
+        guard !Task.isCancelled, let index = estimates.firstIndex(where: { $0.id == estimate.id }) else { return }
+        switch outcome {
+        case .nothing(let why):
+            estimates[index].state = .failed(why)
+        case .foods(let items, let missed):
+            let entries = items.enumerated().compactMap { offset, item -> FoodEntry? in
+                guard let food = item.match?.food, let unit = item.unit else { return nil }
+                return entry(
+                    for: corrected(food), count: item.count, unit: unit, source: .description, confidence: item.confidence,
+                    date: estimate.asked.addingTimeInterval(Double(offset) * 0.1))
+            }
+            guard log(entries) else {
+                estimates[index].state = .failed("Couldn't save it. Try again from the logger.")
+                return
+            }
+            estimates[index].state = .logged(entries.map(\.id))
+            // What the catalog has nothing for stays on the thread, a tap from the logger.
+            if !missed.isEmpty {
+                estimates.append(
+                    ThreadEstimate(
+                        words: missed.joined(separator: ", "), asked: estimate.asked,
+                        state: .failed(InPlaceEstimate.missing(from: estimate.words))))
+            }
+        }
+    }
+
+    /// "Looks right" on the foods of an estimate: kept as they are, no longer estimates.
+    func confirmEstimates(_ ids: Set<UUID>) {
+        let waiting = ThreadEstimates.unconfirmed(estimates).intersection(ids)
+        guard !waiting.isEmpty else { return }
+        let now = Date()
+        let confirmed = foodLog.all.filter { waiting.contains($0.id) }.map { $0.confirmed(at: now) }
+        estimates = ThreadEstimates.confirming(waiting, in: estimates)
+        update(confirmed)
+    }
+
+    /// An estimate's row put away: its read stopped, if it's still working.
+    func dismissEstimate(_ id: UUID) {
+        estimateReads.removeValue(forKey: id)?.cancel()
+        estimates.removeAll { $0.id == id }
+    }
+
+    /// An estimate that couldn't be worked out, taken to the logger with its words.
+    func openEstimateInLogger(_ id: UUID) {
+        guard let estimate = estimates.first(where: { $0.id == id }) else { return }
+        dismissEstimate(id)
+        openLogger(with: estimate.words)
     }
 
     func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }

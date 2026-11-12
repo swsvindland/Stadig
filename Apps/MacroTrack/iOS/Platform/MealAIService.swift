@@ -17,8 +17,28 @@ final class MealAIService {
     @ObservationIgnored private var engineAllowsCloud: Bool?
     @ObservationIgnored private var completer: AnyObject?
 
-    var canDescribe: Bool { availability.descriptions }
+    #if DEBUG
+    /// Stands in for Apple's model reading a description: the app's tests, and `-stubDescribe` on a
+    /// simulator without Apple Intelligence.
+    @ObservationIgnored var describeStub: (@MainActor (String) async throws -> MealGuess)?
+    #endif
+
+    var canDescribe: Bool {
+        #if DEBUG
+        if describeStub != nil { return true }
+        #endif
+        return availability.descriptions
+    }
     var canSeePhotos: Bool { availability.photos }
+
+    /// Whether a description is read on this device rather than by Private Cloud Compute, for what
+    /// the thread says while it works one out.
+    var describesOnDevice: Bool {
+        #if DEBUG
+        if describeStub != nil { return true }
+        #endif
+        return availability.onDevice
+    }
 
     /// Re-checks availability and builds the engine for the current setting. Cheap; call on launch
     /// and when the setting changes.
@@ -66,6 +86,9 @@ final class MealAIService {
     }
 
     func recognize(description: String, personal: [PersonalFood]) async throws -> MealGuess {
+        #if DEBUG
+        if let describeStub { return try await describeStub(description) }
+        #endif
         guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *), let ai = engine as? MealAI else {
             throw MealAIError.unavailable(availability.reason ?? "Unavailable")
         }
