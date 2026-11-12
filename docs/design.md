@@ -20,7 +20,7 @@ The six scores (Strength, Endurance, Agility, Vitality, Discipline, Physique, cl
 
 ## One job per device
 
-What the canvas proposes for each device, beyond the iPhone screens. These are concepts: none of it is built yet.
+What the canvas proposes for each device, beyond the iPhone screens. Built so far: Floor mode (Stadig Lift), the menu bar logger (Stadig Macro on the Mac), and the widgets, Live Activities, StandBy and complications on the new look. The rest are concepts.
 
 | Device | Where the person is | Its job |
 | --- | --- | --- |
