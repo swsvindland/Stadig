@@ -83,11 +83,12 @@ final class TodayComposer {
 
     /// Searches for the parts typed that haven't an answer yet, a beat after the last key.
     func search() async {
-        guard let model else { return }
+        // What's missing is read after the beat: the person's own foods changing (`attach`) drops
+        // the answers in the same update that starts this.
+        try? await Task.sleep(for: .milliseconds(90))
+        guard !Task.isCancelled, let model else { return }
         let queries = Set(parts.filter(Self.searchable).map(\.query)).filter { answers[$0] == nil }
         guard !queries.isEmpty else { return }
-        try? await Task.sleep(for: .milliseconds(90))
-        guard !Task.isCancelled else { return }
         for query in queries {
             let found = await Self.find(query, catalog: model.catalog, personal: personal)
             // Kept even when the next key cancelled this: the next search for it is free.
@@ -208,7 +209,8 @@ final class TodayComposer {
     }
 
     /// Logs `entries` now and hands `unmatched` words to the logger. The field clears for the next
-    /// food (keeping what wasn't logged), unless the person typed on while the foods were found.
+    /// food (keeping what wasn't logged). Typed on while Return's foods were found, it keeps what
+    /// came after: left whole, a second Return would log them again.
     private func log(_ entries: [FoodEntry], unmatched: [String], model: AppModel, from submitted: String? = nil, keeping: String = "") {
         // Today is always today, whichever day the Log tab was left on. A meal's foods go in a
         // second apart, so they keep the order they were typed in.
@@ -219,7 +221,14 @@ final class TodayComposer {
             entry.day = Day(entry.date)
             return entry
         }
-        if text == (submitted ?? text) { text = keeping }
+        if let submitted, text != submitted {
+            if text.hasPrefix(submitted) {
+                let after = String(text.dropFirst(submitted.count).drop { $0 == "," || $0.isWhitespace })
+                text = [keeping, after].filter { !$0.isEmpty }.joined(separator: ", ")
+            }
+        } else {
+            text = keeping
+        }
         if !timed.isEmpty { model.log(timed) }
         if !unmatched.isEmpty { model.openLogger(with: unmatched.joined(separator: ", ")) }
     }

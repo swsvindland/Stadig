@@ -17,6 +17,9 @@ struct YourShapeCard: View {
                 Text(summary).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
             }
             ScoreShape(axes: ScoreShape.axes(lines))
+                // Its corner labels sit outside the figure at a fixed reach: past the largest
+                // standard size they run off the card. The rows below say every score at any size.
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(maxWidth: 360)
                 .frame(maxWidth: .infinity)
             VStack(spacing: 0) {

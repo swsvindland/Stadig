@@ -62,6 +62,24 @@ struct TodayComposerTests {
         #expect(model.entries(on: model.today).isEmpty)
     }
 
+    @Test func typingOnWhileReturnFindsTheFoodsKeepsOnlyWhatCameAfter() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let composer = TodayComposer()
+        composer.attach(model)
+        composer.text = "banana 150"
+
+        // Return, and the next food typed before the catalog has answered for the first.
+        let returned = Task { await composer.submit() }
+        await Task.yield()
+        #expect(composer.submitting, "still finding the banana")
+        composer.text = "banana 150, 300 kcal"
+        await returned.value
+
+        #expect(model.entries(on: model.today).count == 1)
+        #expect(composer.text == "300 kcal", "the banana, logged, leaves the field: a second Return would log it again")
+    }
+
     @Test func aLetterOnItsOwnIsStillBeingTyped() async throws {
         let model = TestEnvironment().model()
         model.onboard()

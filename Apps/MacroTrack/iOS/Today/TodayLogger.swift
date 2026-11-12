@@ -11,11 +11,16 @@ import SystemCore
 struct TodayLogger: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var composer = TodayComposer()
     @FocusState private var typing: Bool
     @State private var editing: FoodEntry?
     /// The food opened in place on the thread, to change its amount.
     @State private var opened: UUID?
+    /// The height of what's over the foot of the thread (tiles or matches, and the field).
+    @State private var footHeight = 0.0
+    /// Counts what's been logged or removed, for the thread's second look at its end.
+    @State private var changes = 0
 
     static let threadEnd = "today.threadEnd"
 
@@ -59,6 +64,23 @@ struct TodayLogger: View {
                 .onChange(of: entries.count) { _, _ in
                     composer.refreshTiles()
                     withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
+                    changes &+= 1
+                }
+                // Return gives the keyboard back to the field a moment after its food arrives, and
+                // the matches give way to the tiles: the list's insets move under the scroll above,
+                // which then leaves the newest food behind the foot (or doesn't happen at all).
+                // Once they've settled, the thread's end goes above the foot again.
+                .task(id: changes) {
+                    guard changes > 0 else { return }
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
+                }
+                // While typing, the foot grows and shrinks with the matches: the thread keeps its
+                // end in sight above them.
+                .onChange(of: footHeight) { _, _ in
+                    guard typing else { return }
+                    withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
                 }
                 .onChange(of: model.personalVersion) { _, _ in composer.attach(model) }
                 .onChange(of: model.analysisVersion) { _, _ in composer.refreshTiles() }
@@ -72,7 +94,9 @@ struct TodayLogger: View {
             .hidesNavigationBar()
             .refreshable { await model.refreshHealth() }
         }
-        .task(id: composer.text) { await composer.search() }
+        // Again when the person's own foods change: taking them drops the answers kept so far, and
+        // what's typed would show only their own foods until the next key.
+        .task(id: SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
         // The fresh meal's Undo is in its header here, for a while longer than a toast's.
         // Not while a sheet or the logger is over it: its seconds start again when it's back.
         .task(id: ToastWait(toast: model.toast?.id, covered: covered)) {
@@ -97,6 +121,11 @@ struct TodayLogger: View {
 
     /// The logger or a sheet is over Today, where a toast's seconds would run out unseen.
     var covered: Bool { model.logger != nil || model.toastCovered }
+
+    struct SearchKey: Equatable {
+        var text: String
+        var foods: Int
+    }
 
     struct ToastWait: Equatable {
         var toast: UUID?
@@ -135,10 +164,16 @@ struct TodayLogger: View {
                     justLogged: fresh.isEmpty ? nil : entries.filter { fresh.contains($0.id) }.map(\.nutrients.kcal).reduce(0, +))
             }
         }
+        // The width of the screen, typing or not: the one-line header is narrower than its ground.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 10)
         .background(Ink.ground)
+        // The header and the foot stay put while the day scrolls between them: at the largest
+        // sizes they'd meet and leave the thread no room at all. Their words stop growing at the
+        // largest standard size; the thread's go on.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .contentShape(.rect)
         // Tapping the numbers while typing puts the keyboard away. Not a control of its own:
         // VoiceOver and keyboard users have Return and the composer's close button.
@@ -198,7 +233,11 @@ struct TodayLogger: View {
                     }
                 }
                 if index == moments.count - 1 {
-                    Color.clear.frame(height: 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets()).id(Self.threadEnd)
+                    // With the keyboard up the list reckons its foot some 30 points lower than the
+                    // tiles' top, so scrolled to the end the newest food sat under the tiles' title
+                    // and fade. The end is that much further down while typing.
+                    Color.clear.frame(height: typing ? 60 : 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                        .id(Self.threadEnd)
                 }
             } header: {
                 ThreadHeader(moment: moment, fresh: isFresh) {
@@ -255,7 +294,7 @@ struct TodayLogger: View {
             } else if showsTiles, !composer.fits.isEmpty, composer.earlier.isEmpty {
                 WhatFitsRows(composer: composer, targets: model.analysis?.targets, eaten: model.dayIntake(on: model.today).eaten)
             } else if showsTiles {
-                UsualTiles(composer: composer)
+                UsualTiles(composer: composer, most: typeSize.isAccessibilitySize ? 2 : 4)
             }
             if !composer.earlier.isEmpty { ComposerChips(parts: composer.earlier, typed: composer.parts) }
             ComposerField(composer: composer, typing: $typing)
@@ -263,6 +302,8 @@ struct TodayLogger: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
+        // As the header's: the foot stops growing where the thread would lose its room.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         // Solid down to the screen's foot: the thread scrolls under the composer and the tab bar,
         // not out below them.
         .background {
@@ -277,6 +318,11 @@ struct TodayLogger: View {
         }
         .animation(.snappy(duration: 0.25), value: composer.matches)
         .animation(.snappy(duration: 0.25), value: composer.tiles)
+        .onGeometryChange(for: Double.self) {
+            $0.size.height
+        } action: {
+            footHeight = $0
+        }
     }
 }
 
@@ -435,6 +481,7 @@ private struct ThreadHeader: View {
 
 /// A food on the thread: its marker, name and amount, and its calories with the macro it's most of.
 struct ThreadRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let entry: FoodEntry
     var later = false
 
@@ -445,9 +492,11 @@ struct ThreadRow: View {
             FoodTile(name: entry.name, fill: Ink.raised)
             VStack(alignment: .leading, spacing: 2) {
                 // How someone would say it ("Chicken breast, roasted"); the full name is on its amount.
-                Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text).lineLimit(1)
+                // A line each, until the accessibility sizes leave a line a word or two.
+                Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text)
+                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 Text([entry.brand, entry.amountLabel].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                    .font(.caption).foregroundStyle(Ink.text2).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
@@ -478,6 +527,8 @@ struct ThreadRow: View {
 /// The usual foods for now, or what goes with the meal being eaten, one tap each.
 private struct UsualTiles: View {
     let composer: TodayComposer
+    /// Four, or a row of two at the accessibility sizes, where the thread needs the room.
+    let most: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -488,15 +539,16 @@ private struct UsualTiles: View {
             }
             .padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(Array(composer.tiles.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(composer.tiles.prefix(most).enumerated()), id: \.element.id) { index, item in
                     Button {
                         composer.log(item)
                     } label: {
                         HStack(spacing: 10) {
                             FoodTile(name: item.template.name, fill: Ink.raised)
                             VStack(alignment: .leading, spacing: 1) {
+                                // "Chicken breast" is a few points wider than half a phone's tile.
                                 Text(FoodLabel.title(item.template.name)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-                                    .lineLimit(1)
+                                    .lineLimit(1).minimumScaleFactor(0.85)
                                 Text("\(item.template.amountLabel) · \(Format.whole(item.template.nutrients.kcal)) kcal")
                                     .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
                             }
