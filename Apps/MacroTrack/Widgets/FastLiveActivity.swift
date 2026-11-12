@@ -4,41 +4,74 @@ import SwiftUI
 import WidgetKit
 
 /// The running fast on the Lock Screen and in the Dynamic Island: the time since it began counts on
-/// by itself, and the bar fills toward the goal.
+/// by itself as the hero, and the ruler fills toward the goal.
 struct FastLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FastActivityAttributes.self) { context in
             FastLockScreen(state: context.state, stale: context.isStale)
-                .padding()
-                .activityBackgroundTint(Color.black.opacity(0.6))
+                .activityBackgroundTint(Ink.ground)
+                .activitySystemActionForegroundColor(Ink.text)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label(context.isStale ? "Fasting" : context.state.phase, systemImage: context.state.symbol).font(.caption)
+                    Text(context.isStale ? "Fasting" : context.state.phase)
+                        .eyebrow()
+                        .foregroundStyle(Ink.Island.accent)
+                        .padding(.leading, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.start, style: .timer).font(.title3.monospacedDigit()).frame(width: 90, alignment: .trailing)
+                    Text("Goal \(context.state.goalEnd.formatted(date: .omitted, time: .shortened))")
+                        .eyebrow()
+                        .foregroundStyle(Ink.Island.text3)
+                        .padding(.trailing, 6)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ProgressView(timerInterval: context.state.start...max(context.state.start, context.state.goalEnd), countsDown: false) {
-                            EmptyView()
-                        } currentValueLabel: {
-                            EmptyView()
-                        }
-                        .tint(.teal)
-                        FastNextLine(state: context.state, stale: context.isStale)
-                    }
+                    IslandFast(state: context.state, stale: context.isStale)
                 }
             } compactLeading: {
-                Image(systemName: context.state.symbol).foregroundStyle(.teal)
+                Image(systemName: context.state.symbol).foregroundStyle(Ink.Island.accent)
             } compactTrailing: {
-                Text(context.state.start, style: .timer).monospacedDigit().frame(width: 56)
+                Text(context.state.start, style: .timer)
+                    .font(.system(size: 15, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Ink.Island.accent)
+                    .frame(width: 60, alignment: .trailing)
             } minimal: {
-                Image(systemName: context.state.symbol).foregroundStyle(.teal)
+                Image(systemName: context.state.symbol).foregroundStyle(Ink.Island.accent)
             }
             .widgetURL(URL(string: "macrotrack://fast"))
+            .keylineTint(Ink.Island.accent)
         }
+    }
+}
+
+/// The ruler toward the goal, filling by itself between updates: the system's timer bar, made as
+/// tall as a ruler and cut into tenths.
+struct FastRuler: View {
+    let start: Date
+    let end: Date
+    var color: Color = .accentColor
+    var track: Color = Ink.track
+    var height: CGFloat = 12
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Rectangle().fill(track)
+                ProgressView(timerInterval: start...max(start, end), countsDown: false) {
+                    EmptyView()
+                } currentValueLabel: {
+                    EmptyView()
+                }
+                .progressViewStyle(.linear)
+                .tint(color)
+                // The bar is a few points tall; stretched, its track and rounded ends fall outside the mask.
+                .scaleEffect(x: 1.04, y: height / 2, anchor: .center)
+            }
+            .mask { TickedOutline(size: geometry.size, divisions: 10) }
+        }
+        .frame(height: height)
+        .accessibilityHidden(true)
     }
 }
 
@@ -47,27 +80,48 @@ private struct FastLockScreen: View {
     let stale: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Label(stale ? "Fasting" : state.phase, systemImage: state.symbol).font(.headline)
-                Spacer()
-                Text(state.start, style: .timer).font(.system(size: 30, weight: .semibold, design: .rounded).monospacedDigit())
-                    .multilineTextAlignment(.trailing)
+                Label(stale ? "Fasting" : "Fasting · \(state.phase)", systemImage: state.symbol)
+                    .eyebrow()
+                    .foregroundStyle(.tint)
+                    .layoutPriority(1)
+                Spacer(minLength: 8)
+                Text("Goal \(state.goalEnd.formatted(.dateTime.weekday(.abbreviated).hour().minute()))")
+                    .eyebrow()
+                    .foregroundStyle(Ink.text3)
             }
-            ProgressView(timerInterval: state.start...max(state.start, state.goalEnd), countsDown: false) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            }
-            .tint(.teal)
-            HStack {
-                FastNextLine(state: state, stale: stale)
-                Spacer()
-                Text("Goal \(state.goalEnd.formatted(.dateTime.weekday(.abbreviated).hour().minute()))").font(.caption)
-            }
-            .foregroundStyle(.secondary)
+            Text(state.start, style: .timer)
+                .numeral(52, weight: .heavy, tightness: 0.05)
+            FastRuler(start: state.start, end: state.goalEnd)
+            FastNextLine(state: state, stale: stale)
+                .eyebrow(size: 10)
+                .foregroundStyle(Ink.text3)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Ink.text)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The Dynamic Island held open: the time huge, the ruler toward the goal, the next phase.
+private struct IslandFast: View {
+    let state: FastActivityAttributes.ContentState
+    let stale: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(state.start, style: .timer)
+                .numeral(44, weight: .heavy, tightness: 0.05)
+            FastRuler(start: state.start, end: state.goalEnd, color: Ink.Island.accent, track: Ink.Island.track, height: 10)
+            FastNextLine(state: state, stale: stale)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Ink.Island.text2)
+        }
+        .foregroundStyle(Ink.Island.text)
+        .padding(.horizontal, 6)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -78,7 +132,7 @@ private struct FastNextLine: View {
 
     var body: some View {
         if let next = state.nextPhase, let at = state.nextPhaseAt, !stale {
-            Text("\(next) from \(at.formatted(date: .omitted, time: .shortened))").font(.caption)
+            Text("\(next) from \(at.formatted(date: .omitted, time: .shortened))")
         }
     }
 }

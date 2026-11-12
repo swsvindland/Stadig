@@ -35,12 +35,12 @@ struct FastProvider: TimelineProvider {
     }
 }
 
-/// How long since the last meal, or into a fast, with its phase: Zero's circle on the Lock Screen.
+/// How long since the last meal, or into a fast, with its phase, over a ruler toward the goal.
 struct FastWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "fast", provider: FastProvider()) { entry in
             FastWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .inkWidgetBackground()
         }
         .configurationDisplayName("Fasting")
         .description("How long since you last ate, or into a fast, and what's likely happening.")
@@ -60,6 +60,17 @@ struct FastWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: FastEntry
 
+    var body: some View {
+        FastFace(entry: entry, family: family)
+            .widgetURL(URL(string: "macrotrack://fast"))
+    }
+}
+
+/// The fast in the family given: the widget passes the system's.
+struct FastFace: View {
+    let entry: FastEntry
+    let family: WidgetFamily
+
     var snapshot: MacroSnapshot { entry.snapshot }
     var from: Date? { snapshot.fastStart ?? snapshot.lastMealEnd }
     var hours: Double { from.map { max(0, entry.date.timeIntervalSince($0) / 3600) } ?? 0 }
@@ -72,65 +83,107 @@ struct FastWidgetView: View {
     var wholeHours: String { hours < 1 ? "\(Int(hours * 60))m" : "\(Int(hours))h" }
 
     var body: some View {
-        Group {
-            if snapshot.tracksMealTiming != true || from == nil {
-                off
-            } else {
-                switch family {
-                #if os(iOS)
-                case .accessoryCircular:
-                    Gauge(value: progress) {
-                        Image(systemName: symbol)
-                    } currentValueLabel: {
-                        Text(wholeHours)
+        if snapshot.tracksMealTiming != true || from == nil {
+            FastOff(tracksMealTiming: snapshot.tracksMealTiming == true, family: family)
+        } else {
+            switch family {
+            #if os(iOS)
+            case .accessoryCircular:
+                ZStack {
+                    AccessoryWidgetBackground()
+                    VStack(spacing: 1) {
+                        Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                        Text(wholeHours).numeral(20)
+                        Ruler(value: progress, color: .primary, height: 4, divisions: 0)
+                            .frame(width: 34)
+                            .padding(.top, 2)
                     }
-                    .gaugeStyle(.accessoryCircularCapacity)
-                case .accessoryRectangular:
-                    VStack(alignment: .leading, spacing: 1) {
-                        Label(fasting ? "Fasting · \(phase.title.lowercased())" : "Since you ate", systemImage: symbol)
-                            .font(.headline).widgetAccentable()
-                        if let from { Text(from, style: .timer).monospacedDigit() }
-                        if let goal = snapshot.fastGoalHours, let start = snapshot.fastStart {
-                            Text("Goal \(start.addingTimeInterval(goal * 3600).formatted(.dateTime.weekday(.abbreviated).hour().minute()))")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                case .accessoryInline:
-                    Text(fasting ? "Fasting \(wholeHours) · \(phase.title.lowercased())" : "\(wholeHours) since you ate")
-                #endif
-                default:
-                    small
                 }
-            }
-        }
-        .widgetURL(URL(string: "macrotrack://fast"))
-    }
-
-    var small: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle().stroke(Color.teal.opacity(0.18), lineWidth: 10)
-                Circle().trim(from: 0, to: progress).stroke(Color.teal, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 0) {
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(fasting ? "Fasting \(wholeHours), \(phase.title.lowercased())" : "\(wholeHours) since you ate"))
+            case .accessoryRectangular:
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(fasting ? phase.title : "Since you ate", systemImage: symbol)
+                        .eyebrow()
+                        .widgetAccentable()
                     if let from {
-                        Text(from, style: .timer).font(.headline.monospacedDigit()).multilineTextAlignment(.center).minimumScaleFactor(0.6)
+                        Text(from, style: .timer).numeral(24)
                     }
-                    Text(fasting ? "fasting" : "since you ate").font(.caption2).foregroundStyle(.secondary)
+                    Ruler(value: progress, color: .primary, height: 8)
                 }
-                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            case .accessoryInline:
+                Text(fasting ? "Fasting \(wholeHours) · \(phase.title.lowercased())" : "\(wholeHours) since you ate")
+            #endif
+            default:
+                small
             }
-            .padding(4)
-            Label(fasting ? phase.title : "Between meals", systemImage: symbol).font(.caption2.weight(.semibold)).foregroundStyle(.teal)
-                .lineLimit(1)
         }
     }
 
-    var off: some View {
-        VStack(spacing: 4) {
-            Image(systemName: "timer").font(.title3)
-            Text(snapshot.tracksMealTiming == true ? "Log a meal to start the clock" : "Turn on meal timing in Stadig Macro")
-                .font(.caption2).multilineTextAlignment(.center).foregroundStyle(.secondary)
+    /// The ruler's ends: "16 h goal" and when it's reached, or between meals the 3–5 hour band's end.
+    private var scale: (String, String) {
+        guard fasting, let from, let goal = snapshot.fastGoalHours else { return ("Toward 5 h", "") }
+        return ("\(Int(goal)) h goal", from.addingTimeInterval(goal * 3600).formatted(date: .omitted, time: .shortened))
+    }
+
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(fasting ? "Fasting" : "Since you ate").eyebrow().ink(.tertiary)
+            if let from {
+                Text(from, style: .timer)
+                    .numeral(34, tightness: 0.05)
+                    .ink(.primary)
+                    .padding(.top, 4)
+            }
+            Label(fasting ? phase.title : "Between meals", systemImage: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tint)
+                .widgetAccentable()
+                .lineLimit(1)
+            Spacer(minLength: 6)
+            Ruler(value: progress, height: 12)
+            HStack {
+                Text(scale.0)
+                Spacer(minLength: 4)
+                Text(scale.1)
+            }
+            .eyebrow(size: 10)
+            .ink(.tertiary)
+            .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Meal timing off, or no meal logged to count from.
+struct FastOff: View {
+    let tracksMealTiming: Bool
+    let family: WidgetFamily
+
+    private var words: String { tracksMealTiming ? "Log a meal to start the clock" : "Turn on meal timing in Stadig Macro" }
+
+    var body: some View {
+        switch family {
+        #if os(iOS)
+        case .accessoryInline:
+            Text(words)
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "timer").font(.title3)
+            }
+            .accessibilityLabel(Text(words))
+        #endif
+        default:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Fasting").eyebrow().ink(.tertiary)
+                Text(words)
+                    .font(.footnote.weight(.semibold))
+                    .ink(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }

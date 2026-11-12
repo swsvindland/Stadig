@@ -97,7 +97,7 @@ struct RemainingWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "remaining", provider: MacroProvider()) { entry in
             RemainingView(snapshot: entry.snapshot)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .inkWidgetBackground()
         }
         .configurationDisplayName("Left today")
         .description("Calories and protein left, with buttons to log.")
@@ -119,51 +119,173 @@ struct RemainingView: View {
     @Environment(\.widgetFamily) private var family
     let snapshot: MacroSnapshot
 
+    var body: some View { RemainingFace(snapshot: snapshot, family: family) }
+}
+
+/// What's left today in the family given: the widget passes the system's.
+struct RemainingFace: View {
+    let snapshot: MacroSnapshot
+    let family: WidgetFamily
+
     var body: some View {
         switch family {
         #if os(iOS)
         case .accessoryCircular:
-            Gauge(value: min(snapshot.kcal, snapshot.kcalTarget ?? snapshot.kcal), in: 0...max(1, snapshot.kcalTarget ?? max(1, snapshot.kcal))) {
-                Text("kcal")
-            } currentValueLabel: {
-                Text(shortKcal)
-            }
-            .gaugeStyle(.accessoryCircularCapacity)
-            .widgetURL(URL(string: "macrotrack://log"))
+            RemainingCircular(snapshot: snapshot)
+                .widgetURL(URL(string: "macrotrack://log"))
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 1) {
-                Text(kcalLine).font(.headline).widgetAccentable()
-                if let p = snapshot.proteinLeft { Text("\(Int(max(0, p))) g protein to go") }
-                if let badge = snapshot.badge { Text(badge).foregroundStyle(.secondary) }
-            }
-            .widgetURL(URL(string: "macrotrack://log"))
+            RemainingRectangular(snapshot: snapshot)
+                .widgetURL(URL(string: "macrotrack://log"))
         case .accessoryInline:
-            Text(kcalLine)
+            Text(snapshot.kcalLine)
         #endif
         case .systemMedium:
-            HStack(spacing: 16) {
-                ring.frame(width: 108, height: 108)
-                VStack(alignment: .leading, spacing: 8) {
-                    bars
-                    HStack(spacing: 8) {
-                        button("magnifyingglass", "macrotrack://log")
-                        // A camera only where there's one; elsewhere the same links choose a photo and type a barcode.
-                        button(Self.hasCamera ? "camera" : "photo.on.rectangle", "macrotrack://camera")
-                        button(Self.hasCamera ? "barcode.viewfinder" : "barcode", "macrotrack://scan")
-                        if !snapshot.weighedToday { button("scalemass", "macrotrack://weigh") }
-                    }
+            HStack(alignment: .top, spacing: 18) {
+                LeftToday(snapshot: snapshot, showsMacros: false)
+                VStack(alignment: .leading, spacing: 0) {
+                    MacroRows(snapshot: snapshot)
+                    Spacer(minLength: 8)
+                    LogButtons(weighedToday: snapshot.weighedToday)
                 }
             }
         default:
-            VStack(spacing: 6) {
-                ring
-                if let p = snapshot.proteinLeft {
-                    Text("\(Int(max(0, p))) g protein").font(.caption2.weight(.semibold)).foregroundStyle(.pink)
-                }
-            }
-            .widgetURL(URL(string: "macrotrack://log"))
+            LeftToday(snapshot: snapshot, showsMacros: true)
+                .widgetURL(URL(string: "macrotrack://log"))
         }
     }
+}
+
+extension MacroSnapshot {
+    /// The hero number: kcal left, over, or before targets, eaten.
+    var kcalNumber: String { Int((kcalLeft.map { max(0, kcalOver ? -$0 : $0) } ?? kcal).rounded()).formatted() }
+
+    /// Over by a whole kcal or more (`MacroProgress.isOver`'s rule), so a fraction over never reads "0 over".
+    var kcalOver: Bool { (kcalLeft ?? 0) <= -1 }
+
+    /// "Left today", "Over today", "Eaten today".
+    var kcalEyebrow: String {
+        guard kcalLeft != nil else { return "Eaten today" }
+        return kcalOver ? "Over today" : "Left today"
+    }
+
+    /// Under the number: "kcal of 2,200", "kcal over 2,200", or "kcal" before targets.
+    var kcalOfTarget: String {
+        guard let target = kcalTarget else { return "kcal" }
+        return "kcal \(kcalOver ? "over" : "of") \(Int(target.rounded()).formatted())"
+    }
+
+    /// "left", "over" or "eaten", after "kcal".
+    var kcalWord: String { kcalLeft == nil ? "eaten" : kcalOver ? "over" : "left" }
+
+    /// "1,601 kcal left", for the inline family and VoiceOver.
+    var kcalLine: String { "\(kcalNumber) kcal \(kcalWord)" }
+
+    /// How much of the target is eaten, 0 to 1; nil before targets.
+    var kcalFraction: Double? { kcalTarget.map { $0 > 0 ? kcal / $0 : 0 } }
+
+    /// Each macro with a target (protein always, as before targets it's still eaten): its name, its
+    /// letter, its colour, what's left (or eaten) and how much of the target is eaten.
+    var macroLines: [MacroLine] {
+        var lines = [MacroLine(name: "Protein", letter: "P", color: Ink.protein, eaten: protein, target: proteinTarget)]
+        if let carbsTarget { lines.append(MacroLine(name: "Carbs", letter: "C", color: Ink.carbs, eaten: carbs, target: carbsTarget)) }
+        if let fatTarget { lines.append(MacroLine(name: "Fat", letter: "F", color: Ink.fat, eaten: fat, target: fatTarget)) }
+        return lines
+    }
+}
+
+struct MacroLine: Identifiable {
+    let name: String
+    let letter: String
+    let color: Color
+    let eaten: Double
+    let target: Double?
+
+    var id: String { name }
+    /// Grams left, never below nothing; before a target, grams eaten.
+    var grams: Int { Int((target.map { max(0, $0 - eaten) } ?? eaten).rounded()) }
+    var fraction: Double { target.map { $0 > 0 ? eaten / $0 : 0 } ?? 0 }
+    var sentence: String { target == nil ? "\(grams) g \(name.lowercased()) eaten" : "\(grams) g \(name.lowercased()) left" }
+}
+
+/// Kcal left as the hero over its ruler: the small widget, and the medium one's left half. The
+/// small one has the macros under it in their colours, StandBy's desk view.
+struct LeftToday: View {
+    let snapshot: MacroSnapshot
+    let showsMacros: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(snapshot.kcalEyebrow).eyebrow().ink(.tertiary)
+            Text(snapshot.kcalNumber)
+                .numeral(42, tightness: 0.05)
+                .ink(.primary)
+                .padding(.top, 2)
+            Text(snapshot.kcalOfTarget)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .ink(.secondary)
+            Spacer(minLength: 6)
+            if let fraction = snapshot.kcalFraction {
+                Ruler(value: fraction, height: 12)
+            }
+            if showsMacros {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(snapshot.macroLines) { line in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(line.grams) \(Text(line.letter).foregroundStyle(line.color))")
+                                .font(.caption.weight(.bold))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            if line.target != nil {
+                                Ruler(value: line.fraction, color: line.color, height: 4, divisions: 0)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.top, 9)
+            } else if let badge = snapshot.badge {
+                Text(badge).eyebrow(size: 10).ink(.tertiary).padding(.top, 6)
+            } else if snapshot.kcalTarget != nil {
+                Text("\(Int(snapshot.kcal.rounded()).formatted()) eaten").eyebrow(size: 10).ink(.tertiary).padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(([snapshot.kcalLine] + (showsMacros ? snapshot.macroLines.map(\.sentence) : [])).joined(separator: ", ")))
+    }
+}
+
+/// Each macro's grams left over a thin ruler in its colour: the medium widget's right half.
+struct MacroRows: View {
+    let snapshot: MacroSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ForEach(snapshot.macroLines) { line in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(line.name).font(.caption.weight(.semibold)).ink(.secondary)
+                        Spacer(minLength: 4)
+                        Text("\(line.grams)").font(.subheadline.weight(.bold)).monospacedDigit().ink(.primary)
+                        Text(line.target == nil ? "g" : "g left").font(.caption.weight(.semibold)).ink(.secondary)
+                    }
+                    if line.target != nil {
+                        Ruler(value: line.fraction, color: line.color, height: 5, divisions: 0)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(line.sentence))
+            }
+        }
+    }
+}
+
+/// One-tap ways to log: search, the camera (a photo where there's none), the scanner (a typed
+/// barcode) and, until it's done, the weigh-in.
+struct LogButtons: View {
+    let weighedToday: Bool
 
     static var hasCamera: Bool {
         #if os(iOS)
@@ -173,64 +295,85 @@ struct RemainingView: View {
         #endif
     }
 
-    var shortKcal: String {
-        let value = snapshot.kcalLeft ?? snapshot.kcal
-        return abs(value) >= 1000 ? String(format: "%.1fk", value / 1000) : "\(Int(value))"
-    }
-
-    var kcalLine: String {
-        if let left = snapshot.kcalLeft { return left >= 0 ? "\(Int(left)) kcal left" : "\(Int(-left)) kcal over" }
-        return "\(Int(snapshot.kcal)) kcal eaten"
-    }
-
-    var ring: some View {
-        let target = snapshot.kcalTarget
-        let fraction = target.map { $0 > 0 ? min(1, snapshot.kcal / $0) : 0 } ?? 0
-        return ZStack {
-            Circle().stroke(Color.accentColor.opacity(0.18), lineWidth: 10)
-            Circle().trim(from: 0, to: fraction).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round)).rotationEffect(
-                .degrees(-90))
-            VStack(spacing: 0) {
-                Text("\(Int(abs(snapshot.kcalLeft ?? snapshot.kcal)))").font(.title3.weight(.bold).monospacedDigit()).minimumScaleFactor(0.6)
-                Text(snapshot.kcalLeft.map { $0 >= 0 ? "left" : "over" } ?? "eaten").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .padding(4)
-    }
-
-    var bars: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            bar("Protein", snapshot.protein, snapshot.proteinTarget, .pink)
-            if snapshot.carbsTarget != nil { bar("Carbs", snapshot.carbs, snapshot.carbsTarget, .blue) }
-            if snapshot.fatTarget != nil { bar("Fat", snapshot.fat, snapshot.fatTarget, .orange) }
-            if let badge = snapshot.badge, snapshot.carbsTarget == nil { Text(badge).font(.caption2).foregroundStyle(.secondary) }
+    var body: some View {
+        HStack(spacing: 8) {
+            button("Search foods", "magnifyingglass", "macrotrack://log")
+            // A camera only where there's one; elsewhere the same links choose a photo and type a barcode.
+            button(Self.hasCamera ? "Snap a meal" : "Choose a photo", Self.hasCamera ? "camera" : "photo.on.rectangle", "macrotrack://camera")
+            button(Self.hasCamera ? "Scan a barcode" : "Type a barcode", Self.hasCamera ? "barcode.viewfinder" : "barcode", "macrotrack://scan")
+            if !weighedToday { button("Weigh in", "scalemass", "macrotrack://weigh") }
         }
     }
 
-    func bar(_ label: String, _ value: Double, _ target: Double?, _ color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(label).font(.caption2.weight(.semibold))
-                Spacer()
-                Text(target.map { "\(Int(max(0, $0 - value))) g left" } ?? "\(Int(value)) g").font(.caption2.monospacedDigit()).foregroundStyle(
-                    .secondary)
+    @ViewBuilder private func button(_ title: LocalizedStringKey, _ symbol: String, _ link: String) -> some View {
+        if let url = URL(string: link) {
+            Link(destination: url) {
+                Label(title, systemImage: symbol)
+                    .labelStyle(.iconOnly)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .background(Color.accentColor.opacity(0.16), in: .capsule)
+                    .widgetAccentable()
             }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(color.opacity(0.18))
-                    Capsule().fill(color).frame(width: proxy.size.width * min(1, target.map { $0 > 0 ? value / $0 : 0 } ?? 0))
-                }
-            }
-            .frame(height: 5)
-        }
-    }
-
-    func button(_ symbol: String, _ url: String) -> some View {
-        Link(destination: URL(string: url)!) {
-            Image(systemName: symbol)
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 30)
-                .background(Color.accentColor.opacity(0.16), in: .capsule)
         }
     }
 }
+
+#if os(iOS)
+/// Kcal left on the Lock Screen, with a slim ruler under it.
+struct RemainingCircular: View {
+    let snapshot: MacroSnapshot
+
+    var body: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 0) {
+                Text(snapshot.kcalNumber).numeral(19)
+                Text(snapshot.kcalLeft == nil ? "kcal" : snapshot.kcalWord)
+                    .eyebrow(size: 8)
+                    .foregroundStyle(.secondary)
+                if let fraction = snapshot.kcalFraction {
+                    Ruler(value: fraction, color: .primary, height: 4, divisions: 0)
+                        .frame(width: 34)
+                        .padding(.top, 3)
+                }
+            }
+            .padding(.horizontal, 6)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(snapshot.kcalLine))
+    }
+}
+
+/// The Lock Screen's line under the clock: kcal left over its ruler, then the protein to go.
+struct RemainingRectangular: View {
+    let snapshot: MacroSnapshot
+
+    private var proteinLine: String? {
+        guard let left = snapshot.proteinLeft else { return snapshot.badge }
+        return "\(Int(max(0, left).rounded())) g protein to go"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(snapshot.kcalNumber).numeral(24)
+                Text("kcal \(snapshot.kcalWord)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            if let fraction = snapshot.kcalFraction {
+                Ruler(value: fraction, color: .primary, height: 8)
+            }
+            if let proteinLine {
+                Text(proteinLine).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+            }
+        }
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text([snapshot.kcalLine, proteinLine].compactMap(\.self).joined(separator: ", ")))
+    }
+}
+#endif
