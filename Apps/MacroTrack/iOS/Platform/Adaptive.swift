@@ -120,6 +120,27 @@ enum Platform {
     }
 }
 
+/// A sidebar section's title. Vision Pro's tab bar is an ornament of icons, with a section in it as
+/// one more: without a symbol of its own, a section there is a blank button. The iPad's tab bar and
+/// the sidebars show sections by name.
+struct TabSectionTitle: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        #if os(visionOS)
+        Label(title, systemImage: systemImage)
+        #else
+        Text(title)
+        #endif
+    }
+}
+
 /// The keyboard a field asks for on iPhone, iPad and Vision Pro. The Mac's keyboard is the one on the desk.
 enum FieldKeyboard {
     case decimal, number, numbersAndPunctuation, email, url
