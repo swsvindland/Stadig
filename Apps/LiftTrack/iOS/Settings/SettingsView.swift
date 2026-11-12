@@ -38,6 +38,7 @@ struct SettingsView: View {
             TrainingSections()
             DataSections(prompts: $prompts)
         }
+        .inkList()
         .dataPrompts($prompts)
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
@@ -333,6 +334,7 @@ struct ProfileEditor: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .inkList()
         .navigationTitle("About you")
         .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
@@ -370,6 +372,7 @@ struct FocusScreen: View {
                 Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
             }
         }
+        .inkList()
         .navigationTitle("Focus")
         .inlineTitle()
     }
@@ -504,6 +507,7 @@ struct GymEditor: View {
                 Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
             }
         }
+        .inkList()
         .navigationTitle("Gym")
         .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
     }

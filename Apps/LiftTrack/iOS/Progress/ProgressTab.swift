@@ -353,6 +353,9 @@ struct YourShape: View {
     private func figure(_ axes: [ScoreShape.Axis], waiting: Bool) -> some View {
         VStack(spacing: 10) {
             ScoreShape(axes: axes)
+                // Its corner labels sit at a fixed distance from the figure, so past this size they
+                // run into it and off the screen; each score is in the rows below at full size.
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .frame(maxWidth: 380)
                 .frame(maxWidth: .infinity)
             if waiting {
@@ -674,6 +677,7 @@ struct HistoryView: View {
                 }
             }
         }
+        .inkList()
         .navigationTitle("History")
         .overlay { if entries.isEmpty { ContentUnavailableView("Nothing yet", systemImage: "clock") } }
     }
@@ -749,6 +753,7 @@ struct SessionSetsList: View {
                 }
             }
         }
+        .inkList()
     }
 }
 

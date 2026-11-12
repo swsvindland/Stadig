@@ -81,6 +81,7 @@ struct RecurringEditor: View {
                     Button("Remove", role: .destructive) { done(nil) }
                 }
             }
+            .inkList()
             .navigationTitle(isNew ? "New activity" : item.activity.label)
             .inlineTitle()
             .toolbar {
@@ -151,6 +152,7 @@ struct ActivityLogSheet: View {
                     .font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            .inkList()
             .navigationTitle("Log activity")
             .inlineTitle()
             .toolbar {

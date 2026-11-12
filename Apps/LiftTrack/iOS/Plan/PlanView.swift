@@ -450,6 +450,7 @@ struct DayDetail: View {
                     .font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            .inkList()
             .navigationTitle(day.name)
             .navigationDestination(item: $shownExercise) { id in PushedExerciseDetail(exerciseID: id) }
             .sheet(item: $swapping) { slot in
@@ -496,6 +497,7 @@ struct ProgramSwapSheet: View {
                     .accessibilityIdentifier("programSwap.option")
                 }
             }
+            .inkList()
             .navigationTitle("Swap \(model.catalog.resolve(slot.exerciseID).name)")
             .inlineTitle()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }

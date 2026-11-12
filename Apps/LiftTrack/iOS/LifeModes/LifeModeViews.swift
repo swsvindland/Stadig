@@ -114,6 +114,7 @@ struct LifeModeEditor: View {
                     }
                 }
             }
+            .inkList()
             .navigationTitle(period.kind.label)
             .inlineTitle()
             .toolbar {
@@ -314,6 +315,7 @@ struct InjuryOverrides: View {
                     .hoverHighlight()
                 }
             }
+            .inkList()
             .searchable(text: $query)
             .navigationTitle("Exercises")
             .inlineTitle()

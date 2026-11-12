@@ -112,6 +112,7 @@ struct LibraryView: View {
                 .accessibilityIdentifier("library.row")
             }
         }
+        .inkList()
         .searchable(text: $query, prompt: "Exercises, muscles, equipment")
         .overlay {
             if results.isEmpty { ContentUnavailableView.search(text: query) }
@@ -533,7 +534,9 @@ struct ExerciseDetailView: View {
                                         .padding(.horizontal, 14)
                                         .frame(minHeight: 36)
                                         .background(.cardBackground, in: .capsule)
-                                        .contentShape(.capsule)
+                                        // A fingertip's height to hit, round a slimmer chip.
+                                        .frame(minHeight: 44)
+                                        .contentShape(.rect)
                                 }
                                 .buttonStyle(.plain)
                                 .hoverHighlight()

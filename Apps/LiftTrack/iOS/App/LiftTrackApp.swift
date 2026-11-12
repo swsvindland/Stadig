@@ -25,6 +25,10 @@ struct LiftTrackApp: App {
         if let tab = launch.value(after: "-tab") { model.tab = AppTab(rawValue: tab) ?? .today }
         // -exercise <id> opens Library on that exercise.
         if let exercise = launch.value(after: "-exercise") { model.show(inLibrary: exercise) }
+        #if !os(macOS)
+        // -openSettings opens Settings (on the Mac, its own window: AppRoot below).
+        if launch.has("-openSettings") { model.showSettings = true }
+        #endif
         // -gymSauna gives the gym a sauna, for the recovery screen.
         if launch.has("-gymSauna") {
             var gym = model.gym
@@ -143,6 +147,8 @@ private struct AppRoot: View {
             .onOpenURL { url in model.open(url) }
             // The Mac's forms look as they do on the other platforms, in sheets and panes alike.
             .formStyle(.grouped)
+            // One accent: a switch that's on is ultramarine like everything else, not the system's green.
+            .tint(Color.accentColor)
             #if os(macOS) && DEBUG
         // -openSettings opens the Settings window, for checking its panes.
         .task { if LaunchOptions.current.has("-openSettings") { openSettings() } }

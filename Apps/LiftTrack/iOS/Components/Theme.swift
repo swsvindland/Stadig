@@ -89,6 +89,16 @@ extension View {
         #endif
     }
 
+    /// A list or form on the ink ground, not the system's grouped grey. Its rows keep the system's
+    /// grouped cells, the surface's colour near enough, in both appearances. Vision Pro keeps its glass.
+    func inkList() -> some View {
+        #if os(visionOS)
+        self
+        #else
+        scrollContentBackground(.hidden).background(.pageBackground)
+        #endif
+    }
+
     /// Readable line length on iPad.
     func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }
 }
@@ -167,6 +177,7 @@ struct SectionHeader: View {
 /// right, the answer most sets should get, is the filled accent button between the other two.
 struct RatingButtons: View {
     @Environment(\.sessionScale) private var scale
+    @Environment(\.dynamicTypeSize) private var dynamicType
     var compact = false
     /// Where it is, for UI tests: each button is "<screen>.ratingGreen" and so on.
     var screen = "logger"
@@ -182,9 +193,12 @@ struct RatingButtons: View {
                     VStack(spacing: 2) {
                         HStack(spacing: 6) {
                             if !filled { Circle().fill(rating.color).frame(width: 8, height: 8) }
+                            // Whole words: three across leave no room to break "Missed" in two.
                             Text(rating.label).font(scale.isLarge ? .title3.weight(.semibold) : .body.weight(.semibold))
+                                .lineLimit(1).minimumScaleFactor(0.6)
                         }
-                        if !compact {
+                        // At the largest text sizes the word alone fits; VoiceOver still reads how it felt.
+                        if !compact && !dynamicType.isAccessibilitySize {
                             Text(rating.detail)
                                 .font(scale.isLarge ? .subheadline : .caption)
                                 .foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2)

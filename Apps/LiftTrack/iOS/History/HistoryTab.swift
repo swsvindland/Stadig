@@ -225,6 +225,7 @@ struct ActivityDetail: View {
             }
             if !log.note.isEmpty { Section("Note") { Text(log.note) } }
         }
+        .inkList()
         .formStyle(.grouped)
     }
 

@@ -213,10 +213,10 @@ Stadig Lift is one app on iPhone, iPad, the Mac and Apple Vision Pro, its record
 - `-resetData` erases the store and the session in progress first.
 - `-access undecided|free|lapsed|extended|subscribed|bought` is still read by `SystemPurchases` in DEBUG, but with Stadig Lift free it changes nothing on screen.
 - `-gymSauna` gives the gym a sauna, for the recovery screen.
-- `-startSession` starts today's session. `-sessionAt lift|set|rest` then moves it on: to its first main lift (skipping what comes before it), past that lift's warm-ups to its first work set, or into the rest after that set.
+- `-startSession` starts today's session. `-sessionAt lift|set|rest|summary` then moves it on: to its first main lift (skipping what comes before it), past that lift's warm-ups to its first work set, into the rest after that set, or through the main lifts, every set Just right, to the finished session's summary.
 - `-tab plan|program|library|history|progress|body` opens a destination (program, library and history are the sidebar's; in a narrow window they show the tab that reaches them).
 - `-exercise <id>` opens Library on that exercise (`-exercise barbell-bench-press`); in a narrow window, the exercise's page on Plan.
-- `-openSettings` opens the Mac's Settings window.
+- `-openSettings` opens Settings: the sheet on the iPhone, the iPad and Vision Pro, the Settings window on the Mac.
 - `-simulateICloudData` shows the wait a second device shows while its training comes down from iCloud, over a store that never gets any ("Set up as new" leaves it for onboarding).
 
 `SIM_DEBUG=1 swift test --filter simulationReport` in `Packages/SystemCore` prints every simulated lifter's sessions and calibration evidence. `PRINT_PROGRAMS=1 swift test` in `Packages/LiftEngine` prints generated programs.

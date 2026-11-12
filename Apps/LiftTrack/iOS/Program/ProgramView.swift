@@ -391,6 +391,7 @@ private struct BlockOverview: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .inkList()
         .formStyle(.grouped)
     }
 }
@@ -438,6 +439,7 @@ private struct SlotInspector: View {
             }
             RefitSection(mesocycle: mesocycle, day: day)
         }
+        .inkList()
         .formStyle(.grouped)
         .accessibilityIdentifier("program.inspector")
     }
