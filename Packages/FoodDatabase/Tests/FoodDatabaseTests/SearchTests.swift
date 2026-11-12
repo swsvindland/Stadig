@@ -25,6 +25,10 @@ let searchBasket: [(String, String)] = [
     ("broccoli", "^Broccoli, (raw|cooked)"),
     ("coffee", "^Beverages, coffee, brewed"),
     ("cup of coffee", "^Beverages, coffee, brewed"),
+    ("coff", "^Beverages, coffee, brewed"),
+    ("toast", "^Bread, .*toasted"),
+    ("oats", "^(Cereals, oats|Oats)"),
+    ("yogurt", "^Yogurt, "),
     ("potato", "^Potatoes, (baked|boiled)"),
     ("sweet potato", "^Sweet potato, cooked, (baked|boiled)"),
     ("salmon", "^Fish, salmon, .*cooked"),
@@ -75,6 +79,8 @@ let searchBasket: [(String, String)] = [
 let firstResults: [(String, String)] = [
     ("eggs", "^Egg, whole, cooked"),
     ("rice", "^Rice, white, long-grain, .*cooked"),
+    ("toast", "^Bread, .*toasted"),
+    ("chick", "^Chicken, .*cooked"),
     ("mcdonalds big mac", "^McDONALD'S, BIG MAC$"),
     // The top row is the one typed: its fat level, the named product, not a looser wording.
     ("2% milk", "^Milk, reduced fat, fluid, 2% milkfat"),
@@ -147,6 +153,12 @@ struct GenericSearchTests {
             ("apples", "^Apples, raw"),
             ("coffee", "^Beverages, coffee, brewed"),
             ("chicken br", "^Chicken, broilers or fryers, breast"),
+            // Toast is toasted bread; melba toast and rusks are crackers, named when meant.
+            ("toast", "^Bread, .*toasted"),
+            ("melba toast", "^Crackers, melba toast"),
+            // A word still being typed means the cooked food once it's most of one.
+            ("chick", "^Chicken, .*cooked"),
+            ("chick raw", "^Chicken, .*raw"),
         ])
     func first(query: String, pattern: String) {
         let names = Catalogs.usda.top(query)

@@ -43,7 +43,7 @@ private let variationWords = stems(
     "powder dehydrated dried canned frozen unprepared imitation meatless substitute low reduced nonfat free fortified mix "
         + "flake concentrate baby infant toddler stick oil seed juice paste puree soup dry lite light diet sugar sweetened "
         + "unsweetened blend spread flavored feet giblets liver gizzard heart neck back skin kidney tongue tripe glutinous "
-        + "sprouted instant parboiled precooked turkey stewed babyfood product brain evaporated condensed")
+        + "sprouted instant parboiled precooked turkey stewed babyfood product brain evaporated condensed melba rusk")
 
 /// Kinds of food named after what they're made with or taste of, which follow it in a packaged
 /// food's name: cake pretzels, peanut butter cups, cheese crackers, chocolate milk. Forms already
@@ -687,9 +687,13 @@ func scoreFoods(
     let alone = asked && named.isEmpty
     // A typed search and a food a model saw both mean the cooked form of what's usually eaten
     // cooked; a model asked for raw salmon says so.
+    // A word still being typed counts once it's most of one: "chick" for chicken.
     let cooked =
         !target.contains("raw")
-        && (target + fixValues(fixes, order: target)).contains { eatenCooked.contains(stem($0)) }
+        && (target + fixValues(fixes, order: target)).contains { word in
+            let s = stem(word)
+            return eatenCooked.contains(s) || (search && length(s) >= 4 && eatenCooked.contains { starts($0, s) })
+        }
     // Catalogs repeat products; the person's own foods are each kept.
     var keys: [String] = []
     var unique: [String: Entry] = [:]
