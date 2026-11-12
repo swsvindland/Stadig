@@ -2,6 +2,11 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Floor mode in Stadig Lift.** From the design canvas's device concepts: a phone set down mid-session becomes one big button. The calls, mine to check:
+  - **When it comes on:** after 2 seconds lying within 20° of flat, face up and still (under 0.05 g), with no touch for 4 seconds (changing the weight, logging, scrolling or an open sheet count as touches). **When it goes off:** turned more than 35° from how it lay, or moved (over 0.2 g), for a quarter of a second, so a tap on the glass or a dropped bar doesn't. The session's menu turns it on at once at any angle; then picking the phone up after it has lain still for a second turns it off. "Floor mode when set down" in Settings is kept on this device only. iPhone only.
+  - **Gestures do what the dock's buttons do,** through the same draft: on a work set tap is Just right, swipe up Easy, swipe down Missed (which asks how many); a warm-up's tap logs it unrated; a rep-out's swipes count reps and a tap logs; a timed set's tap starts it, then logs it. Conditioning, the sauna and a finished session keep the normal screen. No Undo, as the engine has none. The screen stays awake while it's on.
+  - **Not verified:** real motion on a device, so the thresholds are a first guess to tune.
+
 - **Stadig Lift's audit.** The same day, the same ask. Calls made fixing what it found, mine to check:
   - **A freeze fixed:** the rest alert called the notification centre on the main thread, and with the permission prompt still waiting a session change could block the app on a black screen. Those calls now run in order off the main thread (`Bridges.swift`).
   - **No system grey left:** Settings and its editors, History, every sheet, check-in, life modes, Body's editors, Library and the iPad and Mac tables and inspectors are on the ink ground (`inkList()`), and switches take the accent instead of system green.
