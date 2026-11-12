@@ -66,18 +66,22 @@ struct RootView: View {
             // The sidebar's sections only where there's a sidebar: `.sidebarOnly` alone still puts
             // Program and Library in an iPhone's tab bar, pushing Progress and Body under More.
             if sizeClass.isWide {
-                TabSection("Training") {
+                TabSection {
                     Tab(AppTab.plan.title, systemImage: AppTab.plan.symbol, value: AppTab.plan) { PlanView() }
                     Tab(AppTab.program.title, systemImage: AppTab.program.symbol, value: AppTab.program) { ProgramView() }
                         .tabPlacement(.sidebarOnly)
                     Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) { LibraryView() }
                         .tabPlacement(.sidebarOnly)
+                } header: {
+                    TabSectionTitle("Training", systemImage: "calendar")
                 }
-                TabSection("Records") {
+                TabSection {
                     Tab(AppTab.history.title, systemImage: AppTab.history.symbol, value: AppTab.history) { HistoryTab() }
                         .tabPlacement(.sidebarOnly)
                     Tab(AppTab.progress.title, systemImage: AppTab.progress.symbol, value: AppTab.progress) { ProgressTab() }
                     Tab(AppTab.body.title, systemImage: AppTab.body.symbol, value: AppTab.body) { BodyView() }
+                } header: {
+                    TabSectionTitle("Records", systemImage: "chart.line.uptrend.xyaxis")
                 }
             } else {
                 Tab(AppTab.plan.title, systemImage: AppTab.plan.symbol, value: AppTab.plan) { PlanView() }
