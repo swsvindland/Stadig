@@ -43,7 +43,7 @@ struct TodayLogger: View {
                 .sectionSpacing(14)
                 .inkGround()
                 .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
-                .scrollDismissesKeyboard(.interactively)
+                .dismissesKeyboardOnScroll()
                 .safeAreaInset(edge: .top, spacing: 0) { header(entries: entries, fresh: fresh) }
                 .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
                 .onAppear {

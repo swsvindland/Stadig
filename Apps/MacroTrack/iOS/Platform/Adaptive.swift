@@ -135,6 +135,16 @@ extension View {
         #endif
     }
 
+    /// A drag down the list takes the keyboard with it, on iPhone and iPad. Vision Pro's keyboard
+    /// floats apart from the window, and the Mac's isn't on screen.
+    func dismissesKeyboardOnScroll() -> some View {
+        #if os(iOS)
+        return scrollDismissesKeyboard(.interactively)
+        #else
+        return self
+        #endif
+    }
+
     /// No navigation bar: a screen with a header of its own (a phone's Today). The Mac has none to hide.
     func hidesNavigationBar() -> some View {
         #if os(macOS)
