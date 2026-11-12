@@ -62,6 +62,19 @@ struct TodayComposerTests {
         #expect(model.entries(on: model.today).isEmpty)
     }
 
+    @Test func aLetterOnItsOwnIsStillBeingTyped() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let composer = TodayComposer()
+        composer.attach(model)
+        composer.text = "banana 100, b"
+
+        await composer.submit()
+
+        #expect(model.entries(on: model.today).count == 1)
+        #expect(model.logger == nil, "nothing handed to the logger")
+    }
+
     @Test func wordsNothingMatchesGoOnToTheLogger() async throws {
         let model = TestEnvironment().model()
         model.onboard()

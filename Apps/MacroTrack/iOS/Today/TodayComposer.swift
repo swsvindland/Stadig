@@ -84,7 +84,7 @@ final class TodayComposer {
     /// Searches for the parts typed that haven't an answer yet, a beat after the last key.
     func search() async {
         guard let model else { return }
-        let queries = Set(parts.filter { $0.kind == .food && !$0.words.isEmpty }.map(\.query)).filter { answers[$0] == nil }
+        let queries = Set(parts.filter(Self.searchable).map(\.query)).filter { answers[$0] == nil }
         guard !queries.isEmpty else { return }
         try? await Task.sleep(for: .milliseconds(90))
         guard !Task.isCancelled else { return }
@@ -122,7 +122,7 @@ final class TodayComposer {
             guard !part.words.isEmpty else { return Resolved(id: index) }
             if let best = foods(for: part).first { return Resolved(id: index, entry: Self.entry(part, food: best.food, model: model)) }
             // Not found yet, or not at all: only once the catalogs have answered is it nothing.
-            return Resolved(id: index, unmatched: answers[part.query] == nil ? nil : part.text)
+            return Resolved(id: index, unmatched: answers[part.query] == nil || !Self.searchable(part) ? nil : part.text)
         }
     }
 
@@ -135,7 +135,7 @@ final class TodayComposer {
         case .food:
             guard !part.words.isEmpty else { return [] }
             let found = foods(for: part).prefix(3)
-            if found.isEmpty, answers[part.query] != nil {
+            if found.isEmpty, answers[part.query] != nil, Self.searchable(part) {
                 let entry = FoodEntry(date: Date(), name: part.text, amountLabel: "", nutrients: .zero, source: .description)
                 return [Candidate(entry: entry, food: nil, id: "unmatched", kind: .unmatched(part.text))]
             }
@@ -161,6 +161,8 @@ final class TodayComposer {
             case .typing: continue
             case .quickAdd(let kcal): entries.append(Self.quickAdd(part, kcal: kcal, model: model))
             case .food:
+                // "2 eggs, t": a letter on its own is a food still being typed, not one to find.
+                guard Self.searchable(part) else { continue }
                 var found = answers[part.query]
                 if found == nil {
                     let answer = model.corrected(await Self.find(part.query, catalog: model.catalog, personal: personal))
@@ -206,6 +208,12 @@ final class TodayComposer {
         text = ""
         if !timed.isEmpty { model.log(timed) }
         if !unmatched.isEmpty { model.openLogger(with: unmatched.joined(separator: ", ")) }
+    }
+
+    /// Whether a part's words are enough to search: the catalogs wait for a last word's second
+    /// letter, so a single one isn't yet a food that wasn't found.
+    static func searchable(_ part: AddFoodPart) -> Bool {
+        part.kind == .food && (part.words.last?.count ?? 0) >= 2
     }
 
     // MARK: Entries
