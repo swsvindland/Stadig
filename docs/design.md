@@ -12,7 +12,7 @@ How Stadig Lift and Stadig Macro look, and why. The designs themselves live on t
 
 ## Your shape
 
-The six scores (Strength, Endurance, Agility, Vitality, Discipline, Physique, clockwise from the top) drawn as one hexagon whose spokes are rulers. It grows where the work is done. Each corner is coloured by the app that measures it (Lift, Macro, or both for Discipline), and a score nothing measures yet leaves its spoke dashed and the figure open. Each app shows its own scores; with both set up, both show all six. The numbers come from `StatsBoard.lines(shared:today:)` in `HubEngine`.
+The six scores (Strength, Endurance, Agility, Vitality, Discipline, Physique, clockwise from the top) drawn as one hexagon whose spokes are rulers. It grows where the work is done. Each corner is coloured by the app that measures it (Lift, Macro, or both for Discipline), and a score nothing measures yet leaves its spoke dashed and the figure open. Each app shows its own scores; with both set up, both show all six. The numbers come from `StatsBoard.lines(shared:today:)` in `SystemStore`.
 
 ## Where it is in code
 

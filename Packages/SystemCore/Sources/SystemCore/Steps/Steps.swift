@@ -58,7 +58,7 @@ public struct StepAim: Hashable, Codable, Sendable {
     public var gap: Int { max(0, aim - (recent ?? baseline)) }
 }
 
-/// What Stadig Lift publishes about steps, for Stadig Macro's check-ins and the hub.
+/// What Stadig Lift publishes about steps, for Stadig Macro's check-ins.
 public struct StepSummary: Hashable, Codable, Sendable {
     /// Complete days, oldest first: the last eight weeks.
     public var days: [StepDay]

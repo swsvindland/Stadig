@@ -264,7 +264,7 @@ public struct PhysiqueAnalysis: Hashable, Sendable {
     /// Change in waist over the window, cm; negative is smaller.
     public var waistTrend: Double?
 
-    /// A 0–100 reading for the hub: proportion and leanness, never a judgement of looks.
+    /// A 0–100 reading for the Physique stat: proportion and leanness, never a judgement of looks.
     public var score: Double?
 
     /// Whether body fat was estimated from the tape (US Navy method) rather than measured.

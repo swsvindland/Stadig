@@ -1,6 +1,6 @@
 import Foundation
 
-// The vocabulary of training that every app and the hub share: muscles, joints, equipment,
+// The vocabulary of training that both apps share: muscles, joints, equipment,
 // movement patterns, safety tiers and fatigue costs. The exercise library tags every exercise with
 // these; the core's logic reads only these tags, never exercise names.
 

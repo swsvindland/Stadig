@@ -1149,7 +1149,7 @@ struct StatsTests {
 }
 
 @Suite("Quests and trajectories")
-struct HubTests {
+struct QuestAndTrajectoryTests {
     @Test func questsAreCappedAndSpread() {
         let day = Day(year: 2026, month: 1, day: 1)
         let quests = [

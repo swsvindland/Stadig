@@ -1,6 +1,6 @@
 import Foundation
 
-/// Energy and nutrients for an amount of food. Every app and the hub count food the same way.
+/// Energy and nutrients for an amount of food. Both apps count food the same way.
 /// Food logged for later, as the widgets and complications need it: they run with the app closed,
 /// so they hold what's coming and count it from its time themselves.
 public struct LaterFood: Hashable, Codable, Sendable {
