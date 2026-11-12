@@ -54,6 +54,10 @@ extension LiveSession {
                     item: index, set: set, reps: reps, loadKg: loadKg, rating: rating, seconds: seconds, heartRatePeak: peak,
                     environment: environment, now: now)
             }
+            // Undo is for the device the set was logged on: the phone doesn't take back the Watch's
+            // set (the Watch, still showing it logged until a copy says otherwise, would log on from
+            // it), and a set logged on the Watch is the next set, so the phone's last one stays put.
+            undo = nil
         case .skipSet(let id, let set):
             guard let index = item(id), items[index].sets.indices.contains(set), items[index].sets[set].isOpen else { return false }
             skipSet(item: index, set: set, now: now)
@@ -99,10 +103,13 @@ extension LiveSession {
     public func item(_ id: UUID) -> Int? { items.firstIndex { $0.id == id } }
 
     /// The session as it's sent to the other device: without the heart rate, which the Watch
-    /// measures and keeps itself, and which would make every message thousands of readings long.
+    /// measures and keeps itself, and which would make every message thousands of readings long;
+    /// and without Undo, which only the device that logged the set offers. An undo there reaches
+    /// the other device as any change does, in the next copy.
     public var withoutHeartRate: LiveSession {
         var copy = self
         copy.heartRateSamples = []
+        copy.undo = nil
         return copy
     }
 }

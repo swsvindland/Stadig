@@ -185,6 +185,23 @@ public struct RestState: Codable, Hashable, Sendable {
     public var filler: String?
 }
 
+/// The set just logged, and the session as it stood before: what Undo puts back. It's kept from a
+/// set's log until the next set is logged or the exercises change some other way (a swap, a skip,
+/// a set added, a correction, Do This Now), so Undo only ever takes back the last set, and only
+/// while nothing has been built on it; the rest running after it can be skipped or changed meanwhile.
+public struct LoggedSetUndo: Codable, Hashable, Sendable {
+    public var itemID: UUID
+    public var setID: UUID
+    /// The exercise before the set was logged: the set open, and the later sets' targets and notes
+    /// before its rating adjusted them (or a rest cut short after it lowered them).
+    var item: LiveItem
+    /// The rest before: the one the set followed, timed from, or none.
+    var rest: RestState?
+    var message: String?
+    var lastAdjustment: AdjustmentKind?
+    var mobilityDone: [String]
+}
+
 /// A session in progress: a pure state machine the phone and the Watch both run.
 public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
@@ -201,6 +218,9 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     /// How many of the Watch's changes this session has taken (`take`), in the Watch's numbering, so
     /// one that arrives twice or early isn't taken again, and the Watch can tell which have landed.
     public var takenChanges: Int
+    /// What Undo takes back, while there's something to (`undoableSet`). Only a set logged on this
+    /// device: one the Watch logged (`apply`) leaves none, and the copy the Watch is sent has none.
+    public internal(set) var undo: LoggedSetUndo?
 
     public struct HeartRatePoint: Codable, Hashable, Sendable {
         public var date: Date
@@ -239,6 +259,8 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         heartRateSamples = try c.decodeIfPresent([HeartRatePoint].self, forKey: .heartRateSamples) ?? []
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? startedAt
         takenChanges = try c.decodeIfPresent(Int.self, forKey: .takenChanges) ?? 0
+        // Only a convenience, like the rest: one that can't be read leaves nothing to undo.
+        undo = try? c.decodeIfPresent(LoggedSetUndo.self, forKey: .undo)
     }
 
     // MARK: Where we are
@@ -277,6 +299,9 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     ) -> SetAdjustment? {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return nil }
         var item = items[index]
+        undo = LoggedSetUndo(
+            itemID: item.id, setID: item.sets[setIndex].id, item: item, rest: rest, message: message, lastAdjustment: lastAdjustment,
+            mobilityDone: mobilityDone)
         let prescription = item.sets[setIndex].prescription
         // From the exercise's last set when there is one, so a skipped rest still counts, and in a
         // superset it's the time this exercise had, its partner's set included.
@@ -318,6 +343,33 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         return adjustment
     }
 
+    /// The set Undo takes back: the last one logged on this device, while nothing has been built on it.
+    public var undoableSet: (item: Int, set: Int, logged: LoggedSet)? {
+        guard let undo, let index = item(undo.itemID), let set = items[index].sets.firstIndex(where: { $0.id == undo.setID }),
+            let logged = items[index].sets[set].logged
+        else { return nil }
+        return (index, set, logged)
+    }
+
+    /// Takes back the last set logged: it's open again, and everything logging it did is undone, the
+    /// rest it started (put back to the one before, which may well have run out), its rating's
+    /// adjustment of the sets after it and its message, a finding weight carried on, a drill counted
+    /// done. The set's numbers are gone from the session, so they count for nothing, the rating's
+    /// evidence about how far it can be trusted included. Logging it again does exactly what logging
+    /// it the first time would have. Returns false, changing nothing, when there's nothing to undo.
+    @discardableResult
+    public mutating func undoLastSet(now: Date = Date()) -> Bool {
+        guard let undo, undoableSet != nil, let index = item(undo.itemID) else { return false }
+        items[index] = undo.item
+        rest = undo.rest
+        message = undo.message
+        lastAdjustment = undo.lastAdjustment
+        mobilityDone = undo.mobilityDone
+        self.undo = nil
+        updatedAt = now
+        return true
+    }
+
     /// Corrects a logged set (the wrong weight, a rating tapped too fast) and redoes what it set in
     /// motion: the sets still to come are worked out again from the plan and the corrected log.
     public mutating func edit(
@@ -332,6 +384,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         if logged.kind != .warmup { logged.rating = rating }
         items[index].sets[setIndex].logged = logged
         replay(item: index, environment: environment)
+        undo = nil
         updatedAt = now
     }
 
@@ -373,6 +426,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         others.insert(contentsOf: moved, at: target)
         items = others
         if let rest, !items.contains(where: { $0.id == rest.itemID && !$0.isDone }) { self.rest = nil }
+        undo = nil
         updatedAt = now
     }
 
@@ -411,6 +465,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
     public mutating func skipSet(item index: Int, set setIndex: Int, now: Date = Date()) {
         guard items.indices.contains(index), items[index].sets.indices.contains(setIndex) else { return }
         items[index].sets[setIndex].skipped = true
+        undo = nil
         updatedAt = now
     }
 
@@ -418,6 +473,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         guard items.indices.contains(index) else { return }
         items[index].skipped = true
         if rest?.itemID == items[index].id { rest = nil }
+        undo = nil
         updatedAt = now
     }
 
@@ -433,6 +489,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         if let logged = last?.logged { prescription.loadKg = logged.loadKg }
         items[index].sets.append(LiveSet(prescription: prescription))
         items[index].skipped = false
+        undo = nil
         updatedAt = now
     }
 
@@ -463,6 +520,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
         item.plan.note = prescription.reason
         item.verified = false
         items[index] = item
+        undo = nil
         updatedAt = now
     }
 
@@ -478,6 +536,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
                 seconds: minutes * 60)
         }
         rest = nil
+        undo = nil
         updatedAt = now
     }
 
@@ -496,6 +555,7 @@ public struct LiveSession: Codable, Hashable, Sendable, Identifiable {
                 rating: nil, seconds: Int(minutes * 60))
         }
         rest = nil
+        undo = nil
         updatedAt = now
     }
 
