@@ -1134,7 +1134,7 @@ final class AppModel {
         reload(readingShared: false)
         refreshPersonal()
         let kcal = new.map(\.nutrients.kcal).reduce(0, +)
-        let text = message ?? (new.count == 1 ? "Logged \(new[0].name)" : "Logged \(new.count) foods")
+        let text = message ?? (new.count == 1 ? "Logged \(FoodLabel.short(new[0].name))" : "Logged \(new.count) foods")
         let caffeine = new.compactMap { $0.micros?["caffeine"] }.reduce(0, +)
         let detail = kcal < 15 && caffeine >= 1 ? "\(Format.whole(caffeine)) mg caffeine" : Format.kcal(kcal)
         let run = fasting.flatMap { fastRun($0.fast) }

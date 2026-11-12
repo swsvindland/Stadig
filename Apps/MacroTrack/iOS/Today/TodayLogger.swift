@@ -436,7 +436,8 @@ struct ThreadRow: View {
             if later { LaterMark() }
             FoodTile(name: entry.name, fill: Ink.raised)
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.name).font(.body.weight(.medium)).foregroundStyle(Ink.text).lineLimit(1)
+                // How someone would say it ("Chicken breast, roasted"); the full name is on its amount.
+                Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text).lineLimit(1)
                 Text([entry.brand, entry.amountLabel].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
             }
@@ -486,7 +487,8 @@ private struct UsualTiles: View {
                         HStack(spacing: 10) {
                             FoodTile(name: item.template.name, fill: Ink.raised)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(item.template.name).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1)
+                                Text(FoodLabel.title(item.template.name)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                                    .lineLimit(1)
                                 Text("\(item.template.amountLabel) · \(Format.whole(item.template.nutrients.kcal)) kcal")
                                     .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
                             }
@@ -500,7 +502,7 @@ private struct UsualTiles: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("today.usual.\(index)")
                     .accessibilityLabel(
-                        "Log \(item.template.name), \(item.template.amountLabel), \(Format.kcal(item.template.nutrients.kcal))")
+                        "Log \(FoodLabel.short(item.template.name)), \(item.template.amountLabel), \(Format.kcal(item.template.nutrients.kcal))")
                 }
             }
         }
@@ -538,7 +540,7 @@ private struct WhatFitsRows: View {
         HStack(spacing: 12) {
             FoodTile(name: option.items.first?.name ?? "", fill: Ink.raised)
             VStack(alignment: .leading, spacing: 2) {
-                Text(option.items.map { TodayComposer.short($0.name) }.joined(separator: " + "))
+                Text(option.items.map { FoodLabel.title($0.name) }.joined(separator: " + "))
                     .font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1)
                 Text(
                     "\(option.items.map(\.amountLabel).joined(separator: " + ")) · \(Format.kcal(option.nutrients.kcal)) · \(Format.whole(option.nutrients.protein)) P"
@@ -569,7 +571,7 @@ private struct WhatFitsRows: View {
         .contentShape(.rect(cornerRadius: 18))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Log \(option.items.map(\.name).joined(separator: " and ")), \(Format.kcal(option.nutrients.kcal)), \(option.onTarget ? "on target" : "leaves \(Format.whole(option.leaves)) kcal")"
+            "Log \(option.items.map { FoodLabel.short($0.name) }.joined(separator: " and ")), \(Format.kcal(option.nutrients.kcal)), \(option.onTarget ? "on target" : "leaves \(Format.whole(option.leaves)) kcal")"
         )
     }
 }
@@ -603,8 +605,9 @@ private struct ComposerMatches: View {
                     .background(Ink.raised, in: .rect(cornerRadius: TileSize.row * 0.3))
             }
             VStack(alignment: .leading, spacing: 2) {
-                // Two lines: catalog names differ late ("Chicken, broilers or fryers, breast, meat only…").
-                Text(title(match)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(2)
+                // The name it's said by, then what tells it from the next one: catalog names differ
+                // late ("…, meat only" from "…, meat and skin"). Two lines at most.
+                title(match).lineLimit(2)
                 Text(detail(match)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
             }
             Spacer(minLength: 6)
@@ -630,12 +633,16 @@ private struct ComposerMatches: View {
         .accessibilityHint(best ? "Return logs it" : "")
     }
 
-    func title(_ match: TodayComposer.Candidate) -> String {
-        switch match.kind {
-        case .food: match.entry.name
-        case .quickAdd: "Quick add \(Format.kcal(match.entry.nutrients.kcal))"
-        case .unmatched(let words): "Describe “\(words)”"
-        }
+    func title(_ match: TodayComposer.Candidate) -> Text {
+        let name: (short: String, rest: String?) =
+            switch match.kind {
+            case .food: FoodLabel.spoken(match.entry.name)
+            case .quickAdd: ("Quick add \(Format.kcal(match.entry.nutrients.kcal))", nil)
+            case .unmatched(let words): ("Describe “\(words)”", nil)
+            }
+        let short = Text(name.short).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+        guard let rest = name.rest else { return short }
+        return Text("\(short)  \(Text(rest).font(.caption).foregroundStyle(Ink.text2))")
     }
 
     func detail(_ match: TodayComposer.Candidate) -> String {
@@ -676,7 +683,7 @@ private struct ComposerChips: View {
     func label(_ part: TodayComposer.Resolved) -> String {
         if let entry = part.entry {
             if entry.source == .quickAdd { return "≈ \(Format.kcal(entry.nutrients.kcal))" }
-            return "\(FoodMarker.of(entry.name)) \(TodayComposer.short(entry.name)) · \(entry.amountLabel)"
+            return "\(FoodMarker.of(entry.name)) \(FoodLabel.title(entry.name)) · \(entry.amountLabel)"
         }
         if let words = part.unmatched { return "≈ \(words)" }
         return typed.indices.contains(part.id) ? "\(typed[part.id].text)…" : "…"

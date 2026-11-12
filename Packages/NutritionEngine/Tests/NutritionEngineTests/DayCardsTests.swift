@@ -148,6 +148,81 @@ struct FoodLabelTests {
         #expect(parts.detail == detail)
     }
 
+    @Test(
+        arguments: [
+            ("Egg, whole, cooked, fried", "Egg", "cooked, fried"),
+            ("Bread, wheat, toasted", "Wheat bread", "toasted"),
+            ("Beverages, coffee, brewed, espresso, restaurant-prepared", "Espresso", "restaurant-prepared"),
+            ("Chicken, broilers or fryers, meat only, raw", "Chicken", "meat only, raw"),
+            ("Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)", "Apples", "raw, with skin"),
+            ("Oats (Includes foods for USDA's Food Distribution Program)", "Oats", nil),
+        ] as [(String, String, String?)])
+    func everydayCatalogNamesReadAsTheyreSaid(name: String, title: String, detail: String?) {
+        let parts = FoodLabel.parts(of: name)
+        #expect(parts.title == title)
+        #expect(parts.detail == detail)
+    }
+
+    /// Today's thread: what it is and how it was cooked, the way the catalog's most found foods
+    /// are named.
+    @Test(
+        arguments: [
+            ("Chicken, broilers or fryers, breast, meat only, cooked, roasted", "Chicken breast, roasted", "meat only"),
+            ("Chicken, broilers or fryers, breast, meat and skin, cooked, roasted", "Chicken breast, roasted", "meat and skin"),
+            ("Chicken, broilers or fryers, meat only, raw", "Chicken, raw", "meat only"),
+            ("Rice, white, long-grain, regular, enriched, cooked", "White rice, cooked", "long-grain, regular, enriched"),
+            ("Rice, white, long-grain, regular, raw, enriched", "White rice, raw", "long-grain, regular, enriched"),
+            ("Beverages, coffee, brewed, prepared with tap water", "Coffee, brewed", "prepared with tap water"),
+            ("Beverages, coffee, brewed, prepared with tap water, decaffeinated", "Coffee, decaf", "brewed, prepared with tap water"),
+            ("Beverages, coffee, brewed, espresso, restaurant-prepared", "Espresso", "restaurant-prepared"),
+            ("Egg, whole, cooked, fried", "Egg, fried", nil),
+            ("Egg, whole, cooked, hard-boiled", "Egg, hard-boiled", nil),
+            ("Egg, whole, raw, fresh", "Egg, raw", "fresh"),
+            ("Yogurt, Greek, plain, lowfat", "Greek yogurt, lowfat", "plain"),
+            ("Yogurt, plain, whole milk", "Yogurt, whole milk", "plain"),
+            ("Milk, whole, 3.25% milkfat, with added vitamin D", "Whole milk", "3.25% milkfat, with added vitamin D"),
+            (
+                "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D", "Milk, reduced fat",
+                "fluid, 2% milkfat, with added vitamin A and vitamin D"
+            ),
+            ("Oil, olive, salad or cooking", "Olive oil", "salad or cooking"),
+            ("Broccoli, cooked, boiled, drained, without salt", "Broccoli, boiled", "drained, without salt"),
+            ("Bread, white, commercially prepared, toasted", "White bread, toasted", "commercially prepared"),
+            (
+                "Cereals, oats, regular and quick, unenriched, cooked with water (includes boiling and microwaving), without salt", "Oats, cooked",
+                "regular and quick, unenriched, without salt"
+            ),
+            ("Fish, salmon, Atlantic, farmed, cooked, dry heat", "Salmon, cooked", "Atlantic, farmed, dry heat"),
+            ("Sweet potato, cooked, baked in skin, flesh, without salt", "Sweet potato, baked", "flesh, without salt"),
+            ("Beef, ground, 90% lean meat / 10% fat, raw", "Ground beef, raw", "90% lean meat / 10% fat"),
+        ] as [(String, String, String?)])
+    func aFoodOnTheThreadSaysHowItWasCooked(name: String, short: String, rest: String?) {
+        let spoken = FoodLabel.spoken(name)
+        #expect(spoken.short == short)
+        #expect(spoken.rest == rest)
+    }
+
+    @Test(arguments: [
+        ("Bananas, raw", "Bananas"), ("Apples, raw, without skin", "Apples"), ("Broccoli, raw", "Broccoli"),
+        ("Tomatoes, red, ripe, raw, year round average", "Red tomatoes"), ("Coffee, black", "Black coffee"),
+    ])
+    func fruitAndVegetablesArentSaidToBeRawAndColoursGoFirst(name: String, short: String) {
+        #expect(FoodLabel.short(name) == short)
+    }
+
+    @Test(arguments: ["Oats, dry", "Egg, raw", "Rice, cooked", "toast, buttered", "KIND bar", "McDONALD'S, BIG MAC", "Protein shake"])
+    func aShortNameStaysAsWritten(name: String) {
+        #expect(FoodLabel.short(name) == name)
+    }
+
+    @Test(arguments: [
+        ("Chicken, broilers or fryers, breast, meat only, cooked, roasted", "Chicken breast"), ("Yogurt, Greek, plain, lowfat", "Greek yogurt"),
+        ("Bananas, raw", "Bananas"), ("Protein shake", "Protein shake"),
+    ])
+    func aTileSaysWhatTheFoodIs(name: String, title: String) {
+        #expect(FoodLabel.title(name) == title)
+    }
+
     @Test(arguments: ["KIND bar", "McDONALD'S, BIG MAC", "Protein shake"])
     func aNameWithNothingToCutStaysWhole(name: String) {
         #expect(FoodLabel.parts(of: name).title == name)

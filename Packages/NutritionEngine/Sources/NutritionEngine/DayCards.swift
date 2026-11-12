@@ -122,31 +122,103 @@ public enum FoodLabel {
     /// Words that go in front of the head: "Rice, white" is white rice.
     private static let describing: Set<String> = [
         "white", "brown", "wild", "greek", "sweet", "whole", "whole-wheat", "whole-grain", "olive", "coconut", "canola", "peanut", "black", "red",
-        "green", "kidney", "pinto",
+        "green", "kidney", "pinto", "wheat", "rye",
     ]
     private static let meats: Set<String> = ["chicken", "turkey", "beef", "pork", "lamb"]
     /// The part of a meat a person names.
     private static let cuts = ["breast", "thigh", "wing", "drumstick", "leg", "tenderloin", "sirloin", "ribeye", "loin", "chop", "ground"]
+    /// Parts that name the food better than the head they're filed under, with the parts they say
+    /// already: "Beverages, coffee, brewed, espresso" is espresso.
+    private static let naming: [String: Set<String>] = ["espresso": ["coffee", "brewed"]]
+    /// USDA's notes in brackets, which say where a food came from or how it was measured rather
+    /// than what it is: "(Includes foods for USDA's Food Distribution Program)".
+    private static let notes = #"\s*\((?i:includes|for reference)[^)]*\)"#
 
     public static func parts(of name: String) -> (title: String, detail: String?) {
+        let name = name.replacingOccurrences(of: notes, with: "", options: .regularExpression)
         var parts = name.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         // A restaurant's name is written first and in capitals: "McDONALD'S, BIG MAC" stays whole.
         guard parts.count > 1, parts[1] != parts[1].uppercased() else { return (name, nil) }
         var title = parts.removeFirst()
         let head = title.lowercased()
-        if filing.contains(head), !parts.isEmpty {
+        if let index = parts.firstIndex(where: { naming[$0.lowercased()] != nil }) {
+            title = parts.remove(at: index)
+            let said = naming[title.lowercased()] ?? []
+            parts.removeAll { said.contains($0.lowercased()) }
+        } else if filing.contains(head), !parts.isEmpty {
             title = parts.removeFirst()
+        } else if head == "egg", parts.first?.lowercased() == "whole" {
+            // An egg is whole unless it's said to be the white or the yolk.
+            parts.removeFirst()
         } else if let first = parts.first, describing.contains(first.lowercased()) {
             title = "\(first) \(head)"
             parts.removeFirst()
         } else if meats.contains(head), let index = parts.firstIndex(where: { part in cuts.contains { part.lowercased().contains($0) } }) {
             let cut = parts.remove(at: index).lowercased()
             title = cut.contains("ground") ? "Ground \(head)" : "\(head) \(cut)"
-            parts.removeAll { $0.lowercased().hasPrefix("broilers") }
         }
+        // How a chicken was raised isn't what anyone calls it.
+        if meats.contains(head) { parts.removeAll { $0.lowercased().hasPrefix("broilers") } }
         let detail = parts.joined(separator: ", ")
         return (title.prefix(1).uppercased() + title.dropFirst(), detail.isEmpty ? nil : detail)
     }
+
+    /// How a food was cooked, the most particular way first: "cooked, roasted" was roasted.
+    private static let cooking: Set<String> = [
+        "roasted", "grilled", "baked", "boiled", "hard-boiled", "soft-boiled", "steamed", "fried", "pan-fried", "deep-fried", "stir-fried",
+        "broiled", "braised", "stewed", "poached", "scrambled", "toasted", "microwaved", "smoked", "sauteed", "sautéed", "mashed", "omelet",
+    ]
+    /// The state it's in, when it wasn't cooked any particular way.
+    private static let states: Set<String> = ["cooked", "raw", "uncooked", "dry", "dried", "canned", "frozen", "brewed", "instant"]
+    /// How much fat a dairy food has, said as the whole part: "Yogurt, Greek, plain, lowfat".
+    private static let fats: Set<String> = [
+        "nonfat", "non-fat", "lowfat", "low fat", "low-fat", "reduced fat", "fat free", "fat-free", "skim", "skim milk", "whole milk", "part skim",
+    ]
+    /// The markers of fruit and vegetables, which are eaten raw: "Bananas, raw" is bananas.
+    private static let produce: Set<String> = [
+        "🍠", "🍆", "🍍", "🥔", "🥦", "🥕", "🍅", "🌽", "🥑", "🫑", "🧅", "🧄", "🍄", "🥒", "🥗", "🍌", "🍎", "🍊", "🍋", "🍓", "🫐", "🍇", "🥭",
+        "🍑", "🍐", "🍒", "🍉",
+    ]
+    /// Names this short are already how someone would write them: "Coffee, black".
+    private static let alreadyShort = 24
+
+    /// A food's name on a line of its own, as Today's thread says it: what it is, and how it was
+    /// cooked or how much fat it has when the catalog says ("Chicken breast, roasted", "White rice,
+    /// cooked", "Greek yogurt, lowfat"). `rest` is the rest of the catalog's detail, for where foods
+    /// must be told apart (the composer's matches); nil when nothing's left.
+    public static func spoken(_ name: String) -> (short: String, rest: String?) {
+        let (title, detail) = parts(of: name)
+        guard let detail else { return (title, nil) }
+        var rest = detail.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let fresh = produce.contains(FoodMarker.of(title))
+        let written = name.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) }
+        // Nothing to cut from a short name read as written, except the raw of a fruit.
+        if written?.lowercased() == title.lowercased(), rest.count == 1, name.count <= alreadyShort, !(fresh && rest[0].lowercased() == "raw") {
+            return (name, nil)
+        }
+        func leading(_ part: String) -> String { part.lowercased().split(separator: " ").first.map(String.init) ?? "" }
+        var said: String?
+        if let index = rest.firstIndex(where: { cooking.contains(leading($0)) }) {
+            said = leading(rest.remove(at: index))
+            // "Cooked" says less than "roasted" beside it.
+            rest.removeAll { leading($0) == "cooked" }
+        } else if let index = rest.firstIndex(where: { $0.lowercased() == "decaffeinated" }) {
+            rest.remove(at: index)
+            said = "decaf"
+        } else if let index = rest.firstIndex(where: { states.contains(leading($0)) }), !(fresh && leading(rest[index]) == "raw") {
+            said = leading(rest.remove(at: index))
+        } else if let index = rest.firstIndex(where: { fats.contains($0.lowercased()) }) {
+            said = rest.remove(at: index).lowercased()
+        }
+        let short = said.map { "\(title), \($0)" } ?? title
+        return (short, rest.isEmpty ? nil : rest.joined(separator: ", "))
+    }
+
+    /// ``spoken(_:)``'s short name alone.
+    public static func short(_ name: String) -> String { spoken(name).short }
+
+    /// What a food is, for a tile or a list of several: "Chicken breast", "Greek yogurt".
+    public static func title(_ name: String) -> String { parts(of: name).title }
 }
 
 /// The small picture beside a food. The catalogs say what a food is only in its name, so this reads

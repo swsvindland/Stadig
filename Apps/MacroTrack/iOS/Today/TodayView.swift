@@ -444,7 +444,7 @@ struct LogAgainSection: View {
                         chip(
                             title: "Same as \(Format.relative(Day(usual.start), today: model.today))",
                             detail:
-                                "\(Format.time(usual.start)) · \(usual.entries.map(\.name).prefix(2).joined(separator: ", "))\(usual.entries.count > 2 ? " +\(usual.entries.count - 2)" : "")",
+                                "\(Format.time(usual.start)) · \(usual.entries.map { FoodLabel.title($0.name) }.prefix(2).joined(separator: ", "))\(usual.entries.count > 2 ? " +\(usual.entries.count - 2)" : "")",
                             kcal: usual.nutrients.kcal, highlight: true
                         ) {
                             model.logAgain(usual)
@@ -462,7 +462,7 @@ struct LogAgainSection: View {
                         .accessibilityLabel("Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))")
                     }
                     ForEach(model.logAgain.prefix(foods ? 10 : 0)) { item in
-                        chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
+                        chip(title: FoodLabel.short(item.template.name), detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
                             model.logAgain(item)
                         }
                         .accessibilityIdentifier("today.logAgain")

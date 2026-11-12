@@ -297,7 +297,7 @@ final class TodayComposer {
         // Named for the meal's main food, the one with the most calories: "Goes with chicken", not
         // with the coffee after it.
         if !offered.isEmpty, let main = open?.entries.max(by: { $0.nutrients.kcal < $1.nutrients.kcal }) {
-            tilesTitle = "Goes with \(Self.short(main.name).lowercased())"
+            tilesTitle = "Goes with \(FoodLabel.title(main.name).lowercased())"
         } else {
             tilesTitle = "Usually around now"
             offered = model.logAgain.filter { !inMeal.contains(Self.key($0.template)) }
@@ -330,9 +330,4 @@ final class TodayComposer {
     }
 
     static func key(_ entry: FoodEntry) -> String { entry.foodID ?? entry.name.lowercased() }
-
-    /// "Greek yogurt" for "Greek yogurt, plain, lowfat": the name up to its first comma.
-    static func short(_ name: String) -> String {
-        String(name.split(separator: ",", maxSplits: 1).first ?? Substring(name)).trimmingCharacters(in: .whitespaces)
-    }
 }

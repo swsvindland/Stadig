@@ -155,7 +155,7 @@ struct InlineAmount: View {
             let current = model.current(entry)
         else { return }
         let changed = model.rescaled(current, food: draft.food, unit: unit, count: count)
-        model.update([changed], message: "Changed \(TodayComposer.short(entry.name)) to \(FoodUnits.label(count: count, unit: unit))")
+        model.update([changed], message: "Changed \(FoodLabel.short(entry.name)) to \(FoodUnits.label(count: count, unit: unit))")
         draft = model.draft(for: .edit(changed))
     }
 
