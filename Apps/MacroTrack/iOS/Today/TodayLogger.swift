@@ -47,6 +47,8 @@ struct TodayLogger: View {
                 .inkGround()
                 .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
                 .dismissesKeyboardOnScroll()
+                // A tap anywhere on the day puts the keyboard away, alongside the row's own tap.
+                .simultaneousGesture(TapGesture().onEnded { if typing { typing = false } })
                 .safeAreaInset(edge: .top, spacing: 0) { header(entries: entries, fresh: fresh) }
                 .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
                 .onAppear {
@@ -137,6 +139,10 @@ struct TodayLogger: View {
         .padding(.top, 4)
         .padding(.bottom, 10)
         .background(Ink.ground)
+        .contentShape(.rect)
+        // Tapping the numbers while typing puts the keyboard away. Not a control of its own:
+        // VoiceOver and keyboard users have Return and the composer's close button.
+        .onTapGesture { if typing { typing = false } }
     }
 
     /// "Wed, Nov 11 · Cut, week 1 of 4": the day, and where the plan is.
@@ -226,7 +232,9 @@ struct TodayLogger: View {
     }
 
     func open(_ entry: FoodEntry) {
-        typing = false
+        // While typing, a tap on the day only puts the keyboard away (the day's own tap does that);
+        // opening a food as well would be two things from one tap.
+        guard !typing else { return }
         guard let id = entry.foodID, model.food(id: id) != nil else {
             editing = entry
             return
@@ -708,16 +716,13 @@ private struct ComposerField: View {
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .submitLabel(.return)
-                .onSubmit {
-                    Task { await composer.submit() }
-                    // Return logs and the keyboard stays for the next food.
-                    typing.wrappedValue = true
-                }
+                .onSubmit(submit)
                 .accessibilityIdentifier("today.composer")
                 .padding(.leading, 18)
                 .frame(maxHeight: .infinity)
             if empty {
                 Button {
+                    typing.wrappedValue = false
                     model.openLogger(.scan)
                 } label: {
                     Image(systemName: "camera").font(.title3).foregroundStyle(Ink.text2).frame(width: 44, height: 44).contentShape(.circle)
@@ -732,16 +737,29 @@ private struct ComposerField: View {
                 }
                 .accessibilityLabel("Camera: barcode, label or plate")
                 .accessibilityIdentifier("today.camera")
-                Button {
-                    // Said to the model where it can read a sentence; else the keyboard's own dictation.
-                    if model.ai.canDescribe { model.openLogger(.describe) } else { typing.wrappedValue = true }
-                } label: {
-                    Image(systemName: "mic.fill").font(.body.weight(.semibold)).foregroundStyle(Ink.ground)
-                        .frame(width: 40, height: 40).background(Color.accentColor, in: .circle).contentShape(.circle)
+                if typing.wrappedValue {
+                    // Nothing typed: the way out of the keyboard sits where the eye already is.
+                    // The keyboard has its own dictation, so the microphone waits until it's down.
+                    Button("Close Keyboard", systemImage: "keyboard.chevron.compact.down", action: closeKeyboard)
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .foregroundStyle(Ink.text2)
+                        .frame(width: 44, height: 44)
+                        .contentShape(.circle)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("today.closeKeyboard")
+                } else {
+                    Button {
+                        // Said to the model where it can read a sentence; else the keyboard's own dictation.
+                        if model.ai.canDescribe { model.openLogger(.describe) } else { typing.wrappedValue = true }
+                    } label: {
+                        Image(systemName: "mic.fill").font(.body.weight(.semibold)).foregroundStyle(Ink.ground)
+                            .frame(width: 40, height: 40).background(Color.accentColor, in: .circle).contentShape(.circle)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Say what you ate")
+                    .accessibilityIdentifier("today.describe")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Say what you ate")
-                .accessibilityIdentifier("today.describe")
             } else {
                 Button {
                     Task { await composer.submit() }
@@ -760,4 +778,17 @@ private struct ComposerField: View {
         .background(Color.cardBackground, in: .capsule)
         .overlay(Capsule().stroke(typing.wrappedValue ? Color.accentColor : Ink.hairline, lineWidth: typing.wrappedValue ? 1.5 : 1))
     }
+
+    /// Return logs what's typed and keeps the keyboard for the next food; with nothing typed it's
+    /// the way out, as Return is in Messages.
+    private func submit() {
+        guard !composer.text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            closeKeyboard()
+            return
+        }
+        Task { await composer.submit() }
+        typing.wrappedValue = true
+    }
+
+    private func closeKeyboard() { typing.wrappedValue = false }
 }

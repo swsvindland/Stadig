@@ -24,7 +24,7 @@ struct InlineAmount: View {
             HStack(spacing: 12) {
                 FoodTile(name: entry.name, size: TileSize.header, fill: Ink.raised)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.name).font(.headline).foregroundStyle(Ink.text).lineLimit(1)
+                    Text(FoodLabel.short(entry.name)).font(.headline).foregroundStyle(Ink.text).lineLimit(1)
                     Text(
                         "\(Format.kcal(preview.nutrients.kcal)) · \(Format.whole(preview.nutrients.protein)) P · \(Format.whole(preview.nutrients.carbs)) C · \(Format.whole(preview.nutrients.fat)) F"
                     )
