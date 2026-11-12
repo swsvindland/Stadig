@@ -129,7 +129,7 @@ struct OnboardingView: View {
                 Label("Rate each set Easy, Just right or Missed. That's all.", systemImage: "hand.tap")
                 Label("The first weeks find your working weights and how well your ratings match what you can do.", systemImage: "scope")
                 Label("Then real blocks, built around your weakest lifts, your schedule and your recovery.", systemImage: "calendar")
-                Label("One-time purchase. No subscription. Your data stays yours.", systemImage: "lock.open")
+                Label("Free and open source. Your data stays yours.", systemImage: "lock.open")
             }
             .font(.body)
             if reusedProfile {

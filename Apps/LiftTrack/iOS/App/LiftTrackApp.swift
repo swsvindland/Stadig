@@ -97,7 +97,7 @@ struct LiftTrackApp: App {
 }
 
 /// The app's window: the model in the environment, links from the widget and the Live Activity, and
-/// Health and the purchase brought up to date on launch and on each return.
+/// Health brought up to date on launch and on each return.
 private struct AppRoot: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -117,8 +117,6 @@ private struct AppRoot: View {
         .task { if LaunchOptions.current.has("-openSettings") { openSettings() } }
             #endif
             .task {
-                await model.purchases.start()
-                model.askForPurchaseIfDue()
                 // Tests and UI tests ask Health nothing.
                 guard !LaunchOptions.current.isQuiet else { return }
                 await HealthBridge.shared.requestAddedTypes()
@@ -132,10 +130,6 @@ private struct AppRoot: View {
                     if model.today != .today { model.recompute() }
                     // Sleep, weigh-ins, steps and outside workouts came in while the app was away.
                     Task { await model.refreshHealthIfStale() }
-                    Task {
-                        await model.purchases.refresh()
-                        model.askForPurchaseIfDue()
-                    }
                 }
             }
     }

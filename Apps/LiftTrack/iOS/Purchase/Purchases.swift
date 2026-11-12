@@ -1,12 +1,11 @@
 import SystemPurchases
 
 extension PurchaseConfiguration {
-    /// What Stadig Lift sells and says about it. How it's paid for is `SystemPurchases`. The assessment,
-    /// logging, export and backup always work without paying: your data is yours. Generating real
-    /// training blocks after the assessment needs it.
+    /// Stadig Lift is free and open source: nothing is sold, so `SystemPurchases` treats everything as
+    /// owned and never shows its offer. The package stays linked until it's removed for good.
     static let lift = PurchaseConfiguration(
         appName: "Stadig Lift",
-        enabled: true,
+        enabled: false,
         slug: "lift",
         benefits: [
             .init("Every training block after the assessment, built from your data", symbol: "calendar"),

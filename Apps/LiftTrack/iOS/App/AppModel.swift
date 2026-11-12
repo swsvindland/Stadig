@@ -58,7 +58,7 @@ enum SessionRequest: Hashable {
 
 /// A sheet the menu bar (or a shortcut) asks for, shown over whichever destination is open.
 enum AppSheet: String, Identifiable {
-    case logActivity, checkIn, measurements, nextBlock, paywall
+    case logActivity, checkIn, measurements, nextBlock
 
     var id: String { rawValue }
 }
@@ -647,16 +647,6 @@ final class AppModel {
     // MARK: Blocks
 
     var currentMesocycle: Mesocycle? { analysis?.mesocycle }
-
-    /// Whether the person may generate a block now: the assessment is free, real blocks need the unlock.
-    var canPlanNextBlock: Bool { purchases.unlocked }
-
-    /// Brings the offer up if it's due, on opening the app. Never over a session, or over a sheet
-    /// someone is in the middle of: it waits for the next time they open the app.
-    func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, live == nil, sheet == nil, finished == nil, !showSettings else { return }
-        sheet = .paywall
-    }
 
     /// Builds a mesocycle from everything known right now. Not saved until accepted.
     func generate(kind: BlockKind, start: Day, phase: NutritionPhase? = nil) -> Mesocycle {

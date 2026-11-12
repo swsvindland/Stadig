@@ -2,18 +2,14 @@ import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
-import SystemPurchases
 
 /// One recommendation by default, with "Why?". The person can override the phase answer, but the
 /// default needs no expertise.
 struct NextBlockView: View {
     @Environment(AppModel.self) private var model
-    @Environment(Purchases.self) private var purchases
     @Environment(\.dismiss) private var dismiss
     @State private var answer: SelfReportedPhase?
     @State private var preview: Mesocycle?
-    /// Presented from here: this is a sheet already, and a second sheet from the root can't show over it.
-    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -47,7 +43,6 @@ struct NextBlockView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showPaywall) { PaywallView() }
         }
         .sheetFrame()
     }
@@ -83,18 +78,6 @@ struct NextBlockView: View {
             }
             .card()
             ForEach(m.days) { day in DayCard(day: day, isNext: false) }
-            if !purchases.unlocked {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Training blocks need a purchase or a subscription.").font(.headline)
-                    Text("Logging, your history, export and backup stay free either way.").font(.subheadline).foregroundStyle(.secondary)
-                    Button {
-                        showPaywall = true
-                    } label: {
-                        Text("Unlock Stadig Lift").frame(maxWidth: .infinity)
-                    }.primaryAction()
-                }
-                .card()
-            }
         }
     }
 
@@ -103,10 +86,6 @@ struct NextBlockView: View {
     }
 
     private func accept(_ m: Mesocycle) {
-        guard purchases.unlocked else {
-            showPaywall = true
-            return
-        }
         model.accept(nextBlock: m)
         dismiss()
     }
