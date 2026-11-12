@@ -143,11 +143,14 @@ struct TodayLogger: View {
     func thread(_ moments: [Moment], fresh: Set<UUID>) -> some View {
         if moments.isEmpty {
             Section {
-                Text("Nothing logged yet today. Type what you ate, or tap a usual food.")
-                    .font(.subheadline)
-                    .foregroundStyle(Ink.text2)
-                    .listRowBackground(Color.clear)
-                    .id(Self.threadEnd)
+                Text(
+                    composer.tiles.isEmpty
+                        ? "Nothing logged yet today. Type what you ate below." : "Nothing logged yet today. Type what you ate, or tap a usual food."
+                )
+                .font(.subheadline)
+                .foregroundStyle(Ink.text2)
+                .listRowBackground(Color.clear)
+                .id(Self.threadEnd)
             }
         }
         ForEach(Array(moments.enumerated()), id: \.element.id) { index, moment in
