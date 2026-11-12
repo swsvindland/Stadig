@@ -18,6 +18,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(MenuBarToday.shownKey) private var showsMenuBar = true
     #endif
     /// One pane of the Mac's Settings window; nil is every section, in the sheet.
     var pane: SettingsPane?
@@ -88,6 +89,10 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings.dietHistory")
             hourPicker("First hour on Log", selection: setting(\.logFirstHour), automatic: autoHours.lowerBound, identifier: "settings.logFirstHour")
             hourPicker("Last hour on Log", selection: setting(\.logLastHour), automatic: autoHours.upperBound, identifier: "settings.logLastHour")
+            #if os(macOS)
+            Toggle("What's left in the menu bar", isOn: $showsMenuBar)
+                .accessibilityIdentifier("settings.menuBar")
+            #endif
         } header: {
             Text("Logging")
         } footer: {

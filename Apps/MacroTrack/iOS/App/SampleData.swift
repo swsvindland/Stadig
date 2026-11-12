@@ -200,6 +200,33 @@ enum SampleData {
         session.review = MealReview(guess: guess, source: .description, mode: session.mode, corrected: model.corrected)
     }
 
+    /// A stand-in for Apple's model reading a description, for a simulator or a Mac without it
+    /// (-stubDescribe): after a moment, any words are a bowl of rice, black beans and chicken, and a
+    /// salsa the catalog hasn't got. Debug builds only.
+    @MainActor
+    static func stubDescribe(_ model: AppModel) {
+        let catalog = model.catalog
+        model.ai.describeStub = { _ in
+            try await Task.sleep(for: .seconds(2))
+            let parts = [("Rice, white, cooked", "rice white cooked"), ("Black beans", "black beans canned"), ("Chicken", "chicken breast roasted")]
+            var items: [GuessedItem] = []
+            for (name, query) in parts {
+                guard let food = await Task.detached(operation: { catalog.search(query, personal: [], limit: 1).first?.food }).value else { continue }
+                let usual = FoodUnits.suggested(for: food)
+                items.append(
+                    GuessedItem(
+                        seenName: name, seenBrand: nil, match: FoodMatch(food: food, score: 3, personal: false), alternatives: [], unit: usual.unit,
+                        count: usual.count, nutrients: FoodUnits.nutrients(food, count: usual.count, unit: usual.unit), sure: true, approximate: true)
+                )
+            }
+            items.append(
+                GuessedItem(
+                    seenName: "Salsa verde", seenBrand: nil, match: nil, alternatives: [], unit: nil, count: 1, nutrients: .zero, sure: false,
+                    approximate: true))
+            return MealGuess(scene: nil, isFood: true, items: items, engine: .onDevice, seconds: 2)
+        }
+    }
+
     /// The stack from the design brief, two weeks of it taken, and drinks: fish oil and a
     /// multivitamin in the morning, pre-workout in the afternoon on training days, the multi again
     /// in the evening and a sleep gummy at bedtime; coffee most mornings, an energy drink some

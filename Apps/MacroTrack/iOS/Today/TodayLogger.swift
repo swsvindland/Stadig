@@ -28,10 +28,11 @@ struct TodayLogger: View {
         let entries = model.allEntries(on: model.today)
         let moments = Timeline.moments(entries)
         let fresh = freshIDs
+        let estimates = model.estimates
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    thread(moments, fresh: fresh)
+                    thread(moments, fresh: fresh, estimates: estimates)
                     Group {
                         if let analysis = model.analysis, !analysis.targets.note.isEmpty {
                             Section {
@@ -66,6 +67,8 @@ struct TodayLogger: View {
                     withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
                     changes &+= 1
                 }
+                // A row for words being worked out lands at the end of the thread, in sight.
+                .onChange(of: estimates.count(where: \.isRow)) { _, _ in changes &+= 1 }
                 // Return gives the keyboard back to the field a moment after its food arrives, and
                 // the matches give way to the tiles: the list's insets move under the scroll above,
                 // which then leaves the newest food behind the foot (or doesn't happen at all).
@@ -180,8 +183,10 @@ struct TodayLogger: View {
         .onTapGesture { if typing { typing = false } }
     }
 
+    var eyebrow: String { Self.eyebrow(model) }
+
     /// "Wed, Nov 11 · Cut, week 1 of 4": the day, and where the plan is.
-    var eyebrow: String {
+    static func eyebrow(_ model: AppModel) -> String {
         let day = Format.day(model.today)
         guard let analysis = model.analysis else { return day }
         switch analysis.targets.mode {
@@ -200,8 +205,13 @@ struct TodayLogger: View {
     // MARK: Thread
 
     @ViewBuilder
-    func thread(_ moments: [Moment], fresh: Set<UUID>) -> some View {
-        if moments.isEmpty {
+    func thread(_ moments: [Moment], fresh: Set<UUID>, estimates: [ThreadEstimate]) -> some View {
+        let rows = estimates.filter(\.isRow)
+        let waiting = ThreadEstimates.unconfirmed(estimates)
+        // Words being worked out join the meal they were typed with; after a while, they're a meal
+        // of their own.
+        let joins = moments.last.map { last in rows.first.map { $0.asked.timeIntervalSince(last.end) < Timeline.gap } ?? false } ?? false
+        if moments.isEmpty, rows.isEmpty {
             Section {
                 Text(
                     composer.tiles.isEmpty
@@ -229,15 +239,20 @@ struct TodayLogger: View {
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                     } else {
-                        row(entry, fresh: fresh)
+                        row(entry, fresh: fresh, estimate: waiting.contains(entry.id))
                     }
                 }
+                // "Looks right" under an estimate's foods, where the thread's end keeps it in sight:
+                // a long meal's header is under the numbers by then.
+                ForEach(estimates.filter { $0.logs(any: moment.entries) }) { estimate in
+                    EstimateConfirmRow(estimate: estimate)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14))
+                }
                 if index == moments.count - 1 {
-                    // With the keyboard up the list reckons its foot some 30 points lower than the
-                    // tiles' top, so scrolled to the end the newest food sat under the tiles' title
-                    // and fade. The end is that much further down while typing.
-                    Color.clear.frame(height: typing ? 60 : 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
-                        .id(Self.threadEnd)
+                    if joins { estimateRows(rows) }
+                    if joins || rows.isEmpty { threadEnd }
                 }
             } header: {
                 ThreadHeader(moment: moment, fresh: isFresh) {
@@ -245,15 +260,45 @@ struct TodayLogger: View {
                 }
             }
         }
+        if let first = rows.first, !joins {
+            Section {
+                estimateRows(rows)
+                threadEnd
+            } header: {
+                Text(Format.time(first.asked)).eyebrow().textCase(nil).padding(.horizontal, -6)
+            }
+        }
+    }
+
+    /// Where the thread ends, for scrolling to it.
+    var threadEnd: some View {
+        // With the keyboard up the list reckons its foot some 30 points lower than the tiles' top, so
+        // scrolled to the end the newest food sat under the tiles' title and fade. The end is that
+        // much further down while typing.
+        Color.clear.frame(height: typing ? 60 : 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+            .id(Self.threadEnd)
+    }
+
+    /// Words being worked out, or that couldn't be, where their foods will land.
+    func estimateRows(_ rows: [ThreadEstimate]) -> some View {
+        ForEach(rows) { estimate in
+            EstimateRow(estimate: estimate)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+                .swipeActions(edge: .trailing) {
+                    Button("Dismiss", systemImage: "xmark", role: .destructive) { model.dismissEstimate(estimate.id) }
+                }
+        }
     }
 
     /// A food on the thread: a tap opens its amount in place (the full panel for one that isn't a
     /// catalog food), a swipe or a long press deletes it.
-    func row(_ entry: FoodEntry, fresh: Set<UUID>) -> some View {
+    func row(_ entry: FoodEntry, fresh: Set<UUID>, estimate: Bool) -> some View {
         Button {
             open(entry)
         } label: {
-            ThreadRow(entry: entry, later: model.foodLog.isUpcoming(entry))
+            ThreadRow(entry: entry, later: model.foodLog.isUpcoming(entry), estimate: estimate)
         }
         .buttonStyle(.plain)
         .listRowBackground(fresh.contains(entry.id) ? Color.accentColor.opacity(0.14) : Color.clear)
@@ -294,7 +339,9 @@ struct TodayLogger: View {
             } else if showsTiles, !composer.fits.isEmpty, composer.earlier.isEmpty {
                 WhatFitsRows(composer: composer, targets: model.analysis?.targets, eaten: model.dayIntake(on: model.today).eaten)
             } else if showsTiles {
-                UsualTiles(composer: composer, most: typeSize.isAccessibilitySize ? 2 : 4)
+                // Two while words are being worked out, as at the accessibility sizes: the thread
+                // needs the room for their row.
+                UsualTiles(composer: composer, most: typeSize.isAccessibilitySize || model.estimates.contains(where: \.isRow) ? 2 : 4)
             }
             if !composer.earlier.isEmpty { ComposerChips(parts: composer.earlier, typed: composer.parts) }
             ComposerField(composer: composer, typing: $typing)
@@ -455,7 +502,7 @@ private struct TypingHeader: View {
 // MARK: - Thread
 
 /// A meal's time, its calories, and Undo while it's fresh.
-private struct ThreadHeader: View {
+struct ThreadHeader: View {
     let moment: Moment
     let fresh: Bool
     let undo: () -> Void
@@ -484,6 +531,8 @@ struct ThreadRow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     let entry: FoodEntry
     var later = false
+    /// Estimated from words typed, and not yet confirmed: said in words rather than with a ≈.
+    var estimate = false
 
     var body: some View {
         let lead = Self.lead(entry.nutrients)
@@ -495,7 +544,7 @@ struct ThreadRow: View {
                 // A line each, until the accessibility sizes leave a line a word or two.
                 Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
-                Text([entry.brand, entry.amountLabel].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                Text(Self.caption(entry, estimate: estimate))
                     .font(.caption).foregroundStyle(Ink.text2).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
             }
             Spacer(minLength: 8)
@@ -510,6 +559,12 @@ struct ThreadRow: View {
         .opacity(later ? 0.55 : 1)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+
+    /// "Chobani · 170 g", or for an estimate waiting to be confirmed "1 cup · 158 g · estimate".
+    static func caption(_ entry: FoodEntry, estimate: Bool) -> String {
+        let amount = estimate && entry.amountLabel.hasPrefix("≈ ") ? String(entry.amountLabel.dropFirst(2)) : entry.amountLabel
+        return ([entry.brand, amount].compactMap { $0 }.filter { !$0.isEmpty } + (estimate ? ["estimate"] : [])).joined(separator: " · ")
     }
 
     /// The macro giving most of a food's calories: "54 P" for chicken, "60 C" for rice.
@@ -639,6 +694,7 @@ private struct WhatFitsRows: View {
 /// What the food being typed could be, rising above the field: the best one nearest it, marked
 /// with the key that logs it.
 private struct ComposerMatches: View {
+    @Environment(AppModel.self) private var model
     let composer: TodayComposer
 
     var body: some View {
@@ -694,25 +750,13 @@ private struct ComposerMatches: View {
     }
 
     func title(_ match: TodayComposer.Candidate) -> Text {
-        let name: (short: String, rest: String?) =
-            switch match.kind {
-            case .food: FoodLabel.spoken(match.entry.name)
-            case .quickAdd: ("Quick add \(Format.kcal(match.entry.nutrients.kcal))", nil)
-            case .unmatched(let words): ("Describe “\(words)”", nil)
-            }
+        let name = match.title(canDescribe: model.ai.canDescribe)
         let short = Text(name.short).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
         guard let rest = name.rest else { return short }
         return Text("\(short)  \(Text(rest).font(.caption).foregroundStyle(Ink.text2))")
     }
 
-    func detail(_ match: TodayComposer.Candidate) -> String {
-        switch match.kind {
-        case .food:
-            "\(match.entry.amountLabel) · \(Format.kcal(match.entry.nutrients.kcal)) · \(Format.whole(match.entry.nutrients.protein)) P"
-        case .quickAdd: "Just the number, no food"
-        case .unmatched: "Not in your foods or the catalog. Find it in the logger."
-        }
-    }
+    func detail(_ match: TodayComposer.Candidate) -> String { match.detail(model.ai) }
 }
 
 /// The foods typed before the one being typed, as they'll be logged.

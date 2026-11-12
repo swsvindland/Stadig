@@ -148,8 +148,8 @@ final class TodayComposer {
     // MARK: Logging
 
     /// Return: every part typed, each as its best food at the amount typed, logged together. The
-    /// field clears for the next food, and keeps the keyboard. Words nothing matched go on to the
-    /// logger, to be described or searched there.
+    /// field clears for the next food, and keeps the keyboard. Words nothing matched are worked out
+    /// on the thread by Apple's model (`AppModel.estimate`), or without it go on to the logger.
     func submit() async {
         guard let model, !submitting else { return }
         let submitted = text
@@ -208,9 +208,16 @@ final class TodayComposer {
         log(earlier.compactMap(\.entry) + [LogAgain.copy(tile.template, to: Date())], unmatched: earlier.compactMap(\.unmatched), model: model)
     }
 
-    /// Logs `entries` now and hands `unmatched` words to the logger. The field clears for the next
-    /// food (keeping what wasn't logged). Typed on while Return's foods were found, it keeps what
-    /// came after: left whole, a second Return would log them again.
+    /// A tile on its own, leaving what's typed as it is: on the Mac its key logs it mid-word, when
+    /// the tiles are in sight while a food is typed.
+    func logAlone(_ tile: LogAgainItem) {
+        guard let model, !submitting else { return }
+        model.log([LogAgain.copy(tile.template, to: Date())])
+    }
+
+    /// Logs `entries` now, and `unmatched` words as estimates after them (or in the logger). The
+    /// field clears for the next food (keeping what wasn't logged). Typed on while Return's foods
+    /// were found, it keeps what came after: left whole, a second Return would log them again.
     private func log(_ entries: [FoodEntry], unmatched: [String], model: AppModel, from submitted: String? = nil, keeping: String = "") {
         // Today is always today, whichever day the Log tab was left on. A meal's foods go in a
         // second apart, so they keep the order they were typed in.
@@ -230,7 +237,7 @@ final class TodayComposer {
             text = keeping
         }
         if !timed.isEmpty { model.log(timed) }
-        if !unmatched.isEmpty { model.openLogger(with: unmatched.joined(separator: ", ")) }
+        if !unmatched.isEmpty { model.estimate(unmatched, at: now.addingTimeInterval(Double(timed.count))) }
     }
 
     /// Whether a part's words are enough to search: the catalogs wait for a last word's second
@@ -339,4 +346,33 @@ final class TodayComposer {
     }
 
     static func key(_ entry: FoodEntry) -> String { entry.foodID ?? entry.name.lowercased() }
+}
+
+extension TodayComposer.Candidate {
+    /// What a match is called: the name it's said by and the rest of the catalog's, which tells it
+    /// from the next one ("…, meat only" from "…, meat and skin"), or what Return does with it.
+    func title(canDescribe: Bool) -> (short: String, rest: String?) {
+        switch kind {
+        case .food: FoodLabel.spoken(entry.name)
+        case .quickAdd: ("Quick add \(Format.kcal(entry.nutrients.kcal))", nil)
+        // Worked out on the thread where Apple's model can read it; found in the logger where not.
+        case .unmatched(let words): (canDescribe ? "Estimate “\(words)”" : "Find “\(words)”", nil)
+        }
+    }
+
+    /// The line under it: the amount and its numbers, or what happens to words nothing matched.
+    func detail(_ ai: MealAIService) -> String {
+        switch kind {
+        case .food: "\(entry.amountLabel) · \(Format.kcal(entry.nutrients.kcal)) · \(Format.whole(entry.nutrients.protein)) P"
+        case .quickAdd: "Just the number, no food"
+        case .unmatched:
+            if !ai.canDescribe {
+                "Not in your foods or the catalog. Find it in the logger."
+            } else if ai.describesOnDevice {
+                "Not in your foods. Worked out on device."
+            } else {
+                "Not in your foods. Worked out by Private Cloud Compute."
+            }
+        }
+    }
 }

@@ -18,8 +18,7 @@ extension AppModel {
         if ai.canDescribe, let guess = try? await ai.recognize(description: text, personal: personal) {
             for item in guess.items {
                 guard let food = item.match?.food, let unit = item.unit else { continue }
-                let confidence = item.sure && !item.approximate ? 0.8 : 0.5
-                logged.append(entry(for: food, count: item.count, unit: unit, source: .shortcut, confidence: confidence, date: now))
+                logged.append(entry(for: food, count: item.count, unit: unit, source: .shortcut, confidence: item.confidence, date: now))
             }
         }
         if logged.isEmpty {

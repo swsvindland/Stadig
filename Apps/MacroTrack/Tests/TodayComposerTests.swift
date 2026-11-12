@@ -93,7 +93,8 @@ struct TodayComposerTests {
         #expect(model.logger == nil, "nothing handed to the logger")
     }
 
-    @Test func wordsNothingMatchesGoOnToTheLogger() async throws {
+    /// Without Apple's model; with it, they're worked out on the thread (`EstimateInPlaceTests`).
+    @Test func wordsNothingMatchesGoOnToTheLoggerWithoutTheModel() async throws {
         let model = TestEnvironment().model()
         model.onboard()
         let composer = TodayComposer()

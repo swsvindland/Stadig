@@ -16,6 +16,10 @@ struct MacroTrackApp: App {
     /// out of their way.
     @State private var model: AppModel? = nil
     @Environment(\.scenePhase) private var scenePhase
+    #if os(macOS)
+    @AppStorage(MenuBarToday.shownKey) private var showsMenuBar = true
+    @NSApplicationDelegateAdaptor(MenuBarAppDelegate.self) private var appDelegate
+    #endif
 
     init() {
         let launch = LaunchOptions.current
@@ -49,6 +53,7 @@ struct MacroTrackApp: App {
             model.loggerTime = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
         }
         if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
+        if launch.has("-stubDescribe") { SampleData.stubDescribe(model) }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.
         model.backgroundAnalysis = true
@@ -73,6 +78,14 @@ struct MacroTrackApp: App {
         Settings {
             if let model { MacSettingsView().environment(model).environment(model.purchases) }
         }
+        // Logging without the window: what's left in the menu bar, and a compact Today under it.
+        // Not while XCTest hosts the tests, when there's no model.
+        MenuBarExtra(isInserted: Binding(get: { model != nil && showsMenuBar }, set: { showsMenuBar = $0 })) {
+            if let model { MenuBarToday().environment(model) }
+        } label: {
+            MenuBarLabel(model: model)
+        }
+        .menuBarExtraStyle(.window)
         #else
         WindowGroup {
             if let model { root(model) }

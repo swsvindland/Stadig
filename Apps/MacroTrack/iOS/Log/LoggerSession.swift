@@ -170,7 +170,7 @@ final class LoggerSession {
         let entries = review.chosen.compactMap { item -> FoodEntry? in
             guard let food = item.food, let unit = item.unit else { return nil }
             return model.entry(
-                for: food, count: item.count, unit: unit, source: review.source, confidence: item.seen.sure && !item.seen.approximate ? 0.8 : 0.5)
+                for: food, count: item.count, unit: unit, source: review.source, confidence: item.seen.confidence)
         }
         guard model.log(entries) else { return }
         self.review = nil
