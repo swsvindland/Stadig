@@ -1,18 +1,25 @@
 ---
 import Logo from "./Logo.astro";
 import { nav, brand } from "../content/site";
-const path = Astro.url.pathname.replace(/\/$/, "") || "/";
+import { cleanPath } from "../lib/path";
+const path = cleanPath(Astro.url.pathname);
+// "Get the apps" goes to the buttons on this page if it has them, else the home page's.
+const get = path === "/" || path === "/lift" || path === "/macro" ? "#get" : "/#get";
+const current = (href: string) => (href === path ? "page" : undefined);
 ---
-<header class="wrap">
-  <a class="home" href="/" aria-label={`${brand.name} home`}><Logo /> <span>{brand.name}</span></a>
-  <nav aria-label="Main">
-    {nav.map((n) => <a href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a>)}
+<header class="wrap nav">
+  <a class="brand" href="/" aria-label={`${brand.name} home`}><Logo /><span aria-hidden="true">{brand.name}</span></a>
+  <nav class="links" aria-label="Main">
+    {nav.map((n) => <a href={n.href} aria-current={current(n.href)}>{n.label}</a>)}
   </nav>
+  <div class="navend">
+    <details class="menu">
+      <summary class="navbtn" aria-label="Menu">Menu</summary>
+      <nav aria-label="Main">
+        <a href="/" aria-current={current("/")}>Home</a>
+        {nav.map((n) => <a href={n.href} aria-current={current(n.href)}>{n.label}</a>)}
+      </nav>
+    </details>
+    <a class="navbtn" href={get}>Get the apps</a>
+  </div>
 </header>
-<style>
-  header { view-transition-name: header; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.1rem; flex-wrap: wrap; }
-  .home { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; letter-spacing: -0.02em; }
-  nav { display: flex; gap: 0.2rem 1.2rem; flex-wrap: wrap; font-size: 0.95rem; }
-  nav a { text-decoration: none; color: var(--ink-2); padding: 0.25rem 0; }
-  nav a:hover, nav a[aria-current="page"] { color: var(--ink); }
-</style>

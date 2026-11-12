@@ -1,20 +1,43 @@
 ---
 import Base from "../layouts/Base.astro";
-import { brand, principles, stats } from "../content/site";
-const description = `The seven principles behind every ${brand.name} app: prescribe don't describe, real-world tests, no streaks or XP, offline first, private by construction, pay once if you like, no third-party code.`;
+import Rule from "../components/Rule.astro";
+import { brand, principles, scoreRows } from "../content/site";
+const description = `The seven principles behind ${brand.name}'s apps: prescribe don't describe, real-world tests, no XP or streaks, offline first, private by construction, free all of it, no third-party code. And the six scores, with what moves each one.`;
+const appNames = { lift: "Stadig Lift", macro: "Stadig Macro" } as const;
 ---
 <Base title="Principles" description={description}>
-  <section class="wrap">
-    <p class="eyebrow">Principles</p>
-    <h1>Steady, by design.</h1>
-    <p class="lede">{brand.name} is Norwegian for steady. The apps are built for the long game: years of training and eating, not a thirty-day challenge. These are the rules every app follows, and the ones we check new work against.</p>
+  <section class="wrap page" aria-labelledby="principles-title">
+    <Rule label="Principles" aside={`${brand.pronunciation} · ${brand.meaning.replace(/\.$/, "")}`} />
+    <div class="intro">
+      <h1 class="h1" id="principles-title">Steady, by design.</h1>
+      <p class="lede">{brand.name} is Norwegian for steady. The apps are built for the long game: years of training and eating, not a thirty-day challenge. These are the rules both apps follow, and the ones new work is checked against.</p>
+    </div>
+    <ol class="numbered">
+      {principles.map((p, i) => (
+        <li><span class="fn" aria-hidden="true">{i + 1}</span><h2 class="h3">{p.title}</h2><p class="lede">{p.body}</p></li>
+      ))}
+    </ol>
   </section>
-  <section class="wrap prose">
-    {principles.map((p, i) => <><h2>{i + 1}. {p.title}</h2><p>{p.body}</p></>)}
-    <h2>The stats, and what moves them</h2>
-    <p>Each app shows the stats it decides: Strength, Physique, Endurance, Agility and Discipline in Stadig Lift, Vitality and Discipline in Stadig Macro. With both set up, each app shows all six and says which app decides each one. They move only on the tests below.</p>
-    <ul>{stats.map((s) => <li><strong>{s.name}</strong>: {s.source}.</li>)}</ul>
-    <h2>Discipline, defined</h2>
-    <p>Discipline is the one stat both apps share. It is a rolling four-week adherence rate against the planned days, with a target band of 80 to 90 percent. Going above the band earns nothing extra. One miss barely moves it. Rest days are planned days and count as kept. A day with nothing logged is unknown, not a failure. Vacation, illness and exempt crunch days never count either way.</p>
+
+  <section class="paper" aria-labelledby="scores-title">
+    <div class="wrap sec top">
+      <Rule label="The scores" aside="What moves each one" />
+      <div class="intro page-intro" style="display:grid;gap:clamp(20px,2.2vw,32px)">
+        <h2 class="h2" id="scores-title" style="max-width:14em">Six scores, and what moves them.</h2>
+        <p class="lede" style="max-width:36em">Each app shows the scores it measures: Strength, Physique, Endurance, Agility and the training half of Discipline in Stadig Lift; Vitality and the nutrition half of Discipline in Stadig Macro. With both set up, each app shows all six and says which app measures each one.</p>
+      </div>
+      <ul class="items">
+        {scoreRows.map((s) => (
+          <li class="item">
+            <div class="rowname"><h3 class="h4 lg">{s.name}</h3><span class="chip">{s.apps.map((a) => <i style={`background:var(--${a})`}></i>)}{s.apps.map((a) => appNames[a]).join(" + ")}</span></div>
+            <p class="p">{s.source}</p>
+          </li>
+        ))}
+      </ul>
+      <div class="stack" style="margin-top:var(--gap-l);max-width:44em">
+        <h3 class="h3">Discipline, defined</h3>
+        <p class="lede">Discipline is the one score both apps share. It is a rolling four-week adherence rate against the planned days, with a target band of 80 to 90 percent. Going above the band earns nothing extra. One miss barely moves it. Rest days are planned days and count as kept. A day with nothing logged is unknown, not a failure. Vacation, illness and exempt crunch days never count either way.</p>
+      </div>
+    </div>
   </section>
 </Base>

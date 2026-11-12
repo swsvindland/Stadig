@@ -1,19 +1,29 @@
 ---
 import Base from "../layouts/Base.astro";
+import Rule from "../components/Rule.astro";
 import { brand, faq } from "../content/site";
-const jsonLd = [{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-}];
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  },
+];
 ---
-<Base title="FAQ" description={`Questions about the ${brand.name} apps: Stadig Lift and Stadig Macro. Pricing, offline use, privacy, devices and the ideas behind them.`} jsonLd={jsonLd}>
-  <section class="wrap">
-    <p class="eyebrow">FAQ</p>
-    <h1>Questions, answered plainly.</h1>
-    <div class="prose" style="margin-top:2rem">
-      {faq.map((f) => <details open><summary>{f.q}</summary><p>{f.a}</p></details>)}
+<Base title="FAQ" description={`Questions about ${brand.name}, Stadig Lift and Stadig Macro: what they cost, the six scores, offline use, privacy, devices and the ideas behind them.`} jsonLd={jsonLd}>
+  <section class="wrap page" aria-labelledby="faq-title">
+    <Rule label="FAQ" aside={`${faq.length} questions`} />
+    <div class="intro">
+      <h1 class="h1" id="faq-title">Questions, answered plainly.</h1>
+      <p class="lede">Something else? Write to <a class="inline-link" href={`mailto:${brand.email}`}>{brand.email}</a>.</p>
     </div>
-    <p style="margin-top:2rem" class="muted">Something else? <a href={`mailto:${brand.email}`}>{brand.email}</a></p>
+    <div class="qa">
+      {faq.map((f, i) => (
+        <details open={i < 4}>
+          <summary>{f.q}</summary>
+          <p class="lede ans">{f.a}</p>
+        </details>
+      ))}
+    </div>
   </section>
 </Base>

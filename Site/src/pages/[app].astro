@@ -1,15 +1,21 @@
 ---
 import Base from "../layouts/Base.astro";
+import Rule from "../components/Rule.astro";
+import BigRuler from "../components/BigRuler.astro";
+import Reading from "../components/Reading.astro";
+import Figure from "../components/Figure.astro";
 import StoreButton from "../components/StoreButton.astro";
-import { brand, apps } from "../content/site";
+import Free from "../components/Free.astro";
+import { brand, apps, phoneSize, type App } from "../content/site";
 
 export function getStaticPaths() {
   return apps.map((app) => ({ params: { app: app.slug }, props: { app } }));
 }
-const { app } = Astro.props;
-const others = apps.filter((a) => a.slug !== app.slug);
-const systems: Record<string, string> = { "Apple Watch": "watchOS", Mac: "macOS", "Apple Vision Pro": "visionOS" };
-const os = app.platforms.map((p) => systems[p] ?? "iOS").filter((v, i, a) => a.indexOf(v) === i).join(", ");
+const { app } = Astro.props as { app: App };
+const other = apps.find((a) => a.slug !== app.slug)!;
+const systems: Record<string, string> = { iPad: "iPadOS", "Apple Watch": "watchOS", Mac: "macOS", "Apple Vision Pro": "visionOS" };
+const os = app.platforms.map((p) => systems[p] ?? "iOS").join(", ");
+const r = app.progress.reading;
 const jsonLd = [
   {
     "@context": "https://schema.org",
@@ -20,8 +26,13 @@ const jsonLd = [
     operatingSystem: os,
     description: app.description,
     author: { "@id": `${brand.domain}/#org` },
-    offers: { "@type": "Offer", price: "29.99", priceCurrency: "USD", description: "Free for 21 days, then $29.99 once or $2.99 a month. Logging, export and backup are free." },
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: app.features.map((f) => f.title),
+    screenshot: [...app.hero, ...app.session.figures, ...app.progress.figures]
+      .flatMap((f) => (f.phone ? [f.phone] : []))
+      .filter((s, i, all) => all.findIndex((x) => x.src === s.src) === i)
+      .map((s) => `${brand.domain}${s.src}`),
   },
   {
     "@context": "https://schema.org",
@@ -33,55 +44,106 @@ const jsonLd = [
   },
 ];
 ---
-<Base title={`${app.name}: ${app.oneLiner}`} description={app.description} jsonLd={jsonLd} ogImage={`/og-${app.slug}.png`} titleSuffix={false}>
-  <article class={`accent-${app.accent}`}>
-    <section class="hero wrap">
-      <p class="eyebrow"><span class="dot"></span> {app.name} · {app.platforms.join(", ")}</p>
-      <h1>{app.headline}</h1>
-      <p class="lede">{app.description}</p>
-      <div class="ctas" id="get"><StoreButton app={app} /></div>
-      <p class="muted small">{app.free}</p>
-    </section>
+<Base title={`${app.name}: ${app.oneLiner}`} description={app.description} jsonLd={jsonLd} ogImage={`/og-${app.slug}.png`} titleSuffix={false} accent={app.slug}>
+  <section class="wrap apphero" aria-labelledby="app-title">
+    <div class="appcopy">
+      <span class="eye"><i class="dot"></i>{app.name} · {app.short}</span>
+      <h1 class="h1 app" id="app-title">{app.headline}</h1>
+      <p class="lede">{app.lede}</p>
+      <div class="cta" id="get"><StoreButton app={app} accent here /></div>
+      <p class="fine">{brand.free}</p>
+      <span class="eye" style="margin-top:8px">{app.platforms.join(" · ")}</span>
+    </div>
+    <div class="strip pair">
+      {app.hero.map((f, i) => <Figure fig={f} big low={i === 1} eager={i === 0} />)}
+    </div>
+  </section>
 
-    <section class="wrap">
-      <div class="grid two">
-        <div><p class="eyebrow">The idea</p><h2>{app.oneLiner}</h2></div>
-        <div>{app.intro.map((p) => <p class="lede">{p}</p>)}</div>
+  <section class="wrap sec" aria-label={app.rates.eyebrow}>
+    <Rule label={app.rates.eyebrow} aside={app.rates.aside} />
+    <ul class="rates">
+      {app.rates.items.map((x) => (
+        <li class="rate">
+          <span class="eye"><i class={`dot tone-${x.tone}`}></i>{x.eyebrow}</span>
+          <span class="word">{x.word}</span>
+          <p class="lede">{x.body}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="wrap sec" aria-labelledby="session-title">
+    <Rule label={app.session.eyebrow} />
+    <div class="sess">
+      <div class="stack">
+        <h2 class="h3" id="session-title">{app.session.title}</h2>
+        <p class="lede">{app.session.lede}</p>
+        <ul class="minis">
+          {app.session.points.map((p) => <li class="mini"><h3 class="h4">{p.title}</h3><p class="small">{p.body}</p></li>)}
+        </ul>
       </div>
-    </section>
-
-    <section class="wrap">
-      <p class="eyebrow">How it works</p>
-      <h2>From first open to steady progress.</h2>
-      <ol class="steps" style="margin-top:2rem">
-        {app.how.map((h) => <li><h3>{h.title}</h3><p>{h.body}</p></li>)}
-      </ol>
-    </section>
-
-    <section class="wrap">
-      <p class="eyebrow">What's in it</p>
-      <h2>{app.name} in detail.</h2>
-      <div class="grid three" style="margin-top:2rem">
-        {app.features.map((f) => <div class="card"><h3>{f.title}</h3><p>{f.body}</p></div>)}
+      <div class="strip three">
+        {app.session.figures.map((f, i) => <Figure fig={f} low={i === 1} />)}
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="wrap">
-      <p class="eyebrow">The other {brand.name} apps</p>
-      <div class="grid two">
-        {others.map((o) => <a class={`card link accent-${o.accent}`} href={`/${o.slug}`}><span class="dot"></span><h3>{o.name}</h3><p>{o.oneLiner}</p></a>)}
+  <section class="wrap sec" aria-labelledby="how-title">
+    <Rule label="How it works" />
+    <h2 class="h2" id="how-title" style="max-width:12em">From first open to steady progress.</h2>
+    <ol class="steps">
+      {app.how.map((s, i) => (
+        <li class="step"><span class="fn" aria-hidden="true">{i + 1}</span><h3 class="h4">{s.title}</h3><p class="small">{s.body}</p></li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="paper" aria-labelledby="detail-title">
+    <div class="wrap sec top">
+      <Rule label={`${app.name} in detail`} />
+      <h2 class="h2" id="detail-title" style="max-width:14em">{app.oneLiner}</h2>
+      <ul class="items">
+        {app.features.map((f) => <li class="item"><h3 class="h4 lg">{f.title}</h3><p class="p">{f.body}</p></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="wrap sec top" aria-labelledby="progress-title">
+    <Rule label="Progress" aside="Sample scores, as the app shows them" />
+    <div class="prog">
+      <div class="stack">
+        <h2 class="h2 md" id="progress-title"><span class="block">{app.progress.title[0]}</span><span class="block">{app.progress.title[1]}</span></h2>
+        <div>
+          <Reading value={r.value} name={r.name} trend={r.trend} sm label={`A sample reading: ${r.name.replace(" · ", ", ")} ${r.value}${r.trend ? `, ${r.trend.toLowerCase()}` : ""}. ${r.note}`}>{r.note}</Reading>
+          <BigRuler value={r.value} segments={r.levels ? 5 : 10} levels={r.levels} />
+        </div>
+        <p class="lede">{app.progress.lede}</p>
+        <p class="p">{app.progress.body}</p>
       </div>
-    </section>
-  </article>
+      <div class="strip pair">
+        {app.progress.figures.map((f, i) => <Figure fig={f} low={i === 1} />)}
+      </div>
+    </div>
+  </section>
+
+  <Free title={`Everything in ${app.name}`} items={app.free.items.map((name) => ({ name }))} lede={app.free.lede}>
+    {app.appStoreUrl && <div class="cta" style="margin-top:clamp(32px,4vw,56px)"><StoreButton app={app} accent here /></div>}
+  </Free>
+
+  <section class={`wrap sec ${other.slug}`} aria-labelledby="other-title">
+    <Rule label={`The other ${brand.name} app`} aside={other.short} dot={`var(--${other.slug})`} />
+    <div class="other">
+      <div class="stack">
+        <h2 class="h2" id="other-title">{app.other.title}</h2>
+        <p class="lede">{app.other.lede}</p>
+        <div class="cta">
+          <StoreButton app={other} />
+          <a class="more" href={`/${other.slug}`}>How {other.name} works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+        </div>
+      </div>
+      <div class="crop big-fig" aria-hidden="true">
+        <div class="dev"><img class="screen" src={app.other.shot.src} alt="" width={phoneSize.width} height={phoneSize.height} loading="lazy" decoding="async" /></div>
+      </div>
+    </div>
+  </section>
 </Base>
-<style>
-  .hero { padding-block: clamp(3rem, 7vw, 6rem) clamp(2.5rem, 5vw, 4rem); }
-  .hero h1 { max-width: 16ch; }
-  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; }
-  .ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1.5rem 0 1rem; }
-  .small { font-size: 0.9rem; max-width: 50ch; }
-  .link { text-decoration: none; display: block; }
-  .link:hover { border-color: var(--accent); }
-  .link h3 { margin-top: 0.6rem; }
-  .link p { color: var(--ink-2); }
-</style>

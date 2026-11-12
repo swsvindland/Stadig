@@ -1,123 +1,175 @@
 ---
 import Base from "../layouts/Base.astro";
-import AppCard from "../components/AppCard.astro";
-import { brand, apps, principles, stats, together, faq } from "../content/site";
+import Rule from "../components/Rule.astro";
+import BigRuler from "../components/BigRuler.astro";
+import Reading from "../components/Reading.astro";
+import Figure from "../components/Figure.astro";
+import StoreButton from "../components/StoreButton.astro";
+import ScoreShape from "../components/ScoreShape.astro";
+import Free from "../components/Free.astro";
+import { brand, apps, appBySlug, homeFigures, macroFacts, scores, scoreRows, different, everything, trendTone } from "../content/site";
 
-const homeFaq = faq.slice(0, 5);
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: homeFaq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-  },
-  ...apps.map((a) => ({
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: a.name,
-    url: `${brand.domain}/${a.slug}`,
-    applicationCategory: a.category,
-    operatingSystem: "iOS",
-    description: a.description,
-    author: { "@id": `${brand.domain}/#org` },
-  })),
-];
+const lift = appBySlug("lift");
+const macro = appBySlug("macro");
+const strength = scores.find((s) => s.name === "Strength")!;
+const appName = { lift: "Lift", macro: "Macro" } as const;
+const jsonLd = apps.map((a) => ({
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: a.name,
+  url: `${brand.domain}/${a.slug}`,
+  applicationCategory: a.category,
+  operatingSystem: "iOS, iPadOS, macOS, visionOS, watchOS",
+  description: a.description,
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: { "@id": `${brand.domain}/#org` },
+}));
 ---
 <Base title={`${brand.name}: ${brand.tagline}`} description={brand.description} jsonLd={jsonLd} titleSuffix={false}>
-  <section class="hero wrap">
-    <p class="eyebrow">{apps.map((a) => a.name).join(" · ")}</p>
-    <h1>Apps that tell you<br/>what to do next.</h1>
-    <p class="lede">Training and nutrition, prescribed from your own data. Every set and target adjusted to how the last one went. Offline, private, and yours for one payment each.</p>
-    <div class="ctas">
-      <a class="btn" href="#apps">See the apps</a>
-      <a class="btn ghost" href="/principles">Read the principles</a>
+  <section class="wrap hero" aria-labelledby="hero-title">
+    <div class="rulerow">
+      <span class="eye">{apps.map((a) => a.name).join(" · ")}</span>
+      <span class="eye wide">{brand.platforms.join(" · ")}</span>
     </div>
-  </section>
-
-  <section id="apps" class="wrap">
-    <p class="eyebrow">Two apps, one system</p>
-    <h2>Each one works alone. Together they share a calendar, a profile and a plan.</h2>
-    <div class="grid two" style="margin-top:2rem">
-      {apps.map((a) => <AppCard app={a} />)}
-    </div>
-  </section>
-
-  <section class="wrap">
-    <p class="eyebrow">Prescribe, don't describe</p>
-    <div class="grid two">
-      <div>
-        <h2>A tracker tells you what happened. These tell you what to do.</h2>
+    <h1 class="h1" id="hero-title">{brand.tagline}</h1>
+    <div class="heromid">
+      <div class="herocopy">
+        <p class="lede">{brand.lede}</p>
+        <div id="get" class="cta">{apps.map((a) => <StoreButton app={a} />)}</div>
+        <p class="fine">{brand.free}</p>
       </div>
-      <div class="lede-col">
-        <p class="lede">Most health apps are notebooks with charts. You do the thinking, they do the remembering. {brand.name} apps run the thinking: they assess you, write the plan, adjust it to every result, and put one concrete action on the screen.</p>
-        <p class="lede">The feedback loop is the same in both. Assess, prescribe, do, rate, adjust. Lifting calls it autoregulation. Nutrition calls it a weekly check-in. It is one idea.</p>
-      </div>
+      <Reading value={strength.value} name={strength.name} trend="Rising" flip label={`A sample reading: Strength ${strength.value}, rising, 3 points to Intermediate.`}>
+        3 points to Intermediate.
+      </Reading>
     </div>
-    <ol class="steps" style="margin-top:2.5rem">
-      <li><h3>Assess</h3><p>A short block finds your real level: anchors in the gym, weigh-ins against intake.</p></li>
-      <li><h3>Prescribe</h3><p>One plan, not a menu. The next set, this week's targets. With a Why.</p></li>
-      <li><h3>Rate</h3><p>Easy, Just right, Missed. The scale. Nothing self-graded that can be fudged.</p></li>
-      <li><h3>Adjust</h3><p>Weights and targets move on the evidence. Stalls get read in context. Deloads come early when signals stack.</p></li>
-    </ol>
+    <BigRuler value={strength.value} />
   </section>
 
-  <section class="wrap">
-    <p class="eyebrow">Better together</p>
-    <h2>The apps talk to each other, so you only say things once.</h2>
-    <div class="grid two" style="margin-top:2rem">
-      {together.map((t) => <div class="card"><h3>{t.title}</h3><p>{t.body}</p></div>)}
-    </div>
-  </section>
-
-  <section class="wrap">
-    <p class="eyebrow">Honest measures</p>
-    <div class="grid two">
-      <div>
-        <h2>Six stats. None of them move because you opened the app.</h2>
-        <p class="lede">No XP. No streaks. No levels. Every number comes from a real-world test, and rest days are part of the plan, not a break in it.</p>
-      </div>
-      <dl class="stats">
-        {stats.map((s) => <div><dt>{s.name}</dt><dd>{s.source}</dd></div>)}
-      </dl>
-    </div>
-  </section>
-
-  <section class="wrap">
-    <p class="eyebrow">Principles</p>
-    <h2>What every {brand.name} app promises.</h2>
-    <div class="grid three" style="margin-top:2rem">
-      {principles.map((p) => <div class="card"><h3>{p.title}</h3><p>{p.body}</p></div>)}
-    </div>
-  </section>
-
-  <section class="wrap">
-    <p class="eyebrow">Pricing</p>
-    <div class="grid two">
-      <div>
-        <h2>Free for 21 days. Then pay once, or by the month.</h2>
-      </div>
-      <div>
-        <p class="lede">Logging, export and backups are free in every app, so the apps are useful before you pay and your data is never held hostage. Buying an app or subscribing pays for the part that thinks: the generated programs and the phase plan.</p>
-        <div class="ctas">{apps.map((a) => <a class="btn ghost" href={`/${a.slug}#get`}>{a.name}</a>)}</div>
+  <section class="wrap sec lift" id="lift" aria-labelledby="lift-title">
+    <Rule label={lift.name} aside={lift.short} dot="var(--lift)" />
+    <div class="head">
+      <h2 class="h2" id="lift-title">{lift.headline}</h2>
+      <div class="headcopy">
+        <p class="lede">{lift.home.lede}</p>
+        <div class="cta">
+          <StoreButton app={lift} />
+          <a class="more" href="/lift">How Stadig Lift works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+        </div>
       </div>
     </div>
+    <div class="strip">{homeFigures.lift.map((f) => <Figure fig={f} />)}</div>
   </section>
 
-  <section class="wrap">
-    <p class="eyebrow">Questions</p>
-    <h2>Short answers.</h2>
-    <div style="margin-top:1.5rem">
-      {homeFaq.map((f) => <details><summary>{f.q}</summary><p>{f.a}</p></details>)}
+  <section class="wrap sec macro" id="macro" aria-labelledby="macro-title">
+    <Rule label={macro.name} aside={macro.short} dot="var(--macro)" />
+    <div class="head">
+      <h2 class="h2" id="macro-title">{macro.headline}</h2>
+      <div class="headcopy">
+        <p class="lede">{macro.home.lede}</p>
+        <div class="cta">
+          <StoreButton app={macro} />
+          <a class="more" href="/macro">How Stadig Macro works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+        </div>
+      </div>
     </div>
-    <p style="margin-top:1.5rem"><a href="/faq">All questions</a></p>
+    <div class="duo">
+      <div class="strip pair">
+        {homeFigures.macro.map((f, i) => <Figure fig={f} big low={i === 1} />)}
+      </div>
+      <ul class="facts">
+        {macroFacts.map((x) => (
+          <li class="fact">
+            <span class="fn">{x.n}<span class="unit">{x.unit}</span></span>
+            <p class="lede">{x.body}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="paper" id="scores" aria-labelledby="scores-title">
+    <div class="wrap sec top">
+      <Rule label="The scores" aside="Sample scores, as the apps show them" />
+      <div class="headone">
+        <h2 class="h2" id="scores-title">Six scores. None of them move because you opened the app.</h2>
+        <p class="lede">Each one is out of 100 and comes from something you can check: a lift, a tape measure, a heart-rate benchmark, a month of the plan kept. No XP and no streaks. Each score comes with the next thing that moves it.</p>
+      </div>
+      <div class="table">
+        <div class="row rowhead" aria-hidden="true">
+          <span class="eye">Score</span><span class="eye">Measured by</span><span class="eye">0 to 100 · what to do next</span><span class="eye d">Trend</span>
+        </div>
+        <ul aria-label="The six scores">
+          {scoreRows.map((s) => (
+            <li class="row">
+              <span class="n">{s.value}</span>
+              <div class="nm">
+                <div class="rowname">
+                  <h3 class="h4">{s.name}</h3>
+                  <span class="chip">
+                    {s.apps.map((a) => <i style={`background:var(--${a})`}></i>)}
+                    {s.apps.map((a) => appName[a]).join(" + ")}
+                  </span>
+                </div>
+                <p class="small">{s.source}</p>
+              </div>
+              <div class="g">
+                {s.split ? (
+                  <div class="gauges" aria-hidden="true">
+                    {s.split.map((p) => <div class="gauge" style={`--v:${p.value};--c:var(--${p.app})`}></div>)}
+                  </div>
+                ) : (
+                  <div class="gauge" aria-hidden="true" style={`--v:${s.value};--c:var(--${s.apps[0]})`}></div>
+                )}
+                <span class="next">{s.next}</span>
+              </div>
+              <span class={`d ${trendTone[s.trend]}`}><span class="sr">Trend: </span>{s.trend}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="both">
+        <figure class="shape">
+          <ScoreShape scores={scores} />
+          <figcaption class="legend" aria-hidden="true">
+            <span><i style="background:var(--lift)"></i>Stadig Lift</span>
+            <span><i style="background:var(--macro)"></i>Stadig Macro</span>
+            <span><i style="background:var(--text)"></i>Both</span>
+          </figcaption>
+        </figure>
+        <div class="stack">
+          <span class="eye">Your shape</span>
+          <h3 class="h3"><span class="block">Six scores, one figure.</span><span class="block">It grows where you do the work.</span></h3>
+          <p class="lede">Each axis is one of the rulers above. Stadig Lift measures Strength, Physique, Endurance and Agility, and the training half of Discipline. Stadig Macro measures Vitality and the nutrition half.</p>
+          <p class="lede">One app draws its own scores. Set up both and each app draws all six, every score labelled with the app that measures it.</p>
+          <div class="tally">
+            <div><span class="fn" style="color:var(--lift)">4½</span><span class="fine">scores from Stadig Lift</span></div>
+            <div><span class="fn" style="color:var(--macro)">1½</span><span class="fine">scores from Stadig Macro</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap sec top" id="different" aria-labelledby="different-title">
+    <Rule label="How it's different" />
+    <h2 class="h2" id="different-title" style="max-width:15em">A tracker tells you what happened. These tell you what to do.</h2>
+    <ul class="difflist">
+      {different.map((d) => <li class="diff"><h3 class="h3">{d.title}</h3><p class="lede">{d.body}</p></li>)}
+    </ul>
+  </section>
+
+  <Free aside="Both apps" title="Everything in both apps" items={everything} legend lede="Both apps are free, every part of them: the plans, the adaptive targets, deloads and life modes. No account, and no ads." />
+
+  <section class="wrap finale" aria-labelledby="close-title">
+    <Rule label={`${brand.name} · ${brand.pronunciation} · ${brand.meaning.replace(/\.$/, "")}`} />
+    <div class="closerow">
+      <h2 class="h1 close" id="close-title"><span class="block">Find your number.</span><span class="block">Then move it.</span></h2>
+      <div class="stack">
+        <div class="cta stacked">{apps.map((a) => <StoreButton app={a} />)}</div>
+        <p class="fine">{brand.free}</p>
+      </div>
+    </div>
+    <BigRuler />
   </section>
 </Base>
-<style>
-  .hero { padding-block: clamp(3rem, 8vw, 7rem) clamp(3rem, 6vw, 5rem); }
-  .hero h1 { max-width: 14ch; }
-  .ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.75rem; }
-  .stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.5rem; }
-  .stats div { border-top: 1px solid var(--line); padding-top: 0.75rem; }
-  .stats dt { font-weight: 650; }
-  .stats dd { margin: 0.15rem 0 0; color: var(--ink-2); font-size: 0.95rem; }
-  @media (max-width: 30rem) { .stats { grid-template-columns: 1fr; } }
-</style>

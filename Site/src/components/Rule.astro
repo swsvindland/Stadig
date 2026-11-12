@@ -1,0 +1,12 @@
+---
+// A section's top edge: a ruler and a label, with an optional aside on wide screens.
+import Ticks from "./Ticks.astro";
+const { label, aside, dot } = Astro.props as { label: string; aside?: string; dot?: string };
+---
+<div class="rule">
+  <Ticks />
+  <div class="rulerow">
+    <span class="eye">{dot && <i class="dot" style={`background:${dot}`}></i>}{label}</span>
+    {aside && <span class="eye wide">{aside}</span>}
+  </div>
+</div>

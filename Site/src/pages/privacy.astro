@@ -1,23 +1,52 @@
 ---
 import Base from "../layouts/Base.astro";
+import Rule from "../components/Rule.astro";
 import { brand } from "../content/site";
+const apps = [
+  {
+    term: "Storage",
+    body: "Stadig Lift and Stadig Macro each keep their records in a local database on your device, synced to your own iCloud account through CloudKit when you are signed in. Apple's terms cover that storage. Backups you export are files you own.",
+  },
+  {
+    term: "Between the apps",
+    body: "The apps share a small amount of data on your device (your profile, life modes, the calendar and each app's summary, scores included) through an App Group container. It never leaves your devices except through your own iCloud.",
+  },
+  {
+    term: "Health",
+    body: "With your permission, the apps read and write Apple Health (weight, sleep, heart rate, steps, workouts and the rest). Health data is used only inside the apps and is never sent anywhere.",
+  },
+  {
+    term: "Models",
+    body: `Stadig Macro reads meal photos, label scans and descriptions with Apple's on-device model. If you turn on Private Cloud Compute, Apple processes those requests on its servers under Apple's privacy guarantees and does not retain them. No ${brand.name} server and no third-party AI service is involved. Progress photos in Stadig Lift are never analysed by any model.`,
+  },
+  { term: "Nothing to buy", body: "Both apps are free. There are no purchases, no ads and no ad networks, so there is nothing to track you for." },
+  {
+    term: "Catalogs",
+    body: "The food and supplement catalogs are built from public sources (USDA, Open Food Facts and the NIH Dietary Supplement Label Database) and ship inside the apps. Searching them is local.",
+  },
+];
 ---
-<Base title="Privacy" description={`How the ${brand.name} apps and website handle your data: no accounts, no analytics, no third-party SDKs, everything on your devices and in your iCloud.`}>
-  <section class="wrap prose">
-    <p class="eyebrow">Privacy</p>
-    <h1>Your data stays yours.</h1>
-    <p class="lede">The short version: there is no account, no analytics, and no third-party code in any {brand.name} app. Your data lives on your devices and in your private iCloud database. We never see it.</p>
-    <h2>The apps</h2>
-    <p><strong>Storage.</strong> Stadig Lift and Stadig Macro each keep their records in a local database on your device, synced to your own iCloud account through CloudKit when you are signed in. Apple's terms cover that storage. Backups you export are files you own.</p>
-    <p><strong>Between the apps.</strong> The apps share a small amount of data on your device (your profile, life modes, the calendar and each app's summary) through an App Group container. It never leaves your devices except through your own iCloud.</p>
-    <p><strong>Health.</strong> With your permission, the apps read and write Apple Health (weight, sleep, heart rate, steps, workouts and the rest). Health data is used only inside the apps and is never sent anywhere.</p>
-    <p><strong>Models.</strong> Stadig Macro reads meal photos, label scans and descriptions with Apple's on-device model. If you turn on Private Cloud Compute, Apple processes those requests on its servers under Apple's privacy guarantees and does not retain them. No {brand.name} server and no third-party AI service is involved. Progress photos in Stadig Lift are never analysed by any model.</p>
-    <p><strong>Purchases.</strong> One-time purchases and subscriptions go through the App Store. We receive nothing identifying you. The date your free days started is kept with your other records, on your devices and in your iCloud.</p>
-    <p><strong>Catalogs.</strong> The food and supplement catalogs are built from public sources (USDA, Open Food Facts and the NIH Dietary Supplement Label Database) and ship inside the apps. Searching them is local.</p>
-    <h2>This website</h2>
-    <p>It is static files. No cookies, no analytics scripts, no trackers. The hosting provider may keep standard server logs for security.</p>
-    <h2>Contact</h2>
-    <p><a href={`mailto:${brand.email}`}>{brand.email}</a></p>
-    <p class="muted">Last updated 3 November 2026.</p>
+<Base title="Privacy" description={`How ${brand.name}'s apps and website handle your data: no accounts, no analytics, no third-party SDKs, everything on your devices and in your iCloud.`}>
+  <section class="wrap page" aria-labelledby="privacy-title">
+    <Rule label="Privacy" aside="Last updated 12 November 2026" />
+    <div class="intro">
+      <h1 class="h1" id="privacy-title">Your data stays yours.</h1>
+      <p class="lede">The short version: there is no account, no analytics, and no third-party code in either app. Your data lives on your devices and in your private iCloud database. We never see it.</p>
+    </div>
+  </section>
+  <section class="wrap sec" aria-labelledby="privacy-apps">
+    <Rule label="The apps" />
+    <h2 class="sr" id="privacy-apps">The apps</h2>
+    <div class="terms" style="margin-top:0">
+      {apps.map((x) => <div><h3 class="h3">{x.term}</h3><p class="lede">{x.body}</p></div>)}
+    </div>
+  </section>
+  <section class="wrap sec" aria-labelledby="privacy-site">
+    <Rule label="This website" />
+    <h2 class="sr" id="privacy-site">This website</h2>
+    <div class="terms" style="margin-top:0">
+      <div><h3 class="h3">Static files</h3><p class="lede">No cookies, no analytics scripts, no trackers. The hosting provider may keep standard server logs for security.</p></div>
+      <div><h3 class="h3">Contact</h3><p class="lede">Questions about your data: <a href={`mailto:${brand.email}`}>{brand.email}</a>.</p></div>
+    </div>
   </section>
 </Base>
