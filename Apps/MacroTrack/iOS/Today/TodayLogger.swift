@@ -13,6 +13,8 @@ struct TodayLogger: View {
     @State private var composer = TodayComposer()
     @FocusState private var typing: Bool
     @State private var editing: FoodEntry?
+    /// The food opened in place on the thread, to change its amount.
+    @State private var opened: UUID?
 
     static let threadEnd = "today.threadEnd"
 
@@ -75,6 +77,8 @@ struct TodayLogger: View {
         }
         .sheet(item: $editing) { entry in EntryEditor(entry: entry) }
         .notesWork(editing != nil)
+        // Typing closes a food opened in place, which saves it.
+        .onChange(of: typing) { _, typing in if typing { opened = nil } }
         .animation(.snappy, value: typing)
     }
 
@@ -150,24 +154,20 @@ struct TodayLogger: View {
             let isFresh = moment.entries.contains { fresh.contains($0.id) }
             Section {
                 ForEach(moment.entries) { entry in
-                    Button {
-                        editing = entry
-                    } label: {
-                        ThreadRow(entry: entry, later: model.foodLog.isUpcoming(entry))
+                    if opened == entry.id {
+                        InlineAmount(
+                            entry: entry, close: { withAnimation(.snappy) { opened = nil } },
+                            more: {
+                                opened = nil
+                                editing = entry
+                            }
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    } else {
+                        row(entry, fresh: fresh)
                     }
-                    .buttonStyle(.plain)
-                    .listRowBackground(fresh.contains(entry.id) ? Color.accentColor.opacity(0.14) : Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
-                    .swipeActions(edge: .trailing) {
-                        Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
-                    }
-                    .contextMenu {
-                        Button("Change Amount", systemImage: "slider.horizontal.3") { editing = entry }
-                        Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
-                    }
-                    .accessibilityIdentifier("today.entry")
-                    .accessibilityHint("Changes the amount")
                 }
                 if index == moments.count - 1 {
                     Color.clear.frame(height: 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets()).id(Self.threadEnd)
@@ -178,6 +178,38 @@ struct TodayLogger: View {
                 }
             }
         }
+    }
+
+    /// A food on the thread: a tap opens its amount in place (the full panel for one that isn't a
+    /// catalog food), a swipe or a long press deletes it.
+    func row(_ entry: FoodEntry, fresh: Set<UUID>) -> some View {
+        Button {
+            open(entry)
+        } label: {
+            ThreadRow(entry: entry, later: model.foodLog.isUpcoming(entry))
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(fresh.contains(entry.id) ? Color.accentColor.opacity(0.14) : Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+        .swipeActions(edge: .trailing) {
+            Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
+        }
+        .contextMenu {
+            Button("Change Amount", systemImage: "slider.horizontal.3") { editing = entry }
+            Button("Delete", systemImage: "trash", role: .destructive) { model.delete(entries: [entry.id]) }
+        }
+        .accessibilityIdentifier("today.entry")
+        .accessibilityHint("Changes the amount")
+    }
+
+    func open(_ entry: FoodEntry) {
+        typing = false
+        guard let id = entry.foodID, model.food(id: id) != nil else {
+            editing = entry
+            return
+        }
+        withAnimation(.snappy) { opened = entry.id }
     }
 
     // MARK: Bottom
