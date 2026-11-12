@@ -26,7 +26,7 @@ struct FastComplicationWidget: Widget {
     }
 }
 
-/// Entries every half hour and at each phase and the goal for the next day, so the ring moves on
+/// Entries every half hour and at each phase and the goal for the next day, so the ruler moves on
 /// with the Watch app closed.
 struct FastSnapshotProvider: TimelineProvider {
     func placeholder(in context: Context) -> SnapshotEntry {
@@ -102,7 +102,8 @@ struct TodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Today", provider: SnapshotProvider()) { entry in
             TodayStackView(snapshot: entry.snapshot)
-                .containerBackground(Color.accentColor.opacity(0.25).gradient, for: .widget)
+                // The ink surface the phone's cards sit on, so the card in the Smart Stack is Stadig's.
+                .containerBackground(Color(red: 0x17 / 255, green: 0x19 / 255, blue: 0x1C / 255), for: .widget)
         }
         .configurationDisplayName("Today")
         .description("Calories and protein left today.")
