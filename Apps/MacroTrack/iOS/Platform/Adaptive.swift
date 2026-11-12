@@ -194,12 +194,15 @@ extension View {
     }
 
     /// A list of grouped sections on a quiet page: inset grouped on iPhone, iPad and Vision Pro,
-    /// the Mac's inset list.
+    /// the Mac's inset list. On iPhone and iPad the page is Stadig's ink ground; Vision Pro keeps its
+    /// glass, and the Mac its window.
     func insetGroupedList() -> some View {
         #if os(macOS)
         return listStyle(.inset)
-        #else
+        #elseif os(visionOS)
         return listStyle(.insetGrouped)
+        #else
+        return listStyle(.insetGrouped).scrollContentBackground(.hidden).background(Ink.ground.ignoresSafeArea())
         #endif
     }
 

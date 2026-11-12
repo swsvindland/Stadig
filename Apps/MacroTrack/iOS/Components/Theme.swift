@@ -2,21 +2,36 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-// Liquid Glass belongs to the controls that float over content (the quick-log bar, the toast).
-// Content sits on quiet grouped surfaces so the glass has something to refract.
+// Liquid Glass belongs to the controls that float over content (the composer, the toast). Content
+// sits on Stadig's ink ground (paper in light mode, Stadig.swift), so the glass has something to
+// refract. Vision Pro keeps its window's glass as the page.
 
 extension ShapeStyle where Self == Color {
-    static var pageBackground: Color { .groupedBackground }
+    static var pageBackground: Color {
+        #if os(visionOS)
+        return .groupedBackground
+        #else
+        return Ink.ground
+        #endif
+    }
     /// On the Mac the window's and the controls' backgrounds are nearly the same, so a card is a
     /// faint fill over the page instead.
     static var cardBackground: Color {
         #if os(macOS)
         return Color(nsColor: .quaternarySystemFill)
-        #else
+        #elseif os(visionOS)
         return .secondaryGroupedBackground
+        #else
+        return Ink.surface
         #endif
     }
-    static var insetBackground: Color { .tertiaryGroupedBackground }
+    static var insetBackground: Color {
+        #if os(visionOS)
+        return .tertiaryGroupedBackground
+        #else
+        return Ink.raised
+        #endif
+    }
 }
 
 /// One colour per macro, used everywhere the macro appears.
@@ -26,9 +41,9 @@ enum Macro: CaseIterable {
     var color: Color {
         switch self {
         case .kcal: .accentColor
-        case .protein: .pink
-        case .carbs: .blue
-        case .fat: .orange
+        case .protein: Ink.protein
+        case .carbs: Ink.carbs
+        case .fat: Ink.fat
         }
     }
 
