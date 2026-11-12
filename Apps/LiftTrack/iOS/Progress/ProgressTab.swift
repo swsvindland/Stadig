@@ -213,7 +213,7 @@ struct StrengthCard: View {
                             Text("\(Format.weight(score.oneRepMaxKg, unit: model.gym.unit)) est. · \(Int(score.score.rounded()))")
                                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
-                        ScoreBar(score: score.score, color: .orange, highlight: weakest)
+                        ScoreBar(score: score.score, highlight: weakest)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(category.label): score \(Int(score.score.rounded())), \(score.level)")
@@ -378,7 +378,7 @@ struct AgilityCard: View {
                             Spacer()
                             Text(Format.mobility(result.value, test)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
-                        ScoreBar(score: result.score * 1.2, color: .teal, highlight: analysis.limiterTest == test)
+                        ScoreBar(score: result.score, highlight: analysis.limiterTest == test)
                     }
                 }
             }
