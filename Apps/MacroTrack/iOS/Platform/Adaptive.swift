@@ -135,6 +135,15 @@ extension View {
         #endif
     }
 
+    /// No navigation bar: a screen with a header of its own (a phone's Today). The Mac has none to hide.
+    func hidesNavigationBar() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return toolbar(.hidden, for: .navigationBar)
+        #endif
+    }
+
     func fieldKeyboard(_ keyboard: FieldKeyboard) -> some View {
         #if os(macOS)
         return self

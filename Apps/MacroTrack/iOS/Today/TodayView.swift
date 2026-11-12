@@ -3,10 +3,21 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Today at a glance, always today: what's left, the weight, anything the plan asks, the ways to
-/// log in a tap, then meal timing, supplements, drinks and the week's food-quality suggestions. The
-/// day's food is on the Log tab.
+/// Today, always today. On a phone (a compact width) it's the logger (`TodayLogger`); with room
+/// it's the dashboard beside the sidebar.
 struct TodayView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        // The Mac reports no size class: it always has room.
+        if sizeClass == .compact { TodayLogger() } else { TodayDashboard() }
+    }
+}
+
+/// Today at a glance where there's room: what's left, the weight, anything the plan asks, the
+/// ways to log in a tap, then meal timing, supplements, drinks and the week's food-quality
+/// suggestions. The day's food is on the Log tab, beside the logger.
+struct TodayDashboard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -449,6 +460,8 @@ struct ActionRow: View {
 /// time of day.
 struct LogAgainSection: View {
     @Environment(AppModel.self) private var model
+    /// Single foods too; the phone's Today has its own tiles for them.
+    var foods = true
 
     var body: some View {
         let meals = model.usualMeals
@@ -477,7 +490,7 @@ struct LogAgainSection: View {
                         .accessibilityIdentifier("today.logMeal")
                         .accessibilityLabel("Log \(meal.name), \(meal.foods.count) foods, \(Format.kcal(meal.nutrients.kcal))")
                     }
-                    ForEach(model.logAgain.prefix(10)) { item in
+                    ForEach(model.logAgain.prefix(foods ? 10 : 0)) { item in
                         chip(title: item.template.name, detail: item.template.amountLabel, kcal: item.template.nutrients.kcal) {
                             model.logAgain(item)
                         }

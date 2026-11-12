@@ -7,6 +7,10 @@ extension XCUIApplication {
         descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
+    /// Where Today logs: the phone's composer at the foot of Today, or an iPad's Log Food in the toolbar.
+    @MainActor
+    var todayLogging: XCUIElement { Self.isPad ? logButton("search") : element("today.composer") }
+
     /// The button that opens a way to log: the iPhone's quick-log bar above the tabs, or Today's
     /// toolbar on an iPad ("search", "weighIn", "quickAdd").
     @MainActor
