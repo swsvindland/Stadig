@@ -29,6 +29,21 @@ struct OnboardingView: View {
                 }
             }
             .animation(.snappy, value: step)
+            .toolbar {
+                if step != .welcome {
+                    ToolbarItem(placement: .navigation) {
+                        Button("Back", systemImage: "chevron.left", action: back)
+                            .accessibilityIdentifier("onboarding.back")
+                    }
+                    // How far through: a ruler, filling a step at a time.
+                    ToolbarItem(placement: .principal) {
+                        Ruler.thin(Double(step.rawValue) / 3)
+                            .frame(width: 180)
+                            .accessibilityLabel("Step \(step.rawValue) of 3")
+                    }
+                    .withoutSharedBackground()
+                }
+            }
         }
         .onAppear {
             if let shared = model.sharedProfile ?? model.profile {
@@ -75,67 +90,15 @@ struct OnboardingView: View {
         }
         .padding(24)
         .readableWidth(560)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .inkGround()
     }
 
     var about: some View {
         Form {
-            Section("What do you want?") {
-                ForEach(OutcomeGoal.allCases) { goal in
-                    Button {
-                        if let i = profile.goals.firstIndex(of: goal) { profile.goals.remove(at: i) } else { profile.goals.append(goal) }
-                    } label: {
-                        HStack {
-                            Label(goal.label, systemImage: goal.symbol)
-                            Spacer()
-                            if profile.goals.contains(goal) { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
-                        }
-                    }
-                    .foregroundStyle(.primary)
-                    .accessibilityIdentifier("onboarding.goal.\(goal.rawValue)")
-                }
-            }
-            Section("About you") {
-                // Units first, so numbers are typed in the units already chosen. A number typed
-                // before a change is left as typed: it was often typed meaning the new unit.
-                Picker(
-                    "Units",
-                    selection: Binding(
-                        get: { profile.units.weight },
-                        set: { w in
-                            let untouched = healthKg.map { weightText == healthText($0) } ?? false
-                            profile.units = UnitPreference(weight: w, length: w == .kg ? .cm : .inch)
-                            if untouched, let healthKg { weightText = healthText(healthKg) }
-                        })
-                ) {
-                    Text("kg, cm").tag(WeightUnit.kg)
-                    Text("lb, in").tag(WeightUnit.lb)
-                }
-                .accessibilityIdentifier("onboarding.units")
-                Picker("Sex", selection: $profile.sex) {
-                    ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
-                }
-                .accessibilityIdentifier("onboarding.sex")
-                Picker("Born", selection: Binding(get: { birthYear }, set: { profile.birthYear = $0 })) {
-                    ForEach(birthYears.reversed(), id: \.self) { Text(String($0)).tag($0) }
-                }
-                .accessibilityIdentifier("onboarding.birthYear")
-                HStack {
-                    Text("Height")
-                    Spacer()
-                    TextField("0", text: $heightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
-                        .accessibilityIdentifier("onboarding.height")
-                    Text(profile.units.length.symbol).foregroundStyle(.secondary)
-                }
-            }
-            Section("Training") {
-                Stepper("\(profile.schedule.daysPerWeek) days a week", value: $profile.schedule.daysPerWeek, in: 0...7)
-                    .accessibilityIdentifier("onboarding.trainingDays")
-                Picker("Lifting for", selection: $profile.experience) {
-                    ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
-                }
-                .accessibilityIdentifier("onboarding.experience")
-            }
+            Group { aboutSections }.inkRows()
         }
+        .inkForm()
         .navigationTitle("About you")
         .safeAreaInset(edge: .bottom) {
             next(enabled: !profile.goals.isEmpty) {
@@ -147,46 +110,112 @@ struct OnboardingView: View {
         }
     }
 
-    var eating: some View {
-        Form {
-            Section {
-                ForEach(DietHistory.allCases) { option in
-                    Button {
-                        history = option
-                    } label: {
-                        HStack {
-                            Text(option.label)
-                            Spacer()
-                            if history == option { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
-                        }
+    @ViewBuilder
+    var aboutSections: some View {
+        Section("What do you want?") {
+            ForEach(OutcomeGoal.allCases) { goal in
+                Button {
+                    if let i = profile.goals.firstIndex(of: goal) { profile.goals.remove(at: i) } else { profile.goals.append(goal) }
+                } label: {
+                    HStack {
+                        Label(goal.label, systemImage: goal.symbol)
+                        Spacer()
+                        if profile.goals.contains(goal) { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
                     }
-                    .foregroundStyle(.primary)
-                    .accessibilityIdentifier("onboarding.history.\(option.rawValue)")
                 }
-            } header: {
-                Text("Lately you've been…")
-            } footer: {
-                Text("Months of dieting usually lowers maintenance. Knowing that changes the first recommendation.")
-            }
-            Section {
-                HStack {
-                    Text("Weight today")
-                    Spacer()
-                    TextField("Optional", text: $weightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
-                        .accessibilityIdentifier("onboarding.weight")
-                    Text(profile.units.weight.symbol).foregroundStyle(.secondary)
-                }
-            } footer: {
-                if weightTyped && weightKg == nil {
-                    Text("That doesn't look like a weight in \(profile.units.weight.symbol). Check the number, or leave it empty.")
-                } else {
-                    Text("Every morning from here: weigh in first thing. Health fills this in if your scale syncs to it.")
-                }
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("onboarding.goal.\(goal.rawValue)")
             }
         }
+        Section("About you") {
+            // Units first, so numbers are typed in the units already chosen. A number typed
+            // before a change is left as typed: it was often typed meaning the new unit.
+            Picker(
+                "Units",
+                selection: Binding(
+                    get: { profile.units.weight },
+                    set: { w in
+                        let untouched = healthKg.map { weightText == healthText($0) } ?? false
+                        profile.units = UnitPreference(weight: w, length: w == .kg ? .cm : .inch)
+                        if untouched, let healthKg { weightText = healthText(healthKg) }
+                    })
+            ) {
+                Text("kg, cm").tag(WeightUnit.kg)
+                Text("lb, in").tag(WeightUnit.lb)
+            }
+            .accessibilityIdentifier("onboarding.units")
+            Picker("Sex", selection: $profile.sex) {
+                ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+            }
+            .accessibilityIdentifier("onboarding.sex")
+            Picker("Born", selection: Binding(get: { birthYear }, set: { profile.birthYear = $0 })) {
+                ForEach(birthYears.reversed(), id: \.self) { Text(String($0)).tag($0) }
+            }
+            .accessibilityIdentifier("onboarding.birthYear")
+            HStack {
+                Text("Height")
+                Spacer()
+                TextField("0", text: $heightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
+                    .accessibilityIdentifier("onboarding.height")
+                Text(profile.units.length.symbol).foregroundStyle(.secondary)
+            }
+        }
+        Section("Training") {
+            Stepper("\(profile.schedule.daysPerWeek) days a week", value: $profile.schedule.daysPerWeek, in: 0...7)
+                .accessibilityIdentifier("onboarding.trainingDays")
+            Picker("Lifting for", selection: $profile.experience) {
+                ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
+            }
+            .accessibilityIdentifier("onboarding.experience")
+        }
+    }
+
+    var eating: some View {
+        Form {
+            Group { eatingSections }.inkRows()
+        }
+        .inkForm()
         .navigationTitle("Eating lately")
         .safeAreaInset(edge: .bottom) {
             next(enabled: !weightTyped || weightKg != nil) { step = .health }
+        }
+    }
+
+    @ViewBuilder
+    var eatingSections: some View {
+        Section {
+            ForEach(DietHistory.allCases) { option in
+                Button {
+                    history = option
+                } label: {
+                    HStack {
+                        Text(option.label)
+                        Spacer()
+                        if history == option { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                    }
+                }
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("onboarding.history.\(option.rawValue)")
+            }
+        } header: {
+            Text("Lately you've been…")
+        } footer: {
+            Text("Months of dieting usually lowers maintenance. Knowing that changes the first recommendation.")
+        }
+        Section {
+            HStack {
+                Text("Weight today")
+                Spacer()
+                TextField("Optional", text: $weightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
+                    .accessibilityIdentifier("onboarding.weight")
+                Text(profile.units.weight.symbol).foregroundStyle(.secondary)
+            }
+        } footer: {
+            if weightTyped && weightKg == nil {
+                Text("That doesn't look like a weight in \(profile.units.weight.symbol). Check the number, or leave it empty.")
+            } else {
+                Text("Every morning from here: weigh in first thing. Health fills this in if your scale syncs to it.")
+            }
         }
     }
 
@@ -217,11 +246,13 @@ struct OnboardingView: View {
             .primaryAction()
             .disabled(connecting || !HealthBridge.shared.isAvailable)
             .accessibilityIdentifier("onboarding.connectHealth")
-            Button("Not now") { finish() }.frame(maxWidth: .infinity)
+            Button("Not now") { finish() }.frame(maxWidth: .infinity, minHeight: 44)
                 .accessibilityIdentifier("onboarding.notNow")
         }
         .padding(24)
         .readableWidth(560)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .inkGround()
     }
 
     /// The Mac has no Health: what reaches it instead, and a way on.
@@ -241,9 +272,21 @@ struct OnboardingView: View {
         }
         .padding(24)
         .readableWidth(560)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .inkGround()
     }
 
     // MARK: Helpers
+
+    /// The step before: a setup reused from another app skipped About you on the way in.
+    func back() {
+        switch step {
+        case .welcome: break
+        case .about: step = .welcome
+        case .eating: step = reused ? .welcome : .about
+        case .health: step = .eating
+        }
+    }
 
     func point(_ symbol: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) {

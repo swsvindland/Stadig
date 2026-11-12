@@ -225,6 +225,26 @@ extension View {
         #endif
     }
 
+    /// A form on Stadig's ink ground on iPhone and iPad, as `insetGroupedList()` puts a list (its rows
+    /// take `inkRows()`). Vision Pro keeps its glass, and the Mac its window.
+    func inkForm() -> some View {
+        #if os(iOS)
+        return scrollContentBackground(.hidden).background(Ink.ground.ignoresSafeArea())
+        #else
+        return self
+        #endif
+    }
+
+    /// Rows of a form or list as quiet cards on the ink ground, rather than the system's grey (a
+    /// sheet's lighter grey in dark mode). A row that sets its own background keeps it.
+    func inkRows() -> some View {
+        #if os(iOS)
+        return listRowBackground(Color.cardBackground)
+        #else
+        return self
+        #endif
+    }
+
     /// Food names and search words aren't sentences: no capital forced on the first letter. The
     /// Mac never forces one.
     func noAutocapitalization() -> some View {
@@ -486,5 +506,17 @@ enum ImageData {
     /// A JPEG of `data` at most `maxPixels` on its long side.
     nonisolated static func resizedJPEG(_ data: Data, maxPixels: Int, quality: Double = 0.8) -> Data? {
         downsampled(data, maxPixels: maxPixels).flatMap { jpeg($0, quality: quality) }
+    }
+}
+
+extension ToolbarContent {
+    /// No glass behind a toolbar item that draws its own (onboarding's ruler). Vision Pro's toolbar
+    /// items have no shared background to hide.
+    func withoutSharedBackground() -> some ToolbarContent {
+        #if os(visionOS)
+        return self
+        #else
+        return sharedBackgroundVisibility(.hidden)
+        #endif
     }
 }
