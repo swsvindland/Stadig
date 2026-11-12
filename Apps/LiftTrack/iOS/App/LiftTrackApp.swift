@@ -32,6 +32,37 @@ struct LiftTrackApp: App {
             model.save(gym: gym)
         }
         if launch.has("-startSession"), model.live == nil, let plan = model.plan() { model.start(plan) }
+        // -sessionAt lift|set|rest|summary moves that session on to its first main lift, skipping what
+        // comes before; then past its warm-ups to the first work set; or into the rest after that set;
+        // or through the main lifts, every set just right, to the finished session's summary.
+        if let at = launch.value(after: "-sessionAt"), let environment = model.environment {
+            model.update { live in
+                while let current = live.current, live.items[current.item].plan.block != .main { live.skip(item: current.item) }
+                guard at != "lift" else { return }
+                if at == "summary" {
+                    while let current = live.current, live.items[current.item].plan.block == .main {
+                        let set = live.items[current.item].sets[current.set].prescription
+                        _ = live.log(
+                            item: current.item, set: current.set, reps: set.targetReps, loadKg: set.loadKg,
+                            rating: set.kind == .warmup || set.kind == .repOut ? nil : .orange, environment: environment)
+                    }
+                    return
+                }
+                while let current = live.current, live.items[current.item].sets[current.set].prescription.kind == .warmup {
+                    let set = live.items[current.item].sets[current.set].prescription
+                    _ = live.log(
+                        item: current.item, set: current.set, reps: set.targetReps, loadKg: set.loadKg, rating: nil, environment: environment)
+                }
+                if at == "rest", let current = live.current {
+                    let set = live.items[current.item].sets[current.set].prescription
+                    _ = live.log(
+                        item: current.item, set: current.set, reps: set.targetReps, loadKg: set.loadKg, rating: .orange, environment: environment)
+                } else {
+                    live.endRest()
+                }
+            }
+            if at == "summary" { model.finish(feedback: SessionFeedback(soreness: 1, jointPain: [], energy: 4)) }
+        }
         #endif
         #if os(iOS)
         // No Watch under tests: nothing to activate, and nothing to wait on.
@@ -97,7 +128,7 @@ struct LiftTrackApp: App {
 }
 
 /// The app's window: the model in the environment, links from the widget and the Live Activity, and
-/// Health and the purchase brought up to date on launch and on each return.
+/// Health brought up to date on launch and on each return.
 private struct AppRoot: View {
     let model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -117,8 +148,6 @@ private struct AppRoot: View {
         .task { if LaunchOptions.current.has("-openSettings") { openSettings() } }
             #endif
             .task {
-                await model.purchases.start()
-                model.askForPurchaseIfDue()
                 // Tests and UI tests ask Health nothing.
                 guard !LaunchOptions.current.isQuiet else { return }
                 await HealthBridge.shared.requestAddedTypes()
@@ -132,10 +161,6 @@ private struct AppRoot: View {
                     if model.today != .today { model.recompute() }
                     // Sleep, weigh-ins, steps and outside workouts came in while the app was away.
                     Task { await model.refreshHealthIfStale() }
-                    Task {
-                        await model.purchases.refresh()
-                        model.askForPurchaseIfDue()
-                    }
                 }
             }
     }

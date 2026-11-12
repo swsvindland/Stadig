@@ -37,7 +37,7 @@ struct ExerciseFacts: View {
                 fact("Muscles") {
                     FlowRow(
                         items: exercise.muscles.sorted { $0.weight > $1.weight }.map { share in
-                            (share.muscle.label, share.weight >= 1 ? Color.orange : Color.secondary)
+                            (share.muscle.label, share.weight >= 1 ? Ink.ok : Color.secondary)
                         })
                 }
             }
@@ -47,7 +47,7 @@ struct ExerciseFacts: View {
                         items: exercise.joints.sorted { $0.stress > $1.stress }.map { load in
                             (
                                 "\(load.joint.label) · \(load.stress.label.lowercased())",
-                                load.stress == .high ? Color.red : load.stress == .moderate ? .orange : .secondary
+                                load.stress == .high ? Ink.bad : load.stress == .moderate ? Ink.ok : .secondary
                             )
                         })
                 }

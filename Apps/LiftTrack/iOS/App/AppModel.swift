@@ -1,6 +1,7 @@
 import ExerciseLibrary
 import Foundation
 import HealthBridge
+import HubEngine
 import LiftEngine
 import OSLog
 import Observation
@@ -58,7 +59,7 @@ enum SessionRequest: Hashable {
 
 /// A sheet the menu bar (or a shortcut) asks for, shown over whichever destination is open.
 enum AppSheet: String, Identifiable {
-    case logActivity, checkIn, measurements, nextBlock, paywall
+    case logActivity, checkIn, measurements, nextBlock
 
     var id: String { rawValue }
 }
@@ -118,9 +119,14 @@ final class AppModel {
     private(set) var rhythm: Rhythm?
     /// What's changed this week, from the hub.
     private(set) var dayChanges: [DayChange] = []
+    /// What Stadig Macro published, for the scores it measures.
+    private(set) var macroSummary: AppSummary?
 
     // Derived.
     private(set) var analysis: LiftAnalysis?
+    /// The six scores as Your shape shows them: this app's, fresh, with Stadig Macro's once it's set
+    /// up too (`StatsBoard`), so both apps give the same numbers.
+    private(set) var stats: [StatLine] = []
 
     // Live session and presentation.
     var live: LiveSession? {
@@ -307,10 +313,12 @@ final class AppModel {
         let lifeModes = syncLifeModes()
         let dayChanges = shared.read(.dayChanges) ?? []
         let rhythm = shared.read(.rhythm)
+        let macroSummary = shared.read(.summary(.macroTrack))
         let changed =
             nutrition != self.nutrition || recommendations != self.recommendations || sharedProfile != self.sharedProfile
-            || lifeModes != self.lifeModes || dayChanges != self.dayChanges || rhythm != self.rhythm
+            || lifeModes != self.lifeModes || dayChanges != self.dayChanges || rhythm != self.rhythm || macroSummary != self.macroSummary
         guard changed else { return }
+        self.macroSummary = macroSummary
         self.dayChanges = dayChanges
         self.rhythm = rhythm
         self.nutrition = nutrition
@@ -382,6 +390,8 @@ final class AppModel {
         // Without their stamps: compared with what was last published here, then with the files on
         // disk (after a relaunch), so readers are woken and "updated" moves only when something did.
         var summary = Analyst.summary(state, analysis)
+        let lines = StatsBoard.lines(lift: summary, macro: macroSummary, today: today)
+        if lines != stats { stats = lines }
         var calendar = analysis.calendar
         summary.updated = .distantPast
         calendar.updated = .distantPast
@@ -647,16 +657,6 @@ final class AppModel {
     // MARK: Blocks
 
     var currentMesocycle: Mesocycle? { analysis?.mesocycle }
-
-    /// Whether the person may generate a block now: the assessment is free, real blocks need the unlock.
-    var canPlanNextBlock: Bool { purchases.unlocked }
-
-    /// Brings the offer up if it's due, on opening the app. Never over a session, or over a sheet
-    /// someone is in the middle of: it waits for the next time they open the app.
-    func askForPurchaseIfDue() {
-        guard onboarded, purchases.offerDue, live == nil, sheet == nil, finished == nil, !showSettings else { return }
-        sheet = .paywall
-    }
 
     /// Builds a mesocycle from everything known right now. Not saved until accepted.
     func generate(kind: BlockKind, start: Day, phase: NutritionPhase? = nil) -> Mesocycle {

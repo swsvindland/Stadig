@@ -25,6 +25,7 @@ struct BodyView: View {
                     wide
                 } else {
                     VStack(alignment: .leading, spacing: 16) {
+                        header
                         if let physique = model.analysis?.physique {
                             overview(physique)
                             sides(physique)
@@ -41,16 +42,22 @@ struct BodyView: View {
             .accessibilityIdentifier("body.screen")
             .background(.pageBackground)
             .navigationTitle("Body")
+            #if os(iOS)
+            // The phone draws its own header: the last check-in over a large title.
+            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Button {
-                        measuring = true
-                    } label: {
-                        Label("Add Measurements", systemImage: "ruler")
+                if sizeClass.isWide {
+                    ToolbarItem(placement: .barTrailing) {
+                        Button {
+                            measuring = true
+                        } label: {
+                            Label("Add Measurements", systemImage: "ruler")
+                        }
+                        .help("Add tape measurements")
+                        .accessibilityLabel("Add measurements")
+                        .accessibilityIdentifier("body.addMeasurements")
                     }
-                    .help("Add tape measurements")
-                    .accessibilityLabel("Add measurements")
-                    .accessibilityIdentifier("body.addMeasurements")
                 }
             }
             .sessionResumeToolbar()
@@ -79,6 +86,68 @@ struct BodyView: View {
         }
     }
 
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let last = model.measurements.map(\.day).max() {
+                    Text("Last check-in \(Format.day(last, style: .dateTime.weekday(.wide).day().month(.abbreviated)))").eyebrow()
+                }
+                Text("Body").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
+            }
+            Spacer()
+            Button {
+                measuring = true
+            } label: {
+                CircleIcon(symbol: "ruler")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add measurements")
+            .accessibilityIdentifier("body.addMeasurements")
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, -8)
+    }
+
+    /// Physique's score on a ruler, and waist to height against the healthy line.
+    @ViewBuilder
+    private func hero(_ p: PhysiqueAnalysis) -> some View {
+        if let score = p.score {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Physique").eyebrow()
+                Text("\(Int(score.rounded()))").numeral(60, weight: .heavy).foregroundStyle(Ink.text)
+                Ruler(value: score / 100)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Physique \(Int(score.rounded())) of 100")
+        }
+        if let wth = p.waistToHeight {
+            let healthy = wth < 0.5
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Waist to height").font(.body.weight(.semibold)).foregroundStyle(Ink.text)
+                        Text("Under 0.50 is healthy").font(.caption).foregroundStyle(Ink.text2)
+                    }
+                    Spacer()
+                    Text(Format.number(wth, digits: 2)).numeral(30).foregroundStyle(healthy ? Ink.good : Ink.ok)
+                }
+                Ruler(value: (wth - 0.4) / 0.2, color: healthy ? Ink.good : Ink.ok, marker: 0.5)
+                HStack {
+                    Text("0.40")
+                    Spacer()
+                    Text("0.50").foregroundStyle(Ink.text)
+                    Spacer()
+                    Text("0.60")
+                }
+                .font(.caption2.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text3)
+                .accessibilityHidden(true)
+            }
+            .padding(.top, 6)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Waist to height \(Format.number(wth, digits: 2)). Under 0.50 is healthy.")
+        }
+    }
+
     /// The physique cards in a grid, a larger waist chart, photos compared side by side and the
     /// measurements as a table.
     private var wide: some View {
@@ -103,10 +172,12 @@ struct BodyView: View {
         let length = model.units.length
         let sex = model.profile?.sex ?? .unspecified
         return VStack(alignment: .leading, spacing: 12) {
+            hero(p)
+            if p.score != nil || p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
             HStack(alignment: .firstTextBaseline) {
-                Label("Physique", systemImage: StatKind.physique.symbol).font(.headline).foregroundStyle(StatKind.physique.color)
+                Text("Proportions").font(.headline)
                 Spacer()
-                Text(p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets").font(.caption).foregroundStyle(.secondary)
+                Text(p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets").font(.caption).foregroundStyle(Ink.text2)
             }
             if p.latest == nil {
                 Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
@@ -123,13 +194,6 @@ struct BodyView: View {
                             Text(reading.rule.label).foregroundStyle(.secondary)
                             Text(Format.number(reading.value, digits: 2)).monospacedDigit()
                             Text(caption(reading, sex: sex)).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    if let wth = p.waistToHeight {
-                        GridRow {
-                            Text("Waist to height").foregroundStyle(.secondary)
-                            Text(Format.number(wth, digits: 2)).monospacedDigit()
-                            Text("under 0.50 is healthy").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     if let bf = p.bodyFatPercent {
@@ -244,10 +308,16 @@ struct BodyView: View {
         let points = model.measurements.compactMap { m in m.waistCm.map { (m.day.date(), model.units.length.fromCentimetres($0)) } }
         if points.count >= 2 {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Waist").font(.headline)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Waist").font(.headline)
+                    Spacer()
+                    if let last = points.last {
+                        Measure(value: Format.number(last.1), unit: model.units.length.symbol, size: 30)
+                    }
+                }
                 Chart(points, id: \.0) { point in
-                    LineMark(x: .value("Day", point.0), y: .value("Waist", point.1))
-                    PointMark(x: .value("Day", point.0), y: .value("Waist", point.1)).symbolSize(20)
+                    LineMark(x: .value("Day", point.0), y: .value("Waist", point.1)).foregroundStyle(Color.accentColor)
+                    PointMark(x: .value("Day", point.0), y: .value("Waist", point.1)).symbolSize(20).foregroundStyle(Color.accentColor)
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel(model.units.length.symbol)

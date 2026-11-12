@@ -1,6 +1,7 @@
 import Charts
 import ExerciseLibrary
 import HealthBridge
+import HubEngine
 import LiftEngine
 import SwiftUI
 import SystemCore
@@ -36,14 +37,7 @@ struct TodayView: View {
                         .frame(maxWidth: 1200)
                         .frame(maxWidth: .infinity)
                     } else {
-                        VStack(alignment: .leading, spacing: 16) {
-                            banners(analysis)
-                            if let status = analysis.assessment { AssessmentCard(status: status) }
-                            sessionCard(analysis)
-                            around(analysis)
-                        }
-                        .padding()
-                        .readableWidth()
+                        column(analysis)
                     }
                 }
             }
@@ -51,29 +45,23 @@ struct TodayView: View {
             .background(.pageBackground)
             .navigationTitle("Today")
             .navigationSubtitleIfAvailable(Format.day(model.today, style: .dateTime.weekday(.wide).month(.wide).day()))
+            #if os(iOS)
+            // The phone draws its own header: the date over a large title, and its two buttons.
+            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .barTrailing) {
-                    Menu {
-                        Button("Log a class or activity", systemImage: "plus") { logActivity = ActivityLogSheetItem(declared: nil) }
-                            .accessibilityIdentifier("today.logActivity")
-                        Button("Check-in tests", systemImage: "checklist") { showCheckIn = true }
-                            .accessibilityIdentifier("today.checkIn")
-                        Divider()
-                        Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }
-                            .accessibilityIdentifier("today.addVacation")
-                        Button("Crunch mode", systemImage: "briefcase") { lifeMode = .crunch }
-                            .accessibilityIdentifier("today.addCrunch")
-                        Button("Injury", systemImage: "bandage") { lifeMode = .injury }
-                            .accessibilityIdentifier("today.addInjury")
-                        Button("Illness", systemImage: "thermometer.medium") { lifeMode = .illness }
-                            .accessibilityIdentifier("today.addIllness")
-                    } label: {
-                        Image(systemName: "plus")
+                if sizeClass.isWide {
+                    ToolbarItem(placement: .barTrailing) {
+                        Menu {
+                            addMenu
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Add")
+                        .accessibilityIdentifier("today.add")
                     }
-                    .accessibilityLabel("Add")
-                    .accessibilityIdentifier("today.add")
+                    SettingsToolbarItem(identifier: "today.settings")
                 }
-                SettingsToolbarItem(identifier: "today.settings")
             }
             .refreshable { await model.refreshHealth() }
             .sessionResumeToolbar()
@@ -82,6 +70,218 @@ struct TodayView: View {
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
         }
     }
+
+    @ViewBuilder
+    private var addMenu: some View {
+        Button("Log a class or activity", systemImage: "plus") { logActivity = ActivityLogSheetItem(declared: nil) }
+            .accessibilityIdentifier("today.logActivity")
+        Button("Check-in tests", systemImage: "checklist") { showCheckIn = true }
+            .accessibilityIdentifier("today.checkIn")
+        Divider()
+        Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }
+            .accessibilityIdentifier("today.addVacation")
+        Button("Crunch mode", systemImage: "briefcase") { lifeMode = .crunch }
+            .accessibilityIdentifier("today.addCrunch")
+        Button("Injury", systemImage: "bandage") { lifeMode = .injury }
+            .accessibilityIdentifier("today.addInjury")
+        Button("Illness", systemImage: "thermometer.medium") { lifeMode = .illness }
+            .accessibilityIdentifier("today.addIllness")
+    }
+
+    // MARK: The phone
+
+    /// The phone's Today: the date and the week, the session to start, the scores, and the few
+    /// things worth doing next.
+    private func column(_ analysis: LiftAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            header
+            ThisWeekStrip(days: model.weekStrip)
+            banners(analysis)
+            hero(analysis)
+            if let status = analysis.assessment { AssessmentCard(status: status) }
+            ScoresCard(lines: model.stats) { model.tab = .progress }
+            next(analysis)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+        .readableWidth()
+    }
+
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Format.day(model.today, style: .dateTime.weekday(.wide).day().month(.wide))).eyebrow()
+                Text("Today").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            Spacer()
+            Menu {
+                addMenu
+            } label: {
+                CircleIcon(symbol: "plus")
+            }
+            .accessibilityLabel("Add")
+            .accessibilityIdentifier("today.add")
+            #if !os(macOS)
+            Button {
+                model.showSettings = true
+            } label: {
+                CircleIcon(symbol: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .accessibilityIdentifier("today.settings")
+            #endif
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private func hero(_ analysis: LiftAnalysis) -> some View {
+        if let live = model.live {
+            SessionHero(
+                eyebrow: "In progress", trailing: nil, title: live.plan.title,
+                subtitle: "\(Int((live.progress * 100).rounded()))% done", progress: live.progress
+            ) {
+                Button {
+                    model.showSession = true
+                } label: {
+                    Text("Resume session").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(HeroButtonStyle())
+                .accessibilityIdentifier("today.resumeSession")
+            }
+        } else if let next = analysis.next, let plan = model.plan(minutes: minutes) {
+            SessionHero(
+                eyebrow: HeroLine.eyebrow(plan: plan, next: next), trailing: "~\(plan.estimatedMinutes) min", title: plan.title,
+                subtitle: HeroLine.contents(plan: plan, catalog: model.catalog), progress: nil
+            ) {
+                ForEach(heroNotes(plan: plan, next: next, life: analysis.life), id: \.self) { note in
+                    Text(note).font(.subheadline).opacity(0.85).fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    model.start(plan)
+                } label: {
+                    Text("Start session").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(HeroButtonStyle())
+                .help("Start today's session (⌘N)")
+                .accessibilityIdentifier("today.startSession")
+                HStack(spacing: 6) {
+                    Text("Short on time?").font(.footnote).opacity(0.85)
+                    Spacer(minLength: 4)
+                    ForEach([30, 45, 60], id: \.self) { m in
+                        Button {
+                            minutes = minutes == m ? nil : m
+                        } label: {
+                            Text("\(m) min")
+                                .font(.footnote.weight(.semibold))
+                                .padding(.horizontal, 11)
+                                .frame(minHeight: 32)
+                                .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
+                                .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
+                                .contentShape(.capsule)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(m) minutes")
+                        .accessibilityAddTraits(minutes == m ? .isSelected : [])
+                        .accessibilityIdentifier("today.minutes\(m)")
+                    }
+                }
+            }
+        } else {
+            EmptyCard(symbol: "calendar.badge.plus", title: "No block yet", detail: "Plan your next block from the Plan tab.")
+        }
+    }
+
+    /// What the hero says under the session's name: a rest day, a day off, the plan's notes and what
+    /// moved to later.
+    private func heroNotes(plan: SessionPlan, next: NextSession, life: LifeModeEffects) -> [String] {
+        var notes: [String] = []
+        if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
+            notes.append(
+                "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along.")
+        }
+        if !life.trainingExpected { notes.append("Nothing is expected today. If you train anyway, keep it easy.") }
+        notes += plan.notes.prefix(2)
+        let later = plan.quests.filter { quest in !(model.analysis?.quests.contains { $0.id == quest.id } ?? false) }
+        notes += later.map { "Moved to later: \($0.title.lowercased())" }
+        return notes
+    }
+
+    /// Do this next, later today, steps and what's outside the gym: each a row that ends in an action.
+    @ViewBuilder
+    private func next(_ analysis: LiftAnalysis) -> some View {
+        if !analysis.actions.isEmpty {
+            RowGroup(title: "Do this next") {
+                ForEach(analysis.actions.prefix(3)) { action in
+                    ActionRow(action: action, actionable: actionable(action)) { perform(action) }
+                }
+            }
+        }
+        if !analysis.quests.isEmpty {
+            RowGroup(title: "Later today") {
+                ForEach(analysis.quests) { quest in QuestLine(quest: quest) }
+            }
+        }
+        RowGroup(title: "Today") {
+            if let steps = analysis.steps {
+                NavigationLink {
+                    ScrollView { StepsCard(steps: steps).padding() }
+                        .background(.pageBackground)
+                        .navigationTitle("Steps")
+                        .inlineTitle()
+                } label: {
+                    StepsLine(steps: steps)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("today.steps")
+            } else if HealthBridge.shared.isAvailable {
+                StepsWaitingCard(connected: !model.steps.isEmpty, plain: true) { Task { await model.connectHealth() } }
+            }
+            outsideRows()
+        }
+    }
+
+    private func actionable(_ action: NextAction) -> Bool { [.deloadEarly, .checkIn, .measure].contains(action.kind) }
+
+    @ViewBuilder
+    private func outsideRows() -> some View {
+        let declared = model.profile?.declared(on: model.today) ?? []
+        let todays = model.activities.filter { $0.day == model.today }
+        ForEach(declared) { item in
+            let logged = todays.contains { $0.type == item.activity }
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(
+                        "\(item.activity.label) \(item.part(on: model.today, rhythm: model.rhythm, changes: model.dayChanges).label.lowercased())"
+                    )
+                    .font(.body.weight(.semibold))
+                    Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.caption).foregroundStyle(Ink.text2)
+                }
+                Spacer()
+                if logged {
+                    Circle().fill(Ink.good).frame(width: 8, height: 8).accessibilityLabel("Logged")
+                } else {
+                    Button("Log") { logActivity = ActivityLogSheetItem(declared: item) }.secondaryAction().controlSize(.small)
+                        .accessibilityIdentifier("today.logDeclared")
+                }
+            }
+        }
+        ForEach(todays.filter { log in !declared.contains { $0.activity == log.type } }) { log in
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(log.type.label).font(.body.weight(.semibold))
+                    Text("\(log.minutes) min · effort \(log.intensity)").font(.caption).foregroundStyle(Ink.text2)
+                }
+                Spacer()
+                Circle().fill(Ink.good).frame(width: 8, height: 8).accessibilityLabel("Done")
+            }
+        }
+    }
+
+    // MARK: Wide
 
     @ViewBuilder
     private func banners(_ analysis: LiftAnalysis) -> some View {
@@ -121,7 +321,7 @@ struct TodayView: View {
         if let live = model.live {
             VStack(alignment: .leading, spacing: 12) {
                 Text(live.plan.title).font(.title2.bold())
-                ProgressView(value: live.progress)
+                Ruler(value: live.progress, height: 10)
                 Button {
                     model.showSession = true
                 } label: {
@@ -147,38 +347,10 @@ struct TodayView: View {
         let todays = model.activities.filter { $0.day == model.today }
         if !declared.isEmpty || !todays.isEmpty {
             SectionHeader(title: "Outside the gym")
-            ForEach(declared) { item in
-                let logged = todays.contains { $0.type == item.activity }
-                HStack {
-                    Image(systemName: item.activity.symbol).font(.title3).frame(width: 32)
-                    VStack(alignment: .leading) {
-                        Text(
-                            "\(item.activity.label) \(item.part(on: model.today, rhythm: model.rhythm, changes: model.dayChanges).label.lowercased())"
-                        )
-                        .font(.headline)
-                        Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.subheadline).foregroundStyle(
-                            .secondary)
-                    }
-                    Spacer()
-                    if !logged {
-                        Button("Log") { logActivity = ActivityLogSheetItem(declared: item) }.secondaryAction()
-                            .accessibilityIdentifier("today.logDeclared")
-                    } else {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    }
-                }
-                .card()
+            VStack(alignment: .leading, spacing: 14) {
+                outsideRows()
             }
-            ForEach(todays.filter { log in !declared.contains { $0.activity == log.type } }) { log in
-                HStack {
-                    Image(systemName: log.type.symbol).font(.title3).frame(width: 32)
-                    VStack(alignment: .leading) {
-                        Text(log.type.label).font(.headline)
-                        Text("\(log.minutes) min · effort \(log.intensity)").font(.subheadline).foregroundStyle(.secondary)
-                    }
-                }
-                .card()
-            }
+            .card()
         }
     }
 
@@ -188,6 +360,322 @@ struct TodayView: View {
         case .checkIn: showCheckIn = true
         case .measure: model.tab = .body
         default: break
+        }
+    }
+}
+
+/// A round button's face in the phone's header.
+struct CircleIcon: View {
+    let symbol: String
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(Ink.text)
+            .frame(width: 44, height: 44)
+            .background(Ink.surface, in: .circle)
+            .contentShape(.circle)
+    }
+}
+
+/// This week, Monday to Sunday: a green dot for a day trained, the accent for today's session, a
+/// grey one for a training day still to come.
+struct ThisWeekStrip: View {
+    let days: [WeekStripDay]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(days) { day in
+                VStack(spacing: 5) {
+                    Text(day.day.weekday.short.prefix(1)).font(.caption2.weight(.semibold)).foregroundStyle(day.isToday ? Ink.text : Ink.text3)
+                    Text(day.number).font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(day.isToday ? Ink.text : Ink.text2)
+                    Circle().fill(color(day)).frame(width: 6, height: 6)
+                }
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(day.isToday ? Ink.surface : .clear, in: .rect(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("This week")
+        .accessibilityValue(summary)
+    }
+
+    private func color(_ day: WeekStripDay) -> Color {
+        if day.trained { return Ink.good }
+        if day.planned { return day.isToday ? Color.accentColor : Ink.track }
+        return .clear
+    }
+
+    private var summary: String {
+        let trained = days.filter(\.trained).map { $0.day.weekday.name }
+        let planned = days.filter(\.planned).map { $0.day.weekday.name }
+        var parts: [String] = []
+        if !trained.isEmpty { parts.append("trained \(trained.joined(separator: ", "))") }
+        if !planned.isEmpty { parts.append("planned \(planned.joined(separator: ", "))") }
+        return parts.isEmpty ? "Nothing planned" : parts.joined(separator: "; ")
+    }
+}
+
+/// Today's session as the one thing on the page in the accent: what it is, how long, and Start.
+struct SessionHero<Actions: View>: View {
+    let eyebrow: String
+    let trailing: String?
+    let title: String
+    let subtitle: String
+    let progress: Double?
+    @ViewBuilder let actions: Actions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(eyebrow).eyebrow(Ink.onAccent.opacity(0.8))
+                Spacer()
+                if let trailing { Text(trailing).eyebrow(Ink.onAccent.opacity(0.8)) }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).numeral(46, weight: .heavy).accessibilityAddTraits(.isHeader)
+                Text(subtitle).font(.subheadline).opacity(0.85).lineLimit(2)
+            }
+            if let progress {
+                Ruler(value: progress, color: Ink.onAccent, height: 10).opacity(0.9)
+            }
+            actions
+        }
+        .foregroundStyle(Ink.onAccent)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor, in: .rect(cornerRadius: 24, style: .continuous))
+    }
+}
+
+/// The hero's lines about a planned session.
+enum HeroLine {
+    /// "Session 3 of 4 · Block week 2", "Assessment", "Deload · Check-in".
+    static func eyebrow(plan: SessionPlan, next: NextSession) -> String {
+        var parts: [String] = []
+        if next.scheduledToday {
+            parts.append("Session \(min(next.doneThisWeek + 1, max(1, next.plannedThisWeek))) of \(next.plannedThisWeek)")
+        } else {
+            parts.append("Next session")
+        }
+        if plan.assessment {
+            parts.append("Assessment")
+        } else if plan.deload {
+            parts.append("Deload")
+        } else if let week = plan.week {
+            parts.append("Block week \(week + 1)")
+        }
+        if plan.checkIn { parts.append("Check-in") }
+        return parts.joined(separator: " · ")
+    }
+
+    /// "Barbell Bench Press, Barbell Row and 4 more · 19 sets".
+    static func contents(plan: SessionPlan, catalog: ExerciseCatalog) -> String {
+        let lifts = plan.items.filter(\.isStrength).filter { $0.block == .main || $0.block == .accessory }
+        let names = lifts.prefix(2).map { catalog.resolve($0.exerciseID).name }
+        let more = plan.items.count - names.count
+        let sets = plan.items.reduce(0) { $0 + $1.workSets.count }
+        var line = names.joined(separator: ", ")
+        if more > 0 { line += names.isEmpty ? "\(more) exercises" : " and \(more) more" }
+        return sets > 0 ? "\(line) · \(sets) sets" : line
+    }
+}
+
+/// The hero's own button: ink on the accent, the reverse of every other primary button.
+struct HeroButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(Color.accentColor)
+            .frame(minHeight: 52)
+            .background(Ink.onAccent, in: .rect(cornerRadius: 16, style: .continuous))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(.rect)
+            .hoverHighlight()
+    }
+}
+
+/// Four of the six scores, two by two, each a numeral over a thin ruler; the rest is on Progress.
+struct ScoresCard: View {
+    let lines: [StatLine]
+    let open: () -> Void
+
+    private static let shown: [StatKind] = [.strength, .endurance, .agility, .discipline]
+
+    var body: some View {
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Your scores").font(.headline).foregroundStyle(Ink.text)
+                    Spacer()
+                    Text("All progress").font(.caption).foregroundStyle(Ink.text2)
+                }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], alignment: .leading, spacing: 14) {
+                    ForEach(Self.shown, id: \.self) { stat in
+                        cell(stat, line: lines.first { $0.stat == stat })
+                    }
+                }
+            }
+            .card()
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityIdentifier("today.scores")
+    }
+
+    private func cell(_ stat: StatKind, line: StatLine?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(stat.label).font(.caption).foregroundStyle(Ink.text2)
+                Spacer()
+                if let line, let trend = TrendWord(line.trend) {
+                    Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
+                }
+            }
+            Text(line?.score.map(String.init) ?? "–").numeral(30).foregroundStyle(line?.score == nil ? Ink.text3 : Ink.text)
+            Ruler.thin(Double(line?.score ?? 0) / 100)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stat.label)
+        .accessibilityValue(line?.score.map { "\($0)" } ?? "Not measured yet")
+    }
+}
+
+/// A trend as a word: up, holding, slipping. Nothing until there's enough to say.
+struct TrendWord {
+    let text: String
+    let color: Color
+
+    init?(_ trend: Trajectory) {
+        switch trend {
+        case .ahead: (text, color) = ("rising", Ink.good)
+        case .onPace: (text, color) = ("on pace", Ink.good)
+        case .stalled: (text, color) = ("steady", Ink.text3)
+        case .regressing: (text, color) = ("slipping", Ink.ok)
+        case .notEnoughData: return nil
+        }
+    }
+}
+
+/// An eyebrow over a card of rows with hairlines between them.
+struct RowGroup<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 0) {
+                Group(subviews: content) { rows in
+                    ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                        if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                        row.padding(.vertical, 10).frame(minHeight: 44)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+        }
+    }
+}
+
+/// A next step as a row: what to do, what was seen, and a tap when the app can do it.
+struct ActionRow: View {
+    let action: NextAction
+    let actionable: Bool
+    let perform: () -> Void
+
+    var body: some View {
+        if actionable {
+            Button(action: perform) { content(chevron: true) }
+                .buttonStyle(.plain)
+                .hoverHighlight()
+                .accessibilityIdentifier("today.action\(action.kind.rawValue.identifierSuffix)")
+        } else {
+            content(chevron: false)
+        }
+    }
+
+    private func content(chevron: Bool) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(action.title).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
+                Text(action.action).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            if chevron { Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3) }
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(action.detail)
+    }
+}
+
+struct QuestLine: View {
+    let quest: Quest
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(quest.title).font(.body.weight(.semibold))
+                if !quest.detail.isEmpty { Text(quest.detail).font(.caption).foregroundStyle(Ink.text2) }
+            }
+            Spacer()
+            if let minutes = quest.minutes { Text("\(minutes) min").font(.caption.monospacedDigit()).foregroundStyle(Ink.text2) }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Steps so far against the day's aim, in a line.
+struct StepsLine: View {
+    let steps: StepAim
+
+    var body: some View {
+        let count = steps.today ?? 0
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Steps").font(.body.weight(.semibold))
+                    Spacer()
+                    Text("\(count.formatted()) of \(steps.aim.formatted())").font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
+                }
+                Ruler.thin(Double(count) / Double(max(1, steps.aim)), color: count >= steps.aim ? Ink.good : Ink.text2)
+            }
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// This week, for the strip on Today.
+struct WeekStripDay: Identifiable, Hashable {
+    let day: Day
+    let number: String
+    let trained: Bool
+    let planned: Bool
+    let isToday: Bool
+    var id: Day { day }
+}
+
+extension AppModel {
+    /// Monday to Sunday of this week: the days trained, and the training days from today on.
+    var weekStrip: [WeekStripDay] {
+        let monday = today.adding(days: 1 - today.weekday.rawValue)
+        let sunday = monday.adding(days: 6)
+        let trained = Set(sessions.lazy.map(\.day).filter { $0 >= monday && $0 <= sunday })
+        let training = Set(profile?.schedule.trainingDays ?? [])
+        return (0..<7).map { offset in
+            let day = monday.adding(days: offset)
+            let done = trained.contains(day)
+            return WeekStripDay(
+                day: day, number: Format.day(day, style: .dateTime.day()), trained: done,
+                planned: !done && day >= today && training.contains(day.weekday), isToday: day == today)
         }
     }
 }
@@ -217,9 +705,9 @@ struct SessionCard: View {
                 Text("~\(plan.estimatedMinutes) min").font(.headline).foregroundStyle(.secondary)
             }
             HStack(spacing: 6) {
-                if plan.assessment { Pill(text: "Assessment", symbol: "scope", color: .blue) }
-                if plan.deload { Pill(text: "Deload", symbol: "arrow.down.circle", color: .teal) }
-                if plan.checkIn { Pill(text: "Check-in", symbol: "checklist", color: .purple) }
+                if plan.assessment { Pill(text: "Assessment", symbol: "scope", color: .accentColor) }
+                if plan.deload { Pill(text: "Deload", symbol: "arrow.down.circle", color: .accentColor) }
+                if plan.checkIn { Pill(text: "Check-in", symbol: "checklist", color: .accentColor) }
                 if let week = plan.week, !plan.assessment { Pill(text: "Week \(week + 1)", color: .secondary) }
                 Pill(text: "\(next.doneThisWeek) of \(next.plannedThisWeek) this week", color: .secondary)
             }
@@ -315,15 +803,15 @@ struct AssessmentCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("Assessment", systemImage: "scope").font(.headline)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Assessment").font(.headline)
                 Spacer()
-                Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").font(.subheadline).foregroundStyle(.secondary)
+                Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
             }
-            ProgressView(value: status.complete ? 1 : status.progress)
-            Text("What we've learned").font(.subheadline.weight(.semibold))
+            Ruler(value: status.complete ? 1 : status.progress, height: 10, divisions: max(1, status.totalWeeks))
+            Text("What we've learned").eyebrow().padding(.top, 4)
             ForEach(Array(status.learned.enumerated()), id: \.offset) { _, line in
-                Label(line, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline)
+                Label(line, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline).foregroundStyle(Ink.text2)
             }
             if status.complete {
                 Text("Your first real block is ready to plan on the Plan tab.").font(.subheadline.weight(.semibold))
@@ -385,7 +873,7 @@ struct StepsCard: View {
             Chart {
                 ForEach(steps.week, id: \.day) { day in
                     BarMark(x: .value("Day", day.day.weekday.short), y: .value("Steps", day.steps))
-                        .foregroundStyle(day.steps >= steps.aim ? Color.indigo : Color.indigo.opacity(0.35))
+                        .foregroundStyle(day.steps >= steps.aim ? Color.accentColor : Ink.track)
                         .cornerRadius(4)
                 }
                 RuleMark(y: .value("Aim", steps.aim))
@@ -414,12 +902,12 @@ struct StepsCard: View {
                 Text("today").font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
                 if count >= steps.aim {
-                    Label("Aim reached", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(.green)
+                    Label("Aim reached", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Ink.good)
                 } else {
                     Text("\((steps.aim - count).formatted()) to go").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 }
             }
-            ProgressView(value: Double(min(count, steps.aim)), total: Double(steps.aim)).tint(.indigo)
+            Ruler(value: Double(count) / Double(max(1, steps.aim)), height: 10)
         }
     }
 
@@ -429,12 +917,12 @@ struct StepsCard: View {
             let average = Steps.round(recent, to: 100).formatted()
             if onTrack {
                 Label("\(average) a day over the last week: on track", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline).foregroundStyle(.green)
+                    .font(.subheadline).foregroundStyle(Ink.good)
             } else {
                 Label(
                     "\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill"
                 )
-                .font(.subheadline).foregroundStyle(.orange)
+                .font(.subheadline).foregroundStyle(Ink.ok)
             }
         } else {
             Label("Too few days with your phone or Watch to judge the week yet", systemImage: "questionmark.circle")
@@ -446,9 +934,19 @@ struct StepsCard: View {
 /// No step aim yet: Health isn't sharing steps, or hasn't a week of them to find the usual count.
 struct StepsWaitingCard: View {
     let connected: Bool
+    /// A row in a list rather than a card of its own.
+    var plain = false
     let connect: () -> Void
 
     var body: some View {
+        if plain {
+            content
+        } else {
+            content.card()
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Steps", systemImage: "figure.walk").font(.headline)
             if connected {
@@ -464,7 +962,6 @@ struct StepsWaitingCard: View {
                 Button("Connect Apple Health", action: connect).secondaryAction().controlSize(.small)
             }
         }
-        .card()
     }
 }
 

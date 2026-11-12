@@ -129,12 +129,12 @@ struct OnboardingView: View {
                 Label("Rate each set Easy, Just right or Missed. That's all.", systemImage: "hand.tap")
                 Label("The first weeks find your working weights and how well your ratings match what you can do.", systemImage: "scope")
                 Label("Then real blocks, built around your weakest lifts, your schedule and your recovery.", systemImage: "calendar")
-                Label("One-time purchase. No subscription. Your data stays yours.", systemImage: "lock.open")
+                Label("Free and open source. Your data stays yours.", systemImage: "lock.open")
             }
             .font(.body)
             if reusedProfile {
                 Label("Your setup from another app in the family is already here. Nothing to re-enter.", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Ink.good)
                     .card()
             }
         }
@@ -441,11 +441,11 @@ struct BirthYearField: View {
                 Spacer()
                 TextField(placeholder, value: $typed, format: .number.grouping(.never))
                     .fieldKeyboard(.number).multilineTextAlignment(.trailing).frame(width: 90)
-                    .foregroundStyle(invalid ? Color.red : Color.primary)
+                    .foregroundStyle(invalid ? Ink.bad : Color.primary)
                     .accessibilityLabel("Birth year")
             }
             if invalid {
-                Text("Enter the full year, \(String(range.lowerBound)) to \(String(range.upperBound)).").font(.caption).foregroundStyle(.red)
+                Text("Enter the full year, \(String(range.lowerBound)) to \(String(range.upperBound)).").font(.caption).foregroundStyle(Ink.bad)
             }
         }
         .onChange(of: typed) { _, value in year = value.flatMap { range.contains($0) ? $0 : nil } }

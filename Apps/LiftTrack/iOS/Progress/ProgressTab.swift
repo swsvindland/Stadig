@@ -1,5 +1,6 @@
 import Charts
 import ExerciseLibrary
+import HubEngine
 import LiftEngine
 import SwiftUI
 import SystemCore
@@ -24,22 +25,68 @@ struct ProgressTab: View {
             .accessibilityIdentifier("progress.screen")
             .background(.pageBackground)
             .navigationTitle("Progress")
+            #if os(iOS)
+            // The phone draws its own header over Your shape.
+            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            #endif
             .toolbar {
-                SettingsToolbarItem(identifier: "progress.settings")
+                if sizeClass.isWide { SettingsToolbarItem(identifier: "progress.settings") }
             }
             .sessionResumeToolbar()
         }
     }
 
-    /// The phone's single column, unchanged.
+    /// The phone's single column: Your shape, then each score's own card.
     private func column(_ analysis: LiftAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            StrengthCard(analysis: analysis)
-            LiftTrendCard(analysis: analysis)
-            DisciplineCard(score: analysis.discipline)
-            EnduranceCard(analysis: analysis.endurance)
-            AgilityCard(analysis: analysis.agility)
-            RatingsCard(trust: analysis.trust)
+        ScrollViewReader { proxy in
+            VStack(alignment: .leading, spacing: 16) {
+                header
+                YourShape(lines: model.stats, analysis: analysis) { stat in
+                    if stat == .physique {
+                        model.tab = .body
+                    } else {
+                        withAnimation { proxy.scrollTo(stat, anchor: .top) }
+                    }
+                }
+                StrengthCard(analysis: analysis).id(StatKind.strength)
+                LiftTrendCard(analysis: analysis)
+                DisciplineCard(score: analysis.discipline).id(StatKind.discipline)
+                EnduranceCard(analysis: analysis.endurance).id(StatKind.endurance)
+                AgilityCard(analysis: analysis.agility).id(StatKind.agility)
+                RatingsCard(trust: analysis.trust)
+                historyRow
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Progress").eyebrow()
+                Text("Your shape").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            Spacer()
+            #if !os(macOS)
+            Button {
+                model.showSettings = true
+            } label: {
+                CircleIcon(symbol: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .accessibilityIdentifier("progress.settings")
+            #endif
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+    }
+
+    private var historyRow: some View {
+        VStack(alignment: .leading, spacing: 0) {
             NavigationLink {
                 HistoryView()
             } label: {
@@ -49,13 +96,13 @@ struct ProgressTab: View {
             .hoverHighlight()
             .accessibilityIdentifier("progress.history")
         }
-        .padding()
-        .readableWidth()
     }
 
     /// The stats in a grid, and each lift's trend as a list beside a large chart.
     private func wide(_ analysis: LiftAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 16) {
+            YourShape(lines: model.stats, analysis: analysis, open: { stat in if stat == .physique { model.tab = .body } }, sideBySide: true)
+                .card(padding: 20)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 16, alignment: .top)], spacing: 16) {
                 StrengthCard(analysis: analysis)
                 DisciplineCard(score: analysis.discipline)
@@ -80,11 +127,10 @@ struct ProgressTab: View {
 
     private var historyLink: some View {
         HStack {
-            Label("History", systemImage: "clock.arrow.circlepath").font(.headline)
+            Text("History").font(.headline).foregroundStyle(Ink.text)
             Spacer()
-            Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(
-                .secondary)
-            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+            Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(Ink.text2)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
         }
         .card()
     }
@@ -126,7 +172,7 @@ struct LiftTrendsPanel: View {
                             Spacer()
                             if let change = lift.change {
                                 Text("\(change >= 0 ? "+" : "")\(Format.percent(change))").font(.caption.monospacedDigit())
-                                    .foregroundStyle(change > 0 ? .green : .secondary)
+                                    .foregroundStyle(change > 0 ? Ink.good : Ink.text2)
                             }
                         }
                         .tag(lift.id)
@@ -184,56 +230,230 @@ struct LiftTrendsPanel: View {
     }
 }
 
-/// Every lift category on one scale against bodyweight-relative standards; the weakest stands out.
+/// Strength: the overall score large on a ruler marked with the levels, how far to the next, and
+/// every lift on the same ruler, the weakest flagged.
 struct StrengthCard: View {
     @Environment(AppModel.self) private var model
     let analysis: LiftAnalysis
 
+    private static let levels = ["Beginner", "Novice", "Intermediate", "Advanced", "Elite"]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Label("Strength", systemImage: StatKind.strength.symbol).font(.headline).foregroundStyle(StatKind.strength.color)
-                Spacer()
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Strength").eyebrow()
                 if let overall = analysis.strength.overall {
-                    Text("\(Int(overall.rounded())) · \(StrengthStandards.level(for: overall))").font(.headline.monospacedDigit())
-                }
-            }
-            if analysis.strength.categories.isEmpty {
-                Text("Scores appear once the main lifts have working weights: usually in the first two weeks.").font(.subheadline).foregroundStyle(
-                    .secondary)
-            }
-            ForEach(StrengthCategory.allCases) { category in
-                if let score = analysis.strength[category] {
-                    let weakest = analysis.strength.weakest?.category == category
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(category.label).font(.subheadline.weight(weakest ? .semibold : .regular))
-                            if weakest { Pill(text: "Weakest", color: .orange) }
-                            Spacer()
-                            Text("\(Format.weight(score.oneRepMaxKg, unit: model.gym.unit)) est. · \(Int(score.score.rounded()))")
-                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                        }
-                        ScoreBar(score: score.score, color: .orange, highlight: weakest)
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(Int(overall.rounded()))").numeral(64, weight: .heavy).foregroundStyle(Ink.text)
+                        Text(StrengthStandards.level(for: overall)).font(.title3.weight(.bold)).foregroundStyle(Ink.text)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(category.label): score \(Int(score.score.rounded())), \(score.level)")
-                } else {
-                    HStack {
-                        Text(category.label).font(.subheadline).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Not scored yet").font(.caption).foregroundStyle(.tertiary)
+                    VStack(spacing: 6) {
+                        Ruler(value: overall / 100, height: 28, divisions: 5)
+                        // Each level's name under the line where it starts; the one reached in the text colour.
+                        GeometryReader { geometry in
+                            ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
+                                let reached = StrengthStandards.level(for: overall) == level
+                                let label = Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                                    .fixedSize()
+                                if index == Self.levels.count - 1 {
+                                    label.frame(width: geometry.size.width, alignment: .trailing)
+                                } else {
+                                    label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+                                }
+                            }
+                        }
+                        .frame(height: 13)
+                        .accessibilityHidden(true)
                     }
+                    if let next = nextLevel(overall) {
+                        Text(next).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Text("Scores appear once the main lifts have working weights: usually in the first two weeks.")
+                        .font(.subheadline).foregroundStyle(Ink.text2)
                 }
             }
-            if let first = analysis.strength.priorities.first {
-                Label(first.reason, systemImage: "arrow.up.right.circle").font(.footnote)
+            .card()
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("By lift").font(.headline).foregroundStyle(Ink.text)
+                    Spacer()
+                    Text("Score from your best estimated max").font(.caption).foregroundStyle(Ink.text2)
+                }
+                .padding(.bottom, 6)
+                ForEach(StrengthCategory.allCases) { category in
+                    liftRow(category)
+                }
+                Text(
+                    "Scored from estimated one-rep maxes against bodyweight-relative standards. Beginner 20 · novice 40 · intermediate 60 · advanced 80 · elite 100."
+                )
+                .font(.caption).foregroundStyle(Ink.text2)
+                .padding(.top, 8)
             }
-            Text(
-                "Scored from estimated one-rep maxes against bodyweight-relative standards. Beginner 20 · novice 40 · intermediate 60 · advanced 80 · elite 100."
-            )
-            .font(.caption).foregroundStyle(.secondary)
+            .card()
         }
-        .card()
+    }
+
+    @ViewBuilder
+    private func liftRow(_ category: StrengthCategory) -> some View {
+        if let score = analysis.strength[category] {
+            let weakest = analysis.strength.weakest?.category == category
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(category.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1).minimumScaleFactor(0.8)
+                    if weakest { Text("Weakest").font(.caption.weight(.semibold)).foregroundStyle(Ink.ok) }
+                }
+                .frame(width: 112, alignment: .leading)
+                Ruler(value: score.score / 100, color: weakest ? Ink.ok : .accentColor)
+                Text("\(Int(score.score.rounded()))").numeral(20).foregroundStyle(weakest ? Ink.ok : Ink.text).frame(width: 30, alignment: .trailing)
+            }
+            .frame(minHeight: weakest ? 44 : 34)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                "\(category.label): score \(Int(score.score.rounded())), \(score.level), \(Format.weight(score.oneRepMaxKg, unit: model.gym.unit)) estimated\(weakest ? ", weakest" : "")"
+            )
+        } else {
+            HStack {
+                Text(category.label).font(.subheadline).foregroundStyle(Ink.text2)
+                Spacer()
+                Text("Not scored yet").font(.caption).foregroundStyle(Ink.text3)
+            }
+            .frame(minHeight: 34)
+        }
+    }
+
+    /// "3 points to Intermediate. Overhead press gets you there fastest."
+    private func nextLevel(_ overall: Double) -> String? {
+        let target = (overall / 20).rounded(.down) * 20 + 20
+        guard target <= 100 else { return nil }
+        let points = max(1, Int((target - overall).rounded(.up)))
+        let name = StrengthStandards.level(for: target)
+        let fastest = analysis.strength.priorities.first?.reason ?? analysis.strength.weakest.map { "\($0.category.label) gets you there fastest." }
+        return "\(points) \(points == 1 ? "point" : "points") to \(name).\(fastest.map { " \($0)" } ?? "")"
+    }
+}
+
+/// The six scores as one figure, and each in a row: its number, the app that measures it, a line on
+/// what moves it, and its trend. A score Stadig Macro measures waits for it, said plainly.
+struct YourShape: View {
+    let lines: [StatLine]
+    let analysis: LiftAnalysis
+    let open: (StatKind) -> Void
+
+    private var macroSetUp: Bool { lines.contains { $0.apps.contains(.macroTrack) } }
+
+    /// The figure beside its rows rather than over them, where there's room.
+    var sideBySide = false
+
+    var body: some View {
+        let axes = ScoreShape.axes(lines)
+        let waiting = axes.contains { $0.score == nil && $0.stat == .vitality } && !macroSetUp
+        VStack(alignment: .leading, spacing: 10) {
+            Text(
+                waiting
+                    ? "Five scores so far. The sixth is measured by Stadig Macro."
+                    : "Six scores, one figure. It grows where you do the work."
+            )
+            .font(.subheadline).foregroundStyle(Ink.text2)
+            .padding(.horizontal, 4)
+            if sideBySide {
+                HStack(alignment: .center, spacing: 32) {
+                    figure(axes, waiting: waiting).frame(maxWidth: 400)
+                    rows.frame(maxWidth: 520)
+                }
+            } else {
+                figure(axes, waiting: waiting)
+                rows.padding(.top, 4)
+            }
+        }
+    }
+
+    private func figure(_ axes: [ScoreShape.Axis], waiting: Bool) -> some View {
+        VStack(spacing: 10) {
+            ScoreShape(axes: axes)
+                .frame(maxWidth: 380)
+                .frame(maxWidth: .infinity)
+            if waiting {
+                HStack(spacing: 6) {
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: 1))
+                        path.addLine(to: CGPoint(x: 16, y: 1))
+                    }
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                    .frame(width: 16, height: 2)
+                    Text("Waiting on Stadig Macro").font(.caption).foregroundStyle(Ink.text2)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(ScoreShape.order.enumerated()), id: \.element) { index, stat in
+                if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                row(stat, line: lines.first { $0.stat == stat })
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func row(_ stat: StatKind, line: StatLine?) -> some View {
+        let score = line?.score
+        let apps = line.map { $0.apps.isEmpty ? [$0.app] : $0.apps } ?? [.liftTrack]
+        return Button {
+            // Stadig Macro measures Vitality: nothing here to open until it's set up.
+            if score != nil || stat != .vitality { open(stat) }
+        } label: {
+            HStack(spacing: 12) {
+                Text(score.map(String.init) ?? "–").numeral(20).foregroundStyle(score == nil ? Ink.text3 : Ink.text)
+                    .frame(width: 40, alignment: .leading)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 7) {
+                        Text(stat.label).font(.body.weight(.semibold)).foregroundStyle(score == nil ? Ink.text2 : Ink.text)
+                        SourceChip(apps: apps)
+                    }
+                    Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if let line, score != nil, let trend = TrendWord(line.trend) {
+                    Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
+                }
+            }
+            .frame(minHeight: 54)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stat.label)
+        .accessibilityValue("\(score.map(String.init) ?? "Not measured yet"). \(caption(stat, line: line))")
+        .accessibilityIdentifier("progress.score\(stat.rawValue.identifierSuffix)")
+    }
+
+    /// One line on what moves the score, from what the app knows.
+    private func caption(_ stat: StatKind, line: StatLine?) -> String {
+        switch stat {
+        case .strength:
+            if let weakest = analysis.strength.weakest { return "\(weakest.category.label) is the limiter" }
+        case .agility:
+            if let limiter = analysis.agility.limiter { return "\(limiter.label) is the limiter" }
+        case .endurance:
+            if analysis.endurance.engineLagging { return "Under an hour of easy cardio a week" }
+            return "\(Int(analysis.endurance.weeklyConditioningMinutes)) min of cardio a week"
+        case .vitality:
+            if line?.score == nil, !macroSetUp { return "Measured by Stadig Macro. Also free." }
+        case .discipline:
+            if let line, line.score != nil, !macroSetUp { return "\(line.label). Nutrition joins with Stadig Macro" }
+        case .physique:
+            if line?.score == nil { return "Tape your waist on Body to measure it" }
+        default:
+            break
+        }
+        guard let line, line.isKnown else { return "Not measured yet" }
+        return line.label
     }
 }
 
@@ -267,8 +487,10 @@ struct LiftTrendCard: View {
                 Chart(points, id: \.day) { point in
                     LineMark(x: .value("Day", point.day.date()), y: .value("e1RM", model.gym.unit.fromKilograms(point.e1rm)))
                         .interpolationMethod(.monotone)
+                        .foregroundStyle(Color.accentColor)
                     PointMark(x: .value("Day", point.day.date()), y: .value("e1RM", model.gym.unit.fromKilograms(point.e1rm)))
                         .symbolSize(24)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel(model.gym.unit.symbol)
@@ -364,7 +586,7 @@ struct AgilityCard: View {
             HStack {
                 Label("Agility", systemImage: StatKind.agility.symbol).font(.headline).foregroundStyle(StatKind.agility.color)
                 Spacer()
-                if let limiter = analysis.limiter { Pill(text: "Limiter: \(limiter.label)", color: .teal) }
+                if let limiter = analysis.limiter { Pill(text: "Limiter: \(limiter.label)", color: Ink.ok) }
             }
             if analysis.latest.isEmpty {
                 Text("Five quick mobility tests set your limiter: the area every session works on for a few minutes.")
@@ -378,7 +600,7 @@ struct AgilityCard: View {
                             Spacer()
                             Text(Format.mobility(result.value, test)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
-                        ScoreBar(score: result.score * 1.2, color: .teal, highlight: analysis.limiterTest == test)
+                        ScoreBar(score: result.score, highlight: analysis.limiterTest == test)
                     }
                 }
             }

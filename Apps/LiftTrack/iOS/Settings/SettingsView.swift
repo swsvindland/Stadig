@@ -3,7 +3,6 @@ import HealthBridge
 import LiftEngine
 import SwiftUI
 import SystemCore
-import SystemPurchases
 import SystemStore
 import UniformTypeIdentifiers
 
@@ -146,14 +145,12 @@ struct TrainingSections: View {
     }
 }
 
-/// What the data sections ask to show over the whole form: the file picker for a restore, the
-/// paywall, and the message a backup or restore ends with. The form presents them, not a section:
+/// What the data sections ask to show over the whole form: the file picker for a restore and the
+/// message a backup or restore ends with. The form presents them, not a section:
 /// on a section of a lazy form a presentation is attached to each row, and goes when the rows
 /// scroll away.
 struct DataPrompts {
     var importing = false
-    /// From the form: Settings is a sheet already, and a second sheet from the root can't show over it.
-    var paywall = false
     var message: String?
     /// A backup or restore is running: it covers every record, photos included.
     var working = false
@@ -180,7 +177,6 @@ private struct DataPromptsPresenter: ViewModifier {
                     prompts.message = error.localizedDescription
                 }
             }
-            .sheet(isPresented: $prompts.paywall) { PaywallView() }
             .alert("Data", isPresented: Binding(get: { prompts.message != nil }, set: { if !$0 { prompts.message = nil } })) {
                 Button("OK") { prompts.message = nil }.accessibilityIdentifier("settings.messageOK")
             } message: {
@@ -200,7 +196,7 @@ private struct DataPromptsPresenter: ViewModifier {
     }
 }
 
-/// Export, backup and restore, the purchase, and what Stadig Lift is part of. What they show over
+/// Export, backup and restore, and what Stadig Lift is part of. What they show over
 /// the form is in `prompts`, which the form presents.
 struct DataSections: View {
     @Environment(AppModel.self) private var model
@@ -245,10 +241,9 @@ struct DataSections: View {
                 "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
             )
         }
-        PurchaseSection { prompts.paywall = true }
         Section {
             Text(
-                "Stadig Lift is one of the Stadig apps, with \(AppID.macroTrack.displayName) for nutrition. Each works on its own; together they share setup, life modes and deloads."
+                "Stadig Lift is one of the Stadig apps, with \(AppID.macroTrack.displayName) for nutrition. Both are free and open source. Each works on its own; together they share setup, life modes, deloads and your scores."
             )
             .font(.footnote).foregroundStyle(.secondary)
         }

@@ -307,7 +307,7 @@ struct InjuryOverrides: View {
                                 .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(out ? "Set aside" : "Allowed").font(.subheadline).foregroundStyle(out ? .orange : .green)
+                            Text(out ? "Set aside" : "Allowed").font(.subheadline).foregroundStyle(out ? Ink.ok : Ink.good)
                         }
                     }
                     .buttonStyle(.plain)
