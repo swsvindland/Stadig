@@ -259,10 +259,12 @@ struct TodayLogger: View {
         // not out below them.
         .background {
             VStack(spacing: 0) {
-                LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground], startPoint: .top, endPoint: .bottom).frame(height: 14)
+                // Long enough that a card going under fades out rather than being sliced at the label.
+                LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground.opacity(0.85), Ink.ground], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 40)
                 Ink.ground
             }
-            .padding(.top, -14)
+            .padding(.top, -40)
             .ignoresSafeArea(edges: .bottom)
         }
         .animation(.snappy(duration: 0.25), value: composer.matches)

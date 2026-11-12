@@ -8,6 +8,12 @@ Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries)
   - **Scores show a trend word (rising, on pace, steady, slipping), not a month's change:** nothing keeps a score's history yet, so "+2 this month" would have been made up. Open: keep score history so the design's deltas and August's outline can be real.
   - **Rest in the dock has no Undo** for the set just logged; the engine has none, and adding one wasn't for tonight.
   - **Onboarding ends "Free and open source. Your data stays yours."** where the offer was.
+  - **Stadig Macro on the iPhone: Today is the logger.** The day is a thread of what you ate under the kcal-left numeral, with "Usually around now" tiles and the composer at the foot; Your shape opens Progress; Plan and the wide Today are on rulers. Today's other cards (the phase note, actions, weigh-in, planned meals, supplements and the rest) sit below the thread. Not built: the Meal plan restyle; onboarding and Settings keep the system background.
+  - **Return logs the best match, with no confirm.** A bare number of 12 or less counts portions of a food that's counted (2 eggs); 5 or more is grams of a weighed one (chick 200). A weight typed for a food counted only in servings logs its usual amount. Undo stays on the fresh meal for 6 seconds.
+  - **Words that match nothing open the existing logger** with them typed in, rather than logging an estimate straight away as the prototype does: the describe path needs a review step today. Open: log those inline as estimates.
+  - **"Goes with" holds for 45 minutes after a meal; "What fits tonight" shows after 5 PM with at most 1,200 kcal left,** and only pairs of foods you've eaten together in the last 8 weeks.
+  - **The camera button opens the scanner (hold it for a photo); the microphone opens describe,** or the keyboard's dictation without Apple Intelligence.
+  - **Known rough edges:** "toast" finds melba toast first, the catalog's long USDA names truncate on the thread and tiles, and a fast ended by a meal isn't mentioned on Today.
   - **On Vision Pro words are white on the glass,** not the palette's greys, which vanished over a lit room.
 
 - **Both apps are free and open source.** On 2026-11-11 you said you'd make the apps free and open source. How that was done is mine to check:
