@@ -13,6 +13,7 @@ struct SessionScreen: View {
     @State private var swapping: SwapTarget?
     @State private var editing: SetTarget?
     @State private var confirmDiscard = false
+    @State private var about: ExerciseAbout?
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,8 @@ struct SessionScreen: View {
                 .sheet(isPresented: $showFeedback) { FeedbackSheet() }
                 .sheet(item: $swapping) { target in SwapSheet(index: target.index) }
                 .sheet(item: $editing) { target in EditSetSheet(itemIndex: target.item, setIndex: target.set) }
+                .sheet(item: $about) { target in ExerciseAboutSheet(exerciseID: target.id) }
+                .environment(\.showExercise, ShowExerciseAction { about = ExerciseAbout(id: $0) })
                 .confirmationDialog("Discard this session?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                     Button("Discard", role: .destructive) { model.discardLive() }
                         .accessibilityIdentifier("session.confirmDiscard")
@@ -114,6 +117,8 @@ struct SessionScreen: View {
     private func options(_ live: LiveSession) -> some View {
         if let index = live.current?.item {
             let item = live.items[index]
+            Button("About this exercise", systemImage: "info.circle") { about = ExerciseAbout(id: item.exerciseID) }
+                .accessibilityIdentifier("session.aboutExercise")
             if item.plan.isStrength {
                 Button("Swap exercise", systemImage: "arrow.triangle.2.circlepath") { swapping = SwapTarget(index: index) }
             }
@@ -238,6 +243,7 @@ struct SessionWorkspace: View {
 /// isn't done; supersets move whole.
 private struct SessionOutline: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.showExercise) private var showExercise
     let live: LiveSession
     @Binding var picked: LiveItem.ID?
     let swap: (Int) -> Void
@@ -283,6 +289,7 @@ private struct SessionOutline: View {
         if !item.isDone {
             Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } }
         }
+        Button("About This Exercise", systemImage: "info.circle") { showExercise?(item.exerciseID) }
     }
 }
 
@@ -347,6 +354,7 @@ struct SetTarget: Identifiable {
 /// One exercise: its sets, prescribed and logged, and why it's here.
 struct ItemCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.showExercise) private var showExercise
     let index: Int
     let item: LiveItem
     let current: Bool
@@ -384,6 +392,7 @@ struct ItemCard: View {
                         Button("Add a set", systemImage: "plus") { model.update { $0.addSet(item: index) } }
                     }
                     if !item.isDone { Button("Skip", systemImage: "forward") { model.update { $0.skip(item: index) } } }
+                    Button("About this exercise", systemImage: "info.circle") { showExercise?(item.exerciseID) }
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3)
                 }
@@ -654,5 +663,43 @@ struct RestPanel: View {
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             .accessibilityElement(children: .combine))
+    }
+}
+
+/// An exercise opened from the session's menus, by its id.
+struct ExerciseAbout: Identifiable {
+    let id: String
+}
+
+/// Opens an exercise's own page over the session, from any exercise's menu in it. Always equal to
+/// another: it only ever sets the session screen's own state, so a new copy changes nothing below.
+nonisolated struct ShowExerciseAction: Equatable {
+    let open: @MainActor (String) -> Void
+
+    @MainActor func callAsFunction(_ exerciseID: String) { open(exerciseID) }
+
+    static func == (_: ShowExerciseAction, _: ShowExerciseAction) -> Bool { true }
+}
+
+extension EnvironmentValues {
+    @Entry var showExercise: ShowExerciseAction? = nil
+}
+
+/// An exercise's own page over the session, closed to carry on; a substitute picked in it is pushed after it.
+struct ExerciseAboutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let exerciseID: String
+
+    var body: some View {
+        NavigationStack {
+            PushedExerciseDetail(exerciseID: exerciseID)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(role: .close) { dismiss() }
+                            .accessibilityIdentifier("library.close")
+                    }
+                }
+        }
+        .sheetFrame(minWidth: 560, idealWidth: 720, minHeight: 600, idealHeight: 760)
     }
 }

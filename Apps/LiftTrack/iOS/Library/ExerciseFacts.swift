@@ -27,13 +27,15 @@ nonisolated extension Exercise {
 /// pushed, and its default reps and rest. The Library's detail and the Program's inspector show it.
 struct ExerciseFacts: View {
     let exercise: Exercise
+    /// Off where the screen already shows the cue and the muscles above (the exercise's own page).
+    var showsCueAndMuscles = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if !exercise.cue.isEmpty {
+            if showsCueAndMuscles, !exercise.cue.isEmpty {
                 Label(exercise.cue, systemImage: "lightbulb").font(.subheadline)
             }
-            if !exercise.muscles.isEmpty {
+            if showsCueAndMuscles, !exercise.muscles.isEmpty {
                 fact("Muscles") {
                     FlowRow(
                         items: exercise.muscles.sorted { $0.weight > $1.weight }.map { share in

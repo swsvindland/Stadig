@@ -236,8 +236,6 @@ struct StrengthCard: View {
     @Environment(AppModel.self) private var model
     let analysis: LiftAnalysis
 
-    private static let levels = ["Beginner", "Novice", "Intermediate", "Advanced", "Elite"]
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 14) {
@@ -248,24 +246,7 @@ struct StrengthCard: View {
                         Text(StrengthStandards.level(for: overall)).font(.title3.weight(.bold)).foregroundStyle(Ink.text)
                     }
                     .accessibilityElement(children: .combine)
-                    VStack(spacing: 6) {
-                        Ruler(value: overall / 100, height: 28, divisions: 5)
-                        // Each level's name under the line where it starts; the one reached in the text colour.
-                        GeometryReader { geometry in
-                            ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
-                                let reached = StrengthStandards.level(for: overall) == level
-                                let label = Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
-                                    .fixedSize()
-                                if index == Self.levels.count - 1 {
-                                    label.frame(width: geometry.size.width, alignment: .trailing)
-                                } else {
-                                    label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
-                                }
-                            }
-                        }
-                        .frame(height: 13)
-                        .accessibilityHidden(true)
-                    }
+                    LevelRuler(score: overall)
                     if let next = nextLevel(overall) {
                         Text(next).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
                     }
@@ -768,5 +749,41 @@ struct SessionSetsList: View {
                 }
             }
         }
+    }
+}
+
+/// A strength score on the ruler in fifths, each level's name under the line where it starts and the
+/// one reached in the text colour. Progress's Strength and an exercise's own score use it.
+struct LevelRuler: View {
+    let score: Double
+    var height: CGFloat = 28
+
+    static let levels = ["Beginner", "Novice", "Intermediate", "Advanced", "Elite"]
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Ruler(value: score / 100, height: height, divisions: 5)
+            GeometryReader { geometry in
+                ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
+                    let reached = StrengthStandards.level(for: score) == level
+                    let label = Text(level).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                        .fixedSize()
+                    if index == Self.levels.count - 1 {
+                        label.frame(width: geometry.size.width, alignment: .trailing)
+                    } else {
+                        label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+                    }
+                }
+            }
+            .frame(height: 13)
+            .accessibilityHidden(true)
+        }
+    }
+
+    /// "7 to Intermediate": the points to the next level, or nil at Elite.
+    static func next(_ score: Double) -> String? {
+        let target = (score / 20).rounded(.down) * 20 + 20
+        guard target <= 100 else { return nil }
+        return "\(max(1, Int((target - score).rounded(.up)))) to \(StrengthStandards.level(for: target))"
     }
 }
