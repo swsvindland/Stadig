@@ -54,6 +54,12 @@ struct MacroTrackApp: App {
         }
         if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
         if launch.has("-stubDescribe") { SampleData.stubDescribe(model) }
+        // -prepCounter 6 opens counter mode on the meal plan (-seedMealPlan) at that step, run at the
+        // plan's pace so far, so its timers are part way.
+        if launch.has("-prepCounter"), let plan = model.mealPlan {
+            model.prepRun = PrepRun.underway(plan, at: launch.number(after: "-prepCounter") ?? 0, now: Date())
+            model.showPrepCounter = true
+        }
         #endif
         // From here on, off the main thread: launch and its seeds ran with the numbers ready.
         model.backgroundAnalysis = true

@@ -26,7 +26,11 @@ struct SampleWeekTests {
         }
         let guide = PrepGuide.make(for: plan)
         print("\nPrep: \(guide.minutes) min, \(guide.containers) containers")
-        for step in guide.steps { print("   \(step.minute)' (\(step.minutes)m\(step.handsOn ? "" : ", waiting")) \(step.title): \(step.detail)") }
+        for step in guide.steps {
+            print("   \(step.minute)' (\(step.minutes)m\(step.handsOn ? "" : ", waiting")) \(step.title): \(step.detail)")
+            let weigh = step.weigh.map { " · weigh \(Int($0.grams)) g \($0.name), \($0.form)" } ?? ""
+            print("      [\(step.label)]\(step.timer.map { " · timer \($0.name), \($0.place)" } ?? "")\(weigh) · finishes \(step.dishes.count)")
+        }
         for pack in guide.packing {
             print(
                 "   PACK \(pack.title) ×\(pack.servings): \(pack.contents.map { "\(Int($0.grams)) g \($0.name)" }.joined(separator: ", ")) | on the day: \(pack.onTheDay.map(\.name))"

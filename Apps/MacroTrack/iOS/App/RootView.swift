@@ -42,6 +42,10 @@ struct RootView: View {
         .sheet(isPresented: $model.showSupplements) {
             SupplementsView().macSheetSize(width: 520, height: 640)
         }
+        // Prep day at the counter, over everything (a large sheet on the Mac).
+        .cover(isPresented: $model.showPrepCounter) {
+            if let run = model.prepRun { PrepCounter(run: run) }
+        }
         #if !os(macOS)
         // The Mac's settings are a window of their own (⌘,).
         .sheet(isPresented: $model.showSettings) {
@@ -72,7 +76,7 @@ struct RootView: View {
             Tab("Today", systemImage: "fork.knife", value: AppTab.today) { TodayView() }
             Tab("Log", systemImage: "list.bullet.clipboard", value: AppTab.log) { LogTab() }
             if wide {
-                TabSection("Food") {
+                TabSection {
                     Tab("Foods", systemImage: "carrot", value: AppTab.foods) { FoodsView() }
                         .tabPlacement(.sidebarOnly)
                         .accessibilityIdentifier("sidebar.foods")
@@ -82,13 +86,17 @@ struct RootView: View {
                     Tab("Supplements", systemImage: "pills", value: AppTab.supplements) { SupplementsTab() }
                         .tabPlacement(.sidebarOnly)
                         .accessibilityIdentifier("sidebar.supplements")
+                } header: {
+                    TabSectionTitle("Food", systemImage: "basket")
                 }
-                TabSection("Review") {
+                TabSection {
                     Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView() }
                     Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) { ProgressTab() }
                     Tab("History", systemImage: "calendar", value: AppTab.history) { HistoryView() }
                         .tabPlacement(.sidebarOnly)
                         .accessibilityIdentifier("sidebar.history")
+                } header: {
+                    TabSectionTitle("Review", systemImage: "chart.bar.xaxis")
                 }
             } else {
                 Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView() }

@@ -11,6 +11,47 @@ public struct PrepStep: Hashable, Sendable, Identifiable {
     public var detail: String
     /// The cook is busy (chopping, stirring) rather than waiting on the oven or a pot.
     public var handsOn: Bool
+    /// A few words for a rail of steps: "Rice on", "Prep chicken", "Box it up".
+    public var label: String
+    /// What it's called while it cooks, and where, once it's on: a step that waits on the oven or a pot.
+    public var timer: PrepTimer?
+    /// What goes on the scale in this step, against what the plan asked for.
+    public var weigh: PrepWeigh?
+    /// The dishes (recipe ids) a part of is in once this step is done: a pot, a tray in the oven, a sauce.
+    public var dishes: [String]
+}
+
+/// A step that cooks by itself once it's on: its name on a timer and where it is.
+public struct PrepTimer: Hashable, Sendable {
+    /// "White rice", "Broccoli and green beans".
+    public var name: String
+    /// "Hob, lid on", "Oven, 220°C (425°F)".
+    public var place: String
+}
+
+/// A batch weighed before it cooks: what the plan asked for, raw or dry, for every dish it goes in.
+public struct PrepWeigh: Hashable, Sendable {
+    public var ingredientID: String
+    public var name: String
+    /// What's weighed: "dry" for a grain, "raw" for the rest.
+    public var form: String
+    /// Grams to weigh, as planned.
+    public var grams: Double
+    /// Water per gram dry, for a pot that absorbs it.
+    public var water: Double?
+    /// The dishes it goes in (recipe ids).
+    public var dishes: [String]
+
+    /// Whether a reading could be this batch: a quarter to four times the plan's amount. Anything
+    /// else is a slip of the finger (4120 for 412), not what the cook has.
+    public func accepts(_ reading: Double) -> Bool {
+        reading.isFinite && reading >= grams / 4 && reading <= grams * 4
+    }
+
+    /// Millilitres of water for what's on the scale, to the 50 ml the steps say.
+    public func water(for grams: Double) -> Int? {
+        water.map { Int((grams * $0 / 50).rounded() * 50) }
+    }
 }
 
 /// What goes in each container, and where it waits.
@@ -53,6 +94,9 @@ public struct PrepGuide: Hashable, Sendable {
         var minutes: Int
         /// Hands time to get it ready first: chopping, seasoning.
         var prep: Int
+        var label: String
+        var weigh: PrepWeigh?
+        var dishes: [String]
     }
 
     public static func make(for plan: MealPlan) -> PrepGuide {
@@ -60,7 +104,7 @@ public struct PrepGuide: Hashable, Sendable {
         var packing: [Packing] = []
         var containers = 0
         // Raw grams for each grain or pasta: one pot cooks it for every bowl it's in.
-        var pots: [(ingredient: Ingredient, raw: Double)] = []
+        var pots: [(ingredient: Ingredient, raw: Double, dishes: [String])] = []
 
         for recipe in plan.recipes where recipe.servings > 0 {
             let n = Double(recipe.servings)
@@ -84,6 +128,7 @@ public struct PrepGuide: Hashable, Sendable {
                     guard let ingredient = Library.ingredient(item.ingredientID) else { continue }
                     let raw = item.grams * n / ingredient.yield
                     let amount = Self.amount(raw, ingredient)
+                    let weigh = Self.weigh(ingredient, raw: raw, dishes: [recipe.id])
                     switch ingredient.cooking {
                     case .roast(let minutes):
                         let what = "\(amount) \(ingredient.name.lowercased())"
@@ -95,12 +140,13 @@ public struct PrepGuide: Hashable, Sendable {
                                 title: "Roast the \(ingredient.name.lowercased())",
                                 detail: "\(cut), toss with some of the olive oil and \(season), and spread on a tray. \(minutes) minutes at \(oven).",
                                 place: .tray(trays: max(1, Int((raw / trayGrams).rounded(.up)))), minutes: minutes,
-                                prep: ingredient.role == .protein ? 4 : 6))
+                                prep: ingredient.role == .protein ? 4 : 6, label: ingredient.short, weigh: weigh, dishes: [recipe.id]))
                     case .simmer, .boil:
                         if let i = pots.firstIndex(where: { $0.ingredient.id == ingredient.id }) {
                             pots[i].raw += raw
+                            pots[i].dishes.append(recipe.id)
                         } else {
-                            pots.append((ingredient, raw))
+                            pots.append((ingredient, raw, [recipe.id]))
                         }
                     case .pan(let minutes):
                         jobs.append(
@@ -108,20 +154,23 @@ public struct PrepGuide: Hashable, Sendable {
                                 title: "Cook the \(ingredient.name.lowercased())",
                                 detail:
                                     "Brown \(amount) \(ingredient.name.lowercased()) in a large pan with a little oil, \(minutes) minutes, then season with \(season).",
-                                place: .pan, minutes: minutes, prep: 1))
+                                place: .pan, minutes: minutes, prep: 1, label: "Brown the \(ingredient.short)", weigh: weigh,
+                                dishes: [recipe.id]))
                     case .bake, .none:
                         if ingredient.id == "black-beans" || ingredient.id == "chickpeas" {
                             jobs.append(
                                 Job(
                                     title: "Open the \(ingredient.short)", detail: "Drain and rinse \(amount) \(ingredient.short).",
-                                    place: .hands, minutes: 2, prep: 0))
+                                    place: .hands, minutes: 2, prep: 0, label: "Open the \(ingredient.short)", weigh: nil,
+                                    dishes: [recipe.id]))
                         } else if ingredient.role == .vegetable, profile?.sauce.contains(where: { $0.id == ingredient.id }) != true {
                             jobs.append(
                                 Job(
                                     title: "Wash the \(ingredient.short)",
                                     detail:
                                         "Wash \(amount) \(ingredient.name.lowercased()); pack it raw (it wilts into the warm food when reheated).",
-                                    place: .hands, minutes: 2, prep: 0))
+                                    place: .hands, minutes: 2, prep: 0, label: "Wash the \(ingredient.short)", weigh: weigh,
+                                    dishes: [recipe.id]))
                         }
                     }
                 }
@@ -133,7 +182,8 @@ public struct PrepGuide: Hashable, Sendable {
                         Job(
                             title: "Make the \(profile!.inSentence) sauce",
                             detail: step.replacingOccurrences(of: "{protein}", with: protein) + (sauce.isEmpty ? "" : " You need \(list(sauce))."),
-                            place: .hands, minutes: ["curry", "italian", "japanese-curry"].contains(profile!.id) ? 14 : 5, prep: 0))
+                            place: .hands, minutes: ["curry", "italian", "japanese-curry"].contains(profile!.id) ? 14 : 5, prep: 0,
+                            label: "\(profile!.name) sauce", weigh: nil, dishes: [recipe.id]))
                 }
             case .template:
                 guard let template = recipe.templateID.flatMap(Library.template) else { continue }
@@ -146,44 +196,66 @@ public struct PrepGuide: Hashable, Sendable {
                     .replacingOccurrences(of: "{perDay}", with: perDay == 1 ? "One" : "\(perDay)")
                 switch template.cooking {
                 case .bake(let minutes):
-                    jobs.append(Job(title: "Bake the \(template.name.lowercased())", detail: text, place: .bake, minutes: minutes, prep: 8))
+                    jobs.append(
+                        Job(
+                            title: "Bake the \(template.name.lowercased())", detail: text, place: .bake, minutes: minutes, prep: 8,
+                            label: template.name, weigh: nil, dishes: [recipe.id]))
                 case .boil(let minutes):
-                    jobs.append(Job(title: "Boil the eggs", detail: text, place: .stove, minutes: minutes + 5, prep: 1))
+                    jobs.append(
+                        Job(
+                            title: "Boil the eggs", detail: text, place: .stove, minutes: minutes + 5, prep: 1, label: "Eggs on", weigh: nil,
+                            dishes: [recipe.id]))
                 default:
                     jobs.append(
                         Job(
                             title: "Make the \(template.name.lowercased())", detail: text, place: .hands,
-                            minutes: 3 + recipe.servings, prep: 0))
+                            minutes: 3 + recipe.servings, prep: 0, label: template.name, weigh: nil, dishes: [recipe.id]))
                 }
             }
         }
-        jobs += pots.compactMap { potJob($0.ingredient, raw: $0.raw) }
+        jobs += pots.compactMap { potJob($0.ingredient, raw: $0.raw, dishes: $0.dishes) }
         var guide = schedule(jobs, containers: containers, plan: plan)
         guide.packing = packing
         return guide
     }
 
     /// One pot of a grain or pasta, for every bowl that uses it.
-    static func potJob(_ ingredient: Ingredient, raw: Double) -> Job? {
+    static func potJob(_ ingredient: Ingredient, raw: Double, dishes: [String]) -> Job? {
         let amount = Self.amount(raw, ingredient)
         let name = ingredient.name.lowercased()
+        var weigh = Self.weigh(ingredient, raw: raw, dishes: dishes)
+        let label = "\(ingredient.short.capitalizedFirst) on"
         switch ingredient.cooking {
         case .simmer(let minutes, let water):
-            let ml = (raw * water / 50).rounded() * 50
+            weigh?.water = water
+            let ml = weigh?.water(for: raw) ?? Int((raw * water / 50).rounded() * 50)
             return Job(
                 title: "Cook the \(name)",
                 detail:
-                    "Rinse \(amount) \(name); bring to a boil with \(Int(ml)) ml water and a pinch of salt, then cover and simmer on low for \(minutes) minutes. Rest 5 minutes and fluff.",
-                place: .stove, minutes: minutes + 5, prep: 2)
+                    "Rinse \(amount) \(name); bring to a boil with \(ml) ml water and a pinch of salt, then cover and simmer on low for \(minutes) minutes. Rest 5 minutes and fluff.",
+                place: .stove, minutes: minutes + 5, prep: 2, label: label, weigh: weigh, dishes: dishes)
         case .boil(let minutes):
             return Job(
                 title: "Boil the \(name)",
                 detail:
                     "Boil \(amount) \(name) in plenty of salted water for \(minutes) minutes, a minute less than the packet says (it softens as it sits). Drain and toss with a little oil.",
-                place: .stove, minutes: minutes + 8, prep: 1)
+                place: .stove, minutes: minutes + 8, prep: 1, label: label, weigh: weigh, dishes: dishes)
         default:
             return nil
         }
+    }
+
+    /// What to weigh for a batch: raw, or dry for a grain or pasta. Nothing for what's counted (cans,
+    /// eggs, a block of tofu), which the steps give as a count.
+    static func weigh(_ ingredient: Ingredient, raw: Double, dishes: [String]) -> PrepWeigh? {
+        if let unit = ingredient.unit, ["can", "egg", "block"].contains(unit.name) { return nil }
+        let dry: Bool
+        switch ingredient.cooking {
+        case .simmer, .boil: dry = true
+        default: dry = false
+        }
+        return PrepWeigh(
+            ingredientID: ingredient.id, name: ingredient.name, form: dry ? "dry" : "raw", grams: raw, water: nil, dishes: dishes)
     }
 
     /// Lays the jobs on a timeline: pots started first, the oven in rounds of two trays, hands
@@ -191,8 +263,14 @@ public struct PrepGuide: Hashable, Sendable {
     /// cooling and packing.
     static func schedule(_ jobs: [Job], containers: Int, plan: MealPlan) -> PrepGuide {
         var steps: [PrepStep] = []
-        func add(_ minute: Int, _ minutes: Int, _ title: String, _ detail: String, hands: Bool) {
-            steps.append(PrepStep(id: steps.count, minute: minute, minutes: minutes, title: title, detail: detail, handsOn: hands))
+        func add(
+            _ minute: Int, _ minutes: Int, _ title: String, _ detail: String, hands: Bool, label: String, timer: PrepTimer? = nil,
+            weigh: PrepWeigh? = nil, dishes: [String] = []
+        ) {
+            steps.append(
+                PrepStep(
+                    id: steps.count, minute: minute, minutes: minutes, title: title, detail: detail, handsOn: hands, label: label,
+                    timer: timer, weigh: weigh, dishes: dishes))
         }
         let roasts = jobs.filter { if case .tray = $0.place { true } else { false } }.sorted { $0.minutes > $1.minutes }
         let stove = jobs.filter { if case .stove = $0.place { true } else { false } }.sorted { $0.minutes > $1.minutes }
@@ -215,14 +293,21 @@ public struct PrepGuide: Hashable, Sendable {
         if jobs.contains(where: { if case .pan = $0.place { true } else { false } }) { gear.append("a large pan") }
         if !bakes.isEmpty { gear.append("a muffin tin") }
         let ovenNeeded = !roasts.isEmpty || !bakes.isEmpty
-        add(0, 3, "Set up", (ovenNeeded ? "Heat the oven to \(roasts.isEmpty ? gentleOven : oven). " : "") + "Get out \(list(gear)).", hands: true)
+        add(
+            0, 3, "Set up", (ovenNeeded ? "Heat the oven to \(roasts.isEmpty ? gentleOven : oven). " : "") + "Get out \(list(gear)).", hands: true,
+            label: ovenNeeded ? "Oven on" : "Set up")
         var hands = 3
         var ovenFree = roasts.isEmpty ? 10 : 12
         var stoveDone = 0
 
         // Long pots first: they look after themselves.
         for job in stove {
-            add(hands, job.minutes, job.title, job.detail, hands: false)
+            // A pot's name on its timer: "White rice", or "Eggs".
+            let name = job.weigh?.name ?? job.title.replacingOccurrences(of: "Boil the ", with: "").capitalizedFirst
+            let place = job.title.hasPrefix("Boil") ? "Hob, boiling" : "Hob, lid on"
+            add(
+                hands, job.minutes, job.title, job.detail, hands: false, label: job.label, timer: PrepTimer(name: name, place: place),
+                weigh: job.weigh, dishes: job.dishes)
             stoveDone = max(stoveDone, hands + job.prep + job.minutes)
             hands += job.prep + 1
         }
@@ -241,7 +326,9 @@ public struct PrepGuide: Hashable, Sendable {
             index += round.count
             for (i, job) in round where !prepared.contains(i) {
                 prepared.insert(i)
-                add(hands, job.prep, "Prep for the oven: \(job.title.replacingOccurrences(of: "Roast the ", with: ""))", job.detail, hands: true)
+                add(
+                    hands, job.prep, "Prep for the oven: \(job.title.replacingOccurrences(of: "Roast the ", with: ""))", job.detail, hands: true,
+                    label: "Prep \(job.label)", weigh: job.weigh)
                 hands += job.prep
             }
             let start = max(hands, ovenFree)
@@ -250,43 +337,48 @@ public struct PrepGuide: Hashable, Sendable {
             let unique = names.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
             let shorter = round.map(\.1).filter { $0.minutes < length }
                 .map { "Take the \($0.title.replacingOccurrences(of: "Roast the ", with: "")) out after \($0.minutes) minutes." }
+            let shorts = round.map(\.1.label).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+            let detail = (["\(length) minutes at \(oven); turn halfway."] + shorter).joined(separator: " ")
             add(
-                start, length, "Into the oven: \(list(unique))", (["\(length) minutes at \(oven); turn halfway."] + shorter).joined(separator: " "),
-                hands: false)
+                start, length, "Into the oven: \(list(unique))", detail, hands: false, label: "\(list(shorts).capitalizedFirst) in",
+                timer: PrepTimer(name: list(unique).capitalizedFirst, place: "Oven, \(oven)"),
+                dishes: round.flatMap(\.1.dishes).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } })
             ovenFree = start + length
             hands = start + 1
             // Hands jobs fill the wait.
             while let job = handsJobs.first, hands + job.minutes <= ovenFree + 3 {
                 handsJobs.removeFirst()
-                add(hands, job.minutes, job.title, job.detail, hands: true)
+                add(hands, job.minutes, job.title, job.detail, hands: true, label: job.label, weigh: job.weigh, dishes: job.dishes)
                 hands += job.minutes
             }
         }
         for job in handsJobs {
-            add(hands, job.minutes, job.title, job.detail, hands: true)
+            add(hands, job.minutes, job.title, job.detail, hands: true, label: job.label, weigh: job.weigh, dishes: job.dishes)
             hands += job.minutes
         }
         var end = max(hands, ovenFree, stoveDone)
         for job in bakes {
             hands = max(hands, roasts.isEmpty ? 0 : ovenFree - job.prep)
-            add(hands, job.prep, "Mix the \(job.title.replacingOccurrences(of: "Bake the ", with: ""))", job.detail, hands: true)
+            add(
+                hands, job.prep, "Mix the \(job.title.replacingOccurrences(of: "Bake the ", with: ""))", job.detail, hands: true,
+                label: "Mix the \(job.label.lowercased())")
             let start = max(hands + job.prep, ovenFree + (roasts.isEmpty ? 0 : 3))
             add(
                 start, job.minutes, job.title,
                 roasts.isEmpty
                     ? "\(job.minutes) minutes at \(gentleOven)."
-                    : "Turn the oven down to \(gentleOven); \(job.minutes) minutes.", hands: false)
+                    : "Turn the oven down to \(gentleOven); \(job.minutes) minutes.", hands: false, label: "\(job.label) in",
+                timer: PrepTimer(name: job.label, place: "Oven, \(gentleOven)"), dishes: job.dishes)
             hands = start + 1
             end = max(end, start + job.minutes)
         }
 
         add(
             end, 15, "Cool", "Spread rice and grains on a tray so they cool fast. Everything goes in the fridge within 2 hours of cooking.",
-            hands: false)
+            hands: false, label: "Cool", timer: PrepTimer(name: "Cooling", place: "On the counter"))
         let pack = 5 + (containers + 1) / 2
-        add(
-            end + 15, pack, "Pack \(containers) containers", "Divide each batch evenly: the container list below has each one's amounts.", hands: true
-        )
+        let packing = "Divide each batch evenly: the container list below has each one's amounts."
+        add(end + 15, pack, "Pack \(containers) containers", packing, hands: true, label: "Box it up")
         var store = ["Label each container with its day."]
         // Containers of one kind keep alike, so each kind gets one line.
         var kinds: [(title: String, fridge: Set<Day>, freezer: Set<Day>)] = []
@@ -308,7 +400,7 @@ public struct PrepGuide: Hashable, Sendable {
             store.append(line + ".")
         }
         if kinds.contains(where: { !$0.freezer.isEmpty }) { store.append("Each evening, move the next day's from the freezer to the fridge.") }
-        add(end + 15 + pack, 3, "Store", store.joined(separator: " "), hands: true)
+        add(end + 15 + pack, 3, "Store", store.joined(separator: " "), hands: true, label: "Store")
         return PrepGuide(
             steps: steps.sorted { $0.minute != $1.minute ? $0.minute < $1.minute : $0.id < $1.id }, minutes: end + 15 + pack + 3,
             containers: containers, packing: [])

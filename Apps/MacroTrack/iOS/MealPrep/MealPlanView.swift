@@ -94,6 +94,14 @@ struct MealPlanView: View {
             .navigationTitle("Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
             .inlineTitle()
             .toolbar {
+                // With room, counter mode is a button away wherever the prep list has scrolled to.
+                if sizeClass != .compact {
+                    ToolbarItem(placement: .barTrailing) {
+                        // Words, not a symbol: nothing says "counter mode" at a glance.
+                        Button(model.prepRun?.planID == plan.id ? "Back to Prep" : "Start Prep") { model.startPrep(plan) }
+                            .accessibilityIdentifier("mealPlan.counter")
+                    }
+                }
                 ToolbarItem(placement: .barTrailing) {
                     Menu {
                         Button("Other dishes", systemImage: "shuffle") { model.shuffleMealPlan(plan) }

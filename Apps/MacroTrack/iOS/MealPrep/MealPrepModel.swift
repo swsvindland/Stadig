@@ -92,6 +92,38 @@ extension AppModel {
         save(plan)
     }
 
+    // MARK: Prep day at the counter
+
+    /// Counter mode for a plan's prep day: the run under way for it, or a new one.
+    func startPrep(_ plan: MealPlan) {
+        if prepRun?.planID != plan.id { prepRun = PrepRun(plan: plan, now: Date()) }
+        showPrepCounter = true
+    }
+
+    /// The scale's readings into the plan, so the containers logged from it are what was cooked. Only
+    /// a dish as it was when prep started, or as these readings last left it: one swapped or replanned
+    /// since keeps what it has now.
+    func saveReadings(_ run: PrepRun) {
+        guard var plan = mealPlans.first(where: { $0.id == run.planID }) else { return }
+        let weighed = Dictionary(run.weighed.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let planned = Dictionary(run.planned.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let recipes = plan.recipes.map { recipe in
+            guard let new = weighed[recipe.id], recipe == planned[recipe.id] || recipe == run.saved[recipe.id] else { return recipe }
+            return new
+        }
+        guard recipes != plan.recipes else { return }
+        plan.recipes = recipes
+        run.saved = Dictionary(recipes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        save(plan)
+    }
+
+    /// The last step done: the readings kept, counter mode closed and the run over.
+    func finishPrep() {
+        if let prepRun { saveReadings(prepRun) }
+        showPrepCounter = false
+        prepRun = nil
+    }
+
     private func save(_ plan: MealPlan) {
         var plan = plan
         plan.updatedAt = Date()

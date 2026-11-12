@@ -237,6 +237,11 @@ final class AppModel {
     var showWeighIn = false
     /// The fast screen: start one, or follow the one running.
     var showFast = false
+    /// Prep day under way at the counter: kept while the app runs, so counter mode closed and opened
+    /// again carries on where it was, with its timers.
+    var prepRun: PrepRun?
+    /// Counter mode over everything, for the prep run.
+    var showPrepCounter = false
     /// The supplements screen: a sheet, or where the sidebar has it, that destination.
     var showSupplements: Bool {
         get { supplementsSheet }

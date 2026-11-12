@@ -78,8 +78,18 @@ struct MealPlanBoard<Request: View>: View {
         Section { Label("Groceries", systemImage: "cart").font(.title3.weight(.semibold)).listRowBackground(Color.clear) }
     }
 
+    /// Prep day's title, and counter mode: the steps one at a time, big, for the iPad on the counter.
     var prepHeader: some View {
-        Section { Label("Prep day", systemImage: "timer").font(.title3.weight(.semibold)).listRowBackground(Color.clear) }
+        Section {
+            HStack(spacing: 12) {
+                Label("Prep day", systemImage: "timer").font(.title3.weight(.semibold))
+                Spacer(minLength: 8)
+                Button(model.prepRun?.planID == plan.id ? "Back to prep" : "Start prep") { model.startPrep(plan) }
+                    .primaryAction()
+                    .accessibilityIdentifier("mealPlan.startCounter")
+            }
+            .listRowBackground(Color.clear)
+        }
     }
 
     var week: some View {
