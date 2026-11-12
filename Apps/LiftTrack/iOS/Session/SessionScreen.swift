@@ -216,6 +216,7 @@ struct SessionWorkspace: View {
                 KeyboardHints()
                     .padding(.bottom, 8)
             }
+            .background(.pageBackground)
         }
         // A container of its own: an identifier on a bare stack is given to every element in it,
         // over the logger's and the rest timer's own.
