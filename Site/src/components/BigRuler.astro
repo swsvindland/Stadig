@@ -1,0 +1,29 @@
+---
+// The giant 0–100 ruler the home page opens and closes on. With a value it reads like the apps'
+// gauges, filled to the score with a mark on it; without one it's empty, waiting for yours.
+import Ticks from "./Ticks.astro";
+import { levels as strengthLevels } from "../lib/ruler";
+interface Props {
+  value?: number;
+  segments?: 5 | 10;
+  /** Strength's levels under the numbers. */
+  levels?: boolean;
+}
+const { value, segments = 10, levels = true } = Astro.props;
+const step = 100 / segments;
+const nums = Array.from({ length: segments + 1 }, (_, i) => ({ n: i * step, odd: segments === 10 && i % 2 === 1 }));
+---
+<div class={`big${value === undefined ? " empty" : ""}`} aria-hidden="true">
+  <div class="bar">
+    {value !== undefined && <i class="f" style={`width:${value}%`}></i>}
+    <div class="segs">{Array.from({ length: segments }, () => <i></i>)}</div>
+  </div>
+  {value !== undefined && <i class="mark" style={`left:${value}%`}></i>}
+  <Ticks height={18} />
+  <div class="nums">{nums.map((x) => <span class={x.odd ? "odd" : undefined} style={`left:${x.n}%`}>{x.n}</span>)}</div>
+  {levels && (
+    <div class="levels">
+      {strengthLevels.map((l) => <span style={`left:${l.at}%`}><b class="lv-l">{l.long}</b><b class="lv-s">{l.short}</b></span>)}
+    </div>
+  )}
+</div>

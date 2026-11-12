@@ -1,0 +1,5 @@
+---
+import { tickPath } from "../lib/ruler";
+const { height = 12 } = Astro.props as { height?: number };
+---
+<svg class="ticks" viewBox="0 0 100 10" preserveAspectRatio="none" height={height} aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d={tickPath} stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" fill="none" /></svg>

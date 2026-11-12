@@ -1,7 +1,22 @@
 ---
+// The App Store button. Until an app has its App Store link (`appStoreUrl` in content/site.ts)
+// it says it's coming: elsewhere that's a link to the app's page, and on the app's own page it's
+// quiet text in the button's place.
 import type { App } from "../content/site";
-const { app, ghost = false } = Astro.props as { app: App; ghost?: boolean };
+import { buttonDot } from "../lib/ruler";
+interface Props {
+  app: App;
+  accent?: boolean;
+  here?: boolean;
+}
+const { app, accent = false, here = false } = Astro.props;
+const cls = (extra = "") => ["btn", accent && "accent", extra].filter(Boolean).join(" ");
+const dot = `background:${buttonDot[app.slug]}`;
 ---
-{app.appStoreUrl
-  ? <a class={`btn${ghost ? " ghost" : ""}`} href={app.appStoreUrl} rel="noopener">Get {app.name} on the App Store</a>
-  : <span class={`btn${ghost ? " ghost" : ""}`} aria-disabled="true" title="Not yet released">{app.name}: coming to the App Store</span>}
+{app.appStoreUrl ? (
+  <a class={cls()} href={app.appStoreUrl} rel="noopener">{!accent && <i style={dot}></i>}{app.name} on the App Store</a>
+) : here ? (
+  <span class={cls("soon")}><span class="soonlab">{app.name}<small>Coming to the App Store</small></span></span>
+) : (
+  <a class={cls("soon")} href={`/${app.slug}`}>{!accent && <i style={dot}></i>}<span class="soonlab">{app.name}<small>Coming to the App Store</small></span></a>
+)}

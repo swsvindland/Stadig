@@ -1,0 +1,22 @@
+---
+// A score read out: the giant numeral, its name and its trend word (the apps show "rising",
+// "steady" and so on, not a change, since they don't keep a score's history yet). `flip` puts the
+// label first on a phone, right-aligned against the numeral, as the hero does.
+interface Props {
+  value: number | string;
+  name: string;
+  trend?: string;
+  label: string;
+  flip?: boolean;
+  sm?: boolean;
+}
+const { value, name, trend, label, flip = false, sm = false } = Astro.props;
+---
+<div class={`read${flip ? " flip" : ""}`} role="img" aria-label={label}>
+  <span class={`giant${sm ? " sm" : ""}`}>{value}</span>
+  <div class="readlab">
+    <span class="readname">{name}</span>
+    {trend && <span class="delta">{trend}</span>}
+    <span class="fine"><slot /></span>
+  </div>
+</div>

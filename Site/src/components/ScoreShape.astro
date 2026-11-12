@@ -1,0 +1,59 @@
+---
+// Your shape: the six scores as one hexagon whose spokes are rulers, as both apps draw it
+// (docs/design.md). Clockwise from the top: Strength, Endurance, Agility, Vitality, Discipline,
+// Physique. Each corner takes the colour of the app that measures it.
+import type { Score } from "../content/site";
+const { scores } = Astro.props as { scores: Score[] };
+
+const R = 80;
+const at = (i: number, r: number) => {
+  const a = ((-90 + 60 * i) * Math.PI) / 180;
+  return [100 + Math.cos(a) * r, 100 + Math.sin(a) * r];
+};
+const f = (n: number) => n.toFixed(1);
+const poly = (rs: number[]) => rs.map((r, i) => at(i, r).map(f).join(",")).join(" ");
+const rings = [0.2, 0.4, 0.6, 0.8, 1].map((k) => poly(Array(6).fill(R * k)));
+const spokeTicks = scores.flatMap((_, i) => {
+  const a = ((-90 + 60 * i) * Math.PI) / 180;
+  const [px, py] = [-Math.sin(a), Math.cos(a)];
+  return Array.from({ length: 9 }, (_, k) => {
+    const [x, y] = at(i, (R * (k + 1)) / 10);
+    const h = (k + 1) % 2 === 0 ? 2.6 : 1.6;
+    return { x1: f(x - px * h), y1: f(y - py * h), x2: f(x + px * h), y2: f(y + py * h) };
+  });
+});
+const now = poly(scores.map((s) => (R * s.value) / 100));
+const colour = (s: Score) => (s.apps.length > 1 ? "var(--text)" : `var(--${s.apps[0]})`);
+// Label anchors, placed by hand clear of the figure.
+const labels = [
+  { x: 100, y: 5.2, anchor: "middle", nameAbove: true },
+  { x: 180.4, y: 56.6, anchor: "start" },
+  { x: 180.4, y: 149.4, anchor: "start" },
+  { x: 100, y: 202.8, anchor: "middle" },
+  { x: 19.6, y: 149.4, anchor: "end" },
+  { x: 19.6, y: 56.6, anchor: "end" },
+];
+const label = `Your shape, sample scores: ${scores.map((s) => `${s.name} ${s.value}`).join(", ")}.`;
+---
+<svg viewBox="-28 -14 256 228" role="img" aria-label={label}>
+  {rings.map((p, i) => <polygon points={p} fill="none" stroke="var(--hair)" stroke-width={i === 4 ? 1.4 : 0.8} />)}
+  {scores.map((_, i) => {
+    const [x, y] = at(i, R);
+    return <line x1="100" y1="100" x2={f(x)} y2={f(y)} stroke="var(--hair)" stroke-width=".8" />;
+  })}
+  {spokeTicks.map((t) => <line {...t} stroke="var(--text3)" stroke-width=".7" />)}
+  <polygon points={now} fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" />
+  {scores.map((s, i) => {
+    const [x, y] = at(i, (R * s.value) / 100);
+    return <circle cx={f(x)} cy={f(y)} r="3.4" fill={colour(s)} stroke="var(--bg)" stroke-width="1.5" />;
+  })}
+  {scores.map((s, i) => {
+    const l = labels[i];
+    return (
+      <g text-anchor={l.anchor}>
+        <text x={l.x} y={l.y} font-size="15" font-weight="760" fill="var(--text)" letter-spacing="-.5">{s.value}</text>
+        <text x={l.x} y={l.nameAbove ? l.y - 17 : l.y + 10} font-size="6.6" font-weight="650" fill="var(--text3)" letter-spacing=".5">{s.name.toUpperCase()}</text>
+      </g>
+    );
+  })}
+</svg>

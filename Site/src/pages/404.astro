@@ -1,6 +1,22 @@
 ---
 import Base from "../layouts/Base.astro";
+import Rule from "../components/Rule.astro";
+import BigRuler from "../components/BigRuler.astro";
+import { apps } from "../content/site";
 ---
 <Base title="Not found" description="That page doesn't exist.">
-  <section class="wrap"><h1>Nothing here.</h1><p class="lede">The page you wanted doesn't exist. <a href="/">Back to the start.</a></p></section>
+  <section class="wrap page" aria-labelledby="nf-title">
+    <Rule label="404" />
+    <div class="intro">
+      <h1 class="h1" id="nf-title">Off the scale.</h1>
+      <div class="stack">
+        <p class="lede">The page you wanted doesn't exist. Start again from the beginning, or go straight to an app.</p>
+        <div class="cta">
+          <a class="btn" href="/">Back to the start</a>
+          {apps.map((a) => <a class="more" href={`/${a.slug}`}>{a.name} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>)}
+        </div>
+      </div>
+    </div>
+    <BigRuler levels={false} />
+  </section>
 </Base>

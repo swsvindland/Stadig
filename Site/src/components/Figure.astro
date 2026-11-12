@@ -1,0 +1,30 @@
+---
+// A real screen from the app, in a plain device edge, with its caption.
+import { phoneSize, watchSize, type Figure } from "../content/site";
+interface Props {
+  fig: Figure;
+  big?: boolean;
+  low?: boolean;
+  eager?: boolean;
+}
+const { fig, big = false, low = false, eager = false } = Astro.props;
+const loading = eager ? "eager" : "lazy";
+const cls = ["fig", big && "big-fig", low && "low"].filter(Boolean).join(" ");
+---
+<figure class={cls}>
+  {fig.phone && (
+    <div class="dev">
+      <img class="screen" src={fig.phone.src} alt={fig.phone.alt} width={phoneSize.width} height={phoneSize.height} loading={loading} decoding="async" fetchpriority={eager ? "high" : undefined} />
+    </div>
+  )}
+  {fig.watch && (
+    <div class="wrist">
+      {fig.watch.map((w) => (
+        <div class="dev">
+          <img class="watch" src={w.src} alt={w.alt} width={watchSize.width} height={watchSize.height} loading={loading} decoding="async" />
+        </div>
+      ))}
+    </div>
+  )}
+  <figcaption><span class="figl">{fig.label}</span><span class="figt">{fig.caption}</span></figcaption>
+</figure>

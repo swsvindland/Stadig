@@ -1,0 +1,55 @@
+---
+// "Free. All of it.": nothing to pay, and everything that's included, as one full ruler.
+// The open-source line and the link to the source go here once the repository is public and
+// licensed (see brand.free in content/site.ts).
+import Rule from "./Rule.astro";
+import Reading from "./Reading.astro";
+interface Props {
+  aside?: string;
+  lede: string;
+  title: string;
+  items: { name: string; apps?: ("lift" | "macro")[] }[];
+  legend?: boolean;
+}
+const { aside, lede, title, items, legend = false } = Astro.props;
+---
+<section class="wrap sec" id="free" aria-labelledby="free-title">
+  <Rule label="Free" aside={aside} />
+  <div class="freehead">
+    <Reading value="0" name="to pay" label="What it costs: nothing">No price, no tiers, nothing to unlock.</Reading>
+    <div class="headone">
+      <h2 class="h2" id="free-title"><span class="block">Free.</span><span class="block">All of it.</span></h2>
+      <p class="lede">{lede}</p>
+    </div>
+  </div>
+  <div class="all">
+    <div class="rulerow">
+      <span class="eye">{title}</span>
+      {legend && (
+        <span class="legend" aria-hidden="true"><span><i style="background:var(--lift)"></i>Stadig Lift</span><span><i style="background:var(--macro)"></i>Stadig Macro</span></span>
+      )}
+    </div>
+    <div class="allbar" aria-hidden="true">{items.map(() => <i></i>)}</div>
+    <ul class="alllabels" style={`--n:${items.length}`}>
+      {items.map((it) => (
+        <li>
+          {it.apps && (
+            <span class="dots" aria-hidden="true">{it.apps.map((a) => <i style={`background:var(--${a})`}></i>)}</span>
+          )}
+          <span>{it.name}{it.apps && <span class="sr"> ({it.apps.map((a) => (a === "lift" ? "Stadig Lift" : "Stadig Macro")).join(" and ")})</span>}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+  <div class="two">
+    <div class="kv">
+      <span class="eye">Your data</span>
+      <p class="lede">No account. It stays on your devices and in your own iCloud.</p>
+    </div>
+    <div class="kv">
+      <span class="eye">Every device</span>
+      <p class="lede">iPhone, iPad, Mac and Apple Vision Pro, with an Apple Watch app. iCloud keeps them in step.</p>
+    </div>
+  </div>
+  <slot />
+</section>
