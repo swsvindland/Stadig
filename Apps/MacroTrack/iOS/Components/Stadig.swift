@@ -326,6 +326,8 @@ struct ScoreShape: View {
             Text(axis.stat.label).eyebrow()
         }
         .fixedSize()
+        // The corners sit in a fixed ring around the figure: past this they'd run off its card.
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     private func dotColor(_ apps: [AppID]) -> Color {
