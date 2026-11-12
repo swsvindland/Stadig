@@ -146,10 +146,11 @@ struct SetView: View {
                         select(.load)
                         nudge(direction == .increment ? 1 : -1)
                     }
-                Text("×")
-                    .font(.system(size: 26, weight: .semibold))
+                // A carry's load is held for its seconds, not multiplied by them.
+                Text(seconds == nil ? "×" : "for")
+                    .font(.system(size: seconds == nil ? 26 : 15, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.top, 14)
+                    .padding(.top, seconds == nil ? 14 : 22)
                     .accessibilityHidden(true)
             }
             if let seconds {
@@ -198,6 +199,8 @@ struct SetView: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .contentShape(.rect)
+        // One element, the number and its unit together, for the label and actions put on it.
+        .accessibilityElement(children: .ignore)
     }
 
     private var crownUpperBound: Double {

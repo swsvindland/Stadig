@@ -126,7 +126,7 @@ struct HeatOnPhoneView: View {
             VStack(spacing: 8) {
                 Image(systemName: "thermometer.sun.fill")
                     .font(.title2)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(WatchInk.ok)
                     .accessibilityHidden(true)
                 Text(model.exercise(item).name)
                     .font(.headline)
@@ -153,7 +153,7 @@ struct NoticeRow: View {
                 .font(.footnote.weight(.semibold))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .glassEffect(.regular.tint(.green.opacity(0.35)), in: .capsule)
+                .glassEffect(.regular.tint(WatchInk.good.opacity(0.35)), in: .capsule)
                 .transition(.opacity)
         }
     }

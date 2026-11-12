@@ -29,7 +29,7 @@ struct CompanionView: View {
         VStack(spacing: 6) {
             if let bpm = model.workout.heartRate {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Image(systemName: "heart.fill").foregroundStyle(.red).symbolEffect(.pulse)
+                    Image(systemName: "heart.fill").foregroundStyle(WatchInk.bad).symbolEffect(.pulse)
                     Text("\(Int(bpm))").font(.system(size: 48, weight: .semibold, design: .rounded).monospacedDigit())
                 }
                 Text("Zone \(zones.zone(for: bpm))").font(.headline).foregroundStyle(.secondary)

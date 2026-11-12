@@ -62,9 +62,9 @@ struct ConditioningView: View {
             VStack(spacing: 4) {
                 Text(timerInterval: started...started.addingTimeInterval(24 * 3600), countsDown: false)
                     .font(.system(.title, design: .rounded).weight(.semibold).monospacedDigit())
-                    .foregroundStyle(elapsed >= target ? .green : .primary)
+                    .foregroundStyle(elapsed >= target ? WatchInk.good : .primary)
                 ProgressView(value: min(1, elapsed / target))
-                    .tint(.green)
+                    .tint(elapsed >= target ? WatchInk.good : Color.accentColor)
                     .accessibilityHidden(true)
                 Text("of \(plan.minutes) min")
                     .font(.caption2)
@@ -75,7 +75,7 @@ struct ConditioningView: View {
                         systemImage: phase.work ? "flame.fill" : "wind"
                     )
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(phase.work ? .orange : .blue)
+                    .foregroundStyle(phase.work ? WatchInk.ok : Color.accentColor)
                 }
             }
             .accessibilityElement(children: .combine)
