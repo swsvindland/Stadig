@@ -64,27 +64,35 @@ final class RestAlerts {
         Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
     }
 
+    /// The notification centre's calls, in order and off the main thread. Removing a request waits on
+    /// the centre's one connection, behind a permission prompt still being asked: on the main thread
+    /// that froze the app, and before its first frame the prompt never showed to be answered.
+    private let queue = DispatchQueue(label: "dev.svindland.stadig.lift.rest-alerts")
+
     func schedule(for rest: RestState?, catalog: ExerciseCatalog, session: LiveSession) {
         // Never asked under tests, so nothing to show.
         guard !LaunchOptions.current.isQuiet else { return }
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard let rest, rest.endsAt > Date() else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Rest's up"
-        if let current = session.current {
-            let item = session.items[current.item]
-            content.body = "Next: \(catalog.resolve(item.exerciseID).name)"
+        let id = id
+        let endsAt = rest.map(\.endsAt)
+        let next = session.current.map { catalog.resolve(session.items[$0.item].exerciseID).name }
+        queue.async {
+            let center = UNUserNotificationCenter.current()
+            center.removePendingNotificationRequests(withIdentifiers: [id])
+            guard let endsAt, endsAt > Date() else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Rest's up"
+            if let next { content.body = "Next: \(next)" }
+            content.sound = .default
+            content.interruptionLevel = .timeSensitive
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, endsAt.timeIntervalSinceNow), repeats: false)
+            center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }
-        content.sound = .default
-        content.interruptionLevel = .timeSensitive
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, rest.endsAt.timeIntervalSinceNow), repeats: false)
-        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
     func cancel() {
         guard !LaunchOptions.current.isQuiet else { return }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        let id = id
+        queue.async { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id]) }
     }
 
     /// Heart rate came back down before the timer: rest's over now, with a tap to say so.
@@ -93,11 +101,14 @@ final class RestAlerts {
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         #endif
-        let content = UNMutableNotificationContent()
-        content.title = "Heart rate's back down"
-        content.body = "Ready for the next set."
-        content.sound = .default
-        content.interruptionLevel = .timeSensitive
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+        let id = id
+        queue.async {
+            let content = UNMutableNotificationContent()
+            content.title = "Heart rate's back down"
+            content.body = "Ready for the next set."
+            content.sound = .default
+            content.interruptionLevel = .timeSensitive
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+        }
     }
 }
