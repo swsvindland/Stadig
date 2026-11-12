@@ -208,6 +208,13 @@ final class TodayComposer {
         log(earlier.compactMap(\.entry) + [LogAgain.copy(tile.template, to: Date())], unmatched: earlier.compactMap(\.unmatched), model: model)
     }
 
+    /// A tile on its own, leaving what's typed as it is: on the Mac its key logs it mid-word, when
+    /// the tiles are in sight while a food is typed.
+    func logAlone(_ tile: LogAgainItem) {
+        guard let model, !submitting else { return }
+        model.log([LogAgain.copy(tile.template, to: Date())])
+    }
+
     /// Logs `entries` now, and `unmatched` words as estimates after them (or in the logger). The
     /// field clears for the next food (keeping what wasn't logged). Typed on while Return's foods
     /// were found, it keeps what came after: left whole, a second Return would log them again.

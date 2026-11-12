@@ -183,8 +183,10 @@ struct TodayLogger: View {
         .onTapGesture { if typing { typing = false } }
     }
 
+    var eyebrow: String { Self.eyebrow(model) }
+
     /// "Wed, Nov 11 · Cut, week 1 of 4": the day, and where the plan is.
-    var eyebrow: String {
+    static func eyebrow(_ model: AppModel) -> String {
         let day = Format.day(model.today)
         guard let analysis = model.analysis else { return day }
         switch analysis.targets.mode {
@@ -500,7 +502,7 @@ private struct TypingHeader: View {
 // MARK: - Thread
 
 /// A meal's time, its calories, and Undo while it's fresh.
-private struct ThreadHeader: View {
+struct ThreadHeader: View {
     let moment: Moment
     let fresh: Bool
     let undo: () -> Void
