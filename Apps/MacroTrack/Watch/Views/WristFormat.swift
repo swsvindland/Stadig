@@ -52,9 +52,10 @@ enum WristFormat {
 
 /// One colour per macro, as on the phone.
 enum MacroColor {
+    // The phone's palette in dark mode, which the Watch always is.
     static let kcal = Color.accentColor
-    static let protein = Color.pink
-    static let carbs = Color.blue
-    static let fat = Color.orange
-    static let water = Color.cyan
+    static let protein = Color(red: 1, green: 0x7A / 255, blue: 0x70 / 255)
+    static let carbs = Color(red: 0x5A / 255, green: 0xA9 / 255, blue: 1)
+    static let fat = Color(red: 0xF5 / 255, green: 0xB5 / 255, blue: 0x44 / 255)
+    static let water = Color.accentColor
 }

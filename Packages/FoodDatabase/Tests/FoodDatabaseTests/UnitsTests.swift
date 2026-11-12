@@ -85,6 +85,10 @@ struct UnitsTests {
         #expect(suggested(tenders) == ["g", "28.35"])
         // A label ounce of 28 g is still one ounce.
         #expect(suggested(Self.with([("1 oz (28 g)", 28)])) == ["oz", "1"])
+        // USDA's "NLEA serving" is a serving: "1 serving · 126 g", not "1 nlea serving".
+        let banana = Self.with([("1 NLEA serving", 126), ("1 medium (7\" to 7-7/8\" long)", 118), ("10 crackers (1 NLEA serving)", 32)])
+        #expect(FoodUnits.entryLabel(for: banana, count: 1, unit: try unit(banana, "portion:0")) == "1 serving · 126 g")
+        #expect(!labels(banana).contains { $0.contains("nlea") })
     }
 
     @Test("a packaged food can always be logged by the serving its label prints")

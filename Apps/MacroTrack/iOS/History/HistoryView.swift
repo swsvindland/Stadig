@@ -200,8 +200,8 @@ private struct OverTargetCell: View {
 
     var color: Color {
         switch row.hit {
-        case true?: .green
-        case false?: .orange
+        case true?: Ink.good
+        case false?: Ink.ok
         case nil: .secondary
         }
     }
@@ -235,9 +235,9 @@ extension HistoryStatus {
 
     var color: Color {
         switch self {
-        case .complete: .green
-        case .fasting: .teal
-        case .partial: .orange
+        case .complete: Ink.good
+        case .fasting: Color.accentColor
+        case .partial: Ink.ok
         case .unknown, .inProgress: .secondary
         }
     }

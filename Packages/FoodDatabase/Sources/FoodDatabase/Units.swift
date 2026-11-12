@@ -340,7 +340,7 @@ func parsePortion(_ portion: Portion) -> (count: Double, name: String, perUnit: 
     let text = match?[2] ?? portion.label
     // "1 roll 1 serving" and "1 cup, chopped (1/2\" pieces)" are a "roll" and a "cup".
     let stop = nameEnd.first(in: text)?.range.lowerBound ?? text.endIndex
-    var name = text[..<stop].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    var name = withoutNLEA(text[..<stop].trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
     // Some packaged-food portions are only a weight ("1 151.0g"), which names no unit.
     guard !name.isEmpty, !(name.unicodeScalars.first.map(isDigit) ?? false), count > 0, portion.amount > 0 else { return nil }
     if count > 1 && measureKey(name) == nil { name = singular(name) }
@@ -350,7 +350,13 @@ func parsePortion(_ portion: Portion) -> (count: Double, name: String, perUnit: 
 /// A portion's words after its count, as its own unit's label: "cup, sliced".
 private func fullName(_ portion: Portion) -> String {
     let rest = leadingCountOnly.replacing(in: portion.label, with: "")
-    return String(rest.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().prefix(32))
+    return String(withoutNLEA(rest.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()).prefix(32))
+}
+
+/// USDA's "NLEA serving" is the serving a US label prints (the Nutrition Labeling and Education
+/// Act's): to anyone logging a banana it's a serving.
+private func withoutNLEA(_ name: String) -> String {
+    name.replacingOccurrences(of: "nlea ", with: "")
 }
 
 /// The units a food can be logged in, and the unit each of its portions is offered as (nil when it

@@ -2,7 +2,7 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Today's clock, for people who turned meal timing on: the running fast as a ring toward its
+/// Today's clock, for people who turned meal timing on: the running fast on a ruler toward its
 /// goal with its phase, or the time since the last meal against the 3–5 hour band, with the night's
 /// fast below it.
 struct MealTimingSection: View {
@@ -33,7 +33,8 @@ struct MealTimingSection: View {
     }
 }
 
-/// The running fast: a ring toward the goal, how long, the phase and what comes next.
+/// The running fast: how long as the numeral over a ruler toward the goal, the phase and what
+/// comes next.
 struct FastRow: View {
     @Environment(AppModel.self) private var model
     let status: FastStatus
@@ -42,26 +43,25 @@ struct FastRow: View {
         TimelineView(.periodic(from: status.fast.start, by: 60)) { context in
             let now = Fasting.status(status.fast, now: context.date)
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        ProgressRing(value: now.hours, target: status.fast.goalHours, color: .teal, lineWidth: 11)
-                        VStack(spacing: 0) {
-                            Text(Format.duration(now.elapsed)).font(.headline.monospacedDigit()).minimumScaleFactor(0.6)
-                            Text("of \(Format.goal(status.fast.goalHours))").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 6)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(Format.duration(now.elapsed)).numeral(34).foregroundStyle(Ink.text)
+                        Text("of \(Format.goal(status.fast.goalHours))").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2)
+                        Spacer(minLength: 0)
+                        if now.goalReached { Pill(text: "Goal reached", symbol: "checkmark", color: Ink.good) }
                     }
-                    .frame(width: 96, height: 96)
+                    Ruler(value: now.hours / max(1, status.fast.goalHours), height: 12)
                     VStack(alignment: .leading, spacing: 4) {
-                        Label(now.phase.title, systemImage: now.phase.symbol).font(.subheadline.weight(.semibold)).foregroundStyle(.teal)
-                        Text(now.phase.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Label(now.phase.title, systemImage: now.phase.symbol).font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                        Text(now.phase.detail).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                             .lineLimit(4)
-                        if now.goalReached {
-                            Pill(text: "Goal reached", symbol: "checkmark", color: .green)
-                        } else if let next = now.phase.next, let at = now.nextPhaseAt, at < status.fast.goalEnd.addingTimeInterval(1) {
+                        if !now.goalReached, let next = now.phase.next, let at = now.nextPhaseAt, at < status.fast.goalEnd.addingTimeInterval(1) {
                             Text("\(next.title) from \(Format.moment(at, now: context.date))").font(.caption.weight(.medium))
-                        } else {
+                                .foregroundStyle(Ink.text)
+                        } else if !now.goalReached {
                             Text("Goal at \(Format.moment(status.fast.goalEnd, now: context.date))").font(.caption.weight(.medium))
+                                .foregroundStyle(Ink.text)
                         }
                     }
                 }
@@ -69,7 +69,7 @@ struct FastRow: View {
                 .accessibilityIdentifier("today.fast")
                 HStack(spacing: 8) {
                     Button("End fast") { model.endFast() }
-                        .buttonStyle(.borderedProminent).tint(.teal).buttonBorderShape(.capsule)
+                        .buttonStyle(.borderedProminent).buttonBorderShape(.capsule)
                         .accessibilityIdentifier("today.endFast")
                     Button("Details") { model.showFast = true }
                         .buttonStyle(.bordered).buttonBorderShape(.capsule)
@@ -94,25 +94,23 @@ struct SinceLastMealRow: View {
                 TimelineView(.periodic(from: lastMeal.end, by: 60)) { context in
                     let elapsed = context.date.timeIntervalSince(lastMeal.end)
                     let band = GapBand.of(elapsed)
-                    HStack(spacing: 12) {
-                        ProgressRing(value: elapsed / 3600, target: 5, color: band.color, lineWidth: 5)
-                            .frame(width: 34, height: 34)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(Format.duration(elapsed)) since your last \(elapsed >= Self.unconfirmed ? "logged " : "")meal")
-                                .font(.subheadline.weight(.semibold).monospacedDigit())
-                            Text(caption(elapsed, band: band)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
+                    // The time since against five hours, the top of the band, on a thin ruler.
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(Format.duration(elapsed)) since your last \(elapsed >= Self.unconfirmed ? "logged " : "")meal")
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                        Ruler.thin(elapsed / (5 * 3600), color: band.barColor)
+                        Text(caption(elapsed, band: band)).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("today.sinceLastMeal")
                 }
             } else {
-                Image(systemName: "timer").foregroundStyle(.teal).frame(width: 34)
-                Text("Log a meal and the time since it shows here.").font(.subheadline).foregroundStyle(.secondary)
+                Image(systemName: "timer").foregroundStyle(Ink.text2).frame(width: 34)
+                Text("Log a meal and the time since it shows here.").font(.subheadline).foregroundStyle(Ink.text2)
             }
             Spacer(minLength: 4)
             Button("Start fast") { model.showFast = true }
-                .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.teal).font(.subheadline)
+                .buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)
                 .fixedSize()
                 .accessibilityLabel("Start a fast")
                 .accessibilityIdentifier("today.startFast")
@@ -143,13 +141,13 @@ struct OvernightLine: View {
             Text("Overnight fast \(Format.duration(gap.duration)) · \(Format.moment(gap.from, now: gap.to)) to \(Format.time(gap.to))")
                 .font(.subheadline)
         } icon: {
-            Image(systemName: "moon.stars").foregroundStyle(.indigo)
+            Image(systemName: "moon.stars").foregroundStyle(Ink.text2)
         }
         .accessibilityIdentifier("today.overnight")
     }
 }
 
-/// "+3 h 20 m" on the hour a meal starts in, coloured by its band: grazing in orange, 3–5 hours in
+/// "+3 h 20 m" on the hour a meal starts in, coloured by its band: grazing in amber, 3–5 hours in
 /// green.
 struct GapBadge: View {
     let gap: MealGap
@@ -169,19 +167,19 @@ struct GapBadge: View {
 extension GapBand {
     var color: Color {
         switch self {
-        case .close: .orange
-        case .short, .long: .secondary
-        case .spaced: .green
+        case .close: Ink.ok
+        case .short, .long: Ink.text2
+        case .spaced: Ink.good
         }
     }
 
     /// The same, solid enough to fill a bar.
     var barColor: Color {
         switch self {
-        case .close: .orange
-        case .short: .gray.opacity(0.45)
-        case .spaced: .green
-        case .long: .gray.opacity(0.7)
+        case .close: Ink.ok
+        case .short: Ink.text3.opacity(0.6)
+        case .spaced: Ink.good
+        case .long: Ink.text3
         }
     }
 }

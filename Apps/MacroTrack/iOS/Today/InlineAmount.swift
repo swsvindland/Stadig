@@ -15,6 +15,8 @@ struct InlineAmount: View {
     let more: (FoodEntry) -> Void
     @State private var draft = AmountDraft()
     @State private var count = 0.0
+    /// The amount as it opened, read the way its unit is measured: moving off it is what saves.
+    @State private var start = 0.0
     @State private var opened = false
 
     var body: some View {
@@ -56,7 +58,8 @@ struct InlineAmount: View {
                 slider(unit)
                 HStack(spacing: 6) {
                     ForEach(choices(unit), id: \.self) { value in
-                        Button(AmountChoices.label(value, unit: unit)) { set(value, unit: unit) }
+                        // The chip's own amount, not snapped to the ± step: "45 g" sets 45 g.
+                        Button(AmountChoices.label(value, unit: unit)) { set(value, unit: unit, snapped: false) }
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(abs(value - count) < 1e-9 ? Ink.ground : Ink.text)
                             .padding(.horizontal, 10)
@@ -88,11 +91,16 @@ struct InlineAmount: View {
             guard !opened else { return }
             opened = true
             draft = model.draft(for: .edit(entry))
-            count = draft.amount.count ?? 1
+            // "90 g" as the thread says it, not the 89.53 g half a cup came to.
+            let logged = draft.amount.count ?? 1
+            let measured = draft.amount.unit.map { FoodUnits.convert(logged, from: $0, to: $0) } ?? logged
+            start = measured.isFinite ? measured : logged
+            count = start
         }
         // Closed by tapping another food or the field: what was set is saved all the same.
         .onDisappear(perform: save)
-        .sensoryFeedback(.selection, trigger: count)
+        // A tick per step, not for the amount arriving as it opens.
+        .sensoryFeedback(.selection, trigger: count) { old, _ in old != 0 }
     }
 
     func step(_ label: String, _ symbol: String, _ by: Double, unit: PortionUnit) -> some View {
@@ -138,10 +146,10 @@ struct InlineAmount: View {
         AmountChoices.quick(base: draft.amount.count ?? 1, unit: unit)
     }
 
-    /// Snapped to the unit's step, never below one step.
-    func set(_ value: Double, unit: PortionUnit) {
+    /// Snapped to the unit's step, never below one step; a chip's amount as it is.
+    func set(_ value: Double, unit: PortionUnit, snapped: Bool = true) {
         let step = FoodUnits.step(for: unit)
-        withAnimation(.snappy(duration: 0.2)) { count = max(step, (value / step).rounded() * step) }
+        withAnimation(.snappy(duration: 0.2)) { count = snapped ? max(step, (value / step).rounded() * step) : value }
     }
 
     func finish() {
@@ -151,12 +159,11 @@ struct InlineAmount: View {
 
     /// Once, and only if the amount moved.
     func save() {
-        guard opened, let unit = draft.amount.unit, abs(count - (draft.amount.count ?? count)) > 1e-9,
-            let current = model.current(entry)
-        else { return }
+        guard opened, let unit = draft.amount.unit, abs(count - start) > 1e-9, let current = model.current(entry) else { return }
         let changed = model.rescaled(current, food: draft.food, unit: unit, count: count)
         model.update([changed], message: "Changed \(FoodLabel.short(entry.name)) to \(FoodUnits.label(count: count, unit: unit))")
         draft = model.draft(for: .edit(changed))
+        start = count
     }
 
     func delete() {

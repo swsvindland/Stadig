@@ -33,11 +33,15 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            if shows(.general) { general }
-            if shows(.intelligence) { intelligence }
-            if shows(.health) { health }
-            if shows(.data) { data }
+            Group {
+                if shows(.general) { general }
+                if shows(.intelligence) { intelligence }
+                if shows(.health) { health }
+                if shows(.data) { data }
+            }
+            .inkRows()
         }
+        .inkForm()
         .navigationTitle("Settings")
         .inlineTitle()
         .toolbar {

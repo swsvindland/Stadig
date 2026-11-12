@@ -137,6 +137,13 @@ public enum AddFoodText {
                 continue
             }
             if let value = number(piece) {
+                // "1 1/2 cups": a whole number and the fraction after it are one amount, as "1½" is.
+                if value < 1, piece.contains("/") || piece.last.map({ fractionGlyphs[$0] != nil }) == true,
+                    case .number(let whole)? = tokens.last, whole == whole.rounded(), position > 0, number(raws[position - 1]) != nil
+                {
+                    tokens[tokens.count - 1] = .number(whole + value)
+                    continue
+                }
                 tokens.append(.number(value))
                 continue
             }

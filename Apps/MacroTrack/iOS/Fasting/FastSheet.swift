@@ -12,14 +12,18 @@ struct FastSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let status = model.analysis?.fast {
-                    RunningFast(status: status)
-                } else {
-                    NewFast(close: { dismiss() })
+                Group {
+                    if let status = model.analysis?.fast {
+                        RunningFast(status: status)
+                    } else {
+                        NewFast(close: { dismiss() })
+                    }
+                    PhasesSection(hours: model.analysis?.fast?.hours)
+                    PastFastsSection()
                 }
-                PhasesSection(hours: model.analysis?.fast?.hours)
-                PastFastsSection()
+                .inkRows()
             }
+            .inkForm()
             .navigationTitle(model.analysis?.fast == nil ? "Start a Fast" : "Fasting")
             .inlineTitle()
             .toolbar {
@@ -144,19 +148,17 @@ private struct RunningFast: View {
         Section {
             TimelineView(.periodic(from: status.fast.start, by: 60)) { context in
                 let now = Fasting.status(status.fast, now: context.date)
-                HStack(spacing: 16) {
-                    ProgressRing(value: now.hours, target: status.fast.goalHours, color: .teal, lineWidth: 10)
-                        .frame(width: 64, height: 64)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(Format.duration(now.elapsed)).font(.title2.weight(.bold).monospacedDigit())
-                        Text(
-                            now.goalReached
-                                ? "Goal of \(Format.goal(status.fast.goalHours)) reached"
-                                : "\(Format.duration(now.remaining)) to \(Format.goal(status.fast.goalHours))"
-                        )
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(Format.duration(now.elapsed)).numeral(44).foregroundStyle(Ink.text)
+                    Ruler(value: now.hours / max(1, status.fast.goalHours), height: 14)
+                    Text(
+                        now.goalReached
+                            ? "Goal of \(Format.goal(status.fast.goalHours)) reached"
+                            : "\(Format.duration(now.remaining)) to \(Format.goal(status.fast.goalHours))"
+                    )
+                    .font(.subheadline).foregroundStyle(Ink.text2)
                 }
+                .padding(.vertical, 4)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("fast.elapsed")
             }
@@ -214,7 +216,7 @@ private struct PhasesSection: View {
                 let passed = hours.map { FastPhase.at(hours: $0) > phase } ?? false
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: passed ? "checkmark.circle.fill" : phase.symbol)
-                        .foregroundStyle(current || passed ? .teal : .secondary)
+                        .foregroundStyle(current || passed ? Color.accentColor : Ink.text3)
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(alignment: .firstTextBaseline) {
@@ -226,7 +228,7 @@ private struct PhasesSection: View {
                     }
                 }
                 .padding(.vertical, 2)
-                .listRowBackground(current ? Color.teal.opacity(0.12) : nil)
+                .listRowBackground(current ? Color.accentColor.opacity(0.12) : Color.cardBackground)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("fast.phase.\(phase.rawValue)")
             }
@@ -250,7 +252,7 @@ private struct PastFastsSection: View {
                     let hours = run.duration(at: run.end ?? Date()) / 3600
                     HStack {
                         Image(systemName: hours >= run.fast.goalHours ? "checkmark.circle.fill" : "circle.dashed")
-                            .foregroundStyle(hours >= run.fast.goalHours ? .green : .secondary)
+                            .foregroundStyle(hours >= run.fast.goalHours ? Ink.good : Ink.text3)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(Format.duration(hours * 3600)) of \(Format.goal(run.fast.goalHours))").font(.subheadline.weight(.semibold))
                             Text(Format.moment(run.fast.start)).font(.caption).foregroundStyle(.secondary)

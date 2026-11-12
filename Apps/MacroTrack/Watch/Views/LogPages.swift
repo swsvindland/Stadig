@@ -174,20 +174,23 @@ struct WaterPage: View {
         let ounces = model.units.weight == .lb
         ScrollView {
             VStack(spacing: 8) {
-                ZStack {
-                    Ring(fraction: min(1, water.fraction), color: MacroColor.water, lineWidth: 10)
-                    VStack(spacing: -2) {
-                        Text(WristFormat.volume(water.total, ounces: ounces))
-                            .font(.system(.title3, design: .rounded).weight(.bold).monospacedDigit())
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-                        Text("of \(WristFormat.volume(water.target, ounces: ounces))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Water today")
+                        .font(.caption2.weight(.semibold))
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+                        .foregroundStyle(.tint)
+                    Text(WristFormat.volume(water.total, ounces: ounces))
+                        .font(.system(size: 34, weight: .bold).monospacedDigit())
+                        .tracking(-1)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    WristRuler(fraction: water.fraction, color: MacroColor.water)
+                    Text("of \(WristFormat.volume(water.target, ounces: ounces))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .frame(width: 96, height: 96)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(
                     "\(WristFormat.volume(water.total, ounces: ounces)) of \(WristFormat.volume(water.target, ounces: ounces)) to drink today"

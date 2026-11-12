@@ -178,10 +178,10 @@ private struct MealCell: View {
                 if let recipe { Text(Format.kcal(recipe.nutrients.kcal)).font(.caption2.monospacedDigit()).foregroundStyle(.secondary) }
                 Spacer(minLength: 0)
                 if meal.storage == .freezer {
-                    Image(systemName: "snowflake").font(.caption2).foregroundStyle(.cyan).accessibilityLabel("Frozen")
+                    Image(systemName: "snowflake").font(.caption2).foregroundStyle(Ink.carbs).accessibilityLabel("Frozen")
                 }
                 if logged {
-                    Image(systemName: "checkmark.circle.fill").font(.caption).foregroundStyle(.green).accessibilityLabel("Logged")
+                    Image(systemName: "checkmark.circle.fill").font(.caption).foregroundStyle(Ink.good).accessibilityLabel("Logged")
                 }
             }
         }

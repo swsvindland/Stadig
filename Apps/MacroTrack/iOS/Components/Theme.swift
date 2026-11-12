@@ -122,34 +122,6 @@ struct SectionHeader: View {
     }
 }
 
-/// A ring that fills toward a target; past the target it keeps its colour, never alarming red.
-struct ProgressRing: View {
-    let value: Double
-    let target: Double?
-    var color: Color = .accentColor
-    var lineWidth: CGFloat = 14
-
-    var fraction: Double { target.map { $0 > 0 ? value / $0 : 0 } ?? 0 }
-
-    var body: some View {
-        ZStack {
-            Circle().stroke(color.opacity(0.16), lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: min(1, fraction))
-                .stroke(color.gradient, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if fraction > 1 {
-                Circle()
-                    .trim(from: 0, to: min(1, fraction - 1))
-                    .stroke(color.opacity(0.55), style: StrokeStyle(lineWidth: lineWidth * 0.45, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-            }
-        }
-        .animation(.snappy, value: fraction)
-        .accessibilityHidden(true)
-    }
-}
-
 /// One macro as a labelled thin ruler: eaten of target.
 struct MacroBar: View {
     let macro: Macro
@@ -258,7 +230,7 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: toast.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(toast.failed ? Color.orange : .green)
+                .foregroundStyle(toast.failed ? Ink.ok : Ink.good)
             Text(toast.message).font(.subheadline.weight(.medium)).lineLimit(2)
                 .accessibilityIdentifier("toast.message")
             Spacer(minLength: 4)

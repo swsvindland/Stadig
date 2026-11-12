@@ -22,33 +22,9 @@ struct SupplementsList: View {
 
     var body: some View {
         List {
-            if model.supplements.isEmpty {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your supplements").font(.headline)
-                        Text(
-                            "Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Keep the camera on the Supplement Facts and it's read as you move. Then say when you take it."
-                        )
-                        .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.vertical, 4)
-                    addButtons
-                }
-            } else {
-                Section {
-                    ForEach(model.activeSupplements) { row($0) }
-                } footer: {
-                    Text(
-                        "Doses you tick off on Today add their vitamins, minerals and caffeine to your day. Skipped or unmarked doses count for nothing."
-                    )
-                }
-                let paused = model.supplements.filter(\.paused)
-                if !paused.isEmpty {
-                    Section("Paused") { ForEach(paused) { row($0) } }
-                }
-                RemindersSection()
-            }
+            Group { content }.inkRows()
         }
+        .inkForm()
         .navigationTitle("Supplements")
         .inlineTitle()
         .toolbar {
@@ -70,6 +46,36 @@ struct SupplementsList: View {
         }
         // A supplement added: back to the list, where it now is.
         .onChange(of: model.supplements.count) { adding = nil }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if model.supplements.isEmpty {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your supplements").font(.headline)
+                    Text(
+                        "Scan a bottle's barcode and its label comes from the NIH's database of US supplement labels. Not there? Keep the camera on the Supplement Facts and it's read as you move. Then say when you take it."
+                    )
+                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 4)
+                addButtons
+            }
+        } else {
+            Section {
+                ForEach(model.activeSupplements) { row($0) }
+            } footer: {
+                Text(
+                    "Doses you tick off on Today add their vitamins, minerals and caffeine to your day. Skipped or unmarked doses count for nothing."
+                )
+            }
+            let paused = model.supplements.filter(\.paused)
+            if !paused.isEmpty {
+                Section("Paused") { ForEach(paused) { row($0) } }
+            }
+            RemindersSection()
+        }
     }
 
     @ViewBuilder

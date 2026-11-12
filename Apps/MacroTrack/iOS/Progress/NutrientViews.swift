@@ -25,8 +25,8 @@ extension Format {
 extension NutrientReading.Status {
     var color: Color {
         switch self {
-        case .low, .high: .orange
-        case .ok: .green
+        case .low, .high: Ink.ok
+        case .ok: Ink.good
         case .unknown: .secondary
         }
     }

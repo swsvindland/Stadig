@@ -384,6 +384,11 @@ struct DaySummaryLine: View {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                if !allMacros, let kcal = targets?.kcal, kcal > 0 {
+                    // The day's calories on the one gauge, as Today has them; with carbs and fat
+                    // shown, each macro has its own below.
+                    Ruler.thin(counted.kcal / kcal)
+                }
                 if allMacros {
                     HStack(spacing: 10) {
                         MacroBar(macro: .protein, eaten: counted.protein, target: targets?.protein)

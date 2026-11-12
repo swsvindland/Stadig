@@ -55,7 +55,7 @@ struct SupplementsSection: View {
                 }
                 ForEach(extras) { log in
                     HStack(spacing: 12) {
-                        Image(systemName: "plus.circle.fill").foregroundStyle(.green).frame(width: 24)
+                        Image(systemName: "plus.circle.fill").foregroundStyle(Color.accentColor).frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(log.name).font(.subheadline)
                             Text("Extra · \(log.amountLabel) · \(Format.time(log.date))").font(.caption).foregroundStyle(.secondary)
@@ -99,7 +99,7 @@ struct SupplementsSection: View {
         let taken = doses.filter(\.taken).count
         let skipped = doses.count - taken
         return HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).font(.title3).frame(width: 24)
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor).font(.title3).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(skipped == 0 ? "All \(taken) taken" : "\(taken) taken, \(skipped) skipped").font(.subheadline.weight(.semibold))
                 Text(Set(doses.map(\.supplement.name)).sorted().joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -150,7 +150,7 @@ private struct DoseRow: View {
             HStack(spacing: 12) {
                 Image(systemName: dose.taken ? "checkmark.circle.fill" : (dose.skipped ? "minus.circle" : "circle"))
                     .font(.title3)
-                    .foregroundStyle(dose.taken ? Color.green : Color.secondary)
+                    .foregroundStyle(dose.taken ? Color.accentColor : Ink.text3)
                     .frame(width: 24)
                     .contentTransition(.symbolEffect(.replace))
                 VStack(alignment: .leading, spacing: 2) {
@@ -170,7 +170,7 @@ private struct DoseRow: View {
             if dose.skipped {
                 Button("Unskip", systemImage: "arrow.uturn.backward") { model.untake(dose) }
             } else {
-                Button("Skip", systemImage: "minus.circle") { model.skip(dose, on: day) }.tint(.orange)
+                Button("Skip", systemImage: "minus.circle") { model.skip(dose, on: day) }.tint(Ink.ok)
             }
         }
         .contextMenu {

@@ -183,23 +183,32 @@ struct LevelFace: View {
     }
 }
 
-/// A ring filled to its fraction; an empty track when the day has no target for it.
-struct Ring: View {
+/// The phone's ruler on the wrist: a fill on a track, ticked every tenth so it reads as an
+/// instrument. An empty track when there's nothing to fill toward.
+struct WristRuler: View {
     let fraction: Double?
-    let color: Color
-    let lineWidth: CGFloat
+    var color: Color = .accentColor
+    var height: CGFloat = 10
 
     var body: some View {
-        ZStack {
-            Circle().stroke(color.opacity(0.25), lineWidth: lineWidth)
-            if let fraction {
-                Circle()
-                    .trim(from: 0, to: max(0.001, fraction))
-                    .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 0.4), value: fraction)
+        let value = min(1, max(0, fraction ?? 0))
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.white.opacity(0.16))
+                RoundedRectangle(cornerRadius: 3, style: .continuous).fill(color)
+                    .frame(width: value > 0 ? max(height * 0.5, width * value) : 0)
+                Path { path in
+                    for index in 1..<10 {
+                        let x = (width * Double(index) / 10).rounded()
+                        path.addRect(CGRect(x: x - 0.75, y: 0, width: 1.5, height: height))
+                    }
+                }
+                .fill(Color.black.opacity(0.55))
             }
         }
+        .frame(height: height)
+        .animation(.easeOut(duration: 0.4), value: value)
         .accessibilityHidden(true)
     }
 }

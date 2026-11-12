@@ -44,17 +44,19 @@ struct BarcodeLogView: View {
             } else if LiveLabelScanner.isAvailable && scanning {
                 LiveLabelScanner(kind: .food, lookup: lookup) { outcome in finish(outcome) }
                     .id(scanID)
-                    .overlay(alignment: .topLeading) {
-                        Menu {
-                            Button("Type the barcode", systemImage: "keyboard") { scanning = false }
-                            Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
-                            Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
-                        } label: {
-                            Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(.circle)
+                    // In the bar, as the supplement scanner has it: over the camera it sat on the
+                    // start of the scanner's instructions. The light is at the bar's other end.
+                    .toolbar {
+                        ToolbarItem(placement: .barLeading) {
+                            Menu {
+                                Button("Type the barcode", systemImage: "keyboard") { scanning = false }
+                                Button("Photograph the label", systemImage: "camera") { capturingLabel = true }
+                                Button("Search by name", systemImage: "magnifyingglass") { session.backToSearch() }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                            }
+                            .accessibilityLabel("Other ways")
                         }
-                        .floatingGlass(in: .circle)
-                        .padding(12)
-                        .accessibilityLabel("Other ways")
                     }
             } else {
                 manualEntry

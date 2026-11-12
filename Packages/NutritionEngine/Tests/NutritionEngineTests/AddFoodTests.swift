@@ -52,6 +52,8 @@ struct AddFoodTests {
             ("1/2 cup oats", 0.5, .cup, ["oats"]),
             ("½ cup oats", 0.5, .cup, ["oats"]),
             ("1½ cups rice", 1.5, .cup, ["rice"]),
+            ("1 1/2 cups oats", 1.5, .cup, ["oats"]),
+            ("2 ½ cups rice", 2.5, .cup, ["rice"]),
             ("2 tbsp peanut butter", 2, .tablespoon, ["peanut", "butter"]),
             ("1 tsp honey", 1, .teaspoon, ["honey"]),
             ("6 oz steak", 6, .ounce, ["steak"]),
