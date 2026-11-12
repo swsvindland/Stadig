@@ -2,6 +2,14 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **The redesign, "Steady Instrument", built overnight.** On 2026-11-11 you said to build the designs into the apps on `main` and have them on TestFlight by morning, without a review in between. What's built follows the design canvas ([design.md](design.md)); the calls I made along the way are mine to check:
+  - **Stadig Lift on the iPhone:** Today, the session (one exercise at a time over a dock that logs a set or runs the rest), the summary, Your shape on Progress, Plan and Body. iPad, the Mac and Vision Pro keep their layouts on the new palette, with Your shape beside its rows. Not built: exercise detail, the Watch beyond its accent, and every device concept on the canvas (floor mode, the scoreboard, the menu bar and so on).
+  - **"Short on time?" offers 30, 45 and 60 minutes on the phone;** 90 stays on wide screens, where there's room.
+  - **Scores show a trend word (rising, on pace, steady, slipping), not a month's change:** nothing keeps a score's history yet, so "+2 this month" would have been made up. Open: keep score history so the design's deltas and August's outline can be real.
+  - **Rest in the dock has no Undo** for the set just logged; the engine has none, and adding one wasn't for tonight.
+  - **Onboarding ends "Free and open source. Your data stays yours."** where the offer was.
+  - **On Vision Pro words are white on the glass,** not the palette's greys, which vanished over a lit room.
+
 - **Both apps are free and open source.** On 2026-11-11 you said you'd make the apps free and open source. How that was done is mine to check:
   - **Purchases are switched off, not torn out.** `enabled: false` in each app's `Purchase/Purchases.swift`: `SystemPurchases` then counts everything as owned and never shows the offer. The paywall's entry points in both apps are gone (the offer at the end of onboarding, Settings, Stadig Lift's next-block gate, Stadig Macro's phase-plan gates), and so are the purchase UI tests. The `SystemPurchases` package, its StoreKit files and the free-days record stay linked and untouched, so a later change can delete them in one go. Open: delete them.
   - **The release guard is gone.** `Scripts/xcode-cloud.sh` refused to archive a release branch with purchases off; that's now the intent, so it no longer checks.
