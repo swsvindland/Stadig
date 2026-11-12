@@ -251,8 +251,9 @@ private struct SessionOutline: View {
     var body: some View {
         List(selection: $picked) {
             Section {
-                ProgressView(value: live.progress) {
-                    Text("\(Int((live.progress * 100).rounded()))% done").font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(Int((live.progress * 100).rounded()))% done").font(.caption).foregroundStyle(Ink.text2)
+                    Ruler(value: live.progress, height: 10)
                 }
             }
             Section {
@@ -440,7 +441,7 @@ struct ItemCard: View {
         }
         .card()
         .overlay {
-            if current { RoundedRectangle(cornerRadius: 22).strokeBorder(Color.accentColor, lineWidth: 2) }
+            if current { RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.accentColor, lineWidth: 2) }
         }
         .opacity(item.isDone && !current ? 0.7 : 1)
     }
@@ -469,8 +470,8 @@ struct SetRow: View {
             Text(number)
                 .font(.caption.weight(.bold).monospacedDigit())
                 .frame(width: 30, height: 24)
-                .background(isCurrent ? Color.accentColor : Color.secondary.opacity(0.15), in: .capsule)
-                .foregroundStyle(isCurrent ? .white : .primary)
+                .background(isCurrent ? Color.accentColor : Ink.raised, in: .capsule)
+                .foregroundStyle(isCurrent ? Ink.onAccent : Ink.text)
             if let logged = set.logged {
                 Text(Format.logged(logged, exercise: exercise, unit: model.gym.unit)).font(.body.monospacedDigit())
                 if set.prescription.kind == .repOut { Pill(text: "Rep-out", color: .accentColor) }
@@ -548,6 +549,7 @@ struct BottomPanel: View {
 struct RestPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.sessionScale) private var scale
+    @Environment(\.dynamicTypeSize) private var dynamicType
     let rest: RestState
     let message: String?
 
@@ -653,13 +655,16 @@ struct RestPanel: View {
         let plates =
             exercise.equipment.platePaired ? Format.plates(increments.platesPerSide(set.prescription.loadKg ?? 0), unit: increments.gym.unit) : nil
         let target = Format.set(set.prescription, exercise: exercise, unit: model.gym.unit) + (set.prescription.kind == .repOut ? "+" : "")
+        // The plates under the set at the largest text sizes, where side by side cuts both short.
+        let large = dynamicType.isAccessibilitySize
+        let layout = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
         return AnyView(
-            HStack(alignment: .firstTextBaseline) {
+            layout {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(label).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                    Text(label).font(.caption).foregroundStyle(Ink.text2).lineLimit(large ? 2 : 1)
                     Text(target).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
                 }
-                Spacer()
+                if !large { Spacer() }
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             .accessibilityElement(children: .combine))

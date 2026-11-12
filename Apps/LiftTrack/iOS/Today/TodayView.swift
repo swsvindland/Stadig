@@ -11,6 +11,7 @@ import SystemCore
 struct TodayView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @State private var minutes: Int?
     @State private var logActivity: ActivityLogSheetItem?
     @State private var showCheckIn = false
@@ -185,25 +186,35 @@ struct TodayView: View {
                 .buttonStyle(HeroButtonStyle())
                 .help("Start today's session (⌘N)")
                 .accessibilityIdentifier("today.startSession")
-                HStack(spacing: 6) {
+                // The chips under the question at the largest text sizes, where three won't fit beside it.
+                let layout =
+                    dynamicType.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 6))
+                layout {
                     Text("Short on time?").font(.footnote).opacity(0.85)
-                    Spacer(minLength: 4)
-                    ForEach([30, 45, 60], id: \.self) { m in
-                        Button {
-                            minutes = minutes == m ? nil : m
-                        } label: {
-                            Text("\(m) min")
-                                .font(.footnote.weight(.semibold))
-                                .padding(.horizontal, 11)
-                                .frame(minHeight: 32)
-                                .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
-                                .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
-                                .contentShape(.capsule)
+                    if !dynamicType.isAccessibilitySize { Spacer(minLength: 4) }
+                    HStack(spacing: 6) {
+                        ForEach([30, 45, 60], id: \.self) { m in
+                            Button {
+                                minutes = minutes == m ? nil : m
+                            } label: {
+                                Text("\(m) min")
+                                    .font(.footnote.weight(.semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                    .padding(.horizontal, 11)
+                                    .frame(minHeight: 32)
+                                    .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
+                                    .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
+                                    // A fingertip's height to hit, round a slimmer chip.
+                                    .frame(minHeight: 44)
+                                    .contentShape(.rect)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(m) minutes")
+                            .accessibilityAddTraits(minutes == m ? .isSelected : [])
+                            .accessibilityIdentifier("today.minutes\(m)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(m) minutes")
-                        .accessibilityAddTraits(minutes == m ? .isSelected : [])
-                        .accessibilityIdentifier("today.minutes\(m)")
                     }
                 }
             }
@@ -594,20 +605,23 @@ struct RowGroup<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
-            VStack(alignment: .leading, spacing: 0) {
-                Group(subviews: content) { rows in
-                    ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                        if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                        row.padding(.vertical, 10).frame(minHeight: 44)
+        Group(subviews: content) { rows in
+            // Nothing to show (no steps without Health, nothing outside the gym): no empty card.
+            if !rows.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title).eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                            if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                            row.padding(.vertical, 10).frame(minHeight: 44)
+                        }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 2)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
         }
     }
 }
@@ -828,15 +842,20 @@ struct SessionCard: View {
 
 /// The assessment: how far along, and what's been learned so far.
 struct AssessmentCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicType
     let status: AssessmentStatus
     /// What this week of it is for, from today's plan (the phone's Today moves it here off the hero).
     var note: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+            // The week under the title at the largest text sizes, rather than "Assessment" broken in two.
+            let layout =
+                dynamicType.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+            layout {
                 Text("Assessment").font(.headline)
-                Spacer()
+                if !dynamicType.isAccessibilitySize { Spacer() }
                 Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
             }
             Ruler(value: status.complete ? 1 : status.progress, height: 10, divisions: max(1, status.totalWeeks))
