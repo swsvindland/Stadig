@@ -762,22 +762,39 @@ struct LevelRuler: View {
     var body: some View {
         VStack(spacing: 6) {
             Ruler(value: score / 100, height: height, divisions: 5)
-            GeometryReader { geometry in
-                ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
-                    let reached = StrengthStandards.level(for: score) == level
-                    let name = short && level == "Intermediate" ? "Intermed." : level
-                    let label = Text(name).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
-                        .fixedSize()
-                    if index == Self.levels.count - 1 {
-                        label.frame(width: geometry.size.width, alignment: .trailing)
-                    } else {
-                        label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+            if short {
+                // The exercise page's scale: each level's name set against the tick that ends its
+                // fifth, in the scale's small capitals.
+                HStack(spacing: 0) {
+                    ForEach(Self.levels, id: \.self) { level in
+                        ScaleLabel(level == "Intermediate" ? "Intermed." : level)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
+                .accessibilityHidden(true)
+            } else {
+                labels
             }
-            .frame(height: 13)
-            .accessibilityHidden(true)
         }
+    }
+
+    /// Each level's name centred on the line where it starts, the one reached in the text colour.
+    private var labels: some View {
+        GeometryReader { geometry in
+            ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
+                let reached = StrengthStandards.level(for: score) == level
+                let name = level
+                let label = Text(name).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                    .fixedSize()
+                if index == Self.levels.count - 1 {
+                    label.frame(width: geometry.size.width, alignment: .trailing)
+                } else {
+                    label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+                }
+            }
+        }
+        .frame(height: 13)
+        .accessibilityHidden(true)
     }
 
     /// "7 to Intermediate": the points to the next level, or nil at Elite.

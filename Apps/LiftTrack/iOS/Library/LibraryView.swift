@@ -617,7 +617,8 @@ struct ExerciseDetailView: View {
     private var substitutes: some View {
         if let options = shown?.substitutes {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Substitutes in your gym").eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
+                Text("Substitutes").eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
+                    .accessibilityLabel("Substitutes in your gym")
                 if options.isEmpty {
                     Text("Nothing else in your gym trains the same thing.").font(.subheadline).foregroundStyle(Ink.text2)
                         .padding(.horizontal, 4)
