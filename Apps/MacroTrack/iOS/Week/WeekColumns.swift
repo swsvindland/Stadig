@@ -507,7 +507,10 @@ struct WeekMealBlock: View {
                     .fixedSize()
             }
             if height >= 40 {
-                Text(meal.name).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(strong).lineLimit(1)
+                // A second line in a narrow column (an iPad with the sidebar out), where the block has
+                // the height for it beside the markers, rather than "Chicken a…".
+                Text(meal.name).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(strong)
+                    .lineLimit(height >= 86 || (height >= 56 && height < 70) ? 2 : 1)
             }
             if height >= 70, !meal.markers.isEmpty {
                 // As many as the column has room for.

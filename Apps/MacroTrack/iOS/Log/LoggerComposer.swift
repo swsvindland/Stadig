@@ -117,6 +117,8 @@ struct LoggerField: View {
         let empty = session.query.trimmingCharacters(in: .whitespaces).isEmpty
         HStack(spacing: 4) {
             TextField("Search foods", text: $session.query, prompt: Text("Search foods").foregroundStyle(Ink.text3))
+                // The capsule is the field: no bezel of the Mac's inside it.
+                .textFieldStyle(.plain)
                 .font(.body)
                 .foregroundStyle(Ink.text)
                 .focused(focused)
