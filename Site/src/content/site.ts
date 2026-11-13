@@ -33,53 +33,53 @@ const shot = (name: string, alt: string): Shot => ({ src: `/shots/${name}.webp`,
 
 export const shots = {
   liftToday: shot(
-    "lift-today",
-    "Stadig Lift's Today screen: Wednesday 11 November, the next session Upper A with Barbell Bench Press and 9 more, 18 sets, about 59 minutes, a Start session button and Short on time choices of 30, 45 or 60 minutes.",
+    "lift-today.527cb3cf",
+    "Stadig Lift's Today screen: Friday 13 November, the week's days with the trained ones marked, session 4 of 4 of the assessment, Lower B, Deadlift and 3 more, 20 sets, about 62 minutes, a Start session button and Short on time choices of 30 or 45 minutes, and the scores under it: Strength 56, Endurance 97, Agility 62 and Discipline 100.",
   ),
   liftSet: shot(
-    "lift-set",
-    "A set in Stadig Lift: Barbell Bench Press, 67.5 kg for 7 reps marked Now, with weight and reps in wells and three buttons, Easy, Just right and Missed.",
+    "lift-set.26d44e70",
+    "A set in Stadig Lift: Conventional Deadlift, warm-ups done and 120 kg for 7 reps marked Now, with 50 kg a side, weight and reps in wells, and three buttons, Easy, Just right and Missed.",
   ),
   liftRest: shot(
-    "lift-rest",
-    "Rest in Stadig Lift: a 2:26 countdown over a draining ruler of 2:30, with −15, +15 and Skip, and the next set, 67.5 kg for 6.",
+    "lift-rest.2cb68ccb",
+    "Rest in Stadig Lift after the first deadlift set, rated Just right: a 2:24 countdown over a draining ruler of 2:30, with Undo, −15, +15 and Skip, and the next set, 120 kg for 6.",
   ),
   liftShape: shot(
-    "lift-shape",
-    "Your shape in Stadig Lift: five scores drawn as a hexagon, Strength 57, Endurance 99, Agility 62, Discipline 100 and Physique 77, with Vitality waiting on Stadig Macro, and a row for each score.",
+    "lift-shape.1690ba54",
+    "Your shape in Stadig Lift: five scores drawn as a hexagon, Strength 56, Endurance 97, Agility 62, Discipline 100 and Physique 77, with Vitality waiting on Stadig Macro, and a row for each score.",
   ),
   liftExercise: shot(
-    "lift-exercise",
-    "Barbell Bench Press in Stadig Lift: an estimated one-rep max of 89 kg, up 3.5 kg in 2 weeks, its line over three weeks, and a strength score of 51, Novice.",
+    "lift-exercise.950b9543",
+    "Barbell Bench Press in Stadig Lift: an estimated one-rep max of 89 kg, up 3 kg in 2 weeks, its line over three weeks, a strength score of 51, Novice, and its best sets.",
   ),
-  liftWatchRate: shot("lift-watch-rate", "Stadig Lift on Apple Watch: 80 kg for 8, rated Easy, Just right or Missed."),
-  liftWatchRest: shot("lift-watch-rest", "Stadig Lift on Apple Watch: rest at 2:54, next 82.5 kg for 8, and a Go now button."),
+  liftWatchRate: shot("lift-watch-rate.0535df18", "Stadig Lift on Apple Watch: the set rated with one tap, Easy, Just right or Missed, each filling a third of the face."),
+  liftWatchRest: shot("lift-watch-rest.3807998a", "Stadig Lift on Apple Watch: rest at 1:25, its level rising toward go, next 82.5 for 8, and Go now."),
   macroToday: shot(
-    "macro-today",
-    "Stadig Macro's Today screen: 2,200 kcal left in week 1 of a cut, protein, carbs and fat left, and four foods usually eaten around now, one tap each, above the box to add food.",
+    "macro-today.9f26a47d",
+    "Stadig Macro's Today screen at lunch: 1,299 kcal left of 2,200 in week 1 of a cut, protein, carbs and fat left, lunch on the thread (chicken breast, white rice and broccoli), and four foods usually eaten around now, one tap each, above the box to add food.",
   ),
   macroTyping: shot(
-    "macro-typing",
+    "macro-typing.ce7d5422",
     "Typing “chick 200” on Stadig Macro's Today: the best match, Chicken breast, roasted, 200 g, 330 kcal, marked with a return key, and the target already showing 2,200 going to 1,870 kcal left.",
   ),
   macroLogged: shot(
-    "macro-logged",
-    "Stadig Macro after typing “2 eggs, toast, coffee” and pressing Return: Egg, fried, Wheat bread, toasted and Coffee, brewed logged under the chicken breast, with Undo.",
+    "macro-logged.bde8518d",
+    "Stadig Macro after typing “2 eggs, toast, coffee” and pressing Return: Egg, fried, Wheat bread, toasted and Coffee, brewed logged together at 1:31 PM, 271 kcal with one Undo, and 1,929 kcal left.",
   ),
   macroTonight: shot(
-    "macro-tonight",
-    "Stadig Macro in the evening: 1,045 kcal left, almonds and apples logged, and What fits tonight offering potatoes with salmon, leaving 323 kcal, or chicken breast with white rice, leaving 480.",
+    "macro-tonight.8b70d164",
+    "Stadig Macro in the evening: 1,045 kcal left, almonds and apples at the end of the day's thread, and What fits tonight offering potatoes with salmon, leaving 323 kcal, or chicken breast with white rice, leaving 480.",
   ),
   macroShape: shot(
-    "macro-shape",
+    "macro-shape.4030021b",
     "Your shape in Stadig Macro: Vitality 92, logged 92% of days, and Discipline 28 for nutrition, with the four scores Stadig Lift measures left open.",
   ),
   macroPlan: shot(
-    "macro-plan",
-    "Stadig Macro's Plan: a cut, week 1 of 4, losing 0.5% a week, at 2,200 kcal with 165 g protein, 240 g carbs and 65 g fat, the trend at −1.09 kg a week, and a Why? link.",
+    "macro-plan.bd865100",
+    "Stadig Macro's Plan: a cut, week 1 of 4, losing 0.5% a week, at 2,200 kcal a day with 165 g protein, 240 g carbs and 65 g fat, the trend at −1.09 kg a week, faster than planned, a Why? link, and the year ahead.",
   ),
-  macroWatchToday: shot("macro-watch-today", "Stadig Macro on Apple Watch: 1,026 kcal left today, 59 g of protein left."),
-  macroWatchAgain: shot("macro-watch-again", "Stadig Macro on Apple Watch: Log Again with whey protein, 34 g, usually eaten now, and a Log button."),
+  macroWatchToday: shot("macro-watch-today.d5179cbd", "Stadig Macro on Apple Watch: 1,738 kcal left today, 602 eaten of 2,340, 130 g of protein left, over a level filling from the foot."),
+  macroWatchAgain: shot("macro-watch-again.79bca3b5", "Stadig Macro on Apple Watch: Log Again with Greek yogurt, 200 g, usually eaten now, and a Log button that leaves 1,620 kcal."),
 };
 
 export type Rate = { tone: "good" | "ok" | "bad" | "accent"; eyebrow: string; word: string; body: string };
@@ -377,7 +377,7 @@ export const homeFigures = {
   lift: [
     {
       label: "1 · Today",
-      caption: "Open the app and the session is already written. Short on time? It fits 30, 45 or 60 minutes.",
+      caption: "Open the app and the session is already written. Short on time? Tap 30 or 45 minutes and it fits.",
       phone: shots.liftToday,
     },
     { label: "2 · Set", caption: "Every set comes filled in. One tap logs it: Easy, Just right or Missed.", phone: shots.liftSet },
