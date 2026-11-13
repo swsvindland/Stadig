@@ -396,6 +396,8 @@ struct TodayLogger: View {
         // Only there while typing: room under the newest food for the fade over the matches, so it
         // sits clear of them.
         Color.clear.frame(height: 32).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+            // Room, not a row: nothing for VoiceOver to land on.
+            .accessibilityHidden(true)
             .id(Self.threadEnd)
     }
 

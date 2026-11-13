@@ -204,9 +204,8 @@ struct TargetsSheet: View {
                     .foregroundStyle(Ink.text)
                     .focused($focus, equals: field)
                     .frame(width: min(gramsWidth, 58 * 1.5))
-                    // A fingertip's height to tap into, taken back from the row so it stays as drawn.
+                    // A fingertip's height to tap into, as the − and + beside it have.
                     .frame(minHeight: 44)
-                    .padding(.vertical, -max(0, 44 - min(gramsSize, 24 * 1.5) * 1.2) / 2)
                     .macLabelsHidden()
                     .accessibilityLabel("\(macro.label), grams a day")
                     .accessibilityValue("\(Format.whole(grams)) grams, \(Format.percent(share)) of calories")
@@ -259,13 +258,11 @@ struct TargetsSheet: View {
                 .foregroundStyle(Ink.text)
                 .frame(width: size, height: size)
                 .background(Ink.raised, in: .circle)
-                // A fingertip's room round a smaller disc, taken back from the row's layout so the
-                // row stays as drawn.
+                // A fingertip's room round a smaller disc.
                 .frame(width: max(44, size), height: max(44, size))
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .padding(-max(0, 44 - size) / 2)
         .hoverHighlight()
         .accessibilityLabel("\(direction < 0 ? "Less" : "More") \(field == .kcal ? "calories" : field.rawValue)")
         .accessibilityIdentifier("targets.\(field.rawValue).\(direction < 0 ? "less" : "more")")
