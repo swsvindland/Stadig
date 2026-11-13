@@ -719,8 +719,8 @@ struct CardTitle: View {
     }
 }
 
-/// A title with a note at its right, as a card's and a group's are; at the accessibility sizes,
-/// where the two can't share a line, the note goes under the title, whole.
+/// A title with a note at its right, as a card's and a group's are; where the two can't share a
+/// line (always at the accessibility sizes), the note goes under the title, whole.
 private struct TitleLine<Title: View, Detail: View>: View {
     let stacked: Bool
     @ViewBuilder let title: Title
@@ -728,18 +728,25 @@ private struct TitleLine<Title: View, Detail: View>: View {
 
     var body: some View {
         if stacked {
-            VStack(alignment: .leading, spacing: 2) {
-                title
-                detail.fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            under
         } else {
-            HStack(alignment: .firstTextBaseline) {
-                title
-                Spacer(minLength: 8)
-                detail.lineLimit(1)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    title
+                    Spacer(minLength: 8)
+                    detail.lineLimit(1)
+                }
+                under
             }
         }
+    }
+
+    private var under: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            title
+            detail.fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

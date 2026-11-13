@@ -419,7 +419,8 @@ struct YourShape: View {
         if stat == .vitality, line?.score == nil, !macroSetUp {
             // Stadig Macro measures it: nothing here to open, but where to get it.
             HStack(spacing: 12) {
-                rowContent(stat, line: line)
+                // Read as one, the source chip in it, rather than a chip too small to land on alone.
+                rowContent(stat, line: line).accessibilityElement(children: .combine)
                 Link(destination: Self.macroPage) {
                     // A fingertip's room to hit, round the short word.
                     Text("Get it").frame(minWidth: 44, minHeight: 44).contentShape(.rect)
