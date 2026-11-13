@@ -75,11 +75,15 @@ struct SessionToolsTests {
         }
         #expect(state.restEndsAt == nil)
 
-        // A rest shows until its time is up.
+        // A rest shows until its time is up, with when it began for its ruler to drain from.
         live.startRest(after: i, environment: environment)
         let rest = try #require(live.rest)
-        #expect(LiveActivityBridge.content(live, catalog: model.catalog, unit: .kg).restEndsAt == rest.endsAt)
-        #expect(LiveActivityBridge.content(live, catalog: model.catalog, unit: .kg, now: rest.endsAt.addingTimeInterval(1)).restEndsAt == nil)
+        let resting = LiveActivityBridge.content(live, catalog: model.catalog, unit: .kg)
+        #expect(resting.restEndsAt == rest.endsAt)
+        #expect(resting.restStartedAt == rest.started)
+        let after = LiveActivityBridge.content(live, catalog: model.catalog, unit: .kg, now: rest.endsAt.addingTimeInterval(1))
+        #expect(after.restEndsAt == nil)
+        #expect(after.restStartedAt == nil)
 
         // Everything done or skipped: finish.
         for index in live.items.indices { live.skip(item: index) }

@@ -68,9 +68,9 @@ enum LiveActivityBridge {
             let label = set.prescription.kind == .warmup ? "Warm-up" : "Set \(index) of \(work.count)"
             detail = "\(label) · \(Format.set(set.prescription, exercise: e, unit: unit))"
         }
-        let rest = session.rest.flatMap { $0.endsAt > now ? $0.endsAt : nil }
+        let rest = session.rest.flatMap { $0.endsAt > now ? $0 : nil }
         return SessionActivityAttributes.ContentState(
-            exercise: exercise, detail: detail, restEndsAt: rest,
+            exercise: exercise, detail: detail, restEndsAt: rest?.endsAt, restStartedAt: rest?.started,
             message: rest == nil ? nil : session.message, progress: session.progress)
     }
 }

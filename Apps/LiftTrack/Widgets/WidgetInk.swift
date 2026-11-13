@@ -175,7 +175,7 @@ struct Ruler: View {
 }
 
 /// A rounded bar with a gap at each division, filled even-odd so the gaps are holes.
-private struct TickedOutline: View {
+struct TickedOutline: View {
     let size: CGSize
     let divisions: Int
 

@@ -184,9 +184,11 @@ struct NextSessionExercises: View {
 struct NextSessionRectangular: View {
     let snapshot: WidgetSnapshot
 
+    /// "57 min · 6 exercises" (or the badge in place of the exercises), "Next: Thursday · 60 min".
     private var line: String {
-        let parts =
-            snapshot.isToday ? [snapshot.minutes.map { "\($0) min" }, snapshot.badge] : [snapshot.detail, snapshot.minutes.map { "\($0) min" }]
+        let exercises = snapshot.exercises.isEmpty ? nil : "\(snapshot.exercises.count) exercise\(snapshot.exercises.count == 1 ? "" : "s")"
+        let minutes = snapshot.minutes.map { "\($0) min" }
+        let parts = snapshot.isToday ? [minutes, snapshot.badge ?? exercises] : [snapshot.detail, minutes]
         return parts.compactMap(\.self).joined(separator: " · ")
     }
 

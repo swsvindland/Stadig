@@ -10,6 +10,9 @@ nonisolated struct SessionActivityAttributes: ActivityAttributes {
         var detail: String
         /// When resting: when the rest ends.
         var restEndsAt: Date?
+        /// When resting: when the rest began, so its ruler drains by itself toward the end. Nil from
+        /// an app that didn't send it, whose ruler stays the session's.
+        var restStartedAt: Date?
         /// The adjustment just made ("Easy, so the weight goes up.").
         var message: String?
         var progress: Double
