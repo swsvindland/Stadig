@@ -117,6 +117,10 @@ public enum ScoreWindow: Hashable, Sendable {
     /// The last month: since this date a month ago, by the calendar (from 31 March, since the end of
     /// February). "+2 this month".
     case month
+    /// The last year: since this date a year ago (from 29 February, since the end of February the
+    /// year before). "+12 this year", or, when the readings began inside it, since the month they
+    /// began: "+5 since October".
+    case year
     /// Since a calendar month began: "+3 since August". Any day in the month names it.
     case since(month: Day)
     /// Since a check-in, what the check-in itself changed included: "+1 since the last check-in".
@@ -126,6 +130,7 @@ public enum ScoreWindow: Hashable, Sendable {
     public func start(today: Day) -> Day {
         switch self {
         case .month: today.adding(months: -1).adding(days: 1)
+        case .year: today.adding(months: -12).adding(days: 1)
         case .since(let month): month.firstOfMonth
         case .sinceCheckIn(let day): day
         }
@@ -133,10 +138,12 @@ public enum ScoreWindow: Hashable, Sendable {
 
     /// How the change is said when it's measured from a reading on `from`. A month named is the one
     /// asked for, or a later one when nothing was recorded before it: four weeks of readings can't
-    /// say what moved since August, only since they began.
+    /// say what moved since August, only since they began. The same goes for a year.
     func period(from: Day, today: Day) -> ScoreChange.Period {
         switch self {
         case .month: return .thisMonth
+        case .year:
+            return from < start(today: today) ? .thisYear : ScoreWindow.since(month: from).period(from: from, today: today)
         case .sinceCheckIn: return .sinceCheckIn
         case .since(let month):
             let start = month.firstOfMonth
@@ -158,6 +165,8 @@ public struct ScoreChange: Hashable, Sendable {
     public enum Period: Hashable, Sendable {
         /// "this month"
         case thisMonth
+        /// "this year"
+        case thisYear
         /// "since August", or "since August 2025" a year or more back. The day is the month's first.
         case since(month: Day, withYear: Bool)
         /// "since the last check-in"
@@ -254,10 +263,11 @@ public struct ScoreChange: Hashable, Sendable {
 }
 
 extension ScoreChange.Period {
-    /// "this month", "since August", "since the last check-in".
+    /// "this month", "this year", "since August", "since the last check-in".
     public func words(calendar: Calendar) -> String {
         switch self {
         case .thisMonth: "this month"
+        case .thisYear: "this year"
         case .sinceCheckIn: "since the last check-in"
         case .since: "since \(monthName(calendar: calendar) ?? "")"
         }
