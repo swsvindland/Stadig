@@ -317,6 +317,7 @@ struct SessionScreen: View {
             } label: {
                 Label("Session options", systemImage: "ellipsis")
             }
+            .untintedOnGlass()
             .accessibilityLabel("Session options")
             .accessibilityIdentifier("session.options")
         }
@@ -348,7 +349,7 @@ struct SessionWorkspace: View {
                         if let index = shownIndex {
                             let item = live.items[index]
                             Label(item.plan.block.label, systemImage: item.plan.block.symbol)
-                                .font(.headline).foregroundStyle(item.plan.block.color)
+                                .font(.headline).foregroundStyle(Ink.words(item.plan.block.color))
                             ItemCard(
                                 index: index, item: item, current: live.current?.item == index, swap: { swap(index) },
                                 edit: { set in edit(index, set) })
@@ -543,6 +544,7 @@ struct ItemCard: View {
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3)
                 }
+                .untintedOnGlass()
                 .accessibilityLabel("\(exercise.name) options")
                 .accessibilityIdentifier("session.itemOptions")
             }
@@ -632,7 +634,7 @@ struct SetRow: View {
                     Text(Format.set(set.prescription, exercise: exercise, unit: model.gym.unit))
                         .font(.body.monospacedDigit())
                         .foregroundStyle(set.prescription.kind == .warmup ? .secondary : .primary)
-                    if let note = set.note, isCurrent { Text(note).font(.caption).foregroundStyle(.tint) }
+                    if let note = set.note, isCurrent { Text(note).font(.caption).foregroundStyle(Ink.words(.accentColor)) }
                 }
                 Spacer()
                 switch set.prescription.kind {

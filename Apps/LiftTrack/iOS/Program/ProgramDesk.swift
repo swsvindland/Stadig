@@ -291,7 +291,7 @@ private struct WeekHeader: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(week.title).font(.system(size: 14, weight: .bold)).foregroundStyle(week.isDone ? Ink.text2 : Ink.text)
                             Text(week.state.isEmpty ? " " : week.state).font(.caption.weight(week.isNow ? .bold : .regular))
-                                .foregroundStyle(week.isNow ? Color.accentColor : Ink.text3)
+                                .foregroundStyle(week.isNow ? Ink.words(.accentColor) : Ink.text3)
                         }
                         .lineLimit(1)
                     }
@@ -314,7 +314,7 @@ private struct WeekHeader: View {
             if dates { Text(week.dates).font(.caption).foregroundStyle(Ink.text3) }
             Spacer(minLength: 2)
             Text(week.state).font(.caption.weight(week.isNow ? .bold : .regular))
-                .foregroundStyle(week.isNow ? Color.accentColor : Ink.text3)
+                .foregroundStyle(week.isNow ? Ink.words(.accentColor) : Ink.text3)
         }
         .lineLimit(1)
     }
@@ -336,12 +336,14 @@ private struct DaySection<Menu: View>: View {
             ForEach(day.lifts) { lift in
                 LiftRow(lift: lift, content: content, layout: layout, selected: selection == lift.id)
                     .contentShape(.rect)
+                    .gazeHighlight()
                     .onTapGesture { selection = lift.id }
                     .contextMenu { menu(lift.row) }
             }
             ForEach(day.conditioning) { row in
                 QuietRow(row: row, layout: layout, selected: selection == row.id, cells: content.weeks.count)
                     .contentShape(.rect)
+                    .gazeHighlight()
                     .onTapGesture { selection = row.id }
                     .contextMenu { menu(row) }
             }
@@ -384,7 +386,7 @@ private struct DaySection<Menu: View>: View {
                             Circle().fill(Color.accentColor).frame(width: 7, height: 7)
                             Text(nextLabel).fontWeight(.bold)
                         }
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Ink.words(.accentColor))
                     } else if week.missed {
                         Text("Not done").foregroundStyle(Ink.text3)
                     }
@@ -467,7 +469,7 @@ private struct LiftRow: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     if !lift.row.superset.isEmpty {
-                        Text(lift.row.superset).font(.caption2.weight(.bold)).foregroundStyle(Color.accentColor)
+                        Text(lift.row.superset).font(.caption2.weight(.bold)).foregroundStyle(Ink.words(.accentColor))
                             .help("Done in turn with the other \(lift.row.superset) slot of the day")
                     }
                     if lift.row.setAside {
@@ -697,7 +699,7 @@ private struct ExtrasLine: View {
                     } label: {
                         Text(row.exercise)
                             .font(.caption.weight(selection == row.id ? .bold : .regular))
-                            .foregroundStyle(selection == row.id ? Color.accentColor : Ink.text2)
+                            .foregroundStyle(selection == row.id ? Ink.words(.accentColor) : Ink.text2)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(selection == row.id ? Color.accentColor.opacity(0.16) : Ink.raised, in: .capsule)

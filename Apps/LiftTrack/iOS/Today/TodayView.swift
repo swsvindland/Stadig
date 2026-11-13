@@ -220,8 +220,8 @@ struct TodayView: View {
                                 .minimumScaleFactor(0.8)
                                 .padding(.horizontal, 11)
                                 .frame(minHeight: 32)
-                                .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
-                                .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
+                                .foregroundStyle(HeroInk.chipWords(picked: minutes == m))
+                                .background(HeroInk.chip(picked: minutes == m), in: .capsule)
                                 // A fingertip's height to hit, round a slimmer chip.
                                 .frame(minHeight: 44)
                                 .contentShape(.rect)
@@ -399,12 +399,17 @@ struct SessionHero<Actions: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                Text(eyebrow).eyebrow(Ink.onAccent.opacity(0.8))
+                Text(eyebrow).eyebrow(HeroInk.eyebrow)
                 Spacer()
-                if let trailing { Text(trailing).eyebrow(Ink.onAccent.opacity(0.8)) }
+                if let trailing { Text(trailing).eyebrow(HeroInk.eyebrow) }
             }
             VStack(alignment: .leading, spacing: 4) {
+                // Its own height on Vision Pro, which offered the line less than its tall type, and the
+                // name shrank to half its size to fit.
                 Text(title).numeral(46, weight: .heavy).accessibilityAddTraits(.isHeader)
+                    #if os(visionOS)
+                .fixedSize(horizontal: false, vertical: true)
+                    #endif
                 // One line of what's in it, as the design has it; two only when even the short one won't fit.
                 ViewThatFits(in: .horizontal) {
                     Text(subtitle).lineLimit(1)
@@ -414,15 +419,37 @@ struct SessionHero<Actions: View>: View {
                 .font(.subheadline).opacity(0.85)
             }
             if let progress {
-                Ruler(value: progress, color: Ink.onAccent, height: 10).opacity(0.9)
+                Ruler(value: progress, color: HeroInk.ruler, height: 10).opacity(0.9)
             }
             actions
         }
-        .foregroundStyle(Ink.onAccent)
+        .foregroundStyle(HeroInk.words)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.accentColor, in: .rect(cornerRadius: 22, style: .continuous))
+        .background(HeroInk.card, in: .rect(cornerRadius: 22, style: .continuous))
     }
+}
+
+/// The hero's colours. On the phone, the iPad and the Mac it's the one accent card, its words and
+/// button in the ink. On Vision Pro's glass that card is an opaque slab with a black bar in it, so
+/// there it's glass like the rest, its words white, and the accent goes to Start, the system's
+/// prominent button, as the Vision board keeps the accent for what you act on.
+enum HeroInk {
+    #if os(visionOS)
+    static let card = AnyShapeStyle(.regularMaterial)
+    static let words = Ink.text
+    static let eyebrow = Ink.text3
+    static let ruler = Color.accentColor
+    static func chip(picked: Bool) -> AnyShapeStyle { AnyShapeStyle(picked ? Color.accentColor : Ink.raised) }
+    static func chipWords(picked: Bool) -> Color { picked ? Ink.onAccent : Ink.text }
+    #else
+    static let card = AnyShapeStyle(Color.accentColor)
+    static let words = Ink.onAccent
+    static let eyebrow = Ink.onAccent.opacity(0.8)
+    static let ruler = Ink.onAccent
+    static func chip(picked: Bool) -> AnyShapeStyle { AnyShapeStyle(picked ? Ink.onAccent : Color.black.opacity(0.16)) }
+    static func chipWords(picked: Bool) -> Color { picked ? Color.accentColor : Ink.onAccent }
+    #endif
 }
 
 /// The hero's lines about a planned session.
@@ -473,6 +500,17 @@ enum HeroLine {
 /// The hero's own button: ink on the accent, the reverse of every other primary button.
 struct HeroButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        #if os(visionOS)
+        // On glass, the accent itself: the hero's one action (`HeroInk`).
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(Ink.onAccent)
+            .frame(minHeight: 52)
+            .background(Color.accentColor, in: .capsule)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(.capsule)
+            .hoverEffect(.highlight)
+        #else
         configuration.label
             .font(.headline)
             .foregroundStyle(Color.accentColor)
@@ -481,6 +519,7 @@ struct HeroButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.8 : 1)
             .contentShape(.rect)
             .hoverHighlight()
+        #endif
     }
 }
 
@@ -860,7 +899,7 @@ struct StepsCard: View {
                 Text("today").font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
                 if count >= steps.aim {
-                    Label("Aim reached", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Ink.good)
+                    Label("Aim reached", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Ink.words(Ink.good))
                 } else {
                     Text("\((steps.aim - count).formatted()) to go").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 }
@@ -875,12 +914,12 @@ struct StepsCard: View {
             let average = Steps.round(recent, to: 100).formatted()
             if onTrack {
                 Label("\(average) a day over the last week: on track", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline).foregroundStyle(Ink.good)
+                    .font(.subheadline).foregroundStyle(Ink.words(Ink.good))
             } else {
                 Label(
                     "\(average) a day over the last week, \(Steps.round(steps.gap, to: 100).formatted()) short", systemImage: "arrow.up.circle.fill"
                 )
-                .font(.subheadline).foregroundStyle(Ink.ok)
+                .font(.subheadline).foregroundStyle(Ink.words(Ink.ok))
             }
         } else {
             Label("Too few days with your phone or Watch to judge the week yet", systemImage: "questionmark.circle")
