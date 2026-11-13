@@ -1588,7 +1588,12 @@ final class AppModel {
     /// Saves the shared setup answers and Stadig Macro's own, and starts the assessment. Read from
     /// the store, not the copies in memory: when setup was already done on another device and has
     /// just synced in, it's kept as it is (its profile, settings and assessment), not started again.
-    func completeOnboarding(profile: SharedProfile, history: DietHistory, weightKg: Double?) {
+    /// `own` are the person's own numbers from the starting point's "Set my own targets", with the
+    /// starting point's maintenance: the assessment runs under them all the same, learning
+    /// maintenance from what's eaten.
+    func completeOnboarding(
+        profile: SharedProfile, history: DietHistory, weightKg: Double?, own: (targets: MacroTargets, maintenance: Double)? = nil
+    ) {
         let synced = MacroSettings.inForce(store.all(MacroSettings.self))
         if synced?.onboardedAt == nil || store.all(ProfileRecord.self).isEmpty {
             var profile = profile
@@ -1606,11 +1611,45 @@ final class AppModel {
             store.save(WeighIn(date: Date(), kg: weightKg))
         }
         reload()
+        // The maintenance under them starts where the starting point did, and there's no plan yet,
+        // so none of its numbers to carry.
+        if let own { saveOwn(OwnTargets.record(own.targets, on: today, expenditure: own.maintenance, plan: nil)) }
+    }
+
+    // MARK: Own targets
+
+    /// The person's own targets from today, in place of the plan's (or the assessment's): a check-in
+    /// of theirs that the weekly check-ins keep (`OwnTargets`).
+    func setOwnTargets(_ numbers: MacroTargets) {
+        guard let analysis else { return }
+        saveOwn(OwnTargets.record(numbers, analysis, today: today))
+    }
+
+    /// Back to the plan's targets from today, where its weekly steps had got to; before a plan, back
+    /// to the assessment, whose days the person's numbers then leave.
+    func useThePlansTargets() {
+        guard let analysis else { return }
+        switch OwnTargets.back(analysis, checkIns: store.all(CheckIn.self), today: today) {
+        case .save(let checkIn): saveOwn(checkIn)
+        case .remove(let ids):
+            for id in ids { store.delete(CheckIn.self, id: id) }
+            reload()
+        case .nothing: break
+        }
+    }
+
+    /// A check-in for today, replacing any made today: it has the day's id, so it replaces one on
+    /// another device too, and earlier versions' random ids go.
+    private func saveOwn(_ checkIn: CheckIn) {
+        for old in store.all(CheckIn.self) where old.day == checkIn.day && old.id != checkIn.id { store.delete(CheckIn.self, id: old.id) }
+        store.save(checkIn)
+        reload()
     }
 
     // MARK: Plan
 
-    /// Starts a plan: saves it with first targets straight from the maintenance estimate.
+    /// Starts a plan: saves it with first targets straight from the maintenance estimate. Starting or
+    /// changing the plan is choosing it, so the person's own targets give way to its from today.
     func start(_ plan: PhasePlan) {
         guard let analysis else { return }
         var plan = plan

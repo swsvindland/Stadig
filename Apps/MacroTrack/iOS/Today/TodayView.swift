@@ -50,6 +50,7 @@ struct ModeLine: View {
         case .crunch: ("Crunch", "briefcase.fill", .orange)
         case .illness: ("Ill", "thermometer.medium", .purple)
         case .vacation: ("Vacation", "airplane", .blue)
+        case .own: ("Your targets", "slider.horizontal.3", .accentColor)
         case .phase: nil
         }
     }
@@ -275,6 +276,14 @@ struct CheckInRow: View {
     }
 
     var title: String {
+        // The person's own: set, or kept by the week's check-in; and the way back from them.
+        if checkIn.isOwn {
+            if let previous, previous.isOwn, previous.own == checkIn.own {
+                return "Weekly check-in: your targets hold at \(Format.kcal(checkIn.kcal))"
+            }
+            return "Your targets: \(Format.kcal(checkIn.kcal))"
+        }
+        if previous?.isOwn == true { return "Back to the plan's targets: \(Format.kcal(checkIn.kcal))" }
         guard let previous else { return "Targets set: \(Format.kcal(checkIn.kcal))" }
         let change = checkIn.kcal - previous.kcal
         if abs(change) < 5 { return "Weekly check-in: targets hold at \(Format.kcal(checkIn.kcal))" }

@@ -31,11 +31,12 @@ struct MacroTrackApp: App {
         _model = State(initialValue: model)
         model.ai.configure(catalog: model.catalog, allowCloud: model.settings.allowCloudAI)
         #if DEBUG
-        // -seedSampleData fills an empty store; -tab plan|progress (or foods|mealplan|supplements|history,
+        // -seedSampleData fills an empty store (-seedOwnTargets gives it a coach's targets); -tab plan|progress (or foods|mealplan|supplements|history,
         // the sidebar's) opens a tab; -daysAgo 1 opens Today on an earlier day; -log search|describe|quickAdd
         // opens a logger, and -seedReview gives it a meal to check; -toastSeconds 30 holds a toast, where a
         // UI test's steps take longer than its few seconds. For checking screens quickly, and for the UI tests.
         if launch.has("-seedSampleData") { SampleData.seedIfEmpty(model) }
+        if launch.has("-seedOwnTargets") { SampleData.seedOwnTargets(model) }
         if launch.has("-seedLongHistory") { SampleData.seedLongHistory(model, years: launch.number(after: "-seedLongHistory") ?? 5) }
         if launch.has("-seedSupplements") { SampleData.seedSupplements(model) }
         if launch.has("-seedUpcoming") { SampleData.seedUpcoming(model) }

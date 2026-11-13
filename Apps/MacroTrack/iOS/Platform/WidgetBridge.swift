@@ -16,15 +16,8 @@ enum WidgetBridge {
         snapshot.weighedToday = model.weighIns.contains { $0.day == model.today }
         let later = model.foodLog.later(through: model.today.adding(days: 1), since: analysis.fast?.fast.start)
         snapshot.later = later.isEmpty ? nil : later
-        snapshot.badge =
-            switch t.mode {
-            case .assessment: analysis.assessment.map { "Day \($0.day) of \($0.totalDays)" } ?? "Assessment"
-            case .dietBreak: "Diet break"
-            case .crunch: "Crunch"
-            case .illness: "Ill"
-            case .vacation: "Vacation"
-            case .phase: analysis.phase?.kind.label
-            }
+        // The Watch's word for the day, so the two say the same.
+        snapshot.badge = WristToday.badge(t, assessment: analysis.assessment, phase: analysis.phase)
         if model.tracksMealTiming {
             snapshot.tracksMealTiming = true
             snapshot.fastStart = analysis.fast?.fast.start

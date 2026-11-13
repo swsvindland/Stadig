@@ -30,8 +30,9 @@ struct TodayPage: View {
                         .background(Color.accentColor.opacity(0.2), in: .capsule)
                         .accessibilityIdentifier("today.badge")
                 }
-                // A life mode changes what the day asks for: say so. A phase's own note is for the phone.
-                if today.mode != .phase, today.mode != .assessment {
+                // A life mode changes what the day asks for: say so. A phase's own note is for the
+                // phone, and the person's own targets are in the badge.
+                if ![.phase, .assessment, .own].contains(today.mode) {
                     Text(today.note)
                         .font(.footnote)
                         .foregroundStyle(.secondary)

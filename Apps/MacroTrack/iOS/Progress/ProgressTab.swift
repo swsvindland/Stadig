@@ -213,14 +213,14 @@ struct WeightCard: View {
         .inkCard()
     }
 
-    var verdict: PhasePace.Verdict? {
-        PhasePace.verdict(weeklyChange: analysis.weeklyChange, phase: analysis.phase, weightKg: trend.latest?.trend ?? analysis.referenceKg)
-    }
+    /// Against the phase's rate, or what the person's own targets aim for, as Plan says it.
+    var verdict: PhasePace.Verdict? { analysis.pace }
 
     /// What the trend means for the phase, in a sentence.
     var sentence: String? {
         guard let latest = trend.latest, analysis.weeklyChange != nil else { return nil }
         let unit = model.units.weight
+        if let aim = analysis.ownAim { return Self.ownSentence(aim: aim, verdict: verdict, unit: unit) }
         guard let phase = analysis.phase else { return "The line is the trend; the dots are the scale's day-to-day swings, mostly water." }
         guard let aim = PhasePace.aim(trendKg: latest.trend, phase: phase, today: model.today) else {
             return verdict == .onPace ? "Holding steady, as maintenance should." : "Drifting: maintenance aims to hold steady."
@@ -233,6 +233,23 @@ struct WeightCard: View {
         case .slower: return "Behind the plan, which aims for \(target)."
         case .offCourse: return "Going the wrong way for a \(phase.kind.label.lowercased()): the plan aims for \(target)."
         case nil: return nil
+        }
+    }
+
+    /// Under the person's own targets: what their calories aim for from maintenance, and how the
+    /// trend sits against it once maintenance rests on data.
+    static func ownSentence(aim: Double, verdict: PhasePace.Verdict?, unit: WeightUnit) -> String {
+        let rate = "about \(Format.weeklyChange(aim, unit: unit))"
+        if aim == 0 {
+            guard let verdict else { return "Your own targets aim to hold steady, from maintenance so far." }
+            return verdict == .onPace ? "Holding steady, as your own targets aim to." : "Drifting: your own targets aim to hold steady."
+        }
+        switch verdict {
+        case .onPace: return "On pace for your own targets: \(rate)."
+        case .faster: return "Faster than your own targets aim for, \(rate)."
+        case .slower: return "Slower than your own targets aim for, \(rate)."
+        case .offCourse: return "Going the other way from your own targets, which aim for \(rate)."
+        case nil: return "Your own targets aim for \(rate), from maintenance so far."
         }
     }
 

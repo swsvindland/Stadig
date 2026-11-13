@@ -299,11 +299,12 @@ struct TodayLogger: View {
 
     var eyebrow: String { Self.eyebrow(model) }
 
-    /// "Wed, Nov 11 · Cut, week 1 of 4": the day, and where the plan is.
+    /// "Wed, Nov 11 · Cut, week 1 of 4": the day, and where the plan is, or whose targets these are.
     static func eyebrow(_ model: AppModel) -> String {
         let day = Format.day(model.today)
         guard let analysis = model.analysis else { return day }
         switch analysis.targets.mode {
+        case .own: return "\(day) · Your targets"
         case .assessment:
             return analysis.assessment.map { "\(day) · Assessment, day \($0.day) of \($0.totalDays)" } ?? "\(day) · Assessment"
         case .phase:

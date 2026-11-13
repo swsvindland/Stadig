@@ -36,6 +36,23 @@ struct OwnTargetsTests {
         #expect(split.inStep)
     }
 
+    @Test("A step of − or + lands on round numbers")
+    func steps() {
+        #expect(OwnTargets.stepped(2_098, by: 1, step: 50) == 2_100)
+        #expect(OwnTargets.stepped(2_098, by: -1, step: 50) == 2_050)
+        #expect(OwnTargets.stepped(2_100, by: 1, step: 50) == 2_150)
+        #expect(OwnTargets.stepped(2_100, by: -1, step: 50) == 2_050)
+        #expect(OwnTargets.stepped(182, by: 1, step: 5) == 185)
+        #expect(OwnTargets.stepped(3, by: -1, step: 5) == 0 && OwnTargets.stepped(0, by: -1, step: 5) == 0)
+    }
+
+    @Test("Onboarding's starting point is where the person's own start")
+    func startingPoint() {
+        let point = StartingPoint.make(profile: profile(), weightKg: 82, today: start)
+        #expect(point.targets == MacroTargets(kcal: point.kcal, protein: point.protein, carbs: point.carbs, fat: point.fat))
+        #expect(point.targets.inStep, "\(point.targets)")
+    }
+
     @Test("Numbers that can't be targets say why")
     func problems() {
         #expect(OwnTargets.problem(mine) == nil)
@@ -253,6 +270,7 @@ struct OwnTargetsTests {
         #expect(PhasePace.verdict(weeklyChange: -0.45, aim: -0.4545, weightKg: 84) == .onPace)
         #expect(PhasePace.verdict(weeklyChange: -0.1, aim: -0.4545, weightKg: 84) == .slower)
         #expect(PhasePace.verdict(weeklyChange: 0.1, aim: 0, weightKg: 84) == .onPace)
+        #expect(PhasePace.Verdict.slower.ownLabel == "Slower than your targets aim for.")
     }
 
     // MARK: Where they're said

@@ -85,6 +85,15 @@ public enum OwnTargets {
     public static let kcalStep = 50.0
     public static let gramStep = 5.0
 
+    /// One step of − or + from `value`, onto the steps' grid: 2,098 kcal goes up to 2,100 and down to
+    /// 2,050, as a coach's numbers are round. Never below nothing.
+    public static func stepped(_ value: Double, by direction: Double, step: Double) -> Double {
+        let onGrid = abs(value / step - (value / step).rounded()) < 1e-9
+        let next =
+            direction > 0 ? (onGrid ? value / step + 1 : (value / step).rounded(.up)) : (onGrid ? value / step - 1 : (value / step).rounded(.down))
+        return max(0, next * step)
+    }
+
     /// Why these numbers can't be saved, in a line; nil when they can.
     public static func problem(_ t: MacroTargets) -> String? {
         if t.protein * 4 > t.kcal + 10, t.kcal >= kcalRange.lowerBound {

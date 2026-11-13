@@ -82,6 +82,8 @@ extension PlanView {
             SupplementsCard()
             MaintenanceCard(estimate: analysis.maintenance)
         } else {
+            // The person's own targets through the assessment, which runs under them all the same.
+            if analysis.own != nil { TargetsCard(plan: nil, analysis: analysis) }
             if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
             MaintenanceCard(estimate: analysis.maintenance)
             if let recommendation = model.recommendation {
@@ -102,6 +104,7 @@ extension PlanView {
             YearCard(plan: plan, today: model.today)
             CheckInHistory(checkIns: model.checkIns)
         } else {
+            if analysis.own != nil { TargetsCard(plan: nil, analysis: analysis) }
             if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
             if let recommendation = model.recommendation {
                 RecommendationCard(plan: recommendation, ready: analysis.assessment?.complete ?? true)
@@ -167,21 +170,35 @@ struct PhaseCard: View {
     }
 }
 
-/// Today's targets: calories as the hero, the macros in their colours, then the trend against the
-/// phase in a line, with the plan's reasons behind Why?.
+/// Today's targets: calories as the hero with Adjust beside them, the macros in their colours, then
+/// the trend against the phase in a line, with the plan's reasons behind Why?. With the person's own
+/// targets on, they say so, what the plan would set, and the way back to it.
 struct TargetsCard: View {
     @Environment(AppModel.self) private var model
-    let plan: PhasePlan
+    /// The plan, for its reasons; nil in the assessment, when the person's own targets are on.
+    let plan: PhasePlan?
     let analysis: MacroAnalysis
     @State private var showsWhy = false
+    @State private var adjusting = false
 
     var body: some View {
         let targets = analysis.targets
         VStack(alignment: .leading, spacing: 14) {
-            if let kcal = targets.kcal {
-                Measure(value: Format.whole(kcal), unit: "kcal a day", size: 48, weight: .heavy)
-                    .foregroundStyle(Ink.text)
-                    .accessibilityIdentifier("plan.kcal")
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let kcal = targets.kcal {
+                    Measure(value: Format.whole(kcal), unit: "kcal a day", size: 48, weight: .heavy)
+                        .foregroundStyle(Ink.text)
+                        .accessibilityIdentifier("plan.kcal")
+                }
+                Spacer(minLength: 4)
+                Button("Adjust") { adjusting = true }
+                    .font(.subheadline)
+                    .foregroundStyle(Ink.text2)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .padding(.vertical, -12)
+                    .accessibilityLabel("Adjust targets")
+                    .accessibilityIdentifier("plan.adjust")
             }
             HStack(alignment: .top, spacing: 14) {
                 macro(.protein, targets.protein)
@@ -193,22 +210,25 @@ struct TargetsCard: View {
                     Spacer().frame(maxWidth: .infinity)
                 }
             }
-            if targets.mode != .phase {
+            if let own = analysis.own { ownLine(own) }
+            if targets.mode != .phase, targets.mode != .own {
                 Text(targets.note).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
             }
             Rectangle().fill(Ink.hairline).frame(height: 1)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 trend.font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, -12)
-                    .accessibilityIdentifier("plan.why")
+                if plan != nil {
+                    Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 44)
+                        .padding(.vertical, -12)
+                        .accessibilityIdentifier("plan.why")
+                }
             }
-            if showsWhy {
+            if showsWhy, let plan {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(plan.reasons.enumerated()), id: \.offset) { _, reason in
                         Label(reason, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline).foregroundStyle(Ink.text)
@@ -221,6 +241,8 @@ struct TargetsCard: View {
             }
         }
         .inkCard()
+        .sheet(isPresented: $adjusting) { PlanTargetsSheet() }
+        .debugSheet("targets") { adjusting = true }
     }
 
     func macro(_ macro: Macro, _ grams: Double?) -> some View {
@@ -232,16 +254,53 @@ struct TargetsCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// "Trend −1.09 kg a week. On pace."
+    /// "Your own · Since Nov 13. The plan would set 2,150 kcal and 165 g protein.", and the way back.
+    func ownLine(_ own: OwnTargets.InForce) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Pill(text: "Your own", color: .accentColor)
+                Text(ownWords(own)).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("plan.ownTargets")
+            Button(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual") { model.useThePlansTargets() }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+                .padding(.vertical, -8)
+                .accessibilityIdentifier("plan.usePlans")
+        }
+    }
+
+    func ownWords(_ own: OwnTargets.InForce) -> String {
+        let since = own.since == model.today ? "From today." : "Since \(Format.day(own.since, style: .dateTime.month(.abbreviated).day()))."
+        let plan = analysis.planNumbers
+        switch analysis.planSource {
+        case .plan:
+            return "\(since) The plan would set \(Format.kcal(plan.kcal)) and \(Format.grams(plan.protein)) protein."
+        case .maintenance, .startingPoint:
+            return "\(since) The assessment sets no calories; your maintenance is about \(Format.kcal(analysis.maintenance.kcal)) so far."
+        }
+    }
+
+    /// "Trend −1.09 kg a week. On pace." Under the person's own targets, against what they aim for.
     var trend: Text {
+        let unit = model.units.weight
         guard let change = analysis.weeklyChange else {
             return Text("Trend: weigh in each morning and it shows here.").foregroundStyle(Ink.text2)
         }
-        let verdict = PhasePace.verdict(
-            weeklyChange: change, phase: analysis.phase, weightKg: analysis.trend.latest?.trend ?? analysis.referenceKg)
-        let words = Format.weeklyChange(change, unit: model.units.weight)
+        let words = Format.weeklyChange(change, unit: unit)
         let said = Text("\(Text("Trend").foregroundStyle(Ink.text2)) \(words).").foregroundStyle(Ink.text)
-        guard let verdict else { return said }
+        if let aim = analysis.ownAim {
+            guard let verdict = analysis.pace else {
+                // Maintenance is still the formula's guess: what the calories aim for from it, no verdict.
+                let aims = aim == 0 ? "Yours aim to hold steady." : "Yours aim for \(Format.weeklyChange(aim, unit: unit))."
+                return Text("\(said) \(Text(aims).foregroundStyle(Ink.text2))")
+            }
+            return Text("\(said) \(Text(verdict.ownLabel).foregroundStyle(verdict.color))")
+        }
+        guard let verdict = analysis.pace else { return said }
         return Text("\(said) \(Text(verdict.label).foregroundStyle(verdict.color))")
     }
 }
@@ -317,7 +376,9 @@ struct NextCheckInRow: View {
                 Image(systemName: "calendar").font(.title3.weight(.light)).foregroundStyle(Ink.text2).frame(width: 24)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Check-in \(Format.prepDay(next, today: model.today))").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-                    Text("Targets adjust to your trend").font(.caption).foregroundStyle(Ink.text3)
+                    // Under the person's own targets the check-in learns and leaves them be.
+                    Text(analysis.own == nil ? "Targets adjust to your trend" : "Learns your maintenance; keeps your targets")
+                        .font(.caption).foregroundStyle(Ink.text3)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
@@ -360,9 +421,12 @@ struct CheckInsScreen: View {
 }
 
 struct AssessmentCard: View {
+    @Environment(AppModel.self) private var model
     let assessment: AssessmentProgress
+    @State private var settingTargets = false
 
     var body: some View {
+        let own = model.analysis?.own != nil
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Assessment").font(.callout.weight(.semibold))
@@ -371,16 +435,32 @@ struct AssessmentCard: View {
                     .accessibilityIdentifier("plan.assessmentDay")
             }
             Ruler(value: assessment.progress, height: 12, divisions: 3)
-            Text("Eat as you normally do, log it, and weigh in each morning. Nothing changes until the data says what your maintenance is.")
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                own
+                    ? "Eat to your own targets, log it, and weigh in each morning. Your maintenance is learned all the same."
+                    : "Eat as you normally do, log it, and weigh in each morning. Nothing changes until the data says what your maintenance is."
+            )
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(assessment.learned.enumerated()), id: \.offset) { _, line in
                     Label(line, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline)
                 }
             }
+            // A coach's or a dietitian's numbers instead, while it learns.
+            if !own {
+                Button("Set my own targets") { settingTargets = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .padding(.vertical, -8)
+                    .accessibilityIdentifier("plan.setOwnTargets")
+                    .debugSheet("targets") { settingTargets = true }
+            }
         }
         .card()
+        .sheet(isPresented: $settingTargets) { PlanTargetsSheet() }
     }
 }
 
@@ -474,6 +554,7 @@ struct RecommendationCard: View {
             Text(plan.arc).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
             if ready {
+                if model.analysis?.own != nil { OwnTargetsGiveWay() }
                 Button {
                     model.start(plan)
                 } label: {
@@ -558,7 +639,10 @@ struct PhaseChooser: View {
             List {
                 FormHeading(
                     eyebrow: "Plan", title: "Choose a phase",
-                    detail: "Your own choice over the recommendation. Targets still adapt each week from your logs and weigh-ins.")
+                    detail: model.analysis?.own == nil
+                        ? "Your own choice over the recommendation. Targets still adapt each week from your logs and weigh-ins."
+                        : "Your own choice over the recommendation. Its targets take over from yours, and adapt each week from your logs and weigh-ins."
+                )
                 Section {
                     ForEach(PhaseKind.allCases.filter { $0 != .dietBreak }) { kind in
                         Button {
@@ -618,6 +702,7 @@ struct ReviewCard: View {
             Text(plan.headline).font(.subheadline).fixedSize(horizontal: false, vertical: true)
             PhaseChips(phases: plan.phases.filter { $0.end >= model.today })
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
+            if model.analysis?.own != nil { OwnTargetsGiveWay() }
             Button("Use the updated plan") { model.start(plan) }.primaryAction().accessibilityIdentifier("plan.useUpdated")
         }
         .card()
@@ -633,8 +718,9 @@ struct CheckInHistory: View {
         RowCard(title: "Weekly check-ins", detail: checkIns.count > 8 ? "The last 8" : nil) {
             ForEach(checkIns.suffix(8).reversed()) { c in
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(Format.day(c.day)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                        if c.isOwn { Pill(text: "Yours") }
                         Spacer(minLength: 8)
                         Measure(value: Format.whole(c.kcal), unit: "kcal", size: 17, weight: .heavy).foregroundStyle(Ink.text)
                     }
@@ -643,5 +729,16 @@ struct CheckInHistory: View {
                 .accessibilityElement(children: .combine)
             }
         }
+    }
+}
+
+/// Said before starting or changing the plan while the person's own targets are on: the plan's
+/// take over from today.
+struct OwnTargetsGiveWay: View {
+    var body: some View {
+        Label("Starting it uses the plan's targets in place of your own.", systemImage: "slider.horizontal.3")
+            .font(.footnote)
+            .foregroundStyle(Ink.text2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

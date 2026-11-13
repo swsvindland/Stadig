@@ -15,6 +15,9 @@ public struct StartingPoint: Hashable, Sendable {
     /// How long the assessment runs, in days.
     public var assessmentDays: Int
 
+    /// The numbers as targets: what "Set my own targets" starts from, and shows beside.
+    public var targets: MacroTargets { MacroTargets(kcal: kcal, protein: protein, carbs: carbs, fat: fat) }
+
     /// Each macro's share of the calories, 0 to 1, in the order protein, carbs, fat. They add up to 1.
     public var shares: (protein: Double, carbs: Double, fat: Double) {
         let total = protein * 4 + carbs * 4 + fat * 9

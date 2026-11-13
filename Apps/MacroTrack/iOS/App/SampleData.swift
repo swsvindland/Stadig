@@ -117,6 +117,21 @@ enum SampleData {
         }
     }
 
+    /// A coach's numbers as the person's own targets, 180 g protein, 210 g carbs and 60 g fat (2,100
+    /// kcal), for Plan's card and the sheet with them on (-seedOwnTargets, after -seedSampleData): from
+    /// today over a plan (-seedPlan), else set at onboarding, so the assessment ran under them.
+    @MainActor
+    static func seedOwnTargets(_ model: AppModel) {
+        guard model.onboarded, let analysis = model.analysis else { return }
+        let coach = MacroTargets.grams(protein: 180, carbs: 210, fat: 60)
+        if model.plan != nil {
+            model.setOwnTargets(coach)
+        } else if let start = model.settings.assessmentStart {
+            model.store.save(OwnTargets.record(coach, on: start, expenditure: analysis.maintenance.formula, plan: nil))
+            model.reload()
+        }
+    }
+
     /// The scores each day from `start` to yesterday, as the person's store would have recorded them,
     /// arriving at today's: Discipline up as the targets settled, Vitality down a point with the odd
     /// day missed. The same path every launch.

@@ -27,6 +27,16 @@ public enum PhasePace {
             case .offCourse: "Off course."
             }
         }
+
+        /// The words after the trend under the person's own targets, which aim where their calories do.
+        public var ownLabel: String {
+            switch self {
+            case .onPace: "On pace for your targets."
+            case .faster: "Faster than your targets aim for."
+            case .slower: "Slower than your targets aim for."
+            case .offCourse: "The other way from your targets."
+            }
+        }
     }
 
     /// The share of the planned rate that still counts as on pace, either side.

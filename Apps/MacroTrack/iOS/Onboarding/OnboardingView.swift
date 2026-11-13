@@ -4,9 +4,10 @@ import SwiftUI
 import SystemCore
 
 /// A minute of setup, ending on the starting point: the formula's maintenance for the answers, as
-/// calories a day and how they split. Answers already given in Stadig Lift are reused, not asked
-/// again. Every step is the same page: a back button and a ruler of how far through, the title on
-/// the page, and its one button at the foot.
+/// calories a day and how they split, with "Set my own targets" under Start logging for a coach's or
+/// a dietitian's numbers. Answers already given in Stadig Lift are reused, not asked again. Every
+/// step is the same page: a back button and a ruler of how far through, the title on the page, and
+/// its one button at the foot.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step = Step.welcome
@@ -20,6 +21,10 @@ struct OnboardingView: View {
     @State private var connecting = false
     /// Whether Health was connected on the way: its weigh-ins can shorten the assessment.
     @State private var connectedHealth = false
+    /// The targets sheet over the starting point, and the person's own numbers from it: setup
+    /// finishes with them once the sheet has gone.
+    @State private var settingTargets = false
+    @State private var ownTargets: MacroTargets?
 
     enum Step: Int { case welcome, about, eating, health, start }
 
@@ -349,16 +354,31 @@ struct OnboardingView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 14)
                 Spacer()
-                Button(action: finish) {
-                    Text("Start logging").frame(maxWidth: .infinity)
+                VStack(spacing: 4) {
+                    Button {
+                        finish()
+                    } label: {
+                        Text("Start logging").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.solid).controlSize(.large)
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("onboarding.start")
+                    // A coach's or a dietitian's numbers instead: the assessment still learns maintenance.
+                    quiet("Set my own targets", identifier: "onboarding.ownTargets") { settingTargets = true }
                 }
-                .buttonStyle(.solid).controlSize(.large)
-                .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("onboarding.start")
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
             .readableWidth(560)
+            .sheet(isPresented: $settingTargets) {
+                if let ownTargets { finish(own: ownTargets) }
+            } content: {
+                TargetsSheet(
+                    eyebrow: "Your starting point", initial: point.targets, reference: point.targets, source: .startingPoint,
+                    action: "Start logging"
+                ) { ownTargets = $0 }
+            }
+            .debugSheet("targets") { settingTargets = true }
         }
     }
 
@@ -457,10 +477,12 @@ struct OnboardingView: View {
     /// born in (bad data from another app), then 1990.
     var birthYear: Int { profile.birthYear.flatMap { birthYears.contains($0) ? $0 : nil } ?? 1990 }
 
-    func finish() {
+    /// Setup done, with the person's own targets when they set some.
+    func finish(own: MacroTargets? = nil) {
         // What the picker showed is what's saved. A setup reused from another app skips the
         // picker, so its year is kept as it is unless there's none.
         if !reused || profile.birthYear == nil { profile.birthYear = birthYear }
-        model.completeOnboarding(profile: profile, history: history, weightKg: weightKg)
+        model.completeOnboarding(
+            profile: profile, history: history, weightKg: weightKg, own: own.map { ($0, startingPoint?.kcal ?? $0.kcal) })
     }
 }

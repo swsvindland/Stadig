@@ -267,7 +267,7 @@ extension DailyTargets.Mode {
         case .illness: "Ill"
         case .crunch: "Crunch"
         case .dietBreak: "Diet break"
-        case .assessment, .phase: nil
+        case .assessment, .phase, .own: nil
         }
     }
 }

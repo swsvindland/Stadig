@@ -6,8 +6,9 @@ extension View {
     /// for checking it without the taps to reach it: `lifeMode` (with `-showSettings`), `caffeine`
     /// (drinks on, as `-seedSupplements` has them), `phase` (a recommendation ready, no plan),
     /// `meal` (with a logger open on a meal being logged), `day` (`-tab log`), `time` (with a logger
-    /// open), `steps` (with `-prepCounter`), `supplement` (Today's supplements) and `mealPlanSetup`
-    /// (`-tab plan`, no meal plan). Debug builds only; elsewhere it does nothing.
+    /// open), `steps` (with `-prepCounter`), `supplement` (Today's supplements), `mealPlanSetup`
+    /// (`-tab plan`, no meal plan) and `targets` (`-tab plan`, or `-onboardingStep start`: the targets
+    /// sheet). Debug builds only; elsewhere it does nothing.
     func debugSheet(_ name: String, open: @escaping () -> Void) -> some View {
         #if DEBUG
         modifier(DebugSheetOpener(name: name, open: open))
