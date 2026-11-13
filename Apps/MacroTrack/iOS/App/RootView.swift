@@ -103,9 +103,10 @@ struct RootView: View {
                     TabSectionTitle("Review", systemImage: "chart.bar.xaxis")
                 }
             } else {
-                Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView().tabComposer(.plan, isEnabled: true) }
+                // A page pushed from them has the screen to itself (`pushedPage()`).
+                Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView().tabComposer(.plan, isEnabled: !model.pageCoversComposer) }
                 Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) {
-                    ProgressTab().tabComposer(.progress, isEnabled: true)
+                    ProgressTab().tabComposer(.progress, isEnabled: !model.pageCoversComposer)
                 }
             }
         }
@@ -123,10 +124,12 @@ struct RootView: View {
         // in with the meal: one behind it would be a second Undo nobody can reach. It takes over when
         // the logger closes, with its few seconds starting again. On a phone each tab shows it over
         // its composer, and Today an Undo in the meal just logged too. Today and Log, wide as well,
-        // show theirs over their composers.
+        // show theirs over their composers. A page pushed over a phone's tab, with no composer at
+        // its foot, shows it here.
         .toastOverlay(
             bottomPadding: model.selection.isEmpty ? 24 : 92,
-            showing: wide && model.logger == nil && !model.toastCovered && model.tab != .today && model.tab != .log
+            showing: model.logger == nil && !model.toastCovered && model.tab != .today && model.tab != .log
+                && (wide || model.pageCoversComposer)
         )
         // A meal photo dragged onto the window from Photos or Finder is read like one chosen.
         .dropDestination(for: DroppedImage.self) { images, _ in

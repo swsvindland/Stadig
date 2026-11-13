@@ -188,6 +188,16 @@ extension View {
         #endif
     }
 
+    /// No tab bar under a page that has the screen to itself (a phone's meal plan). The tab bar is
+    /// iPhone's and iPad's; the Mac's sidebar and Vision Pro's ornament stay.
+    func hidesTabBar(_ hidden: Bool) -> some View {
+        #if os(iOS)
+        return toolbarVisibility(hidden ? .hidden : .automatic, for: .tabBar)
+        #else
+        return self
+        #endif
+    }
+
     /// No navigation bar: a screen with a header of its own (a phone's Today). The Mac has none to hide.
     func hidesNavigationBar() -> some View {
         #if os(macOS)

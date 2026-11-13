@@ -276,6 +276,11 @@ final class AppModel {
     private var openWork: [UUID: Bool] = [:]
     /// Whether a sheet is over where the toast shows: it waits, rather than its seconds running out.
     var toastCovered: Bool { openWork.values.contains(true) }
+    /// Pages pushed over a phone's tab that are on screen (`pushedPage()`).
+    private var pushedPages: Set<UUID> = []
+    /// Whether one is: it has the screen to itself, as the design's detail pages do, so the tab's
+    /// composer gives it the foot.
+    var pageCoversComposer: Bool { !pushedPages.isEmpty }
     /// How long a toast stays up.
     var toastTime: Duration = .seconds(4)
     /// A photo dropped on the window, waiting for the photo logger to read it.
@@ -1154,6 +1159,12 @@ final class AppModel {
     }
 
     func noteWork(_ id: UUID, open: Bool, covering: Bool) { openWork[id] = open ? covering : nil }
+
+    func notePushedPage(_ id: UUID, showing: Bool) {
+        // Only a change: the root view redraws its tabs on this.
+        guard pushedPages.contains(id) != showing else { return }
+        if showing { pushedPages.insert(id) } else { pushedPages.remove(id) }
+    }
 
     /// Closes whichever sheet is up, so one asked for from outside (a widget, a control, Siri) can
     /// open: only one shows at a time. A screen's own sheet (an entry being edited) gives way by
