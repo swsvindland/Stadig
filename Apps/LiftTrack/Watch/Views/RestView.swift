@@ -172,9 +172,9 @@ struct RestView: View {
                 }
             }
             .frame(minHeight: 22)
-            if let goAt {
-                Text("go at \(goAt)").faceFont(13).foregroundStyle(quiet)
-            }
+            // Its line is kept when heart rate doesn't guide the rest, so the countdown sits where the
+            // design has it either way.
+            Text("go at \(goAt ?? 100)").faceFont(13).foregroundStyle(quiet).opacity(goAt == nil ? 0 : 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
