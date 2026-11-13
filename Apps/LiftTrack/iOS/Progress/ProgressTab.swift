@@ -11,6 +11,8 @@ struct ProgressTab: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Your shape, opened from the header (and by `-yourShape` in DEBUG).
     @State private var showShape = false
+    /// A score opened from Your shape beside Strength, on a wide screen.
+    @State private var shownStat: StatKind?
     /// History and a session in it, opened by `-history` and `-sessionDetail` in DEBUG.
     @State private var showHistory = false
     @State private var shownSession: SessionRecord?
@@ -29,17 +31,16 @@ struct ProgressTab: View {
             .accessibilityIdentifier("progress.screen")
             .background(.pageBackground)
             .navigationTitle("Progress")
+            .ownHeader()
             #if os(iOS)
-            // The phone draws its own header over Strength.
-            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            // Every width draws its own header over Strength.
+            .toolbarVisibility(.hidden, for: .navigationBar)
             #endif
-            .toolbar {
-                if sizeClass.isWide { SettingsToolbarItem(identifier: "progress.settings") }
-            }
             .sessionResumeToolbar()
             .navigationDestination(isPresented: $showShape) {
                 if let analysis = model.analysis { YourShapePage(analysis: analysis) }
             }
+            .navigationDestination(item: $shownStat) { stat in ScoreDetailPage(stat: stat) }
             #if DEBUG
             .navigationDestination(isPresented: $showHistory) { HistoryView() }
             .navigationDestination(item: $shownSession) { record in SessionDetail(record: record) }
@@ -101,135 +102,47 @@ struct ProgressTab: View {
         return "\(mesocycle.split.label) · week \(week) of \(block.weeksTotal)"
     }
 
-    /// The stats in a grid, and each lift's trend as a list beside a large chart.
+    /// The phone's Progress laid out for width: Strength with each lift, your ratings and History on
+    /// the left; Your shape, the six scores as one figure with a row each, beside it.
     private func wide(_ analysis: LiftAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            YourShape(lines: model.stats, analysis: analysis, open: { stat in if stat == .physique { model.tab = .body } }, sideBySide: true)
-                .card(padding: 20)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 16, alignment: .top)], spacing: 16) {
-                StrengthCard(analysis: analysis)
-                DisciplineCard(score: analysis.discipline)
-                EnduranceCard(analysis: analysis.endurance)
-                AgilityCard(analysis: analysis.agility)
-                RatingsCard(trust: analysis.trust)
-                Button {
-                    model.tab = .history
-                } label: {
-                    historyLink
-                }
-                .buttonStyle(.plain)
-                .hoverHighlight()
-                .accessibilityIdentifier("progress.history")
-            }
-            LiftTrendsPanel(analysis: analysis)
-        }
-        .padding()
-        .frame(maxWidth: 1400)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var historyLink: some View {
-        HStack {
-            Text("History").font(.headline).foregroundStyle(Ink.text)
-            Spacer()
-            Text("\(model.sessions.count) sessions · \(model.activities.count) activities").font(.subheadline).foregroundStyle(Ink.text2)
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
-        }
-        .card()
-    }
-}
-
-/// Every lift with a trend, beside the chosen one's estimated one-rep max over time: large, with
-/// its current estimate, the change and any stall.
-struct LiftTrendsPanel: View {
-    @Environment(AppModel.self) private var model
-    let analysis: LiftAnalysis
-    @State private var selection: String?
-    @State private var lifts: [LiftTrendsPanel.Lift] = []
-
-    struct Lift: Identifiable, Hashable {
-        var id: String
-        var name: String
-        var points: [ExerciseRecord.Point]
-        var current: Double?
-        var change: Double?
-        var scored: Bool
-    }
-
-    var body: some View {
-        let unit = model.gym.unit
         VStack(alignment: .leading, spacing: 12) {
-            Text("Estimated 1RM").font(.headline)
-            if lifts.isEmpty {
-                Text("Trends appear after a couple of sessions.").font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                HStack(alignment: .top, spacing: 16) {
-                    List(lifts, selection: $selection) { lift in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(lift.name).lineLimit(1)
-                                if let current = lift.current {
-                                    Text(Format.weight(current, unit: unit)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            if let change = lift.change {
-                                Text("\(change >= 0 ? "+" : "")\(Format.percent(change))").font(.caption.monospacedDigit())
-                                    .foregroundStyle(change > 0 ? Ink.good : Ink.text2)
-                            }
+            header(analysis)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    StrengthCard(analysis: analysis, trend: model.stats.first { $0.stat == .strength }.flatMap { TrendWord($0.trend) })
+                    RowCard {
+                        NavigationLink {
+                            RatingsPage(trust: analysis.trust)
+                        } label: {
+                            LinkRowLabel(title: "Your ratings", caption: "\(analysis.trust.label) · \(analysis.trust.evidenceCount) checks so far")
                         }
-                        .tag(lift.id)
-                        .accessibilityIdentifier("progress.trendLift")
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .frame(width: 280, height: 360)
-                    if let lift = lifts.first(where: { $0.id == selection }) ?? lifts.first {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(lift.name).font(.title3.bold())
-                                Spacer()
-                                Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: lift.id) }
-                                    .buttonStyle(.borderless)
-                            }
-                            Chart(lift.points, id: \.day) { point in
-                                LineMark(x: .value("Day", point.day.date()), y: .value("e1RM", unit.fromKilograms(point.e1rm)))
-                                    .interpolationMethod(.monotone)
-                                PointMark(x: .value("Day", point.day.date()), y: .value("e1RM", unit.fromKilograms(point.e1rm))).symbolSize(30)
-                            }
-                            .chartYScale(domain: .automatic(includesZero: false))
-                            .chartYAxisLabel(unit.symbol)
-                            .frame(minHeight: 300)
-                            .accessibilityLabel("\(lift.name) estimated one-rep max over time")
-                            if let stall = analysis.stalls.first(where: { $0.exerciseID == lift.id }) {
-                                Text(
-                                    stall.reading == .expectedInDeficit
-                                        ? "Flat for \(stall.weeks) weeks: expected in a cut." : "No new best for \(stall.weeks) weeks."
-                                )
-                                .font(.footnote).foregroundStyle(.secondary)
-                            }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("progress.ratings")
+                        Button {
+                            model.tab = .history
+                        } label: {
+                            LinkRowLabel(title: "History", caption: "\(model.sessions.count) sessions · \(model.activities.count) activities")
                         }
-                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("progress.history")
                     }
                 }
+                .frame(maxWidth: .infinity)
+                YourShape(lines: model.stats, analysis: analysis) { stat in
+                    switch stat {
+                    case .strength, .vitality: break
+                    case .physique: model.tab = .body
+                    default: shownStat = stat
+                    }
+                }
+                .card(padding: 16)
+                .frame(maxWidth: .infinity)
             }
         }
-        .card()
-        .task(id: analysis.history.count + model.sessions.count) { lifts = Self.lifts(analysis, catalog: model.catalog) }
-    }
-
-    /// Strength lifts done at least twice: the scored lifts first, then by name.
-    static func lifts(_ analysis: LiftAnalysis, catalog: ExerciseCatalog) -> [Lift] {
-        analysis.history.keys.map { catalog.resolve($0) }
-            .filter { $0.kind == .strength }
-            .compactMap { exercise -> Lift? in
-                let record = ExerciseRecord.of(analysis.history[exercise.id] ?? [], exercise: exercise, trust: analysis.trust)
-                guard record.trend.count >= 2 else { return nil }
-                return Lift(
-                    id: exercise.id, name: exercise.name, points: record.trend, current: record.current, change: record.change,
-                    scored: exercise.strength != nil)
-            }
-            .sorted { ($0.scored ? 0 : 1, $0.name) < ($1.scored ? 0 : 1, $1.name) }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 1180)
+        .frame(maxWidth: .infinity)
     }
 }
 

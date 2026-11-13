@@ -21,21 +21,7 @@ struct TodayView: View {
             ScrollView {
                 if let analysis = model.analysis {
                     if sizeClass.isWide {
-                        HStack(alignment: .top, spacing: 20) {
-                            VStack(alignment: .leading, spacing: 16) {
-                                banners(analysis)
-                                sessionCard(analysis)
-                            }
-                            .frame(minWidth: 360, maxWidth: 640)
-                            VStack(alignment: .leading, spacing: 16) {
-                                if let status = analysis.assessment { AssessmentCard(status: status) }
-                                around(analysis)
-                            }
-                            .frame(minWidth: 300, maxWidth: 520)
-                        }
-                        .padding()
-                        .frame(maxWidth: 1200)
-                        .frame(maxWidth: .infinity)
+                        wide(analysis)
                     } else {
                         column(analysis)
                     }
@@ -44,25 +30,11 @@ struct TodayView: View {
             .accessibilityIdentifier("today.screen")
             .background(.pageBackground)
             .navigationTitle("Today")
-            .navigationSubtitleIfAvailable(Format.day(model.today, style: .dateTime.weekday(.wide).month(.wide).day()))
+            .ownHeader()
             #if os(iOS)
-            // The phone draws its own header: the date over a large title, and its two buttons.
-            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            // Every width draws its own header: the date over a large title, and its two buttons.
+            .toolbarVisibility(.hidden, for: .navigationBar)
             #endif
-            .toolbar {
-                if sizeClass.isWide {
-                    ToolbarItem(placement: .barTrailing) {
-                        Menu {
-                            addMenu
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .accessibilityLabel("Add")
-                        .accessibilityIdentifier("today.add")
-                    }
-                    SettingsToolbarItem(identifier: "today.settings")
-                }
-            }
             .refreshable { await model.refreshHealth() }
             .sessionResumeToolbar()
             .sheet(item: $logActivity) { item in ActivityLogSheet(declared: item.declared) }
@@ -116,6 +88,41 @@ struct TodayView: View {
         .readableWidth()
     }
 
+    /// The phone's Today laid out for width: the week and the session to start on the left, with
+    /// what's in it; the scores and the things worth doing next beside it.
+    private func wide(_ analysis: LiftAnalysis) -> some View {
+        let plan = model.live == nil && analysis.next != nil ? model.plan(minutes: minutes) : nil
+        let assessmentNote = plan?.assessment == true ? plan?.notes.first : nil
+        return VStack(alignment: .leading, spacing: 12) {
+            header
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ThisWeekStrip(days: model.weekStrip).padding(6).background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+                    banners(analysis)
+                    hero(analysis, plan: plan)
+                    if let plan, let next = analysis.next,
+                        let note = dayNote(plan: plan, next: next, life: analysis.life, skipping: assessmentNote == nil ? 0 : 1)
+                    {
+                        Text(note).font(.footnote).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 4)
+                            .accessibilityIdentifier("today.heroNotes")
+                    }
+                    if let plan { SessionContents(plan: plan) }
+                }
+                .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 12) {
+                    ScoresCard(lines: model.stats) { model.tab = .progress }
+                    next(analysis, plan: plan, assessmentNote: assessmentNote)
+                }
+                .frame(minWidth: 300, idealWidth: 400, maxWidth: 440)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 1180)
+        .frame(maxWidth: .infinity)
+    }
+
     private var header: some View {
         PageHeader(eyebrow: Format.day(model.today, style: .dateTime.weekday(.wide).day().month(.wide)), title: "Today") {
             HStack(spacing: 8) {
@@ -124,6 +131,9 @@ struct TodayView: View {
                 } label: {
                     CircleIcon(symbol: "plus")
                 }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
                 .accessibilityLabel("Add")
                 .accessibilityIdentifier("today.add")
                 #if !os(macOS)
@@ -301,25 +311,6 @@ struct TodayView: View {
         if analysis.life.reentry { reentryBanner }
     }
 
-    /// What ends in an action around the session: next steps, quests, steps and outside training.
-    @ViewBuilder
-    private func around(_ analysis: LiftAnalysis) -> some View {
-        if !analysis.actions.isEmpty {
-            SectionHeader(title: "Do this next")
-            ForEach(analysis.actions.prefix(3)) { action in ActionCard(action: action) { perform(action) } }
-        }
-        if !analysis.quests.isEmpty {
-            SectionHeader(title: "Later today")
-            ForEach(analysis.quests) { quest in QuestRow(quest: quest) }
-        }
-        if let steps = analysis.steps {
-            StepsCard(steps: steps)
-        } else if HealthBridge.shared.isAvailable {
-            StepsWaitingCard(connected: !model.steps.isEmpty) { Task { await model.connectHealth() } }
-        }
-        outside(analysis)
-    }
-
     private var reentryBanner: some View {
         Label("First week back: easing in, a little lighter.", systemImage: "arrow.uturn.forward")
             .font(.subheadline)
@@ -328,43 +319,7 @@ struct TodayView: View {
 
     // MARK: Session
 
-    @ViewBuilder
-    private func sessionCard(_ analysis: LiftAnalysis) -> some View {
-        if let live = model.live {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(live.plan.title).font(.title2.bold())
-                Ruler(value: live.progress, height: 10)
-                Button {
-                    model.showSession = true
-                } label: {
-                    Label("Resume session", systemImage: "play.fill").frame(maxWidth: .infinity)
-                }
-                .primaryAction()
-                .controlSize(.large)
-                .accessibilityIdentifier("today.resumeSession")
-            }
-            .card()
-        } else if let next = analysis.next, let plan = model.plan(minutes: minutes) {
-            SessionCard(plan: plan, next: next, minutes: $minutes, life: analysis.life) { model.start(plan) }
-        } else {
-            EmptyCard(symbol: "calendar.badge.plus", title: "No block yet", detail: "Plan your next block from the Plan tab.")
-        }
-    }
-
     // MARK: Outside training
-
-    @ViewBuilder
-    private func outside(_ analysis: LiftAnalysis) -> some View {
-        let declared = model.profile?.declared(on: model.today) ?? []
-        let todays = model.activities.filter { $0.day == model.today }
-        if !declared.isEmpty || !todays.isEmpty {
-            SectionHeader(title: "Outside the gym")
-            VStack(alignment: .leading, spacing: 14) {
-                outsideRows()
-            }
-            .card()
-        }
-    }
 
     private func perform(_ action: NextAction) {
         switch action.kind {
@@ -739,121 +694,51 @@ extension AppModel {
     }
 }
 
+/// Today's session, lift by lift, under the hero on a wide screen: what's in it and the first work
+/// set of each.
+struct SessionContents: View {
+    @Environment(AppModel.self) private var model
+    let plan: SessionPlan
+
+    var body: some View {
+        let lifts = plan.items.filter { $0.block == .main || $0.block == .accessory }
+        let rest = plan.items.filter { $0.block != .main && $0.block != .accessory }
+        RowCard(title: "In today's session", detail: "\(plan.estimatedMinutes) min", minHeight: 44) {
+            ForEach(lifts) { item in
+                let exercise = model.catalog.resolve(item.exerciseID)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(exercise.name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        Text(item.block.singular).font(.caption).foregroundStyle(Ink.text3)
+                    }
+                    Spacer(minLength: 8)
+                    if let first = item.workSets.first {
+                        Text(Self.line(item.workSets.count, first, exercise: exercise, unit: model.gym.unit))
+                            .font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(Ink.text2)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if !rest.isEmpty {
+                Text(Dictionary(grouping: rest, by: \.block).keys.sorted().map(\.label).joined(separator: " · "))
+                    .font(.caption).foregroundStyle(Ink.text3)
+            }
+        }
+    }
+}
+
+extension SessionContents {
+    /// "3 × 7 · 70 kg", "3 × 45 s", "3 × 10" for a body's own weight.
+    static func line(_ count: Int, _ first: SetPrescription, exercise: Exercise, unit: WeightUnit) -> String {
+        if let seconds = first.seconds { return "\(count) × \(Format.duration(seconds))" }
+        let load = first.loadKg.map { exercise.loadBasis == .none ? "" : " · \(Format.load($0, unit: unit, basis: exercise.loadBasis))" } ?? ""
+        return "\(count) × \(first.targetReps)\(load)"
+    }
+}
+
 struct ActivityLogSheetItem: Identifiable {
     let id = UUID()
     let declared: RecurringActivity?
-}
-
-/// Today's session: what it is, how long, every block, and Start.
-struct SessionCard: View {
-    @Environment(AppModel.self) private var model
-    let plan: SessionPlan
-    let next: NextSession
-    @Binding var minutes: Int?
-    let life: LifeModeEffects
-    let start: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(next.scheduledToday ? "Today's session" : "Next session").font(.subheadline).foregroundStyle(.secondary)
-                    Text(plan.title).font(.title.bold())
-                }
-                Spacer()
-                Text("~\(plan.estimatedMinutes) min").font(.headline).foregroundStyle(.secondary)
-            }
-            HStack(spacing: 6) {
-                if plan.assessment { Pill(text: "Assessment", symbol: "scope", color: .accentColor) }
-                if plan.deload { Pill(text: "Deload", symbol: "arrow.down.circle", color: .accentColor) }
-                if plan.checkIn { Pill(text: "Check-in", symbol: "checklist", color: .accentColor) }
-                if let week = plan.week, !plan.assessment { Pill(text: "Week \(week + 1)", color: .secondary) }
-                Pill(text: "\(next.doneThisWeek) of \(next.plannedThisWeek) this week", color: .secondary)
-            }
-            if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
-                Text(
-                    "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along."
-                )
-                .font(.subheadline).foregroundStyle(.secondary)
-            }
-            if !life.trainingExpected {
-                Text("Nothing is expected today. If you train anyway, keep it easy.").font(.subheadline).foregroundStyle(.secondary)
-            }
-            ForEach(Array(plan.notes.prefix(2).enumerated()), id: \.offset) { _, note in
-                Text(note).font(.subheadline)
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(blocks, id: \.0) { kind, items in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: kind.symbol).foregroundStyle(kind.color).frame(width: 22)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(kind.label).font(.subheadline.weight(.semibold))
-                            ForEach(items) { item in itemLine(item) }
-                        }
-                    }
-                }
-            }
-            ForEach(plan.quests.filter { quest in !(model.analysis?.quests.contains { $0.id == quest.id } ?? false) }) { quest in
-                Label("Moved to later: \(quest.title.lowercased())", systemImage: "clock.arrow.circlepath")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            HStack {
-                Text("Short on time?").font(.subheadline).foregroundStyle(.secondary)
-                Spacer()
-                ForEach([30, 45, 60, 90], id: \.self) { m in
-                    Button("\(m)") { minutes = minutes == m ? nil : m }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
-                        .choiceTint(minutes == m)
-                        .controlSize(.small)
-                        .accessibilityLabel("\(m) minutes")
-                        .accessibilityIdentifier("today.minutes\(m)")
-                }
-            }
-            Button(action: start) {
-                Label("Start", systemImage: "play.fill").font(.headline).frame(maxWidth: .infinity)
-            }
-            .primaryAction()
-            .controlSize(.large)
-            .help("Start today's session (⌘N)")
-            .accessibilityIdentifier("today.startSession")
-        }
-        .card()
-    }
-
-    private var blocks: [(SessionBlockKind, [PlannedItem])] {
-        SessionBlockKind.allCases.compactMap { kind in
-            let items = plan.items.filter { $0.block == kind }
-            return items.isEmpty ? nil : (kind, items)
-        }
-    }
-
-    @ViewBuilder
-    private func itemLine(_ item: PlannedItem) -> some View {
-        let exercise = model.catalog.resolve(item.exerciseID)
-        let work = item.workSets
-        HStack(alignment: .firstTextBaseline) {
-            Text(exercise.name).font(.subheadline)
-            Spacer(minLength: 8)
-            Group {
-                if let c = item.conditioning {
-                    Text(c.summary)
-                } else if item.isStrength, let first = work.first {
-                    Text(
-                        first.loadKg == nil
-                            ? "\(work.count) × \(first.targetReps) · find weight"
-                            : "\(work.count) × \(Format.set(first, exercise: exercise, unit: model.gym.unit))")
-                } else if let seconds = item.seconds {
-                    Text(Format.duration(seconds))
-                }
-            }
-            .font(.subheadline.monospacedDigit())
-            .foregroundStyle(.secondary)
-        }
-        if let replaced = item.substitutedFor {
-            Text("Instead of \(model.catalog.resolve(replaced).name)").font(.caption).foregroundStyle(.secondary)
-        }
-    }
 }
 
 /// The assessment: how far along, and what's been learned so far.
@@ -892,39 +777,6 @@ struct AssessmentCard: View {
             }
         }
         .card()
-    }
-}
-
-/// A prescriptive insight: what was seen, then the action.
-struct ActionCard: View {
-    let action: NextAction
-    let perform: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(action.title, systemImage: action.stat.symbol)
-                .font(.headline)
-                .foregroundStyle(action.stat.color)
-            Text(action.detail).font(.subheadline).foregroundStyle(.secondary)
-            HStack(alignment: .firstTextBaseline) {
-                Image(systemName: "arrow.right.circle.fill").foregroundStyle(.tint)
-                Text(action.action).font(.subheadline.weight(.semibold))
-            }
-            if [.deloadEarly, .checkIn, .measure].contains(action.kind) {
-                Button(buttonTitle, action: perform).secondaryAction().controlSize(.small)
-                    .accessibilityIdentifier("today.action\(action.kind.rawValue.identifierSuffix)")
-            }
-        }
-        .card()
-    }
-
-    private var buttonTitle: String {
-        switch action.kind {
-        case .deloadEarly: "Deload this week"
-        case .checkIn: "Open check-in"
-        case .measure: "Measure"
-        default: "Do it"
-        }
     }
 }
 
@@ -1034,22 +886,5 @@ struct StepsWaitingCard: View {
                 Button("Connect Apple Health", action: connect).secondaryAction().controlSize(.small)
             }
         }
-    }
-}
-
-struct QuestRow: View {
-    let quest: Quest
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: quest.stat.symbol).foregroundStyle(quest.stat.color).frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(quest.title).font(.subheadline.weight(.semibold))
-                if !quest.detail.isEmpty { Text(quest.detail).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer()
-            if let minutes = quest.minutes { Text("\(minutes) min").font(.caption).foregroundStyle(.secondary) }
-        }
-        .card(padding: 12)
     }
 }

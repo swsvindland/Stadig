@@ -40,24 +40,11 @@ struct BodyView: View {
             .onAppear { if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true } }
             #endif
             .navigationTitle("Body")
+            .ownHeader()
             #if os(iOS)
-            // The phone draws its own header: the last check-in over a large title.
-            .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
+            // Every width draws its own header: the last check-in over a large title.
+            .toolbarVisibility(.hidden, for: .navigationBar)
             #endif
-            .toolbar {
-                if sizeClass.isWide {
-                    ToolbarItem(placement: .barTrailing) {
-                        Button {
-                            measuring = true
-                        } label: {
-                            Label("Add Measurements", systemImage: "ruler")
-                        }
-                        .help("Add tape measurements")
-                        .accessibilityLabel("Add measurements")
-                        .accessibilityIdentifier("body.addMeasurements")
-                    }
-                }
-            }
             .sessionResumeToolbar()
             #if os(macOS)
             // Continuity Camera: File ▸ Import from iPhone or iPad takes a photo with the phone.
@@ -121,6 +108,60 @@ struct BodyView: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
         .readableWidth()
+    }
+
+    /// The phone's Body laid out for width: Physique and the waist over the weeks on the left; the
+    /// latest tape, proportions, photos and every check-in beside them, with Add check-in.
+    private var wide: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            header
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let physique = model.analysis?.physique, physique.score != nil || physique.waistToHeight != nil {
+                        VStack(alignment: .leading, spacing: 11) { hero(physique) }
+                            .card(padding: 16)
+                    }
+                    waistTrend
+                }
+                .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 12) {
+                    latestTape
+                    RowCard {
+                        if let physique = model.analysis?.physique {
+                            NavigationLink {
+                                proportionsPage(physique)
+                            } label: {
+                                LinkRowLabel(title: "Proportions", caption: proportionsLine(physique))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("body.proportions")
+                        }
+                        Button {
+                            showPhotos = true
+                        } label: {
+                            LinkRowLabel(title: "Progress photos", caption: photosLine)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("body.photos")
+                    }
+                    history
+                    Button {
+                        measuring = true
+                    } label: {
+                        Label("Add check-in", systemImage: "plus").frame(maxWidth: .infinity)
+                    }
+                    .primaryAction()
+                    .controlSize(.large)
+                    .help("Add tape measurements")
+                    .accessibilityIdentifier("body.addMeasurements")
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 1180)
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
@@ -224,12 +265,17 @@ struct BodyView: View {
     private var photosPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { DetailHeader(eyebrow: "Body", title: "Progress photos") }
-                photos
+                if sizeClass.isWide {
+                    // Two of a pose side by side, large; drop an image on it to add one.
+                    PhotoComparison(pose: $pose, pickerItem: $pickerItem) { data in await importPhoto(data: data) }
+                } else {
+                    DetailHeader(eyebrow: "Body", title: "Progress photos")
+                    photos
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
-            .readableWidth()
+            .readableWidth(sizeClass.isWide ? 1100 : 720)
         }
         .background(.pageBackground)
         .detailPage(title: "Progress photos", wide: sizeClass.isWide)
@@ -282,35 +328,6 @@ struct BodyView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Waist to height \(Format.number(wth, digits: 2)). Under 0.50 is healthy.")
         }
-    }
-
-    /// The physique cards in a grid, a larger waist chart, photos compared side by side and the
-    /// measurements as a table.
-    private var wide: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let physique = model.analysis?.physique {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 16, alignment: .top)], spacing: 16) {
-                    overview(physique)
-                    sides(physique)
-                    if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
-                }
-            }
-            waistTrend
-            PhotoComparison(pose: $pose, pickerItem: $pickerItem) { data in await importPhoto(data: data) }
-            MeasurementTable(edit: { editing = $0 })
-        }
-        .padding()
-        .frame(maxWidth: 1400)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func overview(_ p: PhysiqueAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            hero(p)
-            if p.score != nil || p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
-            proportions(p)
-        }
-        .card()
     }
 
     /// The ratios against their targets, body fat, FFMI and the waist, or how to start measuring.
@@ -709,73 +726,6 @@ private struct PhotoComparison: View {
                 .accessibilityLabel("\(title): progress photo, \(Format.day(photo.day))")
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-/// Every tape check-in as a table, newest first: a row opens it for editing.
-private struct MeasurementTable: View {
-    @Environment(AppModel.self) private var model
-    let edit: (BodyMeasurements) -> Void
-
-    var body: some View {
-        let length = model.units.length
-        VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Measurements", detail: "\(model.measurements.count) check-ins")
-            ScrollView(.horizontal) {
-                VStack(alignment: .leading, spacing: 0) {
-                    row(
-                        ["Date", "Weight", "Waist", "Shoulders", "Chest", "Hips", "Glutes", "Arm L / R", "Thigh L / R", "Calf L / R", "Body fat"],
-                        header: true)
-                    Divider()
-                    ForEach(model.measurements.reversed()) { m in
-                        Button {
-                            edit(m)
-                        } label: {
-                            row(
-                                [
-                                    Format.day(m.day, style: .dateTime.month(.abbreviated).day().year()),
-                                    m.weightKg.map { Format.weight($0, unit: model.units.weight) } ?? "—",
-                                    Format.length(m.waistCm, unit: length), Format.length(m.shouldersCm, unit: length),
-                                    Format.length(m.chestCm, unit: length), Format.length(m.hipsCm, unit: length),
-                                    Format.length(m.glutesCm, unit: length),
-                                    pair(m, .arm), pair(m, .thigh), pair(m, .calf),
-                                    m.bodyFatPercent.map { "\(Format.number($0))%" } ?? "—",
-                                ], header: false)
-                        }
-                        .buttonStyle(.plain)
-                        .hoverHighlight()
-                        .contextMenu {
-                            Button("Edit…", systemImage: "pencil") { edit(m) }
-                            Button("Delete", systemImage: "trash", role: .destructive) { model.delete(measurement: m.id) }
-                        }
-                        .accessibilityIdentifier("body.measurement")
-                        Divider()
-                    }
-                }
-            }
-        }
-        .card()
-    }
-
-    private func pair(_ m: BodyMeasurements, _ limb: Limb) -> String {
-        guard let sides = m.sides(limb) else { return "—" }
-        let unit = model.units.length
-        return "\(Format.number(unit.fromCentimetres(sides.left))) / \(Format.number(unit.fromCentimetres(sides.right)))"
-    }
-
-    private func row(_ cells: [String], header: Bool) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(cells.enumerated()), id: \.offset) { index, cell in
-                Text(cell)
-                    .font(header ? .caption.weight(.semibold) : (index == 0 ? .subheadline.weight(.semibold) : .subheadline.monospacedDigit()))
-                    .foregroundStyle(header ? .secondary : .primary)
-                    .lineLimit(1)
-                    .frame(width: index == 0 ? 130 : 96, alignment: .leading)
-            }
-        }
-        .padding(.vertical, 8)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
     }
 }
 

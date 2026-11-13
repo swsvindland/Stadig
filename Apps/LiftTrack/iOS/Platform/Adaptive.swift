@@ -164,6 +164,12 @@ extension View {
         #endif
     }
 
+    /// A wide screen that sets its own header (`PageHeader`): the bar keeps its buttons but not the
+    /// title, which stays the window's name (the Mac's Window menu, the app switcher).
+    func ownHeader() -> some View {
+        inlineTitle().toolbar(removing: .title)
+    }
+
     /// A screen that draws its own bar (`SheetBar`): the system's navigation bar goes. The Mac's
     /// sheets have none to hide.
     func hidesNavigationBar() -> some View {

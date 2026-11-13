@@ -64,6 +64,78 @@ struct ProgramLayoutTests {
         #expect(days.filter(\.checkIn).map(\.day) == [block.end])
     }
 
+    /// A four-week block of one day, bench then row, with week one done and week two's session next.
+    private func ledgerFixture() -> (Mesocycle, PlannedDay, SlotPlan, SlotPlan, SessionRecord) {
+        let bench = SlotPlan(exerciseID: "barbell-bench-press", role: .main, sets: [3, 3, 4], repRange: RepRange(5, 8), restSeconds: 150)
+        let row = SlotPlan(exerciseID: "barbell-row", role: .main, sets: [3], repRange: RepRange(6, 10), restSeconds: 150)
+        let day = PlannedDay(name: "Upper A", focus: .upper, blocks: [SessionBlockPlan(kind: .main, minutes: 30, slots: [bench, row])])
+        let m = Mesocycle(
+            block: TrainingBlock(kind: .standard, start: Fixture.start, loadingWeeks: 3), split: .upperLower, days: [day], priorities: [],
+            rationale: Rationale(headline: ""), minutesPerSession: 60, phase: .assumedMaintenance)
+        let start = Fixture.start.adding(days: 1).date().addingTimeInterval(18 * 3600)
+        let sets = [(70.0, 7, SetRating.orange), (70, 7, .orange), (70, 6, .red)].map { load, reps, rating in
+            LoggedSet(exerciseID: bench.exerciseID, date: start, loadKg: load, reps: reps, rating: rating)
+        }
+        let warmup = LoggedSet(exerciseID: bench.exerciseID, date: start, kind: .warmup, loadKg: 40, reps: 5)
+        let record = SessionRecord(
+            start: start, end: start.addingTimeInterval(3600), title: "Upper A", mesocycleID: m.id, dayID: day.id,
+            exercises: [ExerciseLog(slotID: bench.id, exerciseID: bench.exerciseID, sets: [warmup] + sets)])
+        return (m, day, bench, row, record)
+    }
+
+    @Test func theLedgerShowsWhatWasDoneWhatsNextAndWhatsToCome() throws {
+        let (m, day, bench, _, record) = ledgerFixture()
+        let today = Fixture.start.adding(days: 8)
+        let next = SessionPlan(
+            day: today, title: "Upper A", mesocycleID: m.id, dayID: day.id, week: 1, deload: false, checkIn: false, assessment: false,
+            minimumEffectiveDose: false,
+            items: [
+                PlannedItem(
+                    slotID: bench.id, block: .main, exerciseID: bench.exerciseID, role: .main,
+                    sets: [SetPrescription(kind: .warmup, loadKg: 40, targetReps: 5, targetRIR: 4)]
+                        + Array(repeating: SetPrescription(kind: .working, loadKg: 72.5, targetReps: 6, targetRIR: 2), count: 3),
+                    repRange: bench.repRange, rest: RestPlan(target: 150, minimum: 90, heartRateGuided: false))
+            ], notes: [], quests: [])
+        let cells = ProgramLayout.ledger(slot: bench, day: day, of: m, records: [record], next: next, today: today)
+        #expect(cells.map(\.week) == [.loading(0), .loading(1), .loading(2), .deload])
+        #expect(cells.map(\.state) == [.done, .next, .planned, .planned])
+        // Done: the work sets only, the heaviest one's reps and load, each set's rating in order.
+        #expect(cells[0].sets == 3)
+        #expect(cells[0].reps == "7")
+        #expect(cells[0].loadKg == 70)
+        #expect(cells[0].ratings == [.orange, .orange, .red])
+        // Next: today's work sets and load, against the week before.
+        #expect(cells[1].sets == 3)
+        #expect(cells[1].reps == "6")
+        #expect(cells[1].loadKg == 72.5)
+        #expect(cells[1].changeKg == 2.5)
+        // To come: the block's sets and rep range, and no load: that's worked out on the day.
+        #expect(cells[2].sets == 4)
+        #expect(cells[2].reps == "5–8")
+        #expect(cells[2].loadKg == nil)
+        #expect(cells[3].sets == 2)
+
+        let weeks = ProgramLayout.ledger(day: day, of: m, records: [record], next: next, today: today)
+        #expect(weeks.map(\.done) == [record.day, nil, nil, nil])
+        #expect(weeks.map(\.isNext) == [false, true, false, false])
+        #expect(weeks.allSatisfy { !$0.missed })
+    }
+
+    @Test func aWeekGoneWithoutTheDayIsMissedAndASlotLeftOutToo() throws {
+        let (m, day, bench, row, record) = ledgerFixture()
+        // Week three, nothing done in week two, and another day is next.
+        let today = Fixture.start.adding(days: 15)
+        let cells = ProgramLayout.ledger(slot: bench, day: day, of: m, records: [record], next: nil, today: today)
+        #expect(cells.map(\.state) == [.done, .missed, .planned, .planned])
+        // The session in week one never got to the row.
+        let rows = ProgramLayout.ledger(slot: row, day: day, of: m, records: [record], next: nil, today: today)
+        #expect(rows.map(\.state) == [.missed, .missed, .planned, .planned])
+        #expect(ProgramLayout.ledger(day: day, of: m, records: [record], next: nil, today: today).map(\.missed) == [false, true, false, false])
+        // The rulers over the weeks: the heaviest week is the whole, the deload about half.
+        let loads: [Double] = [6 / 7, 6 / 7, 1, 4 / 7]
+        #expect(ProgramLayout.weekLoads(m) == loads)
+    }
+
     @Test func aBlockCutShortLeavesItsLastDaysOutside() throws {
         var block = TrainingBlock(kind: .standard, start: Fixture.start, loadingWeeks: 4)
         block.endOverride = Fixture.start.adding(days: 30)

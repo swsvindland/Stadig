@@ -27,7 +27,7 @@ Each app supplies what differs between them: `Ink.onAccent`, the ink on its own 
 
 ## One job per device
 
-What the canvas proposes for each device, beyond the iPhone screens. Built so far: Floor mode (Stadig Lift), the menu bar logger (Stadig Macro on the Mac), and the widgets, Live Activities, StandBy and complications on the new look. The rest are concepts.
+What the canvas proposes for each device, beyond the iPhone screens. Built so far: Floor mode (Stadig Lift), the program desk (Stadig Lift's Program on the Mac and the iPad), the menu bar logger (Stadig Macro on the Mac), and the widgets, Live Activities, StandBy and complications on the new look. The rest are concepts.
 
 | Device | Where the person is | Its job |
 | --- | --- | --- |
