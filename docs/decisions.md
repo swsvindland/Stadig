@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Macro's iPad, Mac and Vision Pro layouts in the family's look.** The same day. The calls, mine to check:
+  - **Wide Today is the phone's Today in a column** (what's left, the day starting under it, the tiles or What fits, the composer), with everything More today folds on a phone open in a second column beside it; under 760 points wide it's the phone's layout.
+  - **Every wide screen has the phone's page header,** its actions as round buttons beside the title (Log: Today, sort, calendar, Log food; Meal plan: Start prep; Progress: the range and Weigh in); search fields, table columns and an editor's Save stay in the bar. The sidebar opens with what's left today over a thin ruler.
+  - **The toolbar's ways to log are gone from wide Today and Log** in favour of the composer at their foot, the logger pane and the menus.
+  - **The menu bar panel has the board's microphone** where Apple's model can read a description.
+  - **Not built:** the Mac's week desk (`DevMacMacroWeek` on the design canvas). Not looked at: the Mac and the iPad in landscape (the Mac's screen was locked, and the simulator wouldn't rotate on request).
+
 - **Stadig Lift's sheets and secondary screens on the new look.** The same day. The calls, mine to check:
   - **A sheet is one shape:** a round close at the top left, a large title under an eyebrow saying where it came from, rows on cards under eyebrows, the segmented control instead of the system's, and its one action as a full-width solid button at the foot; Delete, Remove and End it now are ghost buttons under the cards. That's How was it?, swap, correcting a set, check-in, measurements, logging an activity, a regular activity, the four life modes, Next block and Settings.
   - **How was it? asks energy, then soreness, then joint pain,** the joints as chips rather than switches.
