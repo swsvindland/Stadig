@@ -2,42 +2,66 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// The assessment while it runs, then one recommendation with its reasons, then the plan in force
-/// with its weekly check-ins.
+/// The assessment while it runs, then one recommendation with its reasons, then the plan in force:
+/// the phase and its weeks, today's targets and the trend against them, the year ahead, and the next
+/// weekly check-in (its history behind it). Meal prep, supplements and maintenance follow.
 struct PlanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    var compact: Bool { sizeClass == .compact }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                if let analysis = model.analysis {
-                    if sizeClass == .compact {
-                        VStack(alignment: .leading, spacing: 16) { cards(analysis) }
-                            .padding()
-                            .readableWidth()
-                    } else {
-                        // With room: the phase and its reasons, and beside them what feeds and follows it.
-                        HStack(alignment: .top, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 16) { phase(analysis) }
-                                .frame(maxWidth: .infinity)
-                            VStack(alignment: .leading, spacing: 16) { side(analysis) }
-                                .frame(minWidth: 300, idealWidth: 380, maxWidth: 420)
+                if compact {
+                    VStack(alignment: .leading, spacing: 12) {
+                        PageHeader(eyebrow: eyebrow, title: "Plan") {
+                            if !Platform.isMac {
+                                CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "plan.settings") { model.showSettings = true }
+                            }
                         }
-                        .padding(20)
-                        .frame(maxWidth: 1180)
-                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 4)
+                        if let analysis = model.analysis { cards(analysis) }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
+                    .readableWidth()
+                } else if let analysis = model.analysis {
+                    // With room: the phase and its reasons, and beside them what feeds and follows it.
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 12) { phase(analysis) }
+                            .frame(maxWidth: .infinity)
+                        VStack(alignment: .leading, spacing: 12) { side(analysis) }
+                            .frame(minWidth: 300, idealWidth: 380, maxWidth: 420)
+                    }
+                    .padding(20)
+                    .frame(maxWidth: 1180)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .background(.pageBackground)
             .navigationTitle("Plan")
+            .hidesNavigationBar(compact)
             .toolbar {
-                if !Platform.isMac {
+                if !Platform.isMac, !compact {
                     ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "plan.settings") }
                 }
             }
         }
+    }
+
+    /// The phase's dates, or how far the assessment is.
+    var eyebrow: String {
+        if let phase = model.analysis?.phase {
+            return
+                "\(Format.day(phase.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(phase.end, style: .dateTime.month(.abbreviated).day()))"
+        }
+        if let assessment = model.analysis?.assessment, !assessment.complete {
+            return "Assessment · day \(assessment.day) of \(assessment.totalDays)"
+        }
+        return "Your plan"
     }
 }
 
@@ -47,12 +71,13 @@ extension PlanView {
     func cards(_ analysis: MacroAnalysis) -> some View {
         if let plan = model.plan {
             if let review = model.planReview { ReviewCard(plan: review) }
-            CurrentPhaseCard(plan: plan, analysis: analysis)
-            TimelineCard(plan: plan, today: model.today)
+            if let phase = analysis.phase { PhaseCard(phase: phase, today: model.today) }
+            TargetsCard(plan: plan, analysis: analysis)
+            YearCard(plan: plan, today: model.today)
+            NextCheckInRow(analysis: analysis)
             MealPrepCard()
             SupplementsCard()
             MaintenanceCard(estimate: analysis.maintenance)
-            CheckInHistory(checkIns: model.checkIns)
         } else {
             if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
             MaintenanceCard(estimate: analysis.maintenance)
@@ -69,8 +94,9 @@ extension PlanView {
     func phase(_ analysis: MacroAnalysis) -> some View {
         if let plan = model.plan {
             if let review = model.planReview { ReviewCard(plan: review) }
-            CurrentPhaseCard(plan: plan, analysis: analysis)
-            TimelineCard(plan: plan, today: model.today)
+            if let phase = analysis.phase { PhaseCard(phase: phase, today: model.today) }
+            TargetsCard(plan: plan, analysis: analysis)
+            YearCard(plan: plan, today: model.today)
             CheckInHistory(checkIns: model.checkIns)
         } else {
             if let assessment = analysis.assessment { AssessmentCard(assessment: assessment) }
@@ -83,9 +109,244 @@ extension PlanView {
     /// And maintenance, meal prep and supplements beside it.
     @ViewBuilder
     func side(_ analysis: MacroAnalysis) -> some View {
+        if model.plan != nil { NextCheckInRow(analysis: analysis) }
         MaintenanceCard(estimate: analysis.maintenance)
         MealPrepCard()
         SupplementsCard()
+    }
+}
+
+/// The phase in force as its name, big, and which week; a ruler a week, the one it is filling.
+struct PhaseCard: View {
+    @Environment(AppModel.self) private var model
+    let phase: PlannedPhase
+    let today: Day
+
+    var body: some View {
+        let week = phase.week(on: today)
+        // Today counts: the first day of a phase is a seventh of its first week.
+        let into = Double(max(0, phase.start.days(until: today) + 1)) / 7
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(phase.kind.label).numeral(48, weight: .heavy).foregroundStyle(Ink.text)
+                    .accessibilityIdentifier("plan.currentPhase")
+                Text("week \(week) of \(phase.weeks)").font(.title3.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text2)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .accessibilityIdentifier("plan.week")
+                Spacer(minLength: 4)
+                if phase.ratePerWeek != 0 {
+                    Text(rate).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1)
+                }
+            }
+            VStack(spacing: 5) {
+                HStack(spacing: 4) {
+                    ForEach(0..<phase.weeks, id: \.self) { index in
+                        Ruler(value: min(1, max(0, into - Double(index))), height: 14, divisions: 0)
+                    }
+                }
+                HStack(spacing: 4) {
+                    ForEach(0..<phase.weeks, id: \.self) { index in
+                        ScaleLabel(index == 0 ? "Week 1" : "\(index + 1)", highlighted: index + 1 == week)
+                            .opacity(phase.weeks > 12 && index + 1 != week && index != 0 ? 0 : 1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Week \(week) of \(phase.weeks)")
+        }
+        .inkCard()
+    }
+
+    /// "−0.5% a week".
+    var rate: String {
+        "\(phase.ratePerWeek > 0 ? "+" : "−")\(abs(phase.ratePerWeek * 100).formatted(.number.precision(.fractionLength(0...2))))% a week"
+    }
+}
+
+/// Today's targets: calories as the hero, the macros in their colours, then the trend against the
+/// phase in a line, with the plan's reasons behind Why?.
+struct TargetsCard: View {
+    @Environment(AppModel.self) private var model
+    let plan: PhasePlan
+    let analysis: MacroAnalysis
+    @State private var showsWhy = false
+
+    var body: some View {
+        let targets = analysis.targets
+        VStack(alignment: .leading, spacing: 14) {
+            if let kcal = targets.kcal {
+                Measure(value: Format.whole(kcal), unit: "kcal a day", size: 48, weight: .heavy)
+                    .foregroundStyle(Ink.text)
+                    .accessibilityIdentifier("plan.kcal")
+            }
+            HStack(alignment: .top, spacing: 14) {
+                macro(.protein, targets.protein)
+                if model.settings.showAllMacros {
+                    macro(.carbs, targets.carbs)
+                    macro(.fat, targets.fat)
+                } else {
+                    Spacer().frame(maxWidth: .infinity)
+                    Spacer().frame(maxWidth: .infinity)
+                }
+            }
+            if targets.mode != .phase {
+                Text(targets.note).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            }
+            Rectangle().fill(Ink.hairline).frame(height: 1)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                trend.font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .padding(.vertical, -12)
+                    .accessibilityIdentifier("plan.why")
+            }
+            if showsWhy {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(plan.reasons.enumerated()), id: \.offset) { _, reason in
+                        Label(reason, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline).foregroundStyle(Ink.text)
+                    }
+                    if let confidence = plan.confidence {
+                        Label(confidence, systemImage: "info.circle").font(.footnote).foregroundStyle(Ink.text2)
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .inkCard()
+    }
+
+    func macro(_ macro: Macro, _ grams: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Measure(value: grams.map(Format.whole) ?? "–", unit: "g", size: 30).foregroundStyle(Ink.text)
+            Text(macro.label).font(.caption).foregroundStyle(macro.color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "Trend −1.09 kg a week. On pace."
+    var trend: Text {
+        guard let change = analysis.weeklyChange else {
+            return Text("Trend: weigh in each morning and it shows here.").foregroundStyle(Ink.text2)
+        }
+        let verdict = PhasePace.verdict(
+            weeklyChange: change, phase: analysis.phase, weightKg: analysis.trend.latest?.trend ?? analysis.referenceKg)
+        let words = Format.weeklyChange(change, unit: model.units.weight)
+        let said = Text("\(Text("Trend").foregroundStyle(Ink.text2)) \(words).").foregroundStyle(Ink.text)
+        guard let verdict else { return said }
+        return Text("\(said) \(Text(verdict.label).foregroundStyle(verdict.color))")
+    }
+}
+
+extension PhasePace.Verdict {
+    var color: Color {
+        switch self {
+        case .onPace: Ink.good
+        case .faster, .slower: Ink.ok
+        case .offCourse: Ink.bad
+        }
+    }
+}
+
+/// The year as its phases on one line, each as long as it runs: the one now in the accent, the
+/// rest on the track, with when each starts. The plan's long view under it.
+struct YearCard: View {
+    let plan: PhasePlan
+    let today: Day
+
+    var body: some View {
+        let phases = plan.phases.filter { $0.end >= today }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Your year").eyebrow()
+                Spacer(minLength: 8)
+                if let last = phases.last, phases.count > 1 {
+                    Text("To \(Format.day(last.end, style: .dateTime.month(.wide)))").font(.caption).foregroundStyle(Ink.text3)
+                }
+            }
+            WeightedRow(spacing: 4) {
+                ForEach(phases) { phase in
+                    let now = phase.range.contains(today)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Capsule().fill(now ? Color.accentColor : Ink.track).frame(height: 6)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(phase.kind.label).font(.subheadline.weight(.semibold)).foregroundStyle(now ? Color.accentColor : Ink.text)
+                                .lineLimit(1).minimumScaleFactor(0.8)
+                            Text(when(phase, now: now)).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    // As long as it runs, but a short phase keeps room for its name.
+                    .layoutWeight(Double(max(3, phase.weeks)))
+                }
+            }
+            .accessibilityElement(children: .combine)
+            Text(plan.arc).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+        }
+        .inkCard()
+        .accessibilityIdentifier("plan.year")
+    }
+
+    /// "Now · 4 weeks", "Dec 7", or the month for one further off.
+    func when(_ phase: PlannedPhase, now: Bool) -> String {
+        if now { return "Now · \(phase.weeks) weeks" }
+        if today.days(until: phase.start) <= 45 { return Format.day(phase.start, style: .dateTime.month(.abbreviated).day()) }
+        return Format.day(phase.start, style: .dateTime.month(.wide))
+    }
+}
+
+/// The next weekly check-in, and every one so far behind it.
+struct NextCheckInRow: View {
+    @Environment(AppModel.self) private var model
+    let analysis: MacroAnalysis
+
+    var body: some View {
+        let next = PhasePace.nextCheckIn(last: analysis.checkIn, today: model.today)
+        NavigationLink {
+            CheckInsScreen()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar").font(.title3.weight(.light)).foregroundStyle(Ink.text2).frame(width: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Check-in \(Format.prepDay(next, today: model.today))").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text("Targets adjust to your trend").font(.caption).foregroundStyle(Ink.text3)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
+            }
+            .frame(minHeight: 36)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("plan.checkIn")
+    }
+}
+
+/// Each week's check-in with its reason, and the maintenance they're built on.
+struct CheckInsScreen: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let analysis = model.analysis { MaintenanceCard(estimate: analysis.maintenance) }
+                CheckInHistory(checkIns: model.checkIns)
+            }
+            .padding(16)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .navigationTitle("Check-ins")
+        .inlineTitle()
     }
 }
 
@@ -95,7 +356,7 @@ struct AssessmentCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Assessment").font(.headline)
+                Text("Assessment").font(.callout.weight(.semibold))
                 Spacer()
                 Text("Day \(assessment.day) of \(assessment.totalDays)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     .accessibilityIdentifier("plan.assessmentDay")
@@ -121,13 +382,12 @@ struct MaintenanceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Maintenance").font(.headline)
+                Text("Maintenance").font(.callout.weight(.semibold))
                 Spacer()
                 Pill(text: estimate.label, color: estimate.spread >= 350 ? Ink.ok : estimate.spread >= 200 ? Ink.text2 : Ink.good)
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(Format.whole(estimate.kcal)).font(.largeTitle.weight(.bold).monospacedDigit())
-                Text("kcal a day").foregroundStyle(.secondary)
+                Measure(value: Format.whole(estimate.kcal), unit: "kcal a day", size: 30)
             }
             RangeBar(low: estimate.low, high: estimate.high, value: estimate.kcal, formula: estimate.formula)
             Text(basisText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -182,7 +442,7 @@ struct RecommendationCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(ready ? "Recommended" : "Early look").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase)
+            Text(ready ? "Recommended" : "Early look").eyebrow(Color.accentColor)
             Text(plan.headline).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
             PhaseChips(phases: plan.phases)
             Text(plan.arc).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -304,60 +564,6 @@ struct PhaseChooser: View {
     }
 }
 
-/// The phase in force: which week, at what rate, and today's numbers.
-struct CurrentPhaseCard: View {
-    @Environment(AppModel.self) private var model
-    let plan: PhasePlan
-    let analysis: MacroAnalysis
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let phase = analysis.phase {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(phase.kind.label).numeral(40)
-                        .accessibilityIdentifier("plan.currentPhase")
-                    Text("week \(phase.week(on: model.today)) of \(phase.weeks)").font(.title3.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Ink.text2)
-                        .accessibilityIdentifier("plan.week")
-                    Spacer(minLength: 0)
-                }
-                // A division a week: where the phase is, read off the ruler.
-                Ruler(
-                    value: Double(max(0, phase.start.days(until: model.today))) / Double(max(1, phase.weeks * 7)), color: phase.kind.color,
-                    height: 12, divisions: phase.weeks)
-                Text(phase.summary).font(.subheadline).foregroundStyle(.secondary)
-            }
-            Divider()
-            HStack {
-                stat("Calories", analysis.targets.kcal.map(Format.whole) ?? "—", "kcal")
-                stat("Protein", analysis.targets.protein.map(Format.grams) ?? "—", nil, color: Ink.protein)
-                if model.settings.showAllMacros {
-                    stat("Carbs", analysis.targets.carbs.map(Format.grams) ?? "—", nil, color: Ink.carbs)
-                    stat("Fat", analysis.targets.fat.map(Format.grams) ?? "—", nil, color: Ink.fat)
-                }
-            }
-            if let change = analysis.weeklyChange {
-                Label("Trend \(Format.weeklyChange(change, unit: model.units.weight))", systemImage: "chart.line.uptrend.xyaxis")
-                    .font(.subheadline)
-            }
-            WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
-        }
-        .card()
-    }
-
-    func stat(_ title: String, _ value: String, _ unit: String?, color: Color = Ink.text2) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).numeral(24)
-                if let unit { Text(unit).font(.caption).foregroundStyle(Ink.text2) }
-            }
-            Text(title).font(.caption).foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// A rule fired at a block boundary: the suggested change and why.
 struct ReviewCard: View {
     @Environment(AppModel.self) private var model
@@ -365,7 +571,7 @@ struct ReviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Plan check", systemImage: "checklist").font(.headline)
+            Text("Plan check").eyebrow(Color.accentColor)
             Text(plan.headline).font(.subheadline).fixedSize(horizontal: false, vertical: true)
             PhaseChips(phases: plan.phases.filter { $0.end >= model.today })
             WhyDisclosure(reasons: plan.reasons, confidence: plan.confidence)
@@ -376,34 +582,6 @@ struct ReviewCard: View {
     }
 }
 
-/// Now, next and the year: the three horizons.
-struct TimelineCard: View {
-    let plan: PhasePlan
-    let today: Day
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("The plan").font(.headline)
-            ForEach(plan.phases) { phase in
-                HStack(alignment: .top, spacing: 10) {
-                    Circle().fill(phase.range.contains(today) ? phase.kind.color : phase.kind.color.opacity(0.3)).frame(width: 10, height: 10)
-                        .padding(.top, 5)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(phase.summary).font(.subheadline.weight(phase.range.contains(today) ? .semibold : .regular))
-                        Text(
-                            "\(Format.day(phase.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(phase.end, style: .dateTime.month(.abbreviated).day()))"
-                        )
-                        .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                .opacity(phase.end < today ? 0.5 : 1)
-            }
-            Text(plan.arc).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-        }
-        .card()
-    }
-}
-
 /// Each week's small adjustment, with its reason.
 struct CheckInHistory: View {
     let checkIns: [CheckIn]
@@ -411,7 +589,7 @@ struct CheckInHistory: View {
     var body: some View {
         if !checkIns.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Weekly check-ins").font(.headline)
+                Text("Weekly check-ins").font(.callout.weight(.semibold))
                 ForEach(checkIns.suffix(8).reversed()) { c in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
