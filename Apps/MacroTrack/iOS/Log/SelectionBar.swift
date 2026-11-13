@@ -70,7 +70,7 @@ struct SelectionBar: View {
                 Image(systemName: "trash").frame(width: 34, height: 40).contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.red)
+            .foregroundStyle(Ink.bad)
             .accessibilityLabel("Delete")
             .accessibilityIdentifier("selection.delete")
             .padding(.trailing, 6)

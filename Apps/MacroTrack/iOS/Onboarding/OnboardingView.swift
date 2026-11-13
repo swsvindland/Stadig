@@ -192,7 +192,7 @@ struct OnboardingView: View {
                 Spacer()
                 TextField("0", text: $heightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
                     .accessibilityIdentifier("onboarding.height")
-                Text(profile.units.length.symbol).foregroundStyle(.secondary)
+                Text(profile.units.length.symbol).foregroundStyle(Ink.text3)
             }
         } header: {
             Text("You").eyebrow()
@@ -247,7 +247,7 @@ struct OnboardingView: View {
                 Spacer()
                 TextField("Optional", text: $weightText).fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 90)
                     .accessibilityIdentifier("onboarding.weight")
-                Text(profile.units.weight.symbol).foregroundStyle(.secondary)
+                Text(profile.units.weight.symbol).foregroundStyle(Ink.text3)
             }
         } footer: {
             if weightTyped && weightKg == nil {
@@ -269,8 +269,6 @@ struct OnboardingView: View {
                 "Connect Apple Health",
                 "Weigh-ins from a smart scale arrive on their own, and what you log is saved to Health. Stadig Lift's measurements and training come straight from Stadig Lift, not through Health."
             )
-            Image(systemName: "heart.text.square.fill").font(.system(size: 56)).foregroundStyle(.pink).padding(.horizontal, 20).padding(.top, 16)
-                .accessibilityHidden(true)
             Spacer()
             VStack(spacing: 4) {
                 Button {
