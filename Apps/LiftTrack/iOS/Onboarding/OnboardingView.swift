@@ -233,29 +233,25 @@ struct OnboardingView: View {
     }
 
     private var schedule: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 12) {
             header("When can you train?", "Stadig Lift fits every session into the time you have.")
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Days a week").font(.headline)
-                Picker("Days a week", selection: $profile.schedule.daysPerWeek) {
-                    ForEach(1...6, id: \.self) { Text("\($0)").tag($0) }
-                }
-                .pickerStyle(.segmented)
+            VStack(alignment: .leading, spacing: 12) {
+                CardTitle("Days a week", detail: "\(profile.schedule.daysPerWeek) sessions")
+                InkSegmented(options: (1...6).map { (value: $0, label: "\($0)") }, selection: $profile.schedule.daysPerWeek)
+                    .accessibilityLabel("Days a week")
             }
             .card()
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Minutes per session").font(.headline)
-                Picker("Minutes", selection: $profile.schedule.minutesPerSession) {
-                    ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
-                }
-                .pickerStyle(.segmented)
-                Text(minutesHint).font(.footnote).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                CardTitle("Minutes per session")
+                InkSegmented(options: [30, 45, 60, 75, 90].map { (value: $0, label: "\($0)") }, selection: $profile.schedule.minutesPerSession)
+                    .accessibilityLabel("Minutes per session")
+                Text(minutesHint).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
             .card()
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Preferred days").font(.headline)
+            VStack(alignment: .leading, spacing: 12) {
+                CardTitle("Preferred days", detail: "Optional")
                 WeekdayPicker(selection: $profile.schedule.preferredDays)
-                Text("Optional. Missed a day? The next session just waits for you.").font(.footnote).foregroundStyle(.secondary)
+                Text("Missed a day? The next session just waits for you.").font(.caption).foregroundStyle(Ink.text3)
             }
             .card()
         }
@@ -278,22 +274,18 @@ struct OnboardingView: View {
                     identifier: "onboarding.equipment\(access.rawValue.identifierSuffix)"
                 ) { profile.equipment = access }
             }
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Units").font(.headline)
-                Picker("Weight", selection: $profile.units.weight) {
-                    Text("kg").tag(WeightUnit.kg)
-                    Text("lb").tag(WeightUnit.lb)
-                }
-                .pickerStyle(.segmented)
-                Picker("Length", selection: $profile.units.length) {
-                    Text("cm").tag(LengthUnit.cm)
-                    Text("in").tag(LengthUnit.inch)
-                }
-                .pickerStyle(.segmented)
+            VStack(alignment: .leading, spacing: 12) {
+                CardTitle("Units")
+                UnitRow(title: "Weight", options: [(value: WeightUnit.kg, label: "kg"), (value: .lb, label: "lb")], selection: $profile.units.weight)
+                    .font(.subheadline).foregroundStyle(Ink.text2)
+                UnitRow(
+                    title: "Length", options: [(value: LengthUnit.cm, label: "cm"), (value: .inch, label: "in")], selection: $profile.units.length
+                )
+                .font(.subheadline).foregroundStyle(Ink.text2)
             }
             .card()
             VStack(alignment: .leading, spacing: 10) {
-                Text("After training").font(.headline)
+                CardTitle("After training")
                 ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { room in
                     Toggle(
                         room.label,
@@ -304,7 +296,7 @@ struct OnboardingView: View {
                             }))
                 }
                 Text("Sessions end with an optional sauna or steam room, timed from its thermometer.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Ink.text3)
             }
             .card()
         }
@@ -326,29 +318,29 @@ struct OnboardingView: View {
     }
 
     private var bodyBasics: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             header(
                 "A few basics",
                 "Strength is scored against bodyweight-relative standards. Measurements are optional and only for your own comparison.")
-            VStack(spacing: 14) {
-                Picker("Standards for", selection: $profile.sex) {
-                    ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+            RowCard(title: "You") {
+                HStack {
+                    Text("Standards for")
+                    Spacer(minLength: 8)
+                    Picker("Standards for", selection: $profile.sex) {
+                        ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+                    }
+                    .labelsHidden()
                 }
-                Divider()
                 BirthYearField(year: $profile.birthYear, placeholder: "1990")
-                Divider()
                 MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)
-                Divider()
                 WeightField(label: "Body weight", kg: $bodyweight, unit: profile.units.weight)
             }
-            .card()
-            VStack(spacing: 14) {
+            RowCard(title: "Measurements", detail: "Optional") {
                 MeasureField(label: "Waist", value: $waist, unit: profile.units.length)
-                Divider()
                 MeasureField(label: "Shoulders", value: $shoulders, unit: profile.units.length)
             }
-            .card()
-            Text("Daily weigh-ins to Apple Health help Stadig Macro later, if you add it.").font(.footnote).foregroundStyle(.secondary)
+            Text("Daily weigh-ins to Apple Health help Stadig Macro later, if you add it.").font(.caption).foregroundStyle(Ink.text3)
+                .padding(.horizontal, 4)
         }
     }
 
@@ -361,8 +353,10 @@ struct OnboardingView: View {
                     identifier: "onboarding.phase\(answer.rawValue.identifierSuffix)"
                 ) { settings.selfReportedPhase = answer }
             }
-            Text("A stall during a cut is expected, not a plateau. Knowing the phase keeps the advice honest.").font(.footnote).foregroundStyle(
-                .secondary)
+            Text("A stall during a cut is expected, not a plateau. Knowing the phase keeps the advice honest.").font(.caption).foregroundStyle(
+                Ink.text3
+            )
+            .padding(.horizontal, 4)
         }
     }
 
@@ -378,7 +372,7 @@ struct OnboardingView: View {
                 Text(
                     "Apple Health lives on your iPhone, iPad, Apple Watch and Vision Pro, not this Mac. Connect it from Stadig Lift on one of those; what it brings in reaches this Mac through iCloud."
                 )
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Ink.text3)
             } else {
                 Button {
                     Task {
@@ -389,34 +383,55 @@ struct OnboardingView: View {
                     Label(healthAsked ? "Connected" : "Connect Apple Health", systemImage: healthAsked ? "checkmark.circle.fill" : "heart.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .primaryAction()
+                // Continue is the step's one filled button; connecting is the choice on it.
+                .secondaryAction()
+                .controlSize(.large)
                 .disabled(healthAsked || !HealthBridge.shared.isAvailable)
+                .accessibilityIdentifier("onboarding.connectHealth")
                 if !HealthBridge.shared.isAvailable {
-                    Text("Health isn't available on this device.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Health isn't available on this device.").font(.caption).foregroundStyle(Ink.text3).padding(.horizontal, 4)
                 }
-                Toggle("Save sessions to Health", isOn: $settings.saveToHealth).card()
-                    .accessibilityIdentifier("onboarding.saveToHealth")
+                RowCard {
+                    Toggle("Save sessions to Health", isOn: $settings.saveToHealth)
+                        .accessibilityIdentifier("onboarding.saveToHealth")
+                }
             }
         }
     }
 
     private var ready: some View {
         let weeks = profile.experience.assessmentWeeks
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: 12) {
             header("Your first \(weeks) weeks", "Useful from day one: good workouts and fast logging while Stadig Lift learns.")
-            VStack(alignment: .leading, spacing: 14) {
-                Label(
-                    "Weeks 1–2: find working weights. For anything new, pick a weight you think you can do for the reps shown, and rate it.",
-                    systemImage: "1.circle.fill")
-                Label(
-                    "Machines get the occasional all-out set. They're safe to fail, and they show how well your ratings match reality.",
-                    systemImage: "2.circle.fill")
-                Label("Weeks 3–4: progressive sets that spot strength imbalances.", systemImage: "3.circle.fill")
-                Label("Then your first real block, with a plain \"Why?\" behind it.", systemImage: "4.circle.fill")
+            RowCard(title: "The assessment") {
+                stage(1, "Find working weights", "Weeks 1–2. For anything new, pick a weight you think you can do for the reps shown, and rate it.")
+                stage(
+                    2, "Check your ratings",
+                    "Machines get the occasional all-out set. They're safe to fail, and they show how well your ratings match reality.")
+                stage(3, "Spot imbalances", "Weeks 3–4: progressive sets that spot strength imbalances.")
+                stage(4, "Your first block", "Then your first real block, with a plain \"Why?\" behind it.")
             }
-            .card()
-            Text("No deficit or surplus is needed during the assessment.").font(.footnote).foregroundStyle(.secondary)
+            Text("No deficit or surplus is needed during the assessment.").font(.caption).foregroundStyle(Ink.text3).padding(.horizontal, 4)
         }
+    }
+
+    /// One stage of the first weeks, numbered as the session numbers its sets.
+    private func stage(_ number: Int, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("\(number)")
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(number == 1 ? Ink.onAccent : Ink.text2)
+                .frame(width: 26, height: 26)
+                .background(number == 1 ? Color.accentColor : .clear, in: .circle)
+                .overlay { Circle().strokeBorder(number == 1 ? .clear : Ink.track, lineWidth: 1.5) }
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                Text(detail).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func header(_ title: String, _ detail: String) -> some View {
