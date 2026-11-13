@@ -85,11 +85,16 @@ struct QualityCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Food quality").font(.callout.weight(.semibold))
-                Spacer()
-                if !report.days.isEmpty {
-                    Text("Last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+            // The days under the title where the two don't fit on a line.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    title
+                    Spacer()
+                    days
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    title
+                    days
                 }
             }
             if report.days.count < QualityAnalyst.minimumDays {
@@ -108,6 +113,14 @@ struct QualityCard: View {
             }
         }
         .card()
+    }
+
+    var title: some View { Text("Food quality").font(.callout.weight(.semibold)) }
+
+    @ViewBuilder var days: some View {
+        if !report.days.isEmpty {
+            Text("Last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder var processing: some View {
@@ -173,12 +186,25 @@ struct QualityCard: View {
     }
 
     func row(title: String, value: String, aim: String, status: QualityReport.Status) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        let name = HStack(alignment: .firstTextBaseline) {
             Circle().fill(status.color).frame(width: 8, height: 8)
             Text(title).font(.subheadline.weight(.medium))
-            Spacer()
+        }
+        let numbers = HStack(alignment: .firstTextBaseline) {
             Text(value).font(.subheadline.monospacedDigit())
             Text("aim \(aim)").font(.caption).foregroundStyle(.secondary)
+        }
+        // The numbers under the name where they don't fit beside it, rather than all in columns.
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                name
+                Spacer()
+                numbers
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                name
+                numbers
+            }
         }
         .accessibilityElement(children: .combine)
     }

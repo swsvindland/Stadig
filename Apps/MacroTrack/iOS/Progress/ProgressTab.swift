@@ -153,6 +153,7 @@ struct DisciplineCard: View {
 /// the scale's readings as dots and the trend as a line: the line is what's real.
 struct WeightCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let analysis: MacroAnalysis
     @Binding var range: Int
     var chartHeight: CGFloat = 110
@@ -160,6 +161,13 @@ struct WeightCard: View {
     var showsRange = true
 
     var trend: WeightTrend { analysis.trend }
+
+    var rangePicker: some View {
+        InkSegmented(options: ChartRange.allCases.map { ($0.days, $0.label) }, selection: $range)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Range")
+            .accessibilityIdentifier("progress.range")
+    }
 
     var body: some View {
         let unit = model.units.weight
@@ -191,16 +199,19 @@ struct WeightCard: View {
             }
             if points.count >= 2 {
                 chart(points, unit: unit)
-                HStack(spacing: 12) {
-                    legend(dot: true, "Scale")
-                    legend(dot: false, "Trend")
-                    Spacer(minLength: 8)
-                    if showsRange {
-                        InkSegmented(options: ChartRange.allCases.map { ($0.days, $0.label) }, selection: $range)
-                            .frame(maxWidth: 196)
-                            .accessibilityElement(children: .contain)
-                            .accessibilityLabel("Range")
-                            .accessibilityIdentifier("progress.range")
+                if typeSize.isAccessibilitySize {
+                    // The range under the legend, the card's width, where beside it no label fits.
+                    HStack(spacing: 12) {
+                        legend(dot: true, "Scale")
+                        legend(dot: false, "Trend")
+                    }
+                    if showsRange { rangePicker }
+                } else {
+                    HStack(spacing: 12) {
+                        legend(dot: true, "Scale")
+                        legend(dot: false, "Trend")
+                        Spacer(minLength: 8)
+                        if showsRange { rangePicker.frame(maxWidth: 196) }
                     }
                 }
             } else {

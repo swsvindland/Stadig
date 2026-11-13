@@ -120,8 +120,11 @@ struct LogTab: View {
                 PageHeader(eyebrow: eyebrow, title: "Log") {
                     HStack(spacing: 8) {
                         if day != model.today {
+                            // The word whole at any size, rather than broken over two lines.
                             Button("Today") { model.showToday() }
                                 .buttonStyle(.ghost)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .accessibilityIdentifier("log.backToToday")
                         }
                         CircleIconButton(symbol: "calendar", label: "Choose a day", identifier: "log.title") { choosingDay = true }

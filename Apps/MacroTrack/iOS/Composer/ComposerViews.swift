@@ -57,6 +57,7 @@ struct ComposerMatches: View {
 /// it, a line of what it would log, and on the best one the key that logs it. `matchCard` puts the
 /// best on its card; the logger adds its + beside the row on the same card.
 struct MatchRow<Tile: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: Text
     let detail: String
     var best = false
@@ -76,7 +77,8 @@ struct MatchRow<Tile: View>: View {
                         Image(systemName: "star.fill").font(.caption2).foregroundStyle(Ink.ok).accessibilityLabel("Favorite")
                     }
                 }
-                Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+                // Two lines from xxLarge, where one cuts the calories off.
+                Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(typeSize >= .xxLarge ? 2 : 1)
             }
             Spacer(minLength: 6)
             if best {

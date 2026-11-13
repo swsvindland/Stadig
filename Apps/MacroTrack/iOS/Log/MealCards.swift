@@ -127,12 +127,14 @@ struct MealCard: View {
 
 struct MealHeader: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let meal: Moment
     let gap: MealGap?
     @State private var naming = false
 
     var body: some View {
         let time = DayCards.addTime(to: meal, now: Date())
+        let stacked = typeSize.isAccessibilitySize
         HStack(alignment: .top, spacing: 6) {
             Button {
                 model.toggleSelection(meal)
@@ -141,8 +143,10 @@ struct MealHeader: View {
                     Text(
                         "\(Text(title).font(.callout.weight(.semibold)).foregroundStyle(allSelected ? Color.accentColor : Ink.text)) \(Text(when).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3))"
                     )
-                    .lineLimit(1)
-                    HStack(spacing: 10) {
+                    .lineLimit(stacked ? 3 : 1)
+                    // At the accessibility sizes the macros wrap a dot to a line rather than each in
+                    // two, and the calories come under them, where beside the name they'd leave it a word.
+                    (stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 10))) {
                         MacroDot(macro: .protein, grams: meal.nutrients.protein)
                         if model.settings.showAllMacros {
                             MacroDot(macro: .carbs, grams: meal.nutrients.carbs)
@@ -150,6 +154,7 @@ struct MealHeader: View {
                         }
                         if let gap { GapBadge(gap: gap).accessibilityIdentifier("log.gap") }
                     }
+                    if stacked { calories }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
@@ -158,8 +163,7 @@ struct MealHeader: View {
             .accessibilityLabel("Select \(title), \(detail)")
             .accessibilityIdentifier("log.meal")
             .contextMenu { actions(time) }
-            Measure(value: Format.whole(meal.nutrients.kcal), unit: "kcal", size: 20)
-                .foregroundStyle(Ink.text)
+            if !stacked { calories }
             if model.selection.isEmpty {
                 Menu {
                     actions(time)
@@ -199,6 +203,10 @@ struct MealHeader: View {
 
     var title: String { SavedMeals.meal(for: meal.entries, in: model.savedMeals)?.name ?? MealName.of(meal) }
 
+    var calories: some View {
+        Measure(value: Format.whole(meal.nutrients.kcal), unit: "kcal", size: 20).foregroundStyle(Ink.text)
+    }
+
     /// Its time, and that it's still to come.
     var when: String {
         let upcoming = meal.entries.allSatisfy(model.foodLog.isUpcoming)
@@ -221,6 +229,8 @@ struct MacroDot: View {
         HStack(spacing: 4) {
             Circle().fill(macro.color).frame(width: 6, height: 6)
             Text("\(Format.whole(grams)) \(macro.label.prefix(1))").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+                .lineLimit(1)
+                .fixedSize()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(Format.whole(grams)) grams \(macro.label.lowercased())")
@@ -231,6 +241,7 @@ struct MacroDot: View {
 /// its marker are on its amount panel.
 struct MealFoodRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let entry: FoodEntry
 
     var body: some View {
@@ -240,7 +251,8 @@ struct MealFoodRow: View {
             Text(
                 "\(Text(FoodLabel.short(entry.name)).foregroundStyle(Ink.text)) \(Text(entry.amountLabel).font(.caption).foregroundStyle(Ink.text3))"
             )
-            .lineLimit(1)
+            // A line, until the accessibility sizes leave a line a word or two.
+            .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
             Spacer(minLength: 8)
             Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))")
                 .font(.body.weight(.semibold).monospacedDigit())
@@ -269,7 +281,8 @@ struct HourSlots: View {
     @State private var showsEarly = false
     @State private var showsLate = false
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    /// Four to a row, or two at the accessibility sizes, where four cut "9 AM" short.
+    private var columns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 6), count: typeSize.isAccessibilitySize ? 2 : 4) }
 
     var body: some View {
         let offered = LogHours.offered(hours, window: model.logHours, now: now)
