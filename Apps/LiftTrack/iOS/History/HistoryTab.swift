@@ -165,10 +165,12 @@ struct HistoryTable: View {
         }
     }
 
-    /// "Thu, Nov 12, 7:00 PM", with the year only for a year before this one.
+    /// "Thu, Nov 12, 7:00 PM", and with the year for a year before this one.
+    private static let thisYear = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()
+    private static let earlierYear = thisYear.year()
+
     static func dateStyle(_ date: Date, today: Day) -> Date.FormatStyle {
-        let style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()
-        return Day(date).components.year == today.components.year ? style : style.year()
+        Day(date).components.year == today.components.year ? thisYear : earlierYear
     }
 
     /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
