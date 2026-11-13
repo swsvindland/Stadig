@@ -397,6 +397,8 @@ struct TodayLogger: View {
         // Only there while typing: room under the newest food for the fade over the matches, so it
         // sits clear of them.
         Color.clear.frame(height: 32).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+            // Room, not a row: nothing for VoiceOver to land on.
+            .accessibilityHidden(true)
             .id(Self.threadEnd)
     }
 
@@ -499,7 +501,7 @@ struct LeftHeader: View {
             calories
             if let kcal = targets?.kcal, kcal > 0 {
                 VStack(spacing: 5) {
-                    Ruler(value: eaten.kcal / kcal, height: 28)
+                    Ruler(value: eaten.kcal / kcal, height: 28).accessibilityLabel("Calories eaten")
                     HStack {
                         Text("\(Format.whole(eaten.kcal)) eaten").eyebrow()
                         Spacer()
@@ -539,8 +541,17 @@ struct LeftHeader: View {
             }
         }
         .animation(.snappy, value: eaten.kcal)
-        .accessibilityElement(children: .combine)
+        // One phrase, "1,601 kcal left", not the numeral and its unit read apart.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenCalories)
         .accessibilityIdentifier("today.calories")
+    }
+
+    private var spokenCalories: String {
+        let left = targets?.kcal.map { $0 - eaten.kcal }
+        let number = left.map { "\(Format.whole(abs($0))) kcal \($0 >= 0 ? "left" : "over")" } ?? "\(Format.whole(eaten.kcal)) kcal eaten"
+        guard let justLogged, justLogged >= 1 else { return number }
+        return "\(number), \(Format.whole(justLogged)) just logged"
     }
 }
 
@@ -582,12 +593,15 @@ struct ThreadHeader: View {
             Text(Format.time(moment.start)).eyebrow()
             Spacer()
             if fresh {
-                Button("Undo", action: undo)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Ink.words(.accentColor))
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 30)
-                    .accessibilityIdentifier("today.undo")
+                Button(action: undo) {
+                    // A fingertip's room to hit, in the 30 points the header gives it.
+                    Text("Undo").frame(minWidth: 44, minHeight: 44).contentShape(.rect)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Ink.words(.accentColor))
+                .buttonStyle(.plain)
+                .padding(.vertical, -7)
+                .accessibilityIdentifier("today.undo")
             }
             Text(Format.kcal(moment.nutrients.kcal)).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
         }
@@ -627,7 +641,7 @@ struct ThreadRow: View {
                 }
             }
         }
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }

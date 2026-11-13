@@ -450,7 +450,7 @@ struct EntryRow: View {
             }
         }
         // Dimmed until its time: it's in the day's log, but it doesn't count yet.
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
@@ -466,6 +466,7 @@ struct LaterMark: View {
 /// Whether the day's log is finished: complete days teach the estimate; partial days don't.
 struct DayStateSection: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let day: Day
 
     var body: some View {
@@ -473,12 +474,16 @@ struct DayStateSection: View {
         let hasEntries = !model.allEntries(on: day).isEmpty
         if hasEntries || state != nil || day < model.today {
             Section {
-                HStack(spacing: 8) {
+                // One over the other at the accessibility sizes, where side by side breaks the words.
+                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))) {
                     ForEach(choices(hasEntries: hasEntries), id: \.self) { choice in
                         Button {
                             model.setState(state == choice ? nil : choice, for: day)
                         } label: {
+                            // The unpicked one's words in the second grey: the secondary tint's own
+                            // grey on its wash is under 4.5:1.
                             Text(choice.label).font(.subheadline.weight(.medium)).frame(maxWidth: .infinity)
+                                .foregroundStyle(state == choice ? AnyShapeStyle(.tint) : AnyShapeStyle(Ink.text2))
                         }
                         .buttonStyle(.bordered)
                         .choiceTint(state == choice)

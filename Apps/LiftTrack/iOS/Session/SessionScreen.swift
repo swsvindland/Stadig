@@ -400,7 +400,7 @@ private struct SessionOutline: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(Int((live.progress * 100).rounded()))% done").font(.caption).foregroundStyle(Ink.text2)
-                    Ruler(value: live.progress, height: 10)
+                    Ruler(value: live.progress, height: 10).accessibilityHidden(true)
                 }
             }
             Section {
@@ -472,7 +472,7 @@ private struct OutlineRow: View {
                 Image(systemName: "arrowtriangle.right.fill").foregroundStyle(.tint).accessibilityLabel("Now")
             }
         }
-        .opacity(item.isDone ? 0.6 : 1)
+        .setBack(item.isDone)
         .accessibilityElement(children: .combine)
     }
 }
@@ -591,7 +591,7 @@ struct ItemCard: View {
         .overlay {
             if current { RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.accentColor, lineWidth: 2) }
         }
-        .opacity(item.isDone && !current ? 0.7 : 1)
+        .setBack(item.isDone && !current, opacity: 0.7)
     }
 
     /// "W1", "W2" for warm-ups, then 1, 2, 3 for work.
@@ -707,6 +707,37 @@ struct RestPanel: View {
     let rest: RestState
     let message: String?
 
+    private var lessButton: some View {
+        Button {
+            model.update { $0.extendRest(by: -15) }
+        } label: {
+            Text("−15").frame(maxWidth: .infinity)
+        }
+        .accessibilityLabel("Fifteen seconds less")
+        .accessibilityIdentifier("rest.less")
+    }
+
+    private var moreButton: some View {
+        Button {
+            model.update { $0.extendRest(by: 15) }
+        } label: {
+            Text("+15").frame(maxWidth: .infinity)
+        }
+        .accessibilityLabel("Fifteen seconds more")
+        .accessibilityIdentifier("rest.more")
+    }
+
+    private var skipButton: some View {
+        Button {
+            model.update { $0.endRest() }
+        } label: {
+            Text("Skip").frame(maxWidth: .infinity)
+        }
+        .keyboardShortcut(scale.shortcut(.space))
+        .accessibilityLabel("Skip rest")
+        .accessibilityIdentifier("rest.skip")
+    }
+
     var body: some View {
         let total = max(1, rest.endsAt.timeIntervalSince(rest.started))
         let logged = model.justLogged(after: rest)
@@ -745,6 +776,8 @@ struct RestPanel: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Ruler(value: max(0, rest.endsAt.timeIntervalSince(context.date)) / total, height: 28)
                 }
+                // The countdown over it says what's left.
+                .accessibilityHidden(true)
                 HStack {
                     Text("of \(Format.duration(Int(total.rounded())))")
                     Spacer()
@@ -752,29 +785,23 @@ struct RestPanel: View {
                 }
                 .font(.caption2.weight(.semibold)).textCase(.uppercase).foregroundStyle(Ink.text3)
             }
-            HStack(spacing: 8) {
-                Button {
-                    model.update { $0.extendRest(by: -15) }
-                } label: {
-                    Text("−15").frame(maxWidth: .infinity)
+            Group {
+                if dynamicType.isAccessibilitySize {
+                    // Skip on a row of its own, where a third of the dock breaks it in two.
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            lessButton
+                            moreButton
+                        }
+                        skipButton
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        lessButton
+                        moreButton
+                        skipButton
+                    }
                 }
-                .accessibilityLabel("Fifteen seconds less")
-                .accessibilityIdentifier("rest.less")
-                Button {
-                    model.update { $0.extendRest(by: 15) }
-                } label: {
-                    Text("+15").frame(maxWidth: .infinity)
-                }
-                .accessibilityLabel("Fifteen seconds more")
-                .accessibilityIdentifier("rest.more")
-                Button {
-                    model.update { $0.endRest() }
-                } label: {
-                    Text("Skip").frame(maxWidth: .infinity)
-                }
-                .keyboardShortcut(scale.shortcut(.space))
-                .accessibilityLabel("Skip rest")
-                .accessibilityIdentifier("rest.skip")
             }
             .secondaryAction()
             .controlSize(.large)

@@ -135,7 +135,9 @@ struct DisciplineCard: View {
                 Text(score.rate.map { Format.whole($0 * 100) } ?? "–").numeral(30).foregroundStyle(score.rate == nil ? Ink.text3 : Ink.text)
             }
             .accessibilityElement(children: .combine)
+            // The score above says it, and the band under it what it means.
             Ruler(value: score.rate ?? 0, color: score.band == .below ? Ink.ok : Ink.good, height: 14, marker: 0.8)
+                .accessibilityHidden(true)
             Text(score.band.map { "\($0.label). \(score.note)" } ?? score.note)
                 .font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
             if let rate = analysis.loggingRate {
@@ -152,6 +154,7 @@ struct DisciplineCard: View {
 /// the scale's readings as dots and the trend as a line: the line is what's real.
 struct WeightCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let analysis: MacroAnalysis
     @Binding var range: Int
     var chartHeight: CGFloat = 110
@@ -159,6 +162,13 @@ struct WeightCard: View {
     var showsRange = true
 
     var trend: WeightTrend { analysis.trend }
+
+    var rangePicker: some View {
+        InkSegmented(options: ChartRange.allCases.map { ($0.days, $0.label) }, selection: $range)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Range")
+            .accessibilityIdentifier("progress.range")
+    }
 
     var body: some View {
         let unit = model.units.weight
@@ -180,7 +190,8 @@ struct WeightCard: View {
                             Text(Format.signed(unit.fromKilograms(change))).numeral(20).foregroundStyle(verdict?.color ?? Ink.text)
                             Text("\(unit.symbol) a week").font(.caption).foregroundStyle(Ink.text3)
                         }
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(Format.signed(unit.fromKilograms(change))) \(unit.symbol) a week")
                     }
                 }
                 if let sentence {
@@ -189,16 +200,19 @@ struct WeightCard: View {
             }
             if points.count >= 2 {
                 chart(points, unit: unit)
-                HStack(spacing: 12) {
-                    legend(dot: true, "Scale")
-                    legend(dot: false, "Trend")
-                    Spacer(minLength: 8)
-                    if showsRange {
-                        InkSegmented(options: ChartRange.allCases.map { ($0.days, $0.label) }, selection: $range)
-                            .frame(maxWidth: 196)
-                            .accessibilityElement(children: .contain)
-                            .accessibilityLabel("Range")
-                            .accessibilityIdentifier("progress.range")
+                if typeSize.isAccessibilitySize {
+                    // The range under the legend, the card's width, where beside it no label fits.
+                    HStack(spacing: 12) {
+                        legend(dot: true, "Scale")
+                        legend(dot: false, "Trend")
+                    }
+                    if showsRange { rangePicker }
+                } else {
+                    HStack(spacing: 12) {
+                        legend(dot: true, "Scale")
+                        legend(dot: false, "Trend")
+                        Spacer(minLength: 8)
+                        if showsRange { rangePicker.frame(maxWidth: 196) }
                     }
                 }
             } else {

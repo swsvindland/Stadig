@@ -372,37 +372,29 @@ private struct WeekHeader: View {
 /// A dish on the phone's week: how many containers of it, big; its calories and protein a portion;
 /// and Swap while it's still to come. What's in each container is on prep day's page.
 private struct DishRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let recipe: PlannedRecipe
     let swap: (() -> Void)?
 
     var body: some View {
-        let n = recipe.nutrients
-        HStack(alignment: .center, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text("\(recipe.servings)").numeral(30, weight: .heavy).foregroundStyle(Ink.text)
-                Text("×").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2)
-            }
-            .frame(width: 44, alignment: .leading)
-            .accessibilityLabel("\(recipe.servings) containers")
-            VStack(alignment: .leading, spacing: 3) {
-                Text(recipe.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
-                Text(
-                    "\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.words(Ink.protein))) a portion\(recipe.madeOnTheDay ? " · made on the day" : "")"
-                )
-                .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if let swap {
-                Button(action: swap) {
-                    Text("Swap").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
-                        .background(Ink.raised, in: .rect(cornerRadius: 14, style: .continuous))
-                        .contentShape(.rect(cornerRadius: 14))
+        Group {
+            if typeSize.isAccessibilitySize {
+                // The containers and Swap on a line under the dish, where columns beside it break
+                // its name a few letters to a line.
+                VStack(alignment: .leading, spacing: 6) {
+                    words
+                    HStack {
+                        count
+                        Spacer(minLength: 8)
+                        swapButton
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Swap \(recipe.title)")
-                .accessibilityIdentifier("mealPlan.swap")
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    count.frame(width: 44, alignment: .leading)
+                    words.frame(maxWidth: .infinity, alignment: .leading)
+                    swapButton
+                }
             }
         }
         .padding(.vertical, 6)
@@ -410,6 +402,44 @@ private struct DishRow: View {
             if let swap {
                 Button("Swap for something else", systemImage: "arrow.triangle.2.circlepath", action: swap)
             }
+        }
+    }
+}
+
+extension DishRow {
+    var count: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 1) {
+            Text("\(recipe.servings)").numeral(30, weight: .heavy).foregroundStyle(Ink.text)
+            Text("×").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(recipe.servings) containers")
+    }
+
+    var words: some View {
+        let n = recipe.nutrients
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(recipe.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
+            Text(
+                "\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.words(Ink.protein))) a portion\(recipe.madeOnTheDay ? " · made on the day" : "")"
+            )
+            .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+        }
+    }
+
+    @ViewBuilder
+    var swapButton: some View {
+        if let swap {
+            Button(action: swap) {
+                Text("Swap").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(Ink.raised, in: .rect(cornerRadius: 14, style: .continuous))
+                    .contentShape(.rect(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Swap \(recipe.title)")
+            .accessibilityIdentifier("mealPlan.swap")
         }
     }
 }

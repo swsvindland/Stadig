@@ -270,6 +270,7 @@ func withTimeout<T: Sendable>(seconds: Double, _ work: @escaping @Sendable () as
 /// values on a card under it, and the host's foot (a found food, the shutter) below that.
 struct LiveLabelScanner<MenuItems: View, Foot: View>: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scan: LiveScan
     @State private var camera = LiveCamera()
     @State private var torch = false
@@ -295,7 +296,7 @@ struct LiveLabelScanner<MenuItems: View, Foot: View>: View {
         VStack(spacing: 12) {
             chips
             finder
-            if reading { card.transition(.move(edge: .bottom).combined(with: .opacity)) }
+            if reading { card.transition(.rise(reduceMotion: reduceMotion)) }
             foot(reading)
         }
         .padding(.horizontal, 16)

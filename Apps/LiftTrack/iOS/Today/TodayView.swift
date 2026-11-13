@@ -260,7 +260,7 @@ struct TodayView: View {
                 } label: {
                     AssessmentRow(status: status)
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .accessibilityIdentifier("today.assessment")
             }
             ForEach(analysis.actions.prefix(3)) { action in
@@ -274,7 +274,7 @@ struct TodayView: View {
                 } label: {
                     StepsLine(steps: steps)
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .accessibilityIdentifier("today.steps")
             } else if HealthBridge.shared.isAvailable {
                 StepsWaitingCard(connected: !model.steps.isEmpty, plain: true) { Task { await model.connectHealth() } }
@@ -387,6 +387,7 @@ struct ThisWeekStrip: View {
 
 /// Today's session as the one thing on the page in the accent: what it is, how long, and Start.
 struct SessionHero<Actions: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let eyebrow: String
     let trailing: String?
     let title: String
@@ -398,9 +399,13 @@ struct SessionHero<Actions: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
+            // The minutes under the eyebrow at the accessibility sizes, rather than both broken up.
+            let layout =
+                typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+            layout {
                 Text(eyebrow).eyebrow(HeroInk.eyebrow)
-                Spacer()
+                if !typeSize.isAccessibilitySize { Spacer() }
                 if let trailing { Text(trailing).eyebrow(HeroInk.eyebrow) }
             }
             VStack(alignment: .leading, spacing: 4) {
@@ -419,7 +424,8 @@ struct SessionHero<Actions: View>: View {
                 .font(.subheadline).opacity(0.85)
             }
             if let progress {
-                Ruler(value: progress, color: HeroInk.ruler, height: 10).opacity(0.9)
+                // "40% done" above says it.
+                Ruler(value: progress, color: HeroInk.ruler, height: 10).opacity(0.9).accessibilityHidden(true)
             }
             actions
         }
@@ -525,6 +531,7 @@ struct HeroButtonStyle: ButtonStyle {
 
 /// Four of the six scores, two by two, each a numeral over a thin ruler; the rest is on Progress.
 struct ScoresCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let lines: [StatLine]
     let open: () -> Void
 
@@ -534,7 +541,9 @@ struct ScoresCard: View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 14) {
                 CardTitle("Your scores", detail: "All progress")
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], alignment: .leading, spacing: 14) {
+                // A column at the accessibility sizes, where half the card can't hold a score's name.
+                let columns = Array(repeating: GridItem(.flexible(), spacing: 18), count: typeSize.isAccessibilitySize ? 1 : 2)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                     ForEach(Self.shown, id: \.self) { stat in
                         cell(stat, line: lines.first { $0.stat == stat })
                     }
@@ -601,7 +610,7 @@ struct ActionRow: View {
     var body: some View {
         if actionable {
             Button(action: perform) { content(chevron: true) }
-                .buttonStyle(.plain)
+                .rowButton()
                 .hoverHighlight()
                 .accessibilityIdentifier("today.action\(action.kind.rawValue.identifierSuffix)")
         } else {
@@ -646,17 +655,19 @@ struct QuestLine: View {
 
 /// Steps so far against the day's aim, in a line over a slim ruler.
 struct StepsLine: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let steps: StepAim
 
     var body: some View {
         let count = steps.today ?? 0
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Steps").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                    Spacer()
-                    Text("\(count.formatted()) of \(steps.aim.formatted())").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
-                }
+                (typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))) {
+                        Text("Steps").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        if !typeSize.isAccessibilitySize { Spacer() }
+                        Text("\(count.formatted()) of \(steps.aim.formatted())").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+                    }
                 Ruler.thin(Double(count) / Double(max(1, steps.aim)), color: count >= steps.aim ? Ink.good : Ink.text2)
             }
             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
@@ -668,17 +679,20 @@ struct StepsLine: View {
 
 /// The assessment as Today's row: how far along on a slim ruler. It opens what's been learned.
 struct AssessmentRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let status: AssessmentStatus
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Assessment").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                    Spacer()
-                    Text(status.complete ? "Done · plan your first block" : "Week \(status.week) of \(status.totalWeeks) · what we've learned")
-                        .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1)
-                }
+                // The week under the title at the accessibility sizes, whole, rather than both cut short.
+                (typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))) {
+                        Text("Assessment").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        if !typeSize.isAccessibilitySize { Spacer() }
+                        Text(status.complete ? "Done · plan your first block" : "Week \(status.week) of \(status.totalWeeks) · what we've learned")
+                            .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                    }
                 Ruler.thin(status.complete ? 1 : status.progress)
             }
             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
@@ -834,7 +848,9 @@ struct AssessmentCard: View {
                         weight: .heavy)
                 }
             }
+            // The week over it says how far along.
             Ruler(value: status.complete ? 1 : status.progress, height: titled ? 10 : 14, divisions: max(1, status.totalWeeks))
+                .accessibilityHidden(true)
             if let note {
                 Text(note).font(.subheadline).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.assessmentNote")

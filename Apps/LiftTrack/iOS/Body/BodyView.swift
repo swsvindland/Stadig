@@ -12,6 +12,9 @@ import UniformTypeIdentifiers
 struct BodyView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The chart's scale (`ScaleLabel`'s): 10 points at the default text size, growing to 16.
+    @ScaledMetric(relativeTo: .caption2) private var scaleSize: CGFloat = 10
     @State private var measuring = false
     @State private var editing: BodyMeasurements?
     @State private var pickerItem: PhotosPickerItem?
@@ -217,18 +220,29 @@ struct BodyView: View {
             return (name, last, values.count > 1 ? last - values[0] : nil)
         }
         if !readings.isEmpty {
-            HStack(alignment: .top) {
+            // Five across, or at the accessibility sizes, where five columns break every word, a line each.
+            let layout =
+                typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .top))
+            layout {
                 ForEach(Array(readings.enumerated()), id: \.offset) { index, reading in
-                    if index > 0 { Spacer(minLength: 4) }
+                    if index > 0, !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(reading.name).font(.caption).foregroundStyle(Ink.text3)
-                        Text(Format.number(length.fromCentimetres(reading.value))).numeral(18).foregroundStyle(Ink.text)
-                        if let change = reading.change {
+                        let change = reading.change.map { change in
                             let shown = length.fromCentimetres(change)
-                            Text(shown == 0 ? "0" : "\(shown > 0 ? "+" : "−")\(Format.number(abs(shown)))")
+                            return Text(shown == 0 ? "0" : "\(shown > 0 ? "+" : "−")\(Format.number(abs(shown)))")
                                 .font(.caption.monospacedDigit())
                                 // A smaller waist is the change that's good news; the rest just are.
                                 .foregroundStyle(reading.name == "Waist" && change < 0 ? Ink.good : Ink.text3)
+                        }
+                        if typeSize.isAccessibilitySize {
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(Format.number(length.fromCentimetres(reading.value))).numeral(18).foregroundStyle(Ink.text)
+                                change
+                            }
+                        } else {
+                            Text(Format.number(length.fromCentimetres(reading.value))).numeral(18).foregroundStyle(Ink.text)
+                            change
                         }
                     }
                     .accessibilityElement(children: .combine)
@@ -316,12 +330,12 @@ struct BodyView: View {
     private func hero(_ p: PhysiqueAnalysis) -> some View {
         if let score = p.score {
             VStack(alignment: .leading, spacing: 11) {
-                HStack(alignment: .bottom) {
+                HeroRow {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Physique").eyebrow()
                         Text("\(Int(score.rounded()))").numeral(60, weight: .heavy).foregroundStyle(Ink.text)
                     }
-                    Spacer(minLength: 8)
+                } beside: {
                     if let change = model.physiqueChange {
                         ScoreChangeChip(change: change).padding(.bottom, 4)
                     } else if let trend = model.stats.first(where: { $0.stat == .physique }).flatMap({ TrendWord($0.trend) }) {
@@ -529,7 +543,7 @@ struct BodyView: View {
                 .chartYAxis {
                     AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
                         AxisGridLine().foregroundStyle(Ink.hairline)
-                        AxisValueLabel().font(.system(size: 10, weight: .semibold)).foregroundStyle(Ink.text3)
+                        AxisValueLabel().font(.system(size: min(scaleSize, 16), weight: .semibold)).foregroundStyle(Ink.text3)
                     }
                 }
                 .frame(height: sizeClass.isWide ? 240 : 96)
@@ -540,7 +554,7 @@ struct BodyView: View {
                     Spacer()
                     Text(last.day == model.today ? "Today" : Format.day(last.day, style: .dateTime.day().month(.abbreviated)))
                 }
-                .font(.system(size: 10, weight: .semibold)).textCase(.uppercase).tracking(0.6).foregroundStyle(Ink.text3)
+                .font(.system(size: min(scaleSize, 16), weight: .semibold)).textCase(.uppercase).tracking(0.6).foregroundStyle(Ink.text3)
                 .padding(.trailing, 28)
                 .accessibilityHidden(true)
                 waistSentence(change: last.value - first.value, weeks: weeks, unit: length.symbol)
@@ -639,7 +653,7 @@ struct BodyView: View {
                             m.weightKg.map { Format.weight($0, unit: model.units.weight) },
                         ].compactMap { $0 }.joined(separator: " · "))
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .hoverHighlight()
                 .contextMenu {
                     Button("Edit…", systemImage: "pencil") { editing = m }

@@ -39,14 +39,25 @@ struct NutrientBar: View {
 
     var body: some View {
         let unit = reading.nutrient.unit
+        let name = Text(reading.nutrient.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+        let numbers = HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(value).font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(reading.status == .unknown ? Ink.text3 : Ink.text)
+            if let target = reading.target {
+                Text("/ \(Format.nutrient(target, unit))").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+            }
+        }
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(reading.nutrient.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-                Spacer(minLength: 8)
-                Text(value).font(.caption.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(reading.status == .unknown ? Ink.text3 : Ink.text)
-                if let target = reading.target {
-                    Text("/ \(Format.nutrient(target, unit))").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+            // The numbers under the name where they don't fit beside it, rather than every word broken.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    name
+                    Spacer(minLength: 8)
+                    numbers
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    name
+                    numbers
                 }
             }
             Ruler(value: (reading.fraction ?? 0) / 1.5, color: reading.status.color, height: 6, divisions: 0, marker: 1 / 1.5)
@@ -90,9 +101,12 @@ struct NutrientsCard: View {
                         CardTitle("Vitamins and minerals", detail: "All \(report.readings.count)")
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
                     }
+                    // A fingertip's height to hit, taken back from the card's layout.
+                    .frame(minHeight: 44)
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .padding(.vertical, -12)
                 .accessibilityLabel("Vitamins and minerals, all \(report.readings.count) nutrients")
                 .accessibilityIdentifier("progress.allNutrientsLink")
             } else {

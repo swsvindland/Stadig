@@ -61,6 +61,7 @@ extension AppModel {
 /// Minimise, the session's name and clock, and its menu, over a slim ruler for each exercise.
 struct SessionTopBar: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var dynamicType
     let live: LiveSession
     let menu: AnyView
 
@@ -78,19 +79,26 @@ struct SessionTopBar: View {
                 Spacer()
                 VStack(spacing: 2) {
                     Text(live.plan.title).font(.headline).foregroundStyle(Ink.text)
-                    HStack(spacing: 4) {
+                    // A line, or at the accessibility sizes a line each, rather than the clock beside
+                    // a column of the rest.
+                    let stacked = dynamicType.isAccessibilitySize
+                    let layout = stacked ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 4))
+                    layout {
                         Text(live.startedAt, style: .timer)
                         if let position = live.current?.item {
-                            Text("· exercise \(position + 1) of \(live.items.count)")
+                            Text("\(stacked ? "" : "· ")exercise \(position + 1) of \(live.items.count)")
                         }
                         if let bpm = model.currentHeartRate {
-                            Text("·")
-                            Image(systemName: "heart.fill").foregroundStyle(Ink.bad)
-                            Text("\(Int(bpm))").accessibilityLabel("Heart rate \(Int(bpm))")
+                            HStack(spacing: 4) {
+                                if !stacked { Text("·") }
+                                Image(systemName: "heart.fill").foregroundStyle(Ink.bad)
+                                Text("\(Int(bpm))").accessibilityLabel("Heart rate \(Int(bpm))")
+                            }
                         }
                     }
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Ink.text2)
+                    .multilineTextAlignment(.center)
                 }
                 Spacer()
                 Menu {
@@ -258,6 +266,7 @@ struct FocusedExercise: View {
 private struct OtherExerciseRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.showExercise) private var showExercise
+    @Environment(\.dynamicTypeSize) private var typeSize
     let live: LiveSession
     let index: Int
     let isCurrent: Bool
@@ -269,7 +278,8 @@ private struct OtherExerciseRow: View {
         let work = item.sets.filter { $0.prescription.kind != .warmup }
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name).font(.subheadline.weight(isCurrent ? .semibold : .regular)).foregroundStyle(Ink.text).lineLimit(1)
+                Text(exercise.name).font(.subheadline.weight(isCurrent ? .semibold : .regular)).foregroundStyle(Ink.text)
+                    .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                 Text(
                     item.skipped
                         ? "Skipped"
@@ -306,7 +316,7 @@ private struct OtherExerciseRow: View {
             .accessibilityIdentifier("session.itemOptions")
         }
         .frame(minHeight: 52)
-        .opacity(item.isDone && !isCurrent ? 0.6 : 1)
+        .setBack(item.isDone && !isCurrent)
     }
 }
 
@@ -314,6 +324,7 @@ private struct OtherExerciseRow: View {
 /// rating, the one in front of you marked Now.
 struct SetListCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let item: LiveItem
     let exercise: Exercise
     /// The set in front of you, when this is the current exercise.
@@ -350,7 +361,9 @@ struct SetListCard: View {
         }
         return HStack(spacing: 12) {
             SetNumber(text: "W", state: done ? .done : .pending)
-            Text("Warm-up · \(line.joined(separator: " · "))").font(.subheadline.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1)
+            // Every warm-up at the accessibility sizes, where a line holds two.
+            Text("Warm-up · \(line.joined(separator: " · "))").font(.subheadline.monospacedDigit()).foregroundStyle(Ink.text2)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
             if done { Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(Ink.good).accessibilityLabel("Done") }

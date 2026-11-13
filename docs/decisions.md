@@ -27,6 +27,14 @@ Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries)
   - **Left out of the Live Activity:** heart rate ("♥ 118", "Ends early under 105 bpm") would need frequent updates, and the island's +15 and Skip need intents that reach the session in the app. The caption shows how far the session is instead.
   - **Left out of the Watch:** voice logging ("two eggs and toast"), since food parsing doesn't build for watchOS.
 
+- **Accessibility on the iPhone.** 2026-11-13, from Apple's accessibility audit over both apps' main screens and screenshots at xxxLarge and accessibility3. The calls, mine to check:
+  - **The default colours stay as the boards have them.** By their colours every grey carrying words passes 4.5:1 on the ground and the card, but a few of the light theme's tints fall just under where they sit on the raised grey or a pill's wash of themselves (good, ok and Stadig Macro's leaf at 3.8 to 4.4:1, as in "+5 this month"), and the audit's reading of small type fails more than the colours do. Increase Contrast now swaps in a stronger set that passes everywhere ([design.md](design.md)), rather than the default look changing.
+  - **What's done or still to come stays faded** (a set done, a food later today) at the default contrast, below 4.5:1 for its captions; with Increase Contrast it fades only to 80%.
+  - **At the accessibility sizes rows stack** rather than break words: a card's title over its note, the scores in a column, Plan's week a session to a line, Body's tape a measurement to a line, Progress's lifts a name over each ruler, Month and Year under Progress's title, and Just right across the session's dock with Easy and Missed under it.
+  - **A small numeral keeps growing with the body text** past its half again, so a score in a row is never smaller than the words beside it; a hero still stops at half again.
+  - **The targets sheet's gram rows are a few points taller**: their − and + keep the board's 36-point discs inside 44-point buttons, and the fields beside them take 44 points to tap into.
+  - **The audit's contrast check runs only with Increase Contrast on**, and Dynamic Type and clipped text are left to screenshots at the large sizes, where the audit's readings of them were mostly its own limits (docs/testing.md).
+
 - **The wide layouts against the device boards.** The same day. The calls, mine to check:
   - **The iPad's gym session drops the session's name and clock from its bar**, since the tape beside the set has them at the board's size; the bar keeps its buttons and heart rate.
   - **The menu bar panel's way into the app is "Open the week ⌘O"**, landing on the week desk, as `DevMacMenuBar` has it.

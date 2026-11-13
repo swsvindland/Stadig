@@ -7,6 +7,7 @@ import SystemCore
 /// as a meal.
 struct MealTray: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// When the next food will be eaten; nil is the logger's time.
     var date: Date?
     @State private var showing = false
@@ -15,7 +16,7 @@ struct MealTray: View {
         let moment = model.mealBeingLogged(at: date)
         // The sheet hangs off a view that stays when the last food is taken out, so it closes itself.
         VStack(spacing: 0) {
-            if let moment { tray(moment).transition(.move(edge: .bottom).combined(with: .opacity)) }
+            if let moment { tray(moment).transition(.rise(reduceMotion: reduceMotion)) }
         }
         .animation(.snappy, value: moment?.entries.map(\.id))
         .sheet(isPresented: $showing) { MealSheet(date: date) }

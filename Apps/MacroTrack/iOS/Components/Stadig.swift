@@ -28,8 +28,11 @@ enum Ink {
     static let track = Color.white.opacity(0.16)
     #else
     static let surface = Color(light: 0xFFFFFF, dark: 0x17191C)
-    static let raised = Color(light: 0xEBE8E1, dark: 0x212429)
-    static let track = Color(light: 0xE4E1DA, dark: 0x2A2D32)
+    // With Increase Contrast every fill a word or a fill sits on steps further from the card, and
+    // every colour below steps further from them: each passes 4.5:1 on the ground, the card, the
+    // raised grey and a pill's wash of itself, where a few of the light theme's are just under.
+    static let raised = Color(light: 0xEBE8E1, dark: 0x212429, increased: (0xE2DED6, 0x2A2E34))
+    static let track = Color(light: 0xE4E1DA, dark: 0x2A2D32, increased: (0xD9D5CD, 0x33363C))
     #endif
     /// The ruler's tick marks, cut into the fill.
     static let tick = Color(light: 0xFFFFFF, dark: 0x0D0E10, lightAlpha: 0.7, darkAlpha: 0.55)
@@ -42,24 +45,25 @@ enum Ink {
     static let text2 = Color.white.opacity(0.8)
     static let text3 = Color.white.opacity(0.68)
     #else
-    static let hairline = Color(light: 0x16171A, dark: 0xFFFFFF, lightAlpha: 0.10, darkAlpha: 0.09)
+    static let hairline = Color(light: 0x16171A, dark: 0xFFFFFF, lightAlpha: 0.10, darkAlpha: 0.09, increasedAlpha: (0.28, 0.24))
     static let text = Color(light: 0x16171A, dark: 0xF4F2EE)
-    /// Every grey that carries words passes 4.5:1 on both grounds.
-    static let text2 = Color(light: 0x55575A, dark: 0xB1B2AD)
-    static let text3 = Color(light: 0x6C6E70, dark: 0x8D8F8A)
+    /// Every grey that carries words passes 4.5:1 on both grounds and the card.
+    static let text2 = Color(light: 0x55575A, dark: 0xB1B2AD, increased: (0x3F4144, 0xD0D1CC))
+    static let text3 = Color(light: 0x6C6E70, dark: 0x8D8F8A, increased: (0x505255, 0xB4B5B0))
     #endif
 
-    static let good = Color(light: 0x12804F, dark: 0x3ECF8E)
-    static let ok = Color(light: 0xA86400, dark: 0xF5B544)
-    static let bad = Color(light: 0xC8372B, dark: 0xFF6B5E)
+    static let good = Color(light: 0x12804F, dark: 0x3ECF8E, increased: (0x0D6B42, 0x5BDDA0))
+    static let ok = Color(light: 0xA86400, dark: 0xF5B544, increased: (0x875000, 0xF8C463))
+    static let bad = Color(light: 0xC8372B, dark: 0xFF6B5E, increased: (0xA82E24, 0xFF8A7F))
 
-    static let protein = Color(light: 0xC63B30, dark: 0xFF7A70)
-    static let carbs = Color(light: 0x1F6FD0, dark: 0x5AA9FF)
-    static let fat = Color(light: 0xA86400, dark: 0xF5B544)
+    static let protein = Color(light: 0xC63B30, dark: 0xFF7A70, increased: (0xA8302A, 0xFF958C))
+    static let carbs = Color(light: 0x1F6FD0, dark: 0x5AA9FF, increased: (0x1A5CAE, 0x7DBBFF))
+    static let fat = Color(light: 0xA86400, dark: 0xF5B544, increased: (0x875000, 0xF8C463))
 
-    /// The two apps' accents, for saying which app measures a score. An app's own accent is `Color.accentColor`.
-    static let lift = Color(light: 0x3355E0, dark: 0x6D8BFF)
-    static let macro = Color(light: 0x12804F, dark: 0x3ECF8E)
+    /// The two apps' accents, for saying which app measures a score. An app's own accent is
+    /// `Color.accentColor`, whose asset has the same colours for Increase Contrast.
+    static let lift = Color(light: 0x3355E0, dark: 0x6D8BFF, increased: (0x2B4CD0, 0x8AA2FF))
+    static let macro = Color(light: 0x12804F, dark: 0x3ECF8E, increased: (0x0D6B42, 0x5BDDA0))
 
     static func app(_ app: AppID) -> Color { app == .macroTrack ? macro : lift }
 
@@ -77,19 +81,32 @@ enum Ink {
 }
 
 extension Color {
-    /// A colour for each appearance, from 0xRRGGBB. Nonisolated, and its provider `@Sendable`:
+    /// A colour for each appearance, from 0xRRGGBB, and with Increase Contrast on, the `increased`
+    /// pair (light, dark) and alphas in place of them. Nonisolated, and its provider `@Sendable`:
     /// SwiftUI resolves colours on its render thread too, where a main-actor closure traps.
-    nonisolated init(light: UInt32, dark: UInt32, lightAlpha: Double = 1, darkAlpha: Double = 1) {
+    nonisolated init(
+        light: UInt32, dark: UInt32, lightAlpha: Double = 1, darkAlpha: Double = 1, increased: (UInt32, UInt32)? = nil,
+        increasedAlpha: (Double, Double)? = nil
+    ) {
+        let high = (light: increased?.0 ?? light, dark: increased?.1 ?? dark)
+        let highAlpha = (light: increasedAlpha?.0 ?? lightAlpha, dark: increasedAlpha?.1 ?? darkAlpha)
         #if canImport(UIKit)
         self.init(
             uiColor: UIColor { @Sendable traits in
-                traits.userInterfaceStyle == .dark ? UIColor(rgb: dark, alpha: darkAlpha) : UIColor(rgb: light, alpha: lightAlpha)
+                let more = traits.accessibilityContrast == .high
+                return traits.userInterfaceStyle == .dark
+                    ? UIColor(rgb: more ? high.dark : dark, alpha: more ? highAlpha.dark : darkAlpha)
+                    : UIColor(rgb: more ? high.light : light, alpha: more ? highAlpha.light : lightAlpha)
             })
         #else
         self.init(
             nsColor: NSColor(name: nil) { @Sendable appearance in
-                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                    ? NSColor(rgb: dark, alpha: darkAlpha) : NSColor(rgb: light, alpha: lightAlpha)
+                switch appearance.bestMatch(from: [.darkAqua, .aqua, .accessibilityHighContrastDarkAqua, .accessibilityHighContrastAqua]) {
+                case .darkAqua: NSColor(rgb: dark, alpha: darkAlpha)
+                case .accessibilityHighContrastDarkAqua: NSColor(rgb: high.dark, alpha: highAlpha.dark)
+                case .accessibilityHighContrastAqua: NSColor(rgb: high.light, alpha: highAlpha.light)
+                default: NSColor(rgb: light, alpha: lightAlpha)
+                }
             })
         #endif
     }
@@ -115,7 +132,8 @@ extension NSColor {
 
 extension View {
     /// A number set as the hero of a screen: heavy, tabular, tightly tracked. `size` is its size at the
-    /// default text size; it grows with Dynamic Type, but no more than half again, and shrinks to fit.
+    /// default text size; it grows with Dynamic Type to half again, or to the body text's size where
+    /// that's more (a score in a row is never smaller than the words beside it), and shrinks to fit.
     func numeral(_ size: CGFloat, weight: Font.Weight = .bold) -> some View {
         modifier(NumeralStyle(size: size, weight: weight))
     }
@@ -130,9 +148,11 @@ extension View {
     }
 }
 
-/// A unit beside a numeral: grows with Dynamic Type like the numeral does, to the same cap.
+/// A unit beside a numeral: grows with Dynamic Type like the numeral does, to half again or the
+/// caption's size, whichever is more.
 private struct UnitStyle: ViewModifier {
     @ScaledMetric private var scaled: CGFloat
+    @ScaledMetric(relativeTo: .caption) private var caption: CGFloat = 12
     private let size: CGFloat
 
     init(size: CGFloat) {
@@ -141,12 +161,15 @@ private struct UnitStyle: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content.font(.system(size: min(scaled, size * 1.5), weight: .semibold))
+        content.font(.system(size: min(scaled, max(size * 1.5, caption)), weight: .semibold))
     }
 }
 
 private struct NumeralStyle: ViewModifier {
     @ScaledMetric private var scaled: CGFloat
+    /// The body text's size now: past half again, a small numeral keeps growing with it. A hero's
+    /// half again is already larger than any body text.
+    @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = 17
     private let size: CGFloat
     private let weight: Font.Weight
 
@@ -157,13 +180,36 @@ private struct NumeralStyle: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        let points = min(scaled, size * 1.5)
+        let points = min(scaled, max(size * 1.5, bodySize))
         content
             .font(.system(size: points, weight: weight))
             .monospacedDigit()
             .tracking(-points * 0.035)
             .lineLimit(1)
             .minimumScaleFactor(0.5)
+    }
+}
+
+/// A hero number and what's beside it at its foot (how it moved), as the boards have it; under it
+/// where the two don't fit on a line, as at the larger text sizes, rather than the number squeezed
+/// to a sliver.
+struct HeroRow<Number: View, Beside: View>: View {
+    @ViewBuilder let number: Number
+    @ViewBuilder let beside: Beside
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .bottom) {
+                number
+                Spacer(minLength: 8)
+                beside
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                number
+                beside
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -184,7 +230,9 @@ struct Measure: View {
                     .lineLimit(1)
             }
         }
-        .accessibilityElement(children: .combine)
+        // One phrase, "70 kg", rather than the number and its unit read as two.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text([value, unit].compactMap(\.self).filter { !$0.isEmpty }.joined(separator: " ")))
     }
 }
 
@@ -241,6 +289,36 @@ extension Ruler {
     /// A slim ruler for a secondary number: no ticks.
     static func thin(_ value: Double, color: Color = .accentColor) -> Ruler {
         Ruler(value: value, color: color, height: 6, divisions: 0)
+    }
+}
+
+// MARK: - Set back
+
+extension View {
+    /// Set back from the rest (a set done, a food still to come) by fading it to `opacity`. With
+    /// Increase Contrast on it fades only a little, so its words, in that setting's stronger greys,
+    /// still pass 4.5:1.
+    func setBack(_ on: Bool, opacity: Double = 0.6) -> some View {
+        modifier(SetBack(on: on, opacity: opacity))
+    }
+}
+
+private struct SetBack: ViewModifier {
+    @Environment(\.colorSchemeContrast) private var contrast
+    let on: Bool
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content.opacity(on ? (contrast == .increased ? max(opacity, 0.8) : opacity) : 1)
+    }
+}
+
+// MARK: - Motion
+
+extension AnyTransition {
+    /// Rising in from the bottom edge as it fades, or with Reduce Motion on, only the fade.
+    static func rise(reduceMotion: Bool) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
     }
 }
 
@@ -382,6 +460,7 @@ struct DetailHeader<Trailing: View>: View {
 }
 
 private struct PageHeading<Trailing: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let eyebrow: String?
     let title: String
     let trailing: Trailing
@@ -389,7 +468,8 @@ private struct PageHeading<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                if let eyebrow { Text(eyebrow).eyebrow().lineLimit(1) }
+                // A line, until the accessibility sizes leave a line a word or two beside the buttons.
+                if let eyebrow { Text(eyebrow).eyebrow().lineLimit(typeSize.isAccessibilitySize ? 3 : 1) }
                 PageTitle(title)
             }
             Spacer(minLength: 8)
@@ -639,6 +719,7 @@ struct Pill: View {
 /// A card's title over its number or chart (`.h3`), with a note at the right: "Your scores … All
 /// progress".
 struct CardTitle: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     var detail: String?
 
@@ -648,17 +729,49 @@ struct CardTitle: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        TitleLine(stacked: typeSize.isAccessibilitySize) {
             Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1) }
+        } detail: {
+            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3) }
         }
+    }
+}
+
+/// A title with a note at its right, as a card's and a group's are; where the two can't share a
+/// line (always at the accessibility sizes), the note goes under the title, whole.
+private struct TitleLine<Title: View, Detail: View>: View {
+    let stacked: Bool
+    @ViewBuilder let title: Title
+    @ViewBuilder let detail: Detail
+
+    var body: some View {
+        if stacked {
+            under
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    title
+                    Spacer(minLength: 8)
+                    detail.lineLimit(1)
+                }
+                under
+            }
+        }
+    }
+
+    private var under: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            title
+            detail.fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 /// A group's eyebrow, on the page or at the top of a card, with a note at the right: "USUALLY
 /// AROUND NOW … One tap logs it".
 struct SectionEyebrow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     var detail: String?
 
@@ -668,18 +781,21 @@ struct SectionEyebrow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        TitleLine(stacked: typeSize.isAccessibilitySize) {
             Text(title).eyebrow().accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1) }
+        } detail: {
+            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3) }
         }
     }
 }
 
-/// Small uppercase labels along an axis or under a ruler (`.scale`).
+/// Small uppercase labels along an axis or under a ruler (`.scale`): 10 points at the default text
+/// size, growing with it to 16. They share a line with their neighbours, so they stop there and
+/// shrink to fit; what they mark is said in full beside them (and to VoiceOver).
 struct ScaleLabel: View {
     let text: String
     var highlighted = false
+    @ScaledMetric(relativeTo: .caption2) private var size: CGFloat = 10
 
     init(_ text: String, highlighted: Bool = false) {
         self.text = text
@@ -688,11 +804,12 @@ struct ScaleLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: min(size, 16), weight: .semibold))
             .textCase(.uppercase)
             .tracking(0.6)
             .foregroundStyle(highlighted ? Ink.text : Ink.text3)
             .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 }
 
@@ -716,13 +833,47 @@ struct RowCard<Content: View>: View {
                     }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                        row.padding(.vertical, 8).frame(minHeight: minHeight)
+                        // A row that's a button (`rowButton()`) has its padding inside it, so the
+                        // whole row is hit, not only its words.
+                        row.padding(.vertical, row.containerValues.isRowButton ? 0 : 8).frame(minHeight: minHeight)
                     }
                 }
                 .tightCard()
+                .environment(\.rowMinHeight, minHeight)
             }
         }
     }
+}
+
+extension View {
+    /// A `RowCard`'s row that opens or does something: the row's full height to hit (at least 44
+    /// points), where a plain button's would be only its words.
+    func rowButton() -> some View {
+        buttonStyle(RowButtonStyle()).containerValue(\.isRowButton, true)
+    }
+}
+
+/// A row's button in a `RowCard`: the card's padding and height inside it, as a hit area.
+struct RowButtonStyle: ButtonStyle {
+    @Environment(\.rowMinHeight) private var minHeight
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: max(44, minHeight), alignment: .leading)
+            .contentShape(.rect)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.42)
+    }
+}
+
+extension ContainerValues {
+    @Entry var isRowButton = false
+}
+
+extension EnvironmentValues {
+    /// The rows' least height in the `RowCard` around them.
+    @Entry var rowMinHeight: CGFloat = 44
 }
 
 /// A row that opens something: a title, a caption under it, a value, and a chevron.
@@ -997,14 +1148,20 @@ struct ChoiceChip: View {
 
 /// A label over a value in a card's row: "From", "Nov 20".
 struct ValueRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     let value: String
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        // The value under its label at the accessibility sizes, rather than both broken into a column each.
+        let layout =
+            typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+        layout {
             Text(title).font(.subheadline).foregroundStyle(Ink.text2)
-            Spacer(minLength: 8)
-            Text(value).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text).multilineTextAlignment(.trailing)
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            Text(value).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
+                .multilineTextAlignment(typeSize.isAccessibilitySize ? .leading : .trailing)
         }
         .accessibilityElement(children: .combine)
     }

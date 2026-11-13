@@ -134,15 +134,17 @@ struct PhaseCard: View {
         // Today counts: the first day of a phase is a seventh of its first week.
         let into = Double(max(0, phase.start.days(until: today) + 1)) / 7
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(phase.kind.label).numeral(48, weight: .heavy).foregroundStyle(Ink.text)
-                    .accessibilityIdentifier("plan.currentPhase")
-                Text("week \(week) of \(phase.weeks)").font(.title3.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text2)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .accessibilityIdentifier("plan.week")
-                Spacer(minLength: 4)
-                if phase.ratePerWeek != 0 {
-                    Text(rate).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1)
+            // The phase, its week and its rate on a line, or where they don't fit (the larger text
+            // sizes), a line each.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    heading(week: week)
+                    Spacer(minLength: 4)
+                    rateLine
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    heading(week: week)
+                    rateLine
                 }
             }
             VStack(spacing: 5) {
@@ -165,6 +167,22 @@ struct PhaseCard: View {
         .inkCard()
     }
 
+    @ViewBuilder
+    func heading(week: Int) -> some View {
+        Text(phase.kind.label).numeral(48, weight: .heavy).foregroundStyle(Ink.text)
+            .accessibilityIdentifier("plan.currentPhase")
+        Text("week \(week) of \(phase.weeks)").font(.title3.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text2)
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .accessibilityIdentifier("plan.week")
+    }
+
+    @ViewBuilder
+    var rateLine: some View {
+        if phase.ratePerWeek != 0 {
+            Text(rate).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1)
+        }
+    }
+
     /// "−0.5% a week".
     var rate: String {
         "\(phase.ratePerWeek > 0 ? "+" : "−")\(abs(phase.ratePerWeek * 100).formatted(.number.precision(.fractionLength(0...2))))% a week"
@@ -185,21 +203,17 @@ struct TargetsCard: View {
     var body: some View {
         let targets = analysis.targets
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                if let kcal = targets.kcal {
-                    Measure(value: Format.whole(kcal), unit: "kcal a day", size: 48, weight: .heavy)
-                        .foregroundStyle(Ink.text)
-                        .accessibilityIdentifier("plan.kcal")
+            // Adjust beside the calories, or under them where the two don't fit on a line.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    calories(targets)
+                    Spacer(minLength: 4)
+                    adjust
                 }
-                Spacer(minLength: 4)
-                Button("Adjust") { adjusting = true }
-                    .font(.subheadline)
-                    .foregroundStyle(Ink.text2)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, -12)
-                    .accessibilityLabel("Adjust targets")
-                    .accessibilityIdentifier("plan.adjust")
+                VStack(alignment: .leading, spacing: 8) {
+                    calories(targets)
+                    adjust
+                }
             }
             HStack(alignment: .top, spacing: 14) {
                 macro(.protein, targets.protein)
@@ -220,13 +234,16 @@ struct TargetsCard: View {
                 trend.font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 if plan != nil {
-                    Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Ink.words(.accentColor))
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .padding(.vertical, -12)
-                        .accessibilityIdentifier("plan.why")
+                    Button {
+                        withAnimation(.snappy) { showsWhy.toggle() }
+                    } label: {
+                        Text("Why?").frame(minHeight: 44).contentShape(.rect)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Ink.words(.accentColor))
+                    .buttonStyle(.plain)
+                    .padding(.vertical, -12)
+                    .accessibilityIdentifier("plan.why")
                 }
             }
             if showsWhy, let plan {
@@ -244,6 +261,30 @@ struct TargetsCard: View {
         .inkCard()
         .sheet(isPresented: $adjusting) { PlanTargetsSheet() }
         .debugSheet("targets") { adjusting = true }
+    }
+
+    @ViewBuilder
+    func calories(_ targets: DailyTargets) -> some View {
+        if let kcal = targets.kcal {
+            Measure(value: Format.whole(kcal), unit: "kcal a day", size: 48, weight: .heavy)
+                .foregroundStyle(Ink.text)
+                .accessibilityIdentifier("plan.kcal")
+        }
+    }
+
+    var adjust: some View {
+        Button {
+            adjusting = true
+        } label: {
+            // A fingertip's height inside the button, where it's hit, not round it.
+            Text("Adjust").frame(minHeight: 44).contentShape(.rect)
+        }
+        .font(.subheadline)
+        .foregroundStyle(Ink.text2)
+        .buttonStyle(.plain)
+        .padding(.vertical, -12)
+        .accessibilityLabel("Adjust targets")
+        .accessibilityIdentifier("plan.adjust")
     }
 
     func macro(_ macro: Macro, _ grams: Double?) -> some View {
@@ -264,13 +305,17 @@ struct TargetsCard: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("plan.ownTargets")
-            Button(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual") { model.useThePlansTargets() }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Ink.words(.accentColor))
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
-                .padding(.vertical, -8)
-                .accessibilityIdentifier("plan.usePlans")
+            Button {
+                model.useThePlansTargets()
+            } label: {
+                Text(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual")
+                    .frame(minHeight: 44).contentShape(.rect)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Ink.words(.accentColor))
+            .buttonStyle(.plain)
+            .padding(.vertical, -8)
+            .accessibilityIdentifier("plan.usePlans")
         }
     }
 
@@ -435,7 +480,8 @@ struct AssessmentCard: View {
                 Text("Day \(assessment.day) of \(assessment.totalDays)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     .accessibilityIdentifier("plan.assessmentDay")
             }
-            Ruler(value: assessment.progress, height: 12, divisions: 3)
+            // "Day 9 of 21" above says how far along.
+            Ruler(value: assessment.progress, height: 12, divisions: 3).accessibilityHidden(true)
             Text(
                 own
                     ? "Eat to your own targets, log it, and weigh in each morning. Your maintenance is learned all the same."
@@ -450,14 +496,17 @@ struct AssessmentCard: View {
             }
             // A coach's or a dietitian's numbers instead, while it learns.
             if !own {
-                Button("Set my own targets") { settingTargets = true }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Ink.words(.accentColor))
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, -8)
-                    .accessibilityIdentifier("plan.setOwnTargets")
-                    .debugSheet("targets") { settingTargets = true }
+                Button {
+                    settingTargets = true
+                } label: {
+                    Text("Set my own targets").frame(minHeight: 44).contentShape(.rect)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Ink.words(.accentColor))
+                .buttonStyle(.plain)
+                .padding(.vertical, -8)
+                .accessibilityIdentifier("plan.setOwnTargets")
+                .debugSheet("targets") { settingTargets = true }
             }
         }
         .card()
@@ -469,12 +518,25 @@ struct AssessmentCard: View {
 struct MaintenanceCard: View {
     let estimate: MaintenanceEstimate
 
+    private var title: some View { Text("Maintenance").font(.callout.weight(.semibold)).foregroundStyle(Ink.text) }
+
+    private var pill: some View {
+        Pill(text: estimate.label, color: estimate.spread >= 350 ? Ink.ok : estimate.spread >= 200 ? Ink.text2 : Ink.good)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Maintenance").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                Spacer()
-                Pill(text: estimate.label, color: estimate.spread >= 350 ? Ink.ok : estimate.spread >= 200 ? Ink.text2 : Ink.good)
+            // The pill under the title where the two don't fit on a line.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    title
+                    Spacer()
+                    pill
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    title
+                    pill
+                }
             }
             Measure(value: Format.whole(estimate.kcal), unit: "kcal a day", size: 30).foregroundStyle(Ink.text)
             RangeBar(low: estimate.low, high: estimate.high, value: estimate.kcal, formula: estimate.formula)

@@ -21,6 +21,11 @@ struct TargetsSheet: View {
     let save: (MacroTargets) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The calories' and the grams' faces, growing with the text size to half again, as a numeral does.
+    @ScaledMetric(relativeTo: .largeTitle) private var kcalSize: CGFloat = 56
+    @ScaledMetric(relativeTo: .title2) private var gramsSize: CGFloat = 24
+    @ScaledMetric(relativeTo: .title2) private var gramsWidth: CGFloat = 58
     @State private var draft: MacroTargets
     /// The numbers as they were when the calories began to change, which each keystroke and step of
     /// the calories works from, so typing "2" on the way to "2400" doesn't lose how carbs and fat split.
@@ -84,27 +89,21 @@ struct TargetsSheet: View {
     var sections: some View {
         Section {
             VStack(spacing: 16) {
-                HStack(spacing: 12) {
-                    nudge(.kcal, -1, size: 52)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        TextField("0", text: text(.kcal))
-                            .fieldKeyboard(.number)
-                            .multilineTextAlignment(.center)
-                            // The numeral's face without its shrinking to fit, which a field sized to
-                            // the number would take as room to shrink into (as the weigh-in's).
-                            .font(.system(size: 56, weight: .heavy))
-                            .monospacedDigit()
-                            .tracking(-56 * 0.035)
-                            .foregroundStyle(Ink.text)
-                            .focused($focus, equals: .kcal)
-                            .fixedSize()
-                            .macLabelsHidden()
-                            .accessibilityLabel("Calories a day")
-                            .accessibilityIdentifier("targets.kcal")
-                        Text("kcal").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2)
+                if typeSize.isAccessibilitySize {
+                    // The number on a line of its own and − and + under it, where beside it they'd
+                    // push it off the sheet.
+                    kcalField
+                    HStack {
+                        nudge(.kcal, -1, size: 52)
+                        Spacer()
+                        nudge(.kcal, 1, size: 52)
                     }
-                    .frame(maxWidth: .infinity)
-                    nudge(.kcal, 1, size: 52)
+                } else {
+                    HStack(spacing: 12) {
+                        nudge(.kcal, -1, size: 52)
+                        kcalField
+                        nudge(.kcal, 1, size: 52)
+                    }
                 }
                 MacroSplitBar(targets: draft)
             }
@@ -162,26 +161,51 @@ struct TargetsSheet: View {
         }
     }
 
+    var kcalField: some View {
+        let size = min(kcalSize, 56 * 1.5)
+        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+            TextField("0", text: text(.kcal))
+                .fieldKeyboard(.number)
+                .multilineTextAlignment(.center)
+                // The numeral's face without its shrinking to fit, which a field sized to the number
+                // would take as room to shrink into (as the weigh-in's).
+                .font(.system(size: size, weight: .heavy))
+                .monospacedDigit()
+                .tracking(-size * 0.035)
+                .foregroundStyle(Ink.text)
+                .focused($focus, equals: .kcal)
+                .fixedSize()
+                .macLabelsHidden()
+                .accessibilityLabel("Calories a day")
+                .accessibilityIdentifier("targets.kcal")
+            Text("kcal").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     // MARK: Rows
 
     func grams(_ field: Field, macro: Macro, grams: Double, share: Double) -> some View {
-        HStack(spacing: 8) {
+        let name = HStack(spacing: 8) {
             Circle().fill(macro.color).frame(width: 8, height: 8).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(macro.label).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                 Text(Format.percent(share)).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
-            Spacer(minLength: 6)
+        }
+        let controls = HStack(spacing: 8) {
             nudge(field, -1, size: 36)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 TextField("0", text: text(field))
                     .fieldKeyboard(.number)
                     .multilineTextAlignment(.trailing)
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: min(gramsSize, 24 * 1.5), weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Ink.text)
                     .focused($focus, equals: field)
-                    .frame(width: 58)
+                    .frame(width: min(gramsWidth, 58 * 1.5))
+                    // A fingertip's height to tap into, as the − and + beside it have.
+                    .frame(minHeight: 44)
                     .macLabelsHidden()
                     .accessibilityLabel("\(macro.label), grams a day")
                     .accessibilityValue("\(Format.whole(grams)) grams, \(Format.percent(share)) of calories")
@@ -189,6 +213,21 @@ struct TargetsSheet: View {
                 Text("g").font(.callout.weight(.semibold)).foregroundStyle(Ink.text2)
             }
             nudge(field, 1, size: 36)
+        }
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // The macro's name over its grams, where beside them it's a word a line.
+                VStack(alignment: .leading, spacing: 6) {
+                    name
+                    controls
+                }
+            } else {
+                HStack(spacing: 8) {
+                    name
+                    Spacer(minLength: 6)
+                    controls
+                }
+            }
         }
         .padding(.vertical, 2)
     }
@@ -219,7 +258,9 @@ struct TargetsSheet: View {
                 .foregroundStyle(Ink.text)
                 .frame(width: size, height: size)
                 .background(Ink.raised, in: .circle)
-                .contentShape(.circle)
+                // A fingertip's room round a smaller disc.
+                .frame(width: max(44, size), height: max(44, size))
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .hoverHighlight()

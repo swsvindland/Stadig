@@ -94,13 +94,15 @@ struct SettingsView: View {
 
 /// A Settings row that opens a page: what it is, and what's set there now under it.
 private struct SettingsRowLabel: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     let caption: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).foregroundStyle(Ink.text)
-            Text(caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
+            // Whole at the accessibility sizes, where two lines hold a few words.
+            Text(caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(typeSize.isAccessibilitySize ? nil : 2)
         }
         .padding(.vertical, 2)
     }

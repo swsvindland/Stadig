@@ -121,8 +121,11 @@ struct LogTab: View {
                 PageHeader(eyebrow: eyebrow, title: "Log") {
                     HStack(spacing: 8) {
                         if day != model.today {
+                            // The word whole at any size, rather than broken over two lines.
                             Button("Today") { model.showToday() }
                                 .buttonStyle(.ghost)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .accessibilityIdentifier("log.backToToday")
                         }
                         CircleIconButton(symbol: "calendar", label: "Choose a day", identifier: "log.title") { choosingDay = true }
@@ -274,6 +277,8 @@ struct LogTab: View {
         .circleMenuStyle()
         .help("Sort the day's food")
         .accessibilityLabel("Sort")
+        // The icon fills to say a sort other than by time is on: said in words.
+        .accessibilityValue(order.title)
         .accessibilityIdentifier("log.sort")
     }
 }
@@ -367,6 +372,7 @@ struct WeekStrip: View {
 /// it when carbs and fat are shown. On a past day being caught up, the whole usual day a tap away.
 struct DaySummaryLine: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let day: Day
     var wide = false
 
@@ -423,20 +429,38 @@ struct DaySummaryLine: View {
         } else {
             kcal = (counted.kcal, day > model.today ? "kcal planned" : "kcal eaten")
         }
-        return HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
-            if let protein = targets?.protein {
-                Text("·").font(.callout).foregroundStyle(Ink.text3)
-                let left = protein - counted.protein
-                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
+        let calories = Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
+        let protein = targets?.protein.map { protein in
+            let left = protein - counted.protein
+            return Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
+        }
+        let line = HStack(alignment: .firstTextBaseline, spacing: 5) {
+            calories
+            if let protein {
+                Text("·").font(.callout).foregroundStyle(Ink.text3).accessibilityHidden(true)
+                protein
             }
             if let later {
                 Text("· \(Format.whole(later)) later").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
         }
-        .foregroundStyle(Ink.text)
         .lineLimit(1)
-        .minimumScaleFactor(0.75)
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // On a line where it fits whole, else a number to a line, rather than shrunk and cut.
+                ViewThatFits(in: .horizontal) {
+                    line
+                    VStack(alignment: .leading, spacing: 2) {
+                        calories
+                        protein
+                        if let later { Text("\(Format.whole(later)) later").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3) }
+                    }
+                }
+            } else {
+                line.minimumScaleFactor(0.75)
+            }
+        }
+        .foregroundStyle(Ink.text)
     }
 
     func counted(_ intake: DayIntake) -> Nutrients { intake.counted(on: day, today: model.today) }
@@ -691,7 +715,7 @@ struct LogEntryRow: View {
                     "\(Format.whole(n.carbs)) grams carbs", "\(Format.whole(n.fat)) grams fat",
                 ])
         }
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }

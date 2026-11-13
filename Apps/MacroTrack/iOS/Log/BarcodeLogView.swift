@@ -10,6 +10,7 @@ import SystemCore
 /// as the camera moves over it (or from a photo), kept for next time.
 struct BarcodeLogView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let session: LoggerSession
     /// A food's open over the pane: no camera behind it, reading what it sees for nobody.
     var covered = false
@@ -121,7 +122,7 @@ struct BarcodeLogView: View {
                     scanID = UUID()
                 }
             )
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .transition(.rise(reduceMotion: reduceMotion))
         } else if let logged, !reading {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark").font(.body.weight(.bold)).foregroundStyle(Ink.good)
