@@ -349,7 +349,6 @@ struct InjuryOverrides: View {
                 .padding(.bottom, 24)
                 .readableWidth(620)
             }
-            .scrollDismissesKeyboard(.immediately)
             .inkSheet {
                 SheetBar(label: "Done", identifier: "injury.done") { dismiss() }
             }

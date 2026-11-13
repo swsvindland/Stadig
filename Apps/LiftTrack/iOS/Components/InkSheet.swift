@@ -66,7 +66,9 @@ extension View {
     /// A sheet that draws its own bar (`SheetBar`) and foot (`SheetFoot`) in place of the system's
     /// navigation bar, on the ink ground.
     func inkSheet<Bar: View, Foot: View>(@ViewBuilder bar: () -> Bar, @ViewBuilder foot: () -> Foot) -> some View {
-        hidesNavigationBar()
+        // Grouped on the Mac too, where a sheet's form would otherwise set its rows in columns.
+        formStyle(.grouped)
+            .hidesNavigationBar()
             .safeAreaInset(edge: .top, spacing: 0) { bar() }
             .safeAreaInset(edge: .bottom, spacing: 0) { foot() }
             .background(.pageBackground)
@@ -75,7 +77,8 @@ extension View {
     /// A sheet with its own bar and nothing at the foot: one that closes, or acts from its rows.
     func inkSheet<Bar: View>(@ViewBuilder bar: () -> Bar) -> some View {
         // No inset at the foot at all: an empty one there leaves the content nothing to show in.
-        hidesNavigationBar()
+        formStyle(.grouped)
+            .hidesNavigationBar()
             .safeAreaInset(edge: .top, spacing: 0) { bar() }
             .background(.pageBackground)
     }
