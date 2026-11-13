@@ -695,7 +695,7 @@ struct BlockWhyPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Plan", title: "Why this plan?") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Plan", title: "Why this plan?") }
                 VStack(alignment: .leading, spacing: 10) {
                     Text(mesocycle.rationale.headline).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
                         .fixedSize(horizontal: false, vertical: true)
@@ -719,7 +719,7 @@ struct BlockWhyPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Why this plan?", wide: sizeClass.isWide)
+        .detailPage(title: "Why this plan?", wide: sizeClass.isWide)
     }
 
     private func detail(_ label: String, _ value: String) -> some View {
@@ -741,7 +741,7 @@ struct BlockDaysPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Plan", title: "The block's days") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Plan", title: "The block's days") }
                 ForEach(Array(mesocycle.days.enumerated()), id: \.element.id) { index, day in
                     NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: day.id)) {
                         DayCard(day: day, isNext: nextIndex == index)
@@ -756,6 +756,6 @@ struct BlockDaysPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Days", wide: sizeClass.isWide)
+        .detailPage(title: "Days", wide: sizeClass.isWide)
     }
 }

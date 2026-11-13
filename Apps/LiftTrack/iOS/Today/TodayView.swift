@@ -704,7 +704,7 @@ struct AssessmentPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Today", title: "Assessment") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Today", title: "Assessment") }
                 AssessmentCard(status: status, note: note, titled: false)
             }
             .padding(.horizontal, 16)
@@ -712,7 +712,7 @@ struct AssessmentPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Assessment", wide: sizeClass.isWide)
+        .detailPage(title: "Assessment", wide: sizeClass.isWide)
         .accessibilityIdentifier("today.assessmentPage")
     }
 }
@@ -725,7 +725,7 @@ struct StepsPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Today", title: "Steps") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Today", title: "Steps") }
                 StepsCard(steps: steps)
             }
             .padding(.horizontal, 16)
@@ -733,7 +733,7 @@ struct StepsPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Steps", wide: sizeClass.isWide)
+        .detailPage(title: "Steps", wide: sizeClass.isWide)
     }
 }
 

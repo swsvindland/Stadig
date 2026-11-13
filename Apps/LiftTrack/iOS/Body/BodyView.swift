@@ -211,7 +211,7 @@ struct BodyView: View {
     private func proportionsPage(_ p: PhysiqueAnalysis) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                BackHeader(eyebrow: "Body", title: "Proportions")
+                DetailHeader(eyebrow: "Body", title: "Proportions")
                 proportions(p).card()
                 sides(p)
                 if !p.gaps.isEmpty || p.proportions.contains(where: { $0.cause == .fat }) { gaps(p) }
@@ -221,13 +221,13 @@ struct BodyView: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Proportions", wide: sizeClass.isWide)
+        .detailPage(title: "Proportions", wide: sizeClass.isWide)
     }
 
     private var photosPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Body", title: "Progress photos") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Body", title: "Progress photos") }
                 photos
             }
             .padding(.horizontal, 16)
@@ -235,7 +235,7 @@ struct BodyView: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Progress photos", wide: sizeClass.isWide)
+        .detailPage(title: "Progress photos", wide: sizeClass.isWide)
     }
 
     /// Physique's score on a ruler, and waist to height against the healthy line.

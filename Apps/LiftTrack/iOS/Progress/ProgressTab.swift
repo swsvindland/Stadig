@@ -848,7 +848,7 @@ struct YourShapePage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Progress", title: "Your shape") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Progress", title: "Your shape") }
                 YourShape(lines: model.stats, analysis: model.analysis ?? analysis) { stat in
                     switch stat {
                     case .strength: dismiss()
@@ -863,7 +863,7 @@ struct YourShapePage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Your shape", wide: sizeClass.isWide)
+        .detailPage(title: "Your shape", wide: sizeClass.isWide)
         .navigationDestination(item: $detail) { stat in ScoreDetailPage(stat: stat) }
         .accessibilityIdentifier("progress.shapePage")
     }
@@ -878,7 +878,7 @@ struct ScoreDetailPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Your shape", title: stat.label) }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Your shape", title: stat.label) }
                 if let analysis = model.analysis {
                     switch stat {
                     case .endurance: EnduranceCard(analysis: analysis.endurance)
@@ -893,7 +893,7 @@ struct ScoreDetailPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: stat.label, wide: sizeClass.isWide)
+        .detailPage(title: stat.label, wide: sizeClass.isWide)
     }
 }
 
@@ -905,7 +905,7 @@ struct RatingsPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !sizeClass.isWide { BackHeader(eyebrow: "Progress", title: "Your ratings") }
+                if !sizeClass.isWide { DetailHeader(eyebrow: "Progress", title: "Your ratings") }
                 RatingsCard(trust: trust)
             }
             .padding(.horizontal, 16)
@@ -913,6 +913,6 @@ struct RatingsPage: View {
             .readableWidth()
         }
         .background(.pageBackground)
-        .pageWithoutBar(title: "Your ratings", wide: sizeClass.isWide)
+        .detailPage(title: "Your ratings", wide: sizeClass.isWide)
     }
 }

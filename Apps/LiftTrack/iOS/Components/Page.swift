@@ -54,51 +54,42 @@ struct PageHeader<Trailing: View>: View {
     }
 }
 
-/// A pushed screen's header: a round back button, then the eyebrow over the title. The page hides the
-/// navigation bar (`pageWithoutBar()`), so this is its way back.
-struct BackHeader<Trailing: View>: View {
-    @Environment(\.dismiss) private var dismiss
+/// A pushed screen's header: the eyebrow over the title, under the bar's round back button (the
+/// bar stays, title-less, so the edge swipe still goes back; `detailPage()`).
+struct DetailHeader<Trailing: View>: View {
     let eyebrow: String?
-    let title: String?
+    let title: String
     @ViewBuilder let trailing: Trailing
 
-    init(eyebrow: String? = nil, title: String? = nil, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+    init(eyebrow: String? = nil, title: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.eyebrow = eyebrow
         self.title = title
         self.trailing = trailing()
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                CircleIcon(symbol: "chevron.left")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-            .accessibilityIdentifier("page.back")
-            if title != nil || eyebrow != nil {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let eyebrow { Text(eyebrow).eyebrow().lineLimit(1) }
-                    if let title { PageTitle(title) }
-                }
+        HStack(alignment: .bottom, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let eyebrow { Text(eyebrow).eyebrow().lineLimit(1) }
+                PageTitle(title)
             }
             Spacer(minLength: 8)
             trailing
         }
-        .padding(.top, 8)
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
     }
 }
 
 extension View {
-    /// A pushed phone screen that draws its own header (`BackHeader`): the navigation bar's hidden, and
-    /// the tab bar with it, as the design's detail screens have none. Wide windows keep their bar and title.
-    func pageWithoutBar(title: String, wide: Bool) -> some View {
+    /// A pushed phone screen that sets its own title large (`DetailHeader`): the bar keeps only its
+    /// round back button, and the tab bar goes, as on the design's detail screens. Wide windows keep
+    /// their bar and its title.
+    func detailPage(title: String, wide: Bool) -> some View {
         navigationTitle(title)
             .inlineTitle()
             #if os(iOS)
-        .toolbarVisibility(wide ? .automatic : .hidden, for: .navigationBar)
+        .toolbar(removing: wide ? nil : .title)
         .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             #endif
     }
