@@ -32,11 +32,43 @@ final class ShapeScores {
 /// The figure, its line, and a row each: which app measures it, and what it says.
 private struct ShapeBody: View {
     let scores: ShapeScores
+    /// Across a wide page's card: the figure beside its rows, rather than over them with the card's
+    /// width empty either side of it.
+    var sideBySide = false
 
     var body: some View {
+        if sideBySide {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 36) {
+                    figure.frame(width: 360)
+                    VStack(alignment: .leading, spacing: 10) {
+                        summary
+                        rows
+                    }
+                    .frame(minWidth: 340)
+                }
+                stacked
+            }
+        } else {
+            stacked
+        }
+    }
+
+    var stacked: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(scores.summary).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
+            summary
+            figure
+            rows
+        }
+    }
+
+    var summary: some View {
+        Text(scores.summary).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 4)
+    }
+
+    var figure: some View {
+        VStack(spacing: 10) {
             ScoreShape(axes: ScoreShape.axes(scores.lines, earlier: scores.earlier))
                 // Its corner labels sit outside the figure at a fixed reach: past the largest
                 // standard size they run off the screen. The rows below say every score at any size.
@@ -44,14 +76,17 @@ private struct ShapeBody: View {
                 .frame(maxWidth: 360)
                 .frame(maxWidth: .infinity)
             if let earlier = scores.earlier { ShapeLegend(earlier: earlier) }
-            VStack(spacing: 0) {
-                ForEach(Array(scores.rows.enumerated()), id: \.element.id) { index, line in
-                    if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                    ShapeRow(line: line, bothApps: scores.bothApps)
-                }
-            }
-            .padding(.horizontal, 4)
         }
+    }
+
+    var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(scores.rows.enumerated()), id: \.element.id) { index, line in
+                if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                ShapeRow(line: line, bothApps: scores.bothApps)
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
@@ -110,7 +145,7 @@ struct YourShapeCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your shape").font(.title2.weight(.bold)).foregroundStyle(Ink.text).padding(.horizontal, 4)
                 .accessibilityAddTraits(.isHeader)
-            ShapeBody(scores: scores)
+            ShapeBody(scores: scores, sideBySide: true)
         }
         .inkCard(padding: 18)
         .accessibilityIdentifier("progress.shape")

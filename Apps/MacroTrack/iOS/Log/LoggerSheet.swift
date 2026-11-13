@@ -279,6 +279,8 @@ struct LoggerSearchField: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").font(.body.weight(.medium)).foregroundStyle(Ink.text3).accessibilityHidden(true)
             TextField("Search foods", text: $session.query, prompt: Text("Search foods").foregroundStyle(Ink.text3))
+                // The capsule is the field: no bezel of the Mac's inside it.
+                .textFieldStyle(.plain)
                 .font(.body)
                 .foregroundStyle(Ink.text)
                 .focused(focused)
@@ -760,16 +762,34 @@ struct NutrientSummary: View {
     let nutrients: Nutrients
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            // One line, whatever the room: a narrow inspector broke "1,155" over two.
-            Measure(value: Format.whole(nutrients.kcal), unit: "kcal", size: 30)
-                .layoutPriority(1)
-            Spacer(minLength: 4)
-            macro("Protein", nutrients.protein, .protein)
-            macro("Carbs", nutrients.carbs, .carbs)
-            macro("Fat", nutrients.fat, .fat)
+        // On one line where there's room; in a narrow inspector (History's day beside an iPad's
+        // table), the calories over the macros rather than "1,155" cut to "…".
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                kcal
+                Spacer(minLength: 4)
+                macros
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                kcal
+                HStack(spacing: 12) {
+                    macros
+                    Spacer(minLength: 0)
+                }
+            }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    var kcal: some View {
+        Measure(value: Format.whole(nutrients.kcal), unit: "kcal", size: 30).fixedSize()
+    }
+
+    @ViewBuilder
+    var macros: some View {
+        macro("Protein", nutrients.protein, .protein)
+        macro("Carbs", nutrients.carbs, .carbs)
+        macro("Fat", nutrients.fat, .fat)
     }
 
     func macro(_ label: String, _ value: Double, _ macro: Macro) -> some View {

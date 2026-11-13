@@ -45,7 +45,7 @@ struct MenuBarToday: View {
         return VStack(alignment: .leading, spacing: 0) {
             MenuBarHeader(
                 eyebrow: TodayLogger.eyebrow(model), targets: model.analysis?.targets, eaten: model.dayIntake(on: model.today).eaten,
-                adding: composer.adding, showAllMacros: model.settings.showAllMacros, open: showApp)
+                adding: composer.adding, showAllMacros: model.settings.showAllMacros, open: showWeek)
             Ink.hairline.frame(height: 1).padding(.top, 14).padding(.bottom, 6)
             MenuBarThread(fresh: fresh, estimates: model.estimates)
             if !composer.tiles.isEmpty { MenuBarTiles(composer: composer).padding(.top, 12) }
@@ -85,7 +85,7 @@ struct MenuBarToday: View {
         HStack(spacing: 8) {
             TextField("Add food, or say what you ate", text: $composer.text)
                 .textFieldStyle(.plain)
-                .font(.title3)
+                .font(.system(size: 17))
                 .foregroundStyle(Ink.text)
                 .focused($typing)
                 .autocorrectionDisabled()
@@ -175,6 +175,12 @@ struct MenuBarToday: View {
         close()
     }
 
+    /// ⌘O: the window on the week desk, the Mac's view of the plan the panel is a glance at.
+    private func showWeek() {
+        model.go(to: .week)
+        showApp()
+    }
+
     private func close() { dismiss() }
 }
 
@@ -197,7 +203,7 @@ private struct MenuBarHeader: View {
                 Spacer(minLength: 8)
                 Button(action: open) {
                     HStack(spacing: 6) {
-                        Text("Open Stadig Macro")
+                        Text("Open the week")
                         KeyCap("⌘O")
                     }
                 }

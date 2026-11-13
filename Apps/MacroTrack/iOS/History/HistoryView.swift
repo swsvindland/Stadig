@@ -79,8 +79,10 @@ struct HistoryView: View {
             // vs Target says how far over or under.
             TableColumn("Calories", sortUsing: HistoryOrder(.kcal, order: .reverse)) { row in KcalCell(row: row, target: allColumns) }
                 .width(min: 72, ideal: 92, max: cap(allColumns ? 120 : 72))
-            TableColumn("vs Target", sortUsing: HistoryOrder(.overTarget, order: .reverse)) { row in OverTargetCell(row: row) }
-                .width(min: 48, ideal: 56, max: cap(76))
+            TableColumn("vs Target", sortUsing: HistoryOrder(.overTarget, order: .reverse)) { row in
+                OverTargetCell(row: row, selected: row.day == selection)
+            }
+            .width(min: 48, ideal: 56, max: cap(76))
             TableColumn("Protein", sortUsing: HistoryOrder(.protein, order: .reverse)) { row in NumberCell(row.intake?.protein, unit: "g") }
                 .width(min: 44, ideal: 50, max: cap(64))
             if allColumns {
@@ -91,7 +93,7 @@ struct HistoryView: View {
                 TableColumn("Fiber", sortUsing: HistoryOrder(.fiber, order: .reverse)) { row in NumberCell(row.intake?.fiber, unit: "g") }
                     .width(min: 40, ideal: 46, max: cap(64))
             }
-            TableColumn("Status", sortUsing: HistoryOrder(.status)) { row in StatusCell(row: row) }
+            TableColumn("Status", sortUsing: HistoryOrder(.status)) { row in StatusCell(row: row, selected: row.day == selection) }
                 .width(min: width(84, 108), ideal: 100)
             if allColumns && model.tracksMealTiming {
                 TableColumn("Overnight", sortUsing: HistoryOrder(.overnightFast, order: .reverse)) { row in
@@ -202,12 +204,14 @@ private struct KcalCell: View {
 /// How far over or under the target a day ran, coloured only when it counts (a complete day).
 private struct OverTargetCell: View {
     let row: HistoryDay
+    /// On the selected row, which the table fills with the accent: the row's own ink, not green on green.
+    var selected = false
 
     var body: some View {
         if let over = row.kcalOverTarget {
             Text("\(over > 0 ? "+" : over < 0 ? "−" : "")\(Format.whole(abs(over)))")
                 .monospacedDigit()
-                .foregroundStyle(color)
+                .foregroundStyle(selected ? Color.primary : color)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         } else {
             Text("—").foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .trailing)
@@ -226,11 +230,13 @@ private struct OverTargetCell: View {
 /// Complete, fasted, partial, unknown or today, and any life mode the day was in.
 struct StatusCell: View {
     let row: HistoryDay
+    /// On the selected row, which the table fills with the accent: the row's own ink, not green on green.
+    var selected = false
 
     var body: some View {
         HStack(spacing: 4) {
             Label(row.status.label, systemImage: row.status.symbol)
-                .foregroundStyle(row.status.color)
+                .foregroundStyle(selected ? Color.primary : row.status.color)
                 .labelStyle(.titleAndIcon)
             if let mode = row.targets.mode.away { Text("· \(mode)").foregroundStyle(.secondary) }
         }

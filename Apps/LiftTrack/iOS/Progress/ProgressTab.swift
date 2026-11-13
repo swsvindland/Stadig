@@ -739,9 +739,12 @@ struct SessionSetsList: View {
                     }
                     .padding(.horizontal, 4)
                 }
-                // On the ground, as the summary's numbers are, not in a card of their own.
+                // On the ground, as the summary's numbers are, not in a card of their own. As the
+                // list's first row (the inspector's), clear of the corner it rounds, which cut the
+                // eyebrow's first letter.
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: heading == nil ? 14 : 0, leading: 0, bottom: 8, trailing: 0))
             }
             if let feedback = record.feedback {
                 Section {

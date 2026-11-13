@@ -36,7 +36,7 @@ struct PrepCounter: View {
                     .frame(maxHeight: .infinity, alignment: .top)
                 } else {
                     HStack(alignment: .top, spacing: 36 * s) {
-                        now(s).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        now(s, pinsScale: true).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         OnTheHeat(run: run, scale: s, columns: 1)
                             .frame(width: proxy.size.width * 0.34)
                             .frame(maxHeight: .infinity, alignment: .top)
@@ -57,10 +57,12 @@ struct PrepCounter: View {
         .onDisappear { model.saveReadings(run) }
     }
 
-    /// The step being done, and its batch on the scale.
-    func now(_ s: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 20 * s) {
+    /// The step being done, and its batch on the scale: on its side, the scale at the foot of the
+    /// step's room, beside the last timer, rather than straight under the words.
+    func now(_ s: CGFloat, pinsScale: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 16 * s) {
             CurrentStep(run: run, step: run.step, scale: s)
+            if pinsScale { Spacer(minLength: 0) }
             if let weigh = run.step.weigh {
                 ScaleStrip(run: run, step: run.step, weigh: weigh, scale: s).id(run.step.id)
             }
@@ -84,9 +86,9 @@ struct PrepCounter: View {
                 CircleIconButton(symbol: "list.bullet", label: "All steps", identifier: "prep.steps") { showSteps = true }
             } else {
                 Text("\(Format.day(model.today, style: .dateTime.weekday(.wide))) prep · step \(run.index + 1) of \(run.guide.steps.count)")
-                    .eyebrow()
+                    .counterEyebrow(14 * s)
                 Spacer(minLength: 12)
-                progressLine.font(.subheadline.weight(.medium).monospacedDigit())
+                progressLine.font(.system(size: 17 * s, weight: .medium).monospacedDigit())
                 Button {
                     showSteps = true
                 } label: {
@@ -182,40 +184,56 @@ private struct CurrentStep: View {
     let scale: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8 * scale) {
+        // The few words and the amounts keep their size; the instruction under them gives way first
+        // (to fewer lines, then none) when the window's short.
+        VStack(alignment: .leading, spacing: 0) {
             Text("\(step.label).")
-                .font(.system(size: 84 * scale, weight: .bold))
-                .tracking(-2.5 * scale)
+                .font(.system(size: 102 * scale, weight: .heavy))
+                .tracking(-3.5 * scale)
                 .foregroundStyle(Ink.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .accessibilityLabel(step.title)
                 .accessibilityIdentifier("prep.step")
-            if let weigh = step.weigh {
-                // The recipe's amount; the water for what's actually in the pot.
-                amount(Format.whole(weigh.grams), "g \(weigh.form)")
-                if let water = weigh.water(for: run.reading(for: step)) { amount(water.formatted(), "ml water") }
-            } else if let timer = step.timer {
-                amount("\(step.minutes)", "min · \(timer.place)")
+                .layoutPriority(2)
+            // Set close, as lines of one heading rather than separate ones: the type's own leading
+            // is a body text's, looser than a few huge words want.
+            VStack(alignment: .leading, spacing: -10 * scale) {
+                if let weigh = step.weigh {
+                    // The recipe's amount; the water for what's actually in the pot.
+                    amount(Format.whole(weigh.grams), "g \(weigh.form)")
+                    if let water = weigh.water(for: run.reading(for: step)) { amount(water.formatted(), "ml water") }
+                } else if let timer = step.timer {
+                    amount("\(step.minutes)", "min · \(timer.place)")
+                }
             }
-            Text(step.detail)
-                .font(.system(size: 21 * scale))
-                .foregroundStyle(Ink.text2)
-                .lineLimit(4)
-                .minimumScaleFactor(0.7)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 4 * scale)
+            .padding(.top, -12 * scale)
+            .layoutPriority(1)
+            // In full where there's room, a line where there's less, and none beside the scale on a
+            // short screen (All steps has it).
+            ViewThatFits(in: .vertical) {
+                detail.lineLimit(4).fixedSize(horizontal: false, vertical: true)
+                detail.lineLimit(1)
+                Color.clear.frame(height: 0)
+            }
         }
+    }
+
+    var detail: some View {
+        Text(step.detail)
+            .font(.system(size: 21 * scale))
+            .foregroundStyle(Ink.text2)
+            .padding(.top, 12 * scale)
     }
 
     /// "400 g dry": the number white, the words grey, both big.
     func amount(_ value: String, _ words: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12 * scale) {
-            Text(value).foregroundStyle(Ink.text).monospacedDigit()
-            Text(words).foregroundStyle(Ink.text3)
+        HStack(alignment: .firstTextBaseline, spacing: 14 * scale) {
+            Text(value).fontWeight(.heavy).foregroundStyle(Ink.text).monospacedDigit()
+            Text(words).foregroundStyle(Ink.text2)
         }
-        .font(.system(size: 56 * scale, weight: .bold))
-        .tracking(-1.5 * scale)
+        .font(.system(size: 68 * scale, weight: .bold))
+        .tracking(-2.2 * scale)
         .lineLimit(1)
         .minimumScaleFactor(0.5)
         .accessibilityElement(children: .combine)
@@ -236,20 +254,22 @@ private struct ScaleStrip: View {
 
     var body: some View {
         let read = run.reading(for: step)
-        VStack(alignment: .leading, spacing: 10 * scale) {
-            HStack(spacing: 18 * scale) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("On the scale").eyebrow()
-                    Text("\(weigh.name), \(weigh.form)").font(.system(size: 26 * scale, weight: .bold)).foregroundStyle(Ink.text)
+        // The batch and its reading on a card; what the reading does to the containers under it.
+        VStack(alignment: .leading, spacing: 12 * scale) {
+            HStack(spacing: 12 * scale) {
+                VStack(alignment: .leading, spacing: 2 * scale) {
+                    Text("On the scale").counterEyebrow(13 * scale)
+                    Text("\(weigh.name), \(weigh.form)").font(.system(size: 30 * scale, weight: .bold)).tracking(-0.9 * scale)
+                        .foregroundStyle(Ink.text)
                         .lineLimit(1).minimumScaleFactor(0.6)
-                    Text("Recipe \(Format.whole(weigh.grams)) g").font(.system(size: 16 * scale, weight: .medium)).foregroundStyle(Ink.text3)
+                    Text("Recipe \(Format.whole(weigh.grams)) g").font(.system(size: 16 * scale, weight: .medium)).foregroundStyle(Ink.text2)
                 }
                 Spacer(minLength: 8)
-                HStack(spacing: 4 * scale) {
+                HStack(spacing: 0) {
                     button("Less", "minus", -increment)
-                    HStack(alignment: .firstTextBaseline, spacing: 4 * scale) {
+                    HStack(alignment: .firstTextBaseline, spacing: 2 * scale) {
                         TextField(Self.plain(read), text: $text)
-                            .font(.system(size: 52 * scale, weight: .bold).monospacedDigit())
+                            .font(.system(size: 60 * scale, weight: .heavy).monospacedDigit())
                             .multilineTextAlignment(.trailing)
                             .fieldKeyboard(.number)
                             .focused($typing)
@@ -257,23 +277,25 @@ private struct ScaleStrip: View {
                             .frame(width: 136 * scale)
                             .accessibilityLabel("Grams on the scale")
                             .accessibilityIdentifier("prep.scale.value")
-                        Text("g").font(.system(size: 24 * scale, weight: .semibold)).foregroundStyle(Ink.text3)
+                        Text("g").font(.system(size: 25 * scale, weight: .semibold)).foregroundStyle(Ink.text3)
                     }
                     button("More", "plus", increment)
                 }
                 // The reading keeps its room; the batch's name shrinks first.
                 .fixedSize()
-                .padding(6 * scale)
-                .background(Ink.raised, in: .rect(cornerRadius: 22 * scale, style: .continuous))
+                .background(Ink.raised, in: .rect(cornerRadius: 26 * scale, style: .continuous))
             }
+            .padding(.leading, 24 * scale)
+            .padding([.vertical, .trailing], 12 * scale)
+            .background(.cardBackground, in: .rect(cornerRadius: 32 * scale, style: .continuous))
             Text(Self.feedback(weigh, read: read, changes: run.changes(for: step)))
-                .font(.system(size: 18 * scale))
-                .foregroundStyle(Ink.text2)
+                .font(.system(size: 19 * scale, weight: .medium))
+                .foregroundStyle(Ink.text)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+                .padding(.leading, 24 * scale)
                 .accessibilityIdentifier("prep.scale.change")
         }
-        .inkCard(padding: 18 * scale, radius: 26 * scale)
         .sensoryFeedback(.selection, trigger: read)
         .onAppear { text = Self.plain(read) }
         // Next tapped mid-typing: what was typed counts.
@@ -303,8 +325,8 @@ private struct ScaleStrip: View {
             typing = false
             run.read(run.reading(for: step) + by, for: step)
         } label: {
-            Image(systemName: symbol).font(.system(size: 26 * scale, weight: .semibold)).foregroundStyle(Ink.text)
-                .frame(width: 72 * scale, height: 72 * scale).contentShape(.rect)
+            Image(systemName: symbol).font(.system(size: 30 * scale, weight: .semibold)).foregroundStyle(Ink.text)
+                .frame(width: 88 * scale, height: 88 * scale).contentShape(.rect)
         }
         .buttonStyle(.plain)
         .buttonRepeatBehavior(.enabled)
@@ -351,7 +373,7 @@ private struct OnTheHeat: View {
     var body: some View {
         let timers = run.timers
         VStack(alignment: .leading, spacing: 16 * scale) {
-            Text("On the heat").eyebrow()
+            Text("On the heat").counterEyebrow(13 * scale)
             if timers.isEmpty {
                 Text("Nothing on yet. A pot or a tray starts its timer when you tap Next.")
                     .font(.system(size: 18 * scale)).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
@@ -399,11 +421,11 @@ private struct TimerRow: View {
         let left = timer.ends.timeIntervalSince(now)
         VStack(alignment: .leading, spacing: 8 * scale) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text(timer.name).font(.system(size: 30 * scale, weight: .bold)).foregroundStyle(Ink.text)
+                Text(timer.name).font(.system(size: 34 * scale, weight: .bold)).tracking(-1 * scale).foregroundStyle(Ink.text)
                     .lineLimit(2).minimumScaleFactor(0.6)
                 Spacer(minLength: 8)
                 Text(left > 0 ? Self.clock(left) : "Done")
-                    .font(.system(size: 92 * scale, weight: .bold)).monospacedDigit().tracking(-3 * scale)
+                    .font(.system(size: 96 * scale, weight: .heavy)).monospacedDigit().tracking(-5 * scale)
                     .foregroundStyle(left > 0 ? Ink.text : Color.accentColor)
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .layoutPriority(1)
@@ -419,7 +441,7 @@ private struct TimerRow: View {
                     Button("Clear", action: clear).fontWeight(.semibold).buttonStyle(.borderless).accessibilityIdentifier("prep.timer.clear")
                 }
             }
-            .font(.system(size: 17 * scale, weight: .medium).monospacedDigit())
+            .font(.system(size: 16 * scale, weight: .medium).monospacedDigit())
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("prep.timer")
@@ -438,20 +460,21 @@ private struct UpNext: View {
     let next: () -> Void
 
     var body: some View {
-        HStack(spacing: 18 * scale) {
-            VStack(alignment: .leading, spacing: 4 * scale) {
-                Text(run.isLast ? "Last step" : "Up next").eyebrow()
+        HStack(spacing: 12 * scale) {
+            VStack(alignment: .leading, spacing: 5 * scale) {
+                Text(run.isLast ? "Last step" : "Up next").counterEyebrow(13 * scale)
                 Text(run.next.map(Self.line) ?? "That's prep day done.")
-                    .font(.system(size: 34 * scale, weight: .bold)).foregroundStyle(Ink.text)
+                    .font(.system(size: 40 * scale, weight: .bold)).tracking(-1.4 * scale).foregroundStyle(Ink.text)
                     .lineLimit(1).minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 10 * scale)
             if run.index > 0 {
                 Button(action: run.back) {
-                    Image(systemName: "chevron.left").font(.system(size: 26 * scale, weight: .bold)).foregroundStyle(Ink.text)
-                        .frame(width: 84 * scale, height: 84 * scale)
-                        .background(Ink.raised, in: .rect(cornerRadius: 22 * scale, style: .continuous))
-                        .contentShape(.rect(cornerRadius: 22 * scale))
+                    Image(systemName: "chevron.left").font(.system(size: 28 * scale, weight: .bold)).foregroundStyle(Ink.text)
+                        .frame(width: 88 * scale, height: 88 * scale)
+                        .background(Ink.raised, in: .rect(cornerRadius: 24 * scale, style: .continuous))
+                        .contentShape(.rect(cornerRadius: 24 * scale))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Back a step")
@@ -462,16 +485,19 @@ private struct UpNext: View {
                     Text(run.isLast ? "Done" : "Next")
                     Image(systemName: run.isLast ? "checkmark" : "chevron.right")
                 }
-                .font(.system(size: 36 * scale, weight: .bold))
-                .foregroundStyle(Ink.ground)
-                .frame(width: 236 * scale, height: 84 * scale)
-                .background(Color.accentColor, in: .rect(cornerRadius: 22 * scale, style: .continuous))
-                .contentShape(.rect(cornerRadius: 22 * scale))
+                .font(.system(size: 36 * scale, weight: .heavy))
+                .tracking(-1.2 * scale)
+                .foregroundStyle(Ink.onAccent)
+                .frame(width: 216 * scale, height: 88 * scale)
+                .background(Color.accentColor, in: .rect(cornerRadius: 24 * scale, style: .continuous))
+                .contentShape(.rect(cornerRadius: 24 * scale))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("prep.next")
         }
-        .inkCard(padding: 14 * scale, radius: 28 * scale)
+        .padding(.leading, 26 * scale)
+        .padding([.vertical, .trailing], 10 * scale)
+        .background(.cardBackground, in: .rect(cornerRadius: 32 * scale, style: .continuous))
     }
 
     /// "Prep broccoli. 1,166 g raw", "Chicken in. 22 min".
@@ -575,5 +601,12 @@ private struct Tub: View {
         }
         .frame(maxWidth: 90 * scale)
         .animation(.snappy, value: fill)
+    }
+}
+
+extension Text {
+    /// The counter's eyebrows, sized with it to be read across the kitchen rather than at arm's length.
+    fileprivate func counterEyebrow(_ size: CGFloat) -> some View {
+        font(.system(size: size, weight: .semibold)).textCase(.uppercase).tracking(size * 0.09).foregroundStyle(Ink.text3)
     }
 }

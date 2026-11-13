@@ -87,19 +87,19 @@ struct BoardSet: View {
         let last =
             warmup || !item.plan.isStrength
             ? nil : model.lastTime(exercise, setNumber: number).map { Format.logged($0, exercise: exercise, unit: model.gym.unit) }
-        return HStack(spacing: 18) {
-            Text(label).font(.system(size: 30, weight: .bold)).foregroundStyle(Ink.text).fixedSize()
+        return HStack(spacing: 16) {
+            Text(label).font(.system(size: 32, weight: .bold)).tracking(-0.8).foregroundStyle(Ink.text).fixedSize()
             if indices.count > 1 {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     ForEach(indices, id: \.self) { index in
                         SetSegment(state: index == set ? .now : (item.sets[index].isOpen ? .pending : .done))
                     }
                 }
-                .frame(maxWidth: CGFloat(indices.count) * 50)
             }
             if let last {
-                Text("Last time \(last)").font(.system(size: 30, weight: .medium)).foregroundStyle(Ink.text2)
+                Text("Last time \(last)").font(.system(size: 32, weight: .medium)).tracking(-0.8).foregroundStyle(Ink.text3)
                     .lineLimit(1).minimumScaleFactor(0.6)
+                    .padding(.leading, 10)
             }
         }
         .accessibilityElement(children: .combine)
@@ -200,7 +200,7 @@ struct BoardSet: View {
             case .rated:
                 ForEach(Array(SetRating.allCases.enumerated()), id: \.element) { index, rating in
                     BoardZone(
-                        title: rating.label, detail: rating.detail, dot: rating == .orange ? nil : rating.color, filled: rating == .orange
+                        title: rating.label, detail: rating.shortDetail, dot: rating == .orange ? nil : rating.color, filled: rating == .orange
                     ) {
                         if rating == .red, draft.reps >= set.prescription.targetReps { askMissed = true } else { log(rating) }
                     }
@@ -271,7 +271,7 @@ struct BoardSet: View {
 }
 
 /// One of the board's big buttons: a word, a line under it, and a rating's dot or the accent's
-/// fill. At least 88 points tall, for a knuckle.
+/// fill. 150 points tall, for a knuckle.
 struct BoardZone: View {
     let title: String
     let detail: String
@@ -281,21 +281,21 @@ struct BoardZone: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                HStack(spacing: 12) {
-                    if let dot { Circle().fill(dot).frame(width: 16, height: 16) }
-                    Text(title).font(.system(size: 40, weight: .heavy)).tracking(-1)
+            VStack(spacing: 4) {
+                HStack(spacing: 14) {
+                    if let dot { Circle().fill(dot).frame(width: 18, height: 18) }
+                    Text(title).font(.system(size: 42, weight: .heavy)).tracking(-1.5)
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
-                Text(detail).font(.title3.weight(.medium))
-                    .foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2)
+                Text(detail).font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(filled ? Ink.onAccent.opacity(0.8) : Ink.text2)
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
             .foregroundStyle(filled ? Ink.onAccent : Ink.text)
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 124)
-            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 28, style: .continuous))
-            .contentShape(.rect(cornerRadius: 28))
+            .frame(maxWidth: .infinity, minHeight: 150)
+            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 32, style: .continuous))
+            .contentShape(.rect(cornerRadius: 32))
         }
         .buttonStyle(.plain)
         .hoverHighlight()
@@ -308,15 +308,15 @@ private struct SetSegment: View {
     let state: State
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
         Group {
             switch state {
             case .done: shape.fill(Color.accentColor)
-            case .now: shape.strokeBorder(Color.accentColor, lineWidth: 3)
+            case .now: shape.strokeBorder(Color.accentColor, lineWidth: 2)
             case .pending: shape.fill(Ink.track)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 16, maxHeight: 16)
+        .frame(width: 34, height: 12)
         .accessibilityHidden(true)
     }
 }
