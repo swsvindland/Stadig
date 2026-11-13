@@ -128,20 +128,23 @@ enum SampleData {
     static func growth(after sessions: Int) -> Double { 1 + 0.004 * Double(sessions) }
 
     /// `-sessionAt summary`: today's session, begun by `-startSession`, done the whole way through as
-    /// the sample lifter would, each set after its rest, then finished, for its summary. Its numbers,
-    /// what moved, Strength's gain and the lessons all come from the real engine. Today is a good
-    /// day on the main lifts, as a session that ends on a new best is, each one's last set taken a
-    /// few reps past what was asked: the smallest good day, from 2% over the lifter's trend, on which
-    /// the session moves Strength a whole point, so the summary has Strength's gain whichever day of
-    /// the week the sample lands on.
+    /// the sample lifter would, each set after its rest, with a Watch on (its heart rate ending the
+    /// rests it guides once recovered), then finished, for its summary. Its numbers, what moved,
+    /// Strength's gain and the lessons all come from the real engine. Today is a good day on the main
+    /// lifts, as a session that ends on a new best is, each one's last set taken a few reps past what
+    /// was asked: the smallest good day, from 2% over the lifter's trend, on which the session moves
+    /// Strength a whole point, so the summary has Strength's gain whichever day of the week the sample
+    /// lands on.
     static func finishToday(_ model: AppModel, now: Date = Date()) {
         guard let started = model.live, let environment = model.environment, let state = model.state else { return }
         let trend = growth(after: model.sessions.count)
+        let zones = model.heartRateZones
         // Everything in a session is timed from its start, so a session done from the same start is
         // the same session wherever it's begun.
         func run(onAGoodDay boost: Double) -> (session: LiveSession, end: Date) {
             var session = started
-            let end = perform(&session, growth: trend, mainLifts: boost, environment: environment, begin: started.startedAt, timed: true)
+            let end = perform(
+                &session, growth: trend, mainLifts: boost, environment: environment, begin: started.startedAt, timed: true, heartRate: zones)
             return (session, end)
         }
         func strength(with session: LiveSession, end: Date) -> Int? {
@@ -160,7 +163,7 @@ enum SampleData {
         let length = run(onAGoodDay: boost).end.timeIntervalSince(started.startedAt)
         model.update { live in
             live.startedAt = now.addingTimeInterval(-length)
-            perform(&live, growth: trend, mainLifts: boost, environment: environment, begin: live.startedAt, timed: true)
+            perform(&live, growth: trend, mainLifts: boost, environment: environment, begin: live.startedAt, timed: true, heartRate: zones)
         }
         model.finish(feedback: SessionFeedback(soreness: 1, jointPain: [], energy: 4))
     }
@@ -168,65 +171,85 @@ enum SampleData {
     /// Performs a session the way a consistent, honest lifter would, and returns when it ended:
     /// `growth` over the first day's strength, and the main lifts `mainLifts` over that, a good day,
     /// when their last sets go past the reps asked for. The history's sessions are a set every 100
-    /// seconds; a `timed` one waits out each rest and takes as long as each set would.
+    /// seconds; a `timed` one waits out each rest and takes as long as each set would, and with
+    /// `heartRate` sends readings as a Watch would, which end the rests heart rate guides once it's
+    /// back down.
     @discardableResult
     private static func perform(
-        _ live: inout LiveSession, growth: Double, mainLifts: Double = 1, environment: SessionEnvironment, begin: Date, timed: Bool = false
+        _ live: inout LiveSession, growth: Double, mainLifts: Double = 1, environment: SessionEnvironment, begin: Date, timed: Bool = false,
+        heartRate zones: HeartRateZones? = nil
     ) -> Date {
         var clock = begin
         var guardCount = 0
         var begun: Set<Int> = []
+        var pulse = Pulse(at: begin)
         while let (i, s) = live.current, guardCount < 300 {
             guardCount += 1
+            // A rest heart rate ends works the set's reps out again for the rest taken: read it after.
+            if timed, let zones { clock = pulse.rest(&live, from: clock, zones: zones) }
             let item = live.items[i]
             let prescription = item.sets[s].prescription
-            clock =
-                timed
-                ? done(item, prescription, after: clock, rest: live.rest, settingUp: item.plan.isStrength && !begun.contains(i))
-                : clock.addingTimeInterval(100)
+            let set = item.plan.isStrength ? attempt(item, s, growth: growth, mainLifts: mainLifts, environment: environment) : nil
+            if timed {
+                let end = done(
+                    item, prescription, reps: set?.reps ?? prescription.targetReps, after: clock, rest: live.rest,
+                    settingUp: item.plan.isStrength && !begun.contains(i))
+                if let zones {
+                    pulse.work(&live, until: end, item: item, prescription: prescription, reps: set?.reps ?? prescription.targetReps, zones: zones)
+                }
+                clock = end
+            } else {
+                clock = clock.addingTimeInterval(100)
+            }
             begun.insert(i)
             if item.plan.role == .conditioning {
                 live.logConditioning(item: i, minutes: item.plan.conditioning?.minutes ?? 10, averageHeartRate: 128, zoneMinutes: [2: 10], now: clock)
                 continue
             }
-            guard item.plan.isStrength else {
+            guard let set else {
                 live.log(
                     item: i, set: s, reps: prescription.targetReps, loadKg: nil, rating: nil, seconds: prescription.seconds,
                     environment: environment, now: clock)
                 continue
             }
-            let exercise = environment.catalog.resolve(item.exerciseID)
-            let fresh = (truth[exercise.id] ?? defaultTruth(exercise)) * growth * (item.plan.block == .main ? mainLifts : 1)
-            let e1rm = fresh * (1 - 0.02 * Double(item.loggedSets.filter { $0.kind.countsAsWork }.count))
-            let guess = OneRepMax.loggedLoad(forEffective: OneRepMax.load(e1rm: fresh, reps: 10, rir: 3), basis: exercise.loadBasis, bodyweightKg: 82)
-            let load = prescription.loadKg ?? environment.increments(for: exercise).round(max(0, guess), down: true)
-            let effective = OneRepMax.effectiveLoad(load, basis: exercise.loadBasis, bodyweightKg: 82)
-            let capacity = effective > 0 ? Int(OneRepMax.repsToFailure(e1rm: e1rm, at: effective)) : 15
-            switch prescription.kind {
-            case .warmup:
-                live.log(item: i, set: s, reps: prescription.targetReps, loadKg: load, rating: nil, environment: environment, now: clock)
-            case .repOut:
-                live.log(item: i, set: s, reps: capacity, loadKg: load, rating: nil, environment: environment, now: clock)
-            default:
-                if capacity < prescription.targetReps {
-                    live.log(item: i, set: s, reps: capacity, loadKg: load, rating: .red, environment: environment, now: clock)
-                } else {
-                    var reps = prescription.targetReps
-                    // A good day: a main lift's last set goes on while there are two reps in it, a few at most.
-                    let last = !item.sets.indices.contains { $0 > s && item.sets[$0].isOpen && item.sets[$0].prescription.kind.countsAsWork }
-                    if mainLifts > 1, item.plan.block == .main, last { reps = max(reps, min(capacity - 2, reps + 3)) }
-                    let rating: SetRating = capacity - reps >= 3 ? .green : .orange
-                    live.log(item: i, set: s, reps: reps, loadKg: load, rating: rating, environment: environment, now: clock)
-                }
-            }
+            live.log(item: i, set: s, reps: set.reps, loadKg: set.load, rating: set.rating, environment: environment, now: clock)
         }
         return clock
     }
 
+    /// What the lifter does with a lifting set: its reps, at what weight, and how it felt. A warm-up
+    /// as asked; a rep-out all there is; a work set as asked when it's in them (rated Easy with three
+    /// or more left), else what's there, missed. On a good day a main lift's last set goes on while
+    /// there are two reps in it, a few at most.
+    private static func attempt(
+        _ item: LiveItem, _ s: Int, growth: Double, mainLifts: Double, environment: SessionEnvironment
+    ) -> (reps: Int, load: Double, rating: SetRating?) {
+        let prescription = item.sets[s].prescription
+        let exercise = environment.catalog.resolve(item.exerciseID)
+        let fresh = (truth[exercise.id] ?? defaultTruth(exercise)) * growth * (item.plan.block == .main ? mainLifts : 1)
+        let e1rm = fresh * (1 - 0.02 * Double(item.loggedSets.filter { $0.kind.countsAsWork }.count))
+        let guess = OneRepMax.loggedLoad(forEffective: OneRepMax.load(e1rm: fresh, reps: 10, rir: 3), basis: exercise.loadBasis, bodyweightKg: 82)
+        let load = prescription.loadKg ?? environment.increments(for: exercise).round(max(0, guess), down: true)
+        let effective = OneRepMax.effectiveLoad(load, basis: exercise.loadBasis, bodyweightKg: 82)
+        let capacity = effective > 0 ? Int(OneRepMax.repsToFailure(e1rm: e1rm, at: effective)) : 15
+        switch prescription.kind {
+        case .warmup: return (prescription.targetReps, load, nil)
+        case .repOut: return (capacity, load, nil)
+        default:
+            if capacity < prescription.targetReps { return (capacity, load, .red) }
+            var reps = prescription.targetReps
+            let last = !item.sets.indices.contains { $0 > s && item.sets[$0].isOpen && item.sets[$0].prescription.kind.countsAsWork }
+            if mainLifts > 1, item.plan.block == .main, last { reps = max(reps, min(capacity - 2, reps + 3)) }
+            return (reps, load, capacity - reps >= 3 ? .green : .orange)
+        }
+    }
+
     /// When a set is done, from the last thing done, at the pace the plan's length assumes
     /// (`SessionPlan.estimatedMinutes`): the rest running out, getting set up for a lift, then the
-    /// set itself, three seconds a rep and a few to start, or its time, or the conditioning's minutes.
-    private static func done(_ item: LiveItem, _ prescription: SetPrescription, after clock: Date, rest: RestState?, settingUp: Bool) -> Date {
+    /// set itself, three seconds a rep done and a few to start, or its time, or the conditioning's minutes.
+    private static func done(
+        _ item: LiveItem, _ prescription: SetPrescription, reps: Int, after clock: Date, rest: RestState?, settingUp: Bool
+    ) -> Date {
         let waiting = rest.map { max(0, $0.endsAt.timeIntervalSince(clock)) } ?? 0
         let work: TimeInterval =
             if item.plan.role == .conditioning {
@@ -234,9 +257,62 @@ enum SampleData {
             } else if let seconds = prescription.seconds {
                 TimeInterval(seconds)
             } else {
-                15 + 3 * TimeInterval(prescription.targetReps)
+                15 + 3 * TimeInterval(reps)
             }
         return clock.addingTimeInterval(waiting + (settingUp ? 45 : 0) + work)
+    }
+
+    /// The sample lifter's heart rate, read every five seconds as the Watch sends it: climbing
+    /// through a set toward its peak (higher for a main lift than an accessory, low for a warm-up or
+    /// a drill, Zone 2 for the conditioning), and falling back toward 100 through the rest after it.
+    private struct Pulse {
+        var bpm = 95.0
+        var peak = 95.0
+        var settled: Date
+
+        init(at start: Date) { settled = start }
+
+        /// Through the rest running from `clock`: readings until heart rate ends it (`LiveSession.record`
+        /// says it's recovered while it runs) or its time is up. Returns when the rest ended.
+        mutating func rest(_ live: inout LiveSession, from clock: Date, zones: HeartRateZones) -> Date {
+            guard let rest = live.rest, rest.endsAt > clock else { return clock }
+            var time = clock.addingTimeInterval(5)
+            while time < rest.endsAt {
+                bpm = 100 + (peak - 100) * exp(-time.timeIntervalSince(settled) / 40)
+                if live.record(heartRate: bpm.rounded(), zones: zones, now: time) {
+                    live.endRest(now: time)
+                    return time
+                }
+                time.addTimeInterval(5)
+            }
+            return clock
+        }
+
+        /// Through a set ending at `end`: from where heart rate was, up to the set's peak.
+        mutating func work(
+            _ live: inout LiveSession, until end: Date, item: LiveItem, prescription: SetPrescription, reps: Int, zones: HeartRateZones
+        ) {
+            let seconds = Double(prescription.seconds ?? (15 + 3 * reps))
+            let top: Double =
+                if item.plan.role == .conditioning {
+                    128
+                } else if !item.plan.isStrength {
+                    105
+                } else if prescription.kind == .warmup {
+                    115
+                } else {
+                    item.plan.block == .main ? 150 : 140
+                }
+            let from = bpm
+            var time = end.addingTimeInterval(-seconds)
+            while time <= end {
+                bpm = from + (top - from) * min(1, 1 - end.timeIntervalSince(time) / seconds)
+                live.record(heartRate: bpm.rounded(), zones: zones, now: time)
+                time.addTimeInterval(5)
+            }
+            peak = max(bpm, top)
+            settled = end
+        }
     }
 
     private static func defaultTruth(_ exercise: Exercise) -> Double {
