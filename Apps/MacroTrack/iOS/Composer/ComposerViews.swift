@@ -30,23 +30,56 @@ struct ComposerMatches: View {
     }
 
     func row(_ match: TodayComposer.Candidate, best: Bool, count: Int) -> some View {
-        HStack(spacing: 12) {
+        MatchRow(title: title(match), detail: detail(match), best: best, key: count > 1 ? "return · logs \(count)" : "return") {
             switch match.kind {
             // Each match's marker on the surface, as the thread's are; the best one's is on its card.
             case .food: FoodTile(name: match.entry.name, size: 40, fill: best ? Ink.raised : Ink.surface)
-            case .quickAdd, .unmatched:
-                Text("≈").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: 40, height: 40)
-                    .background(best ? Ink.raised : Ink.surface, in: .rect(cornerRadius: 12))
+            case .quickAdd, .unmatched: RoughTile(best: best)
             }
+        }
+        .matchCard(best: best)
+        .contentShape(.rect(cornerRadius: 18))
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(best ? "Return logs it" : "")
+    }
+
+    func title(_ match: TodayComposer.Candidate) -> Text {
+        let name = match.title(canDescribe: model.ai.canDescribe)
+        return Text.matchName(name.short, rest: name.rest)
+    }
+
+    func detail(_ match: TodayComposer.Candidate) -> String { match.detail(model.ai) }
+}
+
+/// One thing that could be logged, as the composer's matches and the logger's lists both set it:
+/// its marker on the surface, the name it's said by with the rest of the catalog's quieter beside
+/// it, a line of what it would log, and on the best one the key that logs it. `matchCard` puts the
+/// best on its card; the logger adds its + beside the row on the same card.
+struct MatchRow<Tile: View>: View {
+    let title: Text
+    let detail: String
+    var best = false
+    /// What the key on the best one says: "return", or "return · logs 3" with foods typed before it.
+    var key = "return"
+    var starred = false
+    @ViewBuilder let tile: Tile
+
+    var body: some View {
+        HStack(spacing: 12) {
+            tile
             VStack(alignment: .leading, spacing: 2) {
-                // The name it's said by, then what tells it from the next one: catalog names differ
-                // late ("…, meat only" from "…, meat and skin"). Two lines at most.
-                title(match).lineLimit(2)
-                Text(detail(match)).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+                HStack(spacing: 4) {
+                    // Two lines at most: catalog names differ late.
+                    title.lineLimit(2)
+                    if starred {
+                        Image(systemName: "star.fill").font(.caption2).foregroundStyle(Ink.ok).accessibilityLabel("Favorite")
+                    }
+                }
+                Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
             }
             Spacer(minLength: 6)
             if best {
-                Text(count > 1 ? "return · logs \(count)" : "return")
+                Text(key)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Ink.text2)
                     .padding(.horizontal, 8)
@@ -56,27 +89,44 @@ struct ComposerMatches: View {
                     .accessibilityHidden(true)
             }
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 10)
-        .frame(minHeight: 56)
-        // Only the best one is a card, outlined in the accent: the key that logs it is on it.
-        .background(best ? Color.cardBackground : .clear, in: .rect(cornerRadius: 18, style: .continuous))
-        .overlay {
-            if best { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor, lineWidth: 1.5) }
-        }
-        .contentShape(.rect(cornerRadius: 18))
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(best ? "Return logs it" : "")
+        // A name over two lines and its detail stand clear of the best one's outline.
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
     }
+}
 
-    func title(_ match: TodayComposer.Candidate) -> Text {
-        let name = match.title(canDescribe: model.ai.canDescribe)
-        let short = Text(name.short).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-        guard let rest = name.rest else { return short }
-        return Text("\(short)  \(Text(rest).font(.caption).foregroundStyle(Ink.text2))")
+extension Text {
+    /// A match's name: the name it's said by, then what tells it from the next one, quieter:
+    /// catalog names differ late ("…, meat only" from "…, meat and skin").
+    static func matchName(_ short: String, rest: String?) -> Text {
+        let name = Text(short).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+        guard let rest else { return name }
+        return Text("\(name)  \(Text(rest).font(.caption).foregroundStyle(Ink.text2))")
     }
+}
 
-    func detail(_ match: TodayComposer.Candidate) -> String { match.detail(model.ai) }
+/// What stands for a number with no food (a quick add, words to work out): "≈" in a marker's square.
+struct RoughTile: View {
+    var best = false
+
+    var body: some View {
+        Text("≈").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: 40, height: 40)
+            .background(best ? Ink.raised : Ink.surface, in: .rect(cornerRadius: 12))
+            .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// The ground under a match row: only the best one is a card, outlined in the accent (the key
+    /// that logs it is on it). `trailing` is less beside a round button, whose own inset makes it up.
+    func matchCard(best: Bool, trailing: CGFloat = 10) -> some View {
+        padding(.leading, 8)
+            .padding(.trailing, trailing)
+            .background(best ? Color.cardBackground : .clear, in: .rect(cornerRadius: 18, style: .continuous))
+            .overlay {
+                if best { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor, lineWidth: 1.5) }
+            }
+    }
 }
 
 /// The foods typed before the one being typed, as they'll be logged.
@@ -224,15 +274,18 @@ extension View {
     /// scrolls under the composer and the tab bar, not out below them, and fades out over the 40
     /// points above it rather than being sliced at a label. Vision Pro's window is glass, not ink:
     /// a slab of the ground would be a black band across it, so the window's own glass is the ground.
-    func composerGround() -> some View {
+    /// `fade` is how far over what's above it reaches: less over the logger's matches, none over a
+    /// way of logging's own button. It takes no taps: a row under it is still a row.
+    func composerGround(fade: CGFloat = 40) -> some View {
         background {
             #if !os(visionOS)
             VStack(spacing: 0) {
                 LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground.opacity(0.85), Ink.ground], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 40)
+                    .frame(height: fade)
+                    .allowsHitTesting(false)
                 Ink.ground
             }
-            .padding(.top, -40)
+            .padding(.top, -fade)
             .ignoresSafeArea(edges: .bottom)
             #endif
         }

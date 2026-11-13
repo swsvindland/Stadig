@@ -250,9 +250,9 @@ struct SavedMealRow: View {
         }
     }
 
-    /// "5 foods · 405 kcal · 40 g P".
+    /// "5 foods · 405 kcal · 40 P", as a match's line says a food's.
     static func detail(_ meal: SavedMeal) -> String {
-        "\(meal.foods.count) foods · \(Format.kcal(meal.nutrients.kcal)) · \(Format.grams(meal.nutrients.protein)) P"
+        "\(meal.foods.count) foods · \(Format.kcal(meal.nutrients.kcal)) · \(Format.whole(meal.nutrients.protein)) P"
     }
 
     /// A food's name up to its first comma, for a line listing several: "Bread, whole-wheat" is "Bread".

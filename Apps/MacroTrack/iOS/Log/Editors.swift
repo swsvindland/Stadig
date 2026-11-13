@@ -7,14 +7,22 @@ import SystemCore
 struct QuickAddView: View {
     @Environment(AppModel.self) private var model
     let close: () -> Void
-    @State private var name = ""
-    @State private var kcal = ""
+    @State private var name: String
+    @State private var kcal: String
     @State private var protein = ""
     @State private var carbs = ""
     @State private var fat = ""
     @FocusState private var focus: Field?
 
     enum Field: CaseIterable { case kcal, protein, carbs, fat, name }
+
+    /// `draft`: the calories typed in the search ("300 kcal"), so what's left is the protein.
+    init(draft: QuickAddDraft? = nil, close: @escaping () -> Void) {
+        self.close = close
+        _name = State(initialValue: draft?.name ?? "")
+        // Ungrouped, as it would be typed: the field reads it back.
+        _kcal = State(initialValue: draft.map { $0.kcal.formatted(.number.grouping(.never).precision(.fractionLength(0...1))) } ?? "")
+    }
 
     var body: some View {
         Form {
@@ -59,7 +67,8 @@ struct QuickAddView: View {
             // them) showed the Fat row through "Add".
             .background(Color.pageBackground.ignoresSafeArea(edges: .horizontal))
         }
-        .onAppear { focus = .kcal }
+        // Calories already typed: the protein's next.
+        .onAppear { focus = kcal.isEmpty ? .kcal : .protein }
     }
 
     /// The field after the one being typed in.

@@ -10,8 +10,11 @@ import SystemCore
 @MainActor @Observable
 final class LoggerSession {
     var mode: LogMode {
-        // The camera and the photo library are two doors to one way of logging.
-        didSet { if mode != oldValue, !(mode.isPhoto && oldValue.isPhoto) { stopRead() } }
+        didSet {
+            // The camera and the photo library are two doors to one way of logging.
+            if mode != oldValue, !(mode.isPhoto && oldValue.isPhoto) { stopRead() }
+            if mode != .quickAdd { quickAddDraft = nil }
+        }
     }
     var query = ""
     private(set) var results: [FoodMatch] = []
@@ -34,6 +37,8 @@ final class LoggerSession {
     private(set) var readProblem: String?
     /// The item of the review a search is finding a food for.
     private(set) var finding: UUID?
+    /// The calories (and name) quick add opens with, from what was typed in the search.
+    private(set) var quickAddDraft: QuickAddDraft?
     /// Asks the host to give the search the keyboard, or take it away.
     private(set) var focusRequest = 0
     private(set) var blurRequest = 0
@@ -85,11 +90,58 @@ final class LoggerSession {
     }
 
     /// Return in the search: the best match of what's typed. Until those rows are in, the ones on
-    /// screen are the last query's, so it waits for them, and goes if the person types on.
+    /// screen are the last query's, so it waits for them, and goes if the person types on. Calories
+    /// typed as calories are a quick add, as the composer reads them: no rows to wait for.
     func pressedReturn(_ model: AppModel) {
+        if logQuickAdd(model) { return }
         let typed = typedQuery
         guard !typed.text.isEmpty, searchReturn.pressed(typed, hasSelection: !results.isEmpty) == .log, let food = results.first?.food else { return }
         add(food, model)
+    }
+
+    /// What's typed, read as the composer reads it, when it's calories: "300 kcal", "coffee 120 cal".
+    /// One part only: the search finds one food at a time. Not while finding a food for a review,
+    /// which a number can't be.
+    var quickAddPart: (part: AddFoodPart, kcal: Double)? {
+        guard finding == nil else { return nil }
+        let parts = AddFoodText.parse(query)
+        guard parts.count == 1, case .quickAdd(let kcal) = parts[0].kind, kcal > 0 else { return nil }
+        return (parts[0], kcal)
+    }
+
+    /// The calories typed, logged as a quick add as the composer logs them, and the search cleared
+    /// for the next food. False when what's typed isn't calories.
+    @discardableResult
+    func logQuickAdd(_ model: AppModel) -> Bool {
+        guard let typed = quickAddPart else { return false }
+        guard model.log([TodayComposer.quickAdd(typed.part, kcal: typed.kcal, model: model)]) else { return true }
+        query = ""
+        focusSearch()
+        return true
+    }
+
+    /// Quick add, with the calories typed (and the words with them) filled in.
+    func openQuickAdd() {
+        let typed = quickAddPart
+        mode = .quickAdd
+        quickAddDraft = typed.map { QuickAddDraft(name: $0.part.words.joined(separator: " ").capitalized, kcal: $0.kcal) }
+    }
+
+    /// What the best of what's typed would log, for the header's "→": the quick add typed, else the
+    /// first food found at the portion + would log. Nothing while finding a food for a review, which
+    /// logs nothing yet.
+    func adding(_ model: AppModel) -> Nutrients? {
+        guard finding == nil, !typedQuery.text.isEmpty else { return nil }
+        if let typed = quickAddPart { return Nutrients(kcal: typed.kcal, protein: 0, carbs: 0, fat: 0) }
+        guard let food = results.first?.food else { return nil }
+        let suggestion = Self.portion(of: food, model)
+        return FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
+    }
+
+    /// A food's suggested portion: the person's last one, else its natural one.
+    static func portion(of food: Food, _ model: AppModel) -> (unit: PortionUnit, count: Double) {
+        let p = model.personalFood(food.id)
+        return FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
     }
 
     /// A food at its suggested (or last-used) portion, logged now, and the search cleared for the
@@ -99,8 +151,7 @@ final class LoggerSession {
             use(food)
             return
         }
-        let p = model.personalFood(food.id)
-        let suggestion = FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
+        let suggestion = Self.portion(of: food, model)
         model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
         query = ""
         focusSearch()
@@ -238,6 +289,12 @@ final class LoggerSession {
         query = ""
         mode = review.mode
     }
+}
+
+/// What quick add opens with, from the search.
+struct QuickAddDraft: Equatable {
+    var name: String
+    var kcal: Double
 }
 
 extension LogMode {
