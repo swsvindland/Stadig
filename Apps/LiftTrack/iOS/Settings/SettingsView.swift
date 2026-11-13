@@ -22,10 +22,18 @@ struct SettingsView: View {
             Group {
                 if let profile = model.profile {
                     Section {
-                        NavigationLink("Goals, schedule and experience") { ProfileEditor(profile: profile) }
-                            .accessibilityIdentifier("settings.profile")
-                        NavigationLink("Training outside the gym") { RecurringScreen(profile: profile) }
-                            .accessibilityIdentifier("settings.outside")
+                        NavigationLink {
+                            ProfileEditor(profile: profile)
+                        } label: {
+                            SettingsRowLabel(title: "Goals, schedule and experience", caption: profileLine(profile))
+                        }
+                        .accessibilityIdentifier("settings.profile")
+                        NavigationLink {
+                            RecurringScreen(profile: profile)
+                        } label: {
+                            SettingsRowLabel(title: "Training outside the gym", caption: outsideLine(profile))
+                        }
+                        .accessibilityIdentifier("settings.outside")
                     } header: {
                         Text("About you").eyebrow()
                     } footer: {
@@ -36,7 +44,9 @@ struct SettingsView: View {
                     NavigationLink {
                         GymEditor(gym: model.gym)
                     } label: {
-                        LabeledContent("Equipment and plates", value: model.gym.name)
+                        SettingsRowLabel(
+                            title: "Equipment and plates",
+                            caption: "\(model.gym.name) · \(model.gym.equipment.count) kinds of equipment · plates in \(model.gym.unit.symbol)")
                     }
                     .accessibilityIdentifier("settings.gym")
                 } header: {
@@ -66,6 +76,33 @@ struct SettingsView: View {
         .inkSheet {
             SheetBar(label: "Done", identifier: "settings.done") { dismiss() }
         }
+    }
+
+    /// "Stronger, leaner · 4 days · 60 min".
+    private func profileLine(_ profile: SharedProfile) -> String {
+        let goals = OutcomeGoal.cardOrder.filter(profile.goals.contains).map(\.label)
+        let named = goals.isEmpty ? "No goals" : ([goals[0]] + goals.dropFirst().map { $0.lowercased() }).joined(separator: ", ")
+        return "\(named) · \(profile.schedule.daysPerWeek) days · \(profile.schedule.minutesPerSession) min"
+    }
+
+    /// "BJJ Tue, Thu · Yoga Sat", or that there's none.
+    private func outsideLine(_ profile: SharedProfile) -> String {
+        guard !profile.recurring.isEmpty else { return "None yet. Health brings in what your watch records." }
+        return profile.recurring.map { "\($0.activity.label) \($0.weekdays.map(\.short).joined(separator: ", "))" }.joined(separator: " · ")
+    }
+}
+
+/// A Settings row that opens a page: what it is, and what's set there now under it.
+private struct SettingsRowLabel: View {
+    let title: String
+    let caption: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).foregroundStyle(Ink.text)
+            Text(caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -97,14 +134,16 @@ struct TrainingSections: View {
             toggle("Conditioning after lifting", \.includeConditioning)
             toggle("Stretching cool-down", \.includeCooldown)
             toggle("Prioritise automatically", \.autoPrioritise)
-            Picker("Conditioning benchmark", selection: model.setting(\.benchmark)) {
+            Picker("Benchmark", selection: model.setting(\.benchmark)) {
                 ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
             }
+            .valueTint()
             if model.nutrition?.phase == nil {
                 Picker("Right now I'm", selection: model.setting(\.selfReportedPhase)) {
                     Text("Not set").tag(SelfReportedPhase?.none)
                     ForEach(SelfReportedPhase.allCases) { Text($0.label).tag(SelfReportedPhase?.some($0)) }
                 }
+                .valueTint()
             } else if let phase = model.nutrition?.phase {
                 LabeledContent("Phase from Stadig Macro", value: phase.kind.label)
             }
@@ -131,7 +170,7 @@ struct TrainingSections: View {
             NavigationLink {
                 FocusScreen()
             } label: {
-                LabeledContent("Focus", value: model.settings.focusSummary)
+                LabeledContent("Focus") { Text(model.settings.focusSummary).foregroundStyle(Ink.text2) }
             }
             .accessibilityIdentifier("settings.focus")
             Picker(
@@ -146,6 +185,7 @@ struct TrainingSections: View {
             ) {
                 ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
             }
+            .valueTint()
         } header: {
             Text("Physique").eyebrow()
         } footer: {
@@ -318,6 +358,8 @@ extension AppModel {
 
 /// Saves on the way out, but only what was changed here and onto the latest copy: a visit that
 /// changes nothing, or a field left alone, never overwrites a newer edit synced from another device.
+/// The same questions as onboarding, asked the same way: goals as chips, the schedule and experience
+/// on the segmented control, the basics as rows.
 struct ProfileEditor: View {
     @Environment(AppModel.self) private var model
     @State private var edit: EditedCopy<SharedProfile>
@@ -327,43 +369,40 @@ struct ProfileEditor: View {
     }
 
     var body: some View {
-        Form {
-            if !Platform.isMac {
-                FormHeading(eyebrow: "Settings", title: "About you", detail: "Shared with the other apps in the family, so it's asked once.")
-            }
-            Group {
-                Section {
-                    ForEach(OutcomeGoal.allCases) { goal in
-                        Toggle(
-                            goal.label,
-                            isOn: Binding(
-                                get: { edit.value.goals.contains(goal) },
-                                set: { on in
-                                    if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
-                                }))
-                    }
-                } header: {
-                    Text("Goals").eyebrow()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !Platform.isMac {
+                    SheetHeading(eyebrow: "Settings", title: "About you", detail: "Shared with the other apps in the family, so it's asked once.")
                 }
-                Section {
-                    Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
-                    Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
-                        ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
-                    }
+                goals
+                VStack(alignment: .leading, spacing: 12) {
+                    CardTitle("Days a week", detail: "\(edit.value.schedule.daysPerWeek) sessions")
+                    InkSegmented(options: (1...6).map { (value: $0, label: "\($0)") }, selection: $edit.value.schedule.daysPerWeek)
+                        .accessibilityLabel("Days a week")
+                    Rectangle().fill(Ink.hairline).frame(height: 1)
+                    CardTitle("Minutes per session")
+                    InkSegmented(options: Self.minutes.map { (value: $0, label: "\($0)") }, selection: $edit.value.schedule.minutesPerSession)
+                        .accessibilityLabel("Minutes per session")
+                    Rectangle().fill(Ink.hairline).frame(height: 1)
+                    CardTitle("Preferred days", detail: "Optional")
                     WeekdayPicker(selection: $edit.value.schedule.preferredDays)
-                } header: {
-                    Text("Schedule").eyebrow()
                 }
-                Section {
-                    Picker("Lifting for", selection: $edit.value.experience) {
-                        ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
-                    }
-                } header: {
-                    Text("Experience").eyebrow()
+                .card()
+                VStack(alignment: .leading, spacing: 12) {
+                    CardTitle("Lifting for")
+                    InkSegmented(options: TrainingExperience.allCases.map { (value: $0, label: $0.label) }, selection: $edit.value.experience)
+                        .accessibilityLabel("Lifting for")
                 }
-                Section {
-                    Picker("Standards for", selection: $edit.value.sex) {
-                        ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+                .card()
+                RowCard(title: "Basics") {
+                    HStack {
+                        Text("Standards for")
+                        Spacer(minLength: 8)
+                        Picker("Standards for", selection: $edit.value.sex) {
+                            ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+                        }
+                        .labelsHidden()
+                        .valueTint()
                     }
                     BirthYearField(year: $edit.value.birthYear)
                     MeasureField(label: "Height", value: $edit.value.heightCm, unit: edit.value.units.length)
@@ -373,66 +412,86 @@ struct ProfileEditor: View {
                     UnitRow(
                         title: "Length", options: [(value: LengthUnit.cm, label: "cm"), (value: .inch, label: "in")],
                         selection: $edit.value.units.length)
-                } header: {
-                    Text("Basics").eyebrow()
-                } footer: {
-                    Text("Schedule and goal changes shape the next block. The current block keeps its days.")
                 }
+                .font(.callout)
+                .foregroundStyle(Ink.text)
+                Text("Schedule and goal changes shape the next block. The current block keeps its days.")
+                    .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
             }
-            .inkRows()
+            .padding(.horizontal, 16)
+            .padding(.vertical, Platform.isMac ? 16 : 0)
+            .padding(.bottom, 24)
+            .readableWidth(620)
         }
-        .inkList()
+        .background(.pageBackground)
         .formPage("About you")
         .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
+
+    private static let minutes = [30, 45, 60, 75, 90]
+
+    /// The goals as onboarding's six, in its order, each a chip.
+    private var goals: some View {
+        let picked = OutcomeGoal.cardOrder.filter(edit.value.goals.contains)
+        return VStack(alignment: .leading, spacing: 12) {
+            CardTitle("Goals", detail: picked.isEmpty ? "Pick at least one" : "\(picked.count) picked")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(OutcomeGoal.cardOrder) { goal in
+                    let on = edit.value.goals.contains(goal)
+                    ChoiceChip(title: goal.label, isOn: on, identifier: "settings.goal\(goal.rawValue.identifierSuffix)") {
+                        if on { edit.value.goals.removeAll { $0 == goal } } else { edit.value.goals.append(goal) }
+                    }
+                }
+            }
+        }
+        .card()
+    }
 }
 
-/// Up to two areas the person wants brought up, whatever the analysis says.
+/// Up to two areas the person wants brought up, whatever the analysis says: onboarding's question,
+/// its cards and their checks, saved on every tap.
 struct FocusScreen: View {
     @Environment(AppModel.self) private var model
     /// Where it was opened from: Settings, or Plan's menu on a phone.
     var from = "Settings"
 
     var body: some View {
-        Form {
-            if !Platform.isMac {
-                FormHeading(
-                    eyebrow: from, title: "Focus",
-                    detail:
-                        "Up to two areas to bring up. They get extra sets from your next block on, and the rest of the program makes room for them.")
-            }
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                if !Platform.isMac {
+                    SheetHeading(
+                        eyebrow: from, title: "Focus",
+                        detail:
+                            "Up to two areas to bring up. They get extra sets from your next block on, and the rest of the program makes room for them."
+                    )
+                    .padding(.bottom, 4)
+                } else {
+                    Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
+                        .font(.subheadline).foregroundStyle(Ink.text2).padding(.horizontal, 4)
+                }
+                SectionEyebrow("Areas", detail: "\(model.settings.focus.count) of \(LiftSettings.focusLimit)")
+                    .padding(.horizontal, 4)
                 ForEach(PhysiqueRegion.allCases) { region in
                     let on = model.settings.focus.contains(region)
                     let full = !on && model.settings.focus.count >= LiftSettings.focusLimit
-                    Toggle(
-                        isOn: Binding(
-                            get: { on },
-                            set: { value in
-                                var s = model.settings
-                                if !value { s.focus.remove(region) } else if s.focus.count < LiftSettings.focusLimit { s.focus.insert(region) }
-                                model.save(settings: s)
-                            })
+                    ChoiceCard(
+                        title: region.label, detail: region.focusDetail, selected: on, identifier: "settings.focus\(region.rawValue.identifierSuffix)"
                     ) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(region.label)
-                            Text(region.focusDetail).font(.caption).foregroundStyle(.secondary)
-                        }
+                        var s = model.settings
+                        if on { s.focus.remove(region) } else if s.focus.count < LiftSettings.focusLimit { s.focus.insert(region) }
+                        model.save(settings: s)
                     }
                     .disabled(full)
-                    // A disabled toggle barely looks it in a form.
                     .opacity(full ? 0.5 : 1)
                 }
-            } header: {
-                Text("Areas").eyebrow()
-            } footer: {
-                if Platform.isMac {
-                    Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
-                }
             }
-            .inkRows()
+            .padding(.horizontal, 16)
+            .padding(.vertical, Platform.isMac ? 16 : 0)
+            .padding(.bottom, 24)
+            .readableWidth(620)
         }
-        .inkList()
+        .background(.pageBackground)
         .formPage("Focus")
     }
 }
@@ -503,70 +562,60 @@ struct GymEditor: View {
     }
 
     var body: some View {
-        Form {
-            if !Platform.isMac {
-                FormHeading(eyebrow: "Settings", title: "Gym", detail: "Exercises and loads are chosen from what's here.")
-            }
-            Group {
-                Section {
-                    TextField("Name", text: $edit.value.name)
-                    Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
-                        ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !Platform.isMac {
+                    SheetHeading(eyebrow: "Settings", title: "Gym", detail: "Exercises and loads are chosen from what's here.")
+                }
+                RowCard(title: "This gym") {
+                    HStack(spacing: 12) {
+                        Text("Name")
+                        TextField("Name", text: $edit.value.name)
+                            .textFieldStyle(.plain)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(Ink.text2)
+                            .accessibilityIdentifier("gym.name")
                     }
                     UnitRow(
                         title: "Plates in", options: [(value: WeightUnit.kg, label: "kg"), (value: .lb, label: "lb")],
                         selection: Binding(get: { gym.unit }, set: { gym = gym.converted(to: $0) }))
-                } header: {
-                    Text("This gym").eyebrow()
                 }
-                Section {
-                    ForEach(Equipment.allCases) { item in
-                        Toggle(
-                            item.label,
-                            isOn: Binding(
-                                get: { gym.equipment.contains(item) },
-                                set: { on in
-                                    if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
-                                }))
-                    }
-                } header: {
-                    Text("Equipment").eyebrow()
+                .font(.callout)
+                .foregroundStyle(Ink.text)
+                chips("Kind", detail: "Sets the equipment below", single: true, EquipmentAccess.allCases, label: \.label, identifier: "gym.kind") {
+                    gym.access == $0
+                } toggle: {
+                    gym = gym.switched(to: $0)
                 }
-                Section {
-                    ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
-                        Toggle(
-                            item.label,
-                            isOn: Binding(
-                                get: { gym.apparatus.contains(item) },
-                                set: { on in
-                                    if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                                }))
-                    }
-                } header: {
-                    Text("Fixtures").eyebrow()
-                } footer: {
-                    Text("A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.")
+                chips(
+                    "Equipment", detail: "\(gym.equipment.count) of \(Equipment.allCases.count)", Equipment.allCases, label: \.label,
+                    identifier: "gym.equipment"
+                ) {
+                    gym.equipment.contains($0)
+                } toggle: {
+                    if gym.equipment.contains($0) { gym.equipment.remove($0) } else { gym.equipment.insert($0) }
                 }
-                Section {
-                    ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { item in
-                        Toggle(
-                            item.label,
-                            isOn: Binding(
-                                get: { gym.apparatus.contains(item) },
-                                set: { on in
-                                    if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                                }))
-                    }
-                } header: {
-                    Text("Recovery").eyebrow()
-                } footer: {
-                    Text(
-                        "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt."
-                    )
+                chips(
+                    "Fixtures", note: "A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.",
+                    Apparatus.allCases.filter { !$0.isRecovery }, label: \.label, identifier: "gym.fixture"
+                ) {
+                    gym.apparatus.contains($0)
+                } toggle: {
+                    if gym.apparatus.contains($0) { gym.apparatus.remove($0) } else { gym.apparatus.insert($0) }
                 }
-                Section {
-                    LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
-                    LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
+                chips(
+                    "Recovery",
+                    note:
+                        "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt.",
+                    Apparatus.allCases.filter(\.isRecovery), label: \.label, identifier: "gym.recovery"
+                ) {
+                    gym.apparatus.contains($0)
+                } toggle: {
+                    if gym.apparatus.contains($0) { gym.apparatus.remove($0) } else { gym.apparatus.insert($0) }
+                }
+                RowCard(title: "Loads") {
+                    ValueRow(title: "Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
+                    ValueRow(title: "Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
                     Stepper(
                         "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $edit.value.dumbbellMax,
                         in: gym.dumbbellStep...200,
@@ -576,15 +625,75 @@ struct GymEditor: View {
                         step: 0.5)
                     Stepper(
                         "Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
-                } header: {
-                    Text("Loads").eyebrow()
                 }
+                .font(.subheadline)
+                .foregroundStyle(Ink.text)
             }
-            .inkRows()
+            .padding(.horizontal, 16)
+            .padding(.vertical, Platform.isMac ? 16 : 0)
+            .padding(.bottom, 24)
+            .readableWidth(620)
         }
-        .inkList()
+        .background(.pageBackground)
         .formPage("Gym")
         .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
+    }
+
+    /// A group of things the gym has, as chips two by two in a card under its eyebrow, the ones it
+    /// has filled; what they're for, if anything, under them.
+    private func chips<Item: Hashable>(
+        _ title: String, detail: String? = nil, note: String? = nil, single: Bool = false, _ items: [Item], label: KeyPath<Item, String>,
+        identifier: String, isOn: @escaping (Item) -> Bool, toggle: @escaping (Item) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionEyebrow(title, detail: detail)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(items, id: \.self) { item in
+                    if single {
+                        ChoiceChip(title: item[keyPath: label], isOn: isOn(item), identifier: identifier) { toggle(item) }
+                    } else {
+                        HaveChip(title: item[keyPath: label], isOn: isOn(item), identifier: identifier) { toggle(item) }
+                    }
+                }
+            }
+            if let note {
+                Text(note).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .card()
+    }
+}
+
+/// Something the gym has or hasn't, as a chip: what's there on the raised grey with the accent's
+/// tick, what isn't only outlined. Quieter than a filled choice, since a full gym has all of them.
+private struct HaveChip: View {
+    let title: String
+    let isOn: Bool
+    let identifier: String
+    let toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 6) {
+                Image(systemName: isOn ? "checkmark" : "plus")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isOn ? Color.accentColor : Ink.text3)
+                    .accessibilityHidden(true)
+                Text(title).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isOn ? Ink.text : Ink.text3)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isOn ? ControlFill.track : AnyShapeStyle(Color.clear), in: .rect(cornerRadius: 12, style: .continuous))
+            .overlay {
+                if !isOn { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1.5) }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
     }
 }
 
