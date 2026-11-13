@@ -88,7 +88,7 @@ struct NutrientsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Vitamins and minerals").font(.headline)
+                Text("Vitamins and minerals").font(.callout.weight(.semibold))
                 Spacer()
                 if !report.days.isEmpty {
                     Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(
@@ -122,7 +122,7 @@ struct NutrientTableCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Vitamins and minerals").font(.headline)
+                Text("Vitamins and minerals").font(.callout.weight(.semibold))
                 Spacer()
                 if !report.days.isEmpty {
                     Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(
