@@ -91,33 +91,25 @@ struct TodayView: View {
     // MARK: The phone
 
     /// The phone's Today: the date and the week, the session to start, the scores, and the few
-    /// things worth doing next.
+    /// things worth doing next as rows in one card.
     private func column(_ analysis: LiftAnalysis) -> some View {
         let plan = model.live == nil && analysis.next != nil ? model.plan(minutes: minutes) : nil
-        // The planner puts the assessment's own note first: it goes on the assessment's card.
+        // The planner puts the assessment's own note first: it goes on the assessment's page.
         let assessmentNote = plan?.assessment == true ? plan?.notes.first : nil
         return VStack(alignment: .leading, spacing: 12) {
             header
             ThisWeekStrip(days: model.weekStrip)
             banners(analysis)
             hero(analysis, plan: plan)
-            if let plan, let next = analysis.next {
-                let notes = heroNotes(plan: plan, next: next, life: analysis.life, skipping: assessmentNote == nil ? 0 : 1)
-                if !notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(notes, id: \.self) { note in
-                            Text(note).font(.footnote).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+            if let plan, let next = analysis.next,
+                let note = dayNote(plan: plan, next: next, life: analysis.life, skipping: assessmentNote == nil ? 0 : 1)
+            {
+                Text(note).font(.footnote).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
-                    .padding(.bottom, 2)
-                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("today.heroNotes")
-                }
             }
-            if let status = analysis.assessment { AssessmentCard(status: status, note: assessmentNote) }
             ScoresCard(lines: model.stats) { model.tab = .progress }
-            next(analysis)
+            next(analysis, plan: plan, assessmentNote: assessmentNote)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -125,37 +117,31 @@ struct TodayView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Format.day(model.today, style: .dateTime.weekday(.wide).day().month(.wide))).eyebrow()
-                Text("Today").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
-                    .accessibilityAddTraits(.isHeader)
+        PageHeader(eyebrow: Format.day(model.today, style: .dateTime.weekday(.wide).day().month(.wide)), title: "Today") {
+            HStack(spacing: 8) {
+                Menu {
+                    addMenu
+                } label: {
+                    CircleIcon(symbol: "plus")
+                }
+                .accessibilityLabel("Add")
+                .accessibilityIdentifier("today.add")
+                #if !os(macOS)
+                Button {
+                    model.showSettings = true
+                } label: {
+                    CircleIcon(symbol: "gearshape")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityIdentifier("today.settings")
+                #endif
             }
-            Spacer()
-            Menu {
-                addMenu
-            } label: {
-                CircleIcon(symbol: "plus")
-            }
-            .accessibilityLabel("Add")
-            .accessibilityIdentifier("today.add")
-            #if !os(macOS)
-            Button {
-                model.showSettings = true
-            } label: {
-                CircleIcon(symbol: "gearshape")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-            .accessibilityIdentifier("today.settings")
-            #endif
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 8)
     }
 
     /// The session as the one accent card: its eyebrow, its name, one line of what's in it, Start or
-    /// Resume, and Short on time. What's worth saying about the day goes under it, quietly.
+    /// Resume, and Short on time.
     @ViewBuilder
     private func hero(_ analysis: LiftAnalysis, plan: SessionPlan?) -> some View {
         if let live = model.live {
@@ -175,7 +161,7 @@ struct TodayView: View {
             SessionHero(
                 eyebrow: HeroLine.eyebrow(plan: plan, next: next), trailing: "~\(plan.estimatedMinutes) min", title: plan.title,
                 subtitle: HeroLine.contents(plan: plan, catalog: model.catalog),
-                shortSubtitle: HeroLine.contents(plan: plan, catalog: model.catalog, names: 1), progress: nil
+                shorter: [2, 1].map { HeroLine.contents(plan: plan, catalog: model.catalog, names: $0) }, progress: nil
             ) {
                 Button {
                     model.start(plan)
@@ -185,80 +171,88 @@ struct TodayView: View {
                 .buttonStyle(HeroButtonStyle())
                 .help("Start today's session (⌘N)")
                 .accessibilityIdentifier("today.startSession")
-                // The chips under the question at the largest text sizes, where three won't fit beside it.
-                let layout =
-                    dynamicType.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 6))
-                layout {
-                    Text("Short on time?").font(.footnote).opacity(0.85)
-                    if !dynamicType.isAccessibilitySize { Spacer(minLength: 4) }
-                    HStack(spacing: 6) {
-                        ForEach([30, 45, 60], id: \.self) { m in
-                            Button {
-                                minutes = minutes == m ? nil : m
-                            } label: {
-                                Text("\(m) min")
-                                    .font(.footnote.weight(.semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .padding(.horizontal, 11)
-                                    .frame(minHeight: 32)
-                                    .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
-                                    .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
-                                    // A fingertip's height to hit, round a slimmer chip.
-                                    .frame(minHeight: 44)
-                                    .contentShape(.rect)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(m) minutes")
-                            .accessibilityAddTraits(minutes == m ? .isSelected : [])
-                            .accessibilityIdentifier("today.minutes\(m)")
-                        }
-                    }
-                }
+                shortOnTime(budget: next.mesocycle.minutesPerSession)
             }
         } else {
             EmptyCard(symbol: "calendar.badge.plus", title: "No block yet", detail: "Plan your next block from the Plan tab.")
         }
     }
 
-    /// What's said under the hero: a rest day, a day off, the plan's notes (less the ones `skipping`
-    /// leaves to the assessment's card) and what moved to later.
-    private func heroNotes(plan: SessionPlan, next: NextSession, life: LifeModeEffects, skipping: Int) -> [String] {
-        var notes: [String] = []
-        if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
-            notes.append(
-                "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along.")
-        }
-        if !life.trainingExpected { notes.append("Nothing is expected today. If you train anyway, keep it easy.") }
-        notes += plan.notes.dropFirst(skipping).prefix(2)
-        let later = plan.quests.filter { quest in !(model.analysis?.quests.contains { $0.id == quest.id } ?? false) }
-        notes += later.map { "Moved to later: \($0.title.lowercased())" }
-        return notes
-    }
-
-    /// Do this next, later today, steps and what's outside the gym: each a row that ends in an action.
+    /// "Short on time?" and the shorter sessions on offer: only those under the block's own length,
+    /// and the one picked, so a 45-minute block isn't offered 60.
     @ViewBuilder
-    private func next(_ analysis: LiftAnalysis) -> some View {
-        if !analysis.actions.isEmpty {
-            RowGroup(title: "Do this next") {
-                ForEach(analysis.actions.prefix(3)) { action in
-                    ActionRow(action: action, actionable: actionable(action)) { perform(action) }
+    private func shortOnTime(budget: Int) -> some View {
+        let options = [30, 45, 60, 75].filter { $0 < budget || $0 == minutes }
+        if !options.isEmpty {
+            // The chips under the question at the largest text sizes, where they won't fit beside it.
+            let layout =
+                dynamicType.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 6))
+            layout {
+                Text("Short on time?").font(.footnote).opacity(0.85)
+                if !dynamicType.isAccessibilitySize { Spacer(minLength: 4) }
+                HStack(spacing: 6) {
+                    ForEach(options, id: \.self) { m in
+                        Button {
+                            minutes = minutes == m ? nil : m
+                        } label: {
+                            Text("\(m) min")
+                                .font(.footnote.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal, 11)
+                                .frame(minHeight: 32)
+                                .foregroundStyle(minutes == m ? Color.accentColor : Ink.onAccent)
+                                .background(minutes == m ? Ink.onAccent : Color.black.opacity(0.16), in: .capsule)
+                                // A fingertip's height to hit, round a slimmer chip.
+                                .frame(minHeight: 44)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(m) minutes")
+                        .accessibilityAddTraits(minutes == m ? .isSelected : [])
+                        .accessibilityIdentifier("today.minutes\(m)")
+                    }
                 }
             }
+            .padding(.vertical, -6)
         }
-        if !analysis.quests.isEmpty {
-            RowGroup(title: "Later today") {
-                ForEach(analysis.quests) { quest in QuestLine(quest: quest) }
+    }
+
+    /// The one line said under the hero, when the day needs it: a rest day, a day off, or the plan's
+    /// first note (less the one `skipping` leaves to the assessment's page). The rest of the plan's
+    /// notes open the session's whole list; what moved to later is a row of its own.
+    private func dayNote(plan: SessionPlan, next: NextSession, life: LifeModeEffects, skipping: Int) -> String? {
+        if !next.scheduledToday, let day = next.nextDay, life.trainingExpected {
+            return "Rest day. Next planned: \(Format.day(day, style: .dateTime.weekday(.wide))). Train today if you like; the plan just moves along."
+        }
+        if !life.trainingExpected { return "Nothing is expected today. If you train anyway, keep it easy." }
+        return plan.notes.dropFirst(skipping).first
+    }
+
+    /// The assessment, Do this next, later today, steps and what's outside the gym: each a row that
+    /// ends in an action, in one card, its caption saying which.
+    private func next(_ analysis: LiftAnalysis, plan: SessionPlan?, assessmentNote: String?) -> some View {
+        // Quests the plan moved out of today's session, when they aren't the day's own already.
+        let moved = plan?.quests.filter { quest in !analysis.quests.contains { $0.id == quest.id } } ?? []
+        return RowCard {
+            if let status = analysis.assessment {
+                NavigationLink {
+                    AssessmentPage(status: status, note: assessmentNote)
+                } label: {
+                    AssessmentRow(status: status)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("today.assessment")
             }
-        }
-        RowGroup(title: "Today") {
+            ForEach(analysis.actions.prefix(3)) { action in
+                ActionRow(action: action, actionable: actionable(action)) { perform(action) }
+            }
+            ForEach(analysis.quests) { quest in QuestLine(quest: quest, kind: "Later today") }
+            ForEach(moved) { quest in QuestLine(quest: quest, kind: "Moved out of today's session") }
             if let steps = analysis.steps {
                 NavigationLink {
-                    ScrollView { StepsCard(steps: steps).padding() }
-                        .background(.pageBackground)
-                        .navigationTitle("Steps")
-                        .inlineTitle()
+                    StepsPage(steps: steps)
                 } label: {
                     StepsLine(steps: steps)
                 }
@@ -282,7 +276,7 @@ struct TodayView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(item.activity.label) \(item.timeOfDay.label.lowercased())")
-                        .font(.body.weight(.semibold))
+                        .font(.callout.weight(.semibold))
                     Text(logged ? "Logged" : "Log it after class: rounds, effort, how long you lasted.").font(.caption).foregroundStyle(Ink.text2)
                 }
                 Spacer()
@@ -297,7 +291,7 @@ struct TodayView: View {
         ForEach(todays.filter { log in !declared.contains { $0.activity == log.type } }) { log in
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(log.type.label).font(.body.weight(.semibold))
+                    Text(log.type.label).font(.callout.weight(.semibold))
                     Text("\(log.minutes) min · effort \(log.intensity)").font(.caption).foregroundStyle(Ink.text2)
                 }
                 Spacer()
@@ -448,8 +442,8 @@ struct SessionHero<Actions: View>: View {
     let trailing: String?
     let title: String
     let subtitle: String
-    /// The subtitle when it doesn't fit on one line: fewer names.
-    var shortSubtitle: String?
+    /// The subtitle when it doesn't fit on one line: fewer names, longest first.
+    var shorter: [String] = []
     let progress: Double?
     @ViewBuilder let actions: Actions
 
@@ -465,12 +459,8 @@ struct SessionHero<Actions: View>: View {
                 // One line of what's in it, as the design has it; two only when even the short one won't fit.
                 ViewThatFits(in: .horizontal) {
                     Text(subtitle).lineLimit(1)
-                    if let shortSubtitle {
-                        Text(shortSubtitle).lineLimit(1)
-                        Text(shortSubtitle).lineLimit(2)
-                    } else {
-                        Text(subtitle).lineLimit(2)
-                    }
+                    ForEach(Array(shorter.enumerated()), id: \.offset) { _, line in Text(line).lineLimit(1) }
+                    Text(shorter.last ?? subtitle).lineLimit(2)
                 }
                 .font(.subheadline).opacity(0.85)
             }
@@ -482,7 +472,7 @@ struct SessionHero<Actions: View>: View {
         .foregroundStyle(Ink.onAccent)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.accentColor, in: .rect(cornerRadius: 24, style: .continuous))
+        .background(Color.accentColor, in: .rect(cornerRadius: 22, style: .continuous))
     }
 }
 
@@ -507,14 +497,25 @@ enum HeroLine {
         return parts.joined(separator: " · ")
     }
 
-    /// "Barbell Bench Press, Barbell Row and 4 more · 19 sets", naming the first `names` lifts.
-    static func contents(plan: SessionPlan, catalog: ExerciseCatalog, names count: Int = 2) -> String {
+    /// "Bench press, row, overhead press and 3 more · 19 sets": the first `names` lifts by the short
+    /// name of what they score (the exercise's own name where that's taken or there's none), and how
+    /// many lifts more.
+    static func contents(plan: SessionPlan, catalog: ExerciseCatalog, names count: Int = 3) -> String {
         let lifts = plan.items.filter(\.isStrength).filter { $0.block == .main || $0.block == .accessory }
-        let names = lifts.prefix(count).map { catalog.resolve($0.exerciseID).name }
-        let more = plan.items.count - names.count
-        let sets = plan.items.reduce(0) { $0 + $1.workSets.count }
+        var names: [String] = []
+        for lift in lifts.prefix(count) {
+            let exercise = catalog.resolve(lift.exerciseID)
+            let short = exercise.strength?.category.label ?? exercise.name
+            names.append(names.contains(short.lowercased()) ? exercise.name.lowercased() : short.lowercased())
+        }
         var line = names.joined(separator: ", ")
-        if more > 0 { line += names.isEmpty ? "\(more) exercises" : " and \(more) more" }
+        if let first = line.first { line = first.uppercased() + line.dropFirst() }
+        let sets = plan.items.reduce(0) { $0 + $1.workSets.count }
+        if lifts.isEmpty {
+            line = "\(plan.items.count) \(plan.items.count == 1 ? "exercise" : "exercises")"
+        } else if lifts.count > names.count {
+            line += " and \(lifts.count - names.count) more"
+        }
         return sets > 0 ? "\(line) · \(sets) sets" : line
     }
 }
@@ -544,9 +545,9 @@ struct ScoresCard: View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Your scores").font(.headline).foregroundStyle(Ink.text)
+                    Text("Your scores").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                     Spacer()
-                    Text("All progress").font(.caption).foregroundStyle(Ink.text2)
+                    Text("All progress").font(.caption).foregroundStyle(Ink.text3)
                 }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], alignment: .leading, spacing: 14) {
                     ForEach(Self.shown, id: \.self) { stat in
@@ -565,7 +566,7 @@ struct ScoresCard: View {
     private func cell(_ stat: StatKind, line: StatLine?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(stat.label).font(.caption).foregroundStyle(Ink.text2)
+                Text(stat.label).font(.caption).foregroundStyle(Ink.text3)
                 Spacer()
                 if let line, let trend = TrendWord(line.trend) {
                     Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
@@ -584,46 +585,21 @@ struct ScoresCard: View {
 struct TrendWord {
     let text: String
     let color: Color
+    /// The arrow beside it in a chip, for a score that's moving.
+    let symbol: String?
 
     init?(_ trend: Trajectory) {
         switch trend {
-        case .ahead: (text, color) = ("rising", Ink.good)
-        case .onPace: (text, color) = ("on pace", Ink.good)
-        case .stalled: (text, color) = ("steady", Ink.text3)
-        case .regressing: (text, color) = ("slipping", Ink.ok)
+        case .ahead: (text, color, symbol) = ("rising", Ink.good, "chevron.up")
+        case .onPace: (text, color, symbol) = ("on pace", Ink.good, "chevron.up")
+        case .stalled: (text, color, symbol) = ("steady", Ink.text3, nil)
+        case .regressing: (text, color, symbol) = ("slipping", Ink.ok, "chevron.down")
         case .notEnoughData: return nil
         }
     }
 }
 
-/// An eyebrow over a card of rows with hairlines between them.
-struct RowGroup<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        Group(subviews: content) { rows in
-            // Nothing to show (no steps without Health, nothing outside the gym): no empty card.
-            if !rows.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(title).eyebrow().padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                            if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
-                            row.padding(.vertical, 10).frame(minHeight: 44)
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
-                }
-            }
-        }
-    }
-}
-
-/// A next step as a row: what to do, what was seen, and a tap when the app can do it.
+/// A next step as a row: what to do, "Do this next" and the step, and a tap when the app can do it.
 struct ActionRow: View {
     let action: NextAction
     let actionable: Bool
@@ -642,9 +618,9 @@ struct ActionRow: View {
 
     private func content(chevron: Bool) -> some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(action.title).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
-                Text(action.action).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(action.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                Text("Do this next · \(action.action)").font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
             if chevron { Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3) }
@@ -655,14 +631,18 @@ struct ActionRow: View {
     }
 }
 
+/// A quest as a row: its title, when it's for and what it is, and how long.
 struct QuestLine: View {
     let quest: Quest
+    /// "Later today", "Moved out of today's session".
+    let kind: String
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(quest.title).font(.body.weight(.semibold))
-                if !quest.detail.isEmpty { Text(quest.detail).font(.caption).foregroundStyle(Ink.text2) }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(quest.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                Text(([kind] + (quest.detail.isEmpty ? [] : [quest.detail])).joined(separator: " · "))
+                    .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             if let minutes = quest.minutes { Text("\(minutes) min").font(.caption.monospacedDigit()).foregroundStyle(Ink.text2) }
@@ -671,18 +651,18 @@ struct QuestLine: View {
     }
 }
 
-/// Steps so far against the day's aim, in a line.
+/// Steps so far against the day's aim, in a line over a slim ruler.
 struct StepsLine: View {
     let steps: StepAim
 
     var body: some View {
         let count = steps.today ?? 0
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Steps").font(.body.weight(.semibold))
+                    Text("Steps").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                     Spacer()
-                    Text("\(count.formatted()) of \(steps.aim.formatted())").font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
+                    Text("\(count.formatted()) of \(steps.aim.formatted())").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
                 }
                 Ruler.thin(Double(count) / Double(max(1, steps.aim)), color: count >= steps.aim ? Ink.good : Ink.text2)
             }
@@ -690,6 +670,70 @@ struct StepsLine: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The assessment as Today's row: how far along on a slim ruler. It opens what's been learned.
+struct AssessmentRow: View {
+    let status: AssessmentStatus
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Assessment").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                    Spacer()
+                    Text(status.complete ? "Done · plan your first block" : "Week \(status.week) of \(status.totalWeeks) · what we've learned")
+                        .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1)
+                }
+                Ruler.thin(status.complete ? 1 : status.progress)
+            }
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The assessment in full, opened from Today's row: this week's note and what's been learned.
+struct AssessmentPage: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    let status: AssessmentStatus
+    let note: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !sizeClass.isWide { BackHeader(eyebrow: "Today", title: "Assessment") }
+                AssessmentCard(status: status, note: note, titled: false)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Assessment", wide: sizeClass.isWide)
+        .accessibilityIdentifier("today.assessmentPage")
+    }
+}
+
+/// The step aim in full, opened from Today's row.
+struct StepsPage: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    let steps: StepAim
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !sizeClass.isWide { BackHeader(eyebrow: "Today", title: "Steps") }
+                StepsCard(steps: steps)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Steps", wide: sizeClass.isWide)
     }
 }
 
@@ -843,6 +887,8 @@ struct AssessmentCard: View {
     let status: AssessmentStatus
     /// What this week of it is for, from today's plan (the phone's Today moves it here off the hero).
     var note: String?
+    /// Its own title, unless the page it's on is titled already.
+    var titled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -851,8 +897,8 @@ struct AssessmentCard: View {
                 dynamicType.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
             layout {
-                Text("Assessment").font(.headline)
-                if !dynamicType.isAccessibilitySize { Spacer() }
+                if titled { Text("Assessment").font(.headline) }
+                if titled && !dynamicType.isAccessibilitySize { Spacer() }
                 Text(status.complete ? "Done" : "Week \(status.week) of \(status.totalWeeks)").eyebrow()
             }
             Ruler(value: status.complete ? 1 : status.progress, height: 10, divisions: max(1, status.totalWeeks))

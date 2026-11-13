@@ -137,8 +137,6 @@ struct ExerciseStrip: View {
 /// The exercise in front of you: what it is and how to do it today, its sets, and what's next.
 struct FocusedExercise: View {
     @Environment(AppModel.self) private var model
-    /// The design's 30 points, growing with the text size like the words round it.
-    @ScaledMetric(relativeTo: .title) private var nameSize: CGFloat = 30
     let live: LiveSession
     let index: Int
     let swap: (Int) -> Void
@@ -147,27 +145,23 @@ struct FocusedExercise: View {
     var body: some View {
         let item = live.items[index]
         let exercise = model.catalog.resolve(item.exerciseID)
+        // While resting the dock is tall: the name's smaller and the advice waits for the set.
+        let resting = model.activeRest != nil
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: resting ? 3 : 4) {
                 Text(eyebrow(item, exercise)).eyebrow(.accentColor)
-                Text(exercise.name)
-                    .font(.system(size: nameSize, weight: .bold)).tracking(-0.8)
-                    .foregroundStyle(Ink.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
+                PageTitle(exercise.name, size: resting ? 28 : 32)
                 if let replaced = item.plan.substitutedFor {
                     Text("Instead of \(model.catalog.resolve(replaced).name)").font(.caption).foregroundStyle(Ink.text2)
                 }
-                if let advice = advice(item) {
-                    Text(advice).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-                }
-                if !exercise.cue.isEmpty {
-                    Label(exercise.cue, systemImage: "lightbulb").font(.caption).foregroundStyle(Ink.text2)
-                        .fixedSize(horizontal: false, vertical: true)
+                // What to do today, or how to do it when the plan has nothing to say; the cue is on
+                // the exercise's own page (the menu's About this exercise) either way.
+                if !resting, let line = advice(item) ?? (exercise.cue.isEmpty ? nil : exercise.cue) {
+                    Text(line).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, 4)
-            .padding(.top, 8)
+            .padding(.top, resting ? 2 : 8)
             if let conditioning = item.plan.conditioning {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(conditioning.summary).font(.body.weight(.semibold).monospacedDigit())
@@ -187,9 +181,9 @@ struct FocusedExercise: View {
         }
     }
 
-    /// "Main lift · Chest", "Superset · Back".
+    /// "Main lift · Chest", "Superset · Back": the block's name for one exercise in it.
     private func eyebrow(_ item: LiveItem, _ exercise: Exercise) -> String {
-        var parts = [item.plan.supersetGroup != nil ? "Superset" : item.plan.block.label]
+        var parts = [item.plan.supersetGroup != nil ? "Superset" : item.plan.block.singular]
         if let muscle = exercise.primaryMuscles.first, exercise.kind == .strength { parts.append(muscle.label) }
         return parts.joined(separator: " · ")
     }
@@ -221,10 +215,21 @@ struct FocusedExercise: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Every other exercise, with what can be done to it: do it now, swap it, add a set, skip it.
+    /// Every other exercise, with what can be done to it: do it now, swap it, add a set, skip it. The
+    /// plan's notes for the day (the assessment's week, a deload, an injury) head it.
     private var rest: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("The whole session").eyebrow().padding(.horizontal, 4).padding(.top, 14)
+            if !live.plan.notes.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
+                        Text(note).font(.footnote).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("session.notes")
+            }
             VStack(spacing: 0) {
                 ForEach(Array(live.items.enumerated()), id: \.element.id) { position, item in
                     if position > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
@@ -399,7 +404,7 @@ struct SetListCard: View {
                         plus: set.prescription.kind == .repOut, exercise: exercise, unit: unit, quiet: !isNow)
                     Spacer(minLength: 4)
                     if isNow {
-                        Chip(text: "Now", accent: true)
+                        Chip(text: model.activeRest == nil ? "Now" : "Up next", accent: true)
                     } else {
                         switch set.prescription.kind {
                         case .repOut: Chip(text: set.prescription.stopAtFormBreakdown ? "To form breakdown" : "As many as you can")
@@ -410,9 +415,9 @@ struct SetListCard: View {
                     }
                 }
             }
-            // During a rest the dock says it.
-            if isNow, model.activeRest == nil, let note = set.note {
-                Text(note).font(.caption).foregroundStyle(.tint).padding(.leading, 42)
+            // What the last rating changed: under the set it changed, during the rest as after it.
+            if isNow, let note = model.activeRest.flatMap({ _ in model.live?.message }) ?? set.note {
+                Text(note).font(.caption).foregroundStyle(.tint).padding(.leading, 42).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, 8)

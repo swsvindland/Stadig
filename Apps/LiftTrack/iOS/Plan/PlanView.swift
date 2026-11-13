@@ -12,6 +12,8 @@ struct PlanView: View {
     @State private var editing: LifeModePeriod?
     /// An exercise sent to Library from a narrow window, which has no Library: it opens here.
     @State private var focused: String?
+    /// The phone's Focus, opened from the header's menu.
+    @State private var showFocus = false
 
     var body: some View {
         NavigationStack {
@@ -33,7 +35,9 @@ struct PlanView: View {
             .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .navigationBar)
             #endif
             .navigationDestination(for: DayRoute.self) { route in DayDetail(route: route) }
+            .navigationDestination(for: SessionRecord.self) { record in SessionDetail(record: record) }
             .navigationDestination(item: $focused) { id in PushedExerciseDetail(exerciseID: id) }
+            .navigationDestination(isPresented: $showFocus) { FocusScreen() }
             .onChange(of: model.libraryFocus, initial: true) { _, focus in
                 // Plan is the tab a narrow window shows for Library (`AppTab.tabBarFallback`).
                 guard !sizeClass.isWide, let focus else { return }
@@ -50,47 +54,186 @@ struct PlanView: View {
         }
     }
 
-    /// The phone's single column.
+    /// The phone's single column, as the design has it: the block and its weeks, the priorities, and
+    /// this week's sessions. Life modes and the rest are in the header's menu; a life mode under way
+    /// is a row of its own.
     private var column: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             phoneHeader
             if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block {
-                header(mesocycle, block: block, analysis: analysis)
-                WeekStrip(block: block, today: model.today, vacations: vacations)
+                blockCard(mesocycle, block: block, analysis: analysis)
                 nextBlockPrompt(analysis, block: block)
-                if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorities(mesocycle) }
-                SectionHeader(title: "Days", detail: "\(mesocycle.days.count) a week")
-                days(mesocycle, analysis: analysis)
+                if !mesocycle.priorities.isEmpty || mesocycle.block.kind == .standard { priorityRows(mesocycle, analysis: analysis) }
+                thisWeek(analysis, mesocycle: mesocycle)
             } else {
                 EmptyCard(symbol: "calendar", title: "No block yet", detail: "Finish setup to start your assessment.")
             }
-            lifeModes
+            lifeRows
         }
         .readableWidth()
     }
 
     private var phoneHeader: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let block = model.analysis?.block {
-                    Text("Current block · ends \(Format.day(block.range.end, style: .dateTime.day().month(.abbreviated)))").eyebrow()
-                }
-                Text("Plan").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
-            }
-            Spacer()
-            #if !os(macOS)
-            Button {
-                model.showSettings = true
+        PageHeader(
+            eyebrow: model.analysis?.block.map { "Current block · ends \(Format.day($0.range.end, style: .dateTime.day().month(.abbreviated)))" },
+            title: "Plan"
+        ) {
+            Menu {
+                planMenu
             } label: {
-                CircleIcon(symbol: "gearshape")
+                CircleIcon(symbol: "ellipsis")
+            }
+            .accessibilityLabel("Plan options")
+            .accessibilityIdentifier("plan.options")
+        }
+        .padding(.top, -16)
+    }
+
+    /// The header's menu: what changes the plan from outside it (life, focus, the next block) and Settings.
+    @ViewBuilder
+    private var planMenu: some View {
+        if model.nextBlockOffered {
+            Button("Plan the next block", systemImage: "sparkles") { planning = true }
+        }
+        Section("Life") {
+            Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }.accessibilityIdentifier("plan.addVacation")
+            Button("Crunch mode", systemImage: "briefcase") { lifeMode = .crunch }.accessibilityIdentifier("plan.addCrunch")
+            Button("Injury", systemImage: "bandage") { lifeMode = .injury }.accessibilityIdentifier("plan.addInjury")
+            Button("Illness", systemImage: "thermometer.medium") { lifeMode = .illness }.accessibilityIdentifier("plan.addIllness")
+        }
+        Section("Next block") {
+            Button("Focus: \(model.settings.focusSummary)", systemImage: "scope") { showFocus = true }
+                .accessibilityIdentifier("plan.focus")
+            Toggle("Prioritise automatically", systemImage: "wand.and.stars", isOn: model.setting(\.autoPrioritise))
+        }
+        #if !os(macOS)
+        Button("Settings", systemImage: "gearshape") { model.showSettings = true }
+            .accessibilityIdentifier("plan.settings")
+        #endif
+    }
+
+    /// The block as the design draws it: its split, what it's for and the week, why, and the weeks
+    /// as bars of their load.
+    private func blockCard(_ mesocycle: Mesocycle, block: TrainingBlock, analysis: LiftAnalysis) -> some View {
+        let week = min(block.weeksTotal, max(1, block.start.days(until: model.today) / 7 + 1))
+        let focus = block.kind == .standard ? "\(analysis.phase.kind.label) focus" : block.kind.label
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(mesocycle.split.label).font(.title3.weight(.bold)).tracking(-0.4).foregroundStyle(Ink.text)
+                    Text("\(focus) · week \(week) of \(block.weeksTotal)").font(.subheadline).foregroundStyle(Ink.text2)
+                }
+                Spacer(minLength: 8)
+                NavigationLink {
+                    BlockWhyPage(mesocycle: mesocycle, block: block)
+                } label: {
+                    Text("Why this plan?").font(.caption).foregroundStyle(Ink.text2)
+                        .padding(.top, 4)
+                        .frame(minHeight: 44, alignment: .top)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("plan.why")
+            }
+            if let reason = block.deloadReason {
+                Label(reason, systemImage: "arrow.down.circle").font(.footnote).foregroundStyle(Ink.text2)
+            }
+            WeekStrip(block: block, today: model.today, vacations: vacations, carded: false)
+        }
+        .card(padding: 16)
+    }
+
+    /// What the block favours, each with its score, as rows; Focus last.
+    private func priorityRows(_ mesocycle: Mesocycle, analysis: LiftAnalysis) -> some View {
+        RowCard(title: "Priorities", minHeight: 42) {
+            if mesocycle.priorities.filter({ $0.emphasis != 0 }).isEmpty {
+                Text("Balanced: nothing lagging enough to favour.").font(.subheadline).foregroundStyle(Ink.text2)
+            }
+            ForEach(mesocycle.priorities.filter { $0.emphasis != 0 }) { priority in
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(priority.label).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        Text(
+                            priority.emphasis > 0
+                                ? priority.reason : "Less of it: \(priority.reason.prefix(1).lowercased() + priority.reason.dropFirst())"
+                        )
+                        .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    if let score = score(of: priority, analysis: analysis) {
+                        Text("\(score)").numeral(20).foregroundStyle(Ink.text2)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    /// The score a priority moves, when there is one.
+    private func score(of priority: TrainingPriority, analysis: LiftAnalysis) -> Int? {
+        let value: Double? =
+            switch priority.target {
+            case .category(let category): analysis.strength[category]?.score
+            case .conditioning: analysis.endurance.score
+            case .physique: analysis.physique.score
+            default: nil
+            }
+        return value.map { Int($0.rounded()) }
+    }
+
+    /// This week's sessions: the ones done (opening what was done), today's and the ones to come
+    /// (opening the day of the program), and every day of the block below.
+    private func thisWeek(_ analysis: LiftAnalysis, mesocycle: Mesocycle) -> some View {
+        let rows = ThisWeek.sessions(
+            next: analysis.next, records: model.sessions, trainingDays: model.profile?.schedule.trainingDays ?? [], today: model.today)
+        let done = rows.filter { $0.state == .done }.count
+        return RowCard(title: "This week", detail: analysis.next.map { "\(done) of \($0.plannedThisWeek) done" }, minHeight: 48) {
+            ForEach(rows) { row in
+                if row.state == .done, let id = row.sessionID, let record = model.sessions.first(where: { $0.id == id }) {
+                    NavigationLink(value: record) { WeekSessionRow(row: row) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("plan.session")
+                } else if let dayID = row.dayID {
+                    NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: dayID)) { WeekSessionRow(row: row) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("plan.day")
+                } else {
+                    WeekSessionRow(row: row)
+                }
+            }
+            NavigationLink {
+                BlockDaysPage(mesocycle: mesocycle, nextIndex: analysis.next?.dayIndex)
+            } label: {
+                LinkRowLabel(title: "Every day of the block", caption: nil, trailing: "\(mesocycle.days.count)")
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-            .accessibilityIdentifier("plan.settings")
-            #endif
+            .accessibilityIdentifier("plan.allDays")
         }
-        .padding(.horizontal, 4)
-        .padding(.top, -8)
+    }
+
+    /// Life modes under way or to come, as rows that open them.
+    private var lifeRows: some View {
+        let upcoming = model.lifeModes.filter { $0.end.map { $0 >= model.today } ?? true }
+        return RowCard(title: "Life") {
+            ForEach(upcoming) { period in
+                Button {
+                    editing = period
+                } label: {
+                    LinkRowLabel(
+                        title: period.kind.label,
+                        caption: period.end.map { Format.range(DayRange(period.start, $0)) } ?? "Since \(Format.day(period.start))")
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Edit…", systemImage: "pencil") { editing = period }
+                    if model.canEnd(period) {
+                        Button("End It Now", systemImage: "stop.circle") { model.end(lifeMode: period) }
+                    }
+                    Button("Delete", systemImage: "trash", role: .destructive) { model.delete(lifeMode: period.id) }
+                }
+                .accessibilityIdentifier("plan.lifeMode")
+            }
+        }
     }
 
     /// The block and life beside its days, which sit in a grid.
@@ -293,6 +436,8 @@ struct WeekStrip: View {
     let block: TrainingBlock
     let today: Day
     let vacations: [DayRange]
+    /// In a card of its own, or inside the block's.
+    var carded = true
 
     var body: some View {
         let weeks = max(1, block.weeksTotal)
@@ -332,7 +477,9 @@ struct WeekStrip: View {
                         .joined(separator: ", "))
             }
         }
-        .card(padding: 14)
+        .padding(carded ? 14 : 0)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(carded ? Color.cardBackground : .clear, in: .rect(cornerRadius: 22, style: .continuous))
     }
 
     /// How tall a week's bar is: its share of the block's heaviest load.
@@ -508,5 +655,107 @@ struct ProgramSwapSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
         .sheetFrame(minHeight: 480)
+    }
+}
+
+/// One of this week's sessions on Plan: the weekday, its name, its minutes and whether it's done.
+struct WeekSessionRow: View {
+    let row: WeekSession
+
+    var body: some View {
+        let today = row.state == .today
+        HStack(spacing: 12) {
+            Text(row.day.weekday.short).font(.caption.weight(.semibold)).foregroundStyle(today ? Color.accentColor : Ink.text3)
+                .frame(width: 34, alignment: .leading)
+            Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(row.state == .done ? Ink.text2 : Ink.text).lineLimit(1)
+            Spacer(minLength: 4)
+            Text(row.state == .done ? "\(row.minutes) min" : "~\(row.minutes) min").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+            HStack(spacing: 6) {
+                switch row.state {
+                case .done: Text("Done").font(.caption).foregroundStyle(Ink.text3)
+                case .today: Text("Today").font(.caption).foregroundStyle(Color.accentColor)
+                case .planned: EmptyView()
+                }
+                Circle().fill(row.state == .done ? Ink.good : (today ? Color.accentColor : Ink.track)).frame(width: 8, height: 8)
+            }
+            .frame(width: 62, alignment: .trailing)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(row.state == .done ? "Done" : (today ? "Today" : "Planned"))
+    }
+}
+
+/// Why the block looks the way it does, opened from its card: the headline and every reason.
+struct BlockWhyPage: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    let mesocycle: Mesocycle
+    let block: TrainingBlock
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !sizeClass.isWide { BackHeader(eyebrow: "Plan", title: "Why this plan?") }
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(mesocycle.rationale.headline).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(mesocycle.rationale.reasons.enumerated()), id: \.offset) { _, reason in
+                        Label(reason, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline).foregroundStyle(Ink.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let confidence = mesocycle.rationale.confidence {
+                        Text(confidence).font(.footnote).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .card()
+                RowCard {
+                    detail("Dates", Format.range(block.range))
+                    detail("Split", mesocycle.split.label)
+                    detail("Sessions", "\(mesocycle.days.count) a week · \(mesocycle.minutesPerSession) min")
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Why this plan?", wide: sizeClass.isWide)
+    }
+
+    private func detail(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).font(.subheadline).foregroundStyle(Ink.text2)
+            Spacer()
+            Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Every day of the block, each with its lifts, opening the day in full.
+struct BlockDaysPage: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    let mesocycle: Mesocycle
+    let nextIndex: Int?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !sizeClass.isWide { BackHeader(eyebrow: "Plan", title: "The block's days") }
+                ForEach(Array(mesocycle.days.enumerated()), id: \.element.id) { index, day in
+                    NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: day.id)) {
+                        DayCard(day: day, isNext: nextIndex == index)
+                    }
+                    .buttonStyle(.plain)
+                    .hoverHighlight()
+                    .accessibilityIdentifier("plan.blockDay")
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Days", wide: sizeClass.isWide)
     }
 }

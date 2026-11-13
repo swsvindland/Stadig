@@ -17,6 +17,8 @@ struct BodyView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var pose: ProgressPhoto.Pose = .front
     @State private var importFailed = false
+    /// The phone's progress photos, opened from the header's camera.
+    @State private var showPhotos = false
 
     var body: some View {
         NavigationStack {
@@ -24,23 +26,15 @@ struct BodyView: View {
                 if sizeClass.isWide {
                     wide
                 } else {
-                    VStack(alignment: .leading, spacing: 16) {
-                        header
-                        if let physique = model.analysis?.physique {
-                            overview(physique)
-                            sides(physique)
-                            if !physique.gaps.isEmpty || physique.proportions.contains(where: { $0.cause == .fat }) { gaps(physique) }
-                        }
-                        waistTrend
-                        photos
-                        history
-                    }
-                    .padding()
-                    .readableWidth()
+                    column
                 }
             }
             .accessibilityIdentifier("body.screen")
             .background(.pageBackground)
+            .safeAreaInset(edge: .bottom) {
+                if !sizeClass.isWide { addCheckIn }
+            }
+            .navigationDestination(isPresented: $showPhotos) { photosPage }
             .navigationTitle("Body")
             #if os(iOS)
             // The phone draws its own header: the last check-in over a large title.
@@ -86,39 +80,184 @@ struct BodyView: View {
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let last = model.measurements.map(\.day).max() {
-                    Text("Last check-in \(Format.day(last, style: .dateTime.weekday(.wide).day().month(.abbreviated)))").eyebrow()
-                }
-                Text("Body").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
+    // MARK: The phone
+
+    /// The phone's Body, as the design has it: Physique and waist to height, the waist over the
+    /// weeks, the latest tape in a row, and the rest (proportions, photos, every check-in) as rows,
+    /// with Add check-in at the foot.
+    private var column: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            header
+            if let physique = model.analysis?.physique, physique.score != nil || physique.waistToHeight != nil {
+                VStack(alignment: .leading, spacing: 11) { hero(physique) }
+                    .card(padding: 16)
             }
-            Spacer()
+            waistTrend
+            latestTape
+            RowCard {
+                if let physique = model.analysis?.physique {
+                    NavigationLink {
+                        proportionsPage(physique)
+                    } label: {
+                        LinkRowLabel(title: "Proportions", caption: proportionsLine(physique))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("body.proportions")
+                }
+                Button {
+                    showPhotos = true
+                } label: {
+                    LinkRowLabel(title: "Progress photos", caption: photosLine)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("body.photos")
+            }
+            history
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+        .readableWidth()
+    }
+
+    private var header: some View {
+        PageHeader(eyebrow: model.measurements.map(\.day).max().map { "Last check-in \(Self.when($0, today: model.today))" }, title: "Body") {
             Button {
-                measuring = true
+                showPhotos = true
             } label: {
-                CircleIcon(symbol: "ruler")
+                CircleIcon(symbol: "camera")
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Add measurements")
-            .accessibilityIdentifier("body.addMeasurements")
+            .accessibilityLabel("Progress photos")
+            .accessibilityIdentifier("body.openPhotos")
         }
-        .padding(.horizontal, 4)
-        .padding(.top, -8)
+    }
+
+    /// "Saturday" within the week, "10 Nov" before it.
+    private static func when(_ day: Day, today: Day) -> String {
+        let days = day.days(until: today)
+        if days == 0 { return "today" }
+        return days < 7 ? Format.day(day, style: .dateTime.weekday(.wide)) : Format.day(day, style: .dateTime.day().month(.abbreviated))
+    }
+
+    /// The one action, over the tab bar: a check-in with the tape.
+    private var addCheckIn: some View {
+        Button {
+            measuring = true
+        } label: {
+            Label("Add check-in", systemImage: "plus").frame(maxWidth: .infinity)
+        }
+        .primaryAction()
+        .controlSize(.large)
+        .shadow(color: .black.opacity(0.3), radius: 15, y: 10)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+        .readableWidth()
+        .accessibilityIdentifier("body.addMeasurements")
+    }
+
+    /// The latest tape, five numbers in a row, each with its change since the first check-in.
+    @ViewBuilder
+    private var latestTape: some View {
+        let fields: [(String, (BodyMeasurements) -> Double?)] = [
+            ("Chest", { $0.chestCm }), ("Waist", { $0.waistCm }), ("Hips", { $0.hipsCm }), ("Arm", { $0.size(.arm) }), ("Thigh", { $0.size(.thigh) }),
+        ]
+        let length = model.units.length
+        let readings = fields.compactMap { name, read -> (name: String, value: Double, change: Double?)? in
+            let values = model.measurements.sorted { $0.day < $1.day }.compactMap(read)
+            guard let last = values.last else { return nil }
+            return (name, last, values.count > 1 ? last - values[0] : nil)
+        }
+        if !readings.isEmpty {
+            HStack(alignment: .top) {
+                ForEach(Array(readings.enumerated()), id: \.offset) { index, reading in
+                    if index > 0 { Spacer(minLength: 4) }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(reading.name).font(.caption).foregroundStyle(Ink.text3)
+                        Text(Format.number(length.fromCentimetres(reading.value))).numeral(18).foregroundStyle(Ink.text)
+                        if let change = reading.change {
+                            let shown = length.fromCentimetres(change)
+                            Text(shown == 0 ? "0" : "\(shown > 0 ? "+" : "−")\(Format.number(abs(shown)))")
+                                .font(.caption.monospacedDigit())
+                                // A smaller waist is the change that's good news; the rest just are.
+                                .foregroundStyle(reading.name == "Waist" && change < 0 ? Ink.good : Ink.text3)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+            .accessibilityIdentifier("body.latest")
+        }
+    }
+
+    private func proportionsLine(_ p: PhysiqueAnalysis) -> String {
+        if p.latest == nil { return "Measure once a block, at the deload check-in" }
+        var parts = [p.targets == .off ? "Targets off" : "\(p.targets.label) targets"]
+        if !p.asymmetries.isEmpty { parts.append("a side lagging") }
+        if !p.gaps.isEmpty { parts.append("\(p.gaps.count) to work on") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var photosLine: String {
+        let count = model.photos.count
+        return count == 0 ? "For your own comparison, never analysed" : "\(count) \(count == 1 ? "photo" : "photos")"
+    }
+
+    /// Proportions, left against right and what the program does about them: Body's detail.
+    private func proportionsPage(_ p: PhysiqueAnalysis) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                BackHeader(eyebrow: "Body", title: "Proportions")
+                proportions(p).card()
+                sides(p)
+                if !p.gaps.isEmpty || p.proportions.contains(where: { $0.cause == .fat }) { gaps(p) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Proportions", wide: sizeClass.isWide)
+    }
+
+    private var photosPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !sizeClass.isWide { BackHeader(eyebrow: "Body", title: "Progress photos") }
+                photos
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .pageWithoutBar(title: "Progress photos", wide: sizeClass.isWide)
     }
 
     /// Physique's score on a ruler, and waist to height against the healthy line.
     @ViewBuilder
     private func hero(_ p: PhysiqueAnalysis) -> some View {
         if let score = p.score {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Physique").eyebrow()
-                Text("\(Int(score.rounded()))").numeral(60, weight: .heavy).foregroundStyle(Ink.text)
+            VStack(alignment: .leading, spacing: 11) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Physique").eyebrow()
+                        Text("\(Int(score.rounded()))").numeral(60, weight: .heavy).foregroundStyle(Ink.text)
+                    }
+                    Spacer(minLength: 8)
+                    if let trend = model.stats.first(where: { $0.stat == .physique }).flatMap({ TrendWord($0.trend) }) {
+                        TrendChip(trend: trend).padding(.bottom, 4)
+                    }
+                }
                 Ruler(value: score / 100)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Physique \(Int(score.rounded())) of 100")
+            if p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
         }
         if let wth = p.waistToHeight {
             let healthy = wth < 0.5
@@ -169,11 +308,19 @@ struct BodyView: View {
     }
 
     private func overview(_ p: PhysiqueAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            hero(p)
+            if p.score != nil || p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
+            proportions(p)
+        }
+        .card()
+    }
+
+    /// The ratios against their targets, body fat, FFMI and the waist, or how to start measuring.
+    private func proportions(_ p: PhysiqueAnalysis) -> some View {
         let length = model.units.length
         let sex = model.profile?.sex ?? .unspecified
         return VStack(alignment: .leading, spacing: 12) {
-            hero(p)
-            if p.score != nil || p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
             HStack(alignment: .firstTextBaseline) {
                 Text("Proportions").font(.headline)
                 Spacer()
@@ -228,7 +375,6 @@ struct BodyView: View {
                 .font(.subheadline)
             }
         }
-        .card()
     }
 
     /// Left against right for each limb measured on both sides, and any side that's lagging.
@@ -303,28 +449,76 @@ struct BodyView: View {
         .card()
     }
 
+    /// The waist over the weeks: the latest large, its line from the first check-in, and a sentence
+    /// on how fast it's moving.
     @ViewBuilder
     private var waistTrend: some View {
-        let points = model.measurements.compactMap { m in m.waistCm.map { (m.day.date(), model.units.length.fromCentimetres($0)) } }
-        if points.count >= 2 {
+        let length = model.units.length
+        let points = model.measurements.sorted { $0.day < $1.day }.compactMap { m in m.waistCm.map { (day: m.day, value: length.fromCentimetres($0)) }
+        }
+        if points.count >= 2, let first = points.first, let last = points.last {
+            let weeks = max(1, Int((Double(first.day.days(until: last.day)) / 7).rounded()))
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Waist").font(.headline)
-                    Spacer()
-                    if let last = points.last {
-                        Measure(value: Format.number(last.1), unit: model.units.length.symbol, size: 30)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("Waist").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        Text("\(weeks) \(weeks == 1 ? "week" : "weeks")").font(.caption).foregroundStyle(Ink.text3)
                     }
+                    Spacer()
+                    Measure(value: Format.number(last.value), unit: length.symbol, size: 30)
                 }
-                Chart(points, id: \.0) { point in
-                    LineMark(x: .value("Day", point.0), y: .value("Waist", point.1)).foregroundStyle(Color.accentColor)
-                    PointMark(x: .value("Day", point.0), y: .value("Waist", point.1)).symbolSize(20).foregroundStyle(Color.accentColor)
+                Chart {
+                    ForEach(points, id: \.day) { point in
+                        LineMark(x: .value("Day", point.day.date()), y: .value("Waist", point.value))
+                            .foregroundStyle(Color.accentColor)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    }
+                    PointMark(x: .value("Day", first.day.date()), y: .value("Waist", first.value))
+                        .symbol { Circle().strokeBorder(Ink.text3, lineWidth: 2).background(Circle().fill(Ink.surface)).frame(width: 8, height: 8) }
+                    PointMark(x: .value("Day", last.day.date()), y: .value("Waist", last.value))
+                        .symbol {
+                            Circle().fill(Color.accentColor).overlay { Circle().stroke(Ink.surface, lineWidth: 2) }.frame(width: 10, height: 10)
+                        }
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
-                .chartYAxisLabel(model.units.length.symbol)
-                .frame(height: sizeClass.isWide ? 240 : 140)
+                .chartXAxis(.hidden)
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
+                        AxisGridLine().foregroundStyle(Ink.hairline)
+                        AxisValueLabel().font(.system(size: 10, weight: .semibold)).foregroundStyle(Ink.text3)
+                    }
+                }
+                .frame(height: sizeClass.isWide ? 240 : 96)
+                .accessibilityLabel("Waist over \(weeks) weeks")
+                .accessibilityValue("From \(Format.number(first.value)) to \(Format.number(last.value)) \(length.symbol)")
+                HStack {
+                    Text(Format.day(first.day, style: .dateTime.day().month(.abbreviated)))
+                    Spacer()
+                    Text(last.day == model.today ? "Today" : Format.day(last.day, style: .dateTime.day().month(.abbreviated)))
+                }
+                .font(.system(size: 10, weight: .semibold)).textCase(.uppercase).tracking(0.6).foregroundStyle(Ink.text3)
+                .padding(.trailing, 28)
+                .accessibilityHidden(true)
+                waistSentence(change: last.value - first.value, weeks: weeks, unit: length.symbol)
+                    .padding(.top, 2)
             }
-            .card()
+            .card(padding: 16)
         }
+    }
+
+    /// "Down 3.5 cm in 12 weeks, about 0.3 a week."
+    private func waistSentence(change: Double, weeks: Int, unit: String) -> some View {
+        let size = Format.number(abs(change))
+        let lead =
+            change == 0
+            ? "Level over \(weeks) \(weeks == 1 ? "week" : "weeks")."
+            : "\(change < 0 ? "Down" : "Up") \(size) \(unit) in \(weeks) \(weeks == 1 ? "week" : "weeks"),"
+        let rate = change == 0 ? "" : " about \(Format.number(abs(change) / Double(weeks))) a week."
+        let first = Text(lead).foregroundStyle(Ink.text).fontWeight(.semibold)
+        let second = Text(rate).foregroundStyle(Ink.text2)
+        return Text("\(first)\(second)")
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var photos: some View {
@@ -372,26 +566,20 @@ struct BodyView: View {
         }
     }
 
+    /// Every check-in, newest first, each opening to correct it.
     private var history: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !model.measurements.isEmpty { SectionHeader(title: "Measurements") }
+        RowCard(title: "Check-ins", minHeight: 48) {
             ForEach(model.measurements.reversed()) { m in
                 Button {
                     editing = m
                 } label: {
-                    HStack {
-                        Text(Format.day(m.day, style: .dateTime.month(.abbreviated).day().year())).font(.subheadline.weight(.semibold))
-                        Spacer()
-                        Text(
-                            [
-                                m.waistCm.map { "waist \(Format.length($0, unit: model.units.length))" },
-                                m.shouldersCm.map { "shoulders \(Format.length($0, unit: model.units.length))" },
-                                m.weightKg.map { Format.weight($0, unit: model.units.weight) },
-                            ].compactMap { $0 }.joined(separator: " · ")
-                        )
-                        .font(.caption).foregroundStyle(.secondary)
-                    }
-                    .card(padding: 12)
+                    LinkRowLabel(
+                        title: Format.day(m.day, style: .dateTime.month(.abbreviated).day().year()),
+                        caption: [
+                            m.waistCm.map { "waist \(Format.length($0, unit: model.units.length))" },
+                            m.shouldersCm.map { "shoulders \(Format.length($0, unit: model.units.length))" },
+                            m.weightKg.map { Format.weight($0, unit: model.units.weight) },
+                        ].compactMap { $0 }.joined(separator: " · "))
                 }
                 .buttonStyle(.plain)
                 .hoverHighlight()

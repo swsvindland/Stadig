@@ -40,6 +40,15 @@ extension Ink {
 }
 
 extension SetRating {
+    /// How it felt, in the few words the phone's buttons have room for: "3+ left".
+    var shortDetail: String {
+        switch self {
+        case .green: "3+ left"
+        case .orange: "0–2 left"
+        case .red: "Fell short"
+        }
+    }
+
     var color: Color {
         switch self {
         case .green: Ink.good
@@ -57,6 +66,15 @@ extension StatKind {
 
 extension SessionBlockKind {
     var color: Color { .accentColor }
+
+    /// The block's name for one exercise in it: "Main lift", "Accessory".
+    var singular: String {
+        switch self {
+        case .main: "Main lift"
+        case .accessory: "Accessory"
+        default: label
+        }
+    }
 }
 
 extension View {
@@ -199,7 +217,7 @@ struct RatingButtons: View {
                         }
                         // At the largest text sizes the word alone fits; VoiceOver still reads how it felt.
                         if !compact && !dynamicType.isAccessibilitySize {
-                            Text(rating.detail)
+                            Text(scale.isLarge ? rating.detail : rating.shortDetail)
                                 .font(scale.isLarge ? .subheadline : .caption)
                                 .foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2)
                                 .lineLimit(2)
