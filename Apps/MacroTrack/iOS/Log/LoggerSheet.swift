@@ -181,7 +181,7 @@ struct LoggerContent: View {
                     LoggerHeader(session: session, searchFocused: searchFocused, done: done)
                     method.frame(maxHeight: .infinity)
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+                .pinnedBar(.bottom) { bottom }
             }
         }
         .task(id: session.query) { await session.search(model) }
@@ -794,7 +794,7 @@ struct NutrientSummary: View {
 
     func macro(_ label: String, _ value: Double, _ macro: Macro) -> some View {
         VStack(alignment: .trailing, spacing: 3) {
-            Text(Format.grams(value)).numeral(17, weight: .bold).foregroundStyle(macro.color)
+            Text(Format.grams(value)).numeral(17, weight: .bold).foregroundStyle(Ink.words(macro.color))
             Text(label).font(.caption).foregroundStyle(Ink.text3)
         }
         .frame(minWidth: 52, alignment: .trailing)

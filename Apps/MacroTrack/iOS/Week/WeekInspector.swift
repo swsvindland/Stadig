@@ -41,7 +41,7 @@ struct WeekInspector: View {
             .padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)
-        .safeAreaInset(edge: .bottom, spacing: 0) { foot }
+        .pinnedBar(.bottom) { foot }
         .inkGround()
         .accessibilityIdentifier("week.inspector")
     }
@@ -327,7 +327,7 @@ private struct MealRow: View {
                 .background(Ink.raised, in: .rect(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 0) {
                 Text(meal.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(meal.isAhead ? Ink.text2 : Ink.text)
-                Text("\(Format.time(meal.start))\(Text(detail).foregroundStyle(from != nil ? Color.accentColor : Ink.text3))")
+                Text("\(Format.time(meal.start))\(Text(detail).foregroundStyle(from != nil ? Ink.words(.accentColor) : Ink.text3))")
                     .font(.caption)
                     .foregroundStyle(Ink.text3)
             }

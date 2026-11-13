@@ -31,7 +31,7 @@ struct HistoryView: View {
                 }
                 // The page's own header over the table, on the ground, as the other pages have it.
                 .scrollContentBackground(.hidden)
-                .safeAreaInset(edge: .top, spacing: 0) {
+                .pinnedBar(.top) {
                     WideHeader(eyebrow: eyebrow, title: "History")
                         .padding(.top, 8)
                 }
@@ -236,7 +236,7 @@ struct StatusCell: View {
     var body: some View {
         HStack(spacing: 4) {
             Label(row.status.label, systemImage: row.status.symbol)
-                .foregroundStyle(selected ? Color.primary : row.status.color)
+                .foregroundStyle(selected ? Color.primary : Ink.words(row.status.color))
                 .labelStyle(.titleAndIcon)
             if let mode = row.targets.mode.away { Text("· \(mode)").foregroundStyle(.secondary) }
         }

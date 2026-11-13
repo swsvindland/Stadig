@@ -72,7 +72,8 @@ struct MealEntryRow: View {
                 Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").font(.body.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Ink.text)
                 if let lead {
-                    Text("\(Format.whole(lead.grams)) \(lead.letter)").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(lead.color)
+                    Text("\(Format.whole(lead.grams)) \(lead.letter)").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(
+                        Ink.words(lead.color))
                 }
             }
         }

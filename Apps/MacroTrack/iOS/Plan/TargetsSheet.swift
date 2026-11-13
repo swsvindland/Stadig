@@ -144,7 +144,7 @@ struct TargetsSheet: View {
                     base = nil
                     draft = reference
                 }
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.words(.accentColor))
                 .accessibilityIdentifier("targets.startFromReference")
             }
         } header: {

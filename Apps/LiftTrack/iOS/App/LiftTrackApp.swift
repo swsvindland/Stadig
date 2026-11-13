@@ -120,8 +120,9 @@ struct LiftTrackApp: App {
         .commands { LiftCommands(model: model) }
         #if os(visionOS)
         // Room for a section's own sidebar beside the iPad's layout: at visionOS's 1280 the
-        // tables beside their inspectors clip.
-        .defaultSize(width: 1440, height: 900)
+        // tables beside their inspectors clip, and at 1440 a page of three columns (the meal plan,
+        // its groceries and prep) cut its rows short. The Vision boards' own size.
+        .defaultSize(width: 1600, height: 900)
         #endif
         #endif
     }

@@ -50,6 +50,7 @@ struct ProgressTab: View {
             .navigationTitle("Progress")
             .widePage(!compact)
             .hidesNavigationBar()
+            .windowTopRoom()
         }
     }
 

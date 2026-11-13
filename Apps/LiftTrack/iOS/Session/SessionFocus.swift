@@ -281,7 +281,7 @@ private struct OtherExerciseRow: View {
             }
             Spacer()
             if isCurrent {
-                Text("Now").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+                Text("Now").font(.caption.weight(.semibold)).foregroundStyle(Ink.words(.accentColor))
             } else if item.isDone, !item.skipped {
                 Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(Ink.good).accessibilityLabel("Done")
             }
@@ -417,7 +417,7 @@ struct SetListCard: View {
             }
             // What the last rating changed: under the set it changed, during the rest as after it.
             if isNow, let note = model.activeRest.flatMap({ _ in model.live?.message }) ?? set.note {
-                Text(note).font(.caption).foregroundStyle(.tint).padding(.leading, 42).fixedSize(horizontal: false, vertical: true)
+                Text(note).font(.caption).foregroundStyle(Ink.words(.accentColor)).padding(.leading, 42).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, 8)
@@ -504,10 +504,11 @@ struct Chip: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(accent ? Color.accentColor : Ink.text2)
+            .foregroundStyle(accent ? Ink.words(.accentColor) : Ink.text2)
             .padding(.horizontal, 10)
             .frame(minHeight: 26)
-            .background(accent ? Color.accentColor.opacity(0.16) : Ink.raised, in: .capsule)
+            // On glass the accent fills the chip under white words, as a `Pill` does there.
+            .background(accent ? Color.accentColor.opacity(Platform.isVision ? 0.7 : 0.16) : Ink.raised, in: .capsule)
             .lineLimit(1)
     }
 }

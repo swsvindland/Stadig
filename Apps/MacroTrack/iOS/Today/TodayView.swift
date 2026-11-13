@@ -446,7 +446,7 @@ struct EntryRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").font(.body.monospacedDigit())
-                Text("\(Format.grams(entry.nutrients.protein)) P").font(.caption.monospacedDigit()).foregroundStyle(Macro.protein.color)
+                Text("\(Format.grams(entry.nutrients.protein)) P").font(.caption.monospacedDigit()).foregroundStyle(Ink.words(Macro.protein.color))
             }
         }
         // Dimmed until its time: it's in the day's log, but it doesn't count yet.

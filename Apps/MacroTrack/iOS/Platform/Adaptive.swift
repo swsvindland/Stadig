@@ -308,11 +308,13 @@ extension View {
         isPresented: Binding<Bool>, min: CGFloat, ideal: CGFloat, max: CGFloat, @ViewBuilder content: () -> Content
     ) -> some View {
         #if os(visionOS)
+        // At its widest: the window has the room, and at the ideal width the logger's ways of
+        // logging ran into each other.
         return HStack(spacing: 0) {
             self
             if isPresented.wrappedValue {
                 Divider()
-                content().frame(width: ideal)
+                content().frame(width: max)
             }
         }
         #else
@@ -337,6 +339,16 @@ extension View {
         return self
         #else
         return hoverEffect()
+        #endif
+    }
+
+    /// The highlight under the eyes on Vision Pro alone, for something that's tapped rather than a
+    /// button (a week's day), which the iPad's pointer and the Mac's leave as they are.
+    func gazeHighlight() -> some View {
+        #if os(visionOS)
+        return hoverEffect(.highlight)
+        #else
+        return self
         #endif
     }
 
@@ -489,6 +501,35 @@ extension Platform {
 }
 
 extension View {
+    /// Room over a page that hides the navigation bar for a header of its own (`PageHeader`). The
+    /// iPad's status bar and tab bar give it that room; Vision Pro's window has neither, which put
+    /// the header and its round buttons in the glass's rounded corner.
+    func windowTopRoom() -> some View {
+        #if os(visionOS)
+        return safeAreaPadding(.top, 20)
+        #else
+        return self
+        #endif
+    }
+
+    /// A bar that stays put over a scrolling page: a header, or what sits at its foot. On iPhone,
+    /// iPad and the Mac the page scrolls on under it, out of sight behind the ground the bar is drawn
+    /// on. Vision Pro's glass has no ground to hide it, so the rows read through the bar's words:
+    /// there the page stops at the bar instead.
+    @ViewBuilder
+    func pinnedBar<Bar: View>(_ edge: VerticalEdge, spacing: CGFloat? = 0, @ViewBuilder bar: () -> Bar) -> some View {
+        let bar = bar()
+        #if os(visionOS)
+        VStack(spacing: 0) {
+            if edge == .top { bar }
+            self
+            if edge == .bottom { bar }
+        }
+        #else
+        safeAreaInset(edge: edge, spacing: spacing) { bar }
+        #endif
+    }
+
     /// A sheet's own bar and foot around what scrolls in it (`inkSheet`), in place of the system's
     /// navigation bar. On iPhone, iPad and Vision Pro what scrolls passes under them; on the Mac they
     /// sit above and below it, since a Mac form under an inset bar still started its first lines (the

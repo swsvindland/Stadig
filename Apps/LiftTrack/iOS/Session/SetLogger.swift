@@ -78,7 +78,7 @@ struct SetLogger: View {
                 if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
             }
             // The phone's set list says it under the set marked Now.
-            if let note = set.note, scale.isLarge { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(.tint) }
+            if let note = set.note, scale.isLarge { Text(note).font(.footnote.weight(.semibold)).foregroundStyle(Ink.words(.accentColor)) }
         }
     }
 
@@ -324,6 +324,9 @@ struct Stepperish: View {
                     Image(systemName: "minus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: height).contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                // Its width held outside the button too: Vision Pro's plain button gives way to the
+                // number beside it, leaving − and + half over the field's edges.
+                .frame(width: scale.stepButton)
                 .foregroundStyle(Ink.text2)
                 .buttonRepeatBehavior(.enabled)
                 .hoverHighlight()
@@ -353,6 +356,7 @@ struct Stepperish: View {
                     Image(systemName: "plus").font(.title3.weight(.medium)).frame(width: scale.stepButton, height: height).contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .frame(width: scale.stepButton)
                 .foregroundStyle(Ink.text2)
                 .buttonRepeatBehavior(.enabled)
                 .hoverHighlight()

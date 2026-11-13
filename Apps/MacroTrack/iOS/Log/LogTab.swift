@@ -93,6 +93,7 @@ struct LogTab: View {
             // The title, the day and its buttons are the page's own, over the day, as on a phone.
             // Outside the inspector, which would bring an empty bar back over the day.
             .hidesNavigationBar()
+            .windowTopRoom()
             .inkGround()
             // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
             .onChange(of: current == nil) { _, gone in if gone { editing = nil } }
@@ -162,7 +163,7 @@ struct LogTab: View {
         // The page's colour behind the rows too, or the header's a band of another shade.
         .scrollContentBackground(.hidden)
         .background(.pageBackground)
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .pinnedBar(.top) {
             VStack(alignment: .leading, spacing: 6) {
                 PageHeader(eyebrow: eyebrow, title: "Log") { wideButtons }
                     .padding(.horizontal, -4)
@@ -342,7 +343,7 @@ struct WeekStrip: View {
                 Text(Format.day(day, style: .dateTime.weekday(.narrow))).font(.caption2.weight(.semibold)).foregroundStyle(Ink.text3)
                 Text(Format.day(day, style: .dateTime.day()))
                     .font(.subheadline.weight(.bold).monospacedDigit())
-                    .foregroundStyle(selected ? Ink.text : day == model.today ? Color.accentColor : Ink.text2)
+                    .foregroundStyle(selected ? Ink.text : day == model.today ? Ink.words(.accentColor) : Ink.text2)
                 Circle()
                     .fill(logged ? Color.accentColor : .clear)
                     .frame(width: 8, height: 8)

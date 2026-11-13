@@ -52,7 +52,7 @@ struct FoodsView: View {
             }
             // The page's own header over the table, with what's shown beside the title.
             .scrollContentBackground(.hidden)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            .pinnedBar(.top) {
                 WideHeader(eyebrow: "Over 3 million foods, offline", title: "Foods") { scopePicker }
                     .padding(.top, 8)
             }
@@ -534,7 +534,7 @@ struct FoodInspector: View {
             if let unit { FoodEditor(food: food, count: amount.count, unit: unit) { amount.use($0) } }
         }
         .notesWork(editing)
-        .safeAreaInset(edge: .bottom) {
+        .pinnedBar(.bottom, spacing: nil) {
             VStack(spacing: 10) {
                 // The meal this food joins, with what's gone into it so far.
                 MealTray(date: eaten.date(model))

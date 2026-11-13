@@ -547,13 +547,15 @@ private struct DishTubs: View {
             HStack(alignment: .firstTextBaseline, spacing: 5 * scale) {
                 Text(Format.whole(n.kcal)).font(.system(size: 26 * scale, weight: .bold).monospacedDigit()).foregroundStyle(Ink.text)
                 Text("kcal").font(.system(size: 13 * scale, weight: .medium)).foregroundStyle(Ink.text3)
-                Text("\(Format.whole(n.protein)) g protein").font(.system(size: 13 * scale, weight: .semibold)).foregroundStyle(Ink.protein)
+                Text("\(Format.whole(n.protein)) g protein").font(.system(size: 13 * scale, weight: .semibold)).foregroundStyle(
+                    Ink.words(Ink.protein))
                 if Int(change.rounded()) != 0 {
                     Text(change > 0 ? "+\(Int(change.rounded()))" : "−\(Int(-change.rounded()))")
                         .font(.system(size: 12 * scale, weight: .bold).monospacedDigit())
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Ink.words(.accentColor))
                         .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.18), in: .capsule)
+                        // On glass the colour fills the chip under white words, as a `Pill` does there.
+                        .background(Color.accentColor.opacity(Platform.isVision ? 0.7 : 0.18), in: .capsule)
                 }
                 Text("each").font(.system(size: 13 * scale)).foregroundStyle(Ink.text3)
             }

@@ -218,7 +218,7 @@ private struct SwapList: View {
                 Button(showAll ? "Fewer" : "More options") { showAll.toggle() }
                     .font(.caption.weight(.semibold))
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
             }
             Text("The same movement first, from what your gym has; nothing an injury rules out or you've set aside.")
                 .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)

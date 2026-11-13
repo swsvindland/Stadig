@@ -79,6 +79,7 @@ private struct WeekPage: View {
         }
         // The title, the week and its buttons are the page's own, as on the Log tab.
         .hidesNavigationBar()
+        .windowTopRoom()
         .inkGround()
         .onAppear {
             focused = true

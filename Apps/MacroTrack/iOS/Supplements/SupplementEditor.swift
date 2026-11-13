@@ -349,7 +349,7 @@ private struct LineEditor: View {
             if let read {
                 if let note = note(read) { Text(note).font(.caption2).foregroundStyle(Ink.text3) }
             } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {
-                Text("Not something Stadig Macro tracks, so it won't be kept").font(.caption2).foregroundStyle(Ink.ok)
+                Text("Not something Stadig Macro tracks, so it won't be kept").font(.caption2).foregroundStyle(Ink.words(Ink.ok))
             }
         }
     }

@@ -53,7 +53,7 @@ struct FastRow: View {
                     Ruler(value: now.hours / max(1, status.fast.goalHours), height: 12)
                     VStack(alignment: .leading, spacing: 4) {
                         Label(now.phase.title, systemImage: now.phase.symbol).font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(Ink.words(.accentColor))
                         Text(now.phase.detail).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                             .lineLimit(4)
                         if !now.goalReached, let next = now.phase.next, let at = now.nextPhaseAt, at < status.fast.goalEnd.addingTimeInterval(1) {
@@ -155,10 +155,11 @@ struct GapBadge: View {
     var body: some View {
         Text("+\(Format.duration(gap.duration))")
             .font(.caption.weight(.semibold).monospacedDigit())
-            .foregroundStyle(gap.band.color)
+            .foregroundStyle(Ink.words(gap.band.color))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(gap.band.color.opacity(0.14), in: .capsule)
+            // On glass the colour fills the chip under white words, as a `Pill` does there.
+            .background(gap.band.color.opacity(Platform.isVision ? 0.7 : 0.14), in: .capsule)
             .accessibilityLabel("\(Format.duration(gap.duration)) after the meal before, \(gap.band.label)")
             .help(gap.band.label)
     }

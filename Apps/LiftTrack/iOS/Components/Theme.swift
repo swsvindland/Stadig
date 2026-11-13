@@ -96,7 +96,8 @@ extension View {
 }
 
 /// The three-tap rating. A dot in its colour, the word and how it felt: never colour alone. Just
-/// right, the answer most sets should get, is the filled accent button between the other two.
+/// right, the answer most sets should get, is the filled accent button between the other two (on
+/// Vision Pro's glass, a target like the others).
 struct RatingButtons: View {
     @Environment(\.sessionScale) private var scale
     @Environment(\.dynamicTypeSize) private var dynamicType
@@ -108,7 +109,9 @@ struct RatingButtons: View {
     var body: some View {
         HStack(spacing: 8) {
             ForEach(Array(SetRating.allCases.enumerated()), id: \.element) { index, rating in
-                let filled = rating == .orange
+                // Just right is the accent, as the design's phone and iPad have it. Vision Pro's board
+                // has the three targets as equal glass, each with its dot: the one looked at lights up.
+                let filled = rating == .orange && !Platform.isVision
                 Button {
                     action(rating)
                 } label: {
@@ -244,10 +247,11 @@ struct TrendChip: View {
             Text(trend.text.prefix(1).uppercased() + trend.text.dropFirst())
         }
         .font(.caption.weight(.semibold))
-        .foregroundStyle(trend.color)
+        .foregroundStyle(Ink.words(trend.color))
         .padding(.horizontal, 11)
         .frame(minHeight: 28)
-        .background(trend.color.opacity(0.14), in: .capsule)
+        // On glass the colour fills the chip under white words, as a `Pill` does there.
+        .background(trend.color.opacity(Platform.isVision ? 0.7 : 0.14), in: .capsule)
         .lineLimit(1)
         .fixedSize()
     }

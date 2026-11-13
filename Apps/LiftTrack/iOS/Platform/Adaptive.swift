@@ -316,6 +316,26 @@ extension View {
         return hoverEffect(.highlight)
         #endif
     }
+
+    /// The system's own glass for a menu that isn't the one action. Under the app's accent tint
+    /// Vision Pro fills a menu's button with the accent, as loud as Start; elsewhere it stays as it is.
+    func untintedOnGlass() -> some View {
+        #if os(visionOS)
+        return tint(nil as Color?)
+        #else
+        return self
+        #endif
+    }
+
+    /// The same highlight under the eyes on Vision Pro alone, for something that's tapped rather than
+    /// a button (a row of the program desk), which the iPad's pointer and the Mac's leave as they are.
+    func gazeHighlight() -> some View {
+        #if os(visionOS)
+        return hoverEffect(.highlight)
+        #else
+        return self
+        #endif
+    }
 }
 
 extension Platform {

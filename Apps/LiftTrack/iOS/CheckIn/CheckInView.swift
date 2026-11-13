@@ -75,7 +75,7 @@ struct CheckInView: View {
                                         ? "Pick what you managed (Can't counts) so the pain is recorded."
                                         : "Enter what you managed, even 0, so the pain is recorded."
                                 )
-                                .font(.caption).foregroundStyle(Ink.ok)
+                                .font(.caption).foregroundStyle(Ink.words(Ink.ok))
                             }
                         } header: {
                             Text(test.label).eyebrow()

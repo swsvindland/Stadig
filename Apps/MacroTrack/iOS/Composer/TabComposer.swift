@@ -36,10 +36,11 @@ private struct TabComposerFoot: ViewModifier {
             }
             .animation(.snappy(duration: 0.2), value: covers)
             // What a page's scroll view needs to rest clear of the field and its fade (`roomForComposer`).
-            .environment(\.composerRoom, isEnabled ? footHeight + Self.fade : 0)
+            // None on Vision Pro, where the page stops at the field (`pinnedBar`).
+            .environment(\.composerRoom, isEnabled && !Platform.isVision ? footHeight + Self.fade : 0)
             // Empty without room for it, rather than gone: the screen keeps its state when an iPad
             // window narrows or widens.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .pinnedBar(.bottom) {
                 if isEnabled {
                     TabComposer(tab: tab, composer: composer, typing: $typing, compact: sizeClass == .compact)
                         .onGeometryChange(for: CGFloat.self) {

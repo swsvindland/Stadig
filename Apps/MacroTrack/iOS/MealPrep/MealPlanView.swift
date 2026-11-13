@@ -262,7 +262,8 @@ struct MealPlanView: View {
         Section {
             ForEach(plan.days, id: \.self) { day in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(Format.day(day)).font(.subheadline.weight(.semibold)).foregroundStyle(day == model.today ? Color.accentColor : Ink.text)
+                    Text(Format.day(day)).font(.subheadline.weight(.semibold)).foregroundStyle(
+                        day == model.today ? Ink.words(.accentColor) : Ink.text)
                     ForEach(plan.meals(on: day)) { meal in
                         HStack(spacing: 6) {
                             Image(systemName: meal.slot.symbol).foregroundStyle(Ink.text3).frame(width: 18)
@@ -386,7 +387,7 @@ private struct DishRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(recipe.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
                 Text(
-                    "\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.protein)) a portion\(recipe.madeOnTheDay ? " · made on the day" : "")"
+                    "\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.words(Ink.protein))) a portion\(recipe.madeOnTheDay ? " · made on the day" : "")"
                 )
                 .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
