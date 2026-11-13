@@ -330,6 +330,7 @@ struct OnboardingView: View {
                         ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                     }
                     .labelsHidden()
+                    .valueTint()
                 }
                 BirthYearField(year: $profile.birthYear, placeholder: "1990")
                 MeasureField(label: "Height", value: $profile.heightCm, unit: profile.units.length)

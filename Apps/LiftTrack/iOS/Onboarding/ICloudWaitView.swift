@@ -12,44 +12,65 @@ struct ICloudWaitView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Scrolls only when it must (the largest text sizes), and sits in the middle otherwise.
+            // Scrolls only when it must (the largest text sizes).
             ScrollView {
                 if shown || arrival.phase == .arriving {
-                    VStack(spacing: 18) {
+                    VStack(alignment: .leading, spacing: 18) {
                         Image(systemName: "icloud.and.arrow.down")
-                            .font(.system(size: 52))
+                            .font(.system(size: 44))
                             .foregroundStyle(.tint)
                             .accessibilityHidden(true)
-                        Text(arrival.phase == .arriving ? "Bringing your training from iCloud" : "Looking for your training in iCloud")
-                            .font(.title2.bold())
-                            .multilineTextAlignment(.center)
+                        VStack(alignment: .leading, spacing: 8) {
+                            PageTitle(
+                                arrival.phase == .arriving ? "Bringing your training from iCloud" : "Looking for your training in iCloud", size: 36
+                            )
                             .accessibilityIdentifier("icloud.waiting")
-                        if arrival.phase == .arriving {
-                            Text("Your program and history are on their way. The first time can take a minute.")
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(.secondary)
+                            Text(
+                                arrival.phase == .arriving
+                                    ? "Your program and history are on their way. The first time can take a minute."
+                                    : "Set up on another device? What you've trained comes here rather than starting again."
+                            )
+                            .font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                         }
-                        ProgressView()
+                        RowCard {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Program, sessions and settings").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                                    Text(arrival.phase == .arriving ? "On their way" : "Asking iCloud").font(.caption).foregroundStyle(Ink.text3)
+                                }
+                                Spacer(minLength: 8)
+                                ProgressView().controlSize(.small).tint(Ink.text3)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
                         if let problem = arrival.problem {
                             Label(problem, systemImage: "exclamationmark.icloud")
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Ink.text2)
+                                .padding(.horizontal, 4)
                                 .accessibilityIdentifier("icloud.problem")
                         }
                     }
-                    .padding(24)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 56)
                     .readableWidth(560)
                 }
             }
-            .defaultScrollAnchor(.center, for: .alignment)
             .scrollBounceBehavior(.basedOnSize)
             // From the moment anything shows: iCloud can take its full 10 seconds to answer.
             if shown || arrival.phase == .arriving {
-                Button("Set up as new") { arrival.setUpAsNew() }
-                    .secondaryAction()
-                    .accessibilityHint("Starts setup on this device without waiting")
-                    .accessibilityIdentifier("icloud.setUpAsNew")
-                    .padding(24)
+                Button {
+                    arrival.setUpAsNew()
+                } label: {
+                    Text("Set up as new").frame(maxWidth: .infinity)
+                }
+                .secondaryAction()
+                .controlSize(.large)
+                .accessibilityHint("Starts setup on this device without waiting")
+                .accessibilityIdentifier("icloud.setUpAsNew")
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .readableWidth(560)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

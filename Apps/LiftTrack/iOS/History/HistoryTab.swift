@@ -35,6 +35,8 @@ struct HistoryTable: View {
     @State private var tableWidth: CGFloat = 0
     /// Rows waiting on "Delete?": a key press or several at once is easy to make by accident.
     @State private var confirming: [HistoryRow] = []
+    /// The search field has the keyboard: ⌘F gives it it.
+    @FocusState private var searching: Bool
 
     private struct Key: Equatable {
         var rows: [HistoryRow]
@@ -47,6 +49,7 @@ struct HistoryTable: View {
             VStack(alignment: .leading, spacing: 10) {
                 PageHeader(eyebrow: "\(model.sessions.count) sessions · \(model.activities.count) activities", title: "History")
                 InkSearchField(text: $query, prompt: "Sessions, exercises, activities", identifier: "history.search")
+                    .focused($searching)
                     .frame(maxWidth: 420)
             }
             .padding(.horizontal, 16)
@@ -89,6 +92,11 @@ struct HistoryTable: View {
             .accessibilityIdentifier("history.confirmDelete")
         } message: {
             Text("Sessions leave Apple Health too. This can't be undone.")
+        }
+        .onChange(of: model.searchRequested, initial: true) { _, requested in
+            guard requested, model.tab == .history else { return }
+            searching = true
+            model.searchRequested = false
         }
         .task(id: Key(rows: model.historyRows, sortOrder: sortOrder, query: query)) {
             rows = model.historyRows.filter { query.isEmpty || $0.matches(query) }.sorted(using: sortOrder)
@@ -214,40 +222,63 @@ private struct HistoryInspector: View {
     }
 }
 
-/// An outside activity's details.
+/// An outside activity's details, as a session's are in the inspector: when and what, its minutes
+/// and effort large, and the rest as rows.
 struct ActivityDetail: View {
     let log: ActivityLog
 
     var body: some View {
-        Form {
+        List {
             Section {
-                Label(log.type.label, systemImage: log.type.symbol).font(.title3.bold())
-                LabeledContent("When", value: log.start.formatted(date: .abbreviated, time: .shortened))
-                LabeledContent("Minutes", value: "\(log.minutes)")
-                LabeledContent("Effort", value: "\(log.intensity) of 10")
-                if let hr = log.averageHeartRate { LabeledContent("Average heart rate", value: "\(Int(hr)) bpm") }
-                if let distance = log.distanceMeters { LabeledContent("Distance", value: "\(Format.number(distance / 1000, digits: 2)) km") }
-                LabeledContent("From", value: source)
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(log.start.formatted(date: .abbreviated, time: .shortened)).eyebrow()
+                        Label(log.type.label, systemImage: log.type.symbol).font(.title3.bold()).foregroundStyle(Ink.text)
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: 28) {
+                        figure(Measure(value: "\(log.minutes)", unit: "min", size: 44, weight: .heavy), "minutes")
+                        figure(Measure(value: "\(log.intensity)", unit: "of 10", size: 44, weight: .heavy), "effort")
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+            Section {
+                if let hr = log.averageHeartRate { ValueRow(title: "Average heart rate", value: "\(Int(hr)) bpm") }
+                if let distance = log.distanceMeters { ValueRow(title: "Distance", value: "\(Format.number(distance / 1000, digits: 2)) km") }
+                ValueRow(title: "From", value: source)
+            } header: {
+                Text("Details").eyebrow()
             }
             if let martial = log.martialArts {
                 Section {
-                    LabeledContent("Type", value: martial.classType.label)
-                    LabeledContent("Sparring rounds", value: "\(martial.sparringRounds)")
-                    if let gassed = martial.roundsBeforeGassed { LabeledContent("Gassed after", value: "Round \(gassed)") }
+                    ValueRow(title: "Type", value: martial.classType.label)
+                    ValueRow(title: "Sparring rounds", value: "\(martial.sparringRounds)")
+                    if let gassed = martial.roundsBeforeGassed { ValueRow(title: "Gassed after", value: "Round \(gassed)") }
                 } header: {
                     Text("Class").eyebrow()
                 }
             }
             if !log.note.isEmpty {
                 Section {
-                    Text(log.note)
+                    Text(log.note).font(.subheadline).foregroundStyle(Ink.text)
                 } header: {
                     Text("Note").eyebrow()
                 }
             }
         }
+        .inkRows()
         .inkList()
-        .formStyle(.grouped)
+    }
+
+    /// A number with what it counts under it, as a session's are.
+    private func figure(_ value: some View, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            value
+            Text(label).font(.caption).foregroundStyle(Ink.text3)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private var source: String {

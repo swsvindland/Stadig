@@ -230,6 +230,21 @@ struct DesktopTests {
         #expect(model.tab == .library && model.libraryFocus == "barbell-bench-press")
     }
 
+    @Test("⌘F searches History where History shows, and Library from anywhere else")
+    func searchGoesWhereItCan() {
+        let model = TestApp().onboarded()
+        model.tab = .history
+        model.search()
+        #expect(model.tab == .history && model.searchRequested)
+        model.searchRequested = false
+        for tab in [AppTab.today, .plan, .program, .library, .progress, .body] {
+            model.tab = tab
+            model.search()
+            #expect(model.tab == .library && model.searchRequested, "from \(tab)")
+            model.searchRequested = false
+        }
+    }
+
     @Test("Without a sidebar, its destinations show the tab that reaches them, as on the iPhone")
     func tabBarFallbacks() {
         #expect(AppTab.program.tabBarFallback == .plan)

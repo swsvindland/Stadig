@@ -14,6 +14,10 @@ struct PlanView: View {
     @State private var focused: String?
     /// The phone's Focus, opened from the header's menu.
     @State private var showFocus = false
+    #if DEBUG
+    /// `-planPage why|days|day|swap`: a page of Plan opened at launch.
+    @State private var debugPage: String?
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -51,7 +55,9 @@ struct PlanView: View {
             // `-lifeMode vacation|crunch|injury|illness` opens that life mode's editor, as the menu's Add does.
             .onAppear {
                 if let kind = LaunchOptions.current.value(after: "-lifeMode") { lifeMode = LifeModeKindChoice(rawValue: kind) }
+                debugPage = LaunchOptions.current.value(after: "-planPage")
             }
+            .navigationDestination(item: $debugPage) { page in debugDestination(page) }
             #endif
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .sessionResumeToolbar()
@@ -95,6 +101,22 @@ struct PlanView: View {
         }
         .padding(.top, -16)
     }
+
+    #if DEBUG
+    /// Why this plan?, the block's days, or the next day in full (`swap` opens its first lift's swap too).
+    @ViewBuilder
+    private func debugDestination(_ page: String) -> some View {
+        if let analysis = model.analysis, let mesocycle = analysis.mesocycle, let block = analysis.block, !mesocycle.days.isEmpty {
+            switch page {
+            case "why": BlockWhyPage(mesocycle: mesocycle, block: block)
+            case "days": BlockDaysPage(mesocycle: mesocycle, nextIndex: analysis.next?.dayIndex)
+            default:
+                let index = min(analysis.next?.dayIndex ?? 0, mesocycle.days.count - 1)
+                DayDetail(route: DayRoute(mesocycleID: mesocycle.id, dayID: mesocycle.days[index].id))
+            }
+        }
+    }
+    #endif
 
     /// The header's menu: what changes the plan from outside it (life, focus, the next block) and Settings.
     @ViewBuilder
@@ -458,78 +480,135 @@ struct DayCard: View {
     }
 }
 
-/// A day in full: every block, every slot and why it's there, with swaps for the rest of the block.
+/// A day in full, as the family's pages are: its name large, each part of the session a card of
+/// rows under its eyebrow, every slot with its sets each week and why it's there. A row opens the
+/// exercise; a lift's round button swaps it for the rest of the block.
 struct DayDetail: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     let route: DayRoute
     @State private var swapping: SlotPlan?
-    /// An exercise shown in place, in a narrow window, which has no Library to send it to.
+    /// An exercise opened from its row.
     @State private var shownExercise: String?
 
     var body: some View {
         if let mesocycle = model.mesocycles.first(where: { $0.id == route.mesocycleID }),
             let day = mesocycle.days.first(where: { $0.id == route.dayID })
         {
-            List {
-                ForEach(day.blocks) { block in
-                    Section {
-                        ForEach(block.slots) { slot in
-                            let exercise = model.catalog.resolve(slot.exerciseID)
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(exercise.name).font(.body.weight(.medium))
-                                    Spacer()
-                                    if let c = slot.conditioning {
-                                        Text(c.summary).font(.subheadline).foregroundStyle(.secondary)
-                                    } else if slot.role == .main || slot.role == .accessory {
-                                        Text("\(slot.sets.map(String.init).joined(separator: "/")) × \(slot.repRange.label)")
-                                            .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
-                                    } else if let s = slot.seconds {
-                                        Text(Format.duration(s)).font(.subheadline).foregroundStyle(.secondary)
-                                    }
-                                }
-                                if slot.role == .main || slot.role == .accessory {
-                                    Text("Rest \(Format.duration(slot.restSeconds)) · \(exercise.safetyTier.label.lowercased())")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                if let reason = slot.reason { Text(reason).font(.caption).foregroundStyle(.tint) }
-                                if let filler = slot.restFiller { Text("In the rests: \(model.catalog.resolve(filler).name)").font(.caption) }
-                            }
-                            .swipeActions {
-                                if slot.role == .main || slot.role == .accessory {
-                                    Button("Swap") { swapping = slot }.tint(.accentColor)
-                                }
-                            }
-                            .contextMenu { menu(slot) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !sizeClass.isWide {
+                        DetailHeader(eyebrow: "Plan · \(day.minutes) min · \(day.strengthSlots.count) lifts", title: day.name)
+                    }
+                    ForEach(day.blocks) { block in
+                        RowCard(title: block.kind.label, detail: "\(block.minutes) min", minHeight: 48) {
+                            ForEach(block.slots) { slot in row(slot) }
                         }
-                    } header: {
-                        Label("\(block.kind.label) · \(block.minutes) min", systemImage: block.kind.symbol)
                     }
-                }
-                if !day.overflow.isEmpty {
-                    Section {
-                        ForEach(day.overflow, id: \.title) { Text($0.title) }
-                    } header: {
-                        Text("Didn't fit, offered as quests").eyebrow()
+                    if !day.overflow.isEmpty {
+                        RowCard(title: "Didn't fit, offered as quests", minHeight: 44) {
+                            ForEach(day.overflow, id: \.title) { item in
+                                Text(item.title).font(.subheadline).foregroundStyle(Ink.text2)
+                            }
+                        }
                     }
+                    Text("Sets change week to week through the block. A lift's round button swaps it for the rest of the block.")
+                        .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
                 }
-                Section {
-                    Text(
-                        Platform.isPhoneOrPad
-                            ? "Sets listed per week of the block. Swipe an exercise, or touch and hold it, to swap it for the rest of the block."
-                            : "Sets listed per week of the block. Control-click an exercise to swap it for the rest of the block."
-                    )
-                    .font(.footnote).foregroundStyle(.secondary)
-                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+                .readableWidth()
             }
-            .inkList()
-            .navigationTitle(day.name)
+            .background(.pageBackground)
+            .detailPage(title: day.name, wide: sizeClass.isWide)
             .navigationDestination(item: $shownExercise) { id in PushedExerciseDetail(exerciseID: id) }
             .sheet(item: $swapping) { slot in
                 ProgramSwapSheet(mesocycle: mesocycle, dayID: day.id, slot: slot)
             }
+            #if DEBUG
+            // `-planPage swap` opens the swap of the day's first lift, as its round button does.
+            .onAppear {
+                if LaunchOptions.current.value(after: "-planPage") == "swap" { swapping = day.strengthSlots.first }
+            }
+            #endif
         }
+    }
+
+    /// A slot: the exercise and what's asked of it, its sets each week at the right, and for a lift
+    /// the round swap button.
+    private func row(_ slot: SlotPlan) -> some View {
+        let exercise = model.catalog.resolve(slot.exerciseID)
+        let strength = slot.role == .main || slot.role == .accessory
+        return HStack(spacing: 10) {
+            Button {
+                shownExercise = slot.exerciseID
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exercise.name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                        if strength {
+                            Text(strengthLine(slot, exercise: exercise)).font(.caption).foregroundStyle(Ink.text3)
+                        }
+                        if let reason = slot.reason {
+                            Text(reason).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let filler = slot.restFiller {
+                            Text("In the rests: \(model.catalog.resolve(filler).name)").font(.caption).foregroundStyle(Ink.text3)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if let amount = amount(slot) {
+                        Text(amount).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text2)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            .accessibilityIdentifier("day.slot")
+            if strength {
+                Button {
+                    swapping = slot
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Ink.text2)
+                        .frame(width: 34, height: 34)
+                        .background(ControlFill.track, in: .circle)
+                        // A fingertip's room round the smaller disc.
+                        .frame(width: 44, height: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .hoverHighlight()
+                .help("Swap it for the rest of the block")
+                .accessibilityLabel("Swap \(exercise.name) for the rest of the block")
+                .accessibilityIdentifier("day.swap")
+            }
+        }
+        .contextMenu { menu(slot) }
+    }
+
+    /// "3 × 5–8" for a lift ("3–4 × 5–8" when the weeks differ), the conditioning's own summary, or
+    /// a timed slot's length.
+    private func amount(_ slot: SlotPlan) -> String? {
+        if let c = slot.conditioning { return c.summary }
+        if slot.role == .main || slot.role == .accessory {
+            let low = slot.sets.min() ?? slot.sets(week: 0)
+            let high = slot.sets.max() ?? low
+            return "\(low == high ? "\(low)" : "\(low)–\(high)") × \(slot.repRange.label)"
+        }
+        return slot.seconds.map(Format.duration)
+    }
+
+    /// "Sets 3/3/4/2 · rest 2:30 · fail with setup": the sets in each week of the block, when they
+    /// change, then the rest and how hard it can be pushed.
+    private func strengthLine(_ slot: SlotPlan, exercise: Exercise) -> String {
+        let weeks = Set(slot.sets).count > 1 ? "Sets \(slot.sets.map(String.init).joined(separator: "/")) · " : ""
+        let rest = "rest \(Format.duration(slot.restSeconds)) · \(exercise.safetyTier.label.lowercased())"
+        return weeks.isEmpty ? rest.prefix(1).uppercased() + rest.dropFirst() : weeks + rest
     }
 
     @ViewBuilder
@@ -537,11 +616,8 @@ struct DayDetail: View {
         if slot.role == .main || slot.role == .accessory {
             Button("Swap for the Rest of the Block…", systemImage: "arrow.triangle.2.circlepath") { swapping = slot }
         }
-        // There's no Library in a narrow window: the exercise opens here instead.
         if sizeClass.isWide {
             Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: slot.exerciseID) }
-        } else {
-            Button("Show Exercise", systemImage: "info.circle") { shownExercise = slot.exerciseID }
         }
     }
 }

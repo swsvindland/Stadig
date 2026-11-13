@@ -194,17 +194,23 @@ struct LifeModeEditor: View {
         let binding = Binding<CrunchDials>(get: { dials }, set: { period.kind = .crunch($0) })
         return Group {
             Section {
-                Picker("Free per session", selection: binding.minutesAvailable) {
-                    Text("Nothing").tag(0)
-                    ForEach([15, 20, 30, 45], id: \.self) { Text("\($0) min").tag($0) }
-                }
+                InkSegmented(
+                    options: [(value: 0, label: "None")] + [15, 20, 30, 45].map { (value: $0, label: "\($0) min") },
+                    selection: binding.minutesAvailable
+                )
+                .accessibilityLabel("Free per session")
             } header: {
-                Text("Time").eyebrow()
+                Text("Free per session").eyebrow()
             }
             Section {
-                Picker("Equipment", selection: binding.equipment) {
-                    ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(EquipmentAccess.allCases) { access in
+                        ChoiceChip(
+                            title: access.label, isOn: dials.equipment == access, identifier: "lifeMode.equipment\(access.rawValue.identifierSuffix)"
+                        ) { binding.wrappedValue.equipment = access }
+                    }
                 }
+                .padding(.vertical, 4)
             } header: {
                 Text("Equipment").eyebrow()
             }
@@ -232,35 +238,39 @@ struct LifeModeEditor: View {
         let excluded = model.catalog.of(kind: .strength).filter { injury.excludes($0) }
         return Group {
             Section {
-                ForEach(Joint.allCases) { joint in
-                    let part = injury.parts.first { $0.joint == joint }
-                    HStack {
-                        Toggle(
-                            joint.label,
-                            isOn: Binding(
-                                get: { part != nil },
-                                set: { on in
-                                    var i = injury
-                                    if on { i.parts.append(InjuredPart(joint)) } else { i.parts.removeAll { $0.joint == joint } }
-                                    binding.wrappedValue = i
-                                }))
+                // The joints as How was it? asks after a session: chips, the ones that hurt filled.
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+                    ForEach(Joint.allCases) { joint in
+                        let on = injury.parts.contains { $0.joint == joint }
+                        ChoiceChip(title: joint.label, isOn: on, identifier: "lifeMode.joint\(joint.rawValue.identifierSuffix)") {
+                            var i = injury
+                            if on { i.parts.removeAll { $0.joint == joint } } else { i.parts.append(InjuredPart(joint)) }
+                            binding.wrappedValue = i
+                        }
                     }
-                    if let part, joint.isPaired {
+                }
+                .padding(.vertical, 4)
+                // Which side, for each paired joint picked.
+                ForEach(injury.parts.filter(\.joint.isPaired), id: \.joint) { part in
+                    HStack(spacing: 12) {
+                        Text(part.joint.label)
+                        Spacer(minLength: 8)
                         InkSegmented(
                             options: BodySide.allCases.map { (value: $0, label: $0.label) },
                             selection: Binding(
                                 get: { part.side },
                                 set: { side in
                                     var i = injury
-                                    if let index = i.parts.firstIndex(where: { $0.joint == joint }) { i.parts[index].side = side }
+                                    if let index = i.parts.firstIndex(where: { $0.joint == part.joint }) { i.parts[index].side = side }
                                     binding.wrappedValue = i
                                 })
                         )
-                        .accessibilityLabel("\(joint.label) side")
+                        .frame(maxWidth: 220)
+                        .accessibilityLabel("\(part.joint.label) side")
                     }
                 }
             } header: {
-                Text("Where").eyebrow()
+                Text("Where it hurts").eyebrow()
             }
             Section {
                 InkSegmented(options: InjurySeverity.allCases.map { (value: $0, label: $0.label) }, selection: binding.severity)

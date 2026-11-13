@@ -19,6 +19,10 @@ struct BodyView: View {
     @State private var importFailed = false
     /// The phone's progress photos, opened from the header's camera.
     @State private var showPhotos = false
+    #if DEBUG
+    /// `-proportions`: Proportions opened at launch, as its row does.
+    @State private var showProportions = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -37,7 +41,13 @@ struct BodyView: View {
             .navigationDestination(isPresented: $showPhotos) { photosPage }
             #if DEBUG
             // `-photos` opens the phone's progress photos, as the header's camera does.
-            .onAppear { if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true } }
+            .onAppear {
+                if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true }
+                if LaunchOptions.current.has("-proportions") { showProportions = true }
+            }
+            .navigationDestination(isPresented: $showProportions) {
+                if let physique = model.analysis?.physique { proportionsPage(physique) }
+            }
             #endif
             .navigationTitle("Body")
             .ownHeader()
@@ -278,7 +288,27 @@ struct BodyView: View {
             .readableWidth(sizeClass.isWide ? 1100 : 720)
         }
         .background(.pageBackground)
+        .safeAreaInset(edge: .bottom) {
+            if !sizeClass.isWide { addPhoto }
+        }
         .detailPage(title: "Progress photos", wide: sizeClass.isWide)
+    }
+
+    /// The phone's one action on its photos, at the foot as Body's Add check-in is: a photo of the
+    /// pose shown.
+    private var addPhoto: some View {
+        let title = "Add a \(pose.rawValue) photo"
+        return PhotosPicker(selection: $pickerItem, matching: .images) {
+            Label(title, systemImage: "plus").frame(maxWidth: .infinity)
+        }
+        .primaryAction()
+        .controlSize(.large)
+        .shadow(color: .black.opacity(0.3), radius: 15, y: 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .readableWidth()
+        .accessibilityLabel("Add a progress photo")
+        .accessibilityIdentifier("body.addPhoto")
     }
 
     /// Physique's score on a ruler, and waist to height against the healthy line.
@@ -335,11 +365,8 @@ struct BodyView: View {
         let length = model.units.length
         let sex = model.profile?.sex ?? .unspecified
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Proportions").font(.headline)
-                Spacer()
-                Text(p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets").font(.caption).foregroundStyle(Ink.text2)
-            }
+            // Under the page's own title: the card says what's in it, not the page's name again.
+            SectionEyebrow("Ratios", detail: p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets")
             if p.latest == nil {
                 Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -398,7 +425,7 @@ struct BodyView: View {
         if !limbs.isEmpty {
             let length = model.units.length
             VStack(alignment: .leading, spacing: 10) {
-                Text("Left and right").font(.headline)
+                SectionEyebrow("Left and right")
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
                     GridRow {
                         Text("")
@@ -440,7 +467,7 @@ struct BodyView: View {
 
     private func gaps(_ p: PhysiqueAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("What the program does about it").font(.headline)
+            SectionEyebrow("What the program does about it")
             ForEach(p.gaps) { gap in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(gap.region.label).font(.subheadline.weight(.semibold))
@@ -535,48 +562,62 @@ struct BodyView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// The phone's photos: the pose to show, the first and the latest of it side by side, and every
+    /// one of it in a strip. For the person's own comparison; nothing reads them.
     private var photos: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Progress photos").font(.headline)
-                Spacer()
-                Picker("Pose", selection: $pose) {
-                    ForEach(ProgressPhoto.Pose.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
-                }
-                .pickerStyle(.menu)
-                PhotosPicker(selection: $pickerItem, matching: .images) { Image(systemName: "plus.circle.fill").font(.title3) }
-                    .accessibilityLabel("Add a progress photo")
-            }
-            let shown = model.photos.filter { $0.pose == pose }
+        let shown = model.photos.filter { $0.pose == pose }
+        return VStack(alignment: .leading, spacing: 12) {
+            InkSegmented(options: ProgressPhoto.Pose.allCases.map { (value: $0, label: $0.rawValue.capitalized) }, selection: $pose)
+                .accessibilityLabel("Pose")
             if shown.isEmpty {
-                Text("For your own comparison only. Photos are never analysed or used as a measure.").font(.subheadline).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("No \(pose.rawValue) photos yet").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text(
+                        "Same light, same spot, same time of day, once a block. They're for your own comparison: never analysed or used as a measure."
+                    )
+                    .font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                }
+                .card()
             } else {
                 if let first = shown.first, let last = shown.last, first.id != last.id {
-                    HStack(spacing: 8) {
-                        photo(first, maxPixel: 720)
-                        photo(last, maxPixel: 720)
+                    HStack(alignment: .top, spacing: 8) {
+                        photo(first, title: "First", maxPixel: 720)
+                        photo(last, title: "Latest", maxPixel: 720)
                     }
+                    .card(padding: 12)
                 }
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 8) {
-                        ForEach(shown) { p in
-                            photo(p, maxPixel: 360).frame(width: 90, height: 120)
-                                .contextMenu { Button("Delete", role: .destructive) { model.delete(photo: p.id) } }
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionEyebrow("Every \(pose.rawValue) photo", detail: "\(shown.count)")
+                        .padding(.horizontal, 4)
+                    ScrollView(.horizontal) {
+                        LazyHStack(spacing: 8) {
+                            ForEach(shown.reversed()) { p in
+                                photo(p, title: nil, maxPixel: 360).frame(width: 90)
+                                    .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(photo: p.id) } }
+                            }
                         }
                     }
+                    .scrollIndicators(.hidden)
+                    .scrollClipDisabled()
                 }
+                Text("Touch and hold a photo to delete it. They're never analysed or used as a measure.")
+                    .font(.caption).foregroundStyle(Ink.text3).padding(.horizontal, 4)
             }
         }
-        .card()
     }
 
-    private func photo(_ p: ProgressPhoto, maxPixel: Int) -> some View {
-        VStack(spacing: 4) {
+    /// A photo with its day under it, and what it is ("First", "Latest") over the day when it says.
+    private func photo(_ p: ProgressPhoto, title: String?, maxPixel: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             ProgressPhotoImage(photo: p, maxPixel: maxPixel)
                 .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 240).clipped()
-                .clipShape(.rect(cornerRadius: 12))
+                .clipShape(.rect(cornerRadius: 12, style: .continuous))
                 .accessibilityLabel("Progress photo, \(Format.day(p.day))")
-            Text(Format.day(p.day, style: .dateTime.month(.abbreviated).day().year())).font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                if let title { Text(title).eyebrow() }
+                Text(Format.day(p.day, style: .dateTime.month(.abbreviated).day().year())).font(.caption2).foregroundStyle(Ink.text3)
+            }
+            .lineLimit(1)
         }
     }
 
@@ -659,22 +700,22 @@ private struct PhotoComparison: View {
         let left = shown.first { $0.id == before } ?? shown.first
         let right = shown.first { $0.id == after } ?? shown.last
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Progress photos").font(.headline)
+            HStack(spacing: 10) {
+                CardTitle("Progress photos")
                 Spacer()
-                Picker("Pose", selection: $pose) {
-                    ForEach(ProgressPhoto.Pose.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .fixedSize()
+                InkSegmented(options: ProgressPhoto.Pose.allCases.map { (value: $0, label: $0.rawValue.capitalized) }, selection: $pose)
+                    .frame(width: 240)
+                    .accessibilityLabel("Pose")
                 PhotosPicker(selection: $pickerItem, matching: .images) { Label("Add Photo", systemImage: "plus") }
+                    .secondaryAction()
+                    .controlSize(.small)
                     .accessibilityIdentifier("body.addPhoto")
             }
             if shown.isEmpty {
                 Text(
                     "For your own comparison only. Photos are never analysed or used as a measure. Add one, or drop an image here\(Platform.isMac ? "; File ▸ Import from iPhone takes one with your phone" : "")."
                 )
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Ink.text2)
             } else {
                 HStack(alignment: .top, spacing: 12) {
                     if let left { side(left, selection: $before, in: shown, title: "Before") }
@@ -720,6 +761,7 @@ private struct PhotoComparison: View {
                 ForEach(shown) { Text(Format.day($0.day, style: .dateTime.month(.abbreviated).day().year())).tag($0.id) }
             }
             .pickerStyle(.menu)
+            .valueTint()
             ProgressPhotoImage(photo: photo, maxPixel: 1400)
                 .frame(maxWidth: .infinity).frame(height: 440).clipped()
                 .clipShape(.rect(cornerRadius: 14))

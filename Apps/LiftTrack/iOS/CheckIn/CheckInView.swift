@@ -48,6 +48,7 @@ struct CheckInView: View {
                                     Text("—").tag(-1)
                                     ForEach(0..<4) { Text(MobilityTest.qualityLabels[$0]).tag($0) }
                                 }
+                                .valueTint()
                             case .seconds, .centimetres:
                                 HStack {
                                     Text(test.measure == .seconds ? "Held" : "Distance")
@@ -84,14 +85,15 @@ struct CheckInView: View {
                         Picker("Test", selection: $benchmark) {
                             ForEach(EnduranceBenchmark.allCases) { Text($0.label).tag($0) }
                         }
+                        .valueTint()
                         Text(benchmark.instructions).font(.caption).foregroundStyle(.secondary)
                         switch benchmark.measure {
                         case .timeSeconds:
                             HStack {
                                 Text("Time")
                                 Spacer()
-                                Picker("Minutes", selection: $minutes) { ForEach(3..<30) { Text("\($0) min").tag($0) } }.labelsHidden()
-                                Picker("Seconds", selection: $seconds) { ForEach(0..<60) { Text("\($0) s").tag($0) } }.labelsHidden()
+                                Picker("Minutes", selection: $minutes) { ForEach(3..<30) { Text("\($0) min").tag($0) } }.labelsHidden().valueTint()
+                                Picker("Seconds", selection: $seconds) { ForEach(0..<60) { Text("\($0) s").tag($0) } }.labelsHidden().valueTint()
                             }
                         case .distanceMeters, .floors:
                             HStack {

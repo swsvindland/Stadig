@@ -555,60 +555,80 @@ struct HistoryView: View {
 
     var body: some View {
         let entries = (model.sessions.map(Entry.session) + model.activities.map(Entry.activity)).sorted { $0.date > $1.date }
+        // Month by month, newest first, as the sessions came.
+        let months = Dictionary(grouping: entries) { Calendar.current.dateInterval(of: .month, for: $0.date)?.start ?? $0.date }
+            .sorted { $0.key > $1.key }
         List {
-            if !sizeClass.isWide { FormHeading(eyebrow: "Progress", title: "History") }
-            Section {
-                ForEach(entries) { entry in
-                    switch entry {
-                    case .session(let session):
-                        NavigationLink {
-                            SessionDetail(record: session)
-                        } label: {
-                            row(
-                                symbol: "dumbbell", title: session.title,
-                                caption:
-                                    "\(Self.when(session.start)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
-                            )
-                        }
-                        .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
-                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
-                        .accessibilityIdentifier("history.session")
-                    case .activity(let log):
-                        row(
-                            symbol: log.type.symbol, title: log.type.label,
-                            caption: "\(Self.when(log.start)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
-                        )
-                        .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
-                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
-                        .accessibilityIdentifier("history.activity")
-                    }
-                }
-            } header: {
-                if !entries.isEmpty { Text("\(model.sessions.count) sessions · \(model.activities.count) activities").eyebrow() }
+            if !sizeClass.isWide {
+                FormHeading(
+                    eyebrow: "Progress", title: "History",
+                    detail: entries.isEmpty ? nil : "\(model.sessions.count) sessions · \(model.activities.count) activities")
             }
-            .inkRows()
+            ForEach(months, id: \.key) { month, entries in
+                Section {
+                    ForEach(entries) { entry in
+                        switch entry {
+                        case .session(let session):
+                            NavigationLink {
+                                SessionDetail(record: session)
+                            } label: {
+                                row(
+                                    date: session.start, symbol: "dumbbell", title: session.title,
+                                    caption:
+                                        "\(Self.time(session.start)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
+                                )
+                            }
+                            .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
+                            .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
+                            .accessibilityIdentifier("history.session")
+                        case .activity(let log):
+                            row(
+                                date: log.start, symbol: log.type.symbol, title: log.type.label,
+                                caption: "\(Self.time(log.start)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
+                            )
+                            .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
+                            .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
+                            .accessibilityIdentifier("history.activity")
+                        }
+                    }
+                } header: {
+                    SectionEyebrow(month.formatted(.dateTime.month(.wide).year()), detail: "\(entries.count)")
+                }
+                .inkRows()
+            }
         }
         .inkList()
         .detailPage(title: "History", wide: sizeClass.isWide)
-        .overlay { if entries.isEmpty { ContentUnavailableView("Nothing yet", systemImage: "clock") } }
+        .overlay {
+            if entries.isEmpty {
+                EmptyCard(symbol: "clock", title: "Nothing yet", detail: "Sessions and outside activities show here.").padding(16)
+            }
+        }
     }
 
-    /// A session or an activity: its symbol in the accent, what it was, and when and how much.
-    private func row(symbol: String, title: String, caption: String) -> some View {
+    /// A session or an activity: its day as Plan's week names days, what it was, when and how much,
+    /// and what kind it was, quietly.
+    private func row(date: Date, symbol: String, title: String, caption: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol).font(.body).foregroundStyle(Color.accentColor).frame(width: 24).accessibilityHidden(true)
+            VStack(spacing: 0) {
+                Text(date.formatted(.dateTime.weekday(.abbreviated))).eyebrow()
+                Text(date.formatted(.dateTime.day())).numeral(20).foregroundStyle(Ink.text)
+            }
+            .frame(width: 38)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                 Text(caption).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
+            Spacer(minLength: 8)
+            Image(systemName: symbol).font(.footnote).foregroundStyle(Ink.text3).accessibilityHidden(true)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
     }
 
-    /// "Thu 12 Nov, 17:30": the day first, as the rest of the app names days.
-    private static func when(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+    /// "17:30", in the person's own clock.
+    private static func time(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
     }
 
     private func sourceLabel(_ log: ActivityLog) -> String {
@@ -657,15 +677,18 @@ struct SessionSetsList: View {
                             }
                         }
                         HStack(alignment: .firstTextBaseline, spacing: 28) {
-                            figure(Measure(value: "\(record.minutes)", unit: "min", size: 30), "minutes")
-                            figure(Measure(value: "\(record.workSets.count)", size: 30), "work sets")
+                            figure(Measure(value: "\(record.minutes)", unit: "min", size: 44, weight: .heavy), "minutes")
+                            figure(Measure(value: "\(record.workSets.count)", size: 44, weight: .heavy), "work sets")
                             if record.device != Platform.deviceName || header {
                                 figure(Text(record.device).font(.callout.weight(.semibold)).foregroundStyle(Ink.text), "recorded on")
                             }
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 4)
                 }
+                // On the ground, as the summary's numbers are, not in a card of their own.
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
             }
             if let feedback = record.feedback {
                 Section {
@@ -688,9 +711,10 @@ struct SessionSetsList: View {
                                 .frame(width: 26, height: 26)
                                 .overlay { Circle().strokeBorder(Ink.track, lineWidth: 1.5) }
                                 .accessibilityHidden(true)
-                            Text(Format.logged(set, exercise: exercise, unit: model.gym.unit))
-                                .font(.callout.weight(set.kind == .warmup ? .regular : .semibold).monospacedDigit())
-                                .foregroundStyle(set.kind == .warmup ? Ink.text2 : Ink.text)
+                            // As the session's own list sets them: the number large, its unit small.
+                            SetValue(
+                                load: set.loadKg, reps: set.reps, seconds: set.seconds, plus: false, exercise: exercise, unit: model.gym.unit,
+                                quiet: set.kind == .warmup)
                             Spacer(minLength: 8)
                             if let rating = set.rating {
                                 HStack(spacing: 6) {
@@ -762,22 +786,39 @@ struct LevelRuler: View {
     var body: some View {
         VStack(spacing: 6) {
             Ruler(value: score / 100, height: height, divisions: 5)
-            GeometryReader { geometry in
-                ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
-                    let reached = StrengthStandards.level(for: score) == level
-                    let name = short && level == "Intermediate" ? "Intermed." : level
-                    let label = Text(name).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
-                        .fixedSize()
-                    if index == Self.levels.count - 1 {
-                        label.frame(width: geometry.size.width, alignment: .trailing)
-                    } else {
-                        label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+            if short {
+                // The exercise page's scale: each level's name set against the tick that ends its
+                // fifth, in the scale's small capitals.
+                HStack(spacing: 0) {
+                    ForEach(Self.levels, id: \.self) { level in
+                        ScaleLabel(level == "Intermediate" ? "Intermed." : level)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
+                .accessibilityHidden(true)
+            } else {
+                labels
             }
-            .frame(height: 13)
-            .accessibilityHidden(true)
         }
+    }
+
+    /// Each level's name centred on the line where it starts, the one reached in the text colour.
+    private var labels: some View {
+        GeometryReader { geometry in
+            ForEach(Array(Self.levels.enumerated()), id: \.offset) { index, level in
+                let reached = StrengthStandards.level(for: score) == level
+                let name = level
+                let label = Text(name).font(.system(size: 10, weight: .semibold)).foregroundStyle(reached ? Ink.text : Ink.text3)
+                    .fixedSize()
+                if index == Self.levels.count - 1 {
+                    label.frame(width: geometry.size.width, alignment: .trailing)
+                } else {
+                    label.position(x: geometry.size.width * Double(index + 1) / Double(Self.levels.count), y: 6)
+                }
+            }
+        }
+        .frame(height: 13)
+        .accessibilityHidden(true)
     }
 
     /// "7 to Intermediate": the points to the next level, or nil at Elite.
