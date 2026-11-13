@@ -19,6 +19,10 @@ struct BodyView: View {
     @State private var importFailed = false
     /// The phone's progress photos, opened from the header's camera.
     @State private var showPhotos = false
+    #if DEBUG
+    /// `-proportions`: Proportions opened at launch, as its row does.
+    @State private var showProportions = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -37,7 +41,13 @@ struct BodyView: View {
             .navigationDestination(isPresented: $showPhotos) { photosPage }
             #if DEBUG
             // `-photos` opens the phone's progress photos, as the header's camera does.
-            .onAppear { if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true } }
+            .onAppear {
+                if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true }
+                if LaunchOptions.current.has("-proportions") { showProportions = true }
+            }
+            .navigationDestination(isPresented: $showProportions) {
+                if let physique = model.analysis?.physique { proportionsPage(physique) }
+            }
             #endif
             .navigationTitle("Body")
             .ownHeader()
@@ -355,11 +365,8 @@ struct BodyView: View {
         let length = model.units.length
         let sex = model.profile?.sex ?? .unspecified
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Proportions").font(.headline)
-                Spacer()
-                Text(p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets").font(.caption).foregroundStyle(Ink.text2)
-            }
+            // Under the page's own title: the card says what's in it, not the page's name again.
+            SectionEyebrow("Ratios", detail: p.targets == .off ? "Proportion targets off" : "\(p.targets.label) targets")
             if p.latest == nil {
                 Text("Measure once a block, at the deload check-in. It takes a few minutes with a tape.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -418,7 +425,7 @@ struct BodyView: View {
         if !limbs.isEmpty {
             let length = model.units.length
             VStack(alignment: .leading, spacing: 10) {
-                Text("Left and right").font(.headline)
+                SectionEyebrow("Left and right")
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
                     GridRow {
                         Text("")
@@ -460,7 +467,7 @@ struct BodyView: View {
 
     private func gaps(_ p: PhysiqueAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("What the program does about it").font(.headline)
+            SectionEyebrow("What the program does about it")
             ForEach(p.gaps) { gap in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(gap.region.label).font(.subheadline.weight(.semibold))
