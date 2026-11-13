@@ -16,6 +16,10 @@ DD=${DERIVED_DATA:-/tmp/system-dd-$CHECKOUT}
 STOREASSETS=${STOREASSETS:-storeassets}
 OUT=$DD-store-screenshots
 STATUS=0
+# A whole-hour time zone where it's now 1 PM, for the screens that read the hour (Stadig Macro's
+# Today: lunch and breakfast logged, not one food of a morning): Etc/GMT+N is N hours behind UTC.
+offset=$(( 10#$(date -u +%H) - 13 ))
+STORE_TZ=Etc/GMT$( (( offset >= 0 )) && print +$offset || print $offset )
 
 if ! command -v $STOREASSETS > /dev/null; then
   print -u2 "storeassets isn't on PATH: cargo install --locked --git https://github.com/swsvindland/screenshot storeassets-cli, or set STOREASSETS"
@@ -60,7 +64,7 @@ capture_devices() {
   for device in $PHONE $PAD; do
     for bundle in dev.svindland.stadig.{lift,macro}; do xcrun simctl terminate $device $bundle 2> /dev/null; done
   done
-  TEST_RUNNER_STORE_SCREENSHOTS=$folder xcodebuild test -project $project -scheme $scheme -testPlan ${scheme}UI \
+  TEST_RUNNER_STORE_SCREENSHOTS=$folder TEST_RUNNER_STORE_TZ=$STORE_TZ xcodebuild test -project $project -scheme $scheme -testPlan ${scheme}UI \
     -only-testing:${scheme}UITests/StoreScreenshots -destination id=$PHONE -destination id=$PAD \
     -parallel-testing-enabled NO -derivedDataPath $DD > $log 2>&1 || { STATUS=1; print "   failed, full log: $log"; }
   local class

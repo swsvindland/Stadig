@@ -13,6 +13,18 @@ nonisolated final class StoreScreenshots: XCTestCase {
             ProcessInfo.processInfo.environment["STORE_SCREENSHOTS"] == nil, "Only Scripts/store-screenshots.sh takes the screenshots")
     }
 
+    /// The app for a screenshot, as `XCUIApplication.launched` opens it, in the time zone the script
+    /// names (STORE_TZ): one where it's early afternoon, whenever this runs, so Today has breakfast
+    /// and lunch on it rather than the one food of a morning.
+    @MainActor
+    func launched(_ arguments: [String]) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"] + arguments
+        if let zone = ProcessInfo.processInfo.environment["STORE_TZ"] { app.launchEnvironment["TZ"] = zone }
+        app.launch()
+        return app
+    }
+
     /// Saves the screen as `phone/<name>.png` or `tablet/<name>.png` (the iPhone and iPad run at
     /// once), once what's on it has stopped moving: scroll indicators fading, a chart's first layout.
     @MainActor
@@ -24,13 +36,17 @@ nonisolated final class StoreScreenshots: XCTestCase {
         try XCUIScreen.main.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("\(name).png"))
     }
 
-    /// Today with food in it: on the iPhone a usual food logged with one tap, its Undo gone; on the
-    /// iPad a saved meal logged from Log Again, beside the thread.
+    /// Today with food in it: the day so far as yesterday went (`-seedToday`: breakfast and lunch at
+    /// the script's 1 PM), the usual foods for now under it. Run at an hour with nothing behind it yet,
+    /// on the iPhone a usual food is logged with one tap, its Undo gone, and on the iPad a saved meal
+    /// from Log Again, beside the thread.
     @MainActor
     func testToday() throws {
-        let app = XCUIApplication.launched(Self.seed)
+        let app = launched(Self.seed + ["-seedToday"])
         app.element("today.calories").waitToAppear()
-        if XCUIApplication.isPad {
+        if app.element("today.entry").waitForExistence(timeout: 3) {
+            // The morning's there already.
+        } else if XCUIApplication.isPad {
             let meal = app.buttons.matching(identifier: "today.logMeal").firstMatch
             if meal.waitForExistence(timeout: 5) {
                 meal.tap()
@@ -49,7 +65,7 @@ nonisolated final class StoreScreenshots: XCTestCase {
     /// The Log tab on yesterday, which has its food whenever this runs: today's depends on the hour.
     @MainActor
     func testLog() throws {
-        let app = XCUIApplication.launched(Self.seed + ["-tab", "log", "-daysAgo", "1"])
+        let app = launched(Self.seed + ["-tab", "log", "-daysAgo", "1"])
         app.element("log.entry").waitToAppear()
         try save("log")
     }
@@ -58,7 +74,7 @@ nonisolated final class StoreScreenshots: XCTestCase {
     /// the iPad Foods, with the best match's portion and nutrients in the inspector.
     @MainActor
     func testSearch() throws {
-        let app = XCUIApplication.launched(Self.seed + (XCUIApplication.isPad ? ["-tab", "foods"] : ["-log", "search"]))
+        let app = launched(Self.seed + (XCUIApplication.isPad ? ["-tab", "foods"] : ["-log", "search"]))
         let search = app.foodSearchField()
         search.tap()
         // A fresh simulator's keyboard opens with a tip about swipe typing over the results.
@@ -80,21 +96,21 @@ nonisolated final class StoreScreenshots: XCTestCase {
     /// with values read and checked.
     @MainActor
     func testScan() throws {
-        _ = XCUIApplication.launched(Self.seed + ["-log", "scan", "-liveScanDemo"])
+        _ = launched(Self.seed + ["-log", "scan", "-liveScanDemo"])
         Thread.sleep(forTimeInterval: 8)
         try save("scan")
     }
 
     @MainActor
     func testPlan() throws {
-        let app = XCUIApplication.launched(Self.seed + ["-tab", "plan"])
+        let app = launched(Self.seed + ["-tab", "plan"])
         app.element("plan.currentPhase").waitToAppear()
         try save("plan")
     }
 
     @MainActor
     func testProgress() throws {
-        let app = XCUIApplication.launched(Self.seed + ["-tab", "progress"])
+        let app = launched(Self.seed + ["-tab", "progress"])
         app.element("progress.trendWeight").waitToAppear()
         try save("progress")
     }
@@ -104,10 +120,10 @@ nonisolated final class StoreScreenshots: XCTestCase {
     @MainActor
     func testMealPrep() throws {
         if XCUIApplication.isPad {
-            let app = XCUIApplication.launched(Self.seed + ["-seedMealPlan", "-tab", "mealplan"])
+            let app = launched(Self.seed + ["-seedMealPlan", "-tab", "mealplan"])
             app.element("mealPlan.week").waitToAppear()
         } else {
-            let app = XCUIApplication.launched(Self.seed + ["-seedMealPlan", "-tab", "plan"])
+            let app = launched(Self.seed + ["-seedMealPlan", "-tab", "plan"])
             app.buttons["Week"].waitToAppear().tap()
             // The iPhone's meal plan opens on the week, with the grocery list and prep day a row each.
             app.element("mealPlan.summary").waitToAppear()
