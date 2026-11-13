@@ -407,6 +407,13 @@ public enum Progression {
                 load = LoadMath.step(lastLoad, 1, basis: basis, increments: context.increments)
                 reps = target.repRange.lower
                 reason = "Top of the range last time, so the weight goes up and reps start again at \(reps)."
+            } else if missed, bestReps < target.repRange.lower - 1, basis != .none {
+                // Well under the range (a push to a heavier weight that fell short, say 6 where 10
+                // was the floor): the same weight for the range's floor is a target already missed,
+                // so a step back, where the reps are there.
+                load = LoadMath.step(lastLoad, -1, basis: basis, increments: context.increments)
+                reps = target.repRange.lower
+                reason = "Last time fell well short of \(reps) reps, so a step lighter for \(reps)."
             } else if missed {
                 reps = max(target.repRange.lower, bestReps)
                 reason = "Last time was a miss, so the same target again."

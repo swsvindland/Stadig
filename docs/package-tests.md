@@ -2,7 +2,7 @@
 
 The app tests, and how to run everything, are in [testing.md](testing.md).
 
-- **SystemCore (151 tests).** Includes simulated users trained for 12 weeks through the real progression, autoregulation and calibration code:
+- **SystemCore (152 tests).** Includes simulated users trained for 12 weeks through the real progression, autoregulation and calibration code:
   - An **honest novice** earns trust (0.3 → 0.73), and estimates track true strength within 12%.
   - A **sandbagger** is caught in week one. Machine rep-outs pin their real strength within 10%; their barbell estimate stays conservative but in range (above 80%).
   - An **overconfident veteran** loses trust (0.7 → 0.54), and estimates don't run ahead of reality.

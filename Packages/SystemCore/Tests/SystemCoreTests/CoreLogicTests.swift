@@ -528,6 +528,31 @@ struct ProgressionTests {
         #expect(p.sets.first?.loadKg == 10)
     }
 
+    @Test("On coarse steps, a miss well under the range steps back; a rep short holds")
+    func coarseMissWellShortStepsBack() {
+        func next(after sets: [(Double, Int, SetRating)]) -> SetPrescription? {
+            let history = sets.enumerated().map { index, set in
+                LoggedSet(
+                    exerciseID: "leg-curl", date: Self.night.addingTimeInterval(Double(index) * 120), kind: .working, loadKg: set.0, reps: set.1,
+                    targetReps: 10, rating: set.2, restBeforeSeconds: index == 0 ? nil : 120)
+            }
+            let context = ProgressionContext(
+                exercise: TestExercise.chestPress, increments: FixedIncrements(stepKg: 5), trust: TrustState(prior: 0.5),
+                phase: NutritionPhase.assumedMaintenance.effects, bodyweightKg: 80, history: history)
+            let p = Progression.prescribe(SlotTarget(sets: 3, repRange: RepRange(10, 15), targetRIR: 2), context)
+            #expect(p.mode == .reps)
+            return p.sets.first
+        }
+        // 45 for 11, then a push to 50 that got 6: next time is 45 for 10, not 50 for 10.
+        let pushed = next(after: [(45, 11, .green), (50, 6, .red)])
+        #expect(pushed?.loadKg == 45)
+        #expect(pushed?.targetReps == 10)
+        // A rep short of the floor is the same weight again.
+        let close = next(after: [(50, 9, .red), (50, 9, .red)])
+        #expect(close?.loadKg == 50)
+        #expect(close?.targetReps == 10)
+    }
+
     @Test func injuryRampLightensTheLoad() {
         let date = Date()
         let history = (0..<3).map { _ in
