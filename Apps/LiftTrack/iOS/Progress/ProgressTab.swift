@@ -677,15 +677,18 @@ struct SessionSetsList: View {
                             }
                         }
                         HStack(alignment: .firstTextBaseline, spacing: 28) {
-                            figure(Measure(value: "\(record.minutes)", unit: "min", size: 30), "minutes")
-                            figure(Measure(value: "\(record.workSets.count)", size: 30), "work sets")
+                            figure(Measure(value: "\(record.minutes)", unit: "min", size: 44, weight: .heavy), "minutes")
+                            figure(Measure(value: "\(record.workSets.count)", size: 44, weight: .heavy), "work sets")
                             if record.device != Platform.deviceName || header {
                                 figure(Text(record.device).font(.callout.weight(.semibold)).foregroundStyle(Ink.text), "recorded on")
                             }
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 4)
                 }
+                // On the ground, as the summary's numbers are, not in a card of their own.
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
             }
             if let feedback = record.feedback {
                 Section {
@@ -708,9 +711,10 @@ struct SessionSetsList: View {
                                 .frame(width: 26, height: 26)
                                 .overlay { Circle().strokeBorder(Ink.track, lineWidth: 1.5) }
                                 .accessibilityHidden(true)
-                            Text(Format.logged(set, exercise: exercise, unit: model.gym.unit))
-                                .font(.callout.weight(set.kind == .warmup ? .regular : .semibold).monospacedDigit())
-                                .foregroundStyle(set.kind == .warmup ? Ink.text2 : Ink.text)
+                            // As the session's own list sets them: the number large, its unit small.
+                            SetValue(
+                                load: set.loadKg, reps: set.reps, seconds: set.seconds, plus: false, exercise: exercise, unit: model.gym.unit,
+                                quiet: set.kind == .warmup)
                             Spacer(minLength: 8)
                             if let rating = set.rating {
                                 HStack(spacing: 6) {
