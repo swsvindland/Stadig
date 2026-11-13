@@ -23,6 +23,7 @@ enum WristInk {
 /// screen from there, so a 40 mm Watch sets them smaller and a 46 mm one a touch larger.
 enum WristFace {
     static let width = WKInterfaceDevice.current().screenBounds.width
+    static let height = WKInterfaceDevice.current().screenBounds.height
     static let scale = min(1.05, width / 198)
     /// The 40 and 41 mm Watches.
     static let small = width < 180

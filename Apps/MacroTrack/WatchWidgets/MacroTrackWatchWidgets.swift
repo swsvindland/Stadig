@@ -10,7 +10,42 @@ struct MacroTrackWatchWidgets: WidgetBundle {
         ProteinLeftWidget()
         TodayWidget()
         FastComplicationWidget()
+        WaterComplicationWidget()
+        ShapeComplicationWidget()
     }
+}
+
+/// Your shape on the watch face, from the scores both apps publish.
+struct ShapeComplicationWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "Shape", provider: SnapshotProvider()) { entry in
+            ShapeComplication(shape: entry.snapshot.shape)
+                .containerBackground(for: .widget) { Color.clear }
+        }
+        .configurationDisplayName("Your Shape")
+        .description("Your six scores as one figure.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+/// Water so far today, rising toward the day's aim.
+struct WaterComplicationWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "Water", provider: SnapshotProvider()) { entry in
+            WaterComplicationEntry(snapshot: entry.snapshot)
+                .containerBackground(for: .widget) { Color.clear }
+        }
+        .configurationDisplayName("Water")
+        .description("Water and drinks so far today, against the day's aim.")
+        .supportedFamilies([.accessoryCircular, .accessoryInline])
+    }
+}
+
+struct WaterComplicationEntry: View {
+    @Environment(\.widgetFamily) private var family
+    let snapshot: WristSnapshot
+
+    var body: some View { WaterComplication(water: snapshot.water, fluidOunces: snapshot.fluidOunces ?? false, family: family) }
 }
 
 /// The fast, or the time since the last meal, on the watch face.

@@ -63,6 +63,25 @@ struct WristTests {
         // The complications read the same numbers.
         let snapshot = WristSnapshot(wrist)
         #expect(snapshot.kcal == wrist.kcal && snapshot.protein == wrist.protein && snapshot.day == today && snapshot.badge == "Cut")
+        #expect(snapshot.water == wrist.water.map { MacroProgress(eaten: $0.total, target: $0.target) })
+        #expect(snapshot.shape == nil)
+    }
+
+    @Test("Your shape's complication takes the stats board's scores, and nothing before any is published")
+    func shape() throws {
+        let summary = AppSummary(
+            app: .macroTrack, updated: today.date(),
+            stats: [
+                StatReading(stat: .vitality, score: 71.6, label: "Good", trend: .onPace),
+                StatReading(stat: .discipline, score: nil, label: "Not enough yet", trend: .notEnoughData),
+            ])
+        let lines = StatsBoard.lines(lift: nil, macro: summary, today: today)
+        #expect(WristSnapshot.shape(lines) == [.vitality: 72])
+        #expect(WristSnapshot.shape(StatsBoard.lines(lift: nil, macro: nil, today: today)) == nil)
+        let wrist = wrist(state())
+        let snapshot = WristSnapshot(wrist, shape: WristSnapshot.shape(lines))
+        #expect(snapshot.shape == [.vitality: 72])
+        #expect(try #require(WristSnapshot.decoded(try snapshot.encoded())).shape == snapshot.shape)
     }
 
     @Test("the assessment asks only for protein, and says which day it is")
@@ -186,6 +205,9 @@ struct WristTests {
         let snapshot = WristSnapshot(
             day: today, kcal: MacroProgress(eaten: 1_240, target: 2_300), protein: MacroProgress(eaten: 96, target: 170), badge: "Cut",
             updated: Date(timeIntervalSince1970: 1_775_000_000.123))
+        var watered = snapshot
+        watered.water = MacroProgress(eaten: 1_200, target: 3_000)
+        #expect(watered.shown(on: today.adding(days: 1)).water == MacroProgress(eaten: 0, target: 3_000))
         let tomorrow = snapshot.shown(on: today.adding(days: 1))
         #expect(tomorrow.day == today.adding(days: 1) && tomorrow.kcal == MacroProgress(eaten: 0, target: 2_300))
         #expect(tomorrow.protein.left == 170 && tomorrow.badge == "Cut")

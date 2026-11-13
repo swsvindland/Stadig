@@ -300,3 +300,116 @@ struct FastComplication: View {
         }
     }
 }
+
+/// Your shape on the watch face: the six scores as one figure over the hexagon and its spokes,
+/// clockwise from Strength at the top as the phone draws it, from what both apps publish. A score
+/// not measured yet leaves its corner out; before any, the hexagon alone.
+struct ShapeComplication: View {
+    let shape: [StatKind: Int]?
+
+    /// The phone's order (`ScoreShape.order` in the app's Stadig.swift).
+    nonisolated static let order: [StatKind] = [.strength, .endurance, .agility, .vitality, .discipline, .physique]
+
+    var body: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            ZStack {
+                ShapeOutline(scores: nil).stroke(Color.primary.opacity(0.22), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round))
+                ShapeOutline(scores: shape ?? [:], spokes: true).stroke(Color.primary.opacity(0.22), lineWidth: 0.9)
+                ShapeOutline(scores: shape ?? [:]).fill(Color.accentColor.opacity(0.2)).widgetAccentable()
+                ShapeOutline(scores: shape ?? [:])
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2.4, lineJoin: .round))
+                    .widgetAccentable()
+            }
+            .padding(5)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Your shape")
+        .accessibilityValue(
+            Self.order.map { "\($0.label) \(shape?[$0].map(String.init) ?? "not measured yet")" }.joined(separator: ", "))
+    }
+}
+
+/// The hexagon (no scores), its spokes, or the figure through the scores given (three at least).
+private nonisolated struct ShapeOutline: Shape {
+    let scores: [StatKind: Int]?
+    var spokes = false
+
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.width, rect.height) / 2
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let point = { (index: Int, fraction: Double) -> CGPoint in
+            let angle = (-90 + 60 * Double(index)) * .pi / 180
+            return CGPoint(x: center.x + radius * fraction * cos(angle), y: center.y + radius * fraction * sin(angle))
+        }
+        var path = Path()
+        if spokes {
+            for index in 0..<6 {
+                path.move(to: center)
+                path.addLine(to: point(index, 1))
+            }
+        } else if let scores {
+            let corners = ShapeComplication.order.enumerated().compactMap { index, stat in
+                scores[stat].map { point(index, min(100, max(0, Double($0))) / 100) }
+            }
+            guard corners.count > 2 else { return path }
+            path.addLines(corners)
+            path.closeSubpath()
+        } else {
+            path.addLines((0..<6).map { point($0, 1) })
+            path.closeSubpath()
+        }
+        return path
+    }
+}
+
+/// Water so far on the watch face: the litres (or ounces) over a level that rises from the foot
+/// toward the day's aim, as a glass fills.
+struct WaterComplication: View {
+    let water: MacroProgress?
+    var fluidOunces = false
+    let family: WidgetFamily
+
+    /// "1.2" and "L", "41" and "oz"; a dash while water isn't tracked.
+    private var amount: (value: String, unit: String) {
+        guard let ml = water?.eaten else { return ("–", "") }
+        if fluidOunces { return ("\(Int((ml / 29.5735).rounded()))", "oz") }
+        return ((ml / 1000).formatted(.number.precision(.fractionLength(1))), "L")
+    }
+
+    private var sentence: String {
+        guard let water else { return "Water isn't tracked" }
+        let aim =
+            fluidOunces
+            ? "\(Int(((water.target ?? 0) / 29.5735).rounded())) oz"
+            : "\(((water.target ?? 0) / 1000).formatted(.number.precision(.fractionLength(1)))) L"
+        return "\(amount.value) \(amount.unit == "L" ? "litres" : "ounces") of water, of \(aim)"
+    }
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Label(water == nil ? "Water isn't tracked" : "\(amount.value) \(amount.unit) water", systemImage: "drop.fill")
+        default:
+            ZStack {
+                AccessoryWidgetBackground()
+                GeometryReader { geometry in
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.3))
+                        .frame(height: geometry.size.height * (water?.fraction ?? 0))
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .widgetAccentable()
+                }
+                .clipShape(.circle)
+                HStack(alignment: .firstTextBaseline, spacing: 1) {
+                    Text(amount.value).complicationNumeral(14)
+                    Text(amount.unit).font(.system(size: 10, weight: .bold))
+                }
+                .padding(.bottom, 12)
+                .padding(.horizontal, 4)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(sentence)
+        }
+    }
+}

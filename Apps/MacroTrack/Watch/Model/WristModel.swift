@@ -26,6 +26,35 @@ struct WristToast: Identifiable, Equatable {
     var id = UUID()
     var message: String
     var undo: Undo
+    /// Food just logged: the logged face shows it in place of the toast.
+    var logged: LoggedFood?
+}
+
+/// What a log from the wrist put in, for the logged face: each food, and calories left before and
+/// after it.
+struct LoggedFood: Equatable {
+    struct Item: Equatable, Identifiable {
+        var id: UUID
+        var marker: String
+        var name: String
+        var amount: String
+        var kcal: Double
+    }
+
+    var items: [Item]
+    /// Calories left before the log; nil before targets.
+    var leftBefore: Double?
+    var kcal: Double
+
+    var leftAfter: Double? { leftBefore.map { $0 - kcal } }
+
+    init(_ entries: [FoodEntry], leftBefore: Double?) {
+        items = entries.map {
+            Item(id: $0.id, marker: FoodMarker.of($0.name), name: FoodLabel.short($0.name), amount: $0.amountLabel, kcal: $0.nutrients.kcal)
+        }
+        self.leftBefore = leftBefore
+        kcal = entries.map(\.nutrients.kcal).reduce(0, +)
+    }
 }
 
 /// The Watch's state: Stadig Macro's own synced records, the family's shared files (Stadig Lift's
@@ -72,6 +101,8 @@ final class WristModel {
     @ObservationIgnored private var ownLifeModes: [LifeModePeriod] = []
     @ObservationIgnored private var lifeModes: [LifeModePeriod] = []
     @ObservationIgnored private var lift: AppSummary?
+    /// The phone's own summary, read only for its scores: with Stadig Lift's, Your shape's complication.
+    @ObservationIgnored private var macro: AppSummary?
     @ObservationIgnored private var calendar: SystemCalendar?
     @ObservationIgnored private var sharedProfile: SharedProfile?
 
@@ -173,12 +204,16 @@ final class WristModel {
     /// the phone merges and writes the shared files; the Watch never does.
     func readShared(recompute again: Bool = true) {
         let lift = shared.read(.summary(.liftTrack))
+        let macro = shared.read(.summary(.macroTrack))
         let calendar = shared.read(.calendar)
         let sharedProfile = shared.read(.profile)
         let lifeModes = LifeModePeriod.merge([shared.read(.lifeModes) ?? [], ownLifeModes]).live
-        let changed = lift != self.lift || calendar != self.calendar || sharedProfile != self.sharedProfile || lifeModes != self.lifeModes
+        let changed =
+            lift != self.lift || macro != self.macro || calendar != self.calendar || sharedProfile != self.sharedProfile
+            || lifeModes != self.lifeModes
         guard changed else { return }
         self.lift = lift
+        self.macro = macro
         self.calendar = calendar
         self.sharedProfile = sharedProfile
         self.lifeModes = lifeModes
@@ -246,7 +281,9 @@ final class WristModel {
         guard generation == self.generation else { return }
         today = wrist
         loaded = true
-        writeSnapshot(WristSnapshot(wrist))
+        // Your shape as both apps publish it, the same lines the phone's Progress draws.
+        let shape = WristSnapshot.shape(StatsBoard.lines(lift: lift, macro: macro, today: wrist.day))
+        writeSnapshot(WristSnapshot(wrist, shape: shape))
     }
 
     /// The complications' numbers, written only when they change, and the complications reloaded then.
@@ -270,10 +307,10 @@ final class WristModel {
 
     private func save(_ new: [FoodEntry], message: String) {
         guard !new.isEmpty else { return }
+        let logged = LoggedFood(new, leftBefore: today?.kcal.left)
         store.save(LogAgain.settled(new, now: Date()))
         reload()
-        let kcal = new.map(\.nutrients.kcal).reduce(0, +)
-        confirm(WristToast(message: "\(message) · \(WristFormat.kcal(kcal))", undo: .entries(new.map(\.id))))
+        confirm(WristToast(message: "\(message) · \(WristFormat.kcal(logged.kcal))", undo: .entries(new.map(\.id)), logged: logged))
     }
 
     func addWater(_ glass: WaterGlass) {

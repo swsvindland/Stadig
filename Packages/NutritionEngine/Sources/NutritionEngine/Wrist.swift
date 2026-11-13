@@ -208,11 +208,20 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
     /// Food logged for later, through tomorrow: each counts from its time on a complication's
     /// timeline, with the Watch app closed. Older snapshots don't have it.
     public var later: [LaterFood]?
+    /// Water and drinks so far against the day's aim, in millilitres, for the water complication;
+    /// nil while drinks aren't tracked, and in older snapshots.
+    public var water: MacroProgress?
+    /// Water in fluid ounces, for people who weigh in pounds; nil is litres.
+    public var fluidOunces: Bool?
+    /// Your shape for its complication: each stat's score as the apps publish them (`StatsBoard`).
+    /// Nil before either app has published a score, and in older snapshots.
+    public var shape: [StatKind: Int]?
     public var updated: Date
 
     public init(
         day: Day, kcal: MacroProgress, protein: MacroProgress, badge: String? = nil, fastStart: Date? = nil, fastGoalHours: Double? = nil,
-        lastMealEnd: Date? = nil, later: [LaterFood]? = nil, updated: Date = Date()
+        lastMealEnd: Date? = nil, later: [LaterFood]? = nil, water: MacroProgress? = nil, fluidOunces: Bool? = nil,
+        shape: [StatKind: Int]? = nil, updated: Date = Date()
     ) {
         self.day = day
         self.kcal = kcal
@@ -222,15 +231,29 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
         self.fastGoalHours = fastGoalHours
         self.lastMealEnd = lastMealEnd
         self.later = later
+        self.water = water
+        self.fluidOunces = fluidOunces
+        self.shape = shape
         self.updated = updated
     }
 
-    public init(_ today: WristToday, updated: Date = Date()) {
+    /// Today's numbers, and the shape the stats board gives (`StatsBoard.lines`), which the phone's
+    /// analysis doesn't hold.
+    public init(_ today: WristToday, shape: [StatKind: Int]? = nil, updated: Date = Date()) {
         self.init(
             day: today.day, kcal: today.kcal, protein: today.protein, badge: today.badge,
             fastStart: today.tracksMealTiming ? today.fast?.fast.start : nil,
             fastGoalHours: today.tracksMealTiming ? today.fast?.fast.goalHours : nil,
-            lastMealEnd: today.tracksMealTiming ? today.lastMealEnd : nil, later: today.later.isEmpty ? nil : today.later, updated: updated)
+            lastMealEnd: today.tracksMealTiming ? today.lastMealEnd : nil, later: today.later.isEmpty ? nil : today.later,
+            water: today.water.map { MacroProgress(eaten: $0.total, target: $0.target) },
+            fluidOunces: today.water != nil && today.dial.unit == .lb ? true : nil, shape: shape, updated: updated)
+    }
+
+    /// The scores of the stats board's lines, for `shape`: nil while none has one.
+    public static func shape(_ lines: [StatLine]) -> [StatKind: Int]? {
+        var scores: [StatKind: Int] = [:]
+        for line in lines { if let score = line.score { scores[line.stat] = score } }
+        return scores.isEmpty ? nil : scores
     }
 
     /// The fast as it stands at `date`, for a complication's timeline entry.
@@ -262,17 +285,22 @@ public struct WristSnapshot: Codable, Hashable, Sendable {
     /// For the watch face's gallery.
     public static func sample(on day: Day) -> WristSnapshot {
         WristSnapshot(
-            day: day, kcal: MacroProgress(eaten: 1_240, target: 2_300), protein: MacroProgress(eaten: 96, target: 170), badge: "Cut")
+            day: day, kcal: MacroProgress(eaten: 1_240, target: 2_300), protein: MacroProgress(eaten: 96, target: 170), badge: "Cut",
+            water: MacroProgress(eaten: 1_200, target: 3_000), shape: sampleShape)
     }
 
-    /// As it stands on `day`: past the day it was written for, nothing's eaten yet (the targets
-    /// carry over until the app writes the new day's).
+    /// The design's Your shape, for the gallery and a face's preview.
+    public static let sampleShape: [StatKind: Int] = [.strength: 58, .endurance: 48, .agility: 61, .vitality: 72, .discipline: 86, .physique: 64]
+
+    /// As it stands on `day`: past the day it was written for, nothing's eaten or drunk yet (the
+    /// targets carry over until the app writes the new day's).
     public func shown(on day: Day) -> WristSnapshot {
         guard day != self.day else { return self }
         var fresh = self
         fresh.day = day
         fresh.kcal.eaten = 0
         fresh.protein.eaten = 0
+        fresh.water?.eaten = 0
         return fresh
     }
 
