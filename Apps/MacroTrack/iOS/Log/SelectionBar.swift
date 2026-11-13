@@ -77,7 +77,7 @@ struct SelectionBar: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("selection.bar")
-        .sheet(isPresented: $choosingDates) { ToDatesSheet().macSheetSize(width: 380, height: 460) }
+        .sheet(isPresented: $choosingDates) { ToDatesSheet().macSheetSize(width: 380, height: 560) }
         .notesWork(choosingDates)
     }
 

@@ -91,7 +91,7 @@ struct LogTab: View {
             // On a phone the title, the day and its button are the page's own, over the cards.
             .hidesNavigationBar(!wide)
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
-            .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
+            .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 500) }
             .debugSheet("day") { choosingDay = true }
             .notesWork(editing != nil || choosingDay, covering: choosingDay || (editing != nil && !wide))
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }

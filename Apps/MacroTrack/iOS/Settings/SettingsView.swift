@@ -45,7 +45,7 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .sheet(item: $editingLifeMode) { period in
-            LifeModeEditor(period: period).macSheetSize(width: 440, height: 380)
+            LifeModeEditor(period: period).macSheetSize(width: 440, height: 520)
         }
         .debugSheet("lifeMode") {
             editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, createdBy: .macroTrack).edited(openEnded: false)

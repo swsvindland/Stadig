@@ -449,7 +449,7 @@ struct LogTimeBar: View {
                 }
             }
         }
-        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
+        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 460) }
         .debugSheet("time") { picking = true }
     }
 

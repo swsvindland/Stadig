@@ -33,7 +33,7 @@ struct DrinksSection: View {
                     }
                     .accessibilityIdentifier("drinks.cutBack")
                 }
-                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet().macSheetSize(width: 460, height: 480) }
+                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet().macSheetSize(width: 460, height: 600) }
                 .debugSheet("caffeine") { cuttingBack = true }
             }
         }
