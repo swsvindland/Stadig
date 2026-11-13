@@ -33,25 +33,22 @@ struct SettingsView: View {
     private func shows(_ section: SettingsPane) -> Bool { pane == nil || pane == section }
 
     var body: some View {
-        Form {
-            Group {
-                if shows(.general) { general }
-                if shows(.intelligence) { intelligence }
-                if shows(.health) { health }
-                if shows(.data) { data }
-            }
-            .inkRows()
-        }
-        .inkForm()
-        .navigationTitle("Settings")
-        .inlineTitle()
-        .toolbar {
+        Group {
             if pane == nil {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") }
+                // The sheet on iPhone and iPad: its own title and close, as every sheet has.
+                form.inkSheet {
+                    SheetBar(label: "Done", identifier: "settings.done") { dismiss() }
+                }
+            } else {
+                form.inlineTitle()
             }
         }
+        .navigationTitle("Settings")
         .sheet(item: $editingLifeMode) { period in
             LifeModeEditor(period: period).macSheetSize(width: 440, height: 380)
+        }
+        .debugSheet("lifeMode") {
+            editingLifeMode = LifeModePeriod(kind: .vacation, start: model.today, createdBy: .macroTrack).edited(openEnded: false)
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "macrobackup") ?? .json, .json]) { result in
             switch result {
@@ -76,6 +73,20 @@ struct SettingsView: View {
         } message: {
             Text(message ?? "")
         }
+    }
+
+    private var form: some View {
+        Form {
+            if pane == nil { FormHeading(eyebrow: "Stadig Macro", title: "Settings") }
+            Group {
+                if shows(.general) { general }
+                if shows(.intelligence) { intelligence }
+                if shows(.health) { health }
+                if shows(.data) { data }
+            }
+            .inkRows()
+        }
+        .inkForm()
     }
 
     @ViewBuilder
@@ -385,8 +396,8 @@ struct LifeModeEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                FormHeading(eyebrow: isNew ? "Life mode · new" : "Life mode", title: period.kind.label, detail: purpose)
                 Section {
-                    Label(period.kind.label, systemImage: period.kind.symbol).font(.headline)
                     DatePicker(
                         "Starts",
                         selection: Binding(
@@ -411,43 +422,54 @@ struct LifeModeEditor: View {
                         )
                         .accessibilityIdentifier("lifeMode.end")
                     }
+                } header: {
+                    Text("When").eyebrow()
                 }
+                .inkRows()
                 if !isNew {
                     Section {
                         // A period that hasn't started has nothing to end: delete it instead.
                         if period.start <= model.today {
-                            Button("End today") {
+                            FormActionRow("End today", identifier: "lifeMode.endToday") {
                                 var ended = period
                                 ended.moveEnd(to: model.today)
                                 if model.save(lifeMode: ended) { dismiss() }
                             }
-                            .accessibilityIdentifier("lifeMode.endToday")
                         }
-                        Button("Delete", role: .destructive) {
+                        FormActionRow("Delete", destructive: true, identifier: "lifeMode.delete") {
                             model.delete(lifeMode: period.id)
                             dismiss()
                         }
-                        .accessibilityIdentifier("lifeMode.delete")
                     }
+                    .listRowSeparator(.hidden)
                 }
             }
-            .navigationTitle(period.kind.label)
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "lifeMode.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         if model.save(lifeMode: edited) { dismiss() }
+                    } label: {
+                        Text("Save").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .disabled(!edited.isValid)
                     .accessibilityIdentifier("lifeMode.save")
                 }
             }
         }
-        // Half a phone's height; on an iPad the form sheet's own, since half of that leaves End Today
-        // and Delete below the fold.
-        .presentationDetents(Platform.isPhone ? [.medium] : [.large])
+        .presentationDetents([.large])
+    }
+
+    /// What the mode does here, under its name.
+    private var purpose: String {
+        switch period.kind {
+        case .vacation: "No logging expected, and the days don't count against you. The first days back aren't read as fat gain."
+        case .illness, .injury: "No logging expected while it lasts, and the days don't count against you."
+        case .crunch: "Only protein and maintenance calories are asked of you until it ends."
+        }
     }
 }

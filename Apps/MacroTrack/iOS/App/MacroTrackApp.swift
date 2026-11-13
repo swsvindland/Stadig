@@ -44,6 +44,9 @@ struct MacroTrackApp: App {
         if launch.has("-showSettings") { model.showSettings = true }
         if launch.has("-seedMealTiming") || launch.has("-seedFast") { SampleData.seedMealTiming(model, fast: launch.has("-seedFast")) }
         if launch.has("-showFast") { model.showFast = true }
+        if launch.value(after: "-sheet") == "weighIn" { model.showWeighIn = true }
+        // Today's supplements and drinks are down the list: scrolled to, so their sheets have a screen.
+        if ["supplement", "caffeine"].contains(launch.value(after: "-sheet")) { model.pendingSupplementsScroll = true }
         if let tab = launch.value(after: "-tab") {
             model.tab = AppTab.allCases.first { $0.rawValue.lowercased() == tab.lowercased() } ?? .today
         }
@@ -52,6 +55,8 @@ struct MacroTrackApp: App {
         if let hour = launch.number(after: "-logHour") {
             model.loggerTime = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
         }
+        // The logger's time on the day's last food, so -sheet meal has a meal to show.
+        if launch.value(after: "-sheet") == "meal", let last = model.allEntries(on: model.selectedDay).last { model.loggerTime = last.date }
         if let seconds = launch.number(after: "-toastSeconds") { model.toastTime = .seconds(seconds) }
         if launch.has("-stubDescribe") { SampleData.stubDescribe(model) }
         // -prepCounter 6 opens counter mode on the meal plan (-seedMealPlan) at that step, run at the

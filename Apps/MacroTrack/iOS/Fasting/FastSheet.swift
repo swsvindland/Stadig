@@ -8,59 +8,97 @@ import SystemCore
 struct FastSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var draft = FastDraft()
 
     var body: some View {
+        let running = model.analysis?.fast
         NavigationStack {
             Form {
+                FormHeading(eyebrow: "Today · meal timing", title: running == nil ? "Start a fast" : "Fasting")
                 Group {
-                    if let status = model.analysis?.fast {
-                        RunningFast(status: status)
+                    if let running {
+                        RunningFast(status: running)
                     } else {
-                        NewFast(close: { dismiss() })
+                        NewFast(draft: $draft)
                     }
-                    PhasesSection(hours: model.analysis?.fast?.hours)
+                    PhasesSection(hours: running?.hours)
                     PastFastsSection()
                 }
                 .inkRows()
-            }
-            .inkForm()
-            .navigationTitle(model.analysis?.fast == nil ? "Start a Fast" : "Fasting")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("fast.done")
+                if running != nil {
+                    Section {
+                        FormActionRow("End fast", destructive: true, identifier: "fast.end") { model.endFast() }
+                    } footer: {
+                        Text("Logging a meal ends it too, and Undo on that meal puts the fast back.")
+                    }
                 }
             }
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Done", identifier: "fast.done") { dismiss() }
+            } foot: {
+                if running == nil { startButton }
+            }
+        }
+    }
+
+    /// Start, at the foot while a new fast is being set up.
+    private var startButton: some View {
+        let screen = model.needsFastingScreen(goalHours: draft.goal)
+        return SheetFoot {
+            Button {
+                if screen { model.acknowledgeFastingScreen() }
+                model.startFast(goalHours: draft.goal, start: draft.start(model))
+                dismiss()
+            } label: {
+                Text("Start \(Format.goal(draft.goal)) fast").frame(maxWidth: .infinity)
+            }
+            .primaryAction()
+            .keyboardShortcut(.defaultAction)
+            .disabled(screen && !draft.read)
+            .accessibilityIdentifier("fast.start")
         }
     }
 }
 
-/// The goal and start of a new fast, the safety screen when the goal needs it, and Start.
+/// A new fast as it's set up: its goal, and when it started.
+private struct FastDraft {
+    var goal = 16.0
+    var fromLastMeal = true
+    var start = Date()
+    var read = false
+
+    /// From the end of the last meal, while there's one to start from and that's chosen.
+    @MainActor
+    func start(_ model: AppModel) -> Date {
+        let suggested = model.suggestedFastStart()
+        return Self.hasMeal(suggested) && fromLastMeal ? suggested : start
+    }
+
+    static func hasMeal(_ suggested: Date) -> Bool { suggested < Date().addingTimeInterval(-60) }
+}
+
+/// The goal and start of a new fast, and the safety screen when the goal needs it.
 private struct NewFast: View {
     @Environment(AppModel.self) private var model
-    let close: () -> Void
-    @State private var goal = 16.0
-    @State private var fromLastMeal = true
-    @State private var start = Date()
-    @State private var read = false
+    @Binding var draft: FastDraft
 
     var body: some View {
         let block = model.fastingBlock
         let longest = FastSafety.longest(block)
         let suggested = model.suggestedFastStart()
-        let hasMeal = suggested < Date().addingTimeInterval(-60)
+        let hasMeal = FastDraft.hasMeal(suggested)
         Section {
-            GoalPicker(goal: $goal, longest: longest)
+            GoalPicker(goal: $draft.goal, longest: longest)
             if hasMeal {
-                Toggle("From the end of your last meal", isOn: $fromLastMeal)
+                Toggle("From the end of your last meal", isOn: $draft.fromLastMeal)
                     .accessibilityIdentifier("fast.fromLastMeal")
-                if fromLastMeal {
+                if draft.fromLastMeal {
                     LabeledContent("Started", value: Format.moment(suggested))
                 }
             }
-            if !hasMeal || !fromLastMeal {
-                DatePicker("Started", selection: $start, in: model.earliestFastStart()...Date())
+            if !hasMeal || !draft.fromLastMeal {
+                DatePicker("Started", selection: $draft.start, in: model.earliestFastStart()...Date())
                     .accessibilityIdentifier("fast.startTime")
             }
         } header: {
@@ -68,48 +106,31 @@ private struct NewFast: View {
         } footer: {
             if let block { Text(block.reason) }
         }
-        let notes = FastSafety.notes(goalHours: goal, phase: model.analysis?.phase?.kind)
-        if !notes.isEmpty || FastSafety.electrolytes(hours: goal) != nil {
+        let notes = FastSafety.notes(goalHours: draft.goal, phase: model.analysis?.phase?.kind)
+        if !notes.isEmpty || FastSafety.electrolytes(hours: draft.goal) != nil {
             Section {
                 ForEach(notes, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.subheadline) }
-                if let salt = FastSafety.electrolytes(hours: goal) { Label(salt, systemImage: "drop.triangle").font(.subheadline) }
+                if let salt = FastSafety.electrolytes(hours: draft.goal) { Label(salt, systemImage: "drop.triangle").font(.subheadline) }
             }
         }
-        if model.needsFastingScreen(goalHours: goal) {
-            SafetySection(read: $read)
-        }
-        Section {
-            Button {
-                if model.needsFastingScreen(goalHours: goal) { model.acknowledgeFastingScreen() }
-                model.startFast(goalHours: goal, start: hasMeal && fromLastMeal ? suggested : start)
-                close()
-            } label: {
-                Text("Start \(Format.goal(goal)) Fast").frame(maxWidth: .infinity)
-            }
-            .primaryAction().controlSize(.large)
-            .disabled(model.needsFastingScreen(goalHours: goal) && !read)
-            .accessibilityIdentifier("fast.start")
+        if model.needsFastingScreen(goalHours: draft.goal) {
+            SafetySection(read: $draft.read)
         }
     }
 }
 
-/// The presets as a row of choices, and a stepper for any goal up to the longest offered.
+/// The presets as chips (`ChoiceChip`), and a stepper for any goal up to the longest offered.
 private struct GoalPicker: View {
     @Binding var goal: Double
     let longest: Double
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(Fasting.presets.filter { $0 <= longest }, id: \.self) { hours in
-                    Button(Format.goal(hours)) { goal = hours }
-                        .buttonStyle(.bordered).buttonBorderShape(.capsule).choiceTint(goal == hours)
-                        .accessibilityIdentifier("fast.goal.\(Int(hours))")
-                }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 8) {
+            ForEach(Fasting.presets.filter { $0 <= longest }, id: \.self) { hours in
+                ChoiceChip(title: Format.goal(hours), isOn: goal == hours, identifier: "fast.goal.\(Int(hours))") { goal = hours }
             }
-            .padding(.vertical, 2)
         }
-        .scrollIndicators(.hidden)
+        .padding(.vertical, 6)
         Stepper(value: $goal, in: 12...longest, step: goal >= 48 ? 12 : 1) {
             LabeledContent("Goal", value: Format.goal(goal))
         }
@@ -158,7 +179,7 @@ private struct RunningFast: View {
                     )
                     .font(.subheadline).foregroundStyle(Ink.text2)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 8)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("fast.elapsed")
             }
@@ -197,13 +218,6 @@ private struct RunningFast: View {
                 Text("Breaking it").eyebrow()
             }
         }
-        Section {
-            Button("End Fast", role: .destructive) { model.endFast() }
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("fast.end")
-        } footer: {
-            Text("Logging a meal ends it too, and Undo on that meal puts the fast back.")
-        }
     }
 }
 
@@ -224,9 +238,9 @@ private struct PhasesSection: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text(phase.title).font(.subheadline.weight(current ? .bold : .semibold))
                             Spacer()
-                            Text(phase.hoursLabel).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            Text(phase.hoursLabel).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
                         }
-                        Text(phase.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(phase.detail).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.vertical, 2)
@@ -257,7 +271,7 @@ private struct PastFastsSection: View {
                             .foregroundStyle(hours >= run.fast.goalHours ? Ink.good : Ink.text3)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(Format.duration(hours * 3600)) of \(Format.goal(run.fast.goalHours))").font(.subheadline.weight(.semibold))
-                            Text(Format.moment(run.fast.start)).font(.caption).foregroundStyle(.secondary)
+                            Text(Format.moment(run.fast.start)).font(.caption).foregroundStyle(Ink.text3)
                         }
                     }
                     .swipeActions {

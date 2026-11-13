@@ -16,16 +16,22 @@ struct SupplementEditor: View {
     @State private var lines: [Line]
     @State private var confirmingDelete = false
     @State private var showAllLines = false
+    let place: Place
+
+    /// Where the editor is: a sheet of its own (from Today, or a scanned bottle), pushed in the
+    /// supplements sheet, or the Supplements pane beside its list, which keeps its bar's Save.
+    enum Place { case sheet, pushed, pane }
 
     private struct Line: Identifiable {
         let id = UUID()
         var ingredient: SupplementIngredient
     }
 
-    init(supplement: Supplement, isNew: Bool) {
+    init(supplement: Supplement, isNew: Bool, place: Place = .pane) {
         _supplement = State(initialValue: supplement)
         _lines = State(initialValue: supplement.facts.ingredients.map { Line(ingredient: $0) })
         self.isNew = isNew
+        self.place = place
     }
 
     static let units = [
@@ -35,74 +41,26 @@ struct SupplementEditor: View {
     static let lineUnits = ["mg", "mcg", "g", "IU", "mcg DFE", "mcg RAE", "kcal", "CFU", "billion CFU", "ml"]
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Name", text: $supplement.facts.name)
-                TextField("Brand", text: Binding(get: { supplement.facts.brand ?? "" }, set: { supplement.facts.brand = $0.isEmpty ? nil : $0 }))
-            } footer: {
-                if supplement.facts.source == .dsld {
-                    Text("Label from the NIH Dietary Supplement Label Database. Check it against your bottle; recipes change.")
-                } else if supplement.facts.source == .label {
-                    Text("Read from the label. Check each line against it.")
+        Group {
+            switch place {
+            case .sheet:
+                form.inkSheet {
+                    SheetBar(label: "Cancel", identifier: "supplementEditor.cancel") { dismiss() }
+                } foot: {
+                    foot
                 }
-            }
-
-            doses
-
-            Section {
-                HStack {
-                    Text("Serving")
-                    Spacer()
-                    TextField("1", value: $supplement.facts.servingCount, format: .number)
-                        .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 60)
-                    Picker("Unit", selection: $supplement.facts.unit) {
-                        ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) {
-                            Text($0).tag($0)
+            case .pushed:
+                form.formPage(title).safeAreaInset(edge: .bottom, spacing: 0) { foot }
+            case .pane:
+                form.inlineTitle()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(isNew ? "Add" : "Save", action: save).disabled(!canSave)
                         }
                     }
-                    .labelsHidden()
-                    .fixedSize()
-                }
-                // The first ten, or all of them: shown always starts at the first line, so a delete's
-                // offsets are the lines' own.
-                let shown = showAllLines || lines.count <= 12 ? lines : Array(lines.prefix(10))
-                ForEach(shown) { line in
-                    LineEditor(ingredient: binding(line.id), units: Self.lineUnits)
-                }
-                .onDelete { lines.remove(atOffsets: $0) }
-                if shown.count < lines.count {
-                    Button("Show all \(lines.count) lines") { showAllLines = true }
-                }
-                Button("Add a line", systemImage: "plus") {
-                    lines.append(Line(ingredient: SupplementIngredient(name: "", amount: nil, unit: "mg")))
-                    showAllLines = true
-                }
-            } header: {
-                Text("Supplement Facts").eyebrow()
-            } footer: {
-                Text(countedSummary)
-            }
-
-            if !isNew {
-                Section {
-                    Toggle("Paused", isOn: $supplement.paused)
-                    Button("Remove from my supplements", role: .destructive) { confirmingDelete = true }
-                } footer: {
-                    Text("Paused supplements stay here with their history but aren't due on Today.")
-                }
             }
         }
-        .navigationTitle(isNew ? "Add supplement" : supplement.name)
-        .inlineTitle()
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(isNew ? "Add" : "Save") {
-                    model.save(supplement: tidied)
-                    dismiss()
-                }
-                .disabled(supplement.facts.name.trimmingCharacters(in: .whitespaces).isEmpty || supplement.doses.isEmpty)
-            }
-        }
+        .navigationTitle(title)
         .confirmationDialog("Remove \(supplement.name)?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 model.delete(supplement: supplement.id)
@@ -110,6 +68,110 @@ struct SupplementEditor: View {
             }
         } message: {
             Text("Doses already taken keep counting on their days.")
+        }
+    }
+
+    private var title: String { isNew ? "Add supplement" : supplement.name }
+
+    private var canSave: Bool { !supplement.facts.name.trimmingCharacters(in: .whitespaces).isEmpty && !supplement.doses.isEmpty }
+
+    private func save() {
+        model.save(supplement: tidied)
+        dismiss()
+    }
+
+    /// Add or Save, full width at the foot.
+    private var foot: some View {
+        SheetFoot {
+            Button(action: save) {
+                Text(isNew ? "Add" : "Save").frame(maxWidth: .infinity)
+            }
+            .primaryAction()
+            .keyboardShortcut(.defaultAction)
+            .disabled(!canSave)
+            .accessibilityIdentifier("supplementEditor.save")
+        }
+    }
+
+    @ViewBuilder
+    private var form: some View {
+        if place == .pane {
+            Form { sections }
+        } else {
+            Form {
+                FormHeading(eyebrow: place == .sheet ? "Today · supplements" : "Supplements", title: title)
+                Group { sections }.inkRows()
+                if !isNew {
+                    Section {
+                        FormActionRow("Remove from my supplements", destructive: true, identifier: "supplementEditor.remove") {
+                            confirmingDelete = true
+                        }
+                    }
+                }
+            }
+            .inkForm()
+        }
+    }
+
+    @ViewBuilder
+    private var sections: some View {
+        Section {
+            TextField("Name", text: $supplement.facts.name)
+            TextField("Brand", text: Binding(get: { supplement.facts.brand ?? "" }, set: { supplement.facts.brand = $0.isEmpty ? nil : $0 }))
+        } footer: {
+            if supplement.facts.source == .dsld {
+                Text("Label from the NIH Dietary Supplement Label Database. Check it against your bottle; recipes change.")
+            } else if supplement.facts.source == .label {
+                Text("Read from the label. Check each line against it.")
+            }
+        }
+
+        doses
+
+        Section {
+            HStack {
+                Text("Serving")
+                Spacer()
+                TextField("1", value: $supplement.facts.servingCount, format: .number)
+                    .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 60)
+                Picker("Unit", selection: $supplement.facts.unit) {
+                    ForEach(Self.units + (Self.units.contains(supplement.facts.unit) ? [] : [supplement.facts.unit]), id: \.self) {
+                        Text($0).tag($0)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            // The first ten, or all of them: shown always starts at the first line, so a delete's
+            // offsets are the lines' own.
+            let shown = showAllLines || lines.count <= 12 ? lines : Array(lines.prefix(10))
+            ForEach(shown) { line in
+                LineEditor(ingredient: binding(line.id), units: Self.lineUnits)
+            }
+            .onDelete { lines.remove(atOffsets: $0) }
+            if shown.count < lines.count {
+                Button("Show all \(lines.count) lines") { showAllLines = true }
+            }
+            Button("Add a line", systemImage: "plus") {
+                lines.append(Line(ingredient: SupplementIngredient(name: "", amount: nil, unit: "mg")))
+                showAllLines = true
+            }
+        } header: {
+            Text("Supplement Facts").eyebrow()
+        } footer: {
+            Text(countedSummary)
+        }
+
+        if !isNew {
+            Section {
+                Toggle("Paused", isOn: $supplement.paused)
+                // Beside the list, the pane has no foot: Remove stays with Paused.
+                if place == .pane {
+                    Button("Remove from my supplements", role: .destructive) { confirmingDelete = true }
+                }
+            } footer: {
+                Text("Paused supplements stay here with their history but aren't due on Today.")
+            }
         }
     }
 
@@ -223,28 +285,36 @@ private struct WeekdayPicker: View {
 
     var body: some View {
         NavigationStack {
-            List(Weekday.allCases) { day in
-                Button {
-                    if chosen.contains(day) { chosen.remove(day) } else { chosen.insert(day) }
-                } label: {
-                    HStack {
-                        Text(day.name)
-                        Spacer()
-                        if chosen.contains(day) { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+            Form {
+                FormHeading(eyebrow: "Supplement · when you take it", title: "Which days")
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 8) {
+                        ForEach(Weekday.allCases) { day in
+                            ChoiceChip(title: day.short, isOn: chosen.contains(day), identifier: "weekdays.\(day.rawValue)") {
+                                if chosen.contains(day) { chosen.remove(day) } else { chosen.insert(day) }
+                            }
+                            .accessibilityLabel(day.name)
+                        }
                     }
+                    .padding(.vertical, 8)
                 }
-                .foregroundStyle(.primary)
+                .inkRows()
             }
-            .navigationTitle("Days")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "weekdays.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         days = chosen.count == 7 ? .everyDay : .weekdays(chosen.sorted())
                         dismiss()
+                    } label: {
+                        Text("Done").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .disabled(chosen.isEmpty)
+                    .accessibilityIdentifier("weekdays.done")
                 }
             }
             .onAppear {

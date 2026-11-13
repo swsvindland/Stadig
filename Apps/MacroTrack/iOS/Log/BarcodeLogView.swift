@@ -420,7 +420,7 @@ struct SupplementFoundView: View {
             Button("Scan again", action: scanAgain)
         }
         .sheet(isPresented: $adding) {
-            NavigationStack { SupplementEditor(supplement: supplement, isNew: !own) }.macSheetSize(width: 520, height: 640)
+            NavigationStack { SupplementEditor(supplement: supplement, isNew: !own, place: .sheet) }.macSheetSize(width: 520, height: 640)
         }
     }
 }
