@@ -78,7 +78,7 @@ struct SupplementEditor: View {
                     showAllLines = true
                 }
             } header: {
-                Text("Supplement Facts")
+                Text("Supplement Facts").eyebrow()
             } footer: {
                 Text(countedSummary)
             }
@@ -161,7 +161,7 @@ struct SupplementEditor: View {
                         days: supplement.doses.last?.days ?? .everyDay))
             }
         } header: {
-            Text("When you take it")
+            Text("When you take it").eyebrow()
         } footer: {
             if supplement.doses.contains(where: { $0.days == .trainingDays || $0.days == .restDays }) {
                 Text("Training days are the days your shared schedule trains, and any day Stadig Lift logs a session.")

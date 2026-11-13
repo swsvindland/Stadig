@@ -64,7 +64,7 @@ private struct NewFast: View {
                     .accessibilityIdentifier("fast.startTime")
             }
         } header: {
-            Text("Goal")
+            Text("Goal").eyebrow()
         } footer: {
             if let block { Text(block.reason) }
         }
@@ -129,7 +129,7 @@ private struct SafetySection: View {
             Toggle("I've read this", isOn: $read)
                 .accessibilityIdentifier("fast.acknowledge")
         } header: {
-            Text("Before a fast over a day")
+            Text("Before a fast over a day").eyebrow()
         } footer: {
             Text("Stadig Macro can't know your medicines or history. If any of these apply, talk to your doctor first.")
         }
@@ -190,9 +190,11 @@ private struct RunningFast: View {
                 .onChange(of: read) { _, read in if read { model.acknowledgeFastingScreen() } }
         }
         if let refeed = FastSafety.refeed(hours: max(status.hours, status.fast.goalHours)) {
-            Section("Breaking it") {
+            Section {
                 Text(refeed).font(.subheadline)
                 if let salt = FastSafety.electrolytes(hours: status.hours) { Text(salt).font(.subheadline) }
+            } header: {
+                Text("Breaking it").eyebrow()
             }
         }
         Section {
@@ -233,7 +235,7 @@ private struct PhasesSection: View {
                 .accessibilityIdentifier("fast.phase.\(phase.rawValue)")
             }
         } header: {
-            Text("What's likely happening")
+            Text("What's likely happening").eyebrow()
         } footer: {
             Text(FastPhase.caveat)
         }
@@ -247,7 +249,7 @@ private struct PastFastsSection: View {
     var body: some View {
         let past = Array(model.pastFasts.prefix(10))
         if !past.isEmpty {
-            Section("Recent fasts") {
+            Section {
                 ForEach(past) { run in
                     let hours = run.duration(at: run.end ?? Date()) / 3600
                     HStack {
@@ -265,6 +267,8 @@ private struct PastFastsSection: View {
                         Button("Delete", systemImage: "trash", role: .destructive) { model.delete(fast: run.id) }
                     }
                 }
+            } header: {
+                Text("Recent fasts").eyebrow()
             }
         }
     }

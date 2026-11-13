@@ -490,17 +490,23 @@ struct FoodInspector: View {
                     FavoriteButton(foodID: food.id).buttonStyle(.borderless).font(.title3)
                 }
             }
-            Section("Amount") {
+            Section {
                 AmountFields(food: food, amount: $amount)
+            } header: {
+                Text("Amount").eyebrow()
             }
             Section {
                 NutrientSummary(nutrients: n)
             }
-            Section("Eaten") {
+            Section {
                 EatenPicker(eaten: $eaten)
+            } header: {
+                Text("Eaten").eyebrow()
             }
-            Section("Nutrients") {
+            Section {
                 if let unit { PortionNutrients(food: food, count: amount.count, unit: unit, open: true) }
+            } header: {
+                Text("Nutrients").eyebrow()
             }
         }
         .formStyle(.grouped)

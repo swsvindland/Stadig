@@ -72,7 +72,11 @@ struct SupplementsList: View {
             }
             let paused = model.supplements.filter(\.paused)
             if !paused.isEmpty {
-                Section("Paused") { ForEach(paused) { row($0) } }
+                Section {
+                    ForEach(paused) { row($0) }
+                } header: {
+                    Text("Paused").eyebrow()
+                }
             }
             RemindersSection()
         }
@@ -175,7 +179,7 @@ struct RemindersSection: View {
             }
             if Platform.isMac { Text(note).font(.caption).foregroundStyle(.secondary) }
         } header: {
-            Text("Times")
+            Text("Times").eyebrow()
         } footer: {
             // The Mac's list footers are one line: there the note is a row of the section.
             if !Platform.isMac { Text(note) }
