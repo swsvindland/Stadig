@@ -99,7 +99,7 @@ struct TodayLogger: View {
         }
         // Again when the person's own foods change: taking them drops the answers kept so far, and
         // what's typed would show only their own foods until the next key.
-        .task(id: SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
+        .task(id: TodayComposer.SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
         // The fresh meal's Undo is in its header here, for a while longer than a toast's.
         // Not while a sheet or the logger is over it: its seconds start again when it's back.
         .task(id: ToastWait(toast: model.toast?.id, covered: covered)) {
@@ -124,11 +124,6 @@ struct TodayLogger: View {
 
     /// The logger or a sheet is over Today, where a toast's seconds would run out unseen.
     var covered: Bool { model.logger != nil || model.toastCovered }
-
-    struct SearchKey: Equatable {
-        var text: String
-        var foods: Int
-    }
 
     struct ToastWait: Equatable {
         var toast: UUID?
@@ -351,18 +346,7 @@ struct TodayLogger: View {
         .padding(.bottom, 8)
         // As the header's: the foot stops growing where the thread would lose its room.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        // Solid down to the screen's foot: the thread scrolls under the composer and the tab bar,
-        // not out below them.
-        .background {
-            VStack(spacing: 0) {
-                // Long enough that a card going under fades out rather than being sliced at the label.
-                LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground.opacity(0.85), Ink.ground], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 40)
-                Ink.ground
-            }
-            .padding(.top, -40)
-            .ignoresSafeArea(edges: .bottom)
-        }
+        .composerGround()
         .animation(.snappy(duration: 0.25), value: composer.matches)
         .animation(.snappy(duration: 0.25), value: composer.tiles)
         .onGeometryChange(for: Double.self) {
@@ -689,202 +673,4 @@ private struct WhatFitsRows: View {
             "Log \(option.items.map { FoodLabel.short($0.name) }.joined(separator: " and ")), \(Format.kcal(option.nutrients.kcal)), \(option.onTarget ? "on target" : "leaves \(Format.whole(option.leaves)) kcal")"
         )
     }
-}
-
-/// What the food being typed could be, rising above the field: the best one nearest it, marked
-/// with the key that logs it.
-private struct ComposerMatches: View {
-    @Environment(AppModel.self) private var model
-    let composer: TodayComposer
-
-    var body: some View {
-        let count = composer.earlier.compactMap(\.entry).count + 1
-        VStack(spacing: 6) {
-            ForEach(Array(composer.matches.enumerated().reversed()), id: \.element.id) { index, match in
-                Button {
-                    composer.log(match)
-                } label: {
-                    row(match, best: index == 0, count: count)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("today.match.\(index)")
-            }
-        }
-    }
-
-    func row(_ match: TodayComposer.Candidate, best: Bool, count: Int) -> some View {
-        HStack(spacing: 12) {
-            switch match.kind {
-            case .food: FoodTile(name: match.entry.name, fill: Ink.raised)
-            case .quickAdd, .unmatched:
-                Text("≈").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2).frame(width: TileSize.row, height: TileSize.row)
-                    .background(Ink.raised, in: .rect(cornerRadius: TileSize.row * 0.3))
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                // The name it's said by, then what tells it from the next one: catalog names differ
-                // late ("…, meat only" from "…, meat and skin"). Two lines at most.
-                title(match).lineLimit(2)
-                Text(detail(match)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
-            }
-            Spacer(minLength: 6)
-            if best {
-                Text(count > 1 ? "return · logs \(count)" : "return")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Ink.text2)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(Ink.raised, in: .rect(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Ink.hairline))
-                    .accessibilityHidden(true)
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 56)
-        .background(best ? Color.accentColor.opacity(0.12) : Color.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
-        .overlay {
-            if best { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor, lineWidth: 1.5) }
-        }
-        .contentShape(.rect(cornerRadius: 18))
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(best ? "Return logs it" : "")
-    }
-
-    func title(_ match: TodayComposer.Candidate) -> Text {
-        let name = match.title(canDescribe: model.ai.canDescribe)
-        let short = Text(name.short).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-        guard let rest = name.rest else { return short }
-        return Text("\(short)  \(Text(rest).font(.caption).foregroundStyle(Ink.text2))")
-    }
-
-    func detail(_ match: TodayComposer.Candidate) -> String { match.detail(model.ai) }
-}
-
-/// The foods typed before the one being typed, as they'll be logged.
-private struct ComposerChips: View {
-    let parts: [TodayComposer.Resolved]
-    let typed: [AddFoodPart]
-
-    var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                ForEach(parts) { part in
-                    Text(label(part))
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Ink.text)
-                        .padding(.horizontal, 10)
-                        .frame(height: 30)
-                        .background(Color.cardBackground, in: .capsule)
-                        .overlay(Capsule().stroke(Ink.hairline))
-                }
-            }
-            .padding(.horizontal, 2)
-        }
-        .scrollIndicators(.hidden)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Also logging")
-    }
-
-    func label(_ part: TodayComposer.Resolved) -> String {
-        if let entry = part.entry {
-            if entry.source == .quickAdd { return "≈ \(Format.kcal(entry.nutrients.kcal))" }
-            return "\(FoodMarker.of(entry.name)) \(FoodLabel.title(entry.name)) · \(entry.amountLabel)"
-        }
-        if let words = part.unmatched { return "≈ \(words)" }
-        return typed.indices.contains(part.id) ? "\(typed[part.id].text)…" : "…"
-    }
-}
-
-/// The one field: type or dictate what was eaten; the camera for a barcode, a label or a plate; the
-/// microphone to say it.
-private struct ComposerField: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.scenePhase) private var scenePhase
-    @Bindable var composer: TodayComposer
-    var typing: FocusState<Bool>.Binding
-
-    var body: some View {
-        let empty = composer.text.trimmingCharacters(in: .whitespaces).isEmpty
-        HStack(spacing: 4) {
-            TextField("Add food, or say what you ate", text: $composer.text)
-                .font(.body)
-                .foregroundStyle(Ink.text)
-                .focused(typing)
-                .autocorrectionDisabled()
-                .noAutocapitalization()
-                .submitLabel(.return)
-                .onSubmit(submit)
-                .accessibilityIdentifier("today.composer")
-                .padding(.leading, 18)
-                .frame(maxHeight: .infinity)
-            if empty {
-                Button {
-                    typing.wrappedValue = false
-                    model.openLogger(.scan)
-                } label: {
-                    Image(systemName: "camera").font(.title3).foregroundStyle(Ink.text2).frame(width: 44, height: 44).contentShape(.circle)
-                }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button("Scan a Barcode or Label", systemImage: "barcode.viewfinder") { model.openLogger(.scan) }
-                    if model.ai.canSeePhotos {
-                        Button("Photo of Your Plate", systemImage: "camera") { model.openLogger(.camera) }
-                        Button("Choose a Photo", systemImage: "photo") { model.openLogger(.photoLibrary) }
-                    }
-                }
-                .accessibilityLabel("Camera: barcode, label or plate")
-                .accessibilityIdentifier("today.camera")
-                if typing.wrappedValue {
-                    // Nothing typed: the way out of the keyboard sits where the eye already is.
-                    // The keyboard has its own dictation, so the microphone waits until it's down.
-                    Button("Close Keyboard", systemImage: "keyboard.chevron.compact.down", action: closeKeyboard)
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                        .foregroundStyle(Ink.text2)
-                        .frame(width: 44, height: 44)
-                        .contentShape(.circle)
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("today.closeKeyboard")
-                } else {
-                    Button {
-                        // Said to the model where it can read a sentence; else the keyboard's own dictation.
-                        if model.ai.canDescribe { model.openLogger(.describe) } else { typing.wrappedValue = true }
-                    } label: {
-                        Image(systemName: "mic.fill").font(.body.weight(.semibold)).foregroundStyle(Ink.ground)
-                            .frame(width: 40, height: 40).background(Color.accentColor, in: .circle).contentShape(.circle)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Say what you ate")
-                    .accessibilityIdentifier("today.describe")
-                }
-            } else {
-                Button {
-                    Task { await composer.submit() }
-                } label: {
-                    Image(systemName: "arrow.up").font(.body.weight(.bold)).foregroundStyle(Ink.ground)
-                        .frame(width: 40, height: 40).background(Color.accentColor, in: .circle).contentShape(.circle)
-                }
-                .buttonStyle(.plain)
-                .disabled(composer.submitting)
-                .accessibilityLabel("Log it")
-                .accessibilityIdentifier("today.send")
-            }
-        }
-        .padding(.trailing, 7)
-        .frame(height: 56)
-        .background(Color.cardBackground, in: .capsule)
-        .overlay(Capsule().stroke(typing.wrappedValue ? Color.accentColor : Ink.hairline, lineWidth: typing.wrappedValue ? 1.5 : 1))
-    }
-
-    /// Return logs what's typed and keeps the keyboard for the next food; with nothing typed it's
-    /// the way out, as Return is in Messages.
-    private func submit() {
-        guard !composer.text.trimmingCharacters(in: .whitespaces).isEmpty else {
-            closeKeyboard()
-            return
-        }
-        Task { await composer.submit() }
-        typing.wrappedValue = true
-    }
-
-    private func closeKeyboard() { typing.wrappedValue = false }
 }

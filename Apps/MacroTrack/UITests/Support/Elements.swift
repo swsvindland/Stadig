@@ -11,11 +11,11 @@ extension XCUIApplication {
     @MainActor
     var todayLogging: XCUIElement { Self.isPad ? logButton("search") : element("today.composer") }
 
-    /// The button that opens a way to log: the iPhone's quick-log bar above the tabs, or Today's
-    /// toolbar on an iPad ("search", "weighIn", "quickAdd").
+    /// The button that opens a way to log in Today's toolbar on an iPad ("search", "weighIn",
+    /// "quickAdd"). A phone has the composer at the foot of every tab instead (`today.composer`, and
+    /// `tab.composer` on the others), with the weigh-in at the top of Progress.
     @MainActor
     func logButton(_ way: String) -> XCUIElement {
-        guard Self.isPad else { return element("quickLog.\(way)") }
         let titles = ["search": "Log Food", "weighIn": "Weigh In", "quickAdd": "Quick Add"]
         return toolbarItem(way == "search" ? "toolbar.logFood" : "toolbar.\(way)", title: titles[way] ?? way)
     }

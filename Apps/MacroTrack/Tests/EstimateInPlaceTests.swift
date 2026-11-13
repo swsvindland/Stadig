@@ -136,6 +136,40 @@ struct EstimateInPlaceTests {
         #expect(ThreadEstimates.unconfirmed(model.estimates).isEmpty, "nothing left to say Looks right about")
     }
 
+    /// Another tab's composer has no thread: it shows the rows it asked for over its field, the one
+    /// split off for what the catalog hasn't got included.
+    @Test func aComposerKnowsTheRowsItAskedFor() async throws {
+        let setup = try setup()
+        let model = setup.model
+        model.estimate(["somebody else's"], at: Date().addingTimeInterval(-60))
+        setup.composer.text = "qqxzv"
+        await setup.composer.submit()
+        let row = try #require(model.estimates.first { $0.words == "qqxzv" })
+        #expect(setup.composer.asked == [row.asked])
+
+        setup.gate.open()
+        await settle(model)
+
+        let rows = model.estimates.filter { $0.isRow && setup.composer.asked.contains($0.asked) }
+        #expect(rows.map(\.words) == ["Mystery sauce"], "its own split-off row, not the one asked from elsewhere")
+    }
+
+    /// The Log tab's composer on another day: the thread's estimates are today's, so the words go to
+    /// the logger, which logs to that day.
+    @Test func wordsForAnotherDayGoToTheLogger() async throws {
+        let setup = try setup()
+        let model = setup.model
+        model.show(day: model.today.adding(days: -1))
+        setup.composer.logsToSelectedDay = true
+        setup.composer.text = "qqxzv"
+
+        await setup.composer.submit()
+
+        #expect(model.estimates.isEmpty)
+        #expect(model.logger != nil)
+        #expect(model.takeLoggerText() == "qqxzv")
+    }
+
     @Test func vagueWordsAreAskedAboutBeforeAnythingIsLogged() async throws {
         let setup = try setup()
         let model = setup.model

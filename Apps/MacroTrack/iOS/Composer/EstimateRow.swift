@@ -3,8 +3,9 @@ import SwiftUI
 import SystemCore
 
 /// Words being worked out on the thread, in the place their foods will land, or why they couldn't
-/// be, with the logger a tap away. Today's thread and the Mac's menu bar both show it. Words too
-/// vague to log a guess at show what the model made of them and ask (`EstimateProposalRow`).
+/// be, with the logger a tap away. Today's thread, the Mac's menu bar and, over their composer, a
+/// phone's other tabs show it. Words too vague to log a guess at show what the model made of them
+/// and ask (`EstimateProposalRow`).
 struct EstimateRow: View {
     @Environment(AppModel.self) private var model
     let estimate: ThreadEstimate

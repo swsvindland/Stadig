@@ -4,14 +4,21 @@ import Observation
 import SwiftUI
 import SystemCore
 
-/// Today's composer: what's typed, read into foods (`AddFoodText`), the best match for each,
-/// and Return logging all of them at once. The person's own foods answer at once; the catalogs
-/// answer a beat later, off the main actor, and each query's answer is kept while it's typed.
+/// The composer: what's typed, read into foods (`AddFoodText`), the best match for each, and
+/// Return logging all of them at once. The person's own foods answer at once; the catalogs answer a
+/// beat later, off the main actor, and each query's answer is kept while it's typed. A phone has one
+/// at the foot of every tab (Today's, and `TabComposer` on the others), and the Mac's menu bar one.
 @MainActor @Observable
 final class TodayComposer {
     var text = "" {
         didSet { if text != oldValue { reread() } }
     }
+    /// Logs to the Log tab's day, at this time of day, rather than today at now: the Log tab's own
+    /// composer, so a food typed while Tuesday is open lands on Tuesday, as the bar's logger did.
+    var logsToSelectedDay = false
+    /// When Return asked for the estimates this composer started, which a row split off one shares:
+    /// a tab with no thread shows them over its field while they're rows.
+    private(set) var asked: Set<Date> = []
     /// The parts of what's typed, in order.
     private(set) var parts: [AddFoodPart] = []
     /// What the part being typed could be, best first, at the amount typed.
@@ -54,6 +61,13 @@ final class TodayComposer {
         var id: Int
         var entry: FoodEntry?
         var unmatched: String?
+    }
+
+    /// What a search waits on: the words, and the person's own foods, whose change drops the answers
+    /// kept so far (what's typed would show only their own foods until the next key).
+    struct SearchKey: Equatable {
+        var text: String
+        var foods: Int
     }
 
     /// Takes the person's own foods as they are now: on appearing, and whenever they change.
@@ -219,12 +233,14 @@ final class TodayComposer {
     /// field clears for the next food (keeping what wasn't logged). Typed on while Return's foods
     /// were found, it keeps what came after: left whole, a second Return would log them again.
     private func log(_ entries: [FoodEntry], unmatched: [String], model: AppModel, from submitted: String? = nil, keeping: String = "") {
-        // Today is always today, whichever day the Log tab was left on. A meal's foods go in a
-        // second apart, so they keep the order they were typed in.
+        // Today's is always today, whichever day the Log tab was left on; the Log tab's is the day
+        // it shows. A meal's foods go in a second apart, so they keep the order they were typed in.
         let now = Date()
+        let day = logsToSelectedDay ? model.selectedDay : model.today
+        let start = day == model.today ? now : day.at(sameTimeAs: now)
         let timed = entries.enumerated().map { index, entry in
             var entry = entry
-            entry.date = now.addingTimeInterval(Double(index))
+            entry.date = start.addingTimeInterval(Double(index))
             entry.day = Day(entry.date)
             return entry
         }
@@ -237,7 +253,27 @@ final class TodayComposer {
             text = keeping
         }
         if !timed.isEmpty { model.log(timed) }
-        if !unmatched.isEmpty { model.estimate(unmatched, at: now.addingTimeInterval(Double(timed.count))) }
+        guard !unmatched.isEmpty else { return }
+        if day == model.today {
+            // Rows of words still being worked out, or asked about, are the only ones worth keeping.
+            let rows = Set(model.estimates.filter(\.isRow).map(\.asked))
+            asked = asked.intersection(rows).union(model.estimate(unmatched, at: start.addingTimeInterval(Double(timed.count))))
+        } else {
+            // Estimates in place are today's thread's: words for another day are found in the
+            // logger, which logs to that day.
+            model.openLogger(with: unmatched.joined(separator: ", "))
+        }
+    }
+
+    /// What the field says with nothing typed.
+    static let placeholder = "Add food, or say what you ate"
+
+    /// The field's words on the Log tab: where Return logs, when that isn't today. "Add food to
+    /// Tuesday" within a week either side, and the date further off, where a weekday is ambiguous.
+    static func placeholder(for day: Day, today: Day) -> String {
+        guard day != today else { return placeholder }
+        let near = abs(day.days(until: today)) < 7
+        return "Add food to \(Format.day(day, style: near ? .dateTime.weekday(.wide) : .dateTime.month(.abbreviated).day()))"
     }
 
     /// Whether a part's words are enough to search: the catalogs wait for a last word's second

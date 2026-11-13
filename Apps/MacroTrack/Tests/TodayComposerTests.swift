@@ -93,6 +93,47 @@ struct TodayComposerTests {
         #expect(model.logger == nil, "nothing handed to the logger")
     }
 
+    /// The Log tab's composer, on Tuesday: Return logs there at this time of day, as the bar's
+    /// logger did, with the one Undo. Every other tab's logs today, whatever day Log was left on.
+    @Test func theLogTabsComposerLogsToTheDayItShows() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let yesterday = model.today.adding(days: -1)
+        model.show(day: yesterday)
+        let composer = TodayComposer()
+        composer.logsToSelectedDay = true
+        composer.attach(model)
+        composer.text = "banana 150, 300 kcal"
+
+        await composer.submit()
+
+        let logged = model.entries(on: yesterday)
+        #expect(logged.count == 2)
+        #expect(model.entries(on: model.today).isEmpty)
+        let clock = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let banana = try #require(logged.first { $0.foodID != nil })
+        #expect(Calendar.current.dateComponents([.hour, .minute], from: banana.date).hour == clock.hour)
+        #expect(Set(model.toast?.undo ?? []) == Set(logged.map(\.id)))
+
+        // Today's composer (and Plan's, and Progress's) logs today, now.
+        let today = TodayComposer()
+        today.attach(model)
+        today.text = "banana 100"
+        await today.submit()
+        #expect(model.entries(on: model.today).count == 1)
+    }
+
+    @Test func theFieldSaysWhereReturnLogs() {
+        let today = Day(year: 2026, month: 11, day: 12)
+        #expect(TodayComposer.placeholder(for: today, today: today) == "Add food, or say what you ate")
+        // Tuesday, and tomorrow (a Friday), by name.
+        #expect(TodayComposer.placeholder(for: today.adding(days: -2), today: today).hasPrefix("Add food to Tue"))
+        #expect(TodayComposer.placeholder(for: today.adding(days: 1), today: today).hasPrefix("Add food to Fri"))
+        // Further off, a weekday could be either: the date.
+        let far = TodayComposer.placeholder(for: today.adding(days: -9), today: today)
+        #expect(far.hasPrefix("Add food to ") && far.contains("3"), "\(far)")
+    }
+
     /// Without Apple's model; with it, they're worked out on the thread (`EstimateInPlaceTests`).
     @Test func wordsNothingMatchesGoOnToTheLoggerWithoutTheModel() async throws {
         let model = TestEnvironment().model()

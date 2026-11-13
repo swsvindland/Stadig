@@ -5,11 +5,6 @@ import SwiftUI
 import SystemCore
 
 extension AppModel {
-    /// What the bar names as where a food goes: today says nothing, another day says which.
-    var logTargetTitle: String {
-        selectedDay == today ? "Log food" : "Log to \(Format.day(selectedDay, style: .dateTime.weekday(.abbreviated)))"
-    }
-
     /// Quick add's footer, naming the day the food lands on. That's not always the selected day: just
     /// after midnight, a time picked last night is on the day before.
     var quickAddNote: String {

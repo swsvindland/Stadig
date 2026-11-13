@@ -256,13 +256,6 @@ struct LogTabTests {
         #expect(AppTab.allCases.firstIndex(of: .history) == 7, "⌘8")
     }
 
-    @Test func theBarNamesItsDay() {
-        let model = model()
-        #expect(model.logTargetTitle == "Log food")
-        model.show(day: yesterdayIn(model))
-        #expect(model.logTargetTitle.hasPrefix("Log to "))
-    }
-
     /// Just after midnight a time picked last night is on another day than the one selected, and
     /// that's the day the food goes on.
     @Test func quickAddNamesTheDayItsFoodLandsOn() {

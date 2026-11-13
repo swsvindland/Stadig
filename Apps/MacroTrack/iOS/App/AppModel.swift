@@ -1048,21 +1048,29 @@ final class AppModel {
 
     // MARK: Estimates in place
 
-    /// Words Today's composer matched to no food. Where Apple's model can read a description, each
-    /// is a row on the thread at once, worked out off to the side and logged in its place as
-    /// estimates, at `date` (when Return was pressed), with the usual Undo. Without the model they
-    /// go on to the logger as before.
-    func estimate(_ words: [String], at date: Date) {
+    /// Words a composer matched to no food. Where Apple's model can read a description, each is a
+    /// row on the thread at once, worked out off to the side and logged in its place as estimates,
+    /// at `date` (when Return was pressed), with the usual Undo. Without the model they go on to the
+    /// logger as before. Returns when each row was asked, which a row split off it shares: a tab
+    /// without the thread shows them over its composer.
+    @discardableResult
+    func estimate(_ words: [String], at date: Date) -> Set<Date> {
         let words = words.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        guard !words.isEmpty else { return }
-        guard ai.canDescribe else { return openLogger(with: words.joined(separator: ", ")) }
+        guard !words.isEmpty else { return [] }
+        guard ai.canDescribe else {
+            openLogger(with: words.joined(separator: ", "))
+            return []
+        }
         ai.prewarm()
+        var asked: Set<Date> = []
         for (index, text) in words.enumerated() {
             // A second apart, after the foods typed with them, so they keep the order typed.
             let estimate = ThreadEstimate(words: text, asked: date.addingTimeInterval(Double(index)))
             estimates.append(estimate)
+            asked.insert(estimate.asked)
             estimateReads[estimate.id] = Task { [weak self] in await self?.read(estimate) }
         }
+        return asked
     }
 
     /// The model's read of an estimate's words, logged in its row's place or said there.

@@ -54,7 +54,7 @@ struct MenuBarToday: View {
             keys.padding(.top, 10)
         }
         .animation(.snappy(duration: 0.2), value: composer.matches)
-        .task(id: TodayLogger.SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
+        .task(id: TodayComposer.SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
         // The fresh meal's Undo, for as long as Today gives it, while the panel is up.
         .task(id: model.toast?.id) {
             guard let toast = model.toast, !fresh.isEmpty else { return }
