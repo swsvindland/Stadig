@@ -14,8 +14,9 @@ let appLog = Logger(subsystem: "dev.svindland.stadig.macro", category: "app")
 
 /// Where the app is. The iPhone's tab bar has Today, Log, Plan and Progress; the sidebar on iPad,
 /// the Mac and Vision Pro adds the rest, which are whole screens only where there's room for them.
+/// The Go menu numbers them in this order (⌘1…⌘9), so a new one goes at the end.
 enum AppTab: String, Hashable, CaseIterable {
-    case today, log, foods, mealPlan, supplements, plan, progress, history
+    case today, log, foods, mealPlan, supplements, plan, progress, history, week
 
     var title: String {
         switch self {
@@ -27,6 +28,7 @@ enum AppTab: String, Hashable, CaseIterable {
         case .plan: "Plan"
         case .progress: "Progress"
         case .history: "History"
+        case .week: "Week"
         }
     }
 
@@ -34,7 +36,7 @@ enum AppTab: String, Hashable, CaseIterable {
     /// another way (the logger, the Plan tab, the supplements sheet).
     var isSidebarOnly: Bool {
         switch self {
-        case .foods, .mealPlan, .supplements, .history: true
+        case .foods, .mealPlan, .supplements, .history, .week: true
         case .today, .log, .plan, .progress: false
         }
     }
@@ -46,6 +48,7 @@ enum AppTab: String, Hashable, CaseIterable {
         case .history: .progress
         case .foods: .log
         case .supplements: .today
+        case .week: .log
         case .today, .log, .plan, .progress: self
         }
     }

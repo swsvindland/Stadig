@@ -6,8 +6,9 @@ import SystemStore
 /// Today for the day at a glance, Log for its food hour by hour, Plan for the phase and targets,
 /// Progress for the trend. On a phone every tab has the same composer at its foot, above the tabs:
 /// Today's own, and `TabComposer` on the others, logging where it is. With room for a sidebar (iPad,
-/// the Mac, Vision Pro) the sidebar adds Foods to find and compare, the Meal Plan, Supplements and
-/// History; logging is Today's and Log's composer, Log's pane, the Foods screen and the menu bar.
+/// the Mac, Vision Pro) the sidebar adds the Week desk, Foods to find and compare, the Meal Plan,
+/// Supplements and History; logging is Today's and Log's composer, Log's pane, the Foods screen and
+/// the menu bar.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -77,6 +78,8 @@ struct RootView: View {
             Tab("Today", systemImage: "fork.knife", value: AppTab.today) { TodayView() }
             Tab("Log", systemImage: "list.bullet.clipboard", value: AppTab.log) { LogTab().tabComposer(.log, isEnabled: !wide) }
             if wide {
+                Tab("Week", systemImage: "rectangle.split.3x1", value: AppTab.week) { WeekDeskView() }
+                    .accessibilityIdentifier("sidebar.week")
                 TabSection {
                     Tab("Foods", systemImage: "carrot", value: AppTab.foods) { FoodsView() }
                         .tabPlacement(.sidebarOnly)

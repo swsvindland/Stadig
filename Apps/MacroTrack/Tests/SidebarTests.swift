@@ -209,7 +209,7 @@ struct SidebarTests {
         #expect(model.tab == .progress)
         model.go(to: .today)
         #expect(model.tab == .today)
-        #expect(AppTab.allCases.filter(\.isSidebarOnly) == [.foods, .mealPlan, .supplements, .history])
+        #expect(AppTab.allCases.filter(\.isSidebarOnly) == [.foods, .mealPlan, .supplements, .history, .week])
     }
 
     @Test func aDroppedPhotoOpensThePhotoLoggerOnce() {

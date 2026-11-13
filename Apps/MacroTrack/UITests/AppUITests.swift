@@ -21,6 +21,13 @@ nonisolated final class AppUITests: XCTestCase {
         app.element("progress.trendWeight").waitToAppear()
         XCTAssertTrue(app.element("progress.range").exists, "weeks of weigh-ins draw a chart")
 
+        // The week desk is the iPad's (and the Mac's): a phone plans a day at a time.
+        if XCUIApplication.isPad {
+            app.openTab("Week")
+            app.element("week.desk").waitToAppear()
+            XCTAssertTrue(app.element("week.meal").waitForExistence(timeout: 5), "this week's meals are on it")
+        }
+
         app.openTab("Today")
         app.element("today.calories").waitToAppear()
     }
