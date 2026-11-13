@@ -174,6 +174,11 @@ struct WristTests {
         let weighIns = DayRange(start, today).days.map { WeighIn(date: $0.at(hour: 7, minute: 0), kg: 84) } + [ignored]
         #expect(wrist(state(weighIns: weighIns)).dial.start == 84)
         #expect(!wrist(state(weighIns: weighIns.filter { $0.day < today })).weighedToday)
+        // The reading is set against the trend, as the phone's weigh-in is.
+        let steady = state()
+        let trend = try? #require(MacroAnalyst.analyse(steady).trend.latest?.trend)
+        #expect(trend != nil && wrist(steady).trendKg == trend)
+        #expect(abs((wrist(steady).trendKg ?? 0) - 84) < 0.5, "five weeks at 84 kg trend at 84")
     }
 
     @Test("past its day the snapshot shows nothing eaten yet, and reads back as written")

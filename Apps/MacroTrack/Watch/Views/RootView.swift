@@ -25,7 +25,9 @@ struct RootView: View {
                 .navigationDestination(for: WristRoute.self) { route in
                     switch route {
                     case .weighIn:
-                        if let today = model.today { WeighInView(dial: today.dial, weighedToday: today.weighedToday) }
+                        if let today = model.today {
+                            WeighInView(dial: today.dial, weighedToday: today.weighedToday, trendKg: today.trendKg)
+                        }
                     }
                 }
         }

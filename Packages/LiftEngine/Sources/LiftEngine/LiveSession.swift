@@ -183,6 +183,24 @@ public struct RestState: Codable, Hashable, Sendable {
     /// Heart rate when the set began, for recovery thresholds.
     public var preSetHeartRate: Double?
     public var filler: String?
+
+    /// The heart rate that ends this rest early once its minimum has passed ("go at 105"): the
+    /// highest whole bpm `Rest.recovered` takes as recovered. Nil when heart rate doesn't guide it.
+    public func recoveredAt(zones: HeartRateZones) -> Int? {
+        guard plan.heartRateGuided else { return nil }
+        let recovered = { (bpm: Int) in
+            Rest.recovered(heartRate: Double(bpm), preSet: preSetHeartRate, zones: zones, elapsed: plan.minimum, plan: plan)
+        }
+        // Recovered is every reading at or under one threshold: find it by halving.
+        var low = 0
+        var high = 250
+        guard recovered(low) else { return nil }
+        while low < high {
+            let middle = (low + high + 1) / 2
+            if recovered(middle) { low = middle } else { high = middle - 1 }
+        }
+        return low
+    }
 }
 
 /// The set just logged, and the session as it stood before: what Undo puts back. It's kept from a

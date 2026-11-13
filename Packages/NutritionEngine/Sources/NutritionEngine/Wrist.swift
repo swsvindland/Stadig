@@ -122,6 +122,8 @@ public struct WristToday: Hashable, Sendable {
     public var dosesToday: Int
     public var dial: WeighInDial
     public var weighedToday: Bool
+    /// The weight trend's latest value, kg, for the weigh-in to set the reading against.
+    public var trendKg: Double?
     public var dayState: DayState?
     public var hasEntries: Bool
     /// Meal timing and fasting turned on, the fast running, and when the last meal ended (what the
@@ -165,6 +167,7 @@ public struct WristToday: Hashable, Sendable {
         let latest = state.weighIns.filter(Weight.counts).max { $0.date < $1.date }
         dial = WeighInDial(unit: state.profile.units.weight, latestKg: latest?.kg, sex: state.profile.sex)
         weighedToday = state.weighIns.contains { $0.day == today }
+        trendKg = analysis.trend.latest?.trend
         dayState = state.dayStatus.first { $0.day == today }?.state
         hasEntries = state.entries.contains { $0.day == today }
         tracksMealTiming = state.settings.mealTiming

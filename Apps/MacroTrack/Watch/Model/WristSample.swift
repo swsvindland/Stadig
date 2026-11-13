@@ -12,7 +12,8 @@ import SystemStore
 /// `-seedSampleData` fills an empty store; `-seedPlan` also starts the recommended plan, so today
 /// has calorie targets; `-seedSupplements` adds a stack due through the day, two weeks of it taken,
 /// coffee and water, with drinks turned on; `-imperial` weighs in pounds; `-page logAgain|water|
-/// supplements|weigh` opens a page.
+/// supplements|weigh` opens a page; `-seedHour 9` logs today's food up to that hour (breakfast, here),
+/// whatever the time (before then, dated a minute ago).
 enum WristSample {
     /// What, how much, when (hours) and its numbers: three meals and two snacks.
     private static let menu: [(name: String, amount: String, grams: Double, hour: Double, n: Nutrients)] = [
@@ -70,9 +71,16 @@ enum WristSample {
             }
             kg += ((eaten > 0 ? eaten : 2_300) - 2_600) / Energy.kcalPerKg
         }
-        // Today so far, up to lunch.
-        let hour = Double(Calendar.current.component(.hour, from: now)) + Double(Calendar.current.component(.minute, from: now)) / 60
-        for food in menu where food.hour < min(hour, 15) { entries.append(entry(food, on: today, scale: 1)) }
+        // Today so far, up to lunch (or up to `-seedHour`'s hour, whatever the time).
+        let hour =
+            launch.value(after: "-seedHour").flatMap(Double.init)
+            ?? Double(Calendar.current.component(.hour, from: now)) + Double(Calendar.current.component(.minute, from: now)) / 60
+        for food in menu where food.hour < min(hour, 15) {
+            var eaten = entry(food, on: today, scale: 1)
+            // With `-seedHour` early in the day, what's "eaten" by then is dated by now, so it counts.
+            if eaten.date > now { eaten.date = max(today.date(), now.addingTimeInterval(-60)) }
+            entries.append(eaten)
+        }
         weighIns.append(WeighIn(date: today.at(hour: 7, minute: 0), kg: kg))
         model.seed { store in
             store.save(ProfileRecord(profile))

@@ -31,6 +31,16 @@ struct SetDraft: Hashable {
     var seconds: Int?
 }
 
+/// The rest ran out on its own (its time, or heart rate): the next set's face comes up in the accent
+/// for a few seconds, with the heart rate and how early, so a glance after the tap on the wrist says
+/// what's next.
+struct GoMoment: Equatable {
+    var id = UUID()
+    var heartRate: Double?
+    /// Seconds before the rest's time, when heart rate ended it.
+    var early: Int?
+}
+
 /// A short line shown on the next screen: "Heart rate recovered".
 struct Notice: Equatable {
     var text: String
@@ -44,6 +54,8 @@ struct SessionSummary: Equatable {
     var minutes: Int
     var exercises: Int
     var workSets: Int
+    /// The plan's work sets, to count the session's against.
+    var plannedSets: Int?
     var ratings: [SetRating: Int]
     var conditioningMinutes: Int
     var averageHeartRate: Double?
@@ -52,11 +64,15 @@ struct SessionSummary: Equatable {
     /// The lifts whose estimated one-rep max it raised, from what this Watch knew going in.
     var moved: [EstimateMove]
 
-    init(_ record: SessionRecord, savedOnPhone: Bool = false, known: PhoneContext? = nil, catalog: ExerciseCatalog? = nil) {
+    init(
+        _ record: SessionRecord, plan: SessionPlan? = nil, savedOnPhone: Bool = false, known: PhoneContext? = nil,
+        catalog: ExerciseCatalog? = nil
+    ) {
         title = record.title
         minutes = record.minutes
         exercises = record.exercises.count
         workSets = record.workSets.count
+        plannedSets = plan.map { $0.items.filter(\.isStrength).reduce(0) { $0 + $1.workSets.count } }
         ratings = Dictionary(grouping: record.workSets.compactMap(\.rating)) { $0 }.mapValues(\.count)
         conditioningMinutes = record.conditioning.map(\.minutes).reduce(0, +)
         averageHeartRate = record.averageHeartRate
@@ -99,6 +115,8 @@ final class WatchModel {
     /// The last finished session, until the person dismisses it.
     var summary: SessionSummary?
     private(set) var notice: Notice?
+    /// The rest just ran out on its own, while the set face says so.
+    private(set) var go: GoMoment?
     /// Moves when a rest in the phone's session runs out, so the screen moves on: the phone keeps the
     /// rest until the next set is logged (that set's rest is timed from it), as the Watch's copy does.
     private(set) var restsRunOut = 0
@@ -107,10 +125,13 @@ final class WatchModel {
     #if DEBUG
     /// A screen for the sample session to open on.
     var debugRoute: String?
+    /// A heart rate to show in place of the workout's (`-sampleHeartRate`).
+    var debugHeartRate: Double?
     #endif
 
     @ObservationIgnored private var alarm: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
+    @ObservationIgnored private var goTask: Task<Void, Never>?
     @ObservationIgnored private var lastSave = Date.distantPast
     /// The context the phone sent with its session: the gym, loads and zones it runs it with.
     @ObservationIgnored private var mirroredContext: PhoneContext?
@@ -421,7 +442,7 @@ final class WatchModel {
         PhoneLink.shared.send(record)
         Self.markFinished(stored.live.plan)
         // The stored session's context drops its history; the phone's latest still has it.
-        summary = SessionSummary(record, known: context, catalog: catalog)
+        summary = SessionSummary(record, plan: stored.live.plan, known: context, catalog: catalog)
         close()
         Task { _ = await workout.end() }
     }
@@ -642,7 +663,10 @@ final class WatchModel {
         remember(left: copy.session.id)
         if saved {
             let record = copy.session.record(feedback: nil)
-            if record.hasContent { summary = SessionSummary(record, savedOnPhone: true, known: mirroredContext ?? context, catalog: catalog) }
+            if record.hasContent {
+                summary = SessionSummary(
+                    record, plan: copy.session.plan, savedOnPhone: true, known: mirroredContext ?? context, catalog: catalog)
+            }
         }
         mirrored = nil
         mirroredContext = nil
@@ -716,17 +740,60 @@ final class WatchModel {
             return
         }
         guard var stored = session else { return }
+        let endsAt = stored.live.rest?.endsAt
         if stored.live.record(heartRate: bpm, zones: stored.context.zones) {
             stored.live.endRest()
             session = stored
             changed()
             show(Notice(text: "Heart rate recovered", symbol: "heart.fill"))
+            showGo(early: endsAt.map { Int($0.timeIntervalSinceNow.rounded()) })
             WKInterfaceDevice.current().play(.success)
         } else {
             session = stored
             // Samples arrive every few seconds; they needn't hit the disk as often.
             if Date().timeIntervalSince(lastSave) > 30 { save() }
         }
+    }
+
+    /// The heart rate on screen: the workout's, or a sample one in DEBUG.
+    var heartRate: Double? {
+        #if DEBUG
+        if let debugHeartRate { return debugHeartRate }
+        #endif
+        return workout.heartRate
+    }
+
+    /// Puts the set face in the accent for a few seconds after a rest ran out on its own.
+    private func showGo(early: Int?) {
+        go = GoMoment(heartRate: heartRate, early: early.flatMap { $0 > 0 ? $0 : nil })
+        goTask?.cancel()
+        goTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.go = nil
+        }
+    }
+
+    #if DEBUG
+    /// `-sampleRestElapsed 96`: the rest as if it began that long ago, to see its level part way up.
+    func ageSampleRest(by seconds: TimeInterval) {
+        guard var stored = session, var rest = stored.live.rest else { return }
+        rest.started.addTimeInterval(-seconds)
+        rest.endsAt.addTimeInterval(-seconds)
+        stored.live.rest = rest
+        session = stored
+        scheduleAlarm()
+    }
+
+    /// `-sampleScreen go`: the go face, as heart rate ending a rest early leaves it.
+    func showSampleGo() {
+        go = GoMoment(heartRate: heartRate, early: 22)
+    }
+    #endif
+
+    func dismissGo() {
+        goTask?.cancel()
+        go = nil
     }
 
     private func show(_ notice: Notice) {
@@ -799,6 +866,7 @@ final class WatchModel {
             } else {
                 endRest()
             }
+            if !late { showGo(early: nil) }
         case .timerDone, .conditioningDone:
             if !late { device.play(.notification) }
             scheduleAlarm(after: max(Date(), due.addingTimeInterval(0.01)))
