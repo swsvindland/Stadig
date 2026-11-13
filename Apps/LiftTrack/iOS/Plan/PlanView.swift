@@ -224,11 +224,11 @@ struct PlanView: View {
             ForEach(rows) { row in
                 if row.state == .done, let id = row.sessionID, let record = model.sessions.first(where: { $0.id == id }) {
                     NavigationLink(value: record) { WeekSessionRow(row: row) }
-                        .buttonStyle(.plain)
+                        .rowButton()
                         .accessibilityIdentifier("plan.session")
                 } else if let dayID = row.dayID {
                     NavigationLink(value: DayRoute(mesocycleID: mesocycle.id, dayID: dayID)) { WeekSessionRow(row: row) }
-                        .buttonStyle(.plain)
+                        .rowButton()
                         .accessibilityIdentifier("plan.day")
                 } else {
                     WeekSessionRow(row: row)
@@ -239,7 +239,7 @@ struct PlanView: View {
             } label: {
                 LinkRowLabel(title: "Every day of the block", caption: nil, trailing: "\(mesocycle.days.count)")
             }
-            .buttonStyle(.plain)
+            .rowButton()
             .accessibilityIdentifier("plan.allDays")
         }
     }
@@ -256,7 +256,7 @@ struct PlanView: View {
                         title: period.kind.label,
                         caption: period.end.map { Format.range(DayRange(period.start, $0)) } ?? "Since \(Format.day(period.start))")
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .contextMenu {
                     Button("Edit…", systemImage: "pencil") { editing = period }
                     if model.canEnd(period) {
@@ -449,13 +449,14 @@ struct WeekStrip: View {
 struct DayCard: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @ScaledMetric(relativeTo: .body) private var nameSize: CGFloat = 17
     let day: PlannedDay
     let isNext: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(day.name).font(.system(size: 17, weight: .bold)).tracking(-0.2).foregroundStyle(Ink.text)
+                Text(day.name).font(.system(size: nameSize, weight: .bold)).tracking(-0.2).foregroundStyle(Ink.text)
                 if isNext { Text("Next").eyebrow(.accentColor) }
                 Spacer()
                 Text("\(day.minutes) min").font(.caption).foregroundStyle(Ink.text3)
@@ -668,29 +669,62 @@ struct ProgramSwapSheet: View {
 
 /// One of this week's sessions on Plan: the weekday, its name, its minutes and whether it's done.
 struct WeekSessionRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The weekday's and the state's columns, growing with the text in them.
+    @ScaledMetric(relativeTo: .caption) private var dayWidth: CGFloat = 34
+    @ScaledMetric(relativeTo: .caption) private var stateWidth: CGFloat = 62
     let row: WeekSession
 
     var body: some View {
-        let today = row.state == .today
-        HStack(spacing: 12) {
-            Text(row.day.weekday.short).font(.caption.weight(.semibold)).foregroundStyle(today ? Color.accentColor : Ink.text3)
-                .frame(width: 34, alignment: .leading)
-            Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(row.state == .done ? Ink.text2 : Ink.text).lineLimit(1)
-            Spacer(minLength: 4)
-            Text(row.state == .done ? "\(row.minutes) min" : "~\(row.minutes) min").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
-            HStack(spacing: 6) {
-                switch row.state {
-                case .done: Text("Done").font(.caption).foregroundStyle(Ink.text3)
-                case .today: Text("Today").font(.caption).foregroundStyle(Color.accentColor)
-                case .planned: EmptyView()
+        Group {
+            if typeSize.isAccessibilitySize {
+                // The session's name on a line of its own, and the rest under it, where four columns
+                // would leave it a word.
+                VStack(alignment: .leading, spacing: 2) {
+                    title
+                    HStack(spacing: 8) {
+                        weekday
+                        minutes
+                        Spacer(minLength: 4)
+                        state
+                    }
                 }
-                Circle().fill(row.state == .done ? Ink.good : (today ? Color.accentColor : Ink.track)).frame(width: 8, height: 8)
+            } else {
+                HStack(spacing: 12) {
+                    weekday.frame(width: dayWidth, alignment: .leading)
+                    title.lineLimit(1)
+                    Spacer(minLength: 4)
+                    minutes
+                    state.frame(width: stateWidth, alignment: .trailing)
+                }
             }
-            .frame(width: 62, alignment: .trailing)
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(row.state == .done ? "Done" : (today ? "Today" : "Planned"))
+        .accessibilityValue(row.state == .done ? "Done" : (row.state == .today ? "Today" : "Planned"))
+    }
+
+    private var weekday: some View {
+        Text(row.day.weekday.short).font(.caption.weight(.semibold)).foregroundStyle(row.state == .today ? Color.accentColor : Ink.text3)
+    }
+
+    private var title: some View {
+        Text(row.title).font(.callout.weight(.semibold)).foregroundStyle(row.state == .done ? Ink.text2 : Ink.text)
+    }
+
+    private var minutes: some View {
+        Text(row.state == .done ? "\(row.minutes) min" : "~\(row.minutes) min").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+    }
+
+    private var state: some View {
+        HStack(spacing: 6) {
+            switch row.state {
+            case .done: Text("Done").font(.caption).foregroundStyle(Ink.text3)
+            case .today: Text("Today").font(.caption).foregroundStyle(Color.accentColor)
+            case .planned: EmptyView()
+            }
+            Circle().fill(row.state == .done ? Ink.good : (row.state == .today ? Color.accentColor : Ink.track)).frame(width: 8, height: 8)
+        }
     }
 }
 

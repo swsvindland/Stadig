@@ -17,6 +17,7 @@ enum ProgressRange: String, CaseIterable {
 struct ProgressTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicType
     /// Month or Year, kept for each window as it was left.
     @SceneStorage("progress.range") private var range: ProgressRange = .month
     /// Your shape, opened from its row (and by `-yourShape` in DEBUG).
@@ -96,21 +97,21 @@ struct ProgressTab: View {
                 } label: {
                     LinkRowLabel(title: "Your shape", caption: "All six scores as one figure")
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .accessibilityIdentifier("progress.shape")
                 NavigationLink {
                     RatingsPage(trust: analysis.trust)
                 } label: {
                     LinkRowLabel(title: "Your ratings", caption: "\(analysis.trust.label) · \(analysis.trust.evidenceCount) checks so far")
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .accessibilityIdentifier("progress.ratings")
                 NavigationLink {
                     HistoryView()
                 } label: {
                     LinkRowLabel(title: "History", caption: "\(model.sessions.count) sessions · \(model.activities.count) activities")
                 }
-                .buttonStyle(.plain)
+                .rowButton()
                 .accessibilityIdentifier("progress.history")
             }
         }
@@ -121,14 +122,22 @@ struct ProgressTab: View {
 
     /// The block and the title, with Month and Year beside them: what the changes on the page are
     /// measured over.
+    @ViewBuilder
     private func header(_ analysis: LiftAnalysis) -> some View {
-        PageHeader(eyebrow: blockLine(analysis), title: "Progress") {
-            InkSegmented(options: ProgressRange.allCases.map { ($0, $0.label) }, selection: $range)
-                .frame(width: 132)
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("Changes over")
-                .accessibilityIdentifier("progress.range")
+        if dynamicType.isAccessibilitySize {
+            // Under the title, the width of the page, where beside it neither word fits.
+            PageHeader(eyebrow: blockLine(analysis), title: "Progress")
+            rangePicker
+        } else {
+            PageHeader(eyebrow: blockLine(analysis), title: "Progress") { rangePicker.frame(width: 132) }
         }
+    }
+
+    private var rangePicker: some View {
+        InkSegmented(options: ProgressRange.allCases.map { ($0, $0.label) }, selection: $range)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Changes over")
+            .accessibilityIdentifier("progress.range")
     }
 
     /// "Upper / lower · week 2 of 4".
@@ -187,6 +196,10 @@ struct ProgressTab: View {
 /// every lift on the same ruler, the weakest flagged, each opening its exercise.
 struct StrengthCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// A lift's name's column and its score's, growing with the text in them.
+    @ScaledMetric(relativeTo: .subheadline) private var nameWidth: CGFloat = 112
+    @ScaledMetric(relativeTo: .title2) private var numberWidth: CGFloat = 30
     let analysis: LiftAnalysis
     /// Strength as Your shape has it: its trend is the chip beside the level before there's anything
     /// to measure a change from.
@@ -198,16 +211,17 @@ struct StrengthCard: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 14) {
                 if let overall = analysis.strength.overall {
-                    HStack(alignment: .bottom) {
+                    HeroRow {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Strength").eyebrow()
-                            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                Text("\(Int(overall.rounded()))").numeral(76, weight: .heavy).foregroundStyle(Ink.text)
-                                Text(StrengthStandards.level(for: overall)).font(.title3.weight(.bold)).foregroundStyle(Ink.text)
+                            // The level under the score where they don't fit on a line.
+                            ViewThatFits(in: .horizontal) {
+                                HStack(alignment: .firstTextBaseline, spacing: 10) { score(overall) }
+                                VStack(alignment: .leading, spacing: 2) { score(overall) }
                             }
                             .accessibilityElement(children: .combine)
                         }
-                        Spacer(minLength: 8)
+                    } beside: {
                         if let change {
                             ScoreChangeChip(change: change).padding(.bottom, 6)
                         } else if let trend = line.flatMap({ TrendWord($0.trend) }) {
@@ -271,14 +285,31 @@ struct StrengthCard: View {
 
     private func scoredRow(_ category: StrengthCategory, score: CategoryScore) -> some View {
         let weakest = analysis.strength.weakest?.category == category
-        return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(category.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(1).minimumScaleFactor(0.8)
-                if weakest { Text("Weakest").font(.caption.weight(.semibold)).foregroundStyle(Ink.ok) }
-            }
-            .frame(width: 112, alignment: .leading)
+        let name = VStack(alignment: .leading, spacing: 0) {
+            Text(category.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).minimumScaleFactor(0.8)
+            if weakest { Text("Weakest").font(.caption.weight(.semibold)).foregroundStyle(Ink.ok) }
+        }
+        let gauge = HStack(spacing: 12) {
             Ruler(value: score.score / 100, color: weakest ? Ink.ok : .accentColor)
-            Text("\(Int(score.score.rounded()))").numeral(20).foregroundStyle(weakest ? Ink.ok : Ink.text).frame(width: 30, alignment: .trailing)
+            Text("\(Int(score.score.rounded()))").numeral(20).foregroundStyle(weakest ? Ink.ok : Ink.text)
+                .frame(minWidth: numberWidth, alignment: .trailing)
+        }
+        // The lift's name over its ruler at the accessibility sizes, where a column beside it would
+        // leave the name a few letters.
+        return Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    name
+                    gauge
+                }
+                .padding(.vertical, 4)
+            } else {
+                HStack(spacing: 12) {
+                    name.frame(width: nameWidth, alignment: .leading)
+                    gauge
+                }
+            }
         }
         .frame(minHeight: weakest ? 44 : 33)
         .contentShape(.rect)
@@ -286,6 +317,13 @@ struct StrengthCard: View {
         .accessibilityLabel(
             "\(category.label): score \(Int(score.score.rounded())), \(score.level), \(Format.weight(score.oneRepMaxKg, unit: model.gym.unit)) estimated\(weakest ? ", weakest" : "")"
         )
+    }
+
+    /// The overall score and its level, beside it or under it.
+    @ViewBuilder
+    private func score(_ overall: Double) -> some View {
+        Text("\(Int(overall.rounded()))").numeral(76, weight: .heavy).foregroundStyle(Ink.text)
+        Text(StrengthStandards.level(for: overall)).font(.title3.weight(.bold)).foregroundStyle(Ink.text)
     }
 
     /// "3 points to Intermediate." and "Overhead press gets you there fastest."
@@ -304,6 +342,7 @@ struct StrengthCard: View {
 /// the month or the year Progress shows (its trend, before there's anything to measure from). A score
 /// Stadig Macro measures waits for it, said plainly.
 struct YourShape: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let lines: [StatLine]
     /// How far each moved, by stat (`AppModel.changes(over:)`).
     let changes: [StatKind: ScoreChange]
@@ -381,11 +420,13 @@ struct YourShape: View {
             // Stadig Macro measures it: nothing here to open, but where to get it.
             HStack(spacing: 12) {
                 rowContent(stat, line: line)
-                Link("Get it", destination: Self.macroPage)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("progress.getMacro")
+                Link(destination: Self.macroPage) {
+                    // A fingertip's room to hit, round the short word.
+                    Text("Get it").frame(minWidth: 44, minHeight: 44).contentShape(.rect)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .accessibilityIdentifier("progress.getMacro")
             }
             .frame(minHeight: 54)
         } else {
@@ -412,25 +453,50 @@ struct YourShape: View {
         .accessibilityIdentifier("progress.score\(stat.rawValue.identifierSuffix)")
     }
 
+    @ViewBuilder
     private func rowContent(_ stat: StatKind, line: StatLine?) -> some View {
         let score = line?.score
         let apps = line.map { $0.apps.isEmpty ? [$0.app] : $0.apps } ?? [.liftTrack]
-        return HStack(spacing: 12) {
-            Text(score.map(String.init) ?? "–").numeral(20).foregroundStyle(score == nil ? Ink.text3 : Ink.text)
-                .frame(width: 40, alignment: .leading)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 7) {
-                    Text(stat.label).font(.body.weight(.semibold)).foregroundStyle(score == nil ? Ink.text2 : Ink.text)
-                    SourceChip(apps: apps)
+        let number = Text(score.map(String.init) ?? "–").numeral(20).foregroundStyle(score == nil ? Ink.text3 : Ink.text)
+        let name = Text(stat.label).font(.body.weight(.semibold)).foregroundStyle(score == nil ? Ink.text2 : Ink.text)
+        if typeSize.isAccessibilitySize {
+            // The score and its name on a line, and the rest under them, where columns beside them
+            // break the name in two and cut the line about it short.
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    number
+                    name
+                    Spacer(minLength: 4)
+                    change(stat, line: line)
                 }
-                Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                SourceChip(apps: apps)
+                Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 4)
-            if let change = changes[stat] {
-                ScoreChangeLabel(change: change)
-            } else if let line, score != nil, let trend = TrendWord(line.trend) {
-                Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
+            .padding(.vertical, 6)
+        } else {
+            HStack(spacing: 12) {
+                number.frame(width: 40, alignment: .leading)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 7) {
+                        name
+                        SourceChip(apps: apps)
+                    }
+                    Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                change(stat, line: line)
             }
+        }
+    }
+
+    /// How far a score moved over the range shown, or before there's anything to measure from, where
+    /// it's heading.
+    @ViewBuilder
+    private func change(_ stat: StatKind, line: StatLine?) -> some View {
+        if let change = changes[stat] {
+            ScoreChangeLabel(change: change)
+        } else if let line, line.score != nil, let trend = TrendWord(line.trend) {
+            Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
         }
     }
 
@@ -488,7 +554,8 @@ struct EnduranceCard: View {
             if let score = analysis.score {
                 Text("\(Int(score.rounded()))").numeral(44, weight: .heavy).foregroundStyle(Ink.text)
                     .accessibilityLabel("Score \(Int(score.rounded()))")
-                Ruler(value: score / 100, height: 10, divisions: 5).padding(.bottom, 4)
+                // The score above says it.
+                Ruler(value: score / 100, height: 10, divisions: 5).padding(.bottom, 4).accessibilityHidden(true)
             }
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
@@ -841,7 +908,8 @@ struct LevelRuler: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            Ruler(value: score / 100, height: height, divisions: 5)
+            // The score and its level are said beside it, wherever it's drawn.
+            Ruler(value: score / 100, height: height, divisions: 5).accessibilityHidden(true)
             if short {
                 // The exercise page's scale: each level's name set against the tick that ends its
                 // fifth, in the scale's small capitals.
@@ -894,8 +962,13 @@ struct OtherScores: View {
 
     private static let shown: [StatKind] = [.endurance, .agility, .discipline]
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        // Three across, or a row each at the accessibility sizes, where a third of the card can't
+        // hold a score's name.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+        layout {
             ForEach(Self.shown, id: \.self) { stat in
                 let line = lines.first { $0.stat == stat }
                 VStack(alignment: .leading, spacing: 6) {

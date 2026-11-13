@@ -106,42 +106,58 @@ struct RatingButtons: View {
     let action: (SetRating) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(SetRating.allCases.enumerated()), id: \.element) { index, rating in
-                let filled = rating == .orange
-                Button {
-                    action(rating)
-                } label: {
-                    VStack(spacing: 2) {
-                        HStack(spacing: 6) {
-                            if !filled { Circle().fill(rating.color).frame(width: 8, height: 8) }
-                            // Whole words: three across leave no room to break "Missed" in two.
-                            Text(rating.label).font(scale.isLarge ? .title3.weight(.semibold) : .body.weight(.semibold))
-                                .lineLimit(1).minimumScaleFactor(0.6)
-                        }
-                        // At the largest text sizes the word alone fits; VoiceOver still reads how it felt.
-                        if !compact && !dynamicType.isAccessibilitySize {
-                            Text(scale.isLarge ? rating.detail : rating.shortDetail)
-                                .font(scale.isLarge ? .subheadline : .caption)
-                                .foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .foregroundStyle(filled ? Ink.onAccent : Ink.text)
-                    .padding(.horizontal, 6)
-                    .frame(maxWidth: .infinity, minHeight: compact ? 52 : scale.ratingHeight)
-                    .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 16, style: .continuous))
-                    .contentShape(.rect)
+        if dynamicType.isAccessibilitySize {
+            // Just right across the dock and the other two under it, where three across cut the
+            // words short.
+            VStack(spacing: 8) {
+                button(.orange, index: 1)
+                HStack(spacing: 8) {
+                    button(.green, index: 0)
+                    button(.red, index: 2)
                 }
-                .buttonStyle(.plain)
-                .hoverHighlight()
-                // Easy, Just right, Missed: 1, 2, 3, left to right as they're drawn.
-                .keyboardShortcut(scale.shortcut(KeyEquivalent(Character("\(index + 1)"))))
-                .accessibilityLabel("\(rating.label): \(rating.detail)")
-                .accessibilityIdentifier("\(screen).rating\(rating.rawValue.identifierSuffix)")
+            }
+        } else {
+            HStack(spacing: 8) {
+                ForEach(Array(SetRating.allCases.enumerated()), id: \.element) { index, rating in
+                    button(rating, index: index)
+                }
             }
         }
+    }
+
+    private func button(_ rating: SetRating, index: Int) -> some View {
+        let filled = rating == .orange
+        return Button {
+            action(rating)
+        } label: {
+            VStack(spacing: 2) {
+                HStack(spacing: 6) {
+                    if !filled { Circle().fill(rating.color).frame(width: 8, height: 8) }
+                    // Whole words: three across leave no room to break "Missed" in two.
+                    Text(rating.label).font(scale.isLarge ? .title3.weight(.semibold) : .body.weight(.semibold))
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                }
+                // At the largest text sizes the word alone fits; VoiceOver still reads how it felt.
+                if !compact && !dynamicType.isAccessibilitySize {
+                    Text(scale.isLarge ? rating.detail : rating.shortDetail)
+                        .font(scale.isLarge ? .subheadline : .caption)
+                        .foregroundStyle(filled ? Ink.onAccent.opacity(0.85) : Ink.text2)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .foregroundStyle(filled ? Ink.onAccent : Ink.text)
+            .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, minHeight: compact ? 52 : scale.ratingHeight)
+            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 16, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        // Easy, Just right, Missed: 1, 2, 3, left to right as they're drawn.
+        .keyboardShortcut(scale.shortcut(KeyEquivalent(Character("\(index + 1)"))))
+        .accessibilityLabel("\(rating.label): \(rating.detail)")
+        .accessibilityIdentifier("\(screen).rating\(rating.rawValue.identifierSuffix)")
     }
 }
 
