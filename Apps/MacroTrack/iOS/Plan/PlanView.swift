@@ -52,6 +52,7 @@ struct PlanView: View {
             .navigationTitle("Plan")
             .widePage(!compact)
             .hidesNavigationBar()
+            .windowTopRoom()
         }
     }
 
@@ -221,7 +222,7 @@ struct TargetsCard: View {
                 if plan != nil {
                     Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Ink.words(.accentColor))
                         .buttonStyle(.plain)
                         .frame(minHeight: 44)
                         .padding(.vertical, -12)
@@ -248,7 +249,7 @@ struct TargetsCard: View {
     func macro(_ macro: Macro, _ grams: Double?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Measure(value: grams.map(Format.whole) ?? "–", unit: "g", size: 30).foregroundStyle(Ink.text)
-            Text(macro.label).font(.caption).foregroundStyle(macro.color)
+            Text(macro.label).font(.caption).foregroundStyle(Ink.words(macro.color))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -265,7 +266,7 @@ struct TargetsCard: View {
             .accessibilityIdentifier("plan.ownTargets")
             Button(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual") { model.useThePlansTargets() }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.words(.accentColor))
                 .buttonStyle(.plain)
                 .frame(minHeight: 44)
                 .padding(.vertical, -8)
@@ -298,10 +299,10 @@ struct TargetsCard: View {
                 let aims = aim == 0 ? "Yours aim to hold steady." : "Yours aim for \(Format.weeklyChange(aim, unit: unit))."
                 return Text("\(said) \(Text(aims).foregroundStyle(Ink.text2))")
             }
-            return Text("\(said) \(Text(verdict.ownLabel).foregroundStyle(verdict.color))")
+            return Text("\(said) \(Text(verdict.ownLabel).foregroundStyle(Ink.words(verdict.color)))")
         }
         guard let verdict = analysis.pace else { return said }
-        return Text("\(said) \(Text(verdict.label).foregroundStyle(verdict.color))")
+        return Text("\(said) \(Text(verdict.label).foregroundStyle(Ink.words(verdict.color)))")
     }
 }
 
@@ -337,7 +338,7 @@ struct YearCard: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Capsule().fill(now ? Color.accentColor : Ink.track).frame(height: 6)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(phase.kind.label).font(.subheadline.weight(.semibold)).foregroundStyle(now ? Color.accentColor : Ink.text)
+                            Text(phase.kind.label).font(.subheadline.weight(.semibold)).foregroundStyle(now ? Ink.words(.accentColor) : Ink.text)
                                 .lineLimit(1).minimumScaleFactor(0.8)
                             Text(when(phase, now: now)).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).minimumScaleFactor(0.8)
                         }
@@ -451,7 +452,7 @@ struct AssessmentCard: View {
             if !own {
                 Button("Set my own targets") { settingTargets = true }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .buttonStyle(.plain)
                     .frame(minHeight: 44)
                     .padding(.vertical, -8)

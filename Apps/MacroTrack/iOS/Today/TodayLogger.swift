@@ -71,6 +71,7 @@ struct TodayLogger: View {
                 }
             }
             .hidesNavigationBar()
+            .windowTopRoom()
             .refreshable { await model.refreshHealth() }
         }
         // Again when the person's own foods change: taking them drops the answers kept so far, and
@@ -151,8 +152,8 @@ struct TodayLogger: View {
         .dismissesKeyboardOnScroll()
         // A tap anywhere on the day puts the keyboard away, alongside the row's own tap.
         .simultaneousGesture(TapGesture().onEnded { if typing { typing = false } })
-        .safeAreaInset(edge: .top, spacing: 0) { header(entries: entries, fresh: fresh) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+        .pinnedBar(.top) { header(entries: entries, fresh: fresh) }
+        .pinnedBar(.bottom) { bottom }
         .onAppear {
             composer.attach(model)
             composer.refreshTiles()
@@ -533,7 +534,7 @@ struct LeftHeader: View {
             }
             Spacer(minLength: 0)
             if let justLogged, justLogged >= 1 {
-                Text("−\(Format.whole(justLogged))").font(.subheadline.weight(.bold).monospacedDigit()).foregroundStyle(Color.accentColor)
+                Text("−\(Format.whole(justLogged))").font(.subheadline.weight(.bold).monospacedDigit()).foregroundStyle(Ink.words(.accentColor))
                     .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
@@ -583,7 +584,7 @@ struct ThreadHeader: View {
             if fresh {
                 Button("Undo", action: undo)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Ink.words(.accentColor))
                     .buttonStyle(.plain)
                     .frame(minHeight: 30)
                     .accessibilityIdentifier("today.undo")
@@ -621,7 +622,8 @@ struct ThreadRow: View {
                 Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").font(.body.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Ink.text)
                 if let lead {
-                    Text("\(Format.whole(lead.grams)) \(lead.letter)").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(lead.color)
+                    Text("\(Format.whole(lead.grams)) \(lead.letter)").font(.caption.weight(.medium).monospacedDigit()).foregroundStyle(
+                        Ink.words(lead.color))
                 }
             }
         }
@@ -691,7 +693,7 @@ private struct WhatFitsRows: View {
                     Ruler.thin((eaten.protein + option.nutrients.protein) / protein, color: Ink.protein).frame(width: 64)
                 }
                 if option.onTarget {
-                    Label("On target", systemImage: "checkmark").font(.caption2.weight(.semibold)).foregroundStyle(Ink.good)
+                    Label("On target", systemImage: "checkmark").font(.caption2.weight(.semibold)).foregroundStyle(Ink.words(Ink.good))
                 } else {
                     Text("leaves \(Format.whole(option.leaves))").font(.caption2).foregroundStyle(Ink.text2)
                 }

@@ -89,9 +89,12 @@ struct MealPlanBoard<Request: View, Header: View>: View {
     /// Prep day's title, and counter mode: the steps one at a time, big, for the iPad on the counter.
     var prepHeader: some View {
         Section {
-            HStack(spacing: 12) {
+            // Vision Pro's own button is roomier than the iPad's: there it goes under the title, which
+            // the column's width otherwise broke over two lines beside it.
+            let layout = Platform.isVision ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 12))
+            layout {
                 Label("Prep day", systemImage: "timer").font(.title3.weight(.semibold))
-                Spacer(minLength: 8)
+                if !Platform.isVision { Spacer(minLength: 8) }
                 Button(model.prepRun?.planID == plan.id ? "Back to prep" : "Start prep") { model.startPrep(plan) }
                     .primaryAction()
                     .accessibilityIdentifier("mealPlan.startCounter")
@@ -159,7 +162,7 @@ struct WeekGrid: View {
                         Text(Format.day(day, style: .dateTime.weekday(.abbreviated))).font(.subheadline.weight(.semibold))
                         Text(Format.day(day, style: .dateTime.month(.abbreviated).day())).font(.caption).foregroundStyle(.secondary)
                     }
-                    .foregroundStyle(day == model.today ? Color.accentColor : .primary)
+                    .foregroundStyle(day == model.today ? Ink.words(.accentColor) : .primary)
                     .frame(width: 64, alignment: .leading)
                     let meals = plan.meals(on: day)
                     ForEach(slots) { slot in

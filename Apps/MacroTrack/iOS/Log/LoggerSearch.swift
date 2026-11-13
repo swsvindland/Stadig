@@ -228,7 +228,7 @@ struct LoggerReviewBanner: View {
             Spacer(minLength: 8)
             Button(session.finding != nil ? "Back to the meal" : "Back to it") { session.stopFinding() }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.words(.accentColor))
                 .buttonStyle(.plain)
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("logger.backToReview")
@@ -293,14 +293,14 @@ extension EnvironmentValues {
 }
 
 /// The logger's +: the accent on a disc, the surface's on the best one's card and the raised grey
-/// elsewhere, in a 44-point target.
+/// elsewhere, in a 44-point target. White on Vision Pro's glass, where the accent at this size is lost.
 struct AddDisc: View {
     var onCard = false
 
     var body: some View {
         Image(systemName: "plus")
             .font(.body.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Ink.words(.accentColor))
             .frame(width: 36, height: 36)
             .background(onCard ? Ink.surface : Ink.raised, in: .circle)
             .frame(width: 44, height: 44)

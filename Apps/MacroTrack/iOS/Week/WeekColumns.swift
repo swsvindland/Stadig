@@ -65,6 +65,7 @@ struct WeekColumns: View {
                 .padding(.horizontal, -4)
         }
         .contentShape(.rect)
+        .gazeHighlight()
         .onTapGesture { select(day.day) }
         .onDrop(of: [.text], delegate: WeekDropTarget(day: day.day, drag: drag, drop: moveMeal))
         .accessibilityElement(children: .contain)
@@ -336,7 +337,8 @@ private struct WeekDayCanvas: View {
                     .frame(height: over.height)
                     .overlay(alignment: .bottomTrailing) {
                         if over.height >= 18 {
-                            Text("\(Format.whole(over.kcal)) over").font(.system(size: 11, weight: .bold)).foregroundStyle(Ink.ok).padding(6)
+                            Text("\(Format.whole(over.kcal)) over").font(.system(size: 11, weight: .bold)).foregroundStyle(Ink.words(Ink.ok)).padding(
+                                6)
                         }
                     }
                     .offset(y: over.top)
@@ -416,7 +418,7 @@ private struct NowLine: View {
             // the first), where a block keeps nothing.
             Text("Now \(time)")
                 .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.words(.accentColor))
                 .lineLimit(1)
                 .padding(.horizontal, 5)
                 .background(Ink.ground, in: .capsule)
@@ -525,7 +527,8 @@ struct WeekMealBlock: View {
             Spacer(minLength: 0)
             if height >= 100 || (from != nil && height >= 56) {
                 HStack {
-                    Text("\(Format.whole(meal.nutrients.protein)) P").font(.system(size: 11, weight: .semibold)).foregroundStyle(Ink.protein)
+                    Text("\(Format.whole(meal.nutrients.protein)) P").font(.system(size: 11, weight: .semibold)).foregroundStyle(
+                        Ink.words(Ink.protein))
                     Spacer(minLength: 4)
                     if let from {
                         Text("from \(Format.day(from, style: .dateTime.weekday(.abbreviated)))")
