@@ -85,6 +85,7 @@ struct SettingsView: View {
                 if shows(.data) { data }
             }
             .inkRows()
+            .actionRows()
         }
         .inkForm()
     }
@@ -200,7 +201,7 @@ struct SettingsView: View {
                 )
                 .accessibilityIdentifier("settings.allowCloudAI")
             }
-            if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
+            if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(Ink.text3) }
         } header: {
             Text("Photo and description logging").eyebrow()
         } footer: {
@@ -244,7 +245,7 @@ struct SettingsView: View {
                         Label(period.kind.label, systemImage: period.kind.symbol)
                     }
                 }
-                .foregroundStyle(.primary)
+                .foregroundStyle(Ink.text)
                 .accessibilityIdentifier("settings.lifeMode")
             }
             Menu {
@@ -308,7 +309,7 @@ struct SettingsView: View {
             if let busy {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text(busy).foregroundStyle(.secondary)
+                    Text(busy).foregroundStyle(Ink.text2)
                 }
             }
             SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
@@ -319,20 +320,20 @@ struct SettingsView: View {
         Section {
             ForEach(model.catalog.sources, id: \.name) { source in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(source.name).font(.subheadline.weight(.medium))
-                    Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(.secondary)
-                    Text(source.attribution).font(.caption2).foregroundStyle(.secondary)
+                    Text(source.name).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text("\(source.foods.formatted()) foods · \(source.license)").font(.caption).foregroundStyle(Ink.text2)
+                    Text(source.attribution).font(.caption2).foregroundStyle(Ink.text3)
                 }
             }
             if let supplements = model.supplementCatalog {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("NIH Dietary Supplement Label Database").font(.subheadline.weight(.medium))
-                    Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(.secondary)
-                    Text(supplements.attribution).font(.caption2).foregroundStyle(.secondary)
+                    Text("NIH Dietary Supplement Label Database").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text("\(supplements.count.formatted()) supplement labels · Public domain").font(.caption).foregroundStyle(Ink.text2)
+                    Text(supplements.attribution).font(.caption2).foregroundStyle(Ink.text3)
                 }
             }
             if !model.catalog.hasPackagedFoods {
-                Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(.secondary)
+                Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(Ink.text3)
             }
         } header: {
             Text("Food data").eyebrow()
@@ -343,9 +344,11 @@ struct SettingsView: View {
         }
 
         #if DEBUG
-        Section("Debug") {
+        Section {
             Button("Erase everything", role: .destructive) { model.eraseEverything() }
                 .accessibilityIdentifier("settings.eraseEverything")
+        } header: {
+            Text("Debug").eyebrow()
         }
         #endif
     }

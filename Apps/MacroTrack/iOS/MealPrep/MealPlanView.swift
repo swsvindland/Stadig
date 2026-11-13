@@ -123,6 +123,10 @@ struct MealPlanView: View {
             .inlineTitle()
             .widePage(sizeClass != .compact)
             .hidesNavigationBar(sizeClass != .compact)
+            // A phone's plan is a page of its own, as its design has it: neither the tab bar nor the
+            // composer, and Start prep at the foot.
+            .pushedPage(sizeClass == .compact)
+            .hidesTabBar(sizeClass == .compact)
             .toolbar {
                 if sizeClass == .compact {
                     ToolbarItem(placement: .barTrailing) {
@@ -172,8 +176,8 @@ struct MealPlanView: View {
             Group {
                 switch page {
                 case .week: week(plan)
-                case .groceries: GroceryPage(plan: plan)
-                case .prep: PrepPage(plan: plan)
+                case .groceries: GroceryPage(plan: plan, headed: true)
+                case .prep: PrepPage(plan: plan, headed: true)
                 }
             }
             .listRowBackground(Color.cardBackground)
@@ -468,13 +472,24 @@ struct RecipeRow: View {
 struct GroceryPage: View {
     @Environment(AppModel.self) private var model
     let plan: MealPlan
+    /// With the page's own head: on a phone, where it's a page of its own.
+    var headed = false
 
     var body: some View {
         let items = Groceries.list(for: plan)
         let unit = model.units.weight
+        let toBuy = items.filter { !$0.pantry }
+        let left = toBuy.count { !plan.checked.contains($0.id) }
         Section {
-            Text("Everything for \(Format.span(plan.days)), to buy before prep on \(Format.day(plan.prepDay, style: .dateTime.weekday(.wide))).")
-                .font(.caption).foregroundStyle(.secondary)
+            if headed {
+                PageHead(
+                    eyebrow: "Before prep on \(Format.day(plan.prepDay, style: .dateTime.weekday(.wide)))",
+                    title: left == 0 ? "All in the basket" : left == toBuy.count ? "\(left) to buy" : "\(left) of \(toBuy.count) to buy",
+                    detail: "Everything for \(Format.span(plan.days)). Tap one as it goes in the basket.")
+            } else {
+                Text("Everything for \(Format.span(plan.days)), to buy before prep on \(Format.day(plan.prepDay, style: .dateTime.weekday(.wide))).")
+                    .font(.caption).foregroundStyle(Ink.text3)
+            }
         }
         ForEach(Aisle.allCases) { aisle in
             let rows = items.filter { $0.aisle == aisle && !$0.pantry }
@@ -503,16 +518,16 @@ struct GroceryPage: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: checked ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(checked ? Color.accentColor : .secondary)
+                    .foregroundStyle(checked ? Color.accentColor : Ink.text3)
                     .font(.title3)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name).strikethrough(checked).foregroundStyle(checked ? .secondary : .primary)
+                    Text(item.name).font(.callout.weight(.semibold)).strikethrough(checked).foregroundStyle(checked ? Ink.text3 : Ink.text)
                     if !item.uses.isEmpty, item.uses.count < 3 {
-                        Text("For \(item.uses.joined(separator: " and "))").font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                        Text("For \(item.uses.joined(separator: " and "))").font(.caption2).foregroundStyle(Ink.text3).lineLimit(1)
                     }
                 }
                 Spacer()
-                Text(Self.amount(item, unit: unit)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                Text(Self.amount(item, unit: unit)).font(.subheadline.monospacedDigit()).foregroundStyle(Ink.text2)
             }
             .contentShape(.rect)
         }
@@ -554,29 +569,39 @@ struct GroceryPage: View {
 struct PrepPage: View {
     @Environment(AppModel.self) private var model
     let plan: MealPlan
+    /// With the page's own head: on a phone, where it's a page of its own.
+    var headed = false
 
     var body: some View {
         let guide = PrepGuide.make(for: plan)
         let unit = model.units.weight
         Section {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("About \(Format.duration(guide.minutes))").font(.title3.weight(.semibold))
-                Text("\(Format.day(plan.prepDay, style: .dateTime.weekday(.wide).month().day())) · \(guide.containers) containers")
-                    .font(.subheadline).foregroundStyle(.secondary)
+            if headed {
+                PageHead(
+                    eyebrow: "Prep day · \(Format.day(plan.prepDay, style: .dateTime.weekday(.wide).month(.abbreviated).day()))",
+                    title: "About \(Format.duration(guide.minutes))\n\(guide.containers) containers",
+                    detail: "Each step timed from the start; what goes in each container is under them.")
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("About \(Format.duration(guide.minutes))").font(.title3.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text("\(Format.day(plan.prepDay, style: .dateTime.weekday(.wide).month().day())) · \(guide.containers) containers")
+                        .font(.subheadline).foregroundStyle(Ink.text2)
+                }
             }
         }
         Section {
             ForEach(guide.steps) { step in
                 HStack(alignment: .top, spacing: 12) {
-                    Text(Format.clock(step.minute)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
+                    Text(Format.clock(step.minute)).font(.caption.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text3)
+                        .frame(width: 34, alignment: .leading)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(step.title).font(.subheadline.weight(.semibold))
+                            Text(step.title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
                             if !step.handsOn {
-                                Label("\(step.minutes) min", systemImage: "timer").font(.caption2).foregroundStyle(.secondary)
+                                Label("\(step.minutes) min", systemImage: "timer").font(.caption2).foregroundStyle(Ink.text3)
                             }
                         }
-                        Text(step.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(step.detail).font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.vertical, 2)
@@ -588,24 +613,24 @@ struct PrepPage: View {
         Section {
             ForEach(guide.packing) { pack in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(pack.title) × \(pack.servings)").font(.subheadline.weight(.semibold))
+                    Text("\(pack.title) × \(pack.servings)").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
                     if pack.madeOnTheDay {
                         Text("Made on the day: \(pack.contents.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: ", ")).")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            .font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text(
                             "Each: \(pack.contents.map { "\(Format.portion($0.grams, unit: unit)) \($0.name.lowercased())" }.joined(separator: ", "))."
                         )
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
                         if !pack.onTheDay.isEmpty {
                             Text("When eating, add \(pack.onTheDay.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: " and ")).")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(Ink.text2)
                         }
                         HStack(spacing: 12) {
                             if !pack.fridge.isEmpty { Label("Fridge \(Format.span(pack.fridge))", systemImage: "refrigerator").font(.caption2) }
                             if !pack.freezer.isEmpty { Label("Freezer \(Format.span(pack.freezer))", systemImage: "snowflake").font(.caption2) }
                         }
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Ink.text3)
                     }
                 }
                 .padding(.vertical, 2)
@@ -615,5 +640,25 @@ struct PrepPage: View {
         } footer: {
             Text("Cooked food keeps 3–4 days in the fridge; frozen, it keeps for months. Reheat until steaming hot.")
         }
+    }
+}
+
+/// A meal plan page's head, as the week's: an eyebrow in the accent, the number that answers the
+/// page big, and what it's for. On the ground, at a list's margins.
+private struct PageHead: View {
+    let eyebrow: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Tracked capitals start a point left of the text's frame, which the List cell clips.
+            Text(eyebrow).eyebrow(Color.accentColor).padding(.leading, 2)
+            PageTitle(title)
+            Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4))
     }
 }

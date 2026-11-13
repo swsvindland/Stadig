@@ -187,6 +187,7 @@ struct YourShapeScreen: View {
         }
         .background(.pageBackground)
         .detailPage(title: "Your shape", wide: wide)
+        .pushedPage()
         .accessibilityIdentifier("progress.shapeScreen")
         .task(id: model.analysisVersion) { scores.read(model) }
     }

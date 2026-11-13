@@ -36,4 +36,27 @@ extension View {
     func circleMenuStyle() -> some View {
         menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     }
+
+    /// A page pushed over a phone's tab (Your shape, the check-ins, the meal plan): as the design's
+    /// detail pages, it has the screen to itself, so the tab's composer leaves the foot while it's
+    /// up (the root view reads it), as the tab bar does (`detailPage`). Where there's room the
+    /// composer isn't at the foot to begin with: `pushed` false is a page that's a destination of
+    /// its own there.
+    func pushedPage(_ pushed: Bool = true) -> some View {
+        modifier(PushedPageNote(pushed: pushed))
+    }
+}
+
+private struct PushedPageNote: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let pushed: Bool
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { model.notePushedPage(id, showing: pushed) }
+            .onChange(of: pushed) { _, pushed in model.notePushedPage(id, showing: pushed) }
+            // Popped, or its tab left: the composer's back.
+            .onDisappear { model.notePushedPage(id, showing: false) }
+    }
 }

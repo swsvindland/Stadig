@@ -354,6 +354,7 @@ struct CheckInsScreen: View {
         }
         .background(.pageBackground)
         .detailPage(title: "Check-ins", wide: wide)
+        .pushedPage()
     }
 }
 
@@ -389,15 +390,13 @@ struct MaintenanceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Maintenance").font(.callout.weight(.semibold))
+                Text("Maintenance").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                 Spacer()
                 Pill(text: estimate.label, color: estimate.spread >= 350 ? Ink.ok : estimate.spread >= 200 ? Ink.text2 : Ink.good)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Measure(value: Format.whole(estimate.kcal), unit: "kcal a day", size: 30)
-            }
+            Measure(value: Format.whole(estimate.kcal), unit: "kcal a day", size: 30).foregroundStyle(Ink.text)
             RangeBar(low: estimate.low, high: estimate.high, value: estimate.kcal, formula: estimate.formula)
-            Text(basisText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(basisText).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
         }
         .card()
         .accessibilityElement(children: .combine)
@@ -414,7 +413,8 @@ struct MaintenanceCard: View {
     }
 }
 
-/// The likely range, with the estimate and the formula's guess marked.
+/// The likely range on a ruler: the range filled on the ticked track, the estimate a mark across
+/// it, and the formula's guess a quieter one, with the range's ends under it.
 struct RangeBar: View {
     let low: Double
     let high: Double
@@ -424,18 +424,36 @@ struct RangeBar: View {
     var body: some View {
         let lo = min(low, formula) - 150
         let hi = max(high, formula) + 150
-        GeometryReader { proxy in
-            let w = proxy.size.width
-            let x = { (v: Double) -> CGFloat in CGFloat((v - lo) / max(1, hi - lo)) * w }
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.12)).frame(height: 10)
-                Capsule().fill(Color.accentColor.opacity(0.35)).frame(width: max(10, x(high) - x(low)), height: 10).offset(x: x(low))
-                Circle().fill(Color.accentColor).frame(width: 16, height: 16).offset(x: x(value) - 8)
-                Rectangle().fill(Color.secondary).frame(width: 2, height: 16).offset(x: x(formula) - 1)
+        let x = { (v: Double) -> Double in min(1, max(0, (v - lo) / max(1, hi - lo))) }
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { proxy in
+                let w = proxy.size.width
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Ink.track)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.accentColor)
+                        .frame(width: max(8, w * (x(high) - x(low))))
+                        .offset(x: w * x(low))
+                    // Ticked every tenth, as the ruler is.
+                    Path { path in
+                        for index in 1..<10 {
+                            let tick = (w * Double(index) / 10).rounded()
+                            path.addRect(CGRect(x: tick - 0.75, y: 0, width: 1.5, height: 14))
+                        }
+                    }
+                    .fill(Ink.tick)
+                    Rectangle().fill(Ink.text3).frame(width: 2, height: 14).offset(x: w * x(formula) - 1)
+                    Rectangle().fill(Ink.text).frame(width: 2, height: 20).offset(x: w * x(value) - 1)
+                }
             }
-            .frame(height: 16)
+            .frame(height: 14)
+            HStack {
+                ScaleLabel(Format.whole(low))
+                Spacer()
+                ScaleLabel("Likely range")
+                Spacer()
+                ScaleLabel(Format.whole(high))
+            }
         }
-        .frame(height: 16)
         .accessibilityHidden(true)
     }
 }
@@ -606,27 +624,23 @@ struct ReviewCard: View {
     }
 }
 
-/// Each week's small adjustment, with its reason.
+/// Each week's small adjustment, with its reason: rows of a card, the newest first.
 struct CheckInHistory: View {
     let checkIns: [CheckIn]
 
     var body: some View {
-        if !checkIns.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Weekly check-ins").font(.callout.weight(.semibold))
-                ForEach(checkIns.suffix(8).reversed()) { c in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(Format.day(c.day)).font(.subheadline.weight(.medium))
-                            Spacer()
-                            Text(Format.kcal(c.kcal)).font(.subheadline.monospacedDigit())
-                        }
-                        Text(c.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        RowCard(title: "Weekly check-ins", detail: checkIns.count > 8 ? "The last 8" : nil) {
+            ForEach(checkIns.suffix(8).reversed()) { c in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(Format.day(c.day)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                        Spacer(minLength: 8)
+                        Measure(value: Format.whole(c.kcal), unit: "kcal", size: 17, weight: .heavy).foregroundStyle(Ink.text)
                     }
-                    if c.id != checkIns.suffix(8).first?.id { Divider() }
+                    Text(c.reason).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
                 }
+                .accessibilityElement(children: .combine)
             }
-            .card()
         }
     }
 }

@@ -27,38 +27,29 @@ extension NutrientReading.Status {
         switch self {
         case .low, .high: Ink.ok
         case .ok: Ink.good
-        case .unknown: .secondary
+        case .unknown: Ink.text3
         }
     }
 }
 
-/// One nutrient against its target: a bar with the target marked, and the numbers.
+/// One nutrient against its target: its numbers over a thin ruler, the target marked two-thirds
+/// along so going over shows.
 struct NutrientBar: View {
     let reading: NutrientReading
 
     var body: some View {
         let unit = reading.nutrient.unit
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(reading.nutrient.label).font(.subheadline.weight(.medium))
-                Spacer()
-                Text(value).font(.caption.monospacedDigit()).foregroundStyle(reading.status == .unknown ? .secondary : .primary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(reading.nutrient.label).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                Spacer(minLength: 8)
+                Text(value).font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(reading.status == .unknown ? Ink.text3 : Ink.text)
                 if let target = reading.target {
-                    Text("/ \(Format.nutrient(target, unit))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    Text("/ \(Format.nutrient(target, unit))").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
                 }
             }
-            GeometryReader { proxy in
-                let w = proxy.size.width
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.14))
-                    if let f = reading.fraction {
-                        Capsule().fill(reading.status.color.gradient).frame(width: max(5, w * min(1, f / 1.5)))
-                    }
-                    // The target, two-thirds along, so going over shows.
-                    Rectangle().fill(Color.primary.opacity(0.35)).frame(width: 1.5).offset(x: w / 1.5)
-                }
-            }
-            .frame(height: 6)
+            Ruler(value: (reading.fraction ?? 0) / 1.5, color: reading.status.color, height: 6, divisions: 0, marker: 1 / 1.5)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(reading.nutrient.label): \(value)\(reading.target.map { " of \(Format.nutrient($0, unit))" } ?? ""), \(statusWords)")
@@ -81,33 +72,41 @@ struct NutrientBar: View {
     }
 }
 
-/// The week's vitamins and minerals on Progress.
+/// The week's vitamins and minerals on Progress: the ones watched as rulers, under a title that
+/// opens every nutrient on a page of its own.
 struct NutrientsCard: View {
     let report: MicroReport
 
     var body: some View {
+        let ready = report.days.count >= MicroAnalyst.minimumDays
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Vitamins and minerals").font(.callout.weight(.semibold))
-                Spacer()
-                if !report.days.isEmpty {
-                    Text("Daily, last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(
-                        .secondary)
-                }
-            }
-            if report.days.count < MicroAnalyst.minimumDays {
-                Text("After three complete days of logging, this shows which nutrients are running short, with a food that fixes each.")
-                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            } else {
-                // Fiber is under food quality.
-                ForEach(report.readings.filter { $0.nutrient.watched && $0.nutrient.key != "fiber" }) { NutrientBar(reading: $0) }
+            if ready {
+                // At the card's head rather than its foot, which is where the composer sits once
+                // Progress is scrolled to its end.
                 NavigationLink {
                     AllNutrientsView(report: report)
                 } label: {
-                    Text("All nutrients").font(.subheadline.weight(.semibold))
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        CardTitle("Vitamins and minerals", detail: "All \(report.readings.count)")
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
+                    }
+                    .contentShape(.rect)
                 }
-                Text("Packaged foods often list only what the label must, so a nutrient they skip is shown as unknown rather than low.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Vitamins and minerals, all \(report.readings.count) nutrients")
+                .accessibilityIdentifier("progress.allNutrientsLink")
+            } else {
+                CardTitle("Vitamins and minerals")
+                Text("After three complete days of logging, this shows which nutrients are running short, with a food that fixes each.")
+                    .font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            }
+            if ready {
+                // Fiber is under food quality.
+                ForEach(report.readings.filter { $0.nutrient.watched && $0.nutrient.key != "fiber" }) { NutrientBar(reading: $0) }
+                Text(
+                    "Daily, from the last \(report.days.count) complete days. Packaged foods often list only what the label must, so a nutrient they skip is shown as unknown rather than low."
+                )
+                .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
         }
         .card()
@@ -196,58 +195,92 @@ private struct NutrientFill: View {
     let reading: NutrientReading
 
     var body: some View {
-        GeometryReader { proxy in
-            let w = proxy.size.width
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.14))
-                if let f = reading.fraction {
-                    Capsule().fill(reading.status.color.gradient).frame(width: max(4, w * min(1, f / 1.5)))
-                }
-                Rectangle().fill(Color.primary.opacity(0.35)).frame(width: 1.5).offset(x: w / 1.5)
-            }
-        }
-        .frame(height: 6)
-        .accessibilityHidden(true)
+        Ruler(value: (reading.fraction ?? 0) / 1.5, color: reading.status.color, height: 6, divisions: 0, marker: 1 / 1.5)
+            .accessibilityHidden(true)
     }
 }
 
-/// Every nutrient followed, with why it matters and how much of what was eaten lists it.
+/// Every nutrient followed, on a page pushed from Progress: what's short first, then what's over,
+/// then what's on target and what too little of the food says, each with why it matters and how
+/// much of what was eaten lists it.
 struct AllNutrientsView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let report: MicroReport
 
     var body: some View {
-        List {
-            Section {
-                ForEach(report.readings) { reading in
-                    VStack(alignment: .leading, spacing: 6) {
-                        NutrientBar(reading: reading)
-                        Text(reading.nutrient.why).font(.caption).foregroundStyle(.secondary)
-                        if reading.coverage < 1, reading.coverage > 0 {
-                            Text("Listed for \(Format.percent(reading.coverage)) of the calories eaten").font(.caption2).foregroundStyle(.tertiary)
-                        }
-                        if reading.supplemented > 0 {
-                            Text("\(Format.nutrient(reading.supplemented, reading.nutrient.unit)) a day from supplements").font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        if reading.overUpper, let upper = reading.upper {
-                            Text("Over the safe upper limit of \(Format.nutrient(upper, reading.nutrient.unit)) a day").font(
-                                .caption2.weight(.medium)
-                            ).foregroundStyle(.orange)
-                        }
-                        if reading.status != .ok, reading.status != .unknown, !reading.sources.isEmpty {
-                            Text("Most from \(reading.sources.prefix(2).joined(separator: " and "))").font(.caption2).foregroundStyle(.secondary)
-                        }
+        // The Mac reports no size class: it always has room.
+        let wide = sizeClass != .compact
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !wide { DetailHeader(eyebrow: "Progress", title: "Nutrients") }
+                Text(summary).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+                ForEach(Self.bands, id: \.title) { band in
+                    RowCard(title: band.title, detail: band.detail) {
+                        ForEach(report.readings.filter { $0.status == band.status }) { NutrientDetailRow(reading: $0) }
                     }
-                    .padding(.vertical, 2)
                 }
-            } footer: {
                 Text(
                     "Daily targets are the US National Academies' recommended intakes for your age and sex; fiber is 14 g per 1,000 kcal and saturated fat under 10% of calories. Supplements you tick off count too, and where there's a safe upper limit, going over it is flagged."
                 )
+                .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, wide ? 16 : 0)
+            .padding(.bottom, 24)
+            .readableWidth()
+        }
+        .background(.pageBackground)
+        .detailPage(title: "Nutrients", wide: wide)
+        .pushedPage()
+        .accessibilityIdentifier("progress.allNutrients")
+    }
+
+    /// "A day, from the last 7 complete days. The line on each ruler is its target."
+    var summary: String {
+        let days = report.days.count
+        return "A day, from the last \(days) complete day\(days == 1 ? "" : "s"). The line on each ruler is its target."
+    }
+
+    /// The page's cards, in the order they matter.
+    static let bands: [(title: String, detail: String?, status: NutrientReading.Status)] = [
+        ("Running short", "Under 70% of target", .low),
+        ("Over", "Past a limit", .high),
+        ("On target", nil, .ok),
+        ("Not enough data", "Too few foods list it", .unknown),
+    ]
+}
+
+/// A nutrient on the full list: its ruler, why it matters, and what the numbers rest on.
+private struct NutrientDetailRow: View {
+    let reading: NutrientReading
+
+    var body: some View {
+        let unit = reading.nutrient.unit
+        VStack(alignment: .leading, spacing: 6) {
+            NutrientBar(reading: reading)
+            Text(reading.nutrient.why).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+            if reading.overUpper, let upper = reading.upper {
+                Text("Over the safe upper limit of \(Format.nutrient(upper, unit)) a day").font(.caption.weight(.semibold)).foregroundStyle(Ink.bad)
+            }
+            if !notes.isEmpty {
+                Text(notes.joined(separator: " · ")).font(.caption2).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .navigationTitle("Nutrients")
-        .inlineTitle()
+        .padding(.vertical, 4)
+    }
+
+    /// What the number rests on: how much of the food lists it, what supplements add, where most came from.
+    var notes: [String] {
+        let unit = reading.nutrient.unit
+        var notes: [String] = []
+        if reading.coverage < 1, reading.coverage > 0 { notes.append("Listed for \(Format.percent(reading.coverage)) of the calories eaten") }
+        if reading.supplemented > 0 { notes.append("\(Format.nutrient(reading.supplemented, unit)) a day from supplements") }
+        if reading.status != .ok, reading.status != .unknown, !reading.sources.isEmpty {
+            notes.append("Most from \(reading.sources.prefix(2).joined(separator: " and "))")
+        }
+        return notes
     }
 }
 
@@ -260,7 +293,7 @@ struct NutrientActionRow: View {
         let low = reading.status == .low
         let fix = model.microFix.flatMap { $0.nutrient.key == reading.nutrient.key ? $0 : nil }
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(reading.overUpper ? Color.orange : Color.accentColor).frame(
+            Image(systemName: low ? "leaf" : "exclamationmark.circle").foregroundStyle(reading.overUpper ? Ink.ok : Color.accentColor).frame(
                 width: 24)
             VStack(alignment: .leading, spacing: 3) {
                 Text(
