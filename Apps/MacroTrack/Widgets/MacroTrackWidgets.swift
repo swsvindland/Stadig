@@ -3,6 +3,10 @@ import SwiftUI
 import SystemCore
 import WidgetKit
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 @main
 struct MacroTrackWidgets: WidgetBundle {
     var body: some Widget {
@@ -117,15 +121,28 @@ struct RemainingWidget: Widget {
 
 struct RemainingView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.showsWidgetContainerBackground) private var showsBackground
     let snapshot: MacroSnapshot
 
-    var body: some View { RemainingFace(snapshot: snapshot, family: family) }
+    var body: some View { RemainingFace(snapshot: snapshot, family: family, desk: Self.isStandBy(showsBackground: showsBackground)) }
+
+    /// StandBy, where the system drops the background and scales a small widget up to half the
+    /// screen: only an iPhone's (an iPad's Lock Screen drops it too, at the widget's own size).
+    static func isStandBy(showsBackground: Bool) -> Bool {
+        #if os(iOS)
+        return !showsBackground && UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
+        #endif
+    }
 }
 
 /// What's left today in the family given: the widget passes the system's.
 struct RemainingFace: View {
     let snapshot: MacroSnapshot
     let family: WidgetFamily
+    /// StandBy's desk view of the small widget (`RemainingView.isStandBy`).
+    var desk = false
 
     var body: some View {
         switch family {
@@ -149,8 +166,14 @@ struct RemainingFace: View {
                 }
             }
         default:
-            LeftToday(snapshot: snapshot, showsMacros: true)
-                .widgetURL(URL(string: "macrotrack://log"))
+            Group {
+                if desk {
+                    LeftTodayDesk(snapshot: snapshot)
+                } else {
+                    LeftToday(snapshot: snapshot, showsMacros: true)
+                }
+            }
+            .widgetURL(URL(string: "macrotrack://log"))
         }
     }
 }
@@ -232,9 +255,7 @@ struct LeftToday: View {
                 HStack(alignment: .top, spacing: 8) {
                     ForEach(snapshot.macroLines) { line in
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("\(line.grams) \(Text(line.letter).foregroundStyle(line.color))")
-                                .font(.caption.weight(.bold))
-                                .monospacedDigit()
+                            MacroAmount(line: line, size: 12)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                             if line.target != nil {
@@ -254,6 +275,70 @@ struct LeftToday: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(([snapshot.kcalLine] + (showsMacros ? snapshot.macroLines.map(\.sentence) : [])).joined(separator: ", ")))
+    }
+}
+
+/// "102 P": the grams heavy, the letter lighter in the second grey; the ruler under it carries the
+/// macro's colour.
+struct MacroAmount: View {
+    let line: MacroLine
+    let size: CGFloat
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: size * 0.25) {
+            Text("\(line.grams)").font(.system(size: size, weight: .bold)).monospacedDigit().ink(.primary)
+            Text(line.letter).font(.system(size: size, weight: .semibold)).ink(.secondary)
+        }
+    }
+}
+
+/// The small widget in StandBy, on the desk across the room, as the design draws it: kcal left as
+/// large as the widget is wide, its words small beside it, a tall ruler of what's eaten and the
+/// macros under it. StandBy scales the widget about twice over, so it's laid out on the design's
+/// widget and scaled to this one.
+struct LeftTodayDesk: View {
+    let snapshot: MacroSnapshot
+
+    var body: some View {
+        GeometryReader { geometry in
+            // The design's widget is 334 points with 28 of margin; the system's margins are already outside this.
+            let u = geometry.size.width / 278
+            VStack(alignment: .leading, spacing: 0) {
+                Text(snapshot.kcalEyebrow).eyebrow(size: 12 * u).ink(.tertiary)
+                Text(snapshot.kcalNumber)
+                    .numeral(108 * u, weight: .heavy, tightness: 0.06)
+                    .ink(.primary)
+                    // The design's line is 0.8 of the size, SF's 1.19: the difference comes off both ends.
+                    .padding(.vertical, -21 * u)
+                    .padding(.leading, -4 * u)
+                    .padding(.top, 16 * u)
+                Text(snapshot.kcalOfTarget)
+                    .font(.system(size: 19 * u, weight: .semibold))
+                    .lineLimit(1)
+                    .ink(.secondary)
+                    .padding(.top, 20 * u)
+                Spacer(minLength: 0)
+                if let fraction = snapshot.kcalFraction {
+                    Ruler(value: fraction, height: 28 * u)
+                }
+                HStack(alignment: .top, spacing: 12 * u) {
+                    ForEach(snapshot.macroLines) { line in
+                        VStack(alignment: .leading, spacing: 5 * u) {
+                            MacroAmount(line: line, size: 15 * u)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            if line.target != nil {
+                                Ruler(value: line.fraction, color: line.color, height: 6 * u, divisions: 0)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.top, 16 * u)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(([snapshot.kcalLine] + snapshot.macroLines.map(\.sentence)).joined(separator: ", ")))
     }
 }
 
