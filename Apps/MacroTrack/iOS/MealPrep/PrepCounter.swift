@@ -22,13 +22,16 @@ struct PrepCounter: View {
                 upright
                 ? min(max(min(proxy.size.width / 834, proxy.size.height / 1194), 0.6), 1.3)
                 : min(max(min(proxy.size.width / 1194, proxy.size.height / 834), 0.6), 1.3)
+            // A phone held up: too narrow for the header in one line, the steps' names under the
+            // rail, or two timers side by side.
+            let narrow = proxy.size.width < 600
             VStack(alignment: .leading, spacing: 16 * s) {
-                header(s).layoutPriority(1)
-                StepRail(run: run, scale: s).layoutPriority(1)
+                header(s, narrow: narrow).layoutPriority(1)
+                StepRail(run: run, scale: s, labelled: !narrow).layoutPriority(1)
                 if upright {
                     VStack(alignment: .leading, spacing: 22 * s) {
                         now(s)
-                        OnTheHeat(run: run, scale: s, columns: 2)
+                        OnTheHeat(run: run, scale: s, columns: narrow ? 1 : 2)
                     }
                     .frame(maxHeight: .infinity, alignment: .top)
                 } else {
@@ -64,33 +67,42 @@ struct PrepCounter: View {
         }
     }
 
-    func header(_ s: CGFloat) -> some View {
+    func header(_ s: CGFloat, narrow: Bool) -> some View {
         HStack(spacing: 14) {
-            Button {
+            CircleIconButton(symbol: "xmark", label: "Close counter mode", identifier: "prep.close") {
                 model.saveReadings(run)
                 model.showPrepCounter = false
-            } label: {
-                Image(systemName: "xmark").font(.body.weight(.semibold)).foregroundStyle(Ink.text)
-                    .frame(width: 44, height: 44).background(Ink.raised, in: .circle).contentShape(.circle)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close counter mode")
-            .accessibilityIdentifier("prep.close")
-            Text("\(Format.day(model.today, style: .dateTime.weekday(.wide))) prep · step \(run.index + 1) of \(run.guide.steps.count)")
-                .eyebrow()
-            Spacer(minLength: 12)
-            TimelineView(.everyMinute) { context in
-                Text(Self.progress(run, now: context.date))
-                    .font(.subheadline.weight(.medium).monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1)
+            if narrow {
+                // Where it is over how long it's taking, between the two round buttons.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(Format.day(model.today, style: .dateTime.weekday(.wide))) prep · step \(run.index + 1) of \(run.guide.steps.count)")
+                        .eyebrow().lineLimit(1)
+                    progressLine.font(.footnote.weight(.medium).monospacedDigit())
+                }
+                Spacer(minLength: 8)
+                CircleIconButton(symbol: "list.bullet", label: "All steps", identifier: "prep.steps") { showSteps = true }
+            } else {
+                Text("\(Format.day(model.today, style: .dateTime.weekday(.wide))) prep · step \(run.index + 1) of \(run.guide.steps.count)")
+                    .eyebrow()
+                Spacer(minLength: 12)
+                progressLine.font(.subheadline.weight(.medium).monospacedDigit())
+                Button {
+                    showSteps = true
+                } label: {
+                    Label("All steps", systemImage: "list.bullet").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                        .padding(.horizontal, 14).frame(height: 44).background(Ink.raised, in: .capsule).contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("prep.steps")
             }
-            Button {
-                showSteps = true
-            } label: {
-                Label("All steps", systemImage: "list.bullet").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
-                    .padding(.horizontal, 14).frame(height: 44).background(Ink.raised, in: .capsule).contentShape(.capsule)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("prep.steps")
+        }
+    }
+
+    /// How long it's taking, kept to the minute.
+    var progressLine: some View {
+        TimelineView(.everyMinute) { context in
+            Text(Self.progress(run, now: context.date)).foregroundStyle(Ink.text2).lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 
@@ -133,6 +145,9 @@ struct PrepCounter: View {
 private struct StepRail: View {
     let run: PrepRun
     let scale: CGFloat
+    /// Each step's name under its piece of the rail: on a phone they'd be a letter or two each, and
+    /// the step being done is named large under it anyway.
+    var labelled = true
 
     var body: some View {
         HStack(alignment: .top, spacing: 4) {
@@ -144,10 +159,12 @@ private struct StepRail: View {
                     }
                     .frame(height: 6)
                     .clipShape(.capsule)
-                    Text(step.label)
-                        .font(.system(size: 13 * scale, weight: index == run.index ? .bold : .medium))
-                        .foregroundStyle(index == run.index ? Ink.text : Ink.text3)
-                        .lineLimit(1)
+                    if labelled {
+                        Text(step.label)
+                            .font(.system(size: 13 * scale, weight: index == run.index ? .bold : .medium))
+                            .foregroundStyle(index == run.index ? Ink.text : Ink.text3)
+                            .lineLimit(1)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
