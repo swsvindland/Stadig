@@ -24,12 +24,16 @@ struct QuickAddView: View {
             } footer: {
                 Text(model.quickAddNote)
             }
-            Section("Optional") {
+            Section {
                 row("Carbs", $carbs, "g", .carbs)
                 row("Fat", $fat, "g", .fat)
                 TextField("Name", text: $name).focused($focus, equals: .name).accessibilityIdentifier("quickAdd.name")
+            } header: {
+                SectionEyebrow("Optional")
             }
         }
+        .inkRows()
+        .inkForm()
         .navigationTitle("Quick add")
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 8) {
@@ -52,6 +56,10 @@ struct QuickAddView: View {
                 .disabled(nutrients.kcal <= 0 && nutrients.protein <= 0)
             }
             .padding(.horizontal)
+            .padding(.vertical, 8)
+            // Opaque: the rows scroll under it, and a translucent bar (or a disabled button over
+            // them) showed the Fat row through "Add".
+            .background(Ink.ground.ignoresSafeArea(edges: .horizontal))
         }
         .onAppear { focus = .kcal }
     }
