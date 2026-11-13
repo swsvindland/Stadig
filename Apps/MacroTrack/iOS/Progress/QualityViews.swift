@@ -4,12 +4,14 @@ import SwiftUI
 import SystemCore
 
 extension Processing {
+    /// On the palette's good-to-bad scale: whole and kitchen staples good (the staples quieter, to
+    /// tell them apart in one bar), processed so-so, ultra-processed bad.
     var color: Color {
         switch self {
-        case .whole: .green
-        case .culinary: .teal
-        case .processed: .yellow
-        case .ultraProcessed: .orange
+        case .whole: Ink.good
+        case .culinary: Ink.good.opacity(0.55)
+        case .processed: Ink.ok
+        case .ultraProcessed: Ink.bad
         }
     }
 
@@ -20,10 +22,10 @@ extension Processing {
 extension QualityReport.Status {
     var color: Color {
         switch self {
-        case .good: .green
-        case .fair: .yellow
-        case .off: .orange
-        case .unknown: .secondary
+        case .good: Ink.good
+        case .fair: Ink.ok
+        case .off: Ink.bad
+        case .unknown: Ink.text3
         }
     }
 }
@@ -37,7 +39,7 @@ struct FoodQualityTags: View {
         if processing != nil || fermented {
             HStack(spacing: 6) {
                 if let processing { tag(processing.tag, processing.color) }
-                if fermented { tag("Fermented", .purple) }
+                if fermented { tag("Fermented", Ink.text2) }
             }
             .padding(.top, 2)
         }
@@ -49,7 +51,7 @@ struct FoodQualityTags: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(color.opacity(0.16), in: .capsule)
-            .foregroundStyle(color == .yellow ? Color.primary.opacity(0.75) : color)
+            .foregroundStyle(color)
     }
 }
 
@@ -63,7 +65,7 @@ struct ProcessingBar: View {
                 ForEach(Processing.allCases, id: \.self) { group in
                     let share = report.shares[group] ?? 0
                     if share > 0 {
-                        Rectangle().fill(group.color.gradient).frame(width: max(3, (proxy.size.width - 6) * share))
+                        Rectangle().fill(group.color).frame(width: max(3, (proxy.size.width - 6) * share))
                     }
                 }
             }
