@@ -61,6 +61,10 @@ nonisolated final class AppUITests: XCTestCase {
         XCTAssertFalse(connect.isEnabled)
         app.element("onboarding.notNow").tap()
 
+        // The starting point, from the answers and the weight typed.
+        app.element("onboarding.kcal").waitToAppear()
+        app.element("onboarding.start").tap()
+
         app.element("today.calories").waitToAppear()
         XCTAssertTrue(app.todayLogging.exists)
         let weight = app.element("today.weight").waitToAppear()
