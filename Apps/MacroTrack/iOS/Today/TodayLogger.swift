@@ -7,7 +7,7 @@ import SystemCore
 /// meal (the newest nearest the field), the usual foods for now one tap away, and one field at the
 /// bottom that takes "chick 200" or "2 eggs, toast, coffee" and logs it on Return. Nothing opens to
 /// confirm. The rest of the day (the weigh-in, the plan's asks, meal timing, supplements, drinks)
-/// is below the thread.
+/// is folded under More today, after the thread (`MoreToday`).
 struct TodayLogger: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -21,6 +21,8 @@ struct TodayLogger: View {
     @State private var footHeight = 0.0
     /// Counts what's been logged or removed, for the thread's second look at its end.
     @State private var changes = 0
+    /// Whether More today is open, kept for the scene.
+    @SceneStorage("today.moreOpen") private var moreOpen = false
 
     static let threadEnd = "today.threadEnd"
 
@@ -33,23 +35,14 @@ struct TodayLogger: View {
             ScrollViewReader { proxy in
                 List {
                     thread(moments, fresh: fresh, estimates: estimates)
-                    Group {
-                        if let analysis = model.analysis, !analysis.targets.note.isEmpty {
-                            Section {
-                                ModeLine(targets: analysis.targets, assessment: analysis.assessment)
-                            }
-                        }
-                        ActionsSection()
-                        WeightSection(day: model.today)
-                        PlannedMealsSection(day: model.today)
-                        if model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection(foods: false) }
-                        DayStateSection(day: model.today)
-                        TodayMore(day: model.today)
-                    }
-                    .listRowBackground(Color.cardBackground)
+                    // Not while typing: there the thread runs straight into the matches.
+                    if !typing { MoreToday(open: moreOpen) { toggleMore(proxy) } }
                 }
                 .insetGroupedList()
                 .sectionSpacing(14)
+                // The thread's end is a few points, not a row's 44: it's what sits between the
+                // newest food and the matches while typing.
+                .environment(\.defaultMinListRowHeight, 20)
                 .inkGround()
                 .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
                 .dismissesKeyboardOnScroll()
@@ -60,11 +53,11 @@ struct TodayLogger: View {
                 .onAppear {
                     composer.attach(model)
                     composer.refreshTiles()
-                    proxy.scrollTo(Self.threadEnd, anchor: .bottom)
+                    proxy.scrollTo(end, anchor: .bottom)
                 }
                 .onChange(of: entries.count) { _, _ in
                     composer.refreshTiles()
-                    withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
+                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
                     changes &+= 1
                 }
                 // A row for words being worked out lands at the end of the thread, in sight.
@@ -77,21 +70,41 @@ struct TodayLogger: View {
                     guard changes > 0 else { return }
                     try? await Task.sleep(for: .milliseconds(400))
                     guard !Task.isCancelled else { return }
-                    withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
+                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
                 }
                 // While typing, the foot grows and shrinks with the matches: the thread keeps its
-                // end in sight above them.
-                .onChange(of: footHeight) { _, _ in
+                // end in sight above them, once the list's inset has caught up with the foot (at
+                // once, it scrolled for the foot before the matches rose, leaving the newest food
+                // behind them).
+                .task(id: typing ? footHeight : -1) {
                     guard typing else { return }
-                    withAnimation(.snappy) { proxy.scrollTo(Self.threadEnd, anchor: .bottom) }
+                    try? await Task.sleep(for: .milliseconds(120))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
+                }
+                // Typing puts More today away and brings the thread's end; done, it's back: either
+                // way the end goes over the foot again once the keyboard has moved.
+                .onChange(of: typing) { _, _ in changes &+= 1 }
+                // A food opened in place comes up into sight, clear of the foot.
+                .onChange(of: opened) { _, id in
+                    guard let id else { return }
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(150))
+                        withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
+                    }
                 }
                 .onChange(of: model.personalVersion) { _, _ in composer.attach(model) }
                 .onChange(of: model.analysisVersion) { _, _ in composer.refreshTiles() }
-                // A reminder can be tapped with Today not built yet: the request waits for it.
+                // A reminder can be tapped with Today not built yet: the request waits for it. The
+                // supplements are under More today, which opens for them.
                 .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
                     guard pending else { return }
                     model.pendingSupplementsScroll = false
-                    withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
+                    moreOpen = true
+                    Task {
+                        await Task.yield()
+                        withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
+                    }
                 }
             }
             .hidesNavigationBar()
@@ -128,6 +141,19 @@ struct TodayLogger: View {
     struct ToastWait: Equatable {
         var toast: UUID?
         var covered: Bool
+    }
+
+    /// More today opened, it comes up into sight under its line; closed, the thread's end goes back
+    /// over the foot.
+    func toggleMore(_ proxy: ScrollViewProxy) {
+        withAnimation(.snappy) { moreOpen.toggle() }
+        let open = moreOpen
+        Task {
+            await Task.yield()
+            withAnimation(.snappy) {
+                if open { proxy.scrollTo(MoreToday.id, anchor: .top) } else { proxy.scrollTo(end, anchor: .bottom) }
+            }
+        }
     }
 
     /// What was just logged, while its Undo lasts: only food on today's thread.
@@ -167,7 +193,16 @@ struct TodayLogger: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 10)
-        .background(Ink.ground)
+        // The thread fades in under the numbers rather than being cut at them, as at the foot.
+        .background {
+            VStack(spacing: 0) {
+                Ink.ground
+                LinearGradient(colors: [Ink.ground, Ink.ground.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 22)
+            }
+            .padding(.bottom, -22)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
+        }
         // The header and the foot stay put while the day scrolls between them: at the largest
         // sizes they'd meet and leave the thread no room at all. Their words stop growing at the
         // largest standard size; the thread's go on.
@@ -247,7 +282,8 @@ struct TodayLogger: View {
                 }
                 if index == moments.count - 1 {
                     if joins { estimateRows(rows) }
-                    if joins || rows.isEmpty { threadEnd }
+                    // Only while typing: otherwise More today's line is the end.
+                    if typing, joins || rows.isEmpty { threadEnd }
                 }
             } header: {
                 ThreadHeader(moment: moment, fresh: isFresh) {
@@ -258,19 +294,22 @@ struct TodayLogger: View {
         if let first = rows.first, !joins {
             Section {
                 estimateRows(rows)
-                threadEnd
+                if typing { threadEnd }
             } header: {
                 Text(Format.time(first.asked)).eyebrow().textCase(nil).padding(.horizontal, -6)
             }
         }
     }
 
+    /// What's kept in sight over the foot: More today's line under the thread, or while typing (when
+    /// it's put away) the thread's end.
+    var end: String { typing ? Self.threadEnd : MoreToday.id }
+
     /// Where the thread ends, for scrolling to it.
     var threadEnd: some View {
-        // With the keyboard up the list reckons its foot some 30 points lower than the tiles' top, so
-        // scrolled to the end the newest food sat under the tiles' title and fade. The end is that
-        // much further down while typing.
-        Color.clear.frame(height: typing ? 60 : 1).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+        // Only there while typing: room under the newest food for the fade over the matches, so it
+        // sits clear of them.
+        Color.clear.frame(height: 32).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             .id(Self.threadEnd)
     }
 
@@ -327,7 +366,7 @@ struct TodayLogger: View {
         let active = composer.parts.last
         let showsMatches = !composer.text.trimmingCharacters(in: .whitespaces).isEmpty && !composer.matches.isEmpty
         let showsTiles = !composer.tiles.isEmpty && (composer.text.trimmingCharacters(in: .whitespaces).isEmpty || active?.kind == .typing)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 12) {
             if model.toast != nil, freshIDs.isEmpty, !covered { ToastSlot().padding(.horizontal, -16) }
             if showsMatches {
                 ComposerMatches(composer: composer)
@@ -373,7 +412,7 @@ struct LeftHeader: View {
             calories
             if let kcal = targets?.kcal, kcal > 0 {
                 VStack(spacing: 5) {
-                    Ruler(value: eaten.kcal / kcal, height: 18)
+                    Ruler(value: eaten.kcal / kcal, height: 28)
                     HStack {
                         Text("\(Format.whole(eaten.kcal)) eaten").eyebrow()
                         Spacer()
@@ -400,10 +439,10 @@ struct LeftHeader: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             if let kcal = targets?.kcal {
                 let left = kcal - eaten.kcal
-                Text(Format.whole(abs(left))).numeral(64).foregroundStyle(Ink.text).contentTransition(.numericText())
+                Text(Format.whole(abs(left))).numeral(70, weight: .heavy).foregroundStyle(Ink.text).contentTransition(.numericText())
                 Text(left >= 0 ? "kcal left" : "kcal over").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2)
             } else {
-                Text(Format.whole(eaten.kcal)).numeral(64).foregroundStyle(Ink.text).contentTransition(.numericText())
+                Text(Format.whole(eaten.kcal)).numeral(70, weight: .heavy).foregroundStyle(Ink.text).contentTransition(.numericText())
                 Text("kcal eaten").font(.title3.weight(.semibold)).foregroundStyle(Ink.text2)
             }
             Spacer(minLength: 0)
@@ -426,13 +465,13 @@ private struct MacroLeft: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(macro.label).font(.caption).foregroundStyle(Ink.text2)
+            Text(macro.label).font(.caption).foregroundStyle(Ink.text3)
             if let target, target > 0 {
                 let left = target - eaten
-                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g left" : "g over", size: 22)
+                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g left" : "g over", size: 20)
                 Ruler.thin(eaten / target, color: macro.color)
             } else {
-                Measure(value: Format.whole(eaten), unit: "g", size: 22)
+                Measure(value: Format.whole(eaten), unit: "g", size: 20)
                 Ruler.thin(0, color: macro.color)
             }
         }
@@ -503,7 +542,7 @@ struct ThreadHeader: View {
                     .frame(minHeight: 30)
                     .accessibilityIdentifier("today.undo")
             }
-            Text(Format.kcal(moment.nutrients.kcal)).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
+            Text(Format.kcal(moment.nutrients.kcal)).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
         }
         .textCase(nil)
         .padding(.horizontal, -6)
@@ -522,14 +561,14 @@ struct ThreadRow: View {
         let lead = Self.lead(entry.nutrients)
         HStack(spacing: 12) {
             if later { LaterMark() }
-            FoodTile(name: entry.name, fill: Ink.raised)
+            FoodTile(name: entry.name, size: 40, fill: Ink.surface)
             VStack(alignment: .leading, spacing: 2) {
                 // How someone would say it ("Chicken breast, roasted"); the full name is on its amount.
                 // A line each, until the accessibility sizes leave a line a word or two.
                 Text(FoodLabel.short(entry.name)).font(.body.weight(.medium)).foregroundStyle(Ink.text)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 Text(Self.caption(entry, estimate: estimate))
-                    .font(.caption).foregroundStyle(Ink.text2).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                    .font(.caption).foregroundStyle(Ink.text3).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
@@ -574,7 +613,7 @@ private struct UsualTiles: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(composer.tilesTitle).eyebrow()
                 Spacer()
-                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text2)
+                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text3)
             }
             .padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
@@ -589,12 +628,13 @@ private struct UsualTiles: View {
                                 Text(FoodLabel.title(item.template.name)).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
                                     .lineLimit(1).minimumScaleFactor(0.85)
                                 Text("\(item.template.amountLabel) · \(Format.whole(item.template.nutrients.kcal)) kcal")
-                                    .font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
+                                    .font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
                             }
                             Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 10)
-                        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                        .padding(.leading, 9)
+                        .padding(.trailing, 12)
+                        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
                         .background(Color.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
                         .contentShape(.rect(cornerRadius: 18))
                     }
@@ -620,7 +660,7 @@ private struct WhatFitsRows: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("What fits tonight").eyebrow()
                 Spacer()
-                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text2)
+                Text("One tap logs it").font(.caption).foregroundStyle(Ink.text3)
             }
             .padding(.horizontal, 4)
             ForEach(Array(composer.fits.enumerated()), id: \.element.id) { index, option in

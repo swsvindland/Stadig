@@ -63,6 +63,12 @@ nonisolated final class AppUITests: XCTestCase {
 
         app.element("today.calories").waitToAppear()
         XCTAssertTrue(app.todayLogging.exists)
+        // On a phone the weigh-in is under More today, whose line says the day's weight.
+        if !app.element("today.weight").waitForExistence(timeout: 2) {
+            let more = app.element("today.more").waitToAppear()
+            XCTAssertTrue((more.value as? String)?.contains("181.4 lb") ?? false, "More today says it: \(String(describing: more.value))")
+            more.tap()
+        }
         let weight = app.element("today.weight").waitToAppear()
         XCTAssertTrue(weight.label.contains("181.4 lb"), "the first weigh-in is today's: \(weight.label)")
     }
