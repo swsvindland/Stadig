@@ -45,6 +45,20 @@ enum WatchFormat {
         return "\(load(prescription.loadKg, unit: unit, basis: exercise.loadBasis)) × \(prescription.targetReps)"
     }
 
+    /// The next set, short, as the rest face says it: "70 × 7", "70 × 7+" for a rep-out, "8 reps",
+    /// "45 s"; loads that need a word keep it ("20 kg each × 10").
+    static func nextSet(_ prescription: SetPrescription, exercise: Exercise, unit: WeightUnit, plannedSeconds: Int? = nil) -> String {
+        if exercise.timed || exercise.kind != .strength, prescription.seconds ?? plannedSeconds != nil {
+            return self.prescription(prescription, exercise: exercise, unit: unit, plannedSeconds: plannedSeconds)
+        }
+        let reps = "\(prescription.targetReps)\(prescription.kind == .repOut ? "+" : "")"
+        guard exercise.loadBasis != .none else { return "\(reps) reps" }
+        guard let kg = prescription.loadKg, exercise.loadBasis == .external else {
+            return "\(load(prescription.loadKg, unit: unit, basis: exercise.loadBasis)) × \(reps)"
+        }
+        return "\(number(unit.fromKilograms(kg))) × \(reps)"
+    }
+
     /// A set as it was done, the same way.
     static func logged(_ set: LoggedSet, exercise: Exercise, unit: WeightUnit) -> String {
         if exercise.timed || exercise.kind != .strength, let seconds = set.seconds {
@@ -93,7 +107,24 @@ enum WatchFormat {
     }
 }
 
+extension WatchFormat {
+    /// The go face's line for a set: "Last set. All you can." for a rep-out, else what it asks for.
+    static func goLine(_ prescription: SetPrescription, last: Bool) -> String {
+        if prescription.kind == .repOut { return last ? "Last set. All you can." : "All you can." }
+        return last ? "Last set. \(hint(prescription))" : hint(prescription)
+    }
+}
+
 extension SetRating {
+    /// The rating's second line on the wrist, shorter than the phone's: "3+ left", "fell short".
+    var wristDetail: String {
+        switch self {
+        case .green: "3+ left"
+        case .orange: "0–2 left"
+        case .red: "fell short"
+        }
+    }
+
     /// The rating's colour; it always travels with its symbol and label.
     var tint: Color {
         switch self {

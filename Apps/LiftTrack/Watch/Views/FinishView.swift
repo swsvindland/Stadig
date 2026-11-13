@@ -86,56 +86,40 @@ struct FinishView: View {
     }
 }
 
-/// What the session came to, once it's saved and on its way to the phone: its name and minutes, what
-/// moved (each lift whose estimated one-rep max it raised, before and after), then the sets and their
-/// ratings, conditioning and heart rate.
+/// What the session came to, once it's saved and on its way to the phone, as the design's last face:
+/// its name and minutes, the work sets big against the plan's on a ruler with how they were rated,
+/// and what moved (each lift whose estimated one-rep max it raised, before and after). Scrolled on:
+/// conditioning, heart rate, where it went, and Done. (The phone's summary leads with Strength, which
+/// the Watch can't score: it hasn't the whole history.)
 struct SummaryView: View {
     @Environment(WatchModel.self) private var model
     let summary: SessionSummary
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("\(summary.title) · \(summary.minutes) min")
-                    .font(.system(size: 13, weight: .semibold))
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                if summary.moved.isEmpty {
-                    Label("Saved", systemImage: "checkmark.circle.fill")
-                        .font(.headline)
-                        .foregroundStyle(WatchInk.good)
-                } else {
-                    Text("What moved")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                    ForEach(summary.moved, id: \.exerciseID) { move in
-                        moved(move)
+                    .faceEyebrow(WatchInk.text3)
+                    .faceTopLine()
+                    .accessibilityAddTraits(.isHeader)
+                sets
+                    .padding(.top, 9)
+                ForEach(summary.moved, id: \.exerciseID) { move in
+                    Rectangle().fill(WatchInk.hairline).frame(height: 1).padding(.top, 12)
+                    moved(move).padding(.top, 9)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    if summary.conditioningMinutes > 0 {
+                        Label("\(summary.conditioningMinutes) min conditioning", systemImage: "heart.circle")
                     }
-                    Divider()
-                }
-                Text("^[\(summary.workSets) set](inflect: true) · ^[\(summary.exercises) exercise](inflect: true)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                ForEach(SetRating.allCases) { rating in
-                    if let count = summary.ratings[rating], count > 0 {
-                        Label("\(count) \(rating.label)", systemImage: rating.symbol)
-                            .foregroundStyle(rating.tint)
-                            .font(.footnote)
+                    if let bpm = summary.averageHeartRate {
+                        Label("Average \(Int(bpm.rounded())) bpm", systemImage: "heart.fill")
                     }
+                    Text(summary.savedOnPhone ? "Saved in Stadig Lift on your iPhone." : "Sent to Stadig Lift on your iPhone.")
+                        .foregroundStyle(WatchInk.text2)
                 }
-                if summary.conditioningMinutes > 0 {
-                    Label("\(summary.conditioningMinutes) min conditioning", systemImage: "heart.circle")
-                        .font(.footnote)
-                }
-                if let bpm = summary.averageHeartRate {
-                    Label("Average \(Int(bpm.rounded())) bpm", systemImage: "heart.fill")
-                        .font(.footnote)
-                }
-                Text(summary.savedOnPhone ? "Saved in Stadig Lift on your iPhone." : "Sent to Stadig Lift on your iPhone.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                .faceFont(13)
+                .padding(.top, 16)
                 Button {
                     model.summary = nil
                 } label: {
@@ -143,34 +127,81 @@ struct SummaryView: View {
                 }
                 .buttonStyle(.glassProminent)
                 .handGestureShortcut(.primaryAction)
+                .padding(.top, 12)
+            }
+            .padding(.horizontal, WatchFace.margin)
+            .padding(.bottom, 16)
+        }
+        .ignoresSafeArea(edges: [.top, .horizontal])
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    /// "Work sets", "19" big with "of 19", the ruler, and "14 just right · 3 easy · 2 missed".
+    private var sets: some View {
+        let planned = summary.plannedSets.flatMap { $0 > 0 ? $0 : nil }
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("Work sets").faceFont(13, weight: .semibold).foregroundStyle(Color.accentColor)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                BigNumber(value: "\(summary.workSets)", points: 66 * WatchFace.scale)
+                if let planned {
+                    Text(summary.workSets >= planned ? "all done" : "of \(planned)")
+                        .faceFont(15, weight: .bold)
+                        .foregroundStyle(summary.workSets >= planned ? WatchInk.good : WatchInk.text2)
+                }
+            }
+            .padding(.top, 1)
+            if let planned {
+                WatchRuler(fraction: Double(summary.workSets) / Double(planned))
+                    .padding(.top, 10)
+            }
+            if !ratingsLine.isEmpty {
+                Text(ratingsLine)
+                    .faceFont(13)
+                    .foregroundStyle(WatchInk.text2)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 5)
             }
         }
-        .navigationTitle("Summary")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(summary.workSets) work sets\(planned.map { " of \($0)" } ?? ""). \(ratingsLine)")
+    }
+
+    /// "14 just right · 3 easy · 2 missed", most first.
+    private var ratingsLine: String {
+        SetRating.allCases
+            .compactMap { rating in summary.ratings[rating].flatMap { $0 > 0 ? (rating, $0) : nil } }
+            .sorted { $0.1 > $1.1 }
+            .map { "\($0.1) \($0.0.label.lowercased())" }
+            .joined(separator: " · ")
     }
 
     /// "Bench Press est. 1RM" over "91 → 92.5 kg".
     private func moved(_ move: EstimateMove) -> some View {
         let unit = model.unit
-        return VStack(alignment: .leading, spacing: 1) {
-            Text("\(model.catalog[move.exerciseID]?.name ?? move.exerciseID) est. 1RM")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(WatchFormat.number(unit.fromKilograms(move.beforeKg), digits: 1))
-                    .foregroundStyle(.secondary)
-                Text("→").foregroundStyle(.secondary)
-                Text(WatchFormat.number(unit.fromKilograms(move.afterKg), digits: 1))
-                Text(unit.symbol).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+        let before = WatchFormat.number(unit.fromKilograms(move.beforeKg), digits: 1)
+        let after = WatchFormat.number(unit.fromKilograms(move.afterKg), digits: 1)
+        let name = model.catalog[move.exerciseID]?.name ?? move.exerciseID
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("\(name) est. 1RM")
+                .faceFont(13)
+                .foregroundStyle(WatchInk.text2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(before)
+                Text("→").fontWeight(.semibold).foregroundStyle(WatchInk.text3)
+                Text(after)
+                Text(unit.symbol).font(.system(size: 12, weight: .semibold)).foregroundStyle(WatchInk.text2)
             }
-            .font(.system(size: 22, weight: .bold).monospacedDigit())
+            .font(.system(size: 21, weight: .bold).monospacedDigit())
+            .tracking(-0.4)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "\(model.catalog[move.exerciseID]?.name ?? move.exerciseID), estimated one-rep max up from \(WatchFormat.number(unit.fromKilograms(move.beforeKg), digits: 1)) to \(WatchFormat.number(unit.fromKilograms(move.afterKg), digits: 1)) \(unit.symbol)"
-        )
+        .accessibilityLabel("\(name), estimated one-rep max up from \(before) to \(after) \(unit.symbol)")
     }
 }
 

@@ -3,66 +3,88 @@ import LiftEngine
 import SwiftUI
 import SystemCore
 
-/// The rating as three big stacked zones: Easy above, Just right in the middle in the accent (Double
-/// Tap presses it), Missed below. Each carries its words and a mark as well as its colour. A miss asks
-/// how many reps were done.
+/// The rating as three big stacked zones filling the screen: Easy above, Just right in the middle in
+/// the accent (Double Tap presses it), Missed below. Each carries its words and a mark as well as its
+/// colour. A tap on a third, or a swipe up (Easy) or down (Missed), chooses. A miss asks how many reps
+/// were done. The edge swipe goes back to the set.
 struct RatingView: View {
     @Environment(WatchModel.self) private var model
     let draft: SetDraft
+    /// Opens the reps a miss asks for.
+    let open: (SessionRoute) -> Void
 
     var body: some View {
         VStack(spacing: 3) {
             ForEach(SetRating.allCases) { rating in
-                if rating == .red, let target, draft.reps >= target {
-                    // A miss asks how many reps were done: the next set is set from them.
-                    NavigationLink(value: SessionRoute.reps(missed(target: target), .red)) { zone(rating) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(rating.label): \(rating.detail)")
-                } else {
-                    Button {
-                        model.log(item: draft.item, set: draft.set, reps: draft.reps, loadKg: draft.loadKg, rating: rating)
-                    } label: {
-                        zone(rating)
-                    }
-                    .buttonStyle(.plain)
-                    .handGestureShortcut(.primaryAction, isEnabled: rating == .orange)
-                    .accessibilityLabel("\(rating.label): \(rating.detail)")
+                Button {
+                    choose(rating)
+                } label: {
+                    zone(rating)
                 }
+                .buttonStyle(.plain)
+                .handGestureShortcut(.primaryAction, isEnabled: rating == .orange)
+                .accessibilityLabel("\(rating.label): \(rating.detail)")
+                .accessibilityIdentifier("rating.\(rating.rawValue)")
             }
         }
-        .frame(maxHeight: .infinity)
-        .navigationTitle(summary)
+        .background(.black)
+        .ignoresSafeArea()
+        .toolbar(.hidden, for: .navigationBar)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24).onEnded { drag in
+                let height = drag.translation.height
+                guard abs(height) > 30, abs(height) > abs(drag.translation.width) * 1.5 else { return }
+                choose(height < 0 ? .green : .red)
+            }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(summary)
     }
 
-    /// Easy and Missed share what's left of the face; Just right is the band between them.
+    private func choose(_ rating: SetRating) {
+        if rating == .red, let target, draft.reps >= target {
+            // A miss asks how many reps were done: the next set is set from them.
+            open(.reps(missed(target: target), .red))
+        } else {
+            model.log(item: draft.item, set: draft.set, reps: draft.reps, loadKg: draft.loadKg, rating: rating)
+        }
+    }
+
+    /// Easy and Missed share what's left of the screen; Just right is the band between them.
     private func zone(_ rating: SetRating) -> some View {
         let middle = rating == .orange
         return HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(rating.label)
-                    .font(.system(size: middle ? 19 : 22, weight: .bold))
-                    .tracking(-0.5)
+                    .font(.system(size: (middle ? 21 : 26) * min(1, WatchFace.scale + 0.08), weight: .heavy))
+                    .tracking(middle ? -0.6 : -0.8)
                     .foregroundStyle(middle ? WatchInk.onAccent : rating.tint)
-                Text(rating.detail)
-                    .font(.system(size: 12, weight: middle ? .semibold : .regular))
-                    .foregroundStyle(middle ? WatchInk.onAccent : .secondary)
+                Text(rating.wristDetail)
+                    .faceFont(13, weight: middle ? .medium : .regular)
+                    .foregroundStyle(middle ? WatchInk.onAccent : WatchInk.text2)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             Spacer(minLength: 0)
             Group {
                 switch rating {
-                case .green: Image(systemName: "chevron.up").font(.system(size: 17, weight: .bold))
-                case .orange: DoubleTapGlyph(size: 20)
-                case .red: Image(systemName: "chevron.down").font(.system(size: 17, weight: .bold))
+                case .green: Image(systemName: "chevron.up").font(.system(size: 19, weight: .semibold))
+                case .orange: DoubleTapGlyph(size: 24)
+                case .red: Image(systemName: "chevron.down").font(.system(size: 19, weight: .semibold))
                 }
             }
             .foregroundStyle(middle ? WatchInk.onAccent : rating.tint)
             .accessibilityHidden(true)
         }
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, minHeight: middle ? 50 : 44, maxHeight: middle ? 54 : .infinity)
-        .background(middle ? Color.accentColor : rating.tint.opacity(0.17), in: .rect(cornerRadius: 16, style: .continuous))
+        .padding(.leading, WatchFace.small ? 18 : 22)
+        .padding(.trailing, WatchFace.small ? 16 : 20)
+        // The outer zones' words sit toward the middle, clear of the screen's rounded corners.
+        .padding(.top, rating == .green ? 12 : 0)
+        .padding(.bottom, rating == .red ? 12 : 0)
+        .frame(maxWidth: .infinity)
+        .frame(height: middle ? (WatchFace.small ? 56 : 64) : nil)
+        .frame(maxHeight: middle ? nil : .infinity)
+        .background(middle ? Color.accentColor : rating.tint.opacity(0.17))
         .contentShape(.rect)
     }
 

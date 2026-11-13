@@ -5,15 +5,19 @@ import LiftEngine
 import SystemCore
 
 /// Debug launch arguments for trying the app without a phone:
-/// `-sampleContext` seeds a small context; `-sampleScreen set|rating|rest|timed|conditioning|finish`
-/// also starts a fresh sample session (without HealthKit) and moves it to that screen, and
+/// `-sampleContext` seeds a small context; `-sampleScreen set|rating|rest|go|last|timed|conditioning|finish`
+/// also starts a fresh sample session (without HealthKit) and moves it to that screen (`go` is the set
+/// face in the accent as a rest running out leaves it, `last` the bench's last set, `controls` the
+/// session's controls left of the set), and
 /// `-sampleScreen home` drops any session to show the home screen. `-sampleScreen phone` shows the
 /// sample session as if the iPhone ran it and this Watch were logging into it, and `phone-set`,
 /// `phone-rating`, `phone-finish` and so on move it to that screen; `phone-saving` is the wait for the
-/// phone after Save. (No phone answers, so what's logged stays pending.)
+/// phone after Save. (No phone answers, so what's logged stays pending.) `-sampleHeartRate 118` shows
+/// that heart rate, as the workout would; `-sampleRestElapsed 96` starts the rest that long ago.
 extension WatchModel {
     func applyLaunchArguments() {
         let launch = LaunchOptions.current
+        if let bpm = launch.value(after: "-sampleHeartRate").flatMap(Double.init) { debugHeartRate = bpm }
         guard var screen = launch.value(after: "-sampleScreen") ?? (launch.has("-sampleContext") ? "" : nil) else { return }
         receive(SampleContext.make())
         guard !screen.isEmpty, let plan = context?.plan else { return }
@@ -27,7 +31,7 @@ extension WatchModel {
             start(plan)
         }
         switch screen {
-        case "set", "rating", "rest":
+        case "set", "rating", "rest", "go", "last", "controls":
             skip(item: 0)
             log(item: 1, set: 0, reps: 10, loadKg: nil, rating: nil)
             log(item: 1, set: 1, reps: 5, loadKg: nil, rating: nil)
@@ -37,7 +41,16 @@ extension WatchModel {
             } else {
                 // An easy first set, so the next one shows the adjustment.
                 log(item: 1, set: 2, reps: 8, loadKg: nil, rating: .green)
-                if screen == "set" { endRest() }
+                if screen == "last" || screen == "go" {
+                    endRest()
+                    log(item: 1, set: 3, reps: 8, loadKg: nil, rating: .orange)
+                }
+                if screen != "rest" { endRest() }
+                if screen == "go" { showSampleGo() }
+                if screen == "controls" { debugRoute = "controls" }
+                if screen == "rest", let seconds = launch.value(after: "-sampleRestElapsed").flatMap(Double.init) {
+                    ageSampleRest(by: seconds)
+                }
             }
         case "conditioning":
             for item in 0..<4 { skip(item: item) }

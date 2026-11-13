@@ -2,12 +2,13 @@ import ExerciseLibrary
 import LiftEngine
 import SwiftUI
 import SystemCore
-import WatchKit
 
 /// One loaded set, as the design's face: the exercise and where the set sits, the set as one big
-/// "70 × 7" (the crown on the load, snapped to loads the gym can make, or on the reps), and the band
-/// at the foot that Double Tap presses: Just right for a rated set, Done or Log reps otherwise. The
-/// band's other half opens Easy and Missed. The set's note, the hint and the crown's toggle are below.
+/// "70 × 7" over the crown's scale (the crown on the load, snapped to loads the gym can make, or, a
+/// tap on the reps away, on the reps), and the band across the foot that Double Tap presses: Just
+/// right for a rated set, Done or Log reps otherwise. A swipe up or down on a rated set opens Easy and
+/// Missed. Straight after a rest that ran out on its own, the face is in the accent for a moment
+/// (`GoFace`), with the set's note or what it asks for.
 struct SetView: View {
     @Environment(WatchModel.self) private var model
     let item: Int
@@ -37,76 +38,67 @@ struct SetView: View {
                 item: item, set: set, loadKg: exercise.loadBasis == .none ? nil : loadKg, reps: reps,
                 seconds: timedSeconds(exercise, liveSet: liveSet, planned: liveItem.plan.seconds))
             let rated = Self.isRated(liveSet.prescription.kind) && draft.seconds == nil
-            ScrollView {
-                VStack(alignment: .leading, spacing: 6) {
-                    NoticeRow()
-                    Text(exercise.name)
-                        .font(.system(size: Self.small ? 12 : 14, weight: .semibold))
-                        .textCase(.uppercase)
-                        .tracking(0.6)
-                        .foregroundStyle(Color.accentColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .accessibilityAddTraits(.isHeader)
-                    HStack(spacing: 6) {
-                        SetDots(index: set, sets: liveItem.sets)
-                        if let kind = Self.kindWord(liveSet.prescription.kind) {
-                            Text(kind).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            // The face is the whole screen, its band on the foot, its top line beside the time.
+            GeometryReader { screen in
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(exercise.name)
+                                .faceEyebrow(Color.accentColor)
+                                .faceTopLine()
+                                .accessibilityAddTraits(.isHeader)
+                            HStack(spacing: 7) {
+                                SetDots(index: set, sets: liveItem.sets)
+                                if let kind = Self.kindWord(liveSet.prescription.kind) {
+                                    Text(kind).faceFont(11, weight: .semibold).foregroundStyle(WatchInk.text3).lineLimit(1)
+                                }
+                            }
                         }
+                        Spacer(minLength: 2)
+                        values(exercise: exercise, liveSet: liveSet, plannedSeconds: liveSet.prescription.seconds ?? liveItem.plan.seconds)
+                            .padding(.bottom, WatchFace.small ? 8 : 12)
                     }
-                    values(exercise: exercise, liveSet: liveSet, plannedSeconds: liveSet.prescription.seconds ?? liveItem.plan.seconds)
-                        .padding(.top, Self.small ? 0 : 4)
-                    if let note = liveSet.note {
-                        Text(note)
-                            .font(.footnote)
-                            .padding(.top, 4)
-                    }
-                    Text(WatchFormat.hint(liveSet.prescription))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    // The toggle between weight and reps, and a reminder of what the crown does.
-                    if exercise.loadBasis != .none, !exercise.timed {
-                        Button {
-                            select(editing == .load ? .reps : .load)
-                        } label: {
-                            Label(editing == .load ? "Crown: weight" : "Crown: reps", systemImage: "digitalcrown.arrow.clockwise")
-                                .font(.footnote)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.glass)
-                        .accessibilityLabel(editing == .load ? "Crown adjusts weight. Switch to reps." : "Crown adjusts reps. Switch to weight.")
+                    .padding(.horizontal, WatchFace.margin)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    ActionBand(title: bandTitle(liveSet.prescription.kind, timed: draft.seconds != nil)) { done(draft) }
+                        .accessibilityHint(rated ? "Swipe up or down for Easy or Missed." : "")
+                }
+                .frame(width: screen.size.width, height: screen.size.height)
+                .background(alignment: .topLeading) {
+                    // Beside the crown, while it moves a number.
+                    if crownFocused, draft.seconds == nil {
+                        CrownScale(value: crown, height: 62 * WatchFace.scale)
+                            .position(x: screen.size.width - 7.5, y: screen.size.height * 0.285)
                     }
                 }
             }
-            // The band stays at the foot of the face, whatever the screen's size; the rest scrolls above it.
-            .safeAreaInset(edge: .bottom, spacing: 4) {
-                ActionBand(title: bandTitle(liveSet.prescription.kind, timed: draft.seconds != nil)) {
-                    done(draft)
-                } trailing: {
-                    if rated {
-                        Button {
-                            rate(draft)
-                        } label: {
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 15, weight: .bold))
-                                .frame(width: 40, height: 40)
-                                .background(WatchInk.onAccent.opacity(0.16), in: .circle)
-                                .contentShape(.circle)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Easy or missed")
-                    }
+            .ignoresSafeArea()
+            .contentShape(.rect)
+            // Not just right: a swipe either way opens the three ratings.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24).onEnded { drag in
+                    guard rated, model.go == nil, abs(drag.translation.height) > 30,
+                        abs(drag.translation.height) > abs(drag.translation.width) * 1.5
+                    else { return }
+                    rate(draft)
+                },
+                including: rated ? .all : .subviews
+            )
+            .accessibilityAction(named: "Easy or Missed") { if rated { rate(draft) } }
+            .overlay {
+                if let go = model.go {
+                    GoFace(item: item, set: set, go: go, loadKg: draft.loadKg, reps: reps)
+                        .transition(.opacity)
                 }
-                .ignoresSafeArea(.container, edges: .bottom)
             }
+            .animation(.easeOut(duration: 0.25), value: model.go)
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear { prepare(exercise: exercise, prescription: liveSet.prescription) }
         }
     }
 
-    /// The smallest Watches (40 and 41 mm), where the set and the band only fit one screen smaller.
-    private static let small = WKInterfaceDevice.current().screenBounds.width < 180
-    /// The big numbers' size.
-    private static let numberSize: CGFloat = small ? 38 : 54
+    /// The big numbers' size, at the design's 45 mm (they scale with the screen).
+    private static let numberSize: CGFloat = 70
 
     /// Sets that are rated: everything but warm-ups and rep-outs, which log as done.
     private static func isRated(_ kind: SetKind) -> Bool { kind != .warmup && kind != .repOut }
@@ -135,9 +127,16 @@ struct SetView: View {
         let hasLoad = exercise.loadBasis != .none
         let seconds = timedSeconds(exercise, liveSet: liveSet, planned: plannedSeconds)
         let load = WatchFormat.loadParts(loadKg, unit: model.unit, basis: exercise.loadBasis)
-        return HStack(alignment: .top, spacing: 6) {
+        let repOut = liveSet.prescription.kind == .repOut
+        let count = seconds.map { $0 < 60 ? "\($0)" : WatchFormat.clock($0) } ?? "\(reps)\(repOut ? "+" : "")"
+        // Both numbers at one size, as large as the face allows: beside them, the margins, the "×"
+        // and the crown's scale.
+        let points = WatchFace.numeralSize(
+            Self.numberSize, fitting: (hasLoad ? [load.value] : []) + [count],
+            besides: WatchFace.margin * 2 + (hasLoad ? 14 + 20 * WatchFace.scale : 0) + 10)
+        return HStack(alignment: .top, spacing: 7) {
             if hasLoad {
-                number(load.value, unit: load.unit, selected: editing == .load && !loads.isEmpty)
+                number(load.value, unit: load.unit, points: points, selected: editing == .load && !loads.isEmpty)
                     .onTapGesture { select(.load) }
                     .accessibilityLabel("Weight")
                     .accessibilityValue(WatchFormat.load(loadKg, unit: model.unit, basis: exercise.loadBasis))
@@ -148,19 +147,20 @@ struct SetView: View {
                     }
                 // A carry's load is held for its seconds, not multiplied by them.
                 Text(seconds == nil ? "×" : "for")
-                    .font(.system(size: seconds == nil ? 26 : 15, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, seconds == nil ? 14 : 22)
+                    .font(.system(size: (seconds == nil ? 30 : 15) * points / Self.numberSize, weight: .semibold))
+                    .foregroundStyle(WatchInk.text3)
+                    .frame(height: points * 0.9)
                     .accessibilityHidden(true)
             }
             if let seconds {
-                number(seconds < 60 ? "\(seconds)" : WatchFormat.clock(seconds), unit: seconds < 60 ? "seconds" : "minutes", selected: false)
+                number(count, unit: seconds < 60 ? "seconds" : "minutes", points: points, selected: false)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("For \(WatchFormat.duration(seconds))")
             } else {
-                number("\(reps)", unit: liveSet.prescription.kind == .repOut ? "or more" : "reps", selected: editing == .reps)
+                number("\(reps)", unit: repOut ? "or more" : "reps", points: points, selected: editing == .reps, plus: repOut)
+                    .frame(minWidth: 44 * WatchFace.scale, alignment: .leading)
                     .onTapGesture { select(.reps) }
-                    .accessibilityLabel("Reps")
+                    .accessibilityLabel(repOut ? "Reps, or more" : "Reps")
                     .accessibilityValue("\(reps)")
                     .accessibilityAddTraits(.isButton)
                     .accessibilityAdjustableAction { direction in
@@ -179,25 +179,19 @@ struct SetView: View {
         .onChange(of: crown) { apply() }
     }
 
-    private func number(_ value: String, unit: String, selected: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Self.small ? 2 : 4) {
-            // A fixed height, so a long load shrunk to fit keeps its line and unit level with the reps'.
-            Text(value)
-                .font(.system(size: Self.numberSize, weight: .bold))
-                .monospacedDigit()
-                .tracking(-2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.45)
-                .frame(height: Self.numberSize + 2, alignment: .bottom)
+    private func number(_ value: String, unit: String, points: CGFloat, selected: Bool, plus: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            BigNumber(value: value, points: points, plus: plus)
             Capsule()
                 .fill(selected ? Color.accentColor : .clear)
                 .frame(height: 3)
             Text(unit)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(selected ? Color.accentColor : .secondary)
+                .faceFont(13, weight: .semibold)
+                .foregroundStyle(selected ? Color.accentColor : WatchInk.text3)
                 .lineLimit(1)
+                .fixedSize()
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .fixedSize()
         .contentShape(.rect)
         // One element, the number and its unit together, for the label and actions put on it.
         .accessibilityElement(children: .ignore)

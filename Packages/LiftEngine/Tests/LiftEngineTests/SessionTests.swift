@@ -607,6 +607,22 @@ struct SessionTests {
         #expect(live.rest == rest, "the rest stays until the next set is logged, which is timed from it")
     }
 
+    @Test("a rest says the heart rate it ends at, and none when heart rate doesn't guide it")
+    func recoveredAt() throws {
+        let zones = HeartRateZones(resting: 60, maximum: 190)
+        let start = Fixture.start.date()
+        let guided = RestPlan(target: 90, minimum: 30, heartRateGuided: true)
+        var rest = RestState(started: start, plan: guided, itemID: UUID(), endsAt: start.addingTimeInterval(90))
+        // 55% of the reserve: 60 + 130 × 0.55 = 131.5, so 131 is the last whole bpm that counts.
+        #expect(rest.recoveredAt(zones: zones) == 131)
+        #expect(Rest.recovered(heartRate: 131, preSet: nil, zones: zones, elapsed: 30, plan: guided))
+        #expect(!Rest.recovered(heartRate: 132, preSet: nil, zones: zones, elapsed: 30, plan: guided))
+        rest.preSetHeartRate = 125
+        #expect(rest.recoveredAt(zones: zones) == 137, "within 12 of where the set began, when that's higher")
+        rest.plan = RestPlan(target: 180, minimum: 150, heartRateGuided: false)
+        #expect(rest.recoveredAt(zones: zones) == nil)
+    }
+
     @Test("a session is kept when anything at all was done in it")
     func sessionContent() {
         let start = Fixture.start.date()
