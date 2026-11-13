@@ -2,6 +2,11 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Both Watch apps drawn to their boards.** The same day. The calls, mine to check:
+  - **Stadig Lift's set fills the face:** the exercise beside the clock, "70 × 7" fitted to the width, the Crown's scale at the edge, Just right as a band at the foot (Double Tap). Swipe up or down opens the rating; Exercises, End, Continue on iPhone and Discard moved to a page one swipe left. Rest is a solid level with the countdown, heart rate and "go at N"; the Crown adds or takes 15 s. A new **Go** face shows the next set in the accent for 6 s when rest ends by itself. The finished face shows the work sets and what moved, not Strength or Your shape, which the Watch has no history to score.
+  - **Stadig Macro's Today** is a level filling from the foot with the protein line at its own height (the scale button below the face); Usually now is one food per face with Log; the weigh-in says "The scale says" with the trend under it and Keep (which saves nothing if today's reading is unchanged).
+  - **Not built:** the board's "say it" face (the Watch has no food catalog or sentence parser) and the new complications (Usually now, Your shape, water).
+
 - **One set of page pieces for both apps.** The same day, so Stadig Lift and Stadig Macro read as one family. The calls, mine to check:
   - **`Components/Stadig.swift` holds all of it, identical in both apps:** the page header and pushed-page header (which keeps the swipe back), round icon buttons, the solid and ghost button (`InkButtonStyle`, 52, 44 or 34 points by control size), onboarding's step bar and heading, the segmented control, row cards, card titles and section eyebrows. Lift's `Page.swift` and Macro's `InkControls.swift` are gone.
   - **Stadig Macro's buttons are ink buttons like Lift's,** not glass capsules; its Your shape and check-ins are pushed pages like Lift's; onboarding questions are 36 points in both apps (Macro's board drew 32); form section headers are eyebrows in both.
