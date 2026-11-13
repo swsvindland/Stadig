@@ -581,7 +581,7 @@ private struct MuscleChip: View {
 }
 
 /// The estimated one-rep max over time: the line over a soft fill, the latest point marked.
-private struct EstimateLine: View {
+struct EstimateLine: View {
     let points: [ExerciseDetailContent.Point]
     let domain: ClosedRange<Double>
 
