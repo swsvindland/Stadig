@@ -28,34 +28,27 @@ struct ProgressTab: View {
                     .padding(.bottom, 24)
                     .readableWidth()
                 } else if let analysis = model.analysis {
-                    board(analysis)
+                    VStack(alignment: .leading, spacing: 4) {
+                        // The charts' one range and the weigh-in, as the page's own controls.
+                        WideHeader(eyebrow: eyebrow, title: "Progress") {
+                            InkSegmented(options: ChartRange.allCases.map { ($0.days, $0.label) }, selection: $range)
+                                .frame(width: 240)
+                                .help("How far back the charts go")
+                                .accessibilityIdentifier("progress.range")
+                            CircleIconButton(symbol: "scalemass", label: "Weigh in", identifier: "progress.weighIn") { model.showWeighIn = true }
+                                .help("Record a weigh-in")
+                        }
+                        board(analysis)
+                    }
+                    .padding(.top, 12)
+                    .frame(maxWidth: 1180)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .background(.pageBackground)
             .navigationTitle("Progress")
-            .hidesNavigationBar(compact)
-            .toolbar {
-                if !compact {
-                    ToolbarItem(placement: .principal) {
-                        Picker("Range", selection: $range) {
-                            ForEach(ChartRange.allCases) { Text($0.label).tag($0.days) }
-                        }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
-                        .help("How far back the charts go")
-                        .accessibilityIdentifier("progress.range")
-                    }
-                    ToolbarItem(placement: .barTrailing) {
-                        Button {
-                            model.showWeighIn = true
-                        } label: {
-                            Label("Weigh In", systemImage: "scalemass")
-                        }
-                        .help("Record a weigh-in")
-                        .accessibilityIdentifier("progress.weighIn")
-                    }
-                }
-            }
+            .widePage(!compact)
+            .hidesNavigationBar()
         }
     }
 
@@ -105,9 +98,7 @@ struct ProgressTab: View {
                 NutrientTableCard(report: analysis.micros).gridCellColumns(2)
             }
         }
-        .padding(20)
-        .frame(maxWidth: 1180)
-        .frame(maxWidth: .infinity)
+        .padding([.horizontal, .bottom], 20)
     }
 }
 

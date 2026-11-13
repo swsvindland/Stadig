@@ -222,9 +222,11 @@ extension View {
 
     /// The ground behind a composer's foot, solid down to the screen's foot: what's on the screen
     /// scrolls under the composer and the tab bar, not out below them, and fades out over the 40
-    /// points above it rather than being sliced at a label.
+    /// points above it rather than being sliced at a label. Vision Pro's window is glass, not ink:
+    /// a slab of the ground would be a black band across it, so the window's own glass is the ground.
     func composerGround() -> some View {
         background {
+            #if !os(visionOS)
             VStack(spacing: 0) {
                 LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground.opacity(0.85), Ink.ground], startPoint: .top, endPoint: .bottom)
                     .frame(height: 40)
@@ -232,6 +234,7 @@ extension View {
             }
             .padding(.top, -40)
             .ignoresSafeArea(edges: .bottom)
+            #endif
         }
     }
 }

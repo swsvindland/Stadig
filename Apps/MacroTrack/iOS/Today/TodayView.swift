@@ -3,78 +3,14 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// Today, always today. On a phone (a compact width) it's the logger (`TodayLogger`); with room
-/// it's the dashboard beside the sidebar.
+/// Today, always today: the logger (`TodayLogger`). On a phone (a compact width) it's the one
+/// column; with room, the rest of the day is a column beside it.
 struct TodayView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         // The Mac reports no size class: it always has room.
-        if sizeClass == .compact { TodayLogger() } else { TodayDashboard() }
-    }
-}
-
-/// Today at a glance where there's room: what's left, the weight, anything the plan asks, the
-/// ways to log in a tap, then meal timing, supplements, drinks and the week's food-quality
-/// suggestions. The day's food is on the Log tab, beside the logger.
-struct TodayDashboard: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    /// The Mac reports no size class: it always has room.
-    var wide: Bool { sizeClass != .compact }
-
-    var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                List {
-                    Section {
-                        SummaryCard(day: model.today)
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                    }
-                    WeightSection(day: model.today)
-                    TodayFood(day: model.today)
-                    DayStateSection(day: model.today)
-                    TodayMore(day: model.today)
-                }
-                .insetGroupedList()
-                .sectionSpacing(14)
-                // A readable column, on the page. By its frame rather than the list's content margins:
-                // those are measured from under a sidebar beside it, which pushes the column off centre.
-                // Not on the Mac, whose title bar would show a band as wide as the column.
-                .scrollContentBackground(.hidden)
-                .readableWidth(Platform.isMac ? .infinity : 800)
-                .background(.pageBackground)
-                // A reminder can be tapped with Today not built yet: the request waits for it.
-                .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
-                    guard pending else { return }
-                    model.pendingSupplementsScroll = false
-                    withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
-                }
-            }
-            .navigationTitle("Today")
-            .toolbar {
-                if wide {
-                    LogToolbar()
-                } else {
-                    ToolbarItem(placement: .barTrailing) { SettingsButton(identifier: "today.settings") }
-                }
-            }
-            .refreshable { await model.refreshHealth() }
-        }
-    }
-}
-
-/// What the plan asks for today, then the ways to log in a tap (planned meals and Log again).
-struct TodayFood: View {
-    @Environment(AppModel.self) private var model
-    let day: Day
-
-    var body: some View {
-        ActionsSection()
-        PlannedMealsSection(day: day)
-        if !model.logAgain.isEmpty || model.usualNow != nil || !model.usualMeals.isEmpty { LogAgainSection() }
+        TodayLogger(wide: sizeClass != .compact)
     }
 }
 
@@ -89,44 +25,6 @@ struct TodayMore: View {
         SupplementsSection(day: day).id(SupplementsSection.scrollID)
         DrinksSection(day: day)
         if day == model.today { FoodSuggestionsSection() }
-    }
-}
-
-/// Settings, from a screen's toolbar: a sheet on iPhone, iPad and Vision Pro. The Mac has its
-/// Settings window in the app menu (⌘,), so the button isn't there.
-struct SettingsButton: View {
-    @Environment(AppModel.self) private var model
-    let identifier: String
-
-    var body: some View {
-        if !Platform.isMac {
-            Button {
-                model.showSettings = true
-            } label: {
-                // A title, for when a full toolbar folds it into its menu.
-                Label("Settings", systemImage: "gearshape")
-            }
-            .accessibilityIdentifier(identifier)
-        }
-    }
-}
-
-/// Calories left as the hero numeral over a ruler, with protein (and carbs and fat, if shown) in
-/// grams left over thin rulers: the phone's Today header, in a card.
-struct SummaryCard: View {
-    @Environment(AppModel.self) private var model
-    let day: Day
-
-    var body: some View {
-        if let analysis = model.analysis {
-            VStack(alignment: .leading, spacing: 14) {
-                LeftHeader(
-                    targets: analysis.targets, eaten: analysis.intakeByDay[day] ?? .zero, showAllMacros: model.settings.showAllMacros,
-                    justLogged: nil)
-                ModeLine(targets: analysis.targets, assessment: analysis.assessment)
-            }
-            .card(padding: 18)
-        }
     }
 }
 

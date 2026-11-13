@@ -7,7 +7,10 @@ import SystemCore
 /// meal (the newest nearest the field), the usual foods for now one tap away, and one field at the
 /// bottom that takes "chick 200" or "2 eggs, toast, coffee" and logs it on Return. Nothing opens to
 /// confirm. The rest of the day (the weigh-in, the plan's asks, meal timing, supplements, drinks)
-/// is folded under More today, after the thread (`MoreToday`).
+/// is folded under More today, after the thread (`MoreToday`). With room (`wide`: iPad, the Mac,
+/// Vision Pro) the phone's Today is the first of two columns, under the day's eyebrow, and the rest
+/// of the day is open beside it rather than folded (`RestOfToday`); too narrow for both, it's the
+/// phone's.
 struct TodayLogger: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -25,8 +28,19 @@ struct TodayLogger: View {
     @State private var roomAbove = 0.0
     /// Whether More today is open, kept for the scene.
     @SceneStorage("today.moreOpen") private var moreOpen = false
+    /// The width Today has, which decides whether the rest of the day is a column of its own: room
+    /// for it until measured, as it mostly is, so a wide Today doesn't open on the phone's first.
+    @State private var width = Double.infinity
+    private let wide: Bool
+
+    init(wide: Bool = false) { self.wide = wide }
 
     static let threadEnd = "today.threadEnd"
+    /// Room for the phone's Today and the rest of the day beside it.
+    static let columnsWidth = 760.0
+
+    /// The rest of the day beside the thread, rather than folded under it.
+    var columns: Bool { wide && width >= Self.columnsWidth }
 
     var body: some View {
         let entries = model.allEntries(on: model.today)
@@ -35,94 +49,25 @@ struct TodayLogger: View {
         let estimates = model.estimates
         NavigationStack {
             ScrollViewReader { proxy in
-                List {
-                    thread(moments, fresh: fresh, estimates: estimates)
-                    // Not while typing: there the thread runs straight into the matches.
-                    if !typing { MoreToday(open: moreOpen) { toggleMore(proxy) } }
-                }
-                .insetGroupedList()
-                .sectionSpacing(14)
-                // The thread's end is a few points, not a row's 44: it's what sits between the
-                // newest food and the matches while typing.
-                .environment(\.defaultMinListRowHeight, 20)
-                // A short day sits at the foot, over the tiles, as the design's thread does: an
-                // empty one has its line and More today just above them rather than under the
-                // numbers with a gap below, and a food landing pushes the day up from there, so
-                // nothing jumps. A list has no bottom alignment of its own: the room it would leave
-                // goes over the day instead.
-                .contentMargins(.top, roomAbove, for: .scrollContent)
-                // More today's own inset is the room over the foot's fade: no list margin under it
-                // as well, which left a band of nothing between the day and the tiles.
-                .contentMargins(.bottom, 0, for: .scrollContent)
-                .onScrollGeometryChange(for: Double.self) { geometry in
-                    geometry.containerSize.height - geometry.contentInsets.top - geometry.contentInsets.bottom - geometry.contentSize.height
-                } action: { _, room in
-                    // Measured with the room already given in the insets: put it back.
-                    let next = max(0, (room + roomAbove).rounded())
-                    if abs(next - roomAbove) >= 1 { roomAbove = next }
-                }
-                .inkGround()
-                .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
-                .dismissesKeyboardOnScroll()
-                // A tap anywhere on the day puts the keyboard away, alongside the row's own tap.
-                .simultaneousGesture(TapGesture().onEnded { if typing { typing = false } })
-                .safeAreaInset(edge: .top, spacing: 0) { header(entries: entries, fresh: fresh) }
-                .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
-                .onAppear {
-                    composer.attach(model)
-                    composer.refreshTiles()
-                    proxy.scrollTo(end, anchor: .bottom)
-                }
-                .onChange(of: entries.count) { _, _ in
-                    composer.refreshTiles()
-                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
-                    changes &+= 1
-                }
-                // A row for words being worked out lands at the end of the thread, in sight.
-                .onChange(of: estimates.count(where: \.isRow)) { _, _ in changes &+= 1 }
-                // Return gives the keyboard back to the field a moment after its food arrives, and
-                // the matches give way to the tiles: the list's insets move under the scroll above,
-                // which then leaves the newest food behind the foot (or doesn't happen at all).
-                // Once they've settled, the thread's end goes above the foot again.
-                .task(id: changes) {
-                    guard changes > 0 else { return }
-                    try? await Task.sleep(for: .milliseconds(400))
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
-                }
-                // While typing, the foot grows and shrinks with the matches: the thread keeps its
-                // end in sight above them, once the list's inset has caught up with the foot (at
-                // once, it scrolled for the foot before the matches rose, leaving the newest food
-                // behind them).
-                .task(id: typing ? footHeight : -1) {
-                    guard typing else { return }
-                    try? await Task.sleep(for: .milliseconds(120))
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
-                }
-                // Typing puts More today away and brings the thread's end; done, it's back: either
-                // way the end goes over the foot again once the keyboard has moved.
-                .onChange(of: typing) { _, _ in changes &+= 1 }
-                // A food opened in place comes up into sight, clear of the foot.
-                .onChange(of: opened) { _, id in
-                    guard let id else { return }
-                    Task {
-                        try? await Task.sleep(for: .milliseconds(150))
-                        withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
+                Group {
+                    if columns {
+                        VStack(alignment: .leading, spacing: 0) {
+                            pageHeader
+                            HStack(alignment: .top, spacing: 8) {
+                                threadList(proxy, entries: entries, moments: moments, fresh: fresh, estimates: estimates)
+                                    .frame(minWidth: 360, idealWidth: 520, maxWidth: 580)
+                                RestOfToday().frame(maxWidth: .infinity)
+                            }
+                        }
+                        .inkGround()
+                    } else {
+                        threadList(proxy, entries: entries, moments: moments, fresh: fresh, estimates: estimates)
                     }
                 }
-                .onChange(of: model.personalVersion) { _, _ in composer.attach(model) }
-                .onChange(of: model.analysisVersion) { _, _ in composer.refreshTiles() }
-                // A reminder can be tapped with Today not built yet: the request waits for it. The
-                // supplements are under More today, which opens for them.
-                .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
-                    guard pending else { return }
-                    model.pendingSupplementsScroll = false
-                    moreOpen = true
-                    Task {
-                        await Task.yield()
-                        withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
-                    }
+                .onGeometryChange(for: Double.self) {
+                    $0.size.width
+                } action: {
+                    width = $0
                 }
             }
             .hidesNavigationBar()
@@ -151,6 +96,122 @@ struct TodayLogger: View {
         // Typing closes a food opened in place, which saves it.
         .onChange(of: typing) { _, typing in if typing { opened = nil } }
         .animation(.snappy, value: typing)
+    }
+
+    /// With room, the day and its plan over both columns, and the round buttons at the end, as a
+    /// wide page's header has them. The phone has them over the numbers.
+    var pageHeader: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(eyebrow).eyebrow().lineLimit(1)
+            Spacer(minLength: 8)
+            if !Platform.isMac {
+                CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "today.settings") { model.showSettings = true }
+            }
+        }
+        .frame(minHeight: 44)
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+    }
+
+    /// The phone's Today: what's left, the day's food, the usual foods and the field.
+    func threadList(
+        _ proxy: ScrollViewProxy, entries: [FoodEntry], moments: [Moment], fresh: Set<UUID>, estimates: [ThreadEstimate]
+    ) -> some View {
+        List {
+            thread(moments, fresh: fresh, estimates: estimates)
+            // Not while typing: there the thread runs straight into the matches. Nor beside
+            // the rest of the day, which has it all.
+            if !typing, !columns { MoreToday(open: moreOpen) { toggleMore(proxy) } }
+        }
+        .insetGroupedList()
+        .sectionSpacing(14)
+        // The thread's end is a few points, not a row's 44: it's what sits between the
+        // newest food and the matches while typing.
+        .environment(\.defaultMinListRowHeight, 20)
+        // A short day sits at the foot, over the tiles, as the design's thread does: an
+        // empty one has its line and More today just above them rather than under the
+        // numbers with a gap below, and a food landing pushes the day up from there, so
+        // nothing jumps. A list has no bottom alignment of its own: the room it would leave
+        // goes over the day instead.
+        .contentMargins(.top, roomAbove, for: .scrollContent)
+        // More today's own inset is the room over the foot's fade: no list margin under it
+        // as well, which left a band of nothing between the day and the tiles.
+        .contentMargins(.bottom, 0, for: .scrollContent)
+        .onScrollGeometryChange(for: Double.self) { geometry in
+            geometry.containerSize.height - geometry.contentInsets.top - geometry.contentInsets.bottom - geometry.contentSize.height
+        } action: { _, room in
+            // Measured with the room already given in the insets: put it back.
+            let next = max(0, (room + roomAbove).rounded())
+            if abs(next - roomAbove) >= 1 { roomAbove = next }
+        }
+        .inkGround()
+        .sensoryFeedback(.impact(weight: .light), trigger: entries.count)
+        .dismissesKeyboardOnScroll()
+        // A tap anywhere on the day puts the keyboard away, alongside the row's own tap.
+        .simultaneousGesture(TapGesture().onEnded { if typing { typing = false } })
+        .safeAreaInset(edge: .top, spacing: 0) { header(entries: entries, fresh: fresh) }
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+        .onAppear {
+            composer.attach(model)
+            composer.refreshTiles()
+            proxy.scrollTo(end, anchor: .bottom)
+        }
+        .onChange(of: entries.count) { _, _ in
+            composer.refreshTiles()
+            withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
+            changes &+= 1
+        }
+        // A row for words being worked out lands at the end of the thread, in sight.
+        .onChange(of: estimates.count(where: \.isRow)) { _, _ in changes &+= 1 }
+        // Return gives the keyboard back to the field a moment after its food arrives, and
+        // the matches give way to the tiles: the list's insets move under the scroll above,
+        // which then leaves the newest food behind the foot (or doesn't happen at all).
+        // Once they've settled, the thread's end goes above the foot again.
+        .task(id: changes) {
+            guard changes > 0 else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
+        }
+        // While typing, the foot grows and shrinks with the matches: the thread keeps its
+        // end in sight above them, once the list's inset has caught up with the foot (at
+        // once, it scrolled for the foot before the matches rose, leaving the newest food
+        // behind them).
+        .task(id: typing ? footHeight : -1) {
+            guard typing else { return }
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { proxy.scrollTo(end, anchor: .bottom) }
+        }
+        // Typing puts More today away and brings the thread's end; done, it's back: either
+        // way the end goes over the foot again once the keyboard has moved.
+        .onChange(of: typing) { _, _ in changes &+= 1 }
+        // A food opened in place comes up into sight, clear of the foot.
+        .onChange(of: opened) { _, id in
+            guard let id else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
+            }
+        }
+        .onChange(of: model.personalVersion) { _, _ in composer.attach(model) }
+        .onChange(of: model.analysisVersion) { _, _ in composer.refreshTiles() }
+        // A reminder can be tapped with Today not built yet: the request waits for it. The
+        // supplements are under More today, which opens for them.
+        .onChange(of: model.pendingSupplementsScroll, initial: true) { _, pending in
+            guard pending else { return }
+            model.pendingSupplementsScroll = false
+            // Beside the rest of the day the supplements are in sight already.
+            guard !columns else {
+                withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
+                return
+            }
+            moreOpen = true
+            Task {
+                await Task.yield()
+                withAnimation { proxy.scrollTo(SupplementsSection.scrollID, anchor: .top) }
+            }
+        }
     }
 
     /// The logger or a sheet is over Today, where a toast's seconds would run out unseen.
@@ -191,11 +252,14 @@ struct TodayLogger: View {
             if typing {
                 TypingHeader(targets: targets, eaten: eaten, adding: composer.adding)
             } else {
-                HStack {
-                    Text(eyebrow).eyebrow()
-                    Spacer()
-                    if !Platform.isMac {
-                        CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "today.settings") { model.showSettings = true }
+                // Beside the rest of the day, the page's header over both columns has these.
+                if !columns {
+                    HStack {
+                        Text(eyebrow).eyebrow()
+                        Spacer()
+                        if !Platform.isMac {
+                            CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "today.settings") { model.showSettings = true }
+                        }
                     }
                 }
                 LeftHeader(
@@ -208,8 +272,10 @@ struct TodayLogger: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 10)
-        // The thread fades in under the numbers rather than being cut at them, as at the foot.
+        // The thread fades in under the numbers rather than being cut at them, as at the foot (not
+        // on Vision Pro's glass, as there).
         .background {
+            #if !os(visionOS)
             VStack(spacing: 0) {
                 Ink.ground
                 LinearGradient(colors: [Ink.ground, Ink.ground.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 22)
@@ -217,6 +283,7 @@ struct TodayLogger: View {
             .padding(.bottom, -22)
             .ignoresSafeArea(edges: .top)
             .allowsHitTesting(false)
+            #endif
         }
         // The header and the foot stay put while the day scrolls between them: at the largest
         // sizes they'd meet and leave the thread no room at all. Their words stop growing at the
@@ -297,8 +364,9 @@ struct TodayLogger: View {
                 }
                 if index == moments.count - 1 {
                     if joins { estimateRows(rows) }
-                    // Only while typing: otherwise More today's line is the end.
-                    if typing, joins || rows.isEmpty { threadEnd }
+                    // Only while typing: otherwise More today's line is the end (beside the rest of
+                    // the day, where it isn't, this always is).
+                    if typing || columns, joins || rows.isEmpty { threadEnd }
                 }
             } header: {
                 ThreadHeader(moment: moment, fresh: isFresh) {
@@ -309,7 +377,7 @@ struct TodayLogger: View {
         if let first = rows.first, !joins {
             Section {
                 estimateRows(rows)
-                if typing { threadEnd }
+                if typing || columns { threadEnd }
             } header: {
                 Text(Format.time(first.asked)).eyebrow().textCase(nil).padding(.horizontal, -6)
             }
@@ -318,7 +386,7 @@ struct TodayLogger: View {
 
     /// What's kept in sight over the foot: More today's line under the thread, or while typing (when
     /// it's put away) the thread's end.
-    var end: String { typing ? Self.threadEnd : MoreToday.id }
+    var end: String { typing || columns ? Self.threadEnd : MoreToday.id }
 
     /// Where the thread ends, for scrolling to it.
     var threadEnd: some View {

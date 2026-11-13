@@ -50,7 +50,16 @@ struct FoodsView: View {
                     }
                 }
             }
+            // The page's own header over the table, with what's shown beside the title.
+            .scrollContentBackground(.hidden)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                WideHeader(eyebrow: "Over 3 million foods, offline", title: "Foods") { scopePicker }
+                    .padding(.top, 8)
+            }
+            .background(.pageBackground)
             .navigationTitle("Foods")
+            .inlineTitle()
+            .widePage()
             .searchable(text: $query, prompt: "Search foods")
             .searchFocused($searchFocused)
             .autocorrectionDisabled()
@@ -252,17 +261,17 @@ struct FoodsView: View {
 
     // MARK: Toolbar
 
+    /// All, Recent, Favorites, My Foods, or the saved meals.
+    var scopePicker: some View {
+        InkSegmented(
+            options: FoodScope.allCases.map { ($0.rawValue, $0.label) } + [(Self.mealsChoice, "Meals")], selection: showChoice
+        )
+        .frame(maxWidth: 420)
+        .accessibilityIdentifier("foods.scope")
+    }
+
     @ToolbarContentBuilder
     var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Picker("Show", selection: showChoice) {
-                ForEach(FoodScope.allCases) { Text($0.label).tag($0.rawValue) }
-                Text("Meals").tag(Self.mealsChoice)
-            }
-            .pickerStyle(.segmented)
-            .fixedSize()
-            .accessibilityIdentifier("foods.scope")
-        }
         ToolbarItemGroup(placement: .primaryAction) {
             Menu {
                 columnToggle("Sugar", "sugar")

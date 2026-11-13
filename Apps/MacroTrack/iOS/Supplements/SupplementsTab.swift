@@ -14,23 +14,30 @@ struct SupplementsTab: View {
     var body: some View {
         NavigationStack {
             HStack(spacing: 0) {
-                list.frame(minWidth: 280, idealWidth: 320, maxWidth: 360)
-                Divider()
+                VStack(alignment: .leading, spacing: 0) {
+                    WideHeader(eyebrow: eyebrow, title: "Supplements") {
+                        Menu {
+                            addButtons
+                        } label: {
+                            CircleIcon(symbol: "plus")
+                        }
+                        .circleMenuStyle()
+                        .help("Add a supplement")
+                        .accessibilityLabel("Add a Supplement")
+                        .accessibilityIdentifier("supplements.add")
+                    }
+                    .padding(.top, 8)
+                    list
+                }
+                .frame(minWidth: 300, idealWidth: 340, maxWidth: 380)
+                Rectangle().fill(Ink.hairline).frame(width: 1).ignoresSafeArea()
                 NavigationStack { detail }
                     .frame(maxWidth: .infinity)
             }
+            .inkGround()
             .navigationTitle("Supplements")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        addButtons
-                    } label: {
-                        Label("Add a Supplement", systemImage: "plus")
-                    }
-                    .help("Add a supplement")
-                    .accessibilityIdentifier("supplements.add")
-                }
-            }
+            // The bar stays for the editor's Save, which goes up into it.
+            .widePage()
         }
         .onChange(of: selection) { _, selected in if selected != nil { adding = nil } }
         // The first one, so the pane beside the list isn't empty.
@@ -49,6 +56,7 @@ struct SupplementsTab: View {
                 Section {
                     Text("Nothing in your stack yet. Add one with + to tick it off on Today and count it toward your vitamins and minerals.")
                         .font(.subheadline).foregroundStyle(.secondary)
+                        .inkRows()
                 }
             } else {
                 Section {
@@ -64,22 +72,32 @@ struct SupplementsTab: View {
                         Text("Paused").eyebrow()
                     }
                 }
-                RemindersSection()
+                RemindersSection().inkRows()
             }
         }
+        .insetGroupedList()
         .accessibilityIdentifier("supplements.list")
+    }
+
+    /// What's in the stack: "4 taking · 1 paused".
+    var eyebrow: String {
+        let paused = model.supplements.count(where: \.paused)
+        let taking = model.supplements.count - paused
+        guard !model.supplements.isEmpty else { return "Your stack" }
+        return paused == 0 ? "\(taking) taking" : "\(taking) taking · \(paused) paused"
     }
 
     func row(_ supplement: Supplement) -> some View {
         HStack(spacing: 12) {
             Image(systemName: supplement.facts.form.symbol).foregroundStyle(Color.accentColor).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
-                Text(supplement.name).lineLimit(1)
+                Text(supplement.name).foregroundStyle(Ink.text).lineLimit(1)
                 Text([supplement.facts.brand, supplement.scheduleLabel].compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    .font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
             }
         }
         .tag(supplement.id)
+        .inkRows()
         .contextMenu {
             Button(supplement.paused ? "Resume" : "Pause", systemImage: supplement.paused ? "play" : "pause") {
                 model.setPaused(!supplement.paused, supplement: supplement)

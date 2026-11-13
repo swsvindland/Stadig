@@ -80,20 +80,19 @@ struct LogTab: View {
                     }
                 }
             }
-            // Where there's no bar above the tabs for it to swap into.
-            .safeAreaInset(edge: .bottom) {
-                if wide, !model.selection.isEmpty {
-                    SelectionBar().frame(height: 48).floatingGlass(in: .capsule).padding()
-                }
-            }
-            .inlineTitle()
-            .toolbar { if wide { toolbar } }
-            // On a phone the title, the day and its button are the page's own, over the cards.
-            .hidesNavigationBar(!wide)
+            // With room, the phone's composer at the foot of the day, beside the pane rather than
+            // under it, logging to the day on screen; the selection's bar takes its place while foods
+            // are picked out. Not while the pane has the logger, which is the composer opened bigger.
+            // A phone's is the tab's (RootView).
+            .tabComposer(.log, isEnabled: wide && (model.logger == nil || !model.selection.isEmpty))
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
             .notesWork(editing != nil || choosingDay, covering: choosingDay || (editing != nil && !wide))
             .sideInspector(isPresented: paneOpen, min: 320, ideal: 360, max: 440) { pane }
+            // The title, the day and its buttons are the page's own, over the day, as on a phone.
+            // Outside the inspector, which would bring an empty bar back over the day.
+            .hidesNavigationBar()
+            .inkGround()
             // Let go of it, or an Undo of the move would bring the pane back out of nowhere.
             .onChange(of: current == nil) { _, gone in if gone { editing = nil } }
             // Asked for, the logger shows at once, rather than waiting under a food open beside it.
@@ -163,11 +162,31 @@ struct LogTab: View {
         .scrollContentBackground(.hidden)
         .background(.pageBackground)
         .safeAreaInset(edge: .top, spacing: 0) {
-            LogHeader(wide: true)
-                .padding(.horizontal, LogColumns.gutter)
-                .background(.pageBackground)
-                .overlay(alignment: .bottom) { Divider() }
+            VStack(alignment: .leading, spacing: 6) {
+                PageHeader(eyebrow: eyebrow, title: "Log") { wideButtons }
+                    .padding(.horizontal, -4)
+                LogHeader(wide: true)
+            }
+            .padding(.horizontal, LogColumns.gutter)
+            .background(.pageBackground)
+            .overlay(alignment: .bottom) { Rectangle().fill(Ink.hairline).frame(height: 1) }
         }
+    }
+
+    /// The wide page's round buttons: back to today, the sort, any day, and the logger's pane.
+    @ViewBuilder
+    var wideButtons: some View {
+        if day != model.today {
+            Button("Today") { model.showToday() }
+                .buttonStyle(.ghost)
+                .help("Back to today (⌘T)")
+                .accessibilityIdentifier("log.backToToday")
+        }
+        if showsColumns { sortMenu }
+        CircleIconButton(symbol: "calendar", label: "Choose a day", identifier: "log.title") { choosingDay = true }
+            .help("Choose a day")
+        CircleIconButton(symbol: "magnifyingglass", label: "Log Food", identifier: "toolbar.logFood") { model.openLogger(.search) }
+            .help("Find a food to log (⌘L)")
     }
 
     /// Today has today's foot, and a day ahead hasn't happened yet.
@@ -240,33 +259,6 @@ struct LogTab: View {
         proxy.scrollTo(opening.id, anchor: .top)
     }
 
-    @ToolbarContentBuilder
-    var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Button {
-                choosingDay = true
-            } label: {
-                HStack(spacing: 4) {
-                    Text(title).font(.headline)
-                    Image(systemName: "chevron.down").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                }
-                .foregroundStyle(.primary)
-            }
-            .accessibilityLabel("\(title). Choose a day")
-            .accessibilityIdentifier("log.title")
-        }
-        ToolbarItemGroup(placement: .barTrailing) {
-            if day != model.today {
-                Button("Today") { model.showToday() }
-                    .help("Back to today (⌘T)")
-                    .accessibilityIdentifier("log.backToToday")
-            }
-            if showsColumns { sortMenu }
-            if !wide { SettingsButton(identifier: "log.settings") }
-        }
-        if wide { LogToolbar() }
-    }
-
     /// What the column headers did when the log was a table, which can't be headers over hours.
     var sortMenu: some View {
         Menu {
@@ -275,13 +267,13 @@ struct LogTab: View {
             }
             .pickerStyle(.inline)
         } label: {
-            Label("Sort", systemImage: "arrow.up.arrow.down")
+            CircleIcon(symbol: order == .time ? "arrow.up.arrow.down" : "arrow.up.arrow.down.circle.fill")
         }
+        .circleMenuStyle()
         .help("Sort the day's food")
+        .accessibilityLabel("Sort")
         .accessibilityIdentifier("log.sort")
     }
-
-    var title: String { day == model.today ? "Today" : Format.day(day, style: .dateTime.weekday(.wide).month().day()) }
 }
 
 extension DayOrder {
@@ -682,7 +674,8 @@ struct LogEntryRow: View {
             if later { LaterMark() }
             FoodTile(name: entry.name, size: TileSize.table, fill: .cardBackground)
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.name).lineLimit(1)
+                // How someone would say it, as Today and the phone's cards name it.
+                Text(FoodLabel.short(entry.name)).foregroundStyle(Ink.text).lineLimit(1).help(entry.name)
                 Text([showsTime ? Format.time(entry.date) : nil, entry.brand, entry.amountLabel].compactMap { $0 }.joined(separator: " · ")).font(
                     .caption
                 ).foregroundStyle(.secondary)

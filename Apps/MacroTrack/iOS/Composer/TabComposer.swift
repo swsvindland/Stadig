@@ -12,6 +12,7 @@ extension View {
 }
 
 private struct TabComposerFoot: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let tab: AppTab
     let isEnabled: Bool
     @FocusState private var typing: Bool
@@ -20,7 +21,7 @@ private struct TabComposerFoot: ViewModifier {
         content
             // Not where there's room: there the logger's pane keeps its keyboard while its foods scroll.
             #if os(iOS)
-        .scrollDismissesKeyboard(isEnabled ? .interactively : .automatic)
+        .scrollDismissesKeyboard(isEnabled && sizeClass == .compact ? .interactively : .automatic)
             #endif
             // Only while typing: the rest of the time the screen's taps are its own.
             .simultaneousGesture(TapGesture().onEnded { typing = false }, including: typing ? .all : .subviews)

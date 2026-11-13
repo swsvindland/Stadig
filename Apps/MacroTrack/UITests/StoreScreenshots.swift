@@ -25,7 +25,7 @@ nonisolated final class StoreScreenshots: XCTestCase {
     }
 
     /// Today with food in it: on the iPhone a usual food logged with one tap, its Undo gone; on the
-    /// iPad a saved meal logged from Log Again.
+    /// iPad a saved meal logged from Log Again, beside the thread.
     @MainActor
     func testToday() throws {
         let app = XCUIApplication.launched(Self.seed)
@@ -34,7 +34,7 @@ nonisolated final class StoreScreenshots: XCTestCase {
             let meal = app.buttons.matching(identifier: "today.logMeal").firstMatch
             if meal.waitForExistence(timeout: 5) {
                 meal.tap()
-                app.element("toast.message").waitToAppear().waitToDisappear()
+                app.element("today.undo").waitToAppear().waitToDisappear()
             }
         } else {
             let usual = app.element("today.usual.0")
