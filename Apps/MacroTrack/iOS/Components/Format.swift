@@ -30,6 +30,12 @@ enum Format {
         return "\(sign)\(abs(value).formatted(.number.precision(.fractionLength(2)))) \(unit.symbol) a week"
     }
 
+    /// "−1.09", "+0.20": a change with its sign, to two places.
+    static func signed(_ value: Double) -> String {
+        let sign = value > 0.005 ? "+" : value < -0.005 ? "−" : ""
+        return "\(sign)\(abs(value).formatted(.number.precision(.fractionLength(2))))"
+    }
+
     static func percent(_ value: Double) -> String { value.formatted(.percent.precision(.fractionLength(0))) }
 
     static func day(_ day: Day, style: Date.FormatStyle = .dateTime.weekday(.abbreviated).month(.abbreviated).day()) -> String {
