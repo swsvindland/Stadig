@@ -409,6 +409,76 @@ struct LoggerSessionTests {
         #expect(session.mode == .describe)
     }
 
+    /// Calories typed as calories are a quick add, as the composer reads them: Return logs them at
+    /// once, with no rows to wait for, and the search clears for the next food.
+    @Test func returnOnCaloriesTypedLogsAQuickAdd() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "coffee 120 kcal"
+
+        session.pressedReturn(model)
+
+        let entry = try #require(model.entries(on: model.today).first)
+        #expect(entry.source == .quickAdd)
+        #expect(entry.nutrients.kcal == 120)
+        #expect(entry.name == "Coffee", "the words with the number name it")
+        #expect(session.query.isEmpty)
+    }
+
+    @Test(arguments: ["300", "chicken 200", "300 kcal, rice", "2 eggs"])
+    func onlyCaloriesAreAQuickAdd(typed: String) {
+        let session = LoggerSession(mode: .search)
+        session.query = typed
+        #expect(session.quickAddPart == nil, "\(typed) is a search")
+    }
+
+    /// Finding a food for the review, a number can't be its answer.
+    @Test func whileFindingAFoodCaloriesAreNoQuickAdd() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .describe)
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("300 kcal", for: unmatched.id)
+
+        session.pressedReturn(model)
+
+        #expect(session.quickAddPart == nil)
+        #expect(logged(model).isEmpty)
+    }
+
+    /// Opened from what's typed, quick add starts with its calories and name; any other way in, empty.
+    @Test func quickAddOpensWithTheCaloriesTyped() {
+        let session = LoggerSession(mode: .search)
+        session.query = "snack 250 cal"
+
+        session.openQuickAdd()
+
+        #expect(session.mode == .quickAdd)
+        #expect(session.quickAddDraft == QuickAddDraft(name: "Snack", kcal: 250))
+        session.backToSearch()
+        #expect(session.quickAddDraft == nil)
+        session.openQuickAdd()
+        #expect(session.quickAddDraft == nil, "nothing typed this time")
+    }
+
+    /// The header's "→": what the best of what's typed would log, at the portion + would log.
+    @Test func whatTheBestMatchAddsIsItsUsualPortion() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        #expect(session.adding(model) == nil, "nothing typed")
+        session.query = "banana raw"
+        await session.search(model)
+
+        let food = try #require(session.results.first?.food)
+        let portion = LoggerSession.portion(of: food, model)
+        #expect(session.adding(model) == FoodUnits.nutrients(food, count: portion.count, unit: portion.unit))
+        session.query = "200 kcal"
+        #expect(session.adding(model)?.kcal == 200)
+    }
+
     /// Holds a read open until the test lets it go, whether or not it's been stopped: the model may
     /// be slow to notice.
     final class Gate {

@@ -3,10 +3,10 @@ import NutritionEngine
 import SwiftUI
 import SystemCore
 
-/// The logger as a sheet: it holds the navigation around `LoggerContent`, and Done closes it.
-/// Logging keeps it open (with Undo) so a meal of several foods is a few taps. It's the composer's
-/// screen opened bigger: the ink ground, its own header in place of a navigation bar, and the same
-/// rows and cards as Today.
+/// The logger as a sheet, on a phone: it holds the navigation around `LoggerContent`, and Done
+/// closes it. Logging keeps it open (with Undo) so a meal of several foods is a few taps. It's the
+/// composer opened (`LoggerComposer.swift`): the ink ground, Today's typing header at the top, the
+/// matches rising to the composer's field at the foot.
 struct LoggerSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -22,7 +22,7 @@ struct LoggerSheet: View {
     var body: some View {
         @Bindable var session = session
         NavigationStack {
-            LoggerContent(session: session, covered: session.portion != nil, searchFocused: $searchFocused, done: { dismiss() })
+            LoggerContent(session: session, covered: session.portion != nil, searchFocused: $searchFocused, composer: true, done: { dismiss() })
                 .hidesNavigationBar()
                 .navigationDestination(item: $session.openMeal) { id in
                     SavedMealView(mealID: id) {
@@ -154,23 +154,36 @@ struct LoggerPane: View {
 
 /// Every way to log, in one place: search, scan, a photo, a description and quick add, each
 /// returning to the search. It holds no navigation of its own: a host gives it that, so a sheet and
-/// a pane can each show it. Its header is the search field (or the way's name) and Done; the meal
-/// so far, the time and the other ways to log sit together at the bottom on the ink ground, in
-/// reach of a thumb and above the keyboard.
+/// a pane can each show it. On a phone (`composer`) it's the composer opened: Today's typing header
+/// under where the foods go and Done, and at the foot the meal so far, the time and the composer's
+/// field, whose camera and microphone are the other ways (`LoggerComposer.swift`). In the pane its
+/// header is the search field (or the way's name) and Done, for a pointer and a keyboard, and the
+/// meal so far, the time and the ways to log sit together at the bottom.
 struct LoggerContent: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
     /// An amount or a food is over it: a toast's few seconds would run out unseen.
     var covered = false
     var searchFocused: FocusState<Bool>.Binding
+    /// The phone's: the field at the foot and the matches rising to it, as Today's composer.
+    var composer = false
     let done: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            LoggerHeader(session: session, searchFocused: searchFocused, done: done)
-            method.frame(maxHeight: .infinity)
+        Group {
+            if composer {
+                method
+                    .frame(maxHeight: .infinity)
+                    .safeAreaInset(edge: .top, spacing: 0) { LoggerTop(session: session, done: done) }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { LoggerFoot(session: session, covered: covered, searchFocused: searchFocused) }
+            } else {
+                VStack(spacing: 0) {
+                    LoggerHeader(session: session, searchFocused: searchFocused, done: done)
+                    method.frame(maxHeight: .infinity)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
+            }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { bottom }
         .task(id: session.query) { await session.search(model) }
         .inkGround()
     }
@@ -178,11 +191,11 @@ struct LoggerContent: View {
     @ViewBuilder
     var method: some View {
         switch session.mode {
-        case .search: SearchLogView(session: session)
+        case .search: SearchLogView(session: session, fromBottom: composer)
         case .scan: BarcodeLogView(session: session, covered: covered)
         case .camera, .photoLibrary: PhotoLogView(useCamera: session.mode == .camera, session: session)
         case .describe: DescribeLogView(session: session)
-        case .quickAdd: QuickAddView(close: { session.backToSearch() })
+        case .quickAdd: QuickAddView(draft: session.quickAddDraft, close: { session.backToSearch() })
         }
     }
 
@@ -213,16 +226,16 @@ struct LoggerContent: View {
     var methodsRow: some View {
         if showsRibbon {
             MethodRibbon(session: session)
-        } else if !session.completions.isEmpty {
+        } else if !session.completions.isEmpty, session.quickAddPart == nil {
             // In the ribbon's place: over the keyboard, under the thumb that's typing.
             SearchCompletionChips(options: session.completions, pick: session.complete)
         }
     }
 }
 
-/// The logger's top: the search field while searching (Return logs the best match), else the way
-/// of logging's name under the day it logs to; Done beside them as a round button, as a page's
-/// header has its buttons.
+/// The pane's top: the search field while searching (Return logs the best match), else the way of
+/// logging's name under the day it logs to; Done beside them as a round button, as a page's header
+/// has its buttons.
 struct LoggerHeader: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
@@ -239,7 +252,7 @@ struct LoggerHeader: View {
                 if searching {
                     LoggerSearchField(session: session, focused: searchFocused)
                 } else {
-                    PageTitle(title, size: 28).frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
+                    PageTitle(session.mode.title, size: 28).frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 4)
                 }
                 CircleIconButton(symbol: "xmark", label: "Done", identifier: "logger.done", action: done)
             }
@@ -253,20 +266,10 @@ struct LoggerHeader: View {
     var day: String {
         model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay, style: .dateTime.weekday(.wide).month(.abbreviated).day())
     }
-
-    var title: String {
-        switch session.mode {
-        case .search: "Search"
-        case .scan: LiveScan.isAvailable ? "Scan" : "Barcode"
-        case .camera, .photoLibrary: "Photo"
-        case .describe: "Describe"
-        case .quickAdd: "Quick add"
-        }
-    }
 }
 
-/// The logger's search, as the composer's capsule: on the surface with a hairline, the accent's
-/// line while typing. Return logs the best match, as the composer's does, and the keyboard stays.
+/// The pane's search, as the composer's capsule: on the surface with a hairline, the accent's line
+/// while typing. Return logs the best match, as the composer's does, and the keyboard stays.
 struct LoggerSearchField: View {
     @Environment(AppModel.self) private var model
     @Bindable var session: LoggerSession
@@ -307,8 +310,8 @@ struct LoggerSearchField: View {
     }
 }
 
-/// The other ways to log, as the design's segmented control (`.seg`): the one on lifted onto the
-/// card colour.
+/// The other ways to log in the pane, as the design's segmented control (`.seg`): the one on lifted
+/// onto the card colour. A phone has them on its field instead (`LoggerWays`).
 struct MethodRibbon: View {
     @Environment(AppModel.self) private var model
     let session: LoggerSession
@@ -439,6 +442,7 @@ struct LogTimeBar: View {
                             HStack(spacing: 6) { recentChips }
                         }
                         .scrollIndicators(.hidden)
+                        .fadesAtTrailingEdge()
                         clock
                     }
                 }
@@ -483,6 +487,7 @@ struct LogTimeBar: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .fadesAtTrailingEdge()
         }
     }
 
@@ -520,6 +525,17 @@ struct LogTimeBar: View {
             .buttonStyle(.plain)
             .hoverHighlight()
             .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+extension View {
+    /// A row of chips that scrolls fades out at its end, where it runs under the clock, rather than
+    /// being cut through a chip.
+    fileprivate func fadesAtTrailingEdge() -> some View {
+        mask {
+            LinearGradient(
+                stops: [.init(color: .black, location: 0.85), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing)
+        }
     }
 }
 
