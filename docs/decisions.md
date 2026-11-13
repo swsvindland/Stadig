@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Lift's sheets and secondary screens on the new look.** The same day. The calls, mine to check:
+  - **A sheet is one shape:** a round close at the top left, a large title under an eyebrow saying where it came from, rows on cards under eyebrows, the segmented control instead of the system's, and its one action as a full-width solid button at the foot; Delete, Remove and End it now are ghost buttons under the cards. That's How was it?, swap, correcting a set, check-in, measurements, logging an activity, a regular activity, the four life modes, Next block and Settings.
+  - **How was it? asks energy, then soreness, then joint pain,** the joints as chips rather than switches.
+  - **Swap says why each candidate fits** (`SwapReason`, tested): "Less tiring" means at least 25% lighter whole-body fatigue.
+  - **Connect Apple Health is a ghost button,** and correcting a set opens at medium height and drags to large.
+  - **Not yet:** Library's rows and filters (only on iPad, the Mac and Vision Pro), "About this exercise" keeps the exercise page's system close; on the Mac a sheet's eyebrow sits under the close bar.
+
 - **Stadig Macro's logger drawn as the composer opened bigger.** The same day. The calls, mine to check:
   - **No system bar:** the top is the search field styled as the composer (or the mode's name under the day) with a round × for Done; the foot is the meal so far, the time chips and the ways to log as one row of words (Search, Scan, Photo, Describe, Quick add) on solid ink.
   - **Return in the logger's search logs the best match,** as the composer and the iPad's pane do. Rows are Today's: the short name first (the rest of the catalog's name quieter beside it in search), a round + that logs.
