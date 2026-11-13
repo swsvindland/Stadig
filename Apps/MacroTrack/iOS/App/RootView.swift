@@ -210,11 +210,12 @@ private struct ToastOverlay: ViewModifier {
 /// The model's toast, for a few seconds, where a screen places it.
 struct ToastSlot: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let toast = model.toast {
             ToastView(toast: toast) { model.undo(toast) }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(.rise(reduceMotion: reduceMotion))
                 .task(id: toast.id) { await model.expire(toast) }
         }
     }

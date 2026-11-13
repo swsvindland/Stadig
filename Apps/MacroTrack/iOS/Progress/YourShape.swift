@@ -93,35 +93,59 @@ private struct ShapeBody: View {
 /// A score: its number, its name and which app measures it, what it says, and how far it moved this
 /// month (where it's heading, before there's a month to measure).
 private struct ShapeRow: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let line: StatLine
     let bothApps: Bool
 
     var body: some View {
         let lift = line.sources.isEmpty && line.app == .liftTrack && !bothApps
-        HStack(alignment: .center, spacing: 12) {
-            Text(line.score.map(String.init) ?? "–")
-                .numeral(20)
-                .foregroundStyle(line.score == nil ? Ink.text3 : Ink.text)
-                .frame(width: 34, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 7) {
-                    Text(line.stat.label).font(.subheadline.weight(.semibold)).foregroundStyle(line.score == nil ? Ink.text2 : Ink.text)
-                    SourceChip(apps: line.apps.isEmpty ? [line.app] : line.apps)
+        let number = Text(line.score.map(String.init) ?? "–").numeral(20).foregroundStyle(line.score == nil ? Ink.text3 : Ink.text)
+        let name = Text(line.stat.label).font(.subheadline.weight(.semibold)).foregroundStyle(line.score == nil ? Ink.text2 : Ink.text)
+        let chip = SourceChip(apps: line.apps.isEmpty ? [line.app] : line.apps)
+        let words = Text(lift ? "Measured by Stadig Lift. Also free." : line.label).font(.caption).foregroundStyle(Ink.text3)
+        Group {
+            if typeSize.isAccessibilitySize {
+                // The score and its name on a line and the rest under them, where columns beside them
+                // break the name in two.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        number
+                        name
+                        Spacer(minLength: 4)
+                        change
+                    }
+                    chip
+                    words.fixedSize(horizontal: false, vertical: true)
                 }
-                Text(lift ? "Measured by Stadig Lift. Also free." : line.label)
-                    .font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
-            }
-            Spacer(minLength: 4)
-            if let change = line.change {
-                ScoreChangeLabel(change: change)
-            } else if let trend = Self.trend(line.trend) {
-                Text(trend.0).font(.caption.weight(.semibold)).foregroundStyle(trend.1)
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    number.frame(width: 34, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 7) {
+                            name
+                            chip
+                        }
+                        words.lineLimit(2)
+                    }
+                    Spacer(minLength: 4)
+                    change
+                }
             }
         }
         .frame(minHeight: 50)
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("progress.shape.\(line.stat.rawValue)")
+    }
+
+    /// How far it moved this month, or before there's a month to measure, where it's heading.
+    @ViewBuilder
+    var change: some View {
+        if let change = line.change {
+            ScoreChangeLabel(change: change)
+        } else if let trend = Self.trend(line.trend) {
+            Text(trend.0).font(.caption.weight(.semibold)).foregroundStyle(trend.1)
+        }
     }
 
     /// A word for where a score is heading, coloured only where it means something.

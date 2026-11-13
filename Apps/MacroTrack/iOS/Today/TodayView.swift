@@ -450,7 +450,7 @@ struct EntryRow: View {
             }
         }
         // Dimmed until its time: it's in the day's log, but it doesn't count yet.
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }

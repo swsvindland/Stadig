@@ -34,12 +34,13 @@ struct InlineAmount: View {
                     .contentTransition(.numericText())
                 }
                 Spacer(minLength: 4)
-                Button("Done", action: finish)
-                    .font(.headline)
-                    .foregroundStyle(Color.accentColor)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("today.amount.done")
+                Button(action: finish) {
+                    Text("Done").frame(minWidth: 44, minHeight: 44).contentShape(.rect)
+                }
+                .font(.headline)
+                .foregroundStyle(Color.accentColor)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("today.amount.done")
             }
             if let unit {
                 HStack {

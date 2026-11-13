@@ -219,9 +219,13 @@ struct TargetsSheet: View {
                 .foregroundStyle(Ink.text)
                 .frame(width: size, height: size)
                 .background(Ink.raised, in: .circle)
-                .contentShape(.circle)
+                // A fingertip's room round a smaller disc, taken back from the row's layout so the
+                // row stays as drawn.
+                .frame(width: max(44, size), height: max(44, size))
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .padding(-max(0, 44 - size) / 2)
         .hoverHighlight()
         .accessibilityLabel("\(direction < 0 ? "Less" : "More") \(field == .kcal ? "calories" : field.rawValue)")
         .accessibilityIdentifier("targets.\(field.rawValue).\(direction < 0 ? "less" : "more")")

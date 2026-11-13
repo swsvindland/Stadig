@@ -248,7 +248,7 @@ struct MealFoodRow: View {
         }
         .frame(minHeight: 44)
         // Dimmed until its time: it's in the day's log, but it doesn't count yet.
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(entry.name), \(entry.amountLabel)\(later ? ", later" : "")")

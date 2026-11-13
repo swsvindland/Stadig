@@ -30,8 +30,22 @@ struct TypingHeader: View {
             Text(line(after)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1).minimumScaleFactor(0.8)
         }
         .animation(.snappy, value: adding)
-        .accessibilityElement(children: .combine)
+        // In words, "1,601 kcal left, 1,511 after it", where the arrow would be read as one.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken(after))
         .accessibilityIdentifier("today.typingHeader")
+    }
+
+    func spoken(_ after: Nutrients) -> String {
+        let kcal: String
+        if let target = targets?.kcal {
+            kcal =
+                "\(Format.whole(target - eaten.kcal)) kcal left" + (adding == nil ? "" : ", \(Format.whole(target - after.kcal)) after it")
+        } else {
+            kcal = "\(Format.whole(eaten.kcal)) kcal eaten" + (adding == nil ? "" : ", \(Format.whole(after.kcal)) with it")
+        }
+        let macros = line(after)
+        return macros.isEmpty ? kcal : "\(kcal). \(macros)"
     }
 
     /// "Then 82 g protein · 168 g carbs · 54 g fat left".

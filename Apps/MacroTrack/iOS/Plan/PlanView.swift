@@ -191,14 +191,18 @@ struct TargetsCard: View {
                         .accessibilityIdentifier("plan.kcal")
                 }
                 Spacer(minLength: 4)
-                Button("Adjust") { adjusting = true }
-                    .font(.subheadline)
-                    .foregroundStyle(Ink.text2)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, -12)
-                    .accessibilityLabel("Adjust targets")
-                    .accessibilityIdentifier("plan.adjust")
+                Button {
+                    adjusting = true
+                } label: {
+                    // A fingertip's height inside the button, where it's hit, not round it.
+                    Text("Adjust").frame(minHeight: 44).contentShape(.rect)
+                }
+                .font(.subheadline)
+                .foregroundStyle(Ink.text2)
+                .buttonStyle(.plain)
+                .padding(.vertical, -12)
+                .accessibilityLabel("Adjust targets")
+                .accessibilityIdentifier("plan.adjust")
             }
             HStack(alignment: .top, spacing: 14) {
                 macro(.protein, targets.protein)
@@ -219,13 +223,16 @@ struct TargetsCard: View {
                 trend.font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 if plan != nil {
-                    Button("Why?") { withAnimation(.snappy) { showsWhy.toggle() } }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .padding(.vertical, -12)
-                        .accessibilityIdentifier("plan.why")
+                    Button {
+                        withAnimation(.snappy) { showsWhy.toggle() }
+                    } label: {
+                        Text("Why?").frame(minHeight: 44).contentShape(.rect)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.plain)
+                    .padding(.vertical, -12)
+                    .accessibilityIdentifier("plan.why")
                 }
             }
             if showsWhy, let plan {
@@ -263,13 +270,17 @@ struct TargetsCard: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("plan.ownTargets")
-            Button(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual") { model.useThePlansTargets() }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
-                .padding(.vertical, -8)
-                .accessibilityIdentifier("plan.usePlans")
+            Button {
+                model.useThePlansTargets()
+            } label: {
+                Text(analysis.planSource == .plan ? "Use the plan's targets" : "Back to eating as usual")
+                    .frame(minHeight: 44).contentShape(.rect)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .buttonStyle(.plain)
+            .padding(.vertical, -8)
+            .accessibilityIdentifier("plan.usePlans")
         }
     }
 
@@ -434,7 +445,8 @@ struct AssessmentCard: View {
                 Text("Day \(assessment.day) of \(assessment.totalDays)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     .accessibilityIdentifier("plan.assessmentDay")
             }
-            Ruler(value: assessment.progress, height: 12, divisions: 3)
+            // "Day 9 of 21" above says how far along.
+            Ruler(value: assessment.progress, height: 12, divisions: 3).accessibilityHidden(true)
             Text(
                 own
                     ? "Eat to your own targets, log it, and weigh in each morning. Your maintenance is learned all the same."
@@ -449,14 +461,17 @@ struct AssessmentCard: View {
             }
             // A coach's or a dietitian's numbers instead, while it learns.
             if !own {
-                Button("Set my own targets") { settingTargets = true }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, -8)
-                    .accessibilityIdentifier("plan.setOwnTargets")
-                    .debugSheet("targets") { settingTargets = true }
+                Button {
+                    settingTargets = true
+                } label: {
+                    Text("Set my own targets").frame(minHeight: 44).contentShape(.rect)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .buttonStyle(.plain)
+                .padding(.vertical, -8)
+                .accessibilityIdentifier("plan.setOwnTargets")
+                .debugSheet("targets") { settingTargets = true }
             }
         }
         .card()

@@ -134,7 +134,9 @@ struct DisciplineCard: View {
                 Text(score.rate.map { Format.whole($0 * 100) } ?? "–").numeral(30).foregroundStyle(score.rate == nil ? Ink.text3 : Ink.text)
             }
             .accessibilityElement(children: .combine)
+            // The score above says it, and the band under it what it means.
             Ruler(value: score.rate ?? 0, color: score.band == .below ? Ink.ok : Ink.good, height: 14, marker: 0.8)
+                .accessibilityHidden(true)
             Text(score.band.map { "\($0.label). \(score.note)" } ?? score.note)
                 .font(.caption).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
             if let rate = analysis.loggingRate {
@@ -179,7 +181,8 @@ struct WeightCard: View {
                             Text(Format.signed(unit.fromKilograms(change))).numeral(20).foregroundStyle(verdict?.color ?? Ink.text)
                             Text("\(unit.symbol) a week").font(.caption).foregroundStyle(Ink.text3)
                         }
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(Format.signed(unit.fromKilograms(change))) \(unit.symbol) a week")
                     }
                 }
                 if let sentence {

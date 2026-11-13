@@ -40,7 +40,8 @@ struct ComposerMatches: View {
         .matchCard(best: best)
         .contentShape(.rect(cornerRadius: 18))
         .accessibilityElement(children: .combine)
-        .accessibilityHint(best ? "Return logs it" : "")
+        // What the key on the card says, which VoiceOver doesn't read: what Return does.
+        .accessibilityHint(best ? (count > 1 ? "Return logs it with the \(count - 1) typed before it" : "Return logs it") : "")
     }
 
     func title(_ match: TodayComposer.Candidate) -> Text {

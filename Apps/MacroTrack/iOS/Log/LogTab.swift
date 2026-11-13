@@ -273,6 +273,8 @@ struct LogTab: View {
         .circleMenuStyle()
         .help("Sort the day's food")
         .accessibilityLabel("Sort")
+        // The icon fills to say a sort other than by time is on: said in words.
+        .accessibilityValue(order.title)
         .accessibilityIdentifier("log.sort")
     }
 }
@@ -425,7 +427,7 @@ struct DaySummaryLine: View {
         return HStack(alignment: .firstTextBaseline, spacing: 5) {
             Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
             if let protein = targets?.protein {
-                Text("·").font(.callout).foregroundStyle(Ink.text3)
+                Text("·").font(.callout).foregroundStyle(Ink.text3).accessibilityHidden(true)
                 let left = protein - counted.protein
                 Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
             }
@@ -690,7 +692,7 @@ struct LogEntryRow: View {
                     "\(Format.whole(n.carbs)) grams carbs", "\(Format.whole(n.fat)) grams fat",
                 ])
         }
-        .opacity(later ? 0.55 : 1)
+        .setBack(later, opacity: 0.55)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }

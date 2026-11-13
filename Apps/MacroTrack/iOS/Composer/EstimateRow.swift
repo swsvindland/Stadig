@@ -84,13 +84,14 @@ struct EstimateConfirmRow: View {
         HStack(spacing: 8) {
             Text("Estimated from “\(estimate.words)”").font(.caption).foregroundStyle(Ink.text2).lineLimit(2)
             Spacer(minLength: 8)
-            Button("Looks right", action: confirm)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(minHeight: 44)
-                .contentShape(.rect)
-                .accessibilityHint("Keeps the estimate as logged")
-                .accessibilityIdentifier("today.looksRight")
+            Button(action: confirm) {
+                // A fingertip's height inside the button, where it's hit.
+                Text("Looks right").frame(minHeight: 44).contentShape(.rect)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .accessibilityHint("Keeps the estimate as logged")
+            .accessibilityIdentifier("today.looksRight")
         }
         .buttonStyle(.borderless)
     }
