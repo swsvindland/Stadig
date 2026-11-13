@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Both apps on Vision Pro's glass.** 2026-11-13, from `DevVisionGym`, `DevVisionKitchen` and `DevVisionShape`. The calls, mine to check:
+  - **Coloured words are white on Vision Pro** (`Ink.words`): over the simulator's lit room the glass is mid-grey and accent, green, amber or red text read at about 1.1:1. The colour moves to the mark beside the word: a dot, a ruler, a filled chip (score changes, Lift's trend and filter chips, Macro's meal-gap badge).
+  - **Secondary actions are the system's untinted glass** there (the rest's −15, +15 and Skip, the session menus), and Lift's Today hero is glass with Start in the accent, not an accent card with an ink bar. The set's three ratings are equal glass targets with their dots, as the Vision board has them.
+  - **Both windows open at 1600 by 900**, the boards' size; at 1440 Macro's meal plan cut its side columns short.
+  - **Macro's pinned bars stop the page on Vision Pro** (`pinnedBar`) rather than letting it scroll under them, and pages that draw their own header start 20 points lower, out of the window's corner. The iPhone, iPad and Mac keep the scroll under.
+  - **Not built:** the boards' spatial scenes (the set beside the rack, rest across the wall, timers over the pots, Your shape standing in the room) and voice, as Vision Pro is still the iPad layout in a glass window. The session keeps its two panes rather than the iPad's scoreboard, and the ornament is the system's tab ornament, which no board draws.
+
 - **A miss well under the range steps back on coarse steps.** 2026-11-13, found on the seeded summary: a leg curl did 45 kg for 11, was pushed to 50 for 6 where 10 was the floor, and the next session asked 50 for 10. Now a miss more than a rep under the floor steps back a weight for the floor (45 for 10); a rep short still holds. Mine to check: "more than a rep" as the line, and stepping back rather than holding the weight for fewer reps.
 
 - **What a Stadig Lift session taught, on its summary.** 2026-11-13, from the board `LiftSummary`'s lessons. The calls, mine to check:
