@@ -110,6 +110,7 @@ struct RecurringEditor: View {
                         Picker("Activity", selection: $item.activity) {
                             ForEach(ActivityType.allCases) { Label($0.label, systemImage: $0.symbol).tag($0) }
                         }
+                        .valueTint()
                     }
                     Section {
                         WeekdayPicker(selection: $item.weekdays)
@@ -117,9 +118,12 @@ struct RecurringEditor: View {
                         Text("Days").eyebrow()
                     }
                     Section {
-                        Picker("Time of day", selection: $item.timeOfDay) {
-                            ForEach(TimeOfDay.allCases, id: \.self) { Text($0.label).tag($0) }
-                        }
+                        InkSegmented(options: TimeOfDay.allCases.map { (value: $0, label: $0.label) }, selection: $item.timeOfDay)
+                            .accessibilityLabel("Time of day")
+                    } header: {
+                        Text("Time of day").eyebrow()
+                    }
+                    Section {
                         Stepper("\(item.minutes) minutes", value: $item.minutes, in: 15...240, step: 15)
                         Stepper("Effort \(item.intensity) of 10", value: $item.intensity, in: 1...10)
                     }
@@ -187,6 +191,7 @@ struct ActivityLogSheet: View {
                         Picker("Activity", selection: $type) {
                             ForEach(ActivityType.allCases) { Label($0.label, systemImage: $0.symbol).tag($0) }
                         }
+                        .valueTint()
                         DatePicker("When", selection: $start, in: ...Date())
                         Stepper("\(minutes) minutes", value: $minutes, in: 5...300, step: 5)
                     }
@@ -211,12 +216,14 @@ struct ActivityLogSheet: View {
                             Picker("Type", selection: $classType) {
                                 ForEach(MartialArtsClass.allCases) { Text($0.label).tag($0) }
                             }
+                            .valueTint()
                             Stepper("\(rounds) sparring rounds", value: $rounds, in: 0...30)
                             if rounds > 0 {
                                 Picker("Gassed after", selection: $gassed) {
                                     Text("Never").tag(Int?.none)
                                     ForEach(1...rounds, id: \.self) { Text("Round \($0)").tag(Int?.some($0)) }
                                 }
+                                .valueTint()
                             }
                         } header: {
                             Text("Class").eyebrow()

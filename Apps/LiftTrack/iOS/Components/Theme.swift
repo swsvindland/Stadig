@@ -87,6 +87,12 @@ extension View {
         scrollContentBackground(.hidden).background(.pageBackground)
         #endif
     }
+
+    /// A menu picker's choice in the grey a row's value is in, as `LinkRowLabel` and `ValueRow` show
+    /// theirs, rather than the accent, which is for the one action on a screen.
+    func valueTint() -> some View {
+        tint(Ink.text2)
+    }
 }
 
 /// The three-tap rating. A dot in its colour, the word and how it felt: never colour alone. Just
