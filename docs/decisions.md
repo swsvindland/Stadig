@@ -2,6 +2,12 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Macro's week desk on the Mac and iPad.** From the design canvas's device concepts (`DevMacMacroWeek`). The calls, mine to check:
+  - **A Week section after Log** in the sidebar, the iPad's tab bar and Vision Pro's ornament (⌘9; ⌘1 to ⌘8 stay as they were): seven columns of the week's meals as blocks sized by calories, filling toward the target line with maintenance further down, a day past its own target tinted amber, today's now line, and food still planned from the meal plan drawn lighter; an inspector for the selected day; the week's average and the weight trend along the foot; previous and next week.
+  - **It keeps the app's sidebar and page header** rather than the board's own section bar and ⌘K.
+  - **Only logged meals move:** dragging one to another day previews both days and the week ("What changes"), then uses the Log tab's own move with its Undo (⌘Z too); a meal's menu has "Move to ▸" another day. Meal-plan dishes don't drag (there's no API to move one) and offer "Show in Meal Plan". "Drop on a meal to swap" isn't built.
+  - **The week's average** counts days eaten and days planned, today only once the rest of it is planned. The target line is the one most days share; each day's tint uses its own. A meal is named for its saved meal, else its two biggest foods.
+
 - **One sheet shape for both apps, and Stadig Lift's wide layouts.** The same day. The calls, mine to check:
   - **Every sheet in both apps has the shape Lift's were given** (`SheetBar`, `SheetFoot`, `.inkSheet`, in `Components/Stadig.swift`): Stadig Macro's weigh-in, fast, caffeine cut-back, Settings and life modes, Supplements and their editors, the phase choice, Plan a week, prep day's steps, the meal sheet, Your numbers, the day chooser, Move and Copy to, and the time picker. A life mode opens full height, the weigh-in at 540 points; "End Fast" is "End fast", a ghost button. On the Mac a sheet's bar and foot sit above and below its form, closed with Cancel or Done at the top right and Escape.
   - **On Vision Pro the round buttons, chips, segmented controls, cards and tracks are glass,** not the ink's dark fills, which drew as black.
