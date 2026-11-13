@@ -40,10 +40,6 @@ enum SampleData {
             s.assessmentStart = start
             model.save(settings: s)
         }
-        let truth: [String: Double] = [
-            "barbell-back-squat": 140, "conventional-deadlift": 165, "barbell-bench-press": 92,
-            "barbell-incline-bench-press": 78, "barbell-overhead-press": 55, "pull-up": 108, "barbell-row": 80,
-        ]
         var day = start
         var sessionsDone = 0
         while day < .today {
@@ -60,7 +56,7 @@ enum SampleData {
                 let environment = SessionEnvironment(
                     catalog: model.catalog, gym: gym, trust: analysis.trust, phase: analysis.phase.effects,
                     bodyweightKg: 82, history: analysis.history, enduranceScore: nil, heartRateGuidedRest: false)
-                perform(&live, truth: truth, growth: 1 + 0.004 * Double(sessionsDone), environment: environment, begin: begin)
+                perform(&live, growth: growth(after: sessionsDone), environment: environment, begin: begin)
                 model.keep(
                     live.record(
                         feedback: SessionFeedback(soreness: sessionsDone % 3 == 0 ? 2 : 1, energy: 3 + sessionsDone % 2),
@@ -121,15 +117,74 @@ enum SampleData {
         }
     }
 
-    /// Performs a session the way a consistent, honest lifter would.
-    private static func perform(_ live: inout LiveSession, truth: [String: Double], growth: Double, environment: SessionEnvironment, begin: Date) {
+    /// The lifter's one-rep maxes, fresh, on the first day of the sample: what each set is worked
+    /// out from (`perform`).
+    static let truth: [String: Double] = [
+        "barbell-back-squat": 140, "conventional-deadlift": 165, "barbell-bench-press": 92,
+        "barbell-incline-bench-press": 78, "barbell-overhead-press": 55, "pull-up": 108, "barbell-row": 80,
+    ]
+
+    /// How much stronger than on the first day the lifter is after so many sessions.
+    static func growth(after sessions: Int) -> Double { 1 + 0.004 * Double(sessions) }
+
+    /// `-sessionAt summary`: today's session, begun by `-startSession`, done the whole way through as
+    /// the sample lifter would, each set after its rest, then finished, for its summary. Its numbers,
+    /// what moved, Strength's gain and the lessons all come from the real engine. Today is a good
+    /// day on the main lifts, as a session that ends on a new best is, each one's last set taken a
+    /// few reps past what was asked: the smallest good day, from 2% over the lifter's trend, on which
+    /// the session moves Strength a whole point, so the summary has Strength's gain whichever day of
+    /// the week the sample lands on.
+    static func finishToday(_ model: AppModel, now: Date = Date()) {
+        guard let started = model.live, let environment = model.environment, let state = model.state else { return }
+        let trend = growth(after: model.sessions.count)
+        // Everything in a session is timed from its start, so a session done from the same start is
+        // the same session wherever it's begun.
+        func run(onAGoodDay boost: Double) -> (session: LiveSession, end: Date) {
+            var session = started
+            let end = perform(&session, growth: trend, mainLifts: boost, environment: environment, begin: started.startedAt, timed: true)
+            return (session, end)
+        }
+        func strength(with session: LiveSession, end: Date) -> Int? {
+            var after = state
+            after.sessions.append(session.record(feedback: nil, now: end))
+            return Analyst.analyse(after).strength.overall.map { Int($0.rounded()) }
+        }
+        let before = model.analysis?.strength.overall.map { Int($0.rounded()) }
+        let boost =
+            stride(from: 1.02, through: 1.12, by: 0.01).first { boost in
+                let trial = run(onAGoodDay: boost)
+                guard let before, let after = strength(with: trial.session, end: trial.end) else { return false }
+                return after > before
+            } ?? 1.03
+        // Begun as long ago as it takes, so it ends now.
+        let length = run(onAGoodDay: boost).end.timeIntervalSince(started.startedAt)
+        model.update { live in
+            live.startedAt = now.addingTimeInterval(-length)
+            perform(&live, growth: trend, mainLifts: boost, environment: environment, begin: live.startedAt, timed: true)
+        }
+        model.finish(feedback: SessionFeedback(soreness: 1, jointPain: [], energy: 4))
+    }
+
+    /// Performs a session the way a consistent, honest lifter would, and returns when it ended:
+    /// `growth` over the first day's strength, and the main lifts `mainLifts` over that, a good day,
+    /// when their last sets go past the reps asked for. The history's sessions are a set every 100
+    /// seconds; a `timed` one waits out each rest and takes as long as each set would.
+    @discardableResult
+    private static func perform(
+        _ live: inout LiveSession, growth: Double, mainLifts: Double = 1, environment: SessionEnvironment, begin: Date, timed: Bool = false
+    ) -> Date {
         var clock = begin
         var guardCount = 0
+        var begun: Set<Int> = []
         while let (i, s) = live.current, guardCount < 300 {
             guardCount += 1
-            clock = clock.addingTimeInterval(100)
             let item = live.items[i]
             let prescription = item.sets[s].prescription
+            clock =
+                timed
+                ? done(item, prescription, after: clock, rest: live.rest, settingUp: item.plan.isStrength && !begun.contains(i))
+                : clock.addingTimeInterval(100)
+            begun.insert(i)
             if item.plan.role == .conditioning {
                 live.logConditioning(item: i, minutes: item.plan.conditioning?.minutes ?? 10, averageHeartRate: 128, zoneMinutes: [2: 10], now: clock)
                 continue
@@ -141,7 +196,7 @@ enum SampleData {
                 continue
             }
             let exercise = environment.catalog.resolve(item.exerciseID)
-            let fresh = (truth[exercise.id] ?? defaultTruth(exercise)) * growth
+            let fresh = (truth[exercise.id] ?? defaultTruth(exercise)) * growth * (item.plan.block == .main ? mainLifts : 1)
             let e1rm = fresh * (1 - 0.02 * Double(item.loggedSets.filter { $0.kind.countsAsWork }.count))
             let guess = OneRepMax.loggedLoad(forEffective: OneRepMax.load(e1rm: fresh, reps: 10, rir: 3), basis: exercise.loadBasis, bodyweightKg: 82)
             let load = prescription.loadKg ?? environment.increments(for: exercise).round(max(0, guess), down: true)
@@ -156,11 +211,32 @@ enum SampleData {
                 if capacity < prescription.targetReps {
                     live.log(item: i, set: s, reps: capacity, loadKg: load, rating: .red, environment: environment, now: clock)
                 } else {
-                    let rating: SetRating = capacity - prescription.targetReps >= 3 ? .green : .orange
-                    live.log(item: i, set: s, reps: prescription.targetReps, loadKg: load, rating: rating, environment: environment, now: clock)
+                    var reps = prescription.targetReps
+                    // A good day: a main lift's last set goes on while there are two reps in it, a few at most.
+                    let last = !item.sets.indices.contains { $0 > s && item.sets[$0].isOpen && item.sets[$0].prescription.kind.countsAsWork }
+                    if mainLifts > 1, item.plan.block == .main, last { reps = max(reps, min(capacity - 2, reps + 3)) }
+                    let rating: SetRating = capacity - reps >= 3 ? .green : .orange
+                    live.log(item: i, set: s, reps: reps, loadKg: load, rating: rating, environment: environment, now: clock)
                 }
             }
         }
+        return clock
+    }
+
+    /// When a set is done, from the last thing done, at the pace the plan's length assumes
+    /// (`SessionPlan.estimatedMinutes`): the rest running out, getting set up for a lift, then the
+    /// set itself, three seconds a rep and a few to start, or its time, or the conditioning's minutes.
+    private static func done(_ item: LiveItem, _ prescription: SetPrescription, after clock: Date, rest: RestState?, settingUp: Bool) -> Date {
+        let waiting = rest.map { max(0, $0.endsAt.timeIntervalSince(clock)) } ?? 0
+        let work: TimeInterval =
+            if item.plan.role == .conditioning {
+                TimeInterval((item.plan.conditioning?.minutes ?? 10) * 60)
+            } else if let seconds = prescription.seconds {
+                TimeInterval(seconds)
+            } else {
+                15 + 3 * TimeInterval(prescription.targetReps)
+            }
+        return clock.addingTimeInterval(waiting + (settingUp ? 45 : 0) + work)
     }
 
     private static func defaultTruth(_ exercise: Exercise) -> Double {

@@ -39,9 +39,16 @@ struct RootView: View {
             NavigationStack { SettingsView() }
         }
         #endif
-        .sheet(item: $model.finished) { record in
+        // The finished session's summary is a page of its own on a phone, as the session before it
+        // was; a sheet over the window where there's room.
+        .sheet(item: summary(wide: true)) { record in
             SessionSummaryView(record: record)
         }
+        #if os(iOS)
+        .fullScreenCover(item: summary(wide: false)) { record in
+            SessionSummaryView(record: record)
+        }
+        #endif
         .sheet(item: $model.sheet) { sheet in
             switch sheet {
             case .logActivity: ActivityLogSheet()
@@ -50,6 +57,11 @@ struct RootView: View {
             case .nextBlock: NextBlockView()
             }
         }
+    }
+
+    /// The finished session, for the one of the summary's presentations this width uses.
+    private func summary(wide: Bool) -> Binding<SessionRecord?> {
+        Binding(get: { sizeClass.isWide == wide ? model.finished : nil }, set: { model.finished = $0 })
     }
 
     /// The tab shown: the destination itself where there's a sidebar, or in a narrow window the tab

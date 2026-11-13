@@ -159,7 +159,8 @@ struct AppModelTests {
         #expect(model.settings.assessmentStart == Day.today.adding(days: -7))
     }
 
-    @Test("Sample data gives an analysis, a history and today's plan")
+    /// One seeding for both, as seeding is the slow part: the store, then `-sessionAt summary`'s session.
+    @Test("Sample data gives an analysis, a history and today's plan, which -sessionAt summary does whole, ending now")
     func sampleData() throws {
         let model = TestApp().model()
         SampleData.seedIfEmpty(model)
@@ -175,6 +176,31 @@ struct AppModelTests {
         let sessions = model.sessions.count
         SampleData.seedIfEmpty(model)
         #expect(model.sessions.count == sessions)
+
+        // -sessionAt summary: every set, about as long as the plan, ending now, moving a main lift and Strength.
+        let before = try #require(analysis.strength.overall)
+        model.start(plan)
+        let now = Date()
+        SampleData.finishToday(model, now: now)
+        #expect(model.live == nil)
+        let record = try #require(model.finished)
+        let baseline = try #require(model.finishedBaseline)
+        // The plan's lifting sets, not its drills: every one done.
+        #expect(baseline.plannedSets == plan.items.filter(\.isStrength).reduce(0) { $0 + $1.workSets.count })
+        #expect(record.workSets.count >= baseline.plannedSets)
+        #expect(abs(record.minutes - baseline.plannedMinutes) <= 10, "about as long as the plan: \(record.minutes) of \(baseline.plannedMinutes)")
+        #expect(abs(record.end.timeIntervalSince(now)) < 60)
+        #expect(record.exercises.flatMap(\.sets).allSatisfy { $0.date > record.start && $0.date <= record.end })
+        let after = try #require(model.analysis)
+        let strength = try #require(after.strength.overall)
+        #expect(Int(strength.rounded()) > Int(before.rounded()), "Strength's gain: \(before) to \(strength)")
+        let moved = plan.items.filter { $0.block == .main }.contains { item in
+            let bests = StrengthEstimator.sessionBests(
+                after.history[item.exerciseID] ?? [], basis: model.catalog.resolve(item.exerciseID).loadBasis, trust: after.trust)
+            guard let last = bests.last, last.day == record.day, let earlier = bests.dropLast().map(\.e1rm).max() else { return false }
+            return last.e1rm > earlier * 1.01
+        }
+        #expect(moved, "a main lift's estimate rose")
     }
 
     @Test("Plan, start, log and finish records a session that's there after a relaunch")

@@ -77,7 +77,17 @@ struct SessionSummaryView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
                     .readableWidth()
-                    .background(Ink.ground.opacity(0.94))
+                    .background(alignment: .top) {
+                        // What scrolls under the foot fades out above Done, as under the design's
+                        // tab bar, rather than being cut off at its edge.
+                        VStack(spacing: 0) {
+                            LinearGradient(colors: [Ink.ground.opacity(0), Ink.ground], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                            Ink.ground
+                        }
+                        .padding(.top, -28)
+                        .ignoresSafeArea(edges: .bottom)
+                        .allowsHitTesting(false)
+                    }
                 }
             }
             .navigationTitle(record.title)
@@ -132,7 +142,8 @@ struct SessionSummaryView: View {
     }
 
     private func stat(_ value: String, unit: String?, caption: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        // Close under the numeral: its line is taller than the design's, which sets it at .95.
+        VStack(alignment: .leading, spacing: 1) {
             Measure(value: value, unit: unit, size: 44, weight: .heavy)
             Text(caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
         }
@@ -188,18 +199,20 @@ struct SessionSummaryView: View {
         .accessibilityIdentifier("summary.moved")
     }
 
+    /// The name with before and after on its baseline, and what's behind it under both, so a lift's
+    /// three-figure estimates don't squeeze the line onto two.
     private func movedRow(title: String, caption: String, before: String, after: String, unit: String?) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                Text(caption).font(.caption).foregroundStyle(Ink.text3)
+                Spacer(minLength: 8)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(before) →").font(.title3.weight(.bold).monospacedDigit()).foregroundStyle(Ink.text3)
+                    Measure(value: after, unit: unit, size: 30, weight: .bold)
+                }
+                .fixedSize()
             }
-            Spacer(minLength: 8)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(before) →").font(.title3.weight(.bold).monospacedDigit()).foregroundStyle(Ink.text3)
-                Measure(value: after, unit: unit, size: 30, weight: .bold)
-            }
-            .fixedSize()
+            Text(caption).font(.caption).foregroundStyle(Ink.text3)
         }
         .accessibilityElement(children: .combine)
     }
@@ -248,7 +261,7 @@ struct SessionSummaryView: View {
                 LinkRowLabel(
                     title: "Every set",
                     caption:
-                        "\(record.workSets.count) work sets across \(record.exercises.count) \(record.exercises.count == 1 ? "exercise" : "exercises")"
+                        "\(record.workSets.count) work \(record.workSets.count == 1 ? "set" : "sets") across \(record.exercises.count) \(record.exercises.count == 1 ? "exercise" : "exercises")"
                 )
                 .padding(.vertical, 8)
                 .frame(minHeight: 52)
@@ -261,17 +274,21 @@ struct SessionSummaryView: View {
 
     private struct Best {
         var name: String
+        /// What it scores, "Bench press", when it's the lift that score is measured by.
+        var short: String?
         /// "Est. 1RM · 70 × 9 best set".
         var caption: String
         var before: String
         var after: String
     }
 
-    /// New best estimates this session, with the set that made each.
+    /// New best estimates this session, with the set that made each. A lift is named as Progress
+    /// names what it scores ("Bench press") when it's the lift that score is measured by, and by its
+    /// own name otherwise, or when two would share the name.
     private var moved: [Best] {
         guard let analysis = model.analysis else { return [] }
         let unit = model.gym.unit
-        return record.exercises.compactMap { log in
+        let lifts = record.exercises.compactMap { log -> Best? in
             let exercise = model.catalog.resolve(log.exerciseID)
             let bests = StrengthEstimator.sessionBests(analysis.history[log.exerciseID] ?? [], basis: exercise.loadBasis, trust: analysis.trust)
             guard bests.count >= 2, let last = bests.last, last.day == record.day else { return nil }
@@ -282,13 +299,29 @@ struct SessionSummaryView: View {
                     (StrengthEstimator.estimate($0, basis: exercise.loadBasis, trust: analysis.trust) ?? 0)
                         < (StrengthEstimator.estimate($1, basis: exercise.loadBasis, trust: analysis.trust) ?? 0)
                 }
+            let estimates = Self.estimates(from: previous, to: last.e1rm, unit: unit)
             return Best(
-                name: exercise.name,
+                name: exercise.name, short: exercise.strength.flatMap { $0.factor == 1 ? $0.category.label : nil },
                 caption: best.map {
                     "Est. 1RM · \(Format.short(load: $0.loadKg, reps: $0.reps, exercise: exercise, unit: unit).replacingOccurrences(of: "×", with: " × ")) best set"
                 } ?? "Est. 1RM",
-                before: Format.number(unit.fromKilograms(previous)), after: Format.number(unit.fromKilograms(last.e1rm)))
+                before: estimates.before, after: estimates.after)
         }
+        return lifts.map { lift in
+            var named = lift
+            if let short = lift.short, lifts.filter({ $0.short == short }).count == 1 { named.name = short }
+            return named
+        }
+    }
+
+    /// Two estimates as a gym loads them, to the half kilogram or the pound, as the exercise page's
+    /// line is; to a tenth where that would make a move look like none.
+    static func estimates(from before: Double, to after: Double, unit: WeightUnit) -> (before: String, after: String) {
+        let step = unit == .kg ? 0.5 : 1
+        let was = (unit.fromKilograms(before) / step).rounded() * step
+        let now = (unit.fromKilograms(after) / step).rounded() * step
+        guard now > was else { return (Format.number(unit.fromKilograms(before)), Format.number(unit.fromKilograms(after))) }
+        return (Format.number(was), Format.number(now))
     }
 
     private struct Lesson {
@@ -371,7 +404,8 @@ struct SummaryBaseline: Equatable {
     init(record: SessionRecord, plan: SessionPlan, strength: Double?) {
         sessionID = record.id
         plannedMinutes = plan.estimatedMinutes
-        plannedSets = plan.items.reduce(0) { $0 + $1.workSets.count }
+        // The lifting's, as the session's own count is: not the warm-up's drills or the conditioning.
+        plannedSets = plan.items.filter(\.isStrength).reduce(0) { $0 + $1.workSets.count }
         self.strength = strength
     }
 }
