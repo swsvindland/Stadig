@@ -13,17 +13,18 @@ public struct ScorePoint: Hashable, Codable, Sendable {
 }
 
 /// The scores one app has published, day by day, so both apps can say how each has moved: "+2 this
-/// month", "+3 since August". Each app keeps its own in the shared container beside its summary (in
-/// SystemStore, `SharedKey.scores` and `SharedContainer.recordScores`) and adds the day's readings
-/// whenever it publishes its stats, so the other app and the person's other devices have it too.
+/// month", "+3 since August". Each app adds the day's readings whenever it publishes its stats, keeps
+/// them in its own store a record a day (SystemStore's `ScoreDayRecord`, which syncs to the person's
+/// other devices day by day) and publishes the history they make to the shared container beside its
+/// summary (`SharedKey.scores`), for the other app.
 ///
 /// One reading a day for each stat, the day's last. Every reading of the last nine weeks is kept;
 /// older ones only as each week's and each month's last, which is all a change is ever measured
 /// from back there, and the first, which one is measured from when the readings began inside its
 /// window; after two years, none.
 public struct ScoreHistory: Hashable, Codable, Sendable {
-    /// A file of its own rather than a field of the summary: an older copy of either app rewrites the
-    /// summary without it, but never touches this.
+    /// A file of its own rather than a field of the summary: every copy of either app rewrites its
+    /// summary, an older one without it, but only this version writes this.
     public static let schemaVersion = 1
     /// Every reading this many days old or newer is kept: two months, so "this month" and the month
     /// before are measured from the day itself.
@@ -65,17 +66,11 @@ public struct ScoreHistory: Hashable, Codable, Sendable {
         recording(readings, on: Day(now, calendar: calendar))
     }
 
-    /// This copy and another (the same app's, from another device): every day either has, and on a
-    /// day both have, the other's. Days a device recorded while its copy lost the race to iCloud
-    /// come back this way.
-    public func merged(with other: ScoreHistory) -> ScoreHistory {
-        var history = self
-        for (stat, theirs) in other.stats where !theirs.isEmpty {
-            var byDay = Dictionary(points(stat).map { ($0.day, $0) }, uniquingKeysWith: { _, last in last })
-            for point in theirs { byDay[point.day] = point }
-            history.stats[stat] = byDay.values.sorted { $0.day < $1.day }
-        }
-        return history
+    /// The scores recorded on a day, by stat.
+    public func scores(on day: Day) -> [StatKind: Double] {
+        var scores: [StatKind: Double] = [:]
+        for (stat, points) in stats { if let point = points.last(where: { $0.day == day }) { scores[stat] = point.score } }
+        return scores
     }
 
     /// Readings older than `dailyDays` kept only as the first, or the last of their week or of their

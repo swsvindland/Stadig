@@ -18,21 +18,3 @@ extension StatsBoard {
         bothApps(lift: shared.read(.summary(.liftTrack)), macro: shared.read(.summary(.macroTrack)), today: today, timeZone: timeZone)
     }
 }
-
-extension SharedContainer {
-    /// Adds the day's readings to the app's score history in the container, which is how it's kept:
-    /// the file as it is (another device's copy, if that's what iCloud last brought) merged with
-    /// `kept`, the history the app last had, so days recorded on a device whose copy lost the race
-    /// come back; then the day's readings in and the old thinned (`ScoreHistory.recording`). Written
-    /// only when that changes the file. Returns the history, for the app to keep.
-    @discardableResult
-    public func recordScores(_ readings: [StatReading], by app: AppID, on day: Day, kept: ScoreHistory? = nil) throws -> ScoreHistory {
-        let file = read(.scores(app))
-        var history = ScoreHistory(app: app)
-        if let kept { history = history.merged(with: kept) }
-        if let file { history = history.merged(with: file) }
-        history = history.recording(readings, on: day)
-        if history != file { try write(history, to: .scores(app), by: app) }
-        return history
-    }
-}

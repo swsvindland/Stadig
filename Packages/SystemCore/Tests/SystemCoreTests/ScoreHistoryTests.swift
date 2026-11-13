@@ -117,18 +117,6 @@ struct ScoreHistoryTests {
         #expect(history.thinned(today: today) == history)
     }
 
-    /// Another device's copy: every day either has, the other's on a day both have.
-    @Test func copiesFromTwoDevicesMerge() {
-        let phone = ScoreHistory(app: .liftTrack, stats: [.strength: points([(10, 50), (9, 51), (2, 54)]), .agility: points([(3, 60)])])
-        let pad = ScoreHistory(app: .liftTrack, stats: [.strength: points([(9, 51.5), (5, 53)]), .endurance: points([(1, 40)])])
-        let merged = phone.merged(with: pad)
-        #expect(merged.points(.strength) == points([(10, 50), (9, 51.5), (5, 53), (2, 54)]))
-        #expect(merged.points(.agility) == points([(3, 60)]))
-        #expect(merged.points(.endurance) == points([(1, 40)]))
-        #expect(merged.app == .liftTrack)
-        #expect(phone.merged(with: ScoreHistory(app: .liftTrack)) == phone)
-    }
-
     @Test func monthsAddByTheCalendar() {
         #expect(Day(year: 2027, month: 3, day: 31).adding(months: -1) == Day(year: 2027, month: 2, day: 28))
         #expect(Day(year: 2028, month: 3, day: 31).adding(months: -1) == Day(year: 2028, month: 2, day: 29))
