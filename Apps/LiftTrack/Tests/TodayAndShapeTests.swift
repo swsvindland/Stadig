@@ -99,6 +99,25 @@ struct TodayAndShapeTests {
         #expect(model.stats.first { $0.stat == stat }?.change?.whole == 3)
     }
 
+    @Test("Progress's Year measures each score from a year ago; its Month, as everywhere, from a month ago")
+    func scoresOverTheYear() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let (stat, points) = try #require(app.shared.read(.scores(.liftTrack))?.stats.first)
+        let today = try #require(points.last)
+        // Away from whichever end is nearer, so neither reading is cut at 0 or 100.
+        let sign: Double = today.score > 50 ? -1 : 1
+        app.store.save(ScoreDayRecord(day: model.today.adding(days: -370), scores: [stat: today.score + sign * 12], updatedAt: Date()))
+        app.store.save(ScoreDayRecord(day: model.today.adding(days: -20), scores: [stat: today.score + sign * 4], updatedAt: Date()))
+        model.reloadIfChanged()
+        #expect(model.changes(over: .month)[stat]?.whole == -Int(sign) * 4)
+        let year = try #require(model.changes(over: .year)[stat])
+        #expect(year.whole == -Int(sign) * 12)
+        #expect(year.period == .thisYear)
+        #expect(Array(model.changes(over: .year).keys) == [stat], "the rest have only today's reading")
+        #expect(model.changes(over: .month)[stat] == model.stats.first { $0.stat == stat }?.change)
+    }
+
     @Test("Last time is the same set in the last session before today, or that session's last")
     func lastTime() throws {
         let model = TestApp().model()

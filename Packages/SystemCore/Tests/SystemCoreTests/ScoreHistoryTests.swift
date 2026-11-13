@@ -231,6 +231,48 @@ struct ScoreHistoryTests {
         #expect(notYet.text(calendar: english) == "+12 since December")
     }
 
+    /// Over the year: from the score as it stood a year ago today, "+11 this year", read from a year
+    /// of readings thinned as they're kept, so from the last week's end before the year began. From
+    /// 29 February, the year began after the end of February the year before.
+    @Test func thisYearIsSinceThisDateLastYear() throws {
+        let start = ScoreWindow.year.start(today: today)
+        #expect(start == Day(year: 2025, month: 11, day: 14))
+        #expect(ScoreWindow.year.start(today: Day(year: 2028, month: 2, day: 29)) == Day(year: 2027, month: 3, day: 1))
+        var history = ScoreHistory(app: .liftTrack)
+        for back in stride(from: 400, through: 0, by: -1) {
+            history = history.recording([reading(.strength, 40 + 0.03 * Double(400 - back))], on: today.adding(days: -back))
+        }
+        let change = try #require(ScoreChange.measure(history.points(.strength), now: 52, over: .year, today: today))
+        // A Sunday, the last of its week: the days after it, up to the year's start, were thinned.
+        #expect(change.from == Day(year: 2025, month: 11, day: 9))
+        #expect(change.then == 40.9)
+        #expect(change.period == .thisYear)
+        #expect(change.text(calendar: english) == "+11 this year")
+        #expect(change.spoken(calendar: english) == "up 11 this year")
+        let month = try #require(ScoreChange.measure(history.points(.strength), now: 52, over: .month, today: today))
+        #expect(month.text(calendar: english) == "Steady this month")
+    }
+
+    /// Readings that began inside the year say what moved since they began, by its month: "since
+    /// October", "this month" for this one's, the year named a year back; a reading from before a
+    /// long gap doesn't speak for the year's start.
+    @Test func aYearWithLessHistorySaysSinceWhen() throws {
+        let october = try #require(ScoreChange.measure(points([(20, 50), (0, 56)]), now: 56, over: .year, today: today))
+        #expect(october.from == Day(year: 2026, month: 10, day: 24))
+        #expect(october.text(calendar: english) == "+6 since October")
+        let thisMonth = try #require(ScoreChange.measure(points([(10, 50)]), now: 53, over: .year, today: today))
+        #expect(thisMonth.period == .thisMonth)
+        #expect(thisMonth.text(calendar: english) == "+3 this month")
+        let lastNovember = try #require(ScoreChange.measure(points([(358, 40)]), now: 52, over: .year, today: today))
+        #expect(lastNovember.text(calendar: english) == "+12 since November 2025")
+        // Thirty-six days before the year began, then nothing until August.
+        let gap = try #require(ScoreChange.measure(points([(400, 30), (100, 45)]), now: 52, over: .year, today: today))
+        #expect(gap.from == Day(year: 2026, month: 8, day: 5))
+        #expect(gap.text(calendar: english) == "+7 since August")
+        #expect(ScoreChange.measure(points([(3, 50)]), now: 53, over: .year, today: today) == nil, "a first reading days old")
+        #expect(ScoreChange.Period.thisYear.monthName(calendar: english) == nil)
+    }
+
     /// Since a check-in: measured from before its day, so what the check-in changed counts.
     @Test func sinceTheLastCheckIn() throws {
         let checkIn = today.adding(days: -2)
@@ -267,8 +309,8 @@ struct ScoreHistoryTests {
 
     /// Seven months of someone in Oslo opening the app at all hours, sometimes three times a day and
     /// sometimes not for days, nine weeks away in the middle, their strength climbing and their
-    /// discipline sliding for a month. Every day, "this month" and "since" the look-back month are
-    /// what the true scores say, measured from the last day they published before the window.
+    /// discipline sliding for a month. Every day, "this month", "this year" and "since" the look-back
+    /// month are what the true scores say, measured from the last day they published before the window.
     @Test func aPersonOverSevenMonths() throws {
         var oslo = Calendar(identifier: .gregorian)
         oslo.timeZone = try #require(TimeZone(identifier: "Europe/Oslo"))
@@ -306,7 +348,7 @@ struct ScoreHistoryTests {
             #expect(Set(history.points(.strength).map(\.day)).count == history.points(.strength).count)
             if published.last == day {
                 for (stat, truth) in [(StatKind.strength, strength), (.discipline, discipline)] {
-                    for window in [ScoreWindow.month, StatsBoard.lookBack(today: day)] {
+                    for window in [ScoreWindow.month, .year, StatsBoard.lookBack(today: day)] {
                         let start = window.start(today: day)
                         let change = ScoreChange.measure(history.points(stat), now: truth(day), over: window, today: day)
                         let before = published.last { $0 < start }.flatMap { $0.days(until: start) <= ScoreHistory.gapDays ? $0 : nil }

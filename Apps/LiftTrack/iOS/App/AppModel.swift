@@ -129,6 +129,9 @@ final class AppModel {
     private(set) var earlierShape: EarlierShape?
     /// How far Physique has moved over the look-back ("+3 since August"), for Body.
     private(set) var physiqueChange: ScoreChange?
+    /// How far each score has moved over the year ("+12 this year", or since the readings began),
+    /// for Progress's Year. The month's is each line's own `change`.
+    private(set) var yearChanges: [StatKind: ScoreChange] = [:]
 
     // Live session and presentation.
     var live: LiveSession? {
@@ -396,6 +399,7 @@ final class AppModel {
             stats = lines
             earlierShape = StatsBoard.earlier(lines, today: today)
             physiqueChange = lines.first { $0.stat == .physique }?.change(over: StatsBoard.lookBack(today: today), today: today)
+            yearChanges = Self.changes(lines) { $0.change(over: .year, today: today) }
         }
         var calendar = analysis.calendar
         summary.updated = .distantPast
@@ -416,6 +420,19 @@ final class AppModel {
         #if os(iOS)
         WatchLink.shared.publish(self)
         #endif
+    }
+
+    /// How far each score has moved over Progress's range, by stat: nothing for one with nothing to
+    /// measure from.
+    func changes(over range: ProgressRange) -> [StatKind: ScoreChange] {
+        switch range {
+        case .month: Self.changes(stats) { $0.change }
+        case .year: yearChanges
+        }
+    }
+
+    private static func changes(_ lines: [StatLine], _ change: (StatLine) -> ScoreChange?) -> [StatKind: ScoreChange] {
+        Dictionary(lines.compactMap { line in change(line).map { (line.stat, $0) } }, uniquingKeysWith: { first, _ in first })
     }
 
     /// Today's scores into the store, a record a day that reaches the person's other devices, and

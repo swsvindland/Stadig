@@ -40,22 +40,15 @@ struct LiftTrackApp: App {
             model.save(gym: gym)
         }
         if launch.has("-startSession"), model.live == nil, let plan = model.plan() { model.start(plan) }
-        // -sessionAt lift|set|rest|summary moves that session on to its first main lift, skipping what
-        // comes before; then past its warm-ups to the first work set; or into the rest after that set;
-        // or through the main lifts, every set just right, to the finished session's summary.
-        if let at = launch.value(after: "-sessionAt"), let environment = model.environment {
+        // -sessionAt lift|set|rest moves that session on to its first main lift, skipping what comes
+        // before; then past its warm-ups to the first work set; or into the rest after that set.
+        // -sessionAt summary does the whole session, as the sample lifter would, to its summary.
+        if launch.value(after: "-sessionAt") == "summary" {
+            SampleData.finishToday(model)
+        } else if let at = launch.value(after: "-sessionAt"), let environment = model.environment {
             model.update { live in
                 while let current = live.current, live.items[current.item].plan.block != .main { live.skip(item: current.item) }
                 guard at != "lift" else { return }
-                if at == "summary" {
-                    while let current = live.current, live.items[current.item].plan.block == .main {
-                        let set = live.items[current.item].sets[current.set].prescription
-                        _ = live.log(
-                            item: current.item, set: current.set, reps: set.targetReps, loadKg: set.loadKg,
-                            rating: set.kind == .warmup || set.kind == .repOut ? nil : .orange, environment: environment)
-                    }
-                    return
-                }
                 while let current = live.current, live.items[current.item].sets[current.set].prescription.kind == .warmup {
                     let set = live.items[current.item].sets[current.set].prescription
                     _ = live.log(
@@ -69,7 +62,6 @@ struct LiftTrackApp: App {
                     live.endRest()
                 }
             }
-            if at == "summary" { model.finish(feedback: SessionFeedback(soreness: 1, jointPain: [], energy: 4)) }
         }
         #endif
         #if os(iOS)

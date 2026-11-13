@@ -4,18 +4,35 @@ import LiftEngine
 import SwiftUI
 import SystemCore
 
+/// What Progress's changes are measured over, from the switch in its header: the month, as Today
+/// and Body have them, or the year.
+enum ProgressRange: String, CaseIterable {
+    case month, year
+
+    var label: String { self == .month ? "Month" : "Year" }
+}
+
 /// The stats this app can measure honestly: Strength, Endurance, Agility, training Discipline,
 /// and how far your ratings can be believed. No overall level, no streaks.
 struct ProgressTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
-    /// Your shape, opened from the header (and by `-yourShape` in DEBUG).
+    /// Month or Year, kept for each window as it was left.
+    @SceneStorage("progress.range") private var range: ProgressRange = .month
+    /// Your shape, opened from its row (and by `-yourShape` in DEBUG).
     @State private var showShape = false
     /// A score opened from Your shape beside Strength, on a wide screen.
     @State private var shownStat: StatKind?
     /// History and a session in it, opened by `-history` and `-sessionDetail` in DEBUG.
     @State private var showHistory = false
     @State private var shownSession: SessionRecord?
+    #if DEBUG
+    /// `-progressRange year` starts on Year; UI tests start on Month whatever the scene kept from an
+    /// earlier launch. Once, so a range picked afterwards stays.
+    @State private var launchRange =
+        LaunchOptions.current.value(after: "-progressRange").flatMap(ProgressRange.init)
+        ?? (LaunchOptions.current.isUITesting ? ProgressRange.month : nil)
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -38,13 +55,17 @@ struct ProgressTab: View {
             #endif
             .sessionResumeToolbar()
             .navigationDestination(isPresented: $showShape) {
-                if let analysis = model.analysis { YourShapePage(analysis: analysis) }
+                if let analysis = model.analysis { YourShapePage(analysis: analysis, range: range) }
             }
             .navigationDestination(item: $shownStat) { stat in ScoreDetailPage(stat: stat) }
             #if DEBUG
             .navigationDestination(isPresented: $showHistory) { HistoryView() }
             .navigationDestination(item: $shownSession) { record in SessionDetail(record: record) }
             .onAppear {
+                if let launchRange {
+                    range = launchRange
+                    self.launchRange = nil
+                }
                 guard !sizeClass.isWide else { return }
                 if LaunchOptions.current.has("-yourShape") { showShape = true }
                 if LaunchOptions.current.has("-history") { showHistory = true }
@@ -55,19 +76,28 @@ struct ProgressTab: View {
     }
 
     /// The phone's single column, as the design has it: Strength large with each lift under it, the
-    /// other scores in a row that opens Your shape, then your ratings and History as rows.
+    /// other scores in a row that opens Your shape, then Your shape, your ratings and History as rows.
     private func column(_ analysis: LiftAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let changes = model.changes(over: range)
+        return VStack(alignment: .leading, spacing: 12) {
             header(analysis)
-            StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength })
+            StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength }, change: changes[.strength])
             Button {
                 showShape = true
             } label: {
-                OtherScores(lines: model.stats)
+                OtherScores(lines: model.stats, changes: changes)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("progress.otherScores")
             RowCard {
+                // The header has Month and Year where the design puts them, so Your shape is a row.
+                Button {
+                    showShape = true
+                } label: {
+                    LinkRowLabel(title: "Your shape", caption: "All six scores as one figure")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("progress.shape")
                 NavigationLink {
                     RatingsPage(trust: analysis.trust)
                 } label: {
@@ -89,9 +119,15 @@ struct ProgressTab: View {
         .readableWidth()
     }
 
+    /// The block and the title, with Month and Year beside them: what the changes on the page are
+    /// measured over.
     private func header(_ analysis: LiftAnalysis) -> some View {
         PageHeader(eyebrow: blockLine(analysis), title: "Progress") {
-            CircleIconButton(symbol: "hexagon", label: "Your shape", identifier: "progress.shape") { showShape = true }
+            InkSegmented(options: ProgressRange.allCases.map { ($0, $0.label) }, selection: $range)
+                .frame(width: 132)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Changes over")
+                .accessibilityIdentifier("progress.range")
         }
     }
 
@@ -105,11 +141,12 @@ struct ProgressTab: View {
     /// The phone's Progress laid out for width: Strength with each lift, your ratings and History on
     /// the left; Your shape, the six scores as one figure with a row each, beside it.
     private func wide(_ analysis: LiftAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let changes = model.changes(over: range)
+        return VStack(alignment: .leading, spacing: 12) {
             header(analysis)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
-                    StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength })
+                    StrengthCard(analysis: analysis, line: model.stats.first { $0.stat == .strength }, change: changes[.strength])
                     RowCard {
                         NavigationLink {
                             RatingsPage(trust: analysis.trust)
@@ -128,7 +165,7 @@ struct ProgressTab: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                YourShape(lines: model.stats, earlier: model.earlierShape, analysis: analysis) { stat in
+                YourShape(lines: model.stats, changes: changes, earlier: model.earlierShape, analysis: analysis) { stat in
                     switch stat {
                     case .strength, .vitality: break
                     case .physique: model.tab = .body
@@ -151,9 +188,11 @@ struct ProgressTab: View {
 struct StrengthCard: View {
     @Environment(AppModel.self) private var model
     let analysis: LiftAnalysis
-    /// Strength as Your shape has it: how far it moved this month is the chip beside the level, or
-    /// its trend before there's a month to measure.
+    /// Strength as Your shape has it: its trend is the chip beside the level before there's anything
+    /// to measure a change from.
     var line: StatLine?
+    /// How far it moved over the month or the year Progress shows: the chip, when there's one.
+    var change: ScoreChange?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -169,7 +208,7 @@ struct StrengthCard: View {
                             .accessibilityElement(children: .combine)
                         }
                         Spacer(minLength: 8)
-                        if let change = line?.change {
+                        if let change {
                             ScoreChangeChip(change: change).padding(.bottom, 6)
                         } else if let trend = line.flatMap({ TrendWord($0.trend) }) {
                             TrendChip(trend: trend).padding(.bottom, 6)
@@ -261,11 +300,13 @@ struct StrengthCard: View {
 }
 
 /// The six scores as one figure, with where they stood a few months ago dashed behind it, and each in
-/// a row: its number, the app that measures it, a line on what moves it, and how far it moved this
-/// month (its trend, before there's a month to measure). A score Stadig Macro measures waits for it,
-/// said plainly.
+/// a row: its number, the app that measures it, a line on what moves it, and how far it moved over
+/// the month or the year Progress shows (its trend, before there's anything to measure from). A score
+/// Stadig Macro measures waits for it, said plainly.
 struct YourShape: View {
     let lines: [StatLine]
+    /// How far each moved, by stat (`AppModel.changes(over:)`).
+    let changes: [StatKind: ScoreChange]
     /// The scores as they stood a few months ago, dashed behind (`AppModel.earlierShape`).
     var earlier: EarlierShape?
     let analysis: LiftAnalysis
@@ -367,7 +408,7 @@ struct YourShape: View {
         .hoverHighlight()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stat.label)
-        .accessibilityValue("\(line.map(ScoresCard.spoken) ?? "Not measured yet"). \(caption(stat, line: line))")
+        .accessibilityValue("\(line.map { OtherScores.spoken($0, change: changes[stat]) } ?? "Not measured yet"). \(caption(stat, line: line))")
         .accessibilityIdentifier("progress.score\(stat.rawValue.identifierSuffix)")
     }
 
@@ -385,7 +426,7 @@ struct YourShape: View {
                 Text(caption(stat, line: line)).font(.caption).foregroundStyle(Ink.text2).lineLimit(1)
             }
             Spacer(minLength: 4)
-            if let change = line?.change {
+            if let change = changes[stat] {
                 ScoreChangeLabel(change: change)
             } else if let line, score != nil, let trend = TrendWord(line.trend) {
                 Text(trend.text).font(.caption.weight(.semibold)).foregroundStyle(trend.color)
@@ -841,10 +882,12 @@ struct LevelRuler: View {
     }
 }
 
-/// The other three scores Stadig Lift measures, each over a slim ruler: the row under Strength that
-/// opens Your shape.
+/// The other three scores Stadig Lift measures, each over a slim ruler with how far it moved over the
+/// month or the year Progress shows: the row under Strength that opens Your shape.
 struct OtherScores: View {
     let lines: [StatLine]
+    /// How far each moved, by stat (`AppModel.changes(over:)`).
+    let changes: [StatKind: ScoreChange]
 
     private static let shown: [StatKind] = [.endurance, .agility, .discipline]
 
@@ -856,7 +899,7 @@ struct OtherScores: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(stat.label).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).minimumScaleFactor(0.8)
                         Spacer(minLength: 2)
-                        if let change = line?.change {
+                        if let change = changes[stat] {
                             ScoreChangeLabel(change: change)
                         } else if let line, line.score != nil, let trend = TrendWord(line.trend) {
                             Text(trend.text).font(.caption).foregroundStyle(trend.color).lineLimit(1)
@@ -868,7 +911,7 @@ struct OtherScores: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(stat.label)
-                .accessibilityValue(line.map(ScoresCard.spoken) ?? "Not measured yet")
+                .accessibilityValue(line.map { Self.spoken($0, change: changes[stat]) } ?? "Not measured yet")
             }
         }
         .padding(.horizontal, 16)
@@ -879,22 +922,32 @@ struct OtherScores: View {
         .accessibilityElement(children: .contain)
         .accessibilityHint("Opens Your shape")
     }
+
+    /// "57, up 12 this year": the score and how far it moved over the range shown.
+    static func spoken(_ line: StatLine, change: ScoreChange?) -> String {
+        guard let score = line.score else { return "Not measured yet" }
+        return [String(score), change?.spoken(calendar: .current)].compactMap(\.self).joined(separator: ", ")
+    }
 }
 
-/// Your shape, pushed from Progress: the six scores as one figure and a row each. A row opens what's
-/// behind it: Strength is Progress itself, Physique is Body, and the others their own page.
+/// Your shape, pushed from Progress: the six scores as one figure and a row each, with how far each
+/// moved over the month or the year Progress was showing. A row opens what's behind it: Strength is
+/// Progress itself, Physique is Body, and the others their own page.
 struct YourShapePage: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
     let analysis: LiftAnalysis
+    var range: ProgressRange = .month
     @State private var detail: StatKind?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 if !sizeClass.isWide { DetailHeader(eyebrow: "Progress", title: "Your shape") }
-                YourShape(lines: model.stats, earlier: model.earlierShape, analysis: model.analysis ?? analysis) { stat in
+                YourShape(
+                    lines: model.stats, changes: model.changes(over: range), earlier: model.earlierShape, analysis: model.analysis ?? analysis
+                ) { stat in
                     switch stat {
                     case .strength: dismiss()
                     case .physique: model.tab = .body
