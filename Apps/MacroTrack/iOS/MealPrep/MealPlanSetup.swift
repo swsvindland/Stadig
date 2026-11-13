@@ -30,7 +30,7 @@ struct MealPlanSetup: View {
                 FormHeading(
                     eyebrow: "Plan · meal prep", title: "Plan a week",
                     detail: "A week of meals sized to your targets, with the grocery list and a timed prep.")
-                Group { sections }.inkRows()
+                Group { sections }.inkRows().actionRows()
             }
             .inkForm()
             .inkSheet {
@@ -304,7 +304,7 @@ struct PlannedMealRow: View {
             }
             Spacer(minLength: 0)
             if logged {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).font(.title3).accessibilityLabel("Logged")
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Ink.good).font(.title3).accessibilityLabel("Logged")
             } else {
                 Button("Log") { model.logPlanned(meal, in: plan) }
                     .buttonStyle(.bordered).buttonBorderShape(.capsule).font(.subheadline)

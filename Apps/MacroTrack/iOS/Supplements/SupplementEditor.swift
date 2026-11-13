@@ -100,7 +100,7 @@ struct SupplementEditor: View {
         } else {
             Form {
                 FormHeading(eyebrow: place == .sheet ? "Today · supplements" : "Supplements", title: title)
-                Group { sections }.inkRows()
+                Group { sections }.inkRows().actionRows()
                 if !isNew {
                     Section {
                         FormActionRow("Remove from my supplements", destructive: true, identifier: "supplementEditor.remove") {
@@ -268,6 +268,7 @@ private struct DoseEditor: View {
                     Image(systemName: "chevron.up.chevron.down").font(.caption2)
                 }
                 .font(.subheadline)
+                .foregroundStyle(Ink.text2)
             }
         }
         .padding(.vertical, 2)
@@ -346,9 +347,9 @@ private struct LineEditor: View {
             // The Mac's form would put each field's name beside it; the line reads as one row.
             .macLabelsHidden()
             if let read {
-                if let note = note(read) { Text(note).font(.caption2).foregroundStyle(.secondary) }
+                if let note = note(read) { Text(note).font(.caption2).foregroundStyle(Ink.text3) }
             } else if !ingredient.name.trimmingCharacters(in: .whitespaces).isEmpty, ingredient.amount != nil {
-                Text("Not something Stadig Macro tracks, so it won't be kept").font(.caption2).foregroundStyle(.orange)
+                Text("Not something Stadig Macro tracks, so it won't be kept").font(.caption2).foregroundStyle(Ink.ok)
             }
         }
     }

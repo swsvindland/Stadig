@@ -25,6 +25,7 @@ struct FastSheet: View {
                     PastFastsSection()
                 }
                 .inkRows()
+                .actionRows()
                 if running != nil {
                     Section {
                         FormActionRow("End fast", destructive: true, identifier: "fast.end") { model.endFast() }

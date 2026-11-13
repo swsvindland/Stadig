@@ -55,7 +55,7 @@ struct SupplementsTab: View {
             if model.supplements.isEmpty {
                 Section {
                     Text("Nothing in your stack yet. Add one with + to tick it off on Today and count it toward your vitamins and minerals.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Ink.text2)
                         .inkRows()
                 }
             } else {
@@ -89,7 +89,7 @@ struct SupplementsTab: View {
 
     func row(_ supplement: Supplement) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: supplement.facts.form.symbol).foregroundStyle(Color.accentColor).frame(width: 24)
+            Image(systemName: supplement.facts.form.symbol).foregroundStyle(Ink.text2).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(supplement.name).foregroundStyle(Ink.text).lineLimit(1)
                 Text([supplement.facts.brand, supplement.scheduleLabel].compactMap { $0 }.joined(separator: " · "))
