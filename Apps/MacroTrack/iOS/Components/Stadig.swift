@@ -20,9 +20,17 @@ import AppKit
 
 enum Ink {
     static let ground = Color(light: 0xF4F2ED, dark: 0x0D0E10)
+    #if os(visionOS)
+    // On Vision Pro's glass the ink's dark fills are black slabs: there a card, a raised control
+    // and a ruler's track are white at strengths the glass shows through.
+    static let surface = Color.white.opacity(0.08)
+    static let raised = Color.white.opacity(0.14)
+    static let track = Color.white.opacity(0.16)
+    #else
     static let surface = Color(light: 0xFFFFFF, dark: 0x17191C)
     static let raised = Color(light: 0xEBE8E1, dark: 0x212429)
     static let track = Color(light: 0xE4E1DA, dark: 0x2A2D32)
+    #endif
     /// The ruler's tick marks, cut into the fill.
     static let tick = Color(light: 0xFFFFFF, dark: 0x0D0E10, lightAlpha: 0.7, darkAlpha: 0.55)
 
