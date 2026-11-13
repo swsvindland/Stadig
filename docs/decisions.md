@@ -2,6 +2,16 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **A miss well under the range steps back on coarse steps.** 2026-11-13, found on the seeded summary: a leg curl did 45 kg for 11, was pushed to 50 for 6 where 10 was the floor, and the next session asked 50 for 10. Now a miss more than a rep under the floor steps back a weight for the floor (45 for 10); a rep short still holds. Mine to check: "more than a rep" as the line, and stepping back rather than holding the weight for fewer reps.
+
+- **What a Stadig Lift session taught, on its summary.** 2026-11-13, from the board `LiftSummary`'s lessons. The calls, mine to check:
+  - **"Next time" is the program's next session with the lift**, on the training day it falls, in that week of the block, planned by the planner itself with the session saved (`NextTime`), so the summary can't promise a load the session won't ask. Crunch mode's refit for minutes isn't applied to the look-ahead; it doesn't move loads.
+  - **It's set against today's heaviest sets**, or against today's first when the weight climbed during the session ("Bench press starts 2.5 kg heavier next time / Up to 72.5 kg today").
+  - **A lift held gets a line only for a main lift, and only the first**; an accessory held without a miss says nothing. Bodyweight and timed work get no load line unless the planner adds load; nor does a lift whose next time is the deload or past the block's end, or anything after a deload session.
+  - **Rests:** short is 15 s or more under the plan, long 60 s or more over; "ran short and you were ready" needs two short rests with more of the sets after them on target than not, and counts "of N rests" where the board says sets. "Short rests cost reps" isn't on the board.
+  - **The order and the cap:** a main lift's miss, a main lift's load moving, a weight found, a main lift held, the rests, an accessory's miss, ratings that were off, an accessory's load moving, ratings right on; four at most.
+  - **`-sessionAt summary`'s lifter wears a Watch**: heart rate every 5 s ends the rests it guides once recovered.
+
 - **The Watch apps, widgets and StandBy against their boards.** 2026-11-13, from `DevWatchLift`, `DevWatchMacro` and `DevPhoneStandBy`. The calls, mine to check:
   - **The Lift Watch's summary leads with Strength and Your shape** the phone last sent in its context (`WatchScores`), not scores worked out on the Watch: a session just finished moves Strength once the phone has it and sends again. With no scores yet it keeps the old summary, work sets first.
   - **The phone's Lift widgets and Live Activity have no score**, since the board draws none there; the Watch's summary and Macro's Your Shape complication are where the boards put one.
