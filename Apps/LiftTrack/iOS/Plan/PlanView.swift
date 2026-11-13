@@ -448,6 +448,7 @@ struct WeekStrip: View {
 
 struct DayCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let day: PlannedDay
     let isNext: Bool
 
@@ -462,8 +463,9 @@ struct DayCard: View {
             }
             ForEach(day.strengthSlots) { slot in
                 let exercise = model.catalog.resolve(slot.exerciseID)
-                HStack {
-                    Text(exercise.name).font(.subheadline).foregroundStyle(Ink.text).lineLimit(1)
+                // Two lines in a wide window's grid of days, where the cards are narrower than a phone.
+                HStack(alignment: .firstTextBaseline) {
+                    Text(exercise.name).font(.subheadline).foregroundStyle(Ink.text).lineLimit(sizeClass.isWide ? 2 : 1)
                     Spacer()
                     Text("\(slot.sets(week: 0)) × \(slot.repRange.label)").font(.subheadline.monospacedDigit()).foregroundStyle(Ink.text2)
                 }

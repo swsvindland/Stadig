@@ -359,9 +359,18 @@ private struct DaySection<Menu: View>: View {
 
     private var heading: some View {
         HStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(day.name).font(.system(size: 15, weight: .bold)).tracking(-0.2).foregroundStyle(Ink.text).fixedSize()
-                Text(day.caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+            // "Upper A  6 lifts · 19 sets · ~57 min" on a line where the names column has room; in an
+            // iPad's narrower one, what's in it goes under the name rather than losing its end.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    dayName
+                    Text(day.caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    dayName
+                    Text(day.caption).font(.caption).foregroundStyle(Ink.text3).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .padding(.vertical, 4)
             }
             .padding(.horizontal, 10)
             .frame(width: layout.names, alignment: .leading)
@@ -388,8 +397,12 @@ private struct DaySection<Menu: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(height: 30)
+        .frame(minHeight: 30)
         .accessibilityElement(children: .combine)
+    }
+
+    private var dayName: some View {
+        Text(day.name).font(.system(size: 15, weight: .bold)).tracking(-0.2).foregroundStyle(Ink.text).fixedSize()
     }
 
     /// "Tonight · ~57 min", or "Next · ~57 min" when it isn't today's.
@@ -447,10 +460,12 @@ private struct LiftRow: View {
             VolumeBars(volume: lift.volume, nowIndex: content.nowIndex)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
+                    // Two lines in an iPad's narrower names column, rather than "Barbell Bench P…".
                     Text(lift.row.exercise)
                         .font(.system(size: selected ? 14.5 : 13, weight: selected ? .bold : .medium))
                         .foregroundStyle(lift.row.setAside ? Ink.text3 : Ink.text)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     if !lift.row.superset.isEmpty {
                         Text(lift.row.superset).font(.caption2.weight(.bold)).foregroundStyle(Color.accentColor)
                             .help("Done in turn with the other \(lift.row.superset) slot of the day")
@@ -641,12 +656,13 @@ private struct QuietRow: View {
         HStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: row.blockKind.symbol).font(.caption).foregroundStyle(Ink.text3).frame(width: 30)
-                Text(row.exercise).font(.system(size: 13, weight: selected ? .bold : .medium)).foregroundStyle(Ink.text).lineLimit(1)
+                Text(row.exercise).font(.system(size: 13, weight: selected ? .bold : .medium)).foregroundStyle(Ink.text).lineLimit(2)
             }
             .padding(.horizontal, 10)
             .frame(width: layout.names, alignment: .leading)
             ForEach(0..<cells, id: \.self) { _ in
-                Text(row.sets).font(.system(size: 12.5)).foregroundStyle(Ink.text2).lineLimit(1)
+                // "11 min · Zone 2", over two lines in a narrow week rather than cut short.
+                Text(row.sets).font(.system(size: 12.5)).foregroundStyle(Ink.text2).lineLimit(2)
                     .padding(.leading, 14)
                     .padding(.trailing, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)

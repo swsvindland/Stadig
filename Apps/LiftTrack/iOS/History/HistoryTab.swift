@@ -37,6 +37,9 @@ struct HistoryTable: View {
     @State private var confirming: [HistoryRow] = []
     /// The search field has the keyboard: ⌘F gives it it.
     @FocusState private var searching: Bool
+    /// The newest row is selected once on arrival, so the inspector opens on a session rather than
+    /// on nothing; after that the selection is the person's.
+    @State private var pickedFirst = false
 
     private struct Key: Equatable {
         var rows: [HistoryRow]
@@ -100,6 +103,10 @@ struct HistoryTable: View {
         }
         .task(id: Key(rows: model.historyRows, sortOrder: sortOrder, query: query)) {
             rows = model.historyRows.filter { query.isEmpty || $0.matches(query) }.sorted(using: sortOrder)
+            if !pickedFirst, selection.isEmpty, let first = rows.first {
+                selection = [first.id]
+                pickedFirst = true
+            }
         }
         .accessibilityIdentifier("history.table")
     }
@@ -107,7 +114,7 @@ struct HistoryTable: View {
     private var table: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Date", value: \.date) { row in
-                Text(row.date, format: .dateTime.day().month(.abbreviated).year().hour().minute())
+                Text(row.date, format: Self.dateStyle(row.date, today: model.today))
                     .monospacedDigit()
             }
             .width(min: width(150, 200), ideal: 190)
@@ -156,6 +163,12 @@ struct HistoryTable: View {
                     .font(.subheadline).foregroundStyle(Ink.text2).padding(24)
             }
         }
+    }
+
+    /// "Thu, Nov 12, 7:00 PM", with the year only for a year before this one.
+    static func dateStyle(_ date: Date, today: Day) -> Date.FormatStyle {
+        let style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()
+        return Day(date).components.year == today.components.year ? style : style.year()
     }
 
     /// A column's least width: the Mac's, for its 13-point table text, or iPad's and Vision Pro's,
@@ -212,12 +225,13 @@ private struct HistoryInspector: View {
                 ActivityDetail(log: activity)
             }
         } else {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(count > 1 ? "\(count) selected" : "Nothing selected").font(.headline).foregroundStyle(Ink.text)
-                if count <= 1 { Text("Select a session to see its sets.").font(.subheadline).foregroundStyle(Ink.text2) }
-            }
+            EmptyCard(
+                symbol: count > 1 ? "checklist" : "clock.arrow.circlepath",
+                title: count > 1 ? "\(count) selected" : "Nothing selected",
+                detail: count > 1 ? "Delete them together, or select one to see its sets." : "Select a session to see its sets."
+            )
             .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 }
@@ -242,8 +256,11 @@ struct ActivityDetail: View {
                 }
                 .padding(.horizontal, 4)
             }
+            // Clear of the corners an inset list rounds a section's first row to, which cut the
+            // eyebrow's first letter, as `DetailHeader` keeps.
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 8, trailing: 0))
             Section {
                 if let hr = log.averageHeartRate { ValueRow(title: "Average heart rate", value: "\(Int(hr)) bpm") }
                 if let distance = log.distanceMeters { ValueRow(title: "Distance", value: "\(Format.number(distance / 1000, digits: 2)) km") }
