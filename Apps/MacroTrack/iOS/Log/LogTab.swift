@@ -21,6 +21,9 @@ struct LogTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var textSize
+    /// A phone's composer at the foot of the tab (RootView's), read here, outside the wide page's
+    /// own: that one sits on the list itself, so its inset already reaches the rows.
+    @Environment(\.composerRoom) private var composerRoom
     @State private var editing: FoodEntry?
     @State private var choosingDay = false
     /// Whether the first layout has gone to the opening hour. Coming back from another tab leaves
@@ -116,6 +119,9 @@ struct LogTab: View {
         .insetGroupedList()
         .sectionSpacing(12)
         .contentMargins(.top, 4, for: .scrollContent)
+        // The composer's inset stops at the tab's navigation stack, as on Plan and Progress
+        // (`roomForComposer`): without it a day's end, its foot, stayed under the field.
+        .safeAreaPadding(.bottom, composerRoom)
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 PageHeader(eyebrow: eyebrow, title: "Log") {

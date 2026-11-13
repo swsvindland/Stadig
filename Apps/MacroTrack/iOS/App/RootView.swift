@@ -118,7 +118,9 @@ struct RootView: View {
         // -sidebar opens an iPad on its sidebar, where the screens have the least room.
         .defaultAdaptableTabBarPlacement(ProcessInfo.processInfo.arguments.contains("-sidebar") ? .sidebar : .automatic)
         #endif
-        .tabBarMinimizeBehavior(.onScrollDown)
+        // The tab bar stays whole: every phone tab has the composer standing on it, and the composer
+        // doesn't follow the bar down, so a bar shrunk to a button left an empty band under the field.
+        .tabBarMinimizeBehavior(.never)
         #endif
         // Clear of the selection bar where it's at the foot of the screen. The logger shows its own,
         // in with the meal: one behind it would be a second Undo nobody can reach. It takes over when
