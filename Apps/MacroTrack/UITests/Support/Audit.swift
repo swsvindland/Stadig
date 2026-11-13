@@ -36,9 +36,10 @@ extension XCUIApplication {
     private func isFalsePositive(_ issue: XCUIAccessibilityAuditIssue, page: Int) -> Bool {
         // The keyboard's suggestions are the system's, not the app's.
         if issue.detailedDescription.contains("TUIPrediction") { return true }
-        // A food's marker, an emoji in its square: decoration at the square's own size, hidden from
-        // VoiceOver (Stadig Macro's FoodTile), which the audit reads all the same.
-        if let label = issue.element?.label, !label.isEmpty, label.allSatisfy(\.isEmojiMarker) { return true }
+        // A food's marker, an emoji in its square, or the dot between two numbers: decoration hidden
+        // from VoiceOver (Stadig Macro's FoodTile, the Log tab's day line), which the audit reads all
+        // the same.
+        if let label = issue.element?.label, !label.isEmpty, label.allSatisfy({ $0.isEmojiMarker || $0 == "·" }) { return true }
         switch issue.auditType {
         case .elementDetection:
             // Text drawn without an element of its own, and nothing to point at: a chart's axis and the
