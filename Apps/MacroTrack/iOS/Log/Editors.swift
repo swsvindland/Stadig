@@ -130,27 +130,30 @@ struct WeighInSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                FormHeading(eyebrow: model.selectedDay == model.today ? "Today" : Format.day(model.selectedDay), title: "Weigh in")
                 Group { weighInSections }.inkRows()
             }
             .inkForm()
-            .navigationTitle("Weigh in")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("weighIn.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "weighIn.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         if let kg { model.weighIn(kg: kg, date: date) }
                         dismiss()
+                    } label: {
+                        Text("Save").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .disabled(kg == nil)
                     .accessibilityIdentifier("weighIn.save")
                 }
             }
             .onAppear(perform: prefill)
         }
-        .presentationDetents([.medium, .large])
+        // Tall enough for the weight, when and Save under the title; Recent is a drag up.
+        .presentationDetents([.height(540), .large])
     }
 
     /// One step lighter or heavier: 0.1 kg, or 0.2 lb.
@@ -168,31 +171,41 @@ struct WeighInSheet: View {
                     TextField("0.0", text: $value)
                         .fieldKeyboard(.decimal)
                         .multilineTextAlignment(.center)
-                        .font(.largeTitle.weight(.semibold).monospacedDigit())
+                        // The numeral's face (`.numeral(48, weight: .heavy)`) without its shrinking to
+                        // fit, which a field sized to the weight would take as room to shrink into.
+                        .font(.system(size: 48, weight: .heavy))
+                        .monospacedDigit()
+                        .tracking(-48 * 0.035)
+                        .foregroundStyle(Ink.text)
                         .focused($focused)
+                        // As wide as the weight, so the unit sits beside it.
+                        .fixedSize()
+                        .macLabelsHidden()
                         .accessibilityIdentifier("weighIn.value")
-                    Text(model.units.weight.symbol).font(.title3).foregroundStyle(.secondary)
+                    Text(model.units.weight.symbol).font(.title3.weight(.semibold)).foregroundStyle(Ink.text2)
                 }
                 .frame(maxWidth: .infinity)
                 nudge(1)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
+            // The line under it runs the card's width, not from the weight.
+            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             DatePicker("When", selection: $date, in: ...Date()).accessibilityIdentifier("weighIn.date")
         } footer: {
             Text("Daily, first thing, after the bathroom and before eating. Single readings are mostly water; the trend is what counts.")
         }
         let recent = model.weighIns.suffix(10).reversed()
         if !recent.isEmpty {
-            Section("Recent") {
+            Section {
                 ForEach(Array(recent)) { w in
                     HStack {
-                        Text(Format.day(w.day))
+                        Text(Format.day(w.day)).font(.subheadline).foregroundStyle(Ink.text2)
                         Spacer()
-                        Text(Format.weight(w.kg, unit: model.units.weight)).monospacedDigit()
+                        if case .health = w.source { Image(systemName: "heart.fill").font(.caption).foregroundStyle(Ink.protein) }
+                        Text(Format.weight(w.kg, unit: model.units.weight)).font(.subheadline.weight(.semibold).monospacedDigit())
                             .accessibilityIdentifier("weighIn.recent")
                             .strikethrough(w.excluded)
-                            .foregroundStyle(w.excluded ? .secondary : .primary)
-                        if case .health = w.source { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink) }
+                            .foregroundStyle(w.excluded ? Ink.text3 : Ink.text)
                     }
                     .swipeActions {
                         Button(w.excluded ? "Use" : "Ignore") { model.setExcluded(!w.excluded, weighIn: w) }.tint(.orange)
@@ -210,6 +223,9 @@ struct WeighInSheet: View {
                         }
                     }
                 }
+            } header: {
+                // A pointer has no swipe: on the Mac it's a right-click.
+                SectionEyebrow("Recent", detail: Platform.isMac ? "Right-click to ignore one" : "Swipe to ignore one")
             }
         }
     }
@@ -219,9 +235,11 @@ struct WeighInSheet: View {
             value = Self.nudged(value, by: direction, in: model.units.weight)
         } label: {
             Image(systemName: direction < 0 ? "minus" : "plus")
-                .font(.title2.weight(.semibold))
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Ink.text)
                 .frame(width: 52, height: 52)
-                .background(Color.accentColor.opacity(0.14), in: .circle)
+                .background(Ink.raised, in: .circle)
+                .contentShape(.circle)
         }
         .buttonStyle(.plain)
         .hoverHighlight()

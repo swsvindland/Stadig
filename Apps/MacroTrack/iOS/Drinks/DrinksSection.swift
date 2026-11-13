@@ -33,7 +33,8 @@ struct DrinksSection: View {
                     }
                     .accessibilityIdentifier("drinks.cutBack")
                 }
-                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet().macSheetSize(width: 460, height: 480) }
+                .sheet(isPresented: $cuttingBack) { CaffeineCutBackSheet().macSheetSize(width: 460, height: 600) }
+                .debugSheet("caffeine") { cuttingBack = true }
             }
         }
     }
@@ -168,64 +169,81 @@ struct CaffeineCutBackSheet: View {
     @State private var goal = 200.0
 
     var body: some View {
+        let running = model.settings.caffeineCutBack
         NavigationStack {
             Form {
-                if let cut = model.settings.caffeineCutBack {
+                FormHeading(
+                    eyebrow: "Today · drinks", title: running == nil ? "Cut back on caffeine" : "Cutting back",
+                    detail: running == nil
+                        ? "A fifth less each week (at least 25 mg) keeps withdrawal headaches and fog mild. A coffee is about 95 mg, an energy drink 150–300 mg."
+                        : "The goal stays as your daily limit once it's reached.")
+                Group {
+                    if let cut = running {
+                        Section {
+                            LabeledContent("Started", value: Format.day(cut.start))
+                            LabeledContent("This week", value: Format.mg(cut.limit(on: model.today)))
+                            LabeledContent("Goal", value: "\(Format.mg(cut.goal)) from \(Format.day(cut.reachesGoal))")
+                        }
+                    } else {
+                        Section {
+                            Stepper(value: $from, in: 50...1000, step: 10) {
+                                LabeledContent("Now", value: "\(Format.mg(from)) a day")
+                            }
+                            Stepper(value: $goal, in: 0...max(0, from - 25), step: 25) {
+                                LabeledContent("Goal", value: "\(Format.mg(goal)) a day")
+                            }
+                        } footer: {
+                            Text(
+                                average.map { "You've averaged \(Format.mg($0)) a day this past week." }
+                                    ?? "Log your coffee and energy drinks for a few days and this starts from your real average.")
+                        }
+                        Section {
+                            let plan = CaffeineCutBack(start: model.today, from: from, goal: goal)
+                            ForEach(0..<plan.weeks, id: \.self) { week in
+                                let day = model.today.adding(weeks: week)
+                                LabeledContent(week == 0 ? "This week" : "From \(Format.day(day))", value: "up to \(Format.mg(plan.limit(on: day)))")
+                            }
+                        } header: {
+                            Text("The plan").eyebrow()
+                        }
+                    }
                     Section {
-                        LabeledContent("Started", value: Format.day(cut.start))
-                        LabeledContent("This week", value: Format.mg(cut.limit(on: model.today)))
-                        LabeledContent("Goal", value: "\(Format.mg(cut.goal)) from \(Format.day(cut.reachesGoal))")
-                        Button("Stop cutting back", role: .destructive) {
+                        DatePicker("Bedtime", selection: Binding(get: { bedtimeDate }, set: setBedtime), displayedComponents: .hourAndMinute)
+                    } header: {
+                        Text("Bedtime").eyebrow()
+                    } footer: {
+                        Text("Caffeine left at bedtime is worked out at an average five-hour half-life.")
+                    }
+                }
+                .inkRows()
+                if running != nil {
+                    Section {
+                        FormActionRow("Stop cutting back", destructive: true, identifier: "caffeine.stop") {
                             model.endCutBack()
                             dismiss()
                         }
-                    } footer: {
-                        Text("The goal stays as your daily limit once it's reached.")
                     }
-                } else {
-                    Section {
-                        Stepper(value: $from, in: 50...1000, step: 10) {
-                            LabeledContent("Now", value: "\(Format.mg(from)) a day")
-                        }
-                        Stepper(value: $goal, in: 0...max(0, from - 25), step: 25) {
-                            LabeledContent("Goal", value: "\(Format.mg(goal)) a day")
-                        }
-                    } footer: {
-                        Text(
-                            average.map { "You've averaged \(Format.mg($0)) a day this past week." }
-                                ?? "Log your coffee and energy drinks for a few days and this starts from your real average.")
-                    }
-                    Section {
-                        let plan = CaffeineCutBack(start: model.today, from: from, goal: goal)
-                        ForEach(0..<plan.weeks, id: \.self) { week in
-                            let day = model.today.adding(weeks: week)
-                            LabeledContent(week == 0 ? "This week" : "From \(Format.day(day))", value: "up to \(Format.mg(plan.limit(on: day)))")
-                        }
-                        Text(
-                            "A fifth less each week (at least 25 mg) keeps withdrawal headaches and fog mild. A coffee is about 95 mg, an energy drink 150–300 mg."
-                        )
-                        .font(.caption).foregroundStyle(.secondary)
-                    } header: {
-                        Text("The plan").eyebrow()
-                    }
-                    Section {
-                        Button("Start cutting back") {
-                            model.startCutBack(from: from, goal: goal)
-                            dismiss()
-                        }
-                        .disabled(goal >= from)
-                    }
-                }
-                Section {
-                    DatePicker("Bedtime", selection: Binding(get: { bedtimeDate }, set: setBedtime), displayedComponents: .hourAndMinute)
-                    Text("Caffeine left at bedtime is worked out at an average five-hour half-life.").font(.caption).foregroundStyle(.secondary)
-                } header: {
-                    Text("Bedtime").eyebrow()
                 }
             }
-            .navigationTitle("Caffeine")
-            .inlineTitle()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .inkForm()
+            .inkSheet {
+                SheetBar(label: "Done", identifier: "caffeine.done") { dismiss() }
+            } foot: {
+                if running == nil {
+                    SheetFoot {
+                        Button {
+                            model.startCutBack(from: from, goal: goal)
+                            dismiss()
+                        } label: {
+                            Text("Start cutting back").frame(maxWidth: .infinity)
+                        }
+                        .primaryAction()
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(goal >= from)
+                        .accessibilityIdentifier("caffeine.start")
+                    }
+                }
+            }
             .onAppear {
                 if let average {
                     from = max(50, (average / 10).rounded() * 10)

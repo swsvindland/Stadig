@@ -21,31 +21,58 @@ struct SupplementsList: View {
     @State private var adding: AddSupplementView.Mode?
 
     var body: some View {
-        List {
-            Group { content }.inkRows()
-        }
-        .inkForm()
-        .navigationTitle("Supplements")
-        .inlineTitle()
-        .toolbar {
-            if inSheet { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("supplements.done") } }
-            if !model.supplements.isEmpty {
-                ToolbarItem(placement: inSheet ? .barLeading : .barTrailing) {
-                    Menu {
-                        menuItems
-                    } label: {
-                        Image(systemName: "plus")
+        Group {
+            if inSheet {
+                list.inkSheet {
+                    SheetBar(label: "Done", identifier: "supplements.done") {
+                        dismiss()
+                    } trailing: {
+                        addMenu
                     }
-                    .accessibilityLabel("Add a supplement")
-                    .accessibilityIdentifier("supplements.add")
                 }
+            } else {
+                // Pushed in Settings: the bar's back button, and the title on the page.
+                list.formPage("Supplements")
+                    .toolbar { ToolbarItem(placement: .barTrailing) { addMenu } }
             }
         }
+        .navigationTitle("Supplements")
         .navigationDestination(item: $adding) { mode in
-            AddSupplementView(mode: mode)
+            AddSupplementView(mode: mode, place: .pushed)
         }
         // A supplement added: back to the list, where it now is.
         .onChange(of: model.supplements.count) { adding = nil }
+    }
+
+    private var list: some View {
+        List {
+            FormHeading(eyebrow: inSheet ? "Today" : "Settings", title: "Supplements")
+            Group { content }.inkRows()
+        }
+        .inkForm()
+    }
+
+    /// Adding one, once there's a stack: with none, the ways to add are the page.
+    @ViewBuilder
+    private var addMenu: some View {
+        if !model.supplements.isEmpty {
+            if inSheet {
+                // In the sheet's own bar, a round button as the close beside it is.
+                addButton { CircleIcon(symbol: "plus") }.buttonStyle(.plain)
+            } else {
+                addButton { Image(systemName: "plus") }
+            }
+        }
+    }
+
+    private func addButton(@ViewBuilder label: () -> some View) -> some View {
+        Menu {
+            menuItems
+        } label: {
+            label()
+        }
+        .accessibilityLabel("Add a supplement")
+        .accessibilityIdentifier("supplements.add")
     }
 
     @ViewBuilder
@@ -124,7 +151,7 @@ struct SupplementsList: View {
 
     func row(_ supplement: Supplement) -> some View {
         NavigationLink {
-            SupplementEditor(supplement: supplement, isNew: false)
+            SupplementEditor(supplement: supplement, isNew: false, place: .pushed)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: supplement.facts.form.symbol).foregroundStyle(Color.accentColor).frame(width: 24)
@@ -203,6 +230,8 @@ struct AddSupplementView: View {
 
     @Environment(AppModel.self) private var model
     @State var mode: Mode
+    /// Where the editor it ends in is shown.
+    var place: SupplementEditor.Place = .pane
     @State private var found: Supplement?
     @State private var scanning = true
     @State private var manual = ""
@@ -221,11 +250,11 @@ struct AddSupplementView: View {
             case .scan: scan
             case .search: search
             case .label: label
-            case .manual: SupplementEditor(supplement: Supplement(facts: blank()), isNew: true)
+            case .manual: SupplementEditor(supplement: Supplement(facts: blank()), isNew: true, place: place)
             }
         }
         .navigationDestination(item: $found) { supplement in
-            SupplementEditor(supplement: supplement, isNew: !model.supplements.contains { $0.id == supplement.id })
+            SupplementEditor(supplement: supplement, isNew: !model.supplements.contains { $0.id == supplement.id }, place: place)
         }
         // Back from the editor without adding: scan again.
         .onChange(of: found) { _, now in if now == nil { scanID = UUID() } }

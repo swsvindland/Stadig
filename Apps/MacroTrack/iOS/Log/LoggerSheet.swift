@@ -449,7 +449,8 @@ struct LogTimeBar: View {
                 }
             }
         }
-        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 360) }
+        .sheet(isPresented: $picking) { TimePickerSheet().macSheetSize(width: 340, height: 460) }
+        .debugSheet("time") { picking = true }
     }
 
     /// Today: now, and a little while ago.
@@ -531,7 +532,9 @@ struct TimePickerSheet: View {
     var body: some View {
         let usual = model.usualLogTimes()
         NavigationStack {
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
+                SheetHeading(eyebrow: "Logging", title: model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
+                    .padding(.horizontal, 16)
                 // The times this person usually eats (today's up to now), a tap each: lunch at 12:30
                 // without winding the wheel back from 9 PM.
                 if !usual.isEmpty {
@@ -557,24 +560,28 @@ struct TimePickerSheet: View {
                     .timeOfDayPickerStyle()
                     .labelsHidden()
                     .frame(maxWidth: .infinity)
+                    .card(padding: 8)
+                    .padding(.horizontal, 16)
+                Spacer(minLength: 0)
             }
-            .navigationTitle(model.selectedDay == model.today ? "Eaten at" : "Eaten \(Format.day(model.selectedDay)) at")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("timePicker.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "timePicker.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         let picked = model.onSelectedDay(time)
                         model.loggerTime = model.selectedDay == model.today ? LogTime.nearest(picked) : picked
                         dismiss()
+                    } label: {
+                        Text("Done").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("timePicker.done")
                 }
             }
         }
-        .presentationDetents([.height(usual.isEmpty ? 300 : 352)])
+        .presentationDetents([.height(usual.isEmpty ? 470 : 520)])
         .onAppear { time = model.logDate() }
     }
 }

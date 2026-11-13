@@ -89,8 +89,9 @@ struct SupplementsSection: View {
                     .accessibilityIdentifier("supplements.edit")
                 }
                 .sheet(item: $editing) { supplement in
-                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false) }.macSheetSize(width: 520, height: 640)
+                    NavigationStack { SupplementEditor(supplement: supplement, isNew: false, place: .sheet) }.macSheetSize(width: 520, height: 640)
                 }
+                .debugSheet("supplement") { editing = model.activeSupplements.first }
             }
         }
     }

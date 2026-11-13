@@ -77,7 +77,7 @@ struct SelectionBar: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("selection.bar")
-        .sheet(isPresented: $choosingDates) { ToDatesSheet().macSheetSize(width: 380, height: 460) }
+        .sheet(isPresented: $choosingDates) { ToDatesSheet().macSheetSize(width: 380, height: 560) }
         .notesWork(choosingDates)
     }
 
@@ -109,48 +109,55 @@ struct ToDatesSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 14) {
-                HStack {
-                    Button("Previous Month", systemImage: "chevron.left") { month = Self.previous(before: month) }
-                        .labelStyle(.iconOnly)
-                        .accessibilityIdentifier("toDates.previousMonth")
-                    Spacer()
-                    Text(month.date().formatted(.dateTime.month(.wide).year())).font(.headline)
-                    Spacer()
-                    Button("Next Month", systemImage: "chevron.right") { month = Self.next(after: month) }
-                        .labelStyle(.iconOnly)
-                        .accessibilityIdentifier("toDates.nextMonth")
-                }
-                .buttonStyle(.borderless)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 4) {
-                    ForEach(Array(Self.weekdayNames.enumerated()), id: \.offset) { _, name in
-                        Text(name).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    }
-                    ForEach(0..<Self.leadingBlanks(month), id: \.self) { _ in Color.clear.frame(height: 1) }
-                    ForEach(Self.days(in: month), id: \.self) { day in
-                        dayButton(day)
-                    }
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                SheetHeading(eyebrow: "Log · \(model.selection.ids.count) picked", title: model.selection.intent == .move ? "Move to" : "Copy to")
+                VStack(spacing: 14) { calendar }.card()
                 Spacer(minLength: 0)
             }
-            .padding()
-            .navigationTitle(model.selection.intent == .move ? "Move to" : "Copy to")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("toDates.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(days.count > 1 ? "\(days.count) Days" : "Done") {
+            .padding(.horizontal, 16)
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "toDates.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         model.placeSelection(on: Array(days))
                         dismiss()
+                    } label: {
+                        Text(days.count > 1 ? "\(days.count) days" : "Done").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .disabled(days.isEmpty)
                     .accessibilityIdentifier("toDates.done")
                 }
             }
         }
-        .presentationDetents([.height(480)])
+        .presentationDetents([.height(640), .large])
+    }
+
+    @ViewBuilder
+    private var calendar: some View {
+        HStack {
+            Button("Previous Month", systemImage: "chevron.left") { month = Self.previous(before: month) }
+                .labelStyle(.iconOnly)
+                .accessibilityIdentifier("toDates.previousMonth")
+            Spacer()
+            Text(month.date().formatted(.dateTime.month(.wide).year())).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+            Spacer()
+            Button("Next Month", systemImage: "chevron.right") { month = Self.next(after: month) }
+                .labelStyle(.iconOnly)
+                .accessibilityIdentifier("toDates.nextMonth")
+        }
+        .buttonStyle(.borderless)
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 4) {
+            ForEach(Array(Self.weekdayNames.enumerated()), id: \.offset) { _, name in
+                ScaleLabel(name)
+            }
+            ForEach(0..<Self.leadingBlanks(month), id: \.self) { _ in Color.clear.frame(height: 1) }
+            ForEach(Self.days(in: month), id: \.self) { day in
+                dayButton(day)
+            }
+        }
     }
 
     func dayButton(_ day: Day) -> some View {

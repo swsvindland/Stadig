@@ -346,7 +346,14 @@ struct DetailHeader<Trailing: View>: View {
     }
 
     var body: some View {
-        PageHeading(eyebrow: eyebrow, title: title, trailing: trailing).padding(.top, 2)
+        PageHeading(eyebrow: eyebrow, title: title, trailing: trailing)
+            .padding(.top, 2)
+            // As a list's row, on the ground and clear of the corners: an inset grouped list rounds
+            // each section's first and last rows, clear background or not, and the round cut the
+            // eyebrow's first letter and the foot of the title's. Outside a list these do nothing.
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 12, trailing: 0))
     }
 }
 
@@ -392,7 +399,13 @@ struct CircleIcon: View {
             .font(.system(size: 17, weight: .medium))
             .foregroundStyle(Ink.text)
             .frame(width: 44, height: 44)
-            .background(Ink.surface, in: .circle)
+            // The card colour is a black disc on Vision Pro's glass: there, the system's material, as
+            // a card has.
+            #if os(visionOS)
+        .background(.regularMaterial, in: .circle)
+            #else
+        .background(Ink.surface, in: .circle)
+            #endif
             .contentShape(.circle)
     }
 }
@@ -530,7 +543,7 @@ struct InkSegmented<Value: Hashable>: View {
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .background {
                             if on {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Ink.surface)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(ControlFill.chosen)
                                     .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
                             }
                         }
@@ -541,8 +554,29 @@ struct InkSegmented<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(Ink.raised, in: .rect(cornerRadius: 13, style: .continuous))
+        .background(ControlFill.track, in: .rect(cornerRadius: 13, style: .continuous))
         .animation(.snappy(duration: 0.2), value: selection)
+    }
+}
+
+/// What a segmented control and a chip are drawn on: the raised grey, the chosen one lifted onto the
+/// card colour. On Vision Pro's glass those greys are black slabs, so there they're the system's
+/// material and a brighter wash of white, as a round button's there.
+enum ControlFill {
+    static var track: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(.regularMaterial)
+        #else
+        AnyShapeStyle(Ink.raised)
+        #endif
+    }
+
+    static var chosen: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(Color.white.opacity(0.3))
+        #else
+        AnyShapeStyle(Ink.surface)
+        #endif
     }
 }
 
@@ -730,6 +764,249 @@ struct BulletLabelStyle: LabelStyle {
             }
             configuration.title
         }
+    }
+}
+
+// MARK: - Sheets
+
+// Sheets on the boards' terms rather than the system's: no bar of glass capsules over a small
+// title, but the page's own furniture. A round close at the top left (as a page's header has its
+// round buttons), the title set large in the content under an eyebrow saying where the sheet came
+// from (`FormHeading`, `SheetHeading`), rows on cards under eyebrows, and the one action full width
+// at the foot (as onboarding's Continue); Delete and the like are ghost buttons under the cards
+// (`FormActionRow`). A sheet still swipes down to close. On the Mac, which has no swipe, the close
+// is a button at the top right that says what it does (`Platform.closesSheetsInWords`).
+
+/// A sheet's top: the close and, beside it, a round button or a small action. What scrolls passes
+/// under it, except on the Mac, where it sits above.
+struct SheetBar<Trailing: View>: View {
+    let symbol: String
+    let label: String
+    let identifier: String
+    let close: () -> Void
+    let trailing: Trailing
+
+    init(
+        symbol: String = "xmark", label: String = "Close", identifier: String, close: @escaping () -> Void,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() }
+    ) {
+        self.symbol = symbol
+        self.label = label
+        self.identifier = identifier
+        self.close = close
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if Platform.closesSheetsInWords {
+                Spacer(minLength: 8)
+                trailing
+                Button(label, action: close)
+                    .buttonStyle(.ghost)
+                    .controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier(identifier)
+            } else {
+                CircleIconButton(symbol: symbol, label: label, identifier: identifier, action: close)
+                    .keyboardShortcut(.cancelAction)
+                Spacer(minLength: 8)
+                trailing
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 6)
+        .background(Color.pageBackground)
+    }
+}
+
+/// A sheet's one action (and a quiet one beside it, if any), full width at the foot on the ground,
+/// what scrolls fading under it.
+struct SheetFoot<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 10) { content }
+            .controlSize(.large)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 12)
+            .readableWidth(620)
+            .background(alignment: .bottom) {
+                LinearGradient(
+                    colors: [Color.pageBackground.opacity(0), Color.pageBackground], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3)
+                )
+                .padding(.top, -20)
+                .ignoresSafeArea(edges: .bottom)
+            }
+    }
+}
+
+extension View {
+    /// A sheet that draws its own bar (`SheetBar`) and foot (`SheetFoot`) in place of the system's
+    /// navigation bar, on the ink ground.
+    func inkSheet<Bar: View, Foot: View>(@ViewBuilder bar: () -> Bar, @ViewBuilder foot: () -> Foot) -> some View {
+        // Grouped on the Mac too, where a sheet's form would otherwise set its rows in columns.
+        formStyle(.grouped)
+            .sheetChrome(bar: bar(), foot: foot())
+            .background(.pageBackground)
+    }
+
+    /// A sheet with its own bar and nothing at the foot: one that closes, or acts from its rows.
+    func inkSheet<Bar: View>(@ViewBuilder bar: () -> Bar) -> some View {
+        // No foot at all: an empty one there leaves the content nothing to show in.
+        formStyle(.grouped)
+            .sheetChrome(bar: bar(), foot: Never?.none)
+            .background(.pageBackground)
+    }
+
+    /// A row of a form that sits on the ground rather than on a card: its buttons.
+    func groundRow() -> some View {
+        listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+    }
+
+    /// A page pushed inside a sheet or Settings that sets its own title large (`FormHeading`): the
+    /// bar keeps only its round back button. The Mac's panes keep their window title, and no heading.
+    func formPage(_ title: String) -> some View {
+        detailPage(title: title, wide: false)
+    }
+}
+
+/// A form's title, set large at its top as a pushed page's is: `DetailHeader` (where it was opened
+/// from, and the title) and what it's for, on the ground as the form's first section's header,
+/// where the words of a list go (`DetailHeader` keeps clear of a row's corners too, but a header
+/// needs no room left for them).
+struct FormHeading: View {
+    var eyebrow: String?
+    let title: String
+    var detail: String?
+
+    var body: some View {
+        Section {
+        } header: {
+            SheetHeading(eyebrow: eyebrow, title: title, detail: detail)
+                .textCase(nil)
+                .padding(.bottom, 4)
+                .listRowInsets(EdgeInsets())
+        }
+    }
+}
+
+/// A sheet's title in a scrolling page: `DetailHeader`, and what it's for under it.
+struct SheetHeading: View {
+    var eyebrow: String?
+    let title: String
+    var detail: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            DetailHeader(eyebrow: eyebrow, title: title)
+            if let detail {
+                Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Search in a sheet's content, on the raised grey, rather than the system's field in its bar.
+struct InkSearchField: View {
+    @Binding var text: String
+    let prompt: String
+    let identifier: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Ink.text3).accessibilityHidden(true)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .accessibilityIdentifier(identifier)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Ink.text3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear")
+            }
+        }
+        .font(.callout)
+        .foregroundStyle(Ink.text)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(Ink.raised, in: .rect(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// One of several things that can each be on (the joints that hurt, a supplement's days), as the
+/// weekday chips are: the accent when on, the raised grey when off.
+struct ChoiceChip: View {
+    let title: String
+    let isOn: Bool
+    let identifier: String
+    let toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(isOn ? AnyShapeStyle(Color.accentColor) : ControlFill.track, in: .rect(cornerRadius: 12, style: .continuous))
+                .foregroundStyle(isOn ? Ink.onAccent : Ink.text)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight()
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+/// A label over a value in a card's row: "From", "Nov 20".
+struct ValueRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.subheadline).foregroundStyle(Ink.text2)
+            Spacer(minLength: 8)
+            Text(value).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text).multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A form's quiet action on the ground under its cards: Delete, Remove, End it now. Destructive ones
+/// say so in red.
+struct FormActionRow: View {
+    let title: String
+    var destructive = false
+    let identifier: String?
+    let action: () -> Void
+
+    init(_ title: String, destructive: Bool = false, identifier: String? = nil, action: @escaping () -> Void) {
+        self.title = title
+        self.destructive = destructive
+        self.identifier = identifier
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(title).foregroundStyle(destructive ? Ink.bad : Ink.text).frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.ghost)
+        .controlSize(.large)
+        .accessibilityIdentifier(identifier ?? "")
+        .groundRow()
     }
 }
 
