@@ -87,26 +87,47 @@ struct FinishView: View {
 }
 
 /// What the session came to, once it's saved and on its way to the phone, as the design's last face:
-/// its name and minutes, the work sets big against the plan's on a ruler with how they were rated,
-/// and what moved (each lift whose estimated one-rep max it raised, before and after). Scrolled on:
-/// conditioning, heart rate, where it went, and Done. (The phone's summary leads with Strength, which
-/// the Watch can't score: it hasn't the whole history.)
+/// its name and minutes, Strength as the phone last published it (the score big, how far it moved
+/// this month, Your shape beside it, a ruler and the points to the next level), and at the foot what
+/// moved (each lift whose estimated one-rep max it raised, before and after). Scrolled on: the other
+/// lifts that moved, the work sets against the plan's with how they were rated, conditioning, heart
+/// rate, where it went, and Done. Before the phone has sent scores (someone new, or an older phone)
+/// the work sets lead instead. The Watch can't score the session itself (it hasn't the whole
+/// history), so the score is the phone's, and moves once the phone has the session and sends it again.
 struct SummaryView: View {
     @Environment(WatchModel.self) private var model
     let summary: SessionSummary
 
     var body: some View {
+        let scores = model.context?.scores
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(summary.title) · \(summary.minutes) min")
-                    .faceEyebrow(WatchInk.text3)
-                    .faceTopLine()
-                    .accessibilityAddTraits(.isHeader)
-                sets
-                    .padding(.top, 9)
-                ForEach(summary.moved, id: \.exerciseID) { move in
-                    Rectangle().fill(WatchInk.hairline).frame(height: 1).padding(.top, 12)
-                    moved(move).padding(.top, 9)
+                if let scores, let strength = scores.strength {
+                    // The first screen is the design's face: the top line, Strength, and what moved at its foot.
+                    VStack(alignment: .leading, spacing: 0) {
+                        title
+                        strengthBlock(strength, scores: scores)
+                            .padding(.top, 9)
+                        Spacer(minLength: 0)
+                        if let first = summary.moved.first {
+                            hairline.padding(.top, 12)
+                            moved(first).padding(.top, 9)
+                        }
+                    }
+                    .frame(minHeight: WatchFace.height - 16, alignment: .top)
+                    ForEach(summary.moved.dropFirst(), id: \.exerciseID) { move in
+                        hairline.padding(.top, 12)
+                        moved(move).padding(.top, 9)
+                    }
+                    hairline.padding(.top, 12)
+                    sets.padding(.top, 9)
+                } else {
+                    title
+                    sets.padding(.top, 9)
+                    ForEach(summary.moved, id: \.exerciseID) { move in
+                        hairline.padding(.top, 12)
+                        moved(move).padding(.top, 9)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     if summary.conditioningMinutes > 0 {
@@ -134,6 +155,67 @@ struct SummaryView: View {
         }
         .ignoresSafeArea(edges: [.top, .horizontal])
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var title: some View {
+        Text("\(summary.title) · \(summary.minutes) min")
+            .faceEyebrow(WatchInk.text3)
+            .faceTopLine()
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var hairline: some View {
+        Rectangle().fill(WatchInk.hairline).frame(height: 1)
+    }
+
+    /// "Strength" over "58" big with "+1" beside it, Your shape at the right, then Strength on a
+    /// ruler and "2 to Intermediate".
+    private func strengthBlock(_ strength: Int, scores: WatchScores) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom, spacing: 4) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Strength").faceFont(13, weight: .semibold).foregroundStyle(Color.accentColor)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        BigNumber(value: "\(strength)", points: 66 * WatchFace.scale)
+                        if let change = scores.strengthChange {
+                            Text(change.short)
+                                .faceFont(15, weight: .bold)
+                                .monospacedDigit()
+                                .foregroundStyle(Self.color(change))
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                ShapeGlyph(scores: scores.scores, size: 62 * WatchFace.scale)
+                    .padding(.trailing, -4)
+                    .padding(.bottom, 2)
+            }
+            WatchRuler(fraction: Double(strength) / 100)
+                .padding(.top, 10)
+            if let next = scores.strengthNext {
+                Text(next)
+                    .faceFont(13)
+                    .foregroundStyle(WatchInk.text2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 5)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Strength \(strength)\(scores.strengthChange.map { ", \($0.spoken(calendar: .current))" } ?? "")\(scores.strengthNext.map { ". \($0)" } ?? "")"
+        )
+    }
+
+    /// Up in good, down in ok (worth a look, not an alarm), steady in the second grey, as on the phone.
+    private static func color(_ change: ScoreChange) -> Color {
+        switch change.direction {
+        case .up: WatchInk.good
+        case .down: WatchInk.ok
+        case .steady: WatchInk.text2
+        }
     }
 
     /// "Work sets", "19" big with "of 19", the ruler, and "14 just right · 3 easy · 2 missed".

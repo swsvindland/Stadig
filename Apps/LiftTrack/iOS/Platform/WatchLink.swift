@@ -61,6 +61,9 @@ final class WatchLink: NSObject {
                 next.nextDay.map { "\(next.day.name) on \(Format.day($0, style: .dateTime.weekday(.wide)))" } ?? next.day.name
         }
         context.following = following
+        // The summary face's Strength and Your shape, as Progress shows them.
+        let strength = model.stats.first { $0.stat == .strength }?.score
+        context.scores = WatchScores(model.stats, strengthNext: strength.flatMap { LevelRuler.next(Double($0)) })
         context.sentAt = .distantPast
         return context
     }

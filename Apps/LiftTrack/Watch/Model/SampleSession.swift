@@ -125,10 +125,16 @@ enum SampleContext {
         let bench = (0..<3).map { _ in
             LoggedSet(exerciseID: "barbell-bench-press", date: lastWeek, kind: .working, loadKg: 77.5, reps: 8, targetReps: 8, rating: .orange)
         }
-        return PhoneContext(
+        var context = PhoneContext(
             plan: plan, upNext: nil, gym: gym, trust: TrustState(prior: 0.6), phase: NutritionPhase.assumedMaintenance.effects,
             bodyweightKg: 80, history: ["barbell-bench-press": bench], enduranceScore: 55, heartRateGuidedRest: true,
             zones: .estimated(age: 35, resting: 58), units: UnitPreference(weight: .kg, length: .cm))
+        // The design's summary: Strength 58, up 1 this month, and Your shape.
+        let month = Day.today.adding(days: -Calendar.current.component(.day, from: Date()) + 1)
+        context.scores = WatchScores(
+            scores: [.strength: 58, .endurance: 48, .agility: 61, .vitality: 72, .discipline: 86, .physique: 64],
+            strengthChange: ScoreChange(points: 1.2, then: 56.8, from: month, period: .thisMonth), strengthNext: "2 to Intermediate")
+        return context
     }
 }
 #endif

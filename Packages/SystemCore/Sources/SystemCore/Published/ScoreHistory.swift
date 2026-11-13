@@ -157,12 +157,13 @@ public enum ScoreWindow: Hashable, Sendable {
 }
 
 /// How far a score has moved over a window: the score now against the score as it stood before the
-/// window began. Under a point either way is steady.
-public struct ScoreChange: Hashable, Sendable {
+/// window began. Under a point either way is steady. Codable, so Stadig Lift's iPhone can send it to
+/// its Watch.
+public struct ScoreChange: Hashable, Codable, Sendable {
     public enum Direction: Sendable { case up, steady, down }
 
     /// What the change is over, as it's said.
-    public enum Period: Hashable, Sendable {
+    public enum Period: Hashable, Codable, Sendable {
         /// "this month"
         case thisMonth
         /// "this year"

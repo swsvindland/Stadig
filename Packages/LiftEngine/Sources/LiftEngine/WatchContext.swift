@@ -26,6 +26,9 @@ public struct PhoneContext: Codable, Hashable, Sendable {
     /// Injuries in force and exercises set aside, so a swap on the Watch offers what the phone's would.
     public var injuries: [Injury]?
     public var avoid: Set<String>?
+    /// The scores as the phone shows them, for the Watch's summary. Nil from a phone that doesn't
+    /// send them.
+    public var scores: WatchScores?
     public var sentAt: Date
 
     public init(
@@ -61,6 +64,34 @@ public struct PhoneContext: Codable, Hashable, Sendable {
         Substitutions.candidates(
             for: exercise, in: catalog.all, availability: gym.availability, injuries: injuries ?? [], avoid: avoid ?? [], limit: limit)
     }
+}
+
+/// What the Watch's summary shows of the stats both apps publish (`StatsBoard`): Strength, how far it
+/// has moved this month and what it's short of the next level, and every score for Your shape. The
+/// phone sends the board as it stands, so a session just finished shows in it once the phone has it.
+public struct WatchScores: Codable, Hashable, Sendable {
+    /// Each stat that has a score.
+    public var scores: [StatKind: Int]
+    /// How far Strength has moved this month; nil with nothing recorded to measure from.
+    public var strengthChange: ScoreChange?
+    /// "2 to Intermediate": the points to Strength's next level, as the phone's Progress words it.
+    public var strengthNext: String?
+
+    public init(scores: [StatKind: Int], strengthChange: ScoreChange? = nil, strengthNext: String? = nil) {
+        self.scores = scores
+        self.strengthChange = strengthChange
+        self.strengthNext = strengthNext
+    }
+
+    /// From the stats board's lines; nil while none has a score (someone new).
+    public init?(_ lines: [StatLine], strengthNext: String? = nil) {
+        var scores: [StatKind: Int] = [:]
+        for line in lines { if let score = line.score { scores[line.stat] = score } }
+        guard !scores.isEmpty else { return nil }
+        self.init(scores: scores, strengthChange: lines.first { $0.stat == .strength }?.change, strengthNext: strengthNext)
+    }
+
+    public var strength: Int? { scores[.strength] }
 }
 
 /// What the Watch and the iPhone say while the phone runs the session: the Watch measures heart rate

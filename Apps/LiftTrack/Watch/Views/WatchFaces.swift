@@ -28,6 +28,7 @@ enum WatchInk {
 /// screen from there, so a 40 mm Watch sets them smaller and a 46 mm one a touch larger.
 enum WatchFace {
     static let width = WKInterfaceDevice.current().screenBounds.width
+    static let height = WKInterfaceDevice.current().screenBounds.height
     static let scale = min(1.05, width / 198)
     /// The 40 and 41 mm Watches.
     static let small = width < 180
@@ -306,5 +307,53 @@ struct WatchRuler: View {
         }
         .frame(height: height)
         .accessibilityHidden(true)
+    }
+}
+
+/// Your shape at a glance, as the design's summary sets it beside Strength: the six scores as one
+/// figure in the accent over the hexagon and its spokes, clockwise from Strength at the top, as the
+/// phone draws it. A score not measured yet leaves its corner out.
+struct ShapeGlyph: View {
+    let scores: [StatKind: Int]
+    var size: CGFloat = 62
+
+    /// The phone's order (`ScoreShape.order` in the app's Stadig.swift).
+    static let order: [StatKind] = [.strength, .endurance, .agility, .vitality, .discipline, .physique]
+
+    var body: some View {
+        Canvas { context, canvas in
+            // The design's figure: a radius of 80 in a 172-point box, strokes to scale.
+            let scale = canvas.width / 172
+            let radius = 80 * scale
+            let center = CGPoint(x: canvas.width / 2, y: canvas.height / 2)
+            let point = { (index: Int, fraction: Double) -> CGPoint in
+                let angle = (-90 + 60 * Double(index)) * .pi / 180
+                return CGPoint(x: center.x + radius * fraction * cos(angle), y: center.y + radius * fraction * sin(angle))
+            }
+            var hexagon = Path()
+            hexagon.addLines((0..<6).map { point($0, 1) })
+            hexagon.closeSubpath()
+            context.stroke(hexagon, with: .color(WatchInk.track), style: StrokeStyle(lineWidth: 3.5 * scale, lineJoin: .round))
+            var spokes = Path()
+            for index in 0..<6 {
+                spokes.move(to: center)
+                spokes.addLine(to: point(index, 1))
+            }
+            context.stroke(spokes, with: .color(WatchInk.track), lineWidth: 2.5 * scale)
+            let corners = Self.order.enumerated().compactMap { index, stat in
+                scores[stat].map { point(index, min(100, max(0, Double($0))) / 100) }
+            }
+            guard corners.count > 2 else { return }
+            var figure = Path()
+            figure.addLines(corners)
+            figure.closeSubpath()
+            context.fill(figure, with: .color(Color.accentColor.opacity(0.16)))
+            context.stroke(figure, with: .color(.accentColor), style: StrokeStyle(lineWidth: 7 * scale, lineJoin: .round))
+        }
+        .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Your shape")
+        .accessibilityValue(
+            Self.order.map { "\($0.label) \(scores[$0].map(String.init) ?? "not measured yet")" }.joined(separator: ", "))
     }
 }
