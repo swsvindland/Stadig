@@ -165,9 +165,12 @@ struct FoodsView: View {
         let meals = meals
         return List(selection: $mealSelection) {
             ForEach(meals) { meal in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(meal.name).lineLimit(1)
-                    Text(SavedMealRow.detail(meal)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                HStack(spacing: 10) {
+                    MealTile(size: TileSize.table)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(meal.name).font(.body.weight(.medium)).lineLimit(1)
+                        Text(SavedMealRow.detail(meal)).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
+                    }
                 }
                 .tag(meal.id)
                 .accessibilityIdentifier("foods.meal")
@@ -432,15 +435,15 @@ struct FoodNameCell: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            FoodTile(name: listing.food.name, size: TileSize.table).padding(.trailing, 2)
+            FoodTile(name: listing.food.name, size: TileSize.table, fill: Ink.raised).padding(.trailing, 2)
             VStack(alignment: .leading, spacing: 1) {
                 Text(listing.food.name).lineLimit(1)
                 if let brand = listing.food.brand, brand.lowercased() != listing.food.name.lowercased() {
-                    Text(brand).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(brand).font(.caption).foregroundStyle(Ink.text3).lineLimit(1)
                 }
             }
             if listing.favorite {
-                Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow).accessibilityLabel("Favorite")
+                Image(systemName: "star.fill").font(.caption2).foregroundStyle(Ink.ok).accessibilityLabel("Favorite")
             }
         }
         .help(listing.food.title)
@@ -483,33 +486,39 @@ struct FoodInspector: View {
         let n = amount.nutrients(food)
         Form {
             Section {
-                HStack(alignment: .top) {
+                HStack(alignment: .top, spacing: 6) {
                     FoodHeader(food: food, corrected: model.isCorrected(food.id))
                     Spacer(minLength: 8)
-                    if unit != nil { EditFoodButton { editing = true }.buttonStyle(.borderless).font(.title3) }
-                    FavoriteButton(foodID: food.id).buttonStyle(.borderless).font(.title3)
+                    if unit != nil { EditFoodButton { editing = true }.buttonStyle(.plain) }
+                    FavoriteButton(foodID: food.id).buttonStyle(.plain)
                 }
             }
+            .inkRows()
             Section {
                 AmountFields(food: food, amount: $amount)
             } header: {
-                Text("Amount").eyebrow()
+                SectionEyebrow("Amount")
             }
+            .inkRows()
             Section {
                 NutrientSummary(nutrients: n)
             }
+            .inkRows()
             Section {
                 EatenPicker(eaten: $eaten)
             } header: {
-                Text("Eaten").eyebrow()
+                SectionEyebrow("Eaten")
             }
+            .inkRows()
             Section {
                 if let unit { PortionNutrients(food: food, count: amount.count, unit: unit, open: true) }
             } header: {
-                Text("Nutrients").eyebrow()
+                SectionEyebrow("Nutrients")
             }
+            .inkRows()
         }
         .formStyle(.grouped)
+        .inkForm()
         // The search runs again once it's saved (the personal foods change) and lists the food as
         // corrected, at the same amount.
         .sheet(isPresented: $editing) {
