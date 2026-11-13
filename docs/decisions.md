@@ -2,6 +2,14 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **The Watch apps, widgets and StandBy against their boards.** 2026-11-13, from `DevWatchLift`, `DevWatchMacro` and `DevPhoneStandBy`. The calls, mine to check:
+  - **The Lift Watch's summary leads with Strength and Your shape** the phone last sent in its context (`WatchScores`), not scores worked out on the Watch: a session just finished moves Strength once the phone has it and sends again. With no scores yet it keeps the old summary, work sets first.
+  - **The phone's Lift widgets and Live Activity have no score**, since the board draws none there; the Watch's summary and Macro's Your Shape complication are where the boards put one.
+  - **Food logged on the Macro Watch takes the screen for 5 seconds** (the board's logged face, Tap to undo across the foot); water, doses, a weigh-in, fasts and the day mark keep the 4-second toast.
+  - **Two new Macro complications**, Your Shape (circular) and Water (circular and inline, in fluid ounces for people who weigh in pounds). The board's "Usually now" complication and StandBy's "Usually around now" widget with its Log button aren't built: both need the usual foods for the hours ahead in the snapshot and an intent that logs, which is a feature, not a layout. The gallery puts Calories Left in that slot.
+  - **Left out of the Live Activity:** heart rate ("♥ 118", "Ends early under 105 bpm") would need frequent updates, and the island's +15 and Skip need intents that reach the session in the app. The caption shows how far the session is instead.
+  - **Left out of the Watch:** voice logging ("two eggs and toast"), since food parsing doesn't build for watchOS.
+
 - **The wide layouts against the device boards.** The same day. The calls, mine to check:
   - **The iPad's gym session drops the session's name and clock from its bar**, since the tape beside the set has them at the board's size; the bar keeps its buttons and heart rate.
   - **The menu bar panel's way into the app is "Open the week ⌘O"**, landing on the week desk, as `DevMacMenuBar` has it.
