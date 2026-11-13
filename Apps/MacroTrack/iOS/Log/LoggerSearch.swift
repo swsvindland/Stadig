@@ -175,6 +175,9 @@ struct SearchLogView: View {
 /// sits on a card outlined in the accent, with the key that logs it.
 struct LoggerRow<Tile: View>: View {
     let title: String
+    /// The rest of a catalog name after the part a person would say ("meat only"), set quieter
+    /// beside it: it tells close foods apart.
+    var detail: String? = nil
     let caption: String
     var best = false
     var starred = false
@@ -185,6 +188,13 @@ struct LoggerRow<Tile: View>: View {
     let open: () -> Void
     @ViewBuilder let tile: Tile
 
+    private var nameText: Text {
+        let name = Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+        guard let detail else { return name }
+        let rest = Text(detail).font(.caption).foregroundStyle(Ink.text3)
+        return Text("\(name)  \(rest)")
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             Button(action: open) {
@@ -192,7 +202,7 @@ struct LoggerRow<Tile: View>: View {
                     tile
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
-                            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(2)
+                            nameText.lineLimit(2)
                             if starred {
                                 Image(systemName: "star.fill").font(.caption2).foregroundStyle(Ink.ok).accessibilityLabel("Favorite")
                             }
@@ -255,8 +265,9 @@ struct FoodRow: View {
             for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
         let n = FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
         let amount = FoodUnits.label(count: suggestion.count, unit: suggestion.unit)
+        let spoken = FoodLabel.spoken(food.name)
         LoggerRow(
-            title: food.name,
+            title: spoken.short, detail: spoken.rest,
             caption: [
                 food.brand.flatMap { $0.lowercased() == food.name.lowercased() ? nil : $0 }, amount, "\(Format.whole(n.kcal)) kcal",
                 "\(Format.grams(n.protein)) P",
@@ -277,7 +288,7 @@ struct RecentRow: View {
 
     var body: some View {
         LoggerRow(
-            title: item.template.name,
+            title: FoodLabel.short(item.template.name),
             caption: [item.template.brand, item.template.amountLabel, "\(Format.whole(item.template.nutrients.kcal)) kcal"]
                 .compactMap { $0 }.joined(separator: " · "),
             addLabel: "Log \(item.template.name) again", openIdentifier: "logger.recent", addIdentifier: "logger.logAgain", add: add, open: open
