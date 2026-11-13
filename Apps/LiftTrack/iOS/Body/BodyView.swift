@@ -292,14 +292,17 @@ struct BodyView: View {
                         Text("\(Int(score.rounded()))").numeral(60, weight: .heavy).foregroundStyle(Ink.text)
                     }
                     Spacer(minLength: 8)
-                    if let trend = model.stats.first(where: { $0.stat == .physique }).flatMap({ TrendWord($0.trend) }) {
+                    if let change = model.physiqueChange {
+                        ScoreChangeChip(change: change).padding(.bottom, 4)
+                    } else if let trend = model.stats.first(where: { $0.stat == .physique }).flatMap({ TrendWord($0.trend) }) {
                         TrendChip(trend: trend).padding(.bottom, 4)
                     }
                 }
                 Ruler(value: score / 100)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Physique \(Int(score.rounded())) of 100")
+            .accessibilityLabel(
+                "Physique \(Int(score.rounded())) of 100\(model.physiqueChange.map { ", \($0.spoken(calendar: .current))" } ?? "")")
             if p.waistToHeight != nil { Rectangle().fill(Ink.hairline).frame(height: 1) }
         }
         if let wth = p.waistToHeight {

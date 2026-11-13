@@ -45,6 +45,60 @@ struct TodayAndShapeTests {
         #expect(vitality.apps == [.macroTrack])
     }
 
+    @Test("Publishing records today's scores in the store and the shared file; someone new sees no change")
+    func scoresAreRecorded() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let recorded = try #require(app.shared.read(.scores(.liftTrack)))
+        let published = try #require(app.shared.read(.summary(.liftTrack)))
+        #expect(!published.stats.isEmpty)
+        #expect(app.store.all(ScoreDayRecord.self).map(\.day) == [model.today])
+        for reading in published.stats {
+            let score = try #require(reading.score)
+            #expect(recorded.points(reading.stat) == [ScorePoint(day: model.today, score: (score * 10).rounded() / 10)], "\(reading.stat)")
+        }
+        #expect(model.stats.allSatisfy { $0.change == nil }, "nothing to measure from on the first day")
+        #expect(model.earlierShape == nil)
+        #expect(model.physiqueChange == nil)
+        // A relaunch with nothing changed writes nothing.
+        let written = app.shared.envelope(.scores(.liftTrack))?.writtenAt
+        _ = app.model()
+        #expect(app.shared.envelope(.scores(.liftTrack))?.writtenAt == written)
+    }
+
+    @Test("A month of recorded scores says how each moved, here and in Stadig Macro's numbers too")
+    func scoresHaveMoved() throws {
+        let app = TestApp()
+        let model = app.model()
+        SampleData.seedIfEmpty(model)
+        let strength = try #require(model.stats.first { $0.stat == .strength }?.change)
+        #expect(strength.direction == .up)
+        #expect(model.stats.first { $0.stat == .agility }?.change?.short == "steady")
+        let monthAgo = model.today.adding(months: -1)
+        try app.shared.write(
+            AppSummary(
+                app: .macroTrack, updated: Date(),
+                stats: [StatReading(stat: .vitality, score: 72, label: "Logged 26 of the last 28 days", trend: .onPace)]),
+            to: .summary(.macroTrack), by: .macroTrack)
+        try app.shared.write(
+            ScoreHistory(app: .macroTrack, stats: [.vitality: [ScorePoint(day: monthAgo, score: 73.2)]]), to: .scores(.macroTrack), by: .macroTrack)
+        model.readShared()
+        #expect(model.stats.first { $0.stat == .vitality }?.change?.short == "\u{2212}1")
+    }
+
+    @Test("A day another device recorded, arriving through iCloud, joins the history and its change")
+    func anotherDevicesDays() throws {
+        let app = TestApp()
+        let model = app.onboarded()
+        let (stat, points) = try #require(app.shared.read(.scores(.liftTrack))?.stats.first)
+        let today = try #require(points.last)
+        let earlier = model.today.adding(days: -9)
+        app.store.save(ScoreDayRecord(day: earlier, scores: [stat: today.score - 3], updatedAt: Date()))
+        model.reloadIfChanged()
+        #expect(app.shared.read(.scores(.liftTrack))?.points(stat) == [ScorePoint(day: earlier, score: today.score - 3), today])
+        #expect(model.stats.first { $0.stat == stat }?.change?.whole == 3)
+    }
+
     @Test("Last time is the same set in the last session before today, or that session's last")
     func lastTime() throws {
         let model = TestApp().model()

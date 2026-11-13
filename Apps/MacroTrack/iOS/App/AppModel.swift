@@ -168,6 +168,9 @@ final class AppModel {
     private(set) var calendar: SystemCalendar?
     /// A profile another app wrote before Stadig Macro was set up: onboarding reuses it.
     private(set) var sharedProfile: SharedProfile?
+    /// This app's own scores day by day, from its store (`ScoreDayRecord`), as last published. Your
+    /// shape reads both apps' from the container.
+    @ObservationIgnored private var publishedScores: ScoreHistory?
 
     // Derived.
     private(set) var analysis: MacroAnalysis? {
@@ -763,6 +766,7 @@ final class AppModel {
         guard let analysis else { return }
         var nutrition = MacroAnalyst.nutritionSummary(state, analysis)
         var summary = MacroAnalyst.appSummary(state, analysis)
+        recordScores(summary.stats, on: state.today)
         if let last = lastPublished {
             nutrition.updated = last.nutrition.updated
             summary.updated = last.summary.updated
@@ -779,6 +783,22 @@ final class AppModel {
             }
         }
         WidgetBridge.update(self)
+    }
+
+    /// The day's scores into the store, a record a day that reaches the person's other devices, and
+    /// the history they make into the shared container for Stadig Lift and the other devices' copy
+    /// of it, written only when it changes. Another device's copy of the file, arriving, isn't
+    /// answered: each device writes what its own store has, which iCloud brings to the same days.
+    private func recordScores(_ readings: [StatReading], on day: Day) {
+        let history = store.recordScores(readings, app: .macroTrack, on: day, now: Date())
+        guard !history.isEmpty, history != publishedScores else { return }
+        do {
+            if shared.read(.scores(.macroTrack)) != history { try shared.write(history, to: .scores(.macroTrack), by: .macroTrack) }
+        } catch {
+            appLog.error("Couldn't publish the scores: \(error.localizedDescription)")
+        }
+        // Not tried again until it changes, if that failed: a newer app's file stays as it is.
+        publishedScores = history
     }
 
     // MARK: Foods

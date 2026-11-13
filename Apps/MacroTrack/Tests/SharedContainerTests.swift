@@ -46,6 +46,32 @@ struct SharedContainerTests {
         #expect(environment.shared.envelope(.nutrition)?.writtenAt == first)
     }
 
+    /// Its scores go into its own store a day at a time as it publishes them, and the history they
+    /// make into the shared container; sample data's weeks of them give Your shape a change:
+    /// Discipline up, Vitality down.
+    @Test func recordsItsScoresDayByDay() throws {
+        let environment = TestEnvironment()
+        let model = environment.model()
+        SampleData.seedIfEmpty(model)
+        let summary = try #require(environment.shared.read(.summary(.macroTrack)))
+        let history = try #require(environment.shared.read(.scores(.macroTrack)))
+        #expect(history.app == .macroTrack)
+        #expect(environment.store.all(ScoreDayRecord.self).count == 25, "a record a day in its own store, today's included")
+        for reading in summary.stats {
+            let score = try #require(reading.score)
+            #expect(history.points(reading.stat).last == ScorePoint(day: model.today, score: (score * 10).rounded() / 10), "\(reading.stat)")
+            #expect(history.points(reading.stat).count > 20, "\(reading.stat)")
+        }
+        let lines = StatsBoard.lines(shared: environment.shared, today: model.today)
+        #expect(lines.first { $0.stat == .discipline }?.change?.direction == .up)
+        #expect(lines.first { $0.stat == .vitality }?.change?.direction == .down)
+
+        // A relaunch with nothing new writes nothing.
+        let written = environment.shared.envelope(.scores(.macroTrack))?.writtenAt
+        environment.model().recompute()
+        #expect(environment.shared.envelope(.scores(.macroTrack))?.writtenAt == written)
+    }
+
     @Test func readsLiftTracksSummary() throws {
         let environment = TestEnvironment()
         let model = environment.model()

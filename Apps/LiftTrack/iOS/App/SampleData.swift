@@ -3,6 +3,7 @@ import Foundation
 import ExerciseLibrary
 import LiftEngine
 import SystemCore
+import SystemStore
 
 /// `-seedSampleData`: a lifter three weeks into the assessment, every session run through the
 /// real engine (plan, live session, autoregulation), so the screens show realistic data.
@@ -84,6 +85,29 @@ enum SampleData {
         model.save(benchmark: BenchmarkResult(benchmark: .stairs10min, day: start.adding(days: 4), value: 52))
         model.steps = steps()
         model.recompute()
+        // The scores day by day since they began, arriving at today's.
+        model.store.save(scores(arrivingAt: model.stats, since: start, today: model.today))
+        model.recompute()
+    }
+
+    /// The scores each day from `start` to yesterday, as the lifter's store would have recorded them,
+    /// arriving at today's: Strength climbing as the assessment found working weights, Discipline
+    /// settling in, Endurance a little up, Agility steady, and Physique up a point at the second
+    /// check-in, two days ago. The same path every launch.
+    static func scores(arrivingAt lines: [StatLine], since start: Day, today: Day) -> [ScoreDayRecord] {
+        let rise: [StatKind: Double] = [.strength: 5.2, .endurance: 1.4, .agility: 0.4, .discipline: 4.3]
+        let now = lines.compactMap { line in line.sources.first { $0.app == .liftTrack }?.exact.map { (stat: line.stat, score: $0) } }
+        let span = Double(max(1, start.days(until: today)))
+        return stride(from: start.days(until: today), to: 0, by: -1).map { back in
+            let day = today.adding(days: -back)
+            var scores: [StatKind: Double] = [:]
+            for (stat, score) in now {
+                let wobble = 0.3 * sin(Double(day.ordinal + 7 * stat.rawValue.count))
+                let then = stat == .physique ? (back > 2 ? score - 1.2 : score) : score - (rise[stat] ?? 0) * Double(back) / span + wobble
+                scores[stat] = (then * 10).rounded() / 10
+            }
+            return ScoreDayRecord(day: day, scores: scores, updatedAt: day.at(hour: 21, minute: 0))
+        }
     }
 
     /// Steps when Health has none (the simulator): about 5,700 a day for ten weeks, busier at

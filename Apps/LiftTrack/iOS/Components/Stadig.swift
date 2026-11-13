@@ -1043,6 +1043,86 @@ struct SourceChip: View {
     static func short(_ app: AppID) -> String { app == .macroTrack ? "Macro" : "Lift" }
 }
 
+// MARK: - How a score moved
+
+extension ScoreChange {
+    /// Up in good, down in ok (worth a look, not an alarm), steady in the second grey.
+    var color: Color {
+        switch direction {
+        case .up: Ink.good
+        case .down: Ink.ok
+        case .steady: Ink.text2
+        }
+    }
+}
+
+/// A score's change this month beside it, as the boards have it: "+2", "−1" or "steady".
+struct ScoreChangeLabel: View {
+    let change: ScoreChange
+
+    var body: some View {
+        Text(change.short)
+            .font(.caption.weight(.semibold).monospacedDigit())
+            .foregroundStyle(change.color)
+            .lineLimit(1)
+            .fixedSize()
+            .accessibilityLabel(change.spoken(calendar: .current))
+    }
+}
+
+/// The chip beside a large score: "+2 this month", "+3 since August", with an arrow while it moves.
+struct ScoreChangeChip: View {
+    let change: ScoreChange
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if change.direction != .steady {
+                Image(systemName: change.direction == .up ? "chevron.up" : "chevron.down").font(.caption2.weight(.bold))
+            }
+            Text(change.text(calendar: .current))
+        }
+        .font(.caption.weight(.semibold).monospacedDigit())
+        .foregroundStyle(change.color)
+        .padding(.horizontal, 11)
+        .frame(minHeight: 28)
+        .background(change.color.opacity(0.14), in: .capsule)
+        .lineLimit(1)
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(change.spoken(calendar: .current))
+    }
+}
+
+/// Under Your shape with an outline behind it: the solid line is now, the dashed one the scores as
+/// they stood when a month began.
+struct ShapeLegend: View {
+    let earlier: EarlierShape
+
+    var body: some View {
+        let month = earlier.period.monthName(calendar: .current) ?? ""
+        HStack(spacing: 16) {
+            HStack(spacing: 6) {
+                Capsule().fill(Color.accentColor).frame(width: 16, height: 2.2)
+                Text("Now")
+            }
+            HStack(spacing: 6) {
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: 1))
+                    path.addLine(to: CGPoint(x: 16, y: 1))
+                }
+                .stroke(Ink.text2, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                .frame(width: 16, height: 2)
+                Text(month)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(Ink.text2)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("The solid shape is now, the dashed one as it was when \(month) began"))
+    }
+}
+
 // MARK: - Your shape
 
 /// The six scores drawn as one figure: a hexagon whose spokes are rulers. It grows where the work
@@ -1064,11 +1144,12 @@ struct ScoreShape: View {
     let axes: [Axis]
     var showsLabels = true
 
-    /// The six axes from the stats board, in drawing order.
-    static func axes(_ lines: [StatLine]) -> [Axis] {
+    /// The six axes from the stats board, in drawing order, with the scores as they stood some time
+    /// ago (`StatsBoard.earlier`) for the dashed outline.
+    static func axes(_ lines: [StatLine], earlier: EarlierShape? = nil) -> [Axis] {
         order.map { stat in
             let line = lines.first { $0.stat == stat }
-            return Axis(stat: stat, score: line?.score, earlier: nil, apps: line?.apps ?? [])
+            return Axis(stat: stat, score: line?.score, earlier: earlier?.scores[stat], apps: line?.apps ?? [])
         }
     }
 
