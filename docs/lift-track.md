@@ -223,7 +223,7 @@ Stadig Lift is one app on iPhone, iPad, the Mac and Apple Vision Pro, its record
 - `-scoreboard` shows the iPad's scoreboard whichever way the iPad is turned (unless its toggle is off), for a simulator left in portrait: `-startSession -sessionAt set -scoreboard` shows a set on the board, `-sessionAt rest` the rest with Undo.
 - `-floorMode` keeps Floor mode on whatever the motion sensors say (the simulator has none), on an iPhone with a session on screen: `-startSession -sessionAt set -floorMode` shows a set on the floor, `-sessionAt rest` the rest.
 - `-yourShape` with `-tab progress` opens Your shape on a narrow window.
-- `-progressRange year` (with `-tab progress`) starts Progress on Year, the changes over the year.
+- `-progressRange year|month` (with `-tab progress`) starts Progress on Year or Month, whatever the scene kept from an earlier launch; under `-uiTesting` it starts on Month unless asked, so UI tests and the store screenshots don't depend on the last run.
 - `-onboardingStep goals` (any step's name: `welcome`, `goals`, `focus`, `schedule`, `equipment`, `experience`, `outside`, `body`, `phase`, `health`, `ready`) opens onboarding on that step, with no `-seedSampleData`.
 - `-tab plan|program|library|history|progress|body` opens a destination (program, library and history are the sidebar's; in a narrow window they show the tab that reaches them).
 - `-programLift <id>` (with `-tab program`) selects that exercise's first slot on the program desk, opening it in the inspector (`-programLift barbell-bench-press`).

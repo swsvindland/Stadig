@@ -26,6 +26,13 @@ struct ProgressTab: View {
     /// History and a session in it, opened by `-history` and `-sessionDetail` in DEBUG.
     @State private var showHistory = false
     @State private var shownSession: SessionRecord?
+    #if DEBUG
+    /// `-progressRange year` starts on Year; UI tests start on Month whatever the scene kept from an
+    /// earlier launch. Once, so a range picked afterwards stays.
+    @State private var launchRange =
+        LaunchOptions.current.value(after: "-progressRange").flatMap(ProgressRange.init)
+        ?? (LaunchOptions.current.isUITesting ? ProgressRange.month : nil)
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -55,8 +62,10 @@ struct ProgressTab: View {
             .navigationDestination(isPresented: $showHistory) { HistoryView() }
             .navigationDestination(item: $shownSession) { record in SessionDetail(record: record) }
             .onAppear {
-                // -progressRange year starts on the year's changes.
-                if let asked = LaunchOptions.current.value(after: "-progressRange").flatMap(ProgressRange.init) { range = asked }
+                if let launchRange {
+                    range = launchRange
+                    self.launchRange = nil
+                }
                 guard !sizeClass.isWide else { return }
                 if LaunchOptions.current.has("-yourShape") { showShape = true }
                 if LaunchOptions.current.has("-history") { showHistory = true }
