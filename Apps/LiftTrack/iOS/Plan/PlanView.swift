@@ -37,7 +37,7 @@ struct PlanView: View {
             .navigationDestination(for: DayRoute.self) { route in DayDetail(route: route) }
             .navigationDestination(for: SessionRecord.self) { record in SessionDetail(record: record) }
             .navigationDestination(item: $focused) { id in PushedExerciseDetail(exerciseID: id) }
-            .navigationDestination(isPresented: $showFocus) { FocusScreen() }
+            .navigationDestination(isPresented: $showFocus) { FocusScreen(from: "Plan") }
             .onChange(of: model.libraryFocus, initial: true) { _, focus in
                 // Plan is the tab a narrow window shows for Library (`AppTab.tabBarFallback`).
                 guard !sizeClass.isWide, let focus else { return }
@@ -46,6 +46,12 @@ struct PlanView: View {
             }
             .sheet(isPresented: $planning) { NextBlockView() }
             .sheet(item: $lifeMode) { choice in LifeModeEditor(period: choice.newPeriod) }
+            #if DEBUG
+            // `-lifeMode vacation|crunch|injury|illness` opens that life mode's editor, as the menu's Add does.
+            .onAppear {
+                if let kind = LaunchOptions.current.value(after: "-lifeMode") { lifeMode = LifeModeKindChoice(rawValue: kind) }
+            }
+            #endif
             .sheet(item: $editing) { period in LifeModeEditor(period: period) }
             .toolbar {
                 if sizeClass.isWide { SettingsToolbarItem(identifier: "plan.settings") }
@@ -641,24 +647,33 @@ struct ProgramSwapSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(model.swapCandidates(for: slot.exerciseID)) { exercise in
-                    Button {
-                        model.swap(slot: slot.id, day: dayID, of: mesocycle.id, to: exercise.id)
-                        dismiss()
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(exercise.name).foregroundStyle(.primary)
-                            Text(exercise.equipment.label).font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    let current = model.catalog.resolve(slot.exerciseID)
+                    SheetHeading(eyebrow: "Swap · for the rest of the block", title: current.name)
+                    RowCard(title: "Best fits in this gym") {
+                        ForEach(model.swapCandidates(for: slot.exerciseID)) { exercise in
+                            Button {
+                                model.swap(slot: slot.id, day: dayID, of: mesocycle.id, to: exercise.id)
+                                dismiss()
+                            } label: {
+                                LinkRowLabel(
+                                    title: exercise.name,
+                                    caption: SwapReason.line(for: exercise, replacing: current, injuries: model.analysis?.life.injuries ?? []))
+                            }
+                            .buttonStyle(.plain)
+                            .hoverHighlight()
+                            .accessibilityIdentifier("programSwap.option")
                         }
                     }
-                    .accessibilityIdentifier("programSwap.option")
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+                .readableWidth(620)
             }
-            .inkList()
-            .navigationTitle("Swap \(model.catalog.resolve(slot.exerciseID).name)")
-            .inlineTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "programSwap.cancel") { dismiss() }
+            }
         }
         .sheetFrame(minHeight: 480)
     }

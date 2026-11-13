@@ -63,6 +63,23 @@ struct SessionScreen: View {
                 } message: {
                     Text("Nothing from it will be saved.")
                 }
+                #if DEBUG
+                // `-sessionSheet feedback|swap|about|edit` opens that sheet over the session: How was it?,
+                // the current exercise's swap or its page, or the correction of the last set logged.
+                .onAppear {
+                    guard let sheet = LaunchOptions.current.value(after: "-sessionSheet"), let current = live.current else { return }
+                    switch sheet {
+                    case "feedback": showFeedback = true
+                    case "swap": swapping = SwapTarget(index: current.item)
+                    case "about": about = ExerciseAbout(id: live.items[current.item].exerciseID)
+                    case "edit":
+                        if let set = live.items[current.item].sets.lastIndex(where: { $0.logged != nil }) {
+                            editing = SetTarget(item: current.item, set: set)
+                        }
+                    default: break
+                    }
+                }
+                #endif
                 // The menu bar's Finish… and Discard… land here.
                 .onChange(of: model.sessionRequest, initial: true) { _, request in
                     switch request {

@@ -164,7 +164,8 @@ struct SetLogger: View {
                 if let timerStart = draft.timerStart {
                     let end = timerStart.addingTimeInterval(TimeInterval(seconds))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
-                        .font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
+                        .numeral(scale.clockSize, weight: .heavy)
+                        .foregroundStyle(Ink.text)
                         .frame(maxWidth: .infinity)
                 } else {
                     Button {
@@ -173,10 +174,11 @@ struct SetLogger: View {
                         Label("Start \(Format.duration(seconds))", systemImage: "timer").frame(maxWidth: .infinity)
                     }
                     .secondaryAction()
+                    .controlSize(.large)
                     .accessibilityIdentifier("logger.startTimer")
                 }
             } else {
-                Text("\(set.prescription.targetReps) reps\(exercise.unilateral ? " each side" : "")").font(.title3.monospacedDigit())
+                Measure(value: "\(set.prescription.targetReps)", unit: exercise.unilateral ? "reps each side" : "reps", size: 30)
             }
             Button {
                 draft.logTimed(item: itemIndex, set: setIndex, model: model)
@@ -192,10 +194,10 @@ struct SetLogger: View {
 
     private func conditioningControls(_ plan: ConditioningPlan) -> some View {
         VStack(spacing: 10) {
-            Text(plan.summary).font(.headline.monospacedDigit())
+            Text(plan.summary).font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
             HeartRateLine(aim: plan.zones)
             if let timerStart = draft.timerStart {
-                Text(timerStart, style: .timer).font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
+                Text(timerStart, style: .timer).numeral(scale.clockSize, weight: .heavy).foregroundStyle(Ink.text)
             }
             HStack {
                 if draft.timerStart == nil {
@@ -205,6 +207,7 @@ struct SetLogger: View {
                         Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
                     }
                     .secondaryAction()
+                    .controlSize(.large)
                     .accessibilityIdentifier("logger.startTimer")
                 }
                 Button {
@@ -227,7 +230,7 @@ struct SetLogger: View {
             // Only an iPhone streams a Watch's heart rate into the session.
             if model.currentHeartRate == nil && Platform.canPairWatch {
                 Text("Wear your Apple Watch with Stadig Lift on it and heart rate and zones are logged automatically.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Ink.text3)
             }
         }
     }
@@ -384,7 +387,8 @@ struct Stepperish: View {
     }
 }
 
-/// How the session felt: what feeds the hidden Fatigue Budget.
+/// How the session felt: what feeds the hidden Fatigue Budget. Asked between Finish and the summary,
+/// as a page of the session's own: energy, soreness and any joint that hurt, then Save session.
 struct FeedbackSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -392,60 +396,61 @@ struct FeedbackSheet: View {
     @State private var energy = 3
     @State private var pain: Set<Joint> = []
 
+    private static let energies: [(value: Int, label: String)] = [(1, "Drained"), (2, "Low"), (3, "OK"), (4, "Good"), (5, "Great")]
+    private static let soreness: [(value: Int, label: String)] = [(0, "None"), (1, "A little"), (2, "Sore"), (3, "Very")]
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker("Soreness", selection: $soreness) {
-                        Text("None").tag(0)
-                        Text("A little").tag(1)
-                        Text("Sore").tag(2)
-                        Text("Very").tag(3)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    SheetHeading(
+                        eyebrow: model.live.map { "\($0.plan.title) · Finish" }, title: "How was it?",
+                        detail: "Three taps. The next sessions fit how you came in and how it went.")
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionEyebrow("Energy")
+                        InkSegmented(options: Self.energies, selection: $energy)
                     }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Coming in, how sore were you?").eyebrow()
-                }
-                Section {
-                    Picker("Energy", selection: $energy) {
-                        Text("Drained").tag(1)
-                        Text("Low").tag(2)
-                        Text("OK").tag(3)
-                        Text("Good").tag(4)
-                        Text("Great").tag(5)
+                    .card()
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionEyebrow("Coming in, how sore were you?")
+                        InkSegmented(options: Self.soreness, selection: $soreness)
                     }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Energy").eyebrow()
-                }
-                Section {
-                    ForEach(Joint.allCases) { joint in
-                        Toggle(
-                            joint.label,
-                            isOn: Binding(
-                                get: { pain.contains(joint) },
-                                set: { on in
-                                    if on { pain.insert(joint) } else { pain.remove(joint) }
-                                }))
+                    .card()
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionEyebrow("Any joint pain?", detail: pain.isEmpty ? "None" : "\(pain.count) picked")
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+                            ForEach(Joint.allCases) { joint in
+                                ChoiceChip(
+                                    title: joint.label, isOn: pain.contains(joint), identifier: "feedback.joint\(joint.rawValue.identifierSuffix)"
+                                ) {
+                                    if pain.contains(joint) { pain.remove(joint) } else { pain.insert(joint) }
+                                }
+                            }
+                        }
                     }
-                } header: {
-                    Text("Any joint pain?").eyebrow()
-                } footer: {
+                    .card()
                     Text(
                         "Feeling beat up and stalling means less whole-body fatigue next block before less work. Pain that persists or worsens means a physio."
                     )
+                    .font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .readableWidth(620)
             }
-            .inkList()
-            .navigationTitle("How was it?")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() }.accessibilityIdentifier("feedback.back") }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save session") {
+            .inkSheet {
+                SheetBar(label: "Back to the session", identifier: "feedback.back") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         dismiss()
                         model.finish(feedback: SessionFeedback(soreness: soreness, jointPain: Joint.allCases.filter(pain.contains), energy: energy))
+                    } label: {
+                        Text("Save session").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("feedback.save")
                 }
             }
@@ -455,7 +460,8 @@ struct FeedbackSheet: View {
     }
 }
 
-/// Swaps an exercise for the rest of the session: same movement first, filtered by the gym and injuries.
+/// Swaps an exercise for the rest of the session: same movement first, filtered by the gym and
+/// injuries, each with why it fits (`SwapReason`).
 struct SwapSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -464,43 +470,57 @@ struct SwapSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if let live = model.live, live.items.indices.contains(index) {
-                    let current = model.catalog.resolve(live.items[index].exerciseID)
-                    let injuries = model.analysis?.life.injuries ?? []
-                    let options =
-                        query.isEmpty
-                        ? Substitutions.candidates(
-                            for: current, in: model.catalog.all, availability: model.gymForToday.availability,
-                            injuries: injuries, avoid: model.settings.avoid, limit: 20)
-                        : ExerciseSearch.search(
-                            InjuryFilter.allowed(
-                                model.catalog.of(kind: .strength).filter { model.gymForToday.availability.allows($0) },
-                                injuries: injuries), query)
-                    ForEach(options.prefix(30)) { exercise in
+                    list(current: model.catalog.resolve(live.items[index].exerciseID), injuries: model.analysis?.life.injuries ?? [])
+                } else {
+                    Color.clear
+                }
+            }
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "swap.cancel") { dismiss() }
+            }
+        }
+        .sheetFrame()
+    }
+
+    private func list(current: Exercise, injuries: [Injury]) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                SheetHeading(eyebrow: "Swap · for this session", title: current.name)
+                InkSearchField(text: $query, prompt: "Search exercises", identifier: "swap.search")
+                RowCard(title: query.isEmpty ? "Best fits in this gym" : "Matches") {
+                    ForEach(options(for: current, injuries: injuries)) { exercise in
                         Button {
                             if let environment = model.environment {
                                 model.update { $0.swap(item: index, to: exercise, environment: environment) }
                             }
                             dismiss()
                         } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(exercise.name).foregroundStyle(.primary)
-                                Text("\(exercise.equipment.label) · \(exercise.primaryMuscles.map(\.label).joined(separator: ", "))")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
+                            LinkRowLabel(title: exercise.name, caption: SwapReason.line(for: exercise, replacing: current, injuries: injuries))
                         }
+                        .buttonStyle(.plain)
+                        .hoverHighlight()
                         .accessibilityIdentifier("swap.option")
                     }
                 }
             }
-            .inkList()
-            .searchable(text: $query, prompt: "Search exercises")
-            .navigationTitle("Swap exercise")
-            .inlineTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("swap.cancel") } }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth(620)
         }
-        .sheetFrame()
+    }
+
+    private func options(for current: Exercise, injuries: [Injury]) -> [Exercise] {
+        let found =
+            query.isEmpty
+            ? Substitutions.candidates(
+                for: current, in: model.catalog.all, availability: model.gymForToday.availability,
+                injuries: injuries, avoid: model.settings.avoid, limit: 20)
+            : ExerciseSearch.search(
+                InjuryFilter.allowed(model.catalog.of(kind: .strength).filter { model.gymForToday.availability.allows($0) }, injuries: injuries),
+                query)
+        return Array(found.prefix(30))
     }
 }
 
@@ -524,9 +544,10 @@ struct EditSetSheet: View {
                 // The exercise the set was done on, which a swap since may have replaced: its loads and steps.
                 let exercise = model.catalog.resolve(logged.exerciseID)
                 let increments = model.gymForToday.increments(for: exercise.equipment)
-                Form {
-                    Section {
-                        HStack(spacing: 12) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SheetHeading(eyebrow: "Correct a set", title: exercise.name)
+                        HStack(spacing: 8) {
                             if exercise.loadBasis != .none {
                                 LoadControl(
                                     title: "Weight", load: $load, increments: increments, basis: exercise.loadBasis,
@@ -539,28 +560,24 @@ struct EditSetSheet: View {
                             )
                             .frame(maxWidth: exercise.loadBasis != .none ? 140 : .infinity)
                         }
-                        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
-                    } footer: {
-                        Text("Tap a number to type it.")
-                    }
-                    if logged.kind != .warmup, logged.kind != .repOut {
-                        Section {
-                            Picker("Rating", selection: $rating) {
-                                ForEach(SetRating.allCases) { Text($0.label).tag(SetRating?.some($0)) }
+                        Text("Tap a number to type it.").font(.caption).foregroundStyle(Ink.text3).padding(.horizontal, 4)
+                        if logged.kind != .warmup, logged.kind != .repOut {
+                            VStack(alignment: .leading, spacing: 10) {
+                                SectionEyebrow("How it felt")
+                                InkSegmented(options: SetRating.allCases.map { (value: SetRating?.some($0), label: $0.label) }, selection: $rating)
                             }
-                            .pickerStyle(.segmented)
-                        } header: {
-                            Text("How it felt").eyebrow()
+                            .card()
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .readableWidth(620)
                 }
-                .inkList()
-                .navigationTitle(exercise.name)
-                .inlineTitle()
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("editSet.cancel") }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
+                .inkSheet {
+                    SheetBar(label: "Cancel", identifier: "editSet.cancel") { dismiss() }
+                } foot: {
+                    SheetFoot {
+                        Button {
                             if let environment = model.environment {
                                 model.update { live in
                                     live.edit(
@@ -569,7 +586,11 @@ struct EditSetSheet: View {
                                 }
                             }
                             dismiss()
+                        } label: {
+                            Text("Save").frame(maxWidth: .infinity)
                         }
+                        .primaryAction()
+                        .keyboardShortcut(.defaultAction)
                         .accessibilityIdentifier("editSet.save")
                     }
                 }
@@ -585,7 +606,7 @@ struct EditSetSheet: View {
             }
         }
         .sheetFrame()
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -601,7 +622,7 @@ struct HeartRateLine: View {
                 let inside = aim.map { $0.contains(zone) } ?? true
                 HStack(spacing: 8) {
                     Image(systemName: "heart.fill").foregroundStyle(Ink.bad).symbolEffect(.pulse)
-                    Text("\(Int(bpm))").font(.title2.weight(.semibold).monospacedDigit())
+                    Text("\(Int(bpm))").numeral(22).foregroundStyle(Ink.text)
                     Text("Zone \(zone)").font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 8).padding(.vertical, 2)
                         .background((inside ? Ink.good : Ink.ok).opacity(0.18), in: .capsule)
@@ -609,7 +630,7 @@ struct HeartRateLine: View {
                     if let aim {
                         let low = Int(model.heartRateZones.range(zone: aim.lowerBound).lowerBound)
                         let high = Int(model.heartRateZones.range(zone: aim.upperBound).upperBound)
-                        Text("Aim \(low)–\(high)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        Text("Aim \(low)–\(high)").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -642,18 +663,19 @@ struct HeatControls: View {
                 VStack(spacing: 10) {
                     Thermometer(celsius: celsius, fahrenheit: fahrenheit) { temperatureC = $0 }
                     HStack(alignment: .firstTextBaseline) {
-                        Text("Aim for").font(.subheadline).foregroundStyle(.secondary)
-                        Text("\(minutes) min").font(.title2.weight(.semibold).monospacedDigit())
+                        Text("Aim for").font(.subheadline).foregroundStyle(Ink.text2)
+                        Measure(value: "\(minutes)", unit: "min", size: 30)
                         Spacer()
                     }
                 }
                 Text(explanation(plan, today: celsius, minutes: minutes, fahrenheit: fahrenheit))
-                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.caption).foregroundStyle(Ink.text3).frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 if let started {
                     let end = started.addingTimeInterval(TimeInterval(minutes * 60))
                     Text(timerInterval: Date()...max(Date(), end), countsDown: true)
-                        .font(.system(size: scale.clockSize, weight: .semibold, design: .rounded).monospacedDigit())
+                        .numeral(scale.clockSize, weight: .heavy)
+                        .foregroundStyle(Ink.text)
                     Button {
                         finished = Date()
                     } label: {
@@ -671,9 +693,9 @@ struct HeatControls: View {
                     .primaryAction().controlSize(.large)
                     .accessibilityIdentifier("heat.start")
                 }
-                Text("Leave whenever you feel dizzy or unwell, and drink water afterwards.").font(.caption2).foregroundStyle(.tertiary)
+                Text("Leave whenever you feel dizzy or unwell, and drink water afterwards.").font(.caption2).foregroundStyle(Ink.text3)
             } else {
-                Text("How was it?").font(.headline)
+                SectionEyebrow("How was it?")
                 HStack(spacing: 10) {
                     rating(.green, "Easy", "Could stay longer").keyboardShortcut(scale.shortcut("1"))
                     rating(.orange, "Just right", "Ready to leave").keyboardShortcut(scale.shortcut("2"))
@@ -743,14 +765,15 @@ struct Thermometer: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text("Thermometer").font(.caption).foregroundStyle(.secondary)
+            Text("Thermometer").eyebrow()
             HStack {
                 Button {
                     set(step(by: -1))
                 } label: {
-                    Image(systemName: "minus").frame(width: 36, height: 36)
+                    Image(systemName: "minus").font(.title3.weight(.medium)).foregroundStyle(Ink.text2).frame(width: 44, height: 44).contentShape(
+                        .rect)
                 }
-                .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                .buttonStyle(.plain).buttonRepeatBehavior(.enabled)
                 .accessibilityLabel("Cooler")
                 Spacer()
                 Button {
@@ -758,7 +781,8 @@ struct Thermometer: View {
                     typing = true
                 } label: {
                     Text(Format.temperature(celsius, fahrenheit: fahrenheit))
-                        .font(.system(size: 34, weight: .semibold, design: .rounded).monospacedDigit())
+                        .numeral(34)
+                        .foregroundStyle(Ink.text)
                         .fixedSize()
                 }
                 .buttonStyle(.plain)
@@ -768,14 +792,15 @@ struct Thermometer: View {
                 Button {
                     set(step(by: 1))
                 } label: {
-                    Image(systemName: "plus").frame(width: 36, height: 36)
+                    Image(systemName: "plus").font(.title3.weight(.medium)).foregroundStyle(Ink.text2).frame(width: 44, height: 44).contentShape(
+                        .rect)
                 }
-                .buttonStyle(.bordered).buttonBorderShape(.circle).buttonRepeatBehavior(.enabled)
+                .buttonStyle(.plain).buttonRepeatBehavior(.enabled)
                 .accessibilityLabel("Hotter")
             }
         }
         .padding(8)
-        .background(.insetBackground, in: .rect(cornerRadius: 16))
+        .background(.insetBackground, in: .rect(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Thermometer")
         .accessibilityValue(Format.temperature(celsius, fahrenheit: fahrenheit))

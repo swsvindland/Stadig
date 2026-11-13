@@ -35,6 +35,10 @@ struct BodyView: View {
                 if !sizeClass.isWide { addCheckIn }
             }
             .navigationDestination(isPresented: $showPhotos) { photosPage }
+            #if DEBUG
+            // `-photos` opens the phone's progress photos, as the header's camera does.
+            .onAppear { if !sizeClass.isWide, LaunchOptions.current.has("-photos") { showPhotos = true } }
+            #endif
             .navigationTitle("Body")
             #if os(iOS)
             // The phone draws its own header: the last check-in over a large title.
@@ -831,79 +835,87 @@ struct MeasurementEditor: View {
         let unit = model.units.length
         NavigationStack {
             Form {
-                DatePicker(
-                    "Day", selection: Binding(get: { measurements.day.date() }, set: { measurements.day = Day($0) }), in: ...Date(),
-                    displayedComponents: .date)
-                Section {
-                    NavigationLink("Where the tape goes") { MeasuringGuide() }
-                } footer: {
-                    Text("In the morning, before eating or training, the tape snug but not pressing in. Skip any you like.")
-                }
-                Section {
-                    MeasureField(label: "Neck", value: $measurements.neckCm, unit: unit)
-                    MeasureField(label: "Shoulders", value: $measurements.shouldersCm, unit: unit)
-                    MeasureField(label: "Chest", value: $measurements.chestCm, unit: unit)
-                    MeasureField(label: "Waist at the navel", value: $measurements.waistCm, unit: unit, identifier: "measurements.waist")
-                    MeasureField(label: "Waist at its narrowest", value: $measurements.naturalWaistCm, unit: unit)
-                    MeasureField(label: "Hips, at the hip bones", value: $measurements.hipsCm, unit: unit)
-                    MeasureField(label: "Glutes, at the widest", value: $measurements.glutesCm, unit: unit)
-                } header: {
-                    Text("Torso").eyebrow()
-                } footer: {
-                    Text("The waist at the navel matters most: leanness and the nutrition phase come from it.")
-                }
-                Section {
-                    ForEach(Limb.allCases) { limb in
-                        let keys = BodyMeasurements.sides(limb)
-                        SidesField(
-                            label: limb == .arm ? "Upper arm, flexed" : limb.label, left: $measurements[dynamicMember: keys.left],
-                            right: $measurements[dynamicMember: keys.right], unit: unit)
-                    }
-                } header: {
-                    Text("Arms and legs").eyebrow()
-                } footer: {
-                    Text("Both sides, so a side that's lagging shows up.")
-                }
-                let unsided = Limb.allCases.filter { measurements[keyPath: BodyMeasurements.unsided($0)] != nil }
-                if !unsided.isEmpty {
+                FormHeading(
+                    eyebrow: isStored ? "Body · \(Format.day(measurements.day))" : "Body · check-in", title: "Measurements",
+                    detail: "In the morning, before eating or training, the tape snug but not pressing in. Skip any you like.")
+                Group {
+                    DatePicker(
+                        "Day", selection: Binding(get: { measurements.day.date() }, set: { measurements.day = Day($0) }), in: ...Date(),
+                        displayedComponents: .date)
                     Section {
-                        ForEach(unsided) { limb in
-                            MeasureField(label: limb.label, value: $measurements[dynamicMember: BodyMeasurements.unsided(limb)], unit: unit)
+                        NavigationLink("Where the tape goes") { MeasuringGuide() }
+                    }
+                    Section {
+                        MeasureField(label: "Neck", value: $measurements.neckCm, unit: unit)
+                        MeasureField(label: "Shoulders", value: $measurements.shouldersCm, unit: unit)
+                        MeasureField(label: "Chest", value: $measurements.chestCm, unit: unit)
+                        MeasureField(label: "Waist at the navel", value: $measurements.waistCm, unit: unit, identifier: "measurements.waist")
+                        MeasureField(label: "Waist at its narrowest", value: $measurements.naturalWaistCm, unit: unit)
+                        MeasureField(label: "Hips, at the hip bones", value: $measurements.hipsCm, unit: unit)
+                        MeasureField(label: "Glutes, at the widest", value: $measurements.glutesCm, unit: unit)
+                    } header: {
+                        Text("Torso").eyebrow()
+                    } footer: {
+                        Text("The waist at the navel matters most: leanness and the nutrition phase come from it.")
+                    }
+                    Section {
+                        ForEach(Limb.allCases) { limb in
+                            let keys = BodyMeasurements.sides(limb)
+                            SidesField(
+                                label: limb == .arm ? "Upper arm, flexed" : limb.label, left: $measurements[dynamicMember: keys.left],
+                                right: $measurements[dynamicMember: keys.right], unit: unit)
                         }
                     } header: {
-                        Text("Before sides were measured").eyebrow()
+                        Text("Arms and legs").eyebrow()
+                    } footer: {
+                        Text("Both sides, so a side that's lagging shows up.")
+                    }
+                    let unsided = Limb.allCases.filter { measurements[keyPath: BodyMeasurements.unsided($0)] != nil }
+                    if !unsided.isEmpty {
+                        Section {
+                            ForEach(unsided) { limb in
+                                MeasureField(label: limb.label, value: $measurements[dynamicMember: BodyMeasurements.unsided(limb)], unit: unit)
+                            }
+                        } header: {
+                            Text("Before sides were measured").eyebrow()
+                        }
+                    }
+                    Section {
+                        WeightField(label: "Body weight", kg: $measurements.weightKg, unit: model.units.weight)
+                        HStack {
+                            Text("Body fat")
+                            Spacer()
+                            TextField("—", value: $measurements.bodyFatPercent, format: .number.precision(.fractionLength(0...1)))
+                                .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
+                            Text("%").foregroundStyle(.secondary)
+                        }
+                    } footer: {
+                        Text("Weight usually comes from Apple Health or Stadig Macro.")
                     }
                 }
-                Section {
-                    WeightField(label: "Body weight", kg: $measurements.weightKg, unit: model.units.weight)
-                    HStack {
-                        Text("Body fat")
-                        Spacer()
-                        TextField("—", value: $measurements.bodyFatPercent, format: .number.precision(.fractionLength(0...1)))
-                            .fieldKeyboard(.decimal).multilineTextAlignment(.trailing).frame(width: 80)
-                        Text("%").foregroundStyle(.secondary)
+                .inkRows()
+                if isStored {
+                    Section {
+                        FormActionRow("Delete", destructive: true, identifier: "measurements.delete") {
+                            model.delete(measurement: measurements.id)
+                            dismiss()
+                        }
                     }
-                } footer: {
-                    Text("Weight usually comes from Apple Health or Stadig Macro.")
-                }
-                if model.measurements.contains(where: { $0.id == measurements.id }) {
-                    Button("Delete", role: .destructive) {
-                        model.delete(measurement: measurements.id)
-                        dismiss()
-                    }
-                    .accessibilityIdentifier("measurements.delete")
                 }
             }
             .inkList()
-            .navigationTitle("Measurements")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("measurements.cancel") }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "measurements.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         model.save(measurements: measurements)
                         dismiss()
+                    } label: {
+                        Text("Save").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     .disabled(measurements.isEmpty)
                     .accessibilityIdentifier("measurements.save")
                 }
@@ -911,6 +923,9 @@ struct MeasurementEditor: View {
         }
         .sheetFrame()
     }
+
+    /// A check-in already kept, opened to change: it can be deleted.
+    private var isStored: Bool { model.measurements.contains { $0.id == measurements.id } }
 }
 
 /// Left and right on one row, in the person's unit, stored in centimetres.
@@ -953,6 +968,7 @@ struct SidesField: View {
 struct MeasuringGuide: View {
     var body: some View {
         List {
+            if !Platform.isMac { FormHeading(eyebrow: "Measurements", title: "Where the tape goes") }
             Section {
                 Text(
                     "In the morning, before eating or training. Keep the tape level and snug on the skin without pressing in, and breathe out normally before reading it. The same way every time matters more than any one reading."
@@ -984,9 +1000,9 @@ struct MeasuringGuide: View {
                 .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .inkRows()
         .inkList()
-        .navigationTitle("Where the tape goes")
-        .inlineTitle()
+        .formPage("Where the tape goes")
     }
 
     private func site(_ name: String, _ how: String) -> some View {

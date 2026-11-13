@@ -89,43 +89,47 @@ struct LifeModeEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                dates
-                switch period.kind {
-                case .vacation: vacation
-                case .crunch(let dials): crunch(dials)
-                case .injury(let injury): injuryForm(injury)
-                case .illness(let kind): illness(kind)
+                FormHeading(eyebrow: isNew ? "Life mode · new" : "Life mode", title: period.kind.label, detail: purpose)
+                Group {
+                    dates
+                    switch period.kind {
+                    case .vacation: vacation
+                    case .crunch(let dials): crunch(dials)
+                    case .injury(let injury): injuryForm(injury)
+                    case .illness(let kind): illness(kind)
+                    }
                 }
+                .inkRows()
                 if !isNew {
                     Section {
                         // One that hasn't started has nothing to end: Delete calls it off.
                         if model.canEnd(period) {
-                            Button(endTitle) {
+                            FormActionRow(endTitle, identifier: "lifeMode.endNow") {
                                 model.end(lifeMode: period)
                                 dismiss()
                             }
-                            .accessibilityIdentifier("lifeMode.endNow")
                         }
-                        Button("Delete", role: .destructive) {
+                        FormActionRow("Delete", destructive: true, identifier: "lifeMode.delete") {
                             model.delete(lifeMode: period.id)
                             dismiss()
                         }
-                        .accessibilityIdentifier("lifeMode.delete")
                     }
+                    .listRowSeparator(.hidden)
                 }
             }
             .inkList()
-            .navigationTitle(period.kind.label)
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("lifeMode.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+            .inkSheet {
+                SheetBar(label: "Cancel", identifier: "lifeMode.cancel") { dismiss() }
+            } foot: {
+                SheetFoot {
+                    Button {
                         model.save(lifeMode: draft)
                         dismiss()
+                    } label: {
+                        Text("Save").frame(maxWidth: .infinity)
                     }
+                    .primaryAction()
+                    .keyboardShortcut(.defaultAction)
                     // What the model saves: the dates in order, and only a period that can apply.
                     .disabled(!draft.normalized().isValid)
                     .accessibilityIdentifier("lifeMode.save")
@@ -133,6 +137,16 @@ struct LifeModeEditor: View {
             }
         }
         .sheetFrame()
+    }
+
+    /// What the mode is for, in a line under its title.
+    private var purpose: String {
+        switch period.kind {
+        case .vacation: "Time away. Nothing is expected in any app, and the plan works around it."
+        case .crunch: "A busy stretch. Sessions shrink to what keeps you moving forward."
+        case .injury: "Something hurts. What loads it is swapped out; everything else keeps progressing."
+        case .illness: "Under the weather. Light work or rest, and an easier week back."
+        }
     }
 
     private var endTitle: String {
@@ -195,10 +209,7 @@ struct LifeModeEditor: View {
                 Text("Equipment").eyebrow()
             }
             Section {
-                Picker("Food", selection: binding.food) {
-                    ForEach(FoodControl.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
+                InkSegmented(options: FoodControl.allCases.map { (value: $0, label: $0.label) }, selection: binding.food)
             } header: {
                 Text("Food").eyebrow()
             }
@@ -235,8 +246,8 @@ struct LifeModeEditor: View {
                                 }))
                     }
                     if let part, joint.isPaired {
-                        Picker(
-                            "Side",
+                        InkSegmented(
+                            options: BodySide.allCases.map { (value: $0, label: $0.label) },
                             selection: Binding(
                                 get: { part.side },
                                 set: { side in
@@ -244,27 +255,28 @@ struct LifeModeEditor: View {
                                     if let index = i.parts.firstIndex(where: { $0.joint == joint }) { i.parts[index].side = side }
                                     binding.wrappedValue = i
                                 })
-                        ) {
-                            ForEach(BodySide.allCases, id: \.self) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
+                        )
+                        .accessibilityLabel("\(joint.label) side")
                     }
                 }
             } header: {
                 Text("Where").eyebrow()
             }
             Section {
-                Picker("Severity", selection: binding.severity) {
-                    ForEach(InjurySeverity.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
+                InkSegmented(options: InjurySeverity.allCases.map { (value: $0, label: $0.label) }, selection: binding.severity)
                 TextField("What happened (optional)", text: binding.note, axis: .vertical)
             } header: {
                 Text("Severity").eyebrow()
             }
             if !injury.parts.isEmpty {
                 Section {
-                    Button("\(excluded.count) exercises set aside · adjust") { showExercises = true }
+                    Button {
+                        showExercises = true
+                    } label: {
+                        LinkRowLabel(title: "\(excluded.count) exercises set aside", caption: "Add any back, or take more out")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("lifeMode.injuryExercises")
                 } footer: {
                     Text(
                         "Filtering uses the joints each exercise loads. Add any back or take more out by hand. Persistent or worsening pain means a physio or doctor, not more training around it."
@@ -277,11 +289,10 @@ struct LifeModeEditor: View {
 
     private func illness(_ kind: IllnessKind) -> some View {
         Section {
-            Picker("How bad", selection: Binding(get: { kind }, set: { period.kind = .illness($0) })) {
-                ForEach(IllnessKind.allCases) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            Text(kind.detail).font(.subheadline).foregroundStyle(.secondary)
+            InkSegmented(
+                options: IllnessKind.allCases.map { (value: $0, label: $0.label) },
+                selection: Binding(get: { kind }, set: { period.kind = .illness($0) }))
+            Text(kind.detail).font(.subheadline).foregroundStyle(Ink.text2)
         } footer: {
             Text("Exempt from Discipline. Coming back counts as stress too, so the first week back is lighter.")
         }
@@ -297,39 +308,51 @@ struct InjuryOverrides: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                let all = model.catalog.of(kind: .strength).filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
-                ForEach(all.filter { injury.affects($0) || injury.removed.contains($0.id) }) { exercise in
-                    let out = injury.excludes(exercise)
-                    Button {
-                        // One write: separate writes through the binding would each start from the same value.
-                        var updated = injury
-                        updated.toggleOverride(for: exercise)
-                        injury = updated
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(exercise.name)
-                                Text(
-                                    exercise.joints.filter { injury.joints.contains($0.joint) }.map {
-                                        "\($0.joint.label): \($0.stress.label.lowercased())"
-                                    }.joined(separator: ", ")
-                                )
-                                .font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    SheetHeading(
+                        eyebrow: "Injury", title: "Exercises",
+                        detail: "What loads the injured joints is set aside. Tap one to allow it back, or to set it aside too.")
+                    InkSearchField(text: $query, prompt: "Search exercises", identifier: "injury.search")
+                    let all = model.catalog.of(kind: .strength).filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+                    RowCard {
+                        ForEach(all.filter { injury.affects($0) || injury.removed.contains($0.id) }) { exercise in
+                            let out = injury.excludes(exercise)
+                            Button {
+                                // One write: separate writes through the binding would each start from the same value.
+                                var updated = injury
+                                updated.toggleOverride(for: exercise)
+                                injury = updated
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(exercise.name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                                        Text(
+                                            exercise.joints.filter { injury.joints.contains($0.joint) }.map {
+                                                "\($0.joint.label): \($0.stress.label.lowercased())"
+                                            }.joined(separator: ", ")
+                                        )
+                                        .font(.caption).foregroundStyle(Ink.text3)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text(out ? "Set aside" : "Allowed").font(.caption.weight(.semibold)).foregroundStyle(out ? Ink.ok : Ink.good)
+                                }
+                                .contentShape(.rect)
                             }
-                            Spacer()
-                            Text(out ? "Set aside" : "Allowed").font(.subheadline).foregroundStyle(out ? Ink.ok : Ink.good)
+                            .buttonStyle(.plain)
+                            .hoverHighlight()
+                            .accessibilityIdentifier("injury.exercise")
                         }
                     }
-                    .buttonStyle(.plain)
-                    .hoverHighlight()
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+                .readableWidth(620)
             }
-            .inkList()
-            .searchable(text: $query)
-            .navigationTitle("Exercises")
-            .inlineTitle()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .scrollDismissesKeyboard(.immediately)
+            .inkSheet {
+                SheetBar(label: "Done", identifier: "injury.done") { dismiss() }
+            }
         }
         .sheetFrame()
     }
