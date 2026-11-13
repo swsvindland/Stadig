@@ -555,60 +555,80 @@ struct HistoryView: View {
 
     var body: some View {
         let entries = (model.sessions.map(Entry.session) + model.activities.map(Entry.activity)).sorted { $0.date > $1.date }
+        // Month by month, newest first, as the sessions came.
+        let months = Dictionary(grouping: entries) { Calendar.current.dateInterval(of: .month, for: $0.date)?.start ?? $0.date }
+            .sorted { $0.key > $1.key }
         List {
-            if !sizeClass.isWide { FormHeading(eyebrow: "Progress", title: "History") }
-            Section {
-                ForEach(entries) { entry in
-                    switch entry {
-                    case .session(let session):
-                        NavigationLink {
-                            SessionDetail(record: session)
-                        } label: {
-                            row(
-                                symbol: "dumbbell", title: session.title,
-                                caption:
-                                    "\(Self.when(session.start)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
-                            )
-                        }
-                        .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
-                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
-                        .accessibilityIdentifier("history.session")
-                    case .activity(let log):
-                        row(
-                            symbol: log.type.symbol, title: log.type.label,
-                            caption: "\(Self.when(log.start)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
-                        )
-                        .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
-                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
-                        .accessibilityIdentifier("history.activity")
-                    }
-                }
-            } header: {
-                if !entries.isEmpty { Text("\(model.sessions.count) sessions · \(model.activities.count) activities").eyebrow() }
+            if !sizeClass.isWide {
+                FormHeading(
+                    eyebrow: "Progress", title: "History",
+                    detail: entries.isEmpty ? nil : "\(model.sessions.count) sessions · \(model.activities.count) activities")
             }
-            .inkRows()
+            ForEach(months, id: \.key) { month, entries in
+                Section {
+                    ForEach(entries) { entry in
+                        switch entry {
+                        case .session(let session):
+                            NavigationLink {
+                                SessionDetail(record: session)
+                            } label: {
+                                row(
+                                    date: session.start, symbol: "dumbbell", title: session.title,
+                                    caption:
+                                        "\(Self.time(session.start)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
+                                )
+                            }
+                            .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
+                            .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
+                            .accessibilityIdentifier("history.session")
+                        case .activity(let log):
+                            row(
+                                date: log.start, symbol: log.type.symbol, title: log.type.label,
+                                caption: "\(Self.time(log.start)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
+                            )
+                            .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
+                            .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
+                            .accessibilityIdentifier("history.activity")
+                        }
+                    }
+                } header: {
+                    SectionEyebrow(month.formatted(.dateTime.month(.wide).year()), detail: "\(entries.count)")
+                }
+                .inkRows()
+            }
         }
         .inkList()
         .detailPage(title: "History", wide: sizeClass.isWide)
-        .overlay { if entries.isEmpty { ContentUnavailableView("Nothing yet", systemImage: "clock") } }
+        .overlay {
+            if entries.isEmpty {
+                EmptyCard(symbol: "clock", title: "Nothing yet", detail: "Sessions and outside activities show here.").padding(16)
+            }
+        }
     }
 
-    /// A session or an activity: its symbol in the accent, what it was, and when and how much.
-    private func row(symbol: String, title: String, caption: String) -> some View {
+    /// A session or an activity: its day as Plan's week names days, what it was, when and how much,
+    /// and what kind it was, quietly.
+    private func row(date: Date, symbol: String, title: String, caption: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol).font(.body).foregroundStyle(Color.accentColor).frame(width: 24).accessibilityHidden(true)
+            VStack(spacing: 0) {
+                Text(date.formatted(.dateTime.weekday(.abbreviated))).eyebrow()
+                Text(date.formatted(.dateTime.day())).numeral(20).foregroundStyle(Ink.text)
+            }
+            .frame(width: 38)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                 Text(caption).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
+            Spacer(minLength: 8)
+            Image(systemName: symbol).font(.footnote).foregroundStyle(Ink.text3).accessibilityHidden(true)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
     }
 
-    /// "Thu 12 Nov, 17:30": the day first, as the rest of the app names days.
-    private static func when(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
+    /// "17:30", in the person's own clock.
+    private static func time(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
     }
 
     private func sourceLabel(_ log: ActivityLog) -> String {
