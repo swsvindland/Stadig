@@ -2,6 +2,12 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Macro's logger drawn as the composer opened bigger.** The same day. The calls, mine to check:
+  - **No system bar:** the top is the search field styled as the composer (or the mode's name under the day) with a round × for Done; the foot is the meal so far, the time chips and the ways to log as one row of words (Search, Scan, Photo, Describe, Quick add) on solid ink.
+  - **Return in the logger's search logs the best match,** as the composer and the iPad's pane do. Rows are Today's: the short name first (the rest of the catalog's name quieter beside it in search), a round + that logs.
+  - **A scanned barcode's food lands as a card under the camera** (with a ruler and "Log 1 portion") and scanning carries on; the amount sheet is a tap on the card. A typed barcode still opens the sheet. The shutter switches to Photo.
+  - **The food editor is "Your numbers"** (it was "Edit Food"). The board's Plate chip isn't built (the camera finds barcodes and labels; a plate is the shutter).
+
 - **Both Watch apps drawn to their boards.** The same day. The calls, mine to check:
   - **Stadig Lift's set fills the face:** the exercise beside the clock, "70 × 7" fitted to the width, the Crown's scale at the edge, Just right as a band at the foot (Double Tap). Swipe up or down opens the rating; Exercises, End, Continue on iPhone and Discard moved to a page one swipe left. Rest is a solid level with the countdown, heart rate and "go at N"; the Crown adds or takes 15 s. A new **Go** face shows the next set in the accent for 6 s when rest ends by itself. The finished face shows the work sets and what moved, not Strength or Your shape, which the Watch has no history to score.
   - **Stadig Macro's Today** is a level filling from the foot with the protein line at its own height (the scale button below the face); Usually now is one food per face with Log; the weigh-in says "The scale says" with the trend under it and Keep (which saves nothing if today's reading is unchanged).
