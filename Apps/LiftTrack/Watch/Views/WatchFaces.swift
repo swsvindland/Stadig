@@ -35,9 +35,9 @@ enum WatchFace {
     static let band: CGFloat = small ? 52 : 60
     /// The design's 16-point margins, 12 on the smallest screens.
     static let margin: CGFloat = small ? 12 : 16
-    /// Room left at the top right for the time, which the system draws there: a face's top line
+    /// Room left at the top right for the time, from the screen's edge (the system draws it there): a face's top line
     /// shares its row.
-    static let clock: CGFloat = small ? 56 : 66
+    static let clock: CGFloat = small ? 52 : 58
 
     /// The size, the design's `nominal` scaled to this screen at most, at which numbers set side by
     /// side fit across the face beside `fixed` points of other things (margins, the "×").
@@ -84,7 +84,7 @@ extension View {
         lineLimit(2)
             .minimumScaleFactor(0.85)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.trailing, WatchFace.clock)
+            .padding(.trailing, WatchFace.clock - WatchFace.margin)
             .padding(.top, 18)
     }
 
@@ -92,24 +92,28 @@ extension View {
     func faceEyebrow(_ color: Color) -> some View {
         faceFont(13, weight: .semibold)
             .textCase(.uppercase)
-            .tracking(1.1)
+            .tracking(0.9)
             .foregroundStyle(color)
     }
 }
 
 private struct FaceFont: ViewModifier {
-    @ScaledMetric private var scaled: CGFloat
-    private let size: CGFloat
-    private let weight: Font.Weight
-
-    init(size: CGFloat, weight: Font.Weight) {
-        _scaled = ScaledMetric(wrappedValue: size, relativeTo: .footnote)
-        self.size = size
-        self.weight = weight
-    }
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let size: CGFloat
+    let weight: Font.Weight
 
     func body(content: Content) -> some View {
-        content.font(.system(size: min(scaled, size * 1.5), weight: weight))
+        // The design's size on its 45 mm face, a little smaller on the smallest Watches; text sizes
+        // larger than the default (large on the small Watches, extra large on the others) make it
+        // larger, to half again.
+        let grow: CGFloat =
+            switch typeSize {
+            case ...DynamicTypeSize.xLarge: 1
+            case .xxLarge: 1.12
+            case .xxxLarge: 1.25
+            default: 1.5
+            }
+        content.font(.system(size: size * max(0.92, WatchFace.scale) * grow, weight: weight))
     }
 }
 
@@ -169,31 +173,33 @@ struct SetDots: View {
 struct ActionBand: View {
     let title: String
     var detail: String?
+    /// Whether Double Tap presses it: only the face in view's band, where several are laid out.
+    var doubleTap = true
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                DoubleTapGlyph(size: 22)
+            HStack(spacing: WatchFace.small ? 6 : 8) {
+                DoubleTapGlyph(size: WatchFace.small ? 19 : 22)
                 Text(title)
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: WatchFace.small ? 18 : 20, weight: .bold))
                     .tracking(-0.4)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 if let detail {
                     Spacer(minLength: 4)
-                    Text(detail).faceFont(13, weight: .bold).monospacedDigit().lineLimit(1)
+                    Text(detail).faceFont(13, weight: .bold).monospacedDigit().lineLimit(1).fixedSize().layoutPriority(1)
                 }
             }
             .foregroundStyle(WatchInk.onAccent)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, WatchFace.small ? 14 : 20)
             .padding(.bottom, 5)
             .frame(maxWidth: .infinity, minHeight: WatchFace.band, maxHeight: WatchFace.band)
             .background(Color.accentColor)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .handGestureShortcut(.primaryAction)
+        .handGestureShortcut(.primaryAction, isEnabled: doubleTap)
     }
 }
 
