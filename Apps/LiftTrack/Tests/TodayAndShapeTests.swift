@@ -23,6 +23,17 @@ struct TodayAndShapeTests {
         }
     }
 
+    @Test("Today's card counts the session's lifting sets, as the summary does, not its drills")
+    func todaysSetsAreLiftingSets() throws {
+        let model = TestApp().model()
+        SampleData.seedIfEmpty(model)
+        let plan = try #require(model.plan())
+        let lifting = plan.items.filter(\.isStrength).reduce(0) { $0 + $1.workSets.count }
+        #expect(lifting > 0)
+        #expect(plan.items.contains { !$0.isStrength && !$0.workSets.isEmpty }, "the sample's session has drills with sets of their own")
+        #expect(HeroLine.contents(plan: plan, catalog: model.catalog).hasSuffix("· \(lifting) sets"))
+    }
+
     @Test("Your shape has Stadig Lift's scores, and Stadig Macro's once it publishes")
     func stats() throws {
         let app = TestApp()

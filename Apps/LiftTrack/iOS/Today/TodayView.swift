@@ -459,7 +459,8 @@ enum HeroLine {
         }
         var line = names.joined(separator: ", ")
         if let first = line.first { line = first.uppercased() + line.dropFirst() }
-        let sets = plan.items.reduce(0) { $0 + $1.workSets.count }
+        // Lifting sets, as the summary counts them: warm-up drills, mobility and conditioning aren't sets.
+        let sets = plan.items.filter(\.isStrength).reduce(0) { $0 + $1.workSets.count }
         if lifts.isEmpty {
             line = "\(plan.items.count) \(plan.items.count == 1 ? "exercise" : "exercises")"
         } else if lifts.count > names.count {

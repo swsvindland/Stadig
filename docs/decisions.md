@@ -2,6 +2,14 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Stadig Lift's summary and Progress's Month and Year.** 2026-11-13, from the boards `LiftSummary` and `LiftProgress`. The calls, mine to check:
+  - **The summary covers the phone's screen**, as the session does and the board draws it; a wide window keeps the sheet.
+  - **What moved names a lift by its score** where it's that score's own lift ("Deadlift", "Bench press"), its estimates to 0.5 kg (1 lb).
+  - **Sets planned and on Today's card are lifting sets**, not warm-up drills, mobility or conditioning: Today said "20 sets" for a session the summary called "all 11 done".
+  - **Year is "+12 this year"**, or since the month the readings began when that's later ("+5 since October"). It moves Strength's chip, the row under it and Your shape's rows; the dashed outline keeps its three months, as Body's chip shares them.
+  - **Your shape moved out of Progress's header** to make room for the switch: the scores row under Strength opens it, and it's the first row of the card at the foot.
+  - **`-sessionAt summary` runs today's whole session** through the session simulator, a good day on the main lifts sized just enough to move Strength a point, so the summary shows the engine's own What moved and lessons. The board's other lessons (next time's load, "held", rest and heart rate) aren't ones the app draws yet.
+
 - **Set my own targets in Stadig Macro.** 2026-11-13, from the boards' "Set my own targets" (onboarding's starting point) and "Adjust" (Plan), which the app left out. The calls, mine to check:
   - **Own targets are the person's check-ins** (`CheckIn.Status.manual`), in force from their day, not a setting: past days stay judged by what was in force, and nothing is rewritten when they end.
   - **The weekly check-in keeps them.** It still moves maintenance and says what the plan would set ("Your own targets hold. With maintenance at about X kcal, the plan would set Y"); the plan's own numbers keep stepping underneath (`CheckIn.plan`), so "Use the plan's targets" puts in force exactly what Plan showed. Setting or changing them restarts the weekly cadence from that day.
