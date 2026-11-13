@@ -2,6 +2,12 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **The wide layouts against the device boards.** The same day. The calls, mine to check:
+  - **The iPad's gym session drops the session's name and clock from its bar**, since the tape beside the set has them at the board's size; the bar keeps its buttons and heart rate.
+  - **The menu bar panel's way into the app is "Open the week ⌘O"**, landing on the week desk, as `DevMacMenuBar` has it.
+  - **Lift's History on a wide screen opens on its newest session** rather than an empty inspector.
+  - **Left as they are:** the Mac's sidebar (the boards draw a toolbar tab strip), the week desk's footer dropping protein and weight at default widths, the gym board's "Listening" microphone (the app has no speech recognition), and the long-game board (`DevPadLongGame`, a concept).
+
 - **Stadig Lift's summary and Progress's Month and Year.** 2026-11-13, from the boards `LiftSummary` and `LiftProgress`. The calls, mine to check:
   - **The summary covers the phone's screen**, as the session does and the board draws it; a wide window keeps the sheet.
   - **What moved names a lift by its score** where it's that score's own lift ("Deadlift", "Bench press"), its estimates to 0.5 kg (1 lb).
