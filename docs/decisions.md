@@ -2,6 +2,16 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **Set my own targets in Stadig Macro.** 2026-11-13, from the boards' "Set my own targets" (onboarding's starting point) and "Adjust" (Plan), which the app left out. The calls, mine to check:
+  - **Own targets are the person's check-ins** (`CheckIn.Status.manual`), in force from their day, not a setting: past days stay judged by what was in force, and nothing is rewritten when they end.
+  - **The weekly check-in keeps them.** It still moves maintenance and says what the plan would set ("Your own targets hold. With maintenance at about X kcal, the plan would set Y"); the plan's own numbers keep stepping underneath (`CheckIn.plan`), so "Use the plan's targets" puts in force exactly what Plan showed. Setting or changing them restarts the weekly cadence from that day.
+  - **Vacation, illness and crunch still change the day; a deload's automatic diet break doesn't.** Starting or changing the plan ends own targets, and the cards say so first.
+  - **Set at onboarding, the assessment still runs** its usual length and the recommendation still comes; going back during it removes them, so those days count as assessment days. "Set my own targets" is on the assessment card too (no board shows it), or there'd be no way in until a plan starts.
+  - **On pace is judged against what their calories aim for** from the maintenance estimate (within 5% of maintenance is holding), not the plan's phase, so a coach's numbers aren't "off course"; no verdict until maintenance rests on data. Stadig Lift keeps seeing the plan's phase.
+  - **The sheet is grams with each one's share of the calories**, no grams/split switch; changing the calories moves carbs and fat in proportion and leaves protein. 1,000 to 6,000 kcal; protein alone over the calories can't be saved.
+  - **Words:** "Your targets" on Today's eyebrow, the badges and the pill; "Your own" on Plan; "Use the plan's targets"; "Back to eating as usual" during the assessment.
+  - **Open:** `CheckIn.plan` is a new optional field without a schema bump (a bump would stop older builds reading any check-in). An older build on another device that runs the weekly check-in would end own targets everywhere.
+
 - **Searching is one thing on a Stadig Macro phone.** 2026-11-13, after the owner's "the home search is totally different than the other pages". The calls, mine to check:
   - **Typing on Log, Plan or Progress covers the page** with Today's typing state (what's left in a line, the matches over the field, today's usual foods over an empty one) rather than floating matches over the page. An iPad's page stays.
   - **The phone's logger is the composer opened**: the field at the foot, the matches rising to it with the best nearest, Today's typing header at the top under where the foods go. The search at the top and the five-way ribbon are gone from the phone (the pane on the iPad and Mac keeps them, for a pointer and a keyboard). Scan, Photo and Describe are the field's camera, its menu and the microphone; **Quick add** is a chip beside Done, and calories typed as calories are its row.
@@ -79,7 +89,7 @@ Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries)
 
 - **Stadig Macro's tabs drawn to their boards.** The same day, to close the gap between the design and the app. The calls, mine to check:
   - **Log:** the day's meals as cards with P/C/F dots, the calories as a numeral and a **…** menu; the card's old **+** is "Add to meal" in that menu. Rows drop the food marker on the phone's cards. The hour slots, the Now line and Log again's chips stay (the board has none, the app needs them), and today opens on the current hour.
-  - **Plan:** on pace means losing within 0.7 to 1.4 times the phase's rate (maintenance: within ±0.25% a week); "Faster than planned" and "Slower than planned" outside that. No "Adjust" or "Set my own targets", which the app doesn't have.
+  - **Plan:** on pace means losing within 0.7 to 1.4 times the phase's rate (maintenance: within ±0.25% a week); "Faster than planned" and "Slower than planned" outside that. "Adjust" and "Set my own targets" open the targets sheet (2026-11-13, below).
   - **Progress:** on a phone Your shape is a row at the top that opens its own page (with the system back, so the swipe back works), rather than the whole figure above the weight.
   - **Meal plan:** the grocery list and prep day are rows that open pages of their own, instead of a picker.
   - **Onboarding** ends on a new step, "Here's your starting point", the formula's maintenance (the assessment has no calorie target yet, so it isn't a cut's).
