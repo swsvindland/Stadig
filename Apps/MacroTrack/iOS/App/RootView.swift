@@ -76,7 +76,7 @@ struct RootView: View {
         @Bindable var model = model
         return TabView(selection: $model.tab) {
             Tab("Today", systemImage: "fork.knife", value: AppTab.today) { TodayView() }
-            Tab("Log", systemImage: "list.bullet.clipboard", value: AppTab.log) { LogTab().tabComposer(.log, isEnabled: !wide) }
+            Tab("Log", systemImage: "list.bullet", value: AppTab.log) { LogTab().tabComposer(.log, isEnabled: !wide) }
             if wide {
                 Tab("Week", systemImage: "rectangle.split.3x1", value: AppTab.week) { WeekDeskView() }
                     .accessibilityIdentifier("sidebar.week")
@@ -94,7 +94,7 @@ struct RootView: View {
                     TabSectionTitle("Food", systemImage: "basket")
                 }
                 TabSection {
-                    Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView() }
+                    Tab("Plan", systemImage: "flag", value: AppTab.plan) { PlanView() }
                     Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) { ProgressTab() }
                     Tab("History", systemImage: "calendar", value: AppTab.history) { HistoryView() }
                         .tabPlacement(.sidebarOnly)
@@ -103,7 +103,7 @@ struct RootView: View {
                     TabSectionTitle("Review", systemImage: "chart.bar.xaxis")
                 }
             } else {
-                Tab("Plan", systemImage: "map", value: AppTab.plan) { PlanView().tabComposer(.plan, isEnabled: true) }
+                Tab("Plan", systemImage: "flag", value: AppTab.plan) { PlanView().tabComposer(.plan, isEnabled: true) }
                 Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) {
                     ProgressTab().tabComposer(.progress, isEnabled: true)
                 }

@@ -16,6 +16,7 @@ private struct TabComposerFoot: ViewModifier {
     let tab: AppTab
     let isEnabled: Bool
     @FocusState private var typing: Bool
+    @State private var composer = TodayComposer()
 
     func body(content: Content) -> some View {
         content
@@ -25,10 +26,44 @@ private struct TabComposerFoot: ViewModifier {
             #endif
             // Only while typing: the rest of the time the screen's taps are its own.
             .simultaneousGesture(TapGesture().onEnded { typing = false }, including: typing ? .all : .subviews)
+            .overlay {
+                if covers {
+                    TypingCover(composer: composer, tab: tab) { typing = false }
+                        .transition(.opacity)
+                }
+            }
+            .animation(.snappy(duration: 0.2), value: covers)
             // Empty without room for it, rather than gone: the screen keeps its state when an iPad
             // window narrows or widens.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if isEnabled { TabComposer(tab: tab, typing: $typing) }
+                if isEnabled { TabComposer(tab: tab, composer: composer, typing: $typing, compact: sizeClass == .compact) }
+            }
+    }
+
+    /// While a phone's composer has the keyboard the page gives way to what Today shows then, so
+    /// typing reads the same on every tab: what's left now and after what's typed at the top, the
+    /// matches rising over the field. An iPad's page stays, with the composer at its foot.
+    var covers: Bool { isEnabled && typing && sizeClass == .compact }
+}
+
+/// Today's typing state over a tab: the header in a line for the day the composer logs to, on the
+/// ground. A tap on it puts the keyboard away, as a tap on the page does.
+private struct TypingCover: View {
+    @Environment(AppModel.self) private var model
+    let composer: TodayComposer
+    let tab: AppTab
+    let dismiss: () -> Void
+
+    var body: some View {
+        let day = tab == .log ? model.selectedDay : model.today
+        TypingHeader(targets: model.targets(on: day), eaten: model.dayIntake(on: day).eaten, adding: composer.adding)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background {
+                Ink.ground.ignoresSafeArea()
+                    .contentShape(.rect)
+                    .onTapGesture(perform: dismiss)
             }
     }
 }
@@ -36,14 +71,17 @@ private struct TabComposerFoot: ViewModifier {
 /// The composer at the foot of a phone's Log, Plan and Progress: Today's field, logging where it
 /// is. What's typed raises the same matches over it and Return logs the best of each part (a list
 /// with commas, a quick add, words worked out in place, whose rows sit over the field while they're
-/// worked out or asked about); the camera opens the scanner and the microphone describe; the toast,
+/// worked out or asked about); with the keyboard up and nothing typed, today's usual foods are a tap
+/// each over it, as on Today; the camera opens the scanner and the microphone describe; the toast,
 /// with Undo, shows over it. The Log tab's logs to the day it shows, and while foods are picked out
 /// there the selection's bar takes the field's place.
 struct TabComposer: View {
     @Environment(AppModel.self) private var model
     let tab: AppTab
+    let composer: TodayComposer
     var typing: FocusState<Bool>.Binding
-    @State private var composer = TodayComposer()
+    /// A phone's width, where the page gives way while typing and the tiles have the room.
+    let compact: Bool
 
     var body: some View {
         let typed = !composer.text.trimmingCharacters(in: .whitespaces).isEmpty
@@ -57,7 +95,12 @@ struct TabComposer: View {
                     .background(Color.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
             }
             if model.selection.isEmpty {
-                if typed, !composer.matches.isEmpty { ComposerMatches(composer: composer, prefix: "tab") }
+                if typed, !composer.matches.isEmpty {
+                    ComposerMatches(composer: composer, prefix: "tab")
+                } else if showsTiles(typed: typed) {
+                    UsualTiles(composer: composer, most: rows.isEmpty ? 4 : 2, prefix: "tab")
+                        .transition(.opacity)
+                }
                 if !composer.earlier.isEmpty { ComposerChips(parts: composer.earlier, typed: composer.parts) }
                 ComposerField(composer: composer, typing: typing, placeholder: placeholder, prefix: "tab")
             } else {
@@ -72,6 +115,7 @@ struct TabComposer: View {
         .composerGround()
         .animation(.snappy(duration: 0.25), value: composer.matches)
         .animation(.snappy(duration: 0.25), value: rows)
+        .animation(.snappy(duration: 0.2), value: typing.wrappedValue)
         .onAppear {
             composer.logsToSelectedDay = tab == .log
             composer.attach(model)
@@ -79,8 +123,16 @@ struct TabComposer: View {
         .onChange(of: model.personalVersion) { _, _ in composer.attach(model) }
         // Again when the person's own foods change: taking them drops the answers kept so far.
         .task(id: TodayComposer.SearchKey(text: composer.text, foods: model.personalVersion)) { await composer.search() }
+        // The tiles are for the hour it is when the keyboard comes up, as Today's are when it shows.
+        .onChange(of: typing.wrappedValue) { _, now in if now { composer.refreshTiles() } }
         // Picking out foods while typing: the bar has the foot, so the keyboard goes.
         .onChange(of: model.selection.isEmpty) { _, empty in if !empty { typing.wrappedValue = false } }
+    }
+
+    /// Today's usual foods, over an empty field with the keyboard up on a phone: only where the
+    /// composer logs to today, since "usually around now" means nothing for last Tuesday.
+    func showsTiles(typed: Bool) -> Bool {
+        compact && typing.wrappedValue && !typed && !composer.tiles.isEmpty && (tab != .log || model.selectedDay == model.today)
     }
 
     /// Where Return logs, said where it isn't today: the Log tab on another day.
