@@ -95,16 +95,20 @@ struct PlanView: View {
         if model.nextBlockOffered {
             Button("Plan the next block", systemImage: "sparkles") { planning = true }
         }
-        Section("Life") {
+        Section {
             Button("Vacation", systemImage: "airplane") { lifeMode = .vacation }.accessibilityIdentifier("plan.addVacation")
             Button("Crunch mode", systemImage: "briefcase") { lifeMode = .crunch }.accessibilityIdentifier("plan.addCrunch")
             Button("Injury", systemImage: "bandage") { lifeMode = .injury }.accessibilityIdentifier("plan.addInjury")
             Button("Illness", systemImage: "thermometer.medium") { lifeMode = .illness }.accessibilityIdentifier("plan.addIllness")
+        } header: {
+            Text("Life").eyebrow()
         }
-        Section("Next block") {
+        Section {
             Button("Focus: \(model.settings.focusSummary)", systemImage: "scope") { showFocus = true }
                 .accessibilityIdentifier("plan.focus")
             Toggle("Prioritise automatically", systemImage: "wand.and.stars", isOn: model.setting(\.autoPrioritise))
+        } header: {
+            Text("Next block").eyebrow()
         }
         #if !os(macOS)
         Button("Settings", systemImage: "gearshape") { model.showSettings = true }
@@ -589,8 +593,10 @@ struct DayDetail: View {
                     }
                 }
                 if !day.overflow.isEmpty {
-                    Section("Didn't fit, offered as quests") {
+                    Section {
                         ForEach(day.overflow, id: \.title) { Text($0.title) }
+                    } header: {
+                        Text("Didn't fit, offered as quests").eyebrow()
                     }
                 }
                 Section {

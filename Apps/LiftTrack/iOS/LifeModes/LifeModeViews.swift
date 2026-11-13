@@ -179,22 +179,28 @@ struct LifeModeEditor: View {
     private func crunch(_ dials: CrunchDials) -> some View {
         let binding = Binding<CrunchDials>(get: { dials }, set: { period.kind = .crunch($0) })
         return Group {
-            Section("Time") {
+            Section {
                 Picker("Free per session", selection: binding.minutesAvailable) {
                     Text("Nothing").tag(0)
                     ForEach([15, 20, 30, 45], id: \.self) { Text("\($0) min").tag($0) }
                 }
+            } header: {
+                Text("Time").eyebrow()
             }
-            Section("Equipment") {
+            Section {
                 Picker("Equipment", selection: binding.equipment) {
                     ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
                 }
+            } header: {
+                Text("Equipment").eyebrow()
             }
-            Section("Food") {
+            Section {
                 Picker("Food", selection: binding.food) {
                     ForEach(FoodControl.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
+            } header: {
+                Text("Food").eyebrow()
             }
             Section {
                 Toggle("Exempt from Discipline", isOn: binding.exemptFromDiscipline)
@@ -214,7 +220,7 @@ struct LifeModeEditor: View {
             }, set: { period.kind = .injury($0) })
         let excluded = model.catalog.of(kind: .strength).filter { injury.excludes($0) }
         return Group {
-            Section("Where") {
+            Section {
                 ForEach(Joint.allCases) { joint in
                     let part = injury.parts.first { $0.joint == joint }
                     HStack {
@@ -244,13 +250,17 @@ struct LifeModeEditor: View {
                         .pickerStyle(.segmented)
                     }
                 }
+            } header: {
+                Text("Where").eyebrow()
             }
-            Section("Severity") {
+            Section {
                 Picker("Severity", selection: binding.severity) {
                     ForEach(InjurySeverity.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 TextField("What happened (optional)", text: binding.note, axis: .vertical)
+            } header: {
+                Text("Severity").eyebrow()
             }
             if !injury.parts.isEmpty {
                 Section {

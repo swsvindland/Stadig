@@ -127,14 +127,7 @@ struct TodayView: View {
                 .accessibilityLabel("Add")
                 .accessibilityIdentifier("today.add")
                 #if !os(macOS)
-                Button {
-                    model.showSettings = true
-                } label: {
-                    CircleIcon(symbol: "gearshape")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
-                .accessibilityIdentifier("today.settings")
+                CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "today.settings") { model.showSettings = true }
                 #endif
             }
         }
@@ -383,20 +376,6 @@ struct TodayView: View {
     }
 }
 
-/// A round button's face in the phone's header.
-struct CircleIcon: View {
-    let symbol: String
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(Ink.text)
-            .frame(width: 44, height: 44)
-            .background(Ink.surface, in: .circle)
-            .contentShape(.circle)
-    }
-}
-
 /// This week, Monday to Sunday: a green dot for a day trained, the accent for today's session, a
 /// grey one for a training day still to come.
 struct ThisWeekStrip: View {
@@ -544,11 +523,7 @@ struct ScoresCard: View {
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Your scores").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                    Spacer()
-                    Text("All progress").font(.caption).foregroundStyle(Ink.text3)
-                }
+                CardTitle("Your scores", detail: "All progress")
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 18), GridItem(.flexible(), spacing: 18)], alignment: .leading, spacing: 14) {
                     ForEach(Self.shown, id: \.self) { stat in
                         cell(stat, line: lines.first { $0.stat == stat })

@@ -22,11 +22,9 @@ struct ProgressTab: View {
                         PageHeader(eyebrow: eyebrow, title: "Progress") {
                             CircleIconButton(symbol: "scalemass", label: "Weigh in", identifier: "progress.weighIn") { model.showWeighIn = true }
                         }
-                        .padding(.bottom, 4)
                         if let analysis = model.analysis { list(analysis) }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
                     .padding(.bottom, 24)
                     .readableWidth()
                 } else if let analysis = model.analysis {

@@ -11,6 +11,10 @@ import AppKit
 // mode, warm type, oversized tabular numerals, and one gauge everywhere, the ruler. Each app has a
 // single accent, its asset catalog's AccentColor; everything in this file is the same in Stadig Lift
 // and Stadig Macro, which each keep a copy (there's no shared UI package), so change both together.
+// Each app supplies the few things that differ between them: `Ink.onAccent` and the `.pageBackground`
+// and `.cardBackground` fills (Components/Theme.swift), and `hoverHighlight()`, `inlineTitle()`,
+// `adaptiveGlass(in:tint:interactive:)` and the glass button styles Vision Pro keeps
+// (Platform/Adaptive.swift).
 
 // MARK: - Palette
 
@@ -238,6 +242,494 @@ extension View {
         #else
         return background(Ink.ground.ignoresSafeArea())
         #endif
+    }
+
+    /// A content card (`.card`): the card fill on the ground, 22-point continuous corners.
+    func card(padding: CGFloat = 16, radius: CGFloat = 22) -> some View {
+        self.padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: radius, style: .continuous))
+    }
+
+    /// The design's tight card of rows (`.card.tight`): 18-point corners, 14 points in from the sides.
+    func tightCard() -> some View {
+        padding(.horizontal, 14)
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
+    }
+
+    func floatingGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {
+        adaptiveGlass(in: shape, tint: tint, interactive: interactive)
+    }
+
+    /// Rows of a form or list as quiet cards on the ink ground, rather than the system's grey (a
+    /// sheet's lighter grey in dark mode). A row that sets its own background keeps it.
+    func inkRows() -> some View {
+        #if os(iOS)
+        return listRowBackground(Color.cardBackground)
+        #else
+        return self
+        #endif
+    }
+
+    /// Readable line length on iPad.
+    func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }
+
+    /// A choice's tint: the accent when picked, grey otherwise. On Vision Pro's glass a grey tint is
+    /// white on white, so there an unpicked choice keeps the system's own glass.
+    func choiceTint(_ picked: Bool) -> some View {
+        #if os(visionOS)
+        tint(picked ? Color.accentColor : nil)
+        #else
+        tint(picked ? Color.accentColor : .secondary)
+        #endif
+    }
+}
+
+// MARK: - Pages
+
+/// A screen's title as the design sets it (`.title`): 32 points, bold and tightly tracked, growing
+/// with the text size to half again, and wrapping rather than shrinking.
+struct PageTitle: View {
+    let text: String
+    @ScaledMetric private var scaled: CGFloat
+    private let size: CGFloat
+
+    init(_ text: String, size: CGFloat = 32) {
+        self.text = text
+        self.size = size
+        _scaled = ScaledMetric(wrappedValue: size, relativeTo: .largeTitle)
+    }
+
+    var body: some View {
+        let points = min(scaled, size * 1.5)
+        Text(text)
+            .font(.system(size: points, weight: .bold))
+            .tracking(-points * 0.035)
+            .foregroundStyle(Ink.text)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A tab's header on a phone, where the design has it rather than a navigation bar: what the screen
+/// is about as an eyebrow, the title, and its round buttons beside them.
+struct PageHeader<Trailing: View>: View {
+    let eyebrow: String?
+    let title: String
+    @ViewBuilder let trailing: Trailing
+
+    init(eyebrow: String?, title: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        PageHeading(eyebrow: eyebrow, title: title, trailing: trailing).padding(.top, 8)
+    }
+}
+
+/// A pushed page's header on a phone: the eyebrow (where it was opened from) over the title, under
+/// the bar's round back button. The bar stays, title-less, so the edge swipe still goes back
+/// (`detailPage(title:wide:)`).
+struct DetailHeader<Trailing: View>: View {
+    let eyebrow: String?
+    let title: String
+    @ViewBuilder let trailing: Trailing
+
+    init(eyebrow: String? = nil, title: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        PageHeading(eyebrow: eyebrow, title: title, trailing: trailing).padding(.top, 2)
+    }
+}
+
+private struct PageHeading<Trailing: View>: View {
+    let eyebrow: String?
+    let title: String
+    let trailing: Trailing
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let eyebrow { Text(eyebrow).eyebrow().lineLimit(1) }
+                PageTitle(title)
+            }
+            Spacer(minLength: 8)
+            HStack(spacing: 8) { trailing }
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+extension View {
+    /// A pushed phone page that sets its own title large (`DetailHeader`): the bar keeps only its
+    /// round back button, and the tab bar goes, as on the design's detail screens. Wide windows keep
+    /// their bar and its title.
+    func detailPage(title: String, wide: Bool) -> some View {
+        navigationTitle(title)
+            .inlineTitle()
+            #if os(iOS)
+        .toolbar(removing: wide ? nil : .title)
+        .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
+            #endif
+    }
+}
+
+/// A round button's face (`.ibtn`): a symbol on the card colour, 44 points across. A menu's label
+/// too, where `CircleIconButton` can't be.
+struct CircleIcon: View {
+    let symbol: String
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 17, weight: .medium))
+            .foregroundStyle(Ink.text)
+            .frame(width: 44, height: 44)
+            .background(Ink.surface, in: .circle)
+            .contentShape(.circle)
+    }
+}
+
+/// A round icon button, as in a page's header.
+struct CircleIconButton: View {
+    let symbol: String
+    let label: String
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { CircleIcon(symbol: symbol) }
+            .buttonStyle(.plain)
+            .hoverHighlight()
+            .accessibilityLabel(label)
+            .accessibilityIdentifier(identifier)
+    }
+}
+
+/// Onboarding's top: back, a thin ruler filling a step at a time, and how far along ("2 of 9").
+struct StepBar: View {
+    let step: Int
+    let count: Int
+    let back: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            CircleIconButton(symbol: "chevron.left", label: "Back", identifier: "onboarding.back", action: back)
+            Ruler.thin(Double(step) / Double(max(1, count)))
+                .accessibilityHidden(true)
+            Text("\(step) of \(count)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(Ink.text3)
+                .frame(minWidth: 44, alignment: .trailing)
+                .accessibilityLabel("Step \(step) of \(count)")
+        }
+    }
+}
+
+/// An onboarding step's question and what it's for: the title larger than a page's, as the
+/// design's first run has it.
+struct StepHeading: View {
+    let title: String
+    var detail: String?
+
+    init(_ title: String, detail: String? = nil) {
+        self.title = title
+        self.detail = detail
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PageTitle(title, size: 36)
+            if let detail {
+                Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Controls
+
+/// The design's buttons (`.btn`): the accent filled for the one action on a screen (`.solid`), the
+/// raised grey for the rest (`.ghost`). The control size sets the height: 52 points large, 44
+/// regular (`.btn.sm`), 34 small, so a small one still fits in a row.
+struct InkButtonStyle: ButtonStyle {
+    var filled = true
+    @Environment(\.controlSize) private var size
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let (height, radius, inset): (CGFloat, CGFloat, CGFloat) =
+            switch size {
+            case .mini, .small: (34, 12, 12)
+            case .large, .extraLarge: (52, 16, 20)
+            default: (44, 14, 16)
+            }
+        configuration.label
+            .font(height >= 52 ? .body.weight(.semibold) : .subheadline.weight(.semibold))
+            .foregroundStyle(filled ? Ink.onAccent : Ink.text)
+            .padding(.horizontal, inset)
+            .frame(minHeight: height)
+            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: radius, style: .continuous))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.42)
+            .contentShape(.rect(cornerRadius: radius, style: .continuous))
+            .hoverHighlight()
+    }
+}
+
+extension ButtonStyle where Self == InkButtonStyle {
+    /// The accent, filled: the one action that matters on a screen.
+    static var solid: InkButtonStyle { InkButtonStyle(filled: true) }
+    /// The raised grey: every other button.
+    static var ghost: InkButtonStyle { InkButtonStyle(filled: false) }
+}
+
+extension View {
+    /// The one action that matters on a screen: filled with the accent. Vision Pro keeps its own
+    /// prominent button over the glass.
+    func primaryAction() -> some View {
+        #if os(visionOS)
+        prominentGlassButtonStyle().buttonBorderShape(.capsule)
+        #else
+        buttonStyle(.solid)
+        #endif
+    }
+
+    func secondaryAction() -> some View {
+        #if os(visionOS)
+        glassButtonStyle().buttonBorderShape(.capsule)
+        #else
+        buttonStyle(.ghost)
+        #endif
+    }
+}
+
+/// A few choices on the raised grey, the chosen one lifted onto the card colour (`.seg`).
+struct InkSegmented<Value: Hashable>: View {
+    let options: [(value: Value, label: String)]
+    @Binding var selection: Value
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.value) { option in
+                let on = option.value == selection
+                Button {
+                    selection = option.value
+                } label: {
+                    Text(option.label)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(on ? Ink.text : Ink.text2)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: 34)
+                        .background {
+                            if on {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Ink.surface)
+                                    .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                            }
+                        }
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Ink.raised, in: .rect(cornerRadius: 13, style: .continuous))
+        .animation(.snappy(duration: 0.2), value: selection)
+    }
+}
+
+/// A small rounded label.
+struct Pill: View {
+    let text: String
+    var symbol: String?
+    var color: Color = .secondary
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol) }
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        #if os(visionOS)
+        // On glass a tint's own text over a faint wash of it can't be read: the tint fills the
+        // capsule instead, under white text.
+        .foregroundStyle(color == .secondary ? color : .white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(color == .secondary ? color.opacity(0.14) : color.opacity(0.7), in: .capsule)
+        #else
+        .foregroundStyle(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(color.opacity(0.14), in: .capsule)
+        #endif
+    }
+}
+
+// MARK: - Cards and rows
+
+/// A card's title over its number or chart (`.h3`), with a note at the right: "Your scores … All
+/// progress".
+struct CardTitle: View {
+    let title: String
+    var detail: String?
+
+    init(_ title: String, detail: String? = nil) {
+        self.title = title
+        self.detail = detail
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1) }
+        }
+    }
+}
+
+/// A group's eyebrow, on the page or at the top of a card, with a note at the right: "USUALLY
+/// AROUND NOW … One tap logs it".
+struct SectionEyebrow: View {
+    let title: String
+    var detail: String?
+
+    init(_ title: String, detail: String? = nil) {
+        self.title = title
+        self.detail = detail
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).eyebrow().accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if let detail { Text(detail).font(.caption).foregroundStyle(Ink.text3).lineLimit(1) }
+        }
+    }
+}
+
+/// Small uppercase labels along an axis or under a ruler (`.scale`).
+struct ScaleLabel: View {
+    let text: String
+    var highlighted = false
+
+    init(_ text: String, highlighted: Bool = false) {
+        self.text = text
+        self.highlighted = highlighted
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .textCase(.uppercase)
+            .tracking(0.6)
+            .foregroundStyle(highlighted ? Ink.text : Ink.text3)
+            .lineLimit(1)
+    }
+}
+
+/// Rows in a tight card with hairlines between (`.card.tight` of `.list`), under an optional eyebrow
+/// inside the card.
+struct RowCard<Content: View>: View {
+    var title: String?
+    var detail: String?
+    var minHeight: CGFloat = 52
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Group(subviews: content) { rows in
+            // Nothing to show: no empty card.
+            if !rows.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    if let title {
+                        SectionEyebrow(title, detail: detail)
+                            .padding(.top, 12)
+                            .padding(.bottom, 2)
+                    }
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                        if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
+                        row.padding(.vertical, 8).frame(minHeight: minHeight)
+                    }
+                }
+                .tightCard()
+            }
+        }
+    }
+}
+
+/// A row that opens something: a title, a caption under it, a value, and a chevron.
+struct LinkRowLabel: View {
+    let title: String
+    var caption: String?
+    var trailing: String?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                if let caption, !caption.isEmpty {
+                    Text(caption).font(.caption).foregroundStyle(Ink.text3).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 4)
+            if let trailing { Text(trailing).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2) }
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A section heading inside a scrolling page.
+struct SectionHeader: View {
+    let title: String
+    var detail: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.title3.weight(.semibold))
+            Spacer()
+            if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+        }
+        .padding(.top, 8)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// An empty state with a single next step.
+struct EmptyCard: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.title).foregroundStyle(Ink.text3)
+            Text(title).font(.headline).foregroundStyle(Ink.text)
+            Text(detail).font(.subheadline).foregroundStyle(Ink.text2).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .card(padding: 24)
+    }
+}
+
+/// A list's bullet: a small dot on the first line.
+struct BulletLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) {
+                $0[VerticalAlignment.center] + 4
+            }
+            configuration.title
+        }
     }
 }
 

@@ -395,7 +395,7 @@ struct FeedbackSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Coming in, how sore were you?") {
+                Section {
                     Picker("Soreness", selection: $soreness) {
                         Text("None").tag(0)
                         Text("A little").tag(1)
@@ -403,8 +403,10 @@ struct FeedbackSheet: View {
                         Text("Very").tag(3)
                     }
                     .pickerStyle(.segmented)
+                } header: {
+                    Text("Coming in, how sore were you?").eyebrow()
                 }
-                Section("Energy") {
+                Section {
                     Picker("Energy", selection: $energy) {
                         Text("Drained").tag(1)
                         Text("Low").tag(2)
@@ -413,6 +415,8 @@ struct FeedbackSheet: View {
                         Text("Great").tag(5)
                     }
                     .pickerStyle(.segmented)
+                } header: {
+                    Text("Energy").eyebrow()
                 }
                 Section {
                     ForEach(Joint.allCases) { joint in
@@ -425,7 +429,7 @@ struct FeedbackSheet: View {
                                 }))
                     }
                 } header: {
-                    Text("Any joint pain?")
+                    Text("Any joint pain?").eyebrow()
                 } footer: {
                     Text(
                         "Feeling beat up and stalling means less whole-body fatigue next block before less work. Pain that persists or worsens means a physio."
@@ -540,11 +544,13 @@ struct EditSetSheet: View {
                         Text("Tap a number to type it.")
                     }
                     if logged.kind != .warmup, logged.kind != .repOut {
-                        Section("How it felt") {
+                        Section {
                             Picker("Rating", selection: $rating) {
                                 ForEach(SetRating.allCases) { Text($0.label).tag(SetRating?.some($0)) }
                             }
                             .pickerStyle(.segmented)
+                        } header: {
+                            Text("How it felt").eyebrow()
                         }
                     }
                 }

@@ -170,15 +170,6 @@ extension View {
         #endif
     }
 
-    /// The title large under the back button, where a pushed page is a place of its own.
-    func largeTitle() -> some View {
-        #if os(macOS)
-        return self
-        #else
-        return navigationBarTitleDisplayMode(.large)
-        #endif
-    }
-
     func inlineTitle() -> some View {
         #if os(macOS)
         return self
@@ -286,16 +277,6 @@ extension View {
     func inkForm() -> some View {
         #if os(iOS)
         return scrollContentBackground(.hidden).background(Ink.ground.ignoresSafeArea())
-        #else
-        return self
-        #endif
-    }
-
-    /// Rows of a form or list as quiet cards on the ink ground, rather than the system's grey (a
-    /// sheet's lighter grey in dark mode). A row that sets its own background keeps it.
-    func inkRows() -> some View {
-        #if os(iOS)
-        return listRowBackground(Color.cardBackground)
         #else
         return self
         #endif

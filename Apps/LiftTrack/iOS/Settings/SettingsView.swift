@@ -15,28 +15,33 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            if let profile = model.profile {
+            Group {
+                if let profile = model.profile {
+                    Section {
+                        NavigationLink("Goals, schedule and experience") { ProfileEditor(profile: profile) }
+                            .accessibilityIdentifier("settings.profile")
+                        NavigationLink("Training outside the gym") { RecurringScreen(profile: profile) }
+                            .accessibilityIdentifier("settings.outside")
+                    } header: {
+                        Text("About you").eyebrow()
+                    } footer: {
+                        Text("Shared with the other apps in the family, so it's asked once.")
+                    }
+                }
                 Section {
-                    NavigationLink("Goals, schedule and experience") { ProfileEditor(profile: profile) }
-                        .accessibilityIdentifier("settings.profile")
-                    NavigationLink("Training outside the gym") { RecurringScreen(profile: profile) }
-                        .accessibilityIdentifier("settings.outside")
+                    NavigationLink {
+                        GymEditor(gym: model.gym)
+                    } label: {
+                        LabeledContent("Equipment and plates", value: model.gym.name)
+                    }
+                    .accessibilityIdentifier("settings.gym")
                 } header: {
-                    Text("About you")
-                } footer: {
-                    Text("Shared with the other apps in the family, so it's asked once.")
+                    Text("Gym").eyebrow()
                 }
+                TrainingSections()
+                DataSections(prompts: $prompts)
             }
-            Section("Gym") {
-                NavigationLink {
-                    GymEditor(gym: model.gym)
-                } label: {
-                    LabeledContent("Equipment and plates", value: model.gym.name)
-                }
-                .accessibilityIdentifier("settings.gym")
-            }
-            TrainingSections()
-            DataSections(prompts: $prompts)
+            .inkRows()
         }
         .inkList()
         .dataPrompts($prompts)
@@ -87,7 +92,7 @@ struct TrainingSections: View {
                 LabeledContent("Phase from Stadig Macro", value: phase.kind.label)
             }
         } header: {
-            Text("Training")
+            Text("Training").eyebrow()
         } footer: {
             Text(
                 "With your Watch running the session, rest can end early once your heart rate has recovered (accessories only; heavy lifts keep their minimum rest)."
@@ -98,7 +103,7 @@ struct TrainingSections: View {
                 Toggle("Floor mode when set down", isOn: $floorAutomatic)
                     .accessibilityIdentifier("settings.floorMode")
             } header: {
-                Text("Session")
+                Text("Session").eyebrow()
             } footer: {
                 Text(
                     "Lay your iPhone flat during a session and the set fills the screen: tap anywhere for Just right, swipe up for Easy, down for Missed. Pick it up to change the weight. The session's menu turns it on at any angle."
@@ -125,17 +130,19 @@ struct TrainingSections: View {
                 ForEach(ProportionTargets.allCases) { Text($0.label).tag($0) }
             }
         } header: {
-            Text("Physique")
+            Text("Physique").eyebrow()
         } footer: {
             Text("\(proportionTargets.detail) Focus areas come first, and nothing asks for fat loss once you're lean.")
         }
         // Every device but the Mac has Health; there it can still be unavailable (switched off
         // under tests), which leaves the rows in place with Connect off, as before.
         if !Platform.isMac {
-            Section("Apple Health") {
+            Section {
                 Button("Connect Apple Health") { Task { await model.connectHealth() } }
                     .disabled(!HealthBridge.shared.isAvailable)
                 toggle("Save sessions to Health", \.saveToHealth)
+            } header: {
+                Text("Apple Health").eyebrow()
             }
         } else {
             Section {
@@ -144,7 +151,7 @@ struct TrainingSections: View {
                 )
                 .font(.callout).foregroundStyle(.secondary)
             } header: {
-                Text("Apple Health")
+                Text("Apple Health").eyebrow()
             }
         }
     }
@@ -249,7 +256,7 @@ struct DataSections: View {
             }
             SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
         } header: {
-            Text("Your data")
+            Text("Your data").eyebrow()
         } footer: {
             Text(
                 "Everything is yours and portable. iCloud keeps your devices in step; a backup file restores everything without it. Restoring merges: the newest copy of each record wins."
@@ -304,7 +311,7 @@ struct ProfileEditor: View {
 
     var body: some View {
         Form {
-            Section("Goals") {
+            Section {
                 ForEach(OutcomeGoal.allCases) { goal in
                     Toggle(
                         goal.label,
@@ -314,20 +321,26 @@ struct ProfileEditor: View {
                                 if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
                             }))
                 }
+            } header: {
+                Text("Goals").eyebrow()
             }
-            Section("Schedule") {
+            Section {
                 Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
                 Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
                     ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
                 }
                 WeekdayPicker(selection: $edit.value.schedule.preferredDays)
+            } header: {
+                Text("Schedule").eyebrow()
             }
-            Section("Experience") {
+            Section {
                 Picker("Lifting for", selection: $edit.value.experience) {
                     ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
                 }
+            } header: {
+                Text("Experience").eyebrow()
             }
-            Section("Basics") {
+            Section {
                 Picker("Standards for", selection: $edit.value.sex) {
                     ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
                 }
@@ -341,6 +354,8 @@ struct ProfileEditor: View {
                     Text("cm").tag(LengthUnit.cm)
                     Text("in").tag(LengthUnit.inch)
                 }
+            } header: {
+                Text("Basics").eyebrow()
             }
             Section {
                 Text("Schedule and goal changes shape the next block. The current block keeps its days.")
@@ -464,7 +479,7 @@ struct GymEditor: View {
                 }
                 .pickerStyle(.segmented)
             }
-            Section("Equipment") {
+            Section {
                 ForEach(Equipment.allCases) { item in
                     Toggle(
                         item.label,
@@ -474,6 +489,8 @@ struct GymEditor: View {
                                 if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
                             }))
                 }
+            } header: {
+                Text("Equipment").eyebrow()
             }
             Section {
                 ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
@@ -486,7 +503,7 @@ struct GymEditor: View {
                             }))
                 }
             } header: {
-                Text("Fixtures")
+                Text("Fixtures").eyebrow()
             } footer: {
                 Text("A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.")
             }
@@ -501,13 +518,13 @@ struct GymEditor: View {
                             }))
                 }
             } header: {
-                Text("Recovery")
+                Text("Recovery").eyebrow()
             } footer: {
                 Text(
                     "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt."
                 )
             }
-            Section("Loads") {
+            Section {
                 LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
                 LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
                 Stepper(
@@ -518,6 +535,8 @@ struct GymEditor: View {
                     "Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $edit.value.dumbbellStep, in: 0.5...10,
                     step: 0.5)
                 Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
+            } header: {
+                Text("Loads").eyebrow()
             }
         }
         .inkList()

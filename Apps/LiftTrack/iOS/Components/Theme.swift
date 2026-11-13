@@ -78,35 +78,6 @@ extension SessionBlockKind {
 }
 
 extension View {
-    /// A content card: a quiet surface on the ground, continuous corners.
-    func card(padding: CGFloat = 16, radius: CGFloat = 22) -> some View {
-        self.padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.cardBackground, in: .rect(cornerRadius: radius, style: .continuous))
-    }
-
-    func floatingGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {
-        adaptiveGlass(in: shape, tint: tint, interactive: interactive)
-    }
-
-    /// The one action that matters on a screen: filled with the accent. Vision Pro keeps its own
-    /// prominent button over the glass.
-    func primaryAction() -> some View {
-        #if os(visionOS)
-        prominentGlassButtonStyle().buttonBorderShape(.capsule)
-        #else
-        buttonStyle(InkButtonStyle(filled: true))
-        #endif
-    }
-
-    func secondaryAction() -> some View {
-        #if os(visionOS)
-        glassButtonStyle().buttonBorderShape(.capsule)
-        #else
-        buttonStyle(InkButtonStyle(filled: false))
-        #endif
-    }
-
     /// A list or form on the ink ground, not the system's grouped grey. Its rows keep the system's
     /// grouped cells, the surface's colour near enough, in both appearances. Vision Pro keeps its glass.
     func inkList() -> some View {
@@ -115,79 +86,6 @@ extension View {
         #else
         scrollContentBackground(.hidden).background(.pageBackground)
         #endif
-    }
-
-    /// Readable line length on iPad.
-    func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }
-}
-
-/// The design's buttons: the accent filled for the one action, a raised fill for the rest. Its
-/// height follows the control size, so a small one still fits in a row.
-struct InkButtonStyle: ButtonStyle {
-    var filled: Bool
-    @Environment(\.controlSize) private var size
-    @Environment(\.isEnabled) private var enabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        let height: CGFloat =
-            switch size {
-            case .mini, .small: 34
-            case .large, .extraLarge: 52
-            default: 44
-            }
-        configuration.label
-            .font(size == .large || size == .extraLarge ? .headline : .subheadline.weight(.semibold))
-            .foregroundStyle(filled ? Ink.onAccent : Ink.text)
-            .padding(.horizontal, size == .small || size == .mini ? 12 : 18)
-            .frame(minHeight: height)
-            .background(filled ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: height >= 52 ? 16 : 12, style: .continuous))
-            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
-            .contentShape(.rect)
-            .hoverHighlight()
-    }
-}
-
-/// A small rounded label.
-struct Pill: View {
-    let text: String
-    var symbol: String?
-    var color: Color = .secondary
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol) }
-            Text(text)
-        }
-        .font(.caption.weight(.semibold))
-        #if os(visionOS)
-        // On glass a tint's own text over a faint wash of it can't be read: the tint fills the
-        // capsule instead, under white text.
-        .foregroundStyle(color == .secondary ? color : .white)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color == .secondary ? color.opacity(0.14) : color.opacity(0.7), in: .capsule)
-        #else
-        .foregroundStyle(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.14), in: .capsule)
-        #endif
-    }
-}
-
-/// A section heading inside a scrolling page.
-struct SectionHeader: View {
-    let title: String
-    var detail: String?
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.title3.weight(.semibold))
-            Spacer()
-            if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
-        }
-        .padding(.top, 8)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -323,48 +221,28 @@ struct WhyDisclosure: View {
     }
 }
 
-struct BulletLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) {
-                $0[VerticalAlignment.center] + 4
-            }
-            configuration.title
-        }
-    }
-}
-
-/// An empty state with a single next step.
-struct EmptyCard: View {
-    let symbol: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol).font(.title).foregroundStyle(Ink.text3)
-            Text(title).font(.headline)
-            Text(detail).font(.subheadline).foregroundStyle(Ink.text2).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .card(padding: 24)
-    }
-}
-
 extension String {
     /// "biggerAndStronger" as "BiggerAndStronger", to end an accessibility identifier built from a raw
     /// value ("onboarding.goalBiggerAndStronger").
     var identifierSuffix: String { prefix(1).uppercased() + dropFirst() }
 }
 
-extension View {
-    /// A choice's tint: the accent when picked, grey otherwise. On Vision Pro's glass a grey tint is
-    /// white on white, so there an unpicked choice keeps the system's own glass.
-    func choiceTint(_ picked: Bool) -> some View {
-        #if os(visionOS)
-        tint(picked ? Color.accentColor : nil)
-        #else
-        tint(picked ? Color.accentColor : .secondary)
-        #endif
+/// A score's trend as the design's small chip beside a hero numeral: "Rising" in green with an arrow up.
+/// Nothing keeps a score's history yet, so it's a word, not "+2 this month" (docs/decisions.md).
+struct TrendChip: View {
+    let trend: TrendWord
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let symbol = trend.symbol { Image(systemName: symbol).font(.caption2.weight(.bold)) }
+            Text(trend.text.prefix(1).uppercased() + trend.text.dropFirst())
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(trend.color)
+        .padding(.horizontal, 11)
+        .frame(minHeight: 28)
+        .background(trend.color.opacity(0.14), in: .capsule)
+        .lineLimit(1)
+        .fixedSize()
     }
 }

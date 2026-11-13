@@ -237,9 +237,9 @@ struct LabelReviewView: View {
             Button {
                 save()
             } label: {
-                Text("Save food").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                Text("Save food").font(.headline).frame(maxWidth: .infinity)
             }
-            .primaryAction()
+            .primaryAction().controlSize(.large)
             .padding()
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || Format.parse(kcal) == nil)
         }

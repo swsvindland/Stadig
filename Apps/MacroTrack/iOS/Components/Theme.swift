@@ -34,6 +34,11 @@ extension ShapeStyle where Self == Color {
     }
 }
 
+extension Ink {
+    /// Words on the accent: near-black green on leaf in dark mode, white on the deeper leaf in light.
+    static let onAccent = Color(light: 0xFFFFFF, dark: 0x04291A)
+}
+
 /// One colour per macro, used everywhere the macro appears.
 enum Macro: CaseIterable {
     case kcal, protein, carbs, fat
@@ -54,71 +59,6 @@ enum Macro: CaseIterable {
         case .carbs: "Carbs"
         case .fat: "Fat"
         }
-    }
-}
-
-extension View {
-    /// A content card: grouped surface, continuous corners.
-    func card(padding: CGFloat = 16, radius: CGFloat = 22) -> some View {
-        self.padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.cardBackground, in: .rect(cornerRadius: radius))
-    }
-
-    func floatingGlass(in shape: some Shape = Capsule(), tint: Color? = nil, interactive: Bool = true) -> some View {
-        adaptiveGlass(in: shape, tint: tint, interactive: interactive)
-    }
-
-    /// The one action that matters on a screen.
-    func primaryAction() -> some View { prominentGlassButtonStyle().buttonBorderShape(.capsule) }
-
-    func secondaryAction() -> some View { glassButtonStyle().buttonBorderShape(.capsule) }
-
-    /// Readable line length on iPad.
-    func readableWidth(_ width: CGFloat = 720) -> some View { frame(maxWidth: width).frame(maxWidth: .infinity) }
-}
-
-/// A small rounded label.
-struct Pill: View {
-    let text: String
-    var symbol: String?
-    var color: Color = .secondary
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol) }
-            Text(text)
-        }
-        .font(.caption.weight(.semibold))
-        #if os(visionOS)
-        // On glass a tint's own text over a faint wash of it can't be read: the tint fills the
-        // capsule instead, under white text.
-        .foregroundStyle(color == .secondary ? color : .white)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color == .secondary ? color.opacity(0.14) : color.opacity(0.7), in: .capsule)
-        #else
-        .foregroundStyle(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.14), in: .capsule)
-        #endif
-    }
-}
-
-/// A section heading inside a scrolling page.
-struct SectionHeader: View {
-    let title: String
-    var detail: String?
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.title3.weight(.semibold))
-            Spacer()
-            if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
-        }
-        .padding(.top, 8)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -175,53 +115,6 @@ struct WhyDisclosure: View {
     }
 }
 
-struct BulletLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            configuration.icon.font(.system(size: 5)).foregroundStyle(.secondary).alignmentGuide(.firstTextBaseline) {
-                $0[VerticalAlignment.center] + 4
-            }
-            configuration.title
-        }
-    }
-}
-
-/// Discipline as a ruler, ticked every tenth so the 80–90% zone reads off it, with the zone's start
-/// marked. Past 90% earns nothing more.
-struct DisciplineGauge: View {
-    let score: DisciplineScore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Ruler(value: score.rate ?? 0, color: score.band == .below ? Ink.ok : Ink.good, height: 14, marker: 0.8)
-            HStack {
-                Text(score.rate.map(Format.percent) ?? "—").font(.headline.monospacedDigit())
-                Text(score.band?.label ?? "Nothing to score yet").font(.subheadline).foregroundStyle(.secondary)
-                Spacer()
-                Text("Zone 80–90%").font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// An empty state with a single next step.
-struct EmptyCard: View {
-    let symbol: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol).font(.title).foregroundStyle(.secondary)
-            Text(title).font(.headline)
-            Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .card(padding: 24)
-    }
-}
-
 /// "Logged Oats · 300 kcal   Undo", floating above the tab bar for a few seconds.
 struct ToastView: View {
     let toast: Toast
@@ -243,17 +136,5 @@ struct ToastView: View {
         .padding(.vertical, 12)
         .floatingGlass(in: Capsule())
         .padding(.horizontal)
-    }
-}
-
-extension View {
-    /// A choice's tint: the accent when picked, grey otherwise. On Vision Pro's glass a grey tint is
-    /// white on white, so there an unpicked choice keeps the system's own glass.
-    func choiceTint(_ picked: Bool) -> some View {
-        #if os(visionOS)
-        tint(picked ? Color.accentColor : nil)
-        #else
-        tint(picked ? Color.accentColor : .secondary)
-        #endif
     }
 }

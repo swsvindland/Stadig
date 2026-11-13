@@ -188,9 +188,9 @@ struct DescribeLogView: View {
                 }
                 .safeAreaInset(edge: .bottom) {
                     Button(action: analyze) {
-                        Text("Find foods").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                        Text("Find foods").font(.headline).frame(maxWidth: .infinity)
                     }
-                    .primaryAction()
+                    .primaryAction().controlSize(.large)
                     .padding()
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.ai.canDescribe)
                 }
@@ -270,9 +270,9 @@ struct MealReviewView: View {
                 session.logReview(model)
             } label: {
                 Text(chosen.isEmpty ? "Nothing to log" : "Log \(chosen.count) \(chosen.count == 1 ? "food" : "foods") · \(Format.kcal(total.kcal))")
-                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                    .font(.headline).frame(maxWidth: .infinity)
             }
-            .primaryAction()
+            .primaryAction().controlSize(.large)
             .padding()
             .disabled(chosen.isEmpty)
             .accessibilityIdentifier("review.log")

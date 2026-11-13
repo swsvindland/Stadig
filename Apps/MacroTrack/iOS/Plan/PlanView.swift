@@ -21,11 +21,9 @@ struct PlanView: View {
                                 CircleIconButton(symbol: "gearshape", label: "Settings", identifier: "plan.settings") { model.showSettings = true }
                             }
                         }
-                        .padding(.bottom, 4)
                         if let analysis = model.analysis { cards(analysis) }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
                     .padding(.bottom, 24)
                     .readableWidth()
                 } else if let analysis = model.analysis {
@@ -334,19 +332,24 @@ struct NextCheckInRow: View {
 /// Each week's check-in with its reason, and the maintenance they're built on.
 struct CheckInsScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        // The Mac reports no size class: it always has room.
+        let wide = sizeClass != .compact
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if !wide { DetailHeader(eyebrow: "Plan", title: "Check-ins") }
                 if let analysis = model.analysis { MaintenanceCard(estimate: analysis.maintenance) }
                 CheckInHistory(checkIns: model.checkIns)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, wide ? 16 : 0)
+            .padding(.bottom, 24)
             .readableWidth()
         }
         .background(.pageBackground)
-        .navigationTitle("Check-ins")
-        .inlineTitle()
+        .detailPage(title: "Check-ins", wide: wide)
     }
 }
 
@@ -451,10 +454,9 @@ struct RecommendationCard: View {
                 Button {
                     model.start(plan)
                 } label: {
-                    Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity).padding(
-                        .vertical, 4)
+                    Text("Start \(plan.phases.first?.kind.label.lowercased() ?? "plan")").font(.headline).frame(maxWidth: .infinity)
                 }
-                .primaryAction()
+                .primaryAction().controlSize(.large)
                 .accessibilityIdentifier("plan.start")
                 Button("Choose a different phase") { choosing = true }
                     .accessibilityIdentifier("plan.choosePhase")

@@ -170,18 +170,23 @@ struct YourShapeRow: View {
 /// The six scores on a page of their own, opened from Progress.
 struct YourShapeScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var scores = ShapeScores()
 
     var body: some View {
+        // The Mac reports no size class: it always has room.
+        let wide = sizeClass != .compact
         ScrollView {
-            ShapeBody(scores: scores)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
-                .readableWidth(560)
+            VStack(alignment: .leading, spacing: 12) {
+                if !wide { DetailHeader(eyebrow: "Progress", title: "Your shape") }
+                ShapeBody(scores: scores)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            .readableWidth(560)
         }
         .background(.pageBackground)
-        .navigationTitle("Your shape")
-        .largeTitle()
+        .detailPage(title: "Your shape", wide: wide)
         .accessibilityIdentifier("progress.shapeScreen")
         .task(id: model.analysisVersion) { scores.read(model) }
     }

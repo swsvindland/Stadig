@@ -88,26 +88,10 @@ struct OnboardingView: View {
         // By order, so a step that dropped out of the list (Stadig Macro took the phase) still has a place.
         let position = steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0
         let count = steps.count - 1
-        return HStack(spacing: 14) {
-            Button {
-                move(-1)
-            } label: {
-                CircleIcon(symbol: "chevron.left")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-            .accessibilityIdentifier("onboarding.back")
-            Ruler.thin(Double(position) / Double(max(1, count)))
-                .accessibilityHidden(true)
-            Text("\(position) of \(count)")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(Ink.text3)
-                .frame(minWidth: 44, alignment: .trailing)
-                .accessibilityLabel("Step \(position) of \(count)")
-        }
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .readableWidth(620)
+        return StepBar(step: position, count: count) { move(-1) }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .readableWidth(620)
     }
 
     /// The one way on, full width at the foot, on the ground, under what the answers add up to.
@@ -436,13 +420,10 @@ struct OnboardingView: View {
     }
 
     private func header(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            PageTitle(title, size: 36)
-            Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 14)
-        .padding(.bottom, 8)
+        StepHeading(title, detail: detail)
+            .padding(.horizontal, 4)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
     }
 
     private func finish() {

@@ -521,9 +521,9 @@ struct FoodInspector: View {
                 // The meal this food joins, with what's gone into it so far.
                 MealTray(date: eaten.date(model))
                 Button(action: log) {
-                    Text("Log\(eatenLabel) · \(Format.kcal(n.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+                    Text("Log\(eatenLabel) · \(Format.kcal(n.kcal))").font(.headline).frame(maxWidth: .infinity)
                 }
-                .primaryAction()
+                .primaryAction().controlSize(.large)
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(unit == nil || amount.count <= 0)
                 .help("Log it (⌘Return, or Return in the list)")

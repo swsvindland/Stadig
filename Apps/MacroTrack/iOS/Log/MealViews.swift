@@ -142,25 +142,25 @@ struct SaveMealBar: View {
                 Button {
                     naming = true
                 } label: {
-                    Label("Save as Meal", systemImage: "square.and.arrow.down").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                    Label("Save as Meal", systemImage: "square.and.arrow.down").font(.headline).frame(maxWidth: .infinity)
                 }
-                .primaryAction()
+                .primaryAction().controlSize(.large)
                 .accessibilityIdentifier("mealSheet.saveMeal")
             case .changed(let meal):
                 HStack {
                     Button {
                         naming = true
                     } label: {
-                        Text("Save as New").frame(maxWidth: .infinity).padding(.vertical, 6)
+                        Text("Save as New").frame(maxWidth: .infinity)
                     }
-                    .secondaryAction()
+                    .secondaryAction().controlSize(.large)
                     .accessibilityIdentifier("mealSheet.saveMeal")
                     Button {
                         model.update(meal, from: entries)
                     } label: {
-                        Text("Update \(meal.name)").font(.headline).lineLimit(1).frame(maxWidth: .infinity).padding(.vertical, 6)
+                        Text("Update \(meal.name)").font(.headline).lineLimit(1).frame(maxWidth: .infinity)
                     }
-                    .primaryAction()
+                    .primaryAction().controlSize(.large)
                     .accessibilityIdentifier("mealSheet.updateMeal")
                 }
             case .saved(let meal):
@@ -336,9 +336,9 @@ struct SavedMealView: View {
                 skipping = []
                 done()
             } label: {
-                Text(logLabel(meal, kept: kept.count, kcal: total.kcal)).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                Text(logLabel(meal, kept: kept.count, kcal: total.kcal)).font(.headline).frame(maxWidth: .infinity)
             }
-            .primaryAction()
+            .primaryAction().controlSize(.large)
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(kept.isEmpty)
             .padding()

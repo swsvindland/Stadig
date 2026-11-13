@@ -218,13 +218,21 @@ struct ActivityDetail: View {
                 LabeledContent("From", value: source)
             }
             if let martial = log.martialArts {
-                Section("Class") {
+                Section {
                     LabeledContent("Type", value: martial.classType.label)
                     LabeledContent("Sparring rounds", value: "\(martial.sparringRounds)")
                     if let gassed = martial.roundsBeforeGassed { LabeledContent("Gassed after", value: "Round \(gassed)") }
+                } header: {
+                    Text("Class").eyebrow()
                 }
             }
-            if !log.note.isEmpty { Section("Note") { Text(log.note) } }
+            if !log.note.isEmpty {
+                Section {
+                    Text(log.note)
+                } header: {
+                    Text("Note").eyebrow()
+                }
+            }
         }
         .inkList()
         .formStyle(.grouped)

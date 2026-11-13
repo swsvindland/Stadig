@@ -71,7 +71,11 @@ struct RecurringEditor: View {
                 Picker("Activity", selection: $item.activity) {
                     ForEach(ActivityType.allCases) { Label($0.label, systemImage: $0.symbol).tag($0) }
                 }
-                Section("Days") { WeekdayPicker(selection: $item.weekdays) }
+                Section {
+                    WeekdayPicker(selection: $item.weekdays)
+                } header: {
+                    Text("Days").eyebrow()
+                }
                 Picker("Time of day", selection: $item.timeOfDay) {
                     ForEach(TimeOfDay.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
@@ -131,7 +135,7 @@ struct ActivityLogSheet: View {
                         .accessibilityValue("\(intensity) of 10")
                 }
                 if type.isMartialArt {
-                    Section("Class") {
+                    Section {
                         Picker("Type", selection: $classType) {
                             ForEach(MartialArtsClass.allCases) { Text($0.label).tag($0) }
                         }
@@ -142,6 +146,8 @@ struct ActivityLogSheet: View {
                                 ForEach(1...rounds, id: \.self) { Text("Round \($0)").tag(Int?.some($0)) }
                             }
                         }
+                    } header: {
+                        Text("Class").eyebrow()
                     }
                 }
                 Section { TextField("Note", text: $note, axis: .vertical) }

@@ -491,12 +491,8 @@ struct ExerciseDetailView: View {
         if let record = shown?.record, !record.isEmpty {
             let unit = model.gym.unit
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Best sets").eyebrow()
-                    Spacer()
-                    Text(sessionsLine(record)).font(.caption).foregroundStyle(Ink.text3)
-                }
-                .padding(.bottom, 2)
+                SectionEyebrow("Best sets", detail: sessionsLine(record))
+                    .padding(.bottom, 2)
                 ForEach(Array(record.bestSets.enumerated()), id: \.element.set.id) { index, best in
                     if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
                     HStack(spacing: 8) {

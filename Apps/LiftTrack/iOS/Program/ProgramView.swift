@@ -367,7 +367,7 @@ private struct BlockOverview: View {
 
     var body: some View {
         Form {
-            Section("This block") {
+            Section {
                 Text(mesocycle.rationale.headline)
                 ForEach(Array(mesocycle.rationale.reasons.enumerated()), id: \.offset) { _, reason in
                     Label(reason, systemImage: "circle.fill").labelStyle(BulletLabelStyle()).font(.subheadline)
@@ -375,9 +375,11 @@ private struct BlockOverview: View {
                 if let confidence = mesocycle.rationale.confidence {
                     Label(confidence, systemImage: "info.circle").font(.footnote).foregroundStyle(.secondary)
                 }
+            } header: {
+                Text("This block").eyebrow()
             }
             if !mesocycle.priorities.filter({ $0.emphasis != 0 }).isEmpty {
-                Section("Priorities") {
+                Section {
                     ForEach(mesocycle.priorities.filter { $0.emphasis != 0 }) { priority in
                         VStack(alignment: .leading, spacing: 2) {
                             Label(priority.label, systemImage: priority.emphasis > 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
@@ -385,6 +387,8 @@ private struct BlockOverview: View {
                             Text(priority.reason).font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                } header: {
+                    Text("Priorities").eyebrow()
                 }
             }
             Section {
@@ -421,7 +425,7 @@ private struct SlotInspector: View {
                 }
             }
             if strength {
-                Section("Each week") {
+                Section {
                     WeekSetsRow(weeks: ProgramLayout.setsByWeek(slot, block: mesocycle.block), reps: slot.repRange.label)
                     LabeledContent("Rest", value: Format.duration(slot.restSeconds))
                     if let filler = slot.restFiller { LabeledContent("In the rests", value: model.catalog.resolve(filler).name) }
@@ -429,11 +433,15 @@ private struct SlotInspector: View {
                         let partners = day.slots.filter { $0.id != slot.id && $0.supersetGroup == slot.supersetGroup }
                         LabeledContent("Superset with", value: partners.map { model.catalog.resolve($0.exerciseID).name }.joined(separator: ", "))
                     }
+                } header: {
+                    Text("Each week").eyebrow()
                 }
             }
-            Section("The exercise") {
+            Section {
                 ExerciseFacts(exercise: exercise)
                 Button("Show in Library", systemImage: "books.vertical") { model.show(inLibrary: exercise.id) }
+            } header: {
+                Text("The exercise").eyebrow()
             }
             if strength && editable {
                 SwapSection(mesocycle: mesocycle, dayID: day.id, slot: slot)
@@ -507,7 +515,7 @@ private struct SwapSection: View {
                 Button(showAll ? "Fewer" : "More options") { showAll.toggle() }
             }
         } header: {
-            Text("Swap for the rest of the block")
+            Text("Swap for the rest of the block").eyebrow()
         } footer: {
             Text("The same movement first, from what your gym has; nothing an injury rules out or you've set aside.")
         }
@@ -553,7 +561,7 @@ private struct RefitSection: View {
                 }
             }
         } header: {
-            Text("\(day.name) at other lengths")
+            Text("\(day.name) at other lengths").eyebrow()
         } footer: {
             Text("A look only: on the day, Today's \"Short on time?\" fits the session to the minutes you have.")
         }

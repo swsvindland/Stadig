@@ -132,7 +132,7 @@ struct MealPlanSetup: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
                 }
-                .primaryAction()
+                .primaryAction().controlSize(.large)
                 .disabled(preferences.slots.isEmpty || working)
                 .accessibilityIdentifier("mealPlanSetup.make")
                 .padding(.horizontal)
@@ -209,7 +209,7 @@ struct MealPrepCard: View {
                 Text("A week of meals sized to your targets, with the grocery list and a timed prep: an hour or two on Sunday and the week is done.")
                     .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Plan a week") { showSetup = true }
-                    .buttonStyle(.solidSmall)
+                    .buttonStyle(.solid)
                     .accessibilityIdentifier("mealPrep.planWeek")
             }
         }

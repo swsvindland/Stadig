@@ -86,7 +86,7 @@ private struct NewFast: View {
             } label: {
                 Text("Start \(Format.goal(goal)) Fast").frame(maxWidth: .infinity)
             }
-            .primaryAction()
+            .primaryAction().controlSize(.large)
             .disabled(model.needsFastingScreen(goalHours: goal) && !read)
             .accessibilityIdentifier("fast.start")
         }

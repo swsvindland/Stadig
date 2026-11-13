@@ -82,14 +82,7 @@ struct ProgressTab: View {
 
     private func header(_ analysis: LiftAnalysis) -> some View {
         PageHeader(eyebrow: blockLine(analysis), title: "Progress") {
-            Button {
-                showShape = true
-            } label: {
-                CircleIcon(symbol: "hexagon")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Your shape")
-            .accessibilityIdentifier("progress.shape")
+            CircleIconButton(symbol: "hexagon", label: "Your shape", identifier: "progress.shape") { showShape = true }
         }
     }
 
@@ -273,11 +266,7 @@ struct StrengthCard: View {
             .padding(.top, 2)
             .card()
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("By lift").font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
-                    Spacer()
-                    Text("Score from your best estimated max").font(.caption).foregroundStyle(Ink.text3)
-                }
+                CardTitle("By lift", detail: "Score from your best estimated max")
                 // Strongest first, so the weakest, flagged, ends the list; what isn't scored yet after.
                 VStack(spacing: 0) {
                     ForEach(StrengthCategory.allCases.sorted { (analysis.strength[$0]?.score ?? -1) > (analysis.strength[$1]?.score ?? -1) }) {
@@ -718,10 +707,12 @@ struct SessionSetsList: View {
                 }
             }
             if let feedback = record.feedback {
-                Section("Feedback") {
+                Section {
                     Text(
                         "Soreness \(feedback.soreness)/3 · energy \(feedback.energy)/5\(feedback.jointPain.isEmpty ? "" : " · pain: \(feedback.jointPain.map(\.label).joined(separator: ", "))")"
                     )
+                } header: {
+                    Text("Feedback").eyebrow()
                 }
             }
             ForEach(record.exercises) { log in

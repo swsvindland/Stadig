@@ -121,14 +121,7 @@ struct BodyView: View {
 
     private var header: some View {
         PageHeader(eyebrow: model.measurements.map(\.day).max().map { "Last check-in \(Self.when($0, today: model.today))" }, title: "Body") {
-            Button {
-                showPhotos = true
-            } label: {
-                CircleIcon(symbol: "camera")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Progress photos")
-            .accessibilityIdentifier("body.openPhotos")
+            CircleIconButton(symbol: "camera", label: "Progress photos", identifier: "body.openPhotos") { showPhotos = true }
         }
     }
 
@@ -855,7 +848,7 @@ struct MeasurementEditor: View {
                     MeasureField(label: "Hips, at the hip bones", value: $measurements.hipsCm, unit: unit)
                     MeasureField(label: "Glutes, at the widest", value: $measurements.glutesCm, unit: unit)
                 } header: {
-                    Text("Torso")
+                    Text("Torso").eyebrow()
                 } footer: {
                     Text("The waist at the navel matters most: leanness and the nutrition phase come from it.")
                 }
@@ -867,16 +860,18 @@ struct MeasurementEditor: View {
                             right: $measurements[dynamicMember: keys.right], unit: unit)
                     }
                 } header: {
-                    Text("Arms and legs")
+                    Text("Arms and legs").eyebrow()
                 } footer: {
                     Text("Both sides, so a side that's lagging shows up.")
                 }
                 let unsided = Limb.allCases.filter { measurements[keyPath: BodyMeasurements.unsided($0)] != nil }
                 if !unsided.isEmpty {
-                    Section("Before sides were measured") {
+                    Section {
                         ForEach(unsided) { limb in
                             MeasureField(label: limb.label, value: $measurements[dynamicMember: BodyMeasurements.unsided(limb)], unit: unit)
                         }
+                    } header: {
+                        Text("Before sides were measured").eyebrow()
                     }
                 }
                 Section {
@@ -964,7 +959,7 @@ struct MeasuringGuide: View {
                 )
                 .font(.subheadline)
             }
-            Section("Torso") {
+            Section {
                 site("Neck", "Just below the larynx, the tape sloping slightly down at the front.")
                 site("Shoulders", "Around the widest point of the shoulders, arms relaxed at your sides.")
                 site("Chest", "Level with the nipples.")
@@ -972,11 +967,15 @@ struct MeasuringGuide: View {
                 site("Waist at its narrowest", "The narrowest point between the ribs and the hips.")
                 site("Hips", "Around the top of the hip bones.")
                 site("Glutes", "Around the widest point of the buttocks, feet together.")
+            } header: {
+                Text("Torso").eyebrow()
             }
-            Section("Arms and legs") {
+            Section {
                 site("Upper arm", "Flexed, at the peak of the biceps, with the arm raised to shoulder height.")
                 site("Thigh", "Standing, just below the fold under the glutes.")
                 site("Calf", "Standing, at the widest point.")
+            } header: {
+                Text("Arms and legs").eyebrow()
             }
             Section {
                 Text(

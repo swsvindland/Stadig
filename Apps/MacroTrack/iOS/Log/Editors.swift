@@ -45,9 +45,9 @@ struct QuickAddView: View {
                     model.quickAdd(name: name, nutrients: nutrients)
                     close()
                 } label: {
-                    Text("Add \(Format.kcal(nutrients.kcal))").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                    Text("Add \(Format.kcal(nutrients.kcal))").font(.headline).frame(maxWidth: .infinity)
                 }
-                .primaryAction()
+                .primaryAction().controlSize(.large)
                 .accessibilityIdentifier("quickAdd.add")
                 .disabled(nutrients.kcal <= 0 && nutrients.protein <= 0)
             }

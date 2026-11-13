@@ -69,46 +69,36 @@ struct OnboardingView: View {
 
     // MARK: Steps
 
-    /// Back, and how far through: a ruler filling a step at a time, nearly full on the last.
+    /// Back, and how far through: "2 of 4".
     var progress: some View {
-        HStack(spacing: 14) {
-            CircleIconButton(symbol: "chevron.left", label: "Back", identifier: "onboarding.back", action: back)
-            Ruler.thin(step == .start ? 0.92 : Double(step.rawValue) / 4)
-                .accessibilityLabel("Step \(step.rawValue) of 4")
-            Color.clear.frame(width: 44, height: 1)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        StepBar(step: step.rawValue, count: Step.start.rawValue, back: back)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
     }
 
     /// A step's title on the page, and what it's for.
     func title(_ title: String, _ detail: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).pageTitle().lineLimit(nil).fixedSize(horizontal: false, vertical: true)
-            if let detail {
-                Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 24)
-        .padding(.bottom, 8)
+        StepHeading(title, detail: detail)
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 8)
     }
 
     /// A form step's title, on the ground at the top of its rows.
     func pageTitle(_ text: String) -> some View {
         Section {
-            Text(text).pageTitle()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            StepHeading(text)
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 16, leading: 4, bottom: 0, trailing: 4))
+                // The form's own margin is over it already: as far under the step bar as Stadig
+                // Lift's questions are.
+                .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
         }
     }
 
     var welcome: some View {
         VStack(alignment: .leading, spacing: 28) {
             Spacer()
-            Text("Stadig Macro").pageTitle()
+            PageTitle("Stadig Macro", size: 36)
             VStack(alignment: .leading, spacing: 20) {
                 point("bolt.fill", "Log in seconds", "Search, scan, snap a photo or just say what you ate. Usual foods are one tap.")
                 point("waveform.path.ecg", "Learns your real maintenance", "Two to three weeks of normal eating and morning weigh-ins. No diet yet.")
@@ -128,7 +118,7 @@ struct OnboardingView: View {
             } label: {
                 Text("Get started").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.solid)
+            .buttonStyle(.solid).controlSize(.large)
             .accessibilityIdentifier("onboarding.getStarted")
         }
         .padding(.horizontal, 20)
@@ -293,7 +283,7 @@ struct OnboardingView: View {
                 } label: {
                     Text(connecting ? "Connecting…" : "Connect Health").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.solid)
+                .buttonStyle(.solid).controlSize(.large)
                 .disabled(connecting || !HealthBridge.shared.isAvailable)
                 .accessibilityIdentifier("onboarding.connectHealth")
                 quiet("Not now", identifier: "onboarding.notNow", action: onward)
@@ -312,7 +302,7 @@ struct OnboardingView: View {
             Button(action: onward) {
                 Text("Continue").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.solid)
+            .buttonStyle(.solid).controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .accessibilityIdentifier("onboarding.notNow")
             .padding(.horizontal, 16)
@@ -364,7 +354,7 @@ struct OnboardingView: View {
                 Button(action: finish) {
                     Text("Start logging").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.solid)
+                .buttonStyle(.solid).controlSize(.large)
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("onboarding.start")
                 .padding(.horizontal, 16)
@@ -441,7 +431,7 @@ struct OnboardingView: View {
         Button(action: action) {
             Text("Continue").frame(maxWidth: .infinity)
         }
-        .buttonStyle(.solid)
+        .buttonStyle(.solid).controlSize(.large)
         .disabled(!enabled)
         .accessibilityIdentifier("onboarding.continue")
         .padding(.horizontal, 16)

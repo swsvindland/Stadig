@@ -29,7 +29,7 @@ struct CheckInView: View {
                         }
                     }
                 } header: {
-                    Text("Tape")
+                    Text("Tape").eyebrow()
                 } footer: {
                     Text("The full set once a block: the next block's physique priorities and the left and right check come from it.")
                 }
@@ -108,7 +108,7 @@ struct CheckInView: View {
                                 if !$0 { benchmarkValue = nil }
                             }))
                 } header: {
-                    Text("Conditioning benchmark")
+                    Text("Conditioning benchmark").eyebrow()
                 } footer: {
                     Text("Every four weeks or so, the same test. A stalled benchmark puts intervals in the post-lift block.")
                 }

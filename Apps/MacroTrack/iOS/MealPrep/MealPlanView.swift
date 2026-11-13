@@ -170,7 +170,8 @@ struct MealPlanView: View {
                 } label: {
                     Text("Start prep").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(SolidButtonStyle())
+                .buttonStyle(.solid)
+                .controlSize(.large)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -309,12 +310,9 @@ private struct WeekHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             // Tracked capitals start a point left of the text's frame, which the List cell clips.
             Text("\(when) · \(range)").eyebrow(Color.accentColor).padding(.leading, 2)
-            Text(
+            PageTitle(
                 "\(plan.recipes.count) \(plan.recipes.count == 1 ? "dish" : "dishes")\n\(containers) \(containers == 1 ? "container" : "containers")"
             )
-            .pageTitle()
-            .lineLimit(nil)
-            .fixedSize(horizontal: false, vertical: true)
             Text(
                 "\(Self.list(slots)), \(Format.span(plan.days)). Sized to \(Format.kcal(plan.targets.kcal)) and \(Format.grams(plan.targets.protein)) protein a day; \(Format.kcal(day.kcal)) and \(Format.grams(day.protein)) of it planned."
             )

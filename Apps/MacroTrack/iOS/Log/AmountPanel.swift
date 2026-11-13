@@ -284,9 +284,9 @@ struct AmountPanel: View {
 
     var primary: some View {
         Button(action: save) {
-            Text(primaryTitle).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            Text(primaryTitle).font(.headline).frame(maxWidth: .infinity)
         }
-        .primaryAction()
+        .primaryAction().controlSize(.large)
         .keyboardShortcut(.defaultAction)
         .accessibilityIdentifier(isEditing ? "entryEditor.save" : "portion.add")
         .disabled(amount.count == nil)

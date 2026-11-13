@@ -392,7 +392,7 @@ private struct SessionOutline: View {
                 }
                 .onMove { source, destination in model.moveLive(items: source, to: destination) }
             } header: {
-                Text("Exercises")
+                Text("Exercises").eyebrow()
             } footer: {
                 Text(Platform.isMac ? "Drag an exercise to change the order." : "Touch and hold an exercise, then drag, to change the order.")
             }
