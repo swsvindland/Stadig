@@ -133,7 +133,9 @@ struct TodayLogger: View {
         // numbers with a gap below, and a food landing pushes the day up from there, so
         // nothing jumps. A list has no bottom alignment of its own: the room it would leave
         // goes over the day instead.
-        .contentMargins(.top, roomAbove, for: .scrollContent)
+        // On a wide screen the room is a whole iPad's height: there the day starts under the
+        // numbers, read top down, and the room falls over the tiles instead.
+        .contentMargins(.top, wide ? 0 : roomAbove, for: .scrollContent)
         // More today's own inset is the room over the foot's fade: no list margin under it
         // as well, which left a band of nothing between the day and the tiles.
         .contentMargins(.bottom, 0, for: .scrollContent)
