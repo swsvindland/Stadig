@@ -223,8 +223,11 @@ private struct BlockPane: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 PageHeader(eyebrow: title ?? eyebrow, title: mesocycle.split.label)
+                // At most three lines, and no fixed size: outside the desk's scroll, a fixed height
+                // set the Mac window's least height by the headline at its narrowest, a word a line,
+                // and the window opened with its top (the sidebar's too) pushed off the screen.
                 Text(mesocycle.rationale.headline).font(.subheadline).foregroundStyle(Ink.text2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1...3)
                     .padding(.horizontal, 4)
                 if let reason = block.deloadReason {
                     Label(reason, systemImage: "arrow.down.circle").font(.footnote).foregroundStyle(Ink.text2).padding(.horizontal, 4)

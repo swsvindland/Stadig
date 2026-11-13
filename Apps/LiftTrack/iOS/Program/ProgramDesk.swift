@@ -661,11 +661,15 @@ private struct QuietRow: View {
             .padding(.horizontal, 10)
             .frame(width: layout.names, alignment: .leading)
             ForEach(0..<cells, id: \.self) { _ in
-                // "11 min · Zone 2", over two lines in a narrow week rather than cut short.
-                Text(row.sets).font(.system(size: 12.5)).foregroundStyle(Ink.text2).lineLimit(2)
-                    .padding(.leading, 14)
-                    .padding(.trailing, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // "11 min · Zone 2", or in a narrow week just "11 min": the row's name says the zone.
+                ViewThatFits(in: .horizontal) {
+                    Text(row.sets).fixedSize()
+                    Text(row.sets.components(separatedBy: " · ").first ?? row.sets).lineLimit(1)
+                }
+                .font(.system(size: 12.5)).foregroundStyle(Ink.text2)
+                .padding(.leading, 14)
+                .padding(.trailing, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .frame(minHeight: layout.rowHeight)
