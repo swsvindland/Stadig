@@ -13,6 +13,7 @@ Stadig used to have two more apps: the hub (Stadig), which planned a day around 
 | `core/calendar.json` | Stadig Lift | Stadig Macro and its Watch app | `SystemCalendar`: the current block, deloads and check-ins |
 | `apps/liftTrack/summary.json` | Stadig Lift | Stadig Macro and its Watch app; the stats | `AppSummary`: stats, recent sessions, strength, fatigue, measurements, steps |
 | `apps/macroTrack/summary.json` | Stadig Macro | the stats | `AppSummary`: stats |
+| `apps/liftTrack/scores.json`, `apps/macroTrack/scores.json` | each app its own, from its store | both, for the stats | `ScoreHistory`: the app's scores day by day, for how each has moved (schema 1, new 2026-11-13) |
 | `apps/macroTrack/nutrition.json` | Stadig Macro | Stadig Lift | `NutritionSummary`: the phase, maintenance, day-by-day logging, a running fast |
 | `apps/macroTrack/meals.json` | nothing now: Stadig Macro wrote it for the hub | nothing | When someone usually eats and what they'd eaten that day, by part of the day |
 | `hub/rhythm.json` | nothing now: the hub wrote it | nothing | The work pattern, wake and bed, clear evenings, the day's start, classes moved for good |
@@ -59,4 +60,14 @@ The rule is that each app shows its own stats, and once both apps are set up eac
 - `StatsBoard.bothApps(shared:today:timeZone:)` (or `bothApps(lift:macro:…)`) says whether both are publishing.
 - A summary older than 28 days (`StatsBoard.staleDays`) counts as nothing, and a summary from any other app is ignored, so Intelligence and Wisdom never show.
 
-`StatsBoardTests` (`SystemCore`), `SharedStatsTests` and `LegacyDataTests` (`SystemStore`) cover it.
+### How each has moved
+
+Each app records its own scores as it publishes them, and publishes the history they make in `apps/<app>/scores.json` beside its summary: a `ScoreHistory` (`SystemCore`), one reading a day for each stat (the day's last, to a tenth), every one for the last nine weeks, then each week's and each month's last, and the first, for two years.
+
+- **The app's own store keeps them, a record a day** (`ScoreDayRecord` in `SystemStore`, kind `score-day`, its id from the day), so they reach the person's other devices through the app's own CloudKit container a day at a time: what two devices recorded adds up, and a reinstall gets every day back. `RecordStore.recordScores(_:app:on:now:)` saves the day's record when its scores change and returns the history all the records make; the records are all kept (a few dozen bytes a day) and only the published history is thinned.
+- **The file is drawn from the store**, written when the history changes. `FamilySync` carries it like any other file, newest wins, so a device whose store hasn't caught up can briefly publish fewer days; it writes the rest when they arrive, and no app answers another device's copy with its own, so the two never take turns.
+- `StatsBoard.lines(shared:today:)` reads both apps' histories with their summaries, and each `StatLine` carries `change`, how far it moved this month (`ScoreChange`), or nil with nothing to measure from. `StatLine.change(over:today:)` measures any `ScoreWindow`: `.month` ("+2 this month", since this date last month), `.since(month:)` ("+3 since August", from the score as that month began) or `.sinceCheckIn` ("since the last check-in"). Under a point either way is steady. A stat both apps publish moves by the average of their changes.
+- `StatsBoard.lookBack(today:)` is the three-month window Body's Physique uses, and `StatsBoard.earlier(_:today:)` Your shape's dashed outline from it.
+- It's a file of its own rather than a field of `AppSummary` because every copy of either app rewrites its summary, and an older one would drop the field each time; nothing but this version writes `scores.json`. `AppSummary` and its schema are unchanged. An app that records no history (an older copy) just shows no change for its scores.
+
+`StatsBoardTests`, `ScoreHistoryTests` and `ContractTests` (`SystemCore`), `SharedStatsTests` and `LegacyDataTests` (`SystemStore`) cover it.
