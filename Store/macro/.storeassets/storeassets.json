@@ -16,8 +16,17 @@
       "appId": "dev.svindland.stadig.macro",
       "assets": [
         "iphone-6.9",
-        "ipad-13"
-      ]
+        "iphone-6.3",
+        "ipad-13",
+        "iphone-duo-outer",
+        "iphone-duo-inner"
+      ],
+      "sizes": {
+        "iphone-duo-inner": [
+          2853,
+          2007
+        ]
+      }
     }
   },
   "brand": {
@@ -43,7 +52,9 @@
       "template": "stadig",
       "captures": {
         "phone": "today.png",
-        "tablet": "today.png"
+        "tablet": "today.png",
+        "foldable-outer": "today.png",
+        "foldable-inner": "today.png"
       }
     },
     {
@@ -52,7 +63,9 @@
       "template": "stadig",
       "captures": {
         "phone": "log.png",
-        "tablet": "log.png"
+        "tablet": "log.png",
+        "foldable-outer": "log.png",
+        "foldable-inner": "log.png"
       }
     },
     {
@@ -61,7 +74,9 @@
       "template": "stadig",
       "captures": {
         "phone": "search.png",
-        "tablet": "search.png"
+        "tablet": "search.png",
+        "foldable-outer": "search.png",
+        "foldable-inner": "search.png"
       }
     },
     {
@@ -70,7 +85,9 @@
       "template": "stadig-full",
       "captures": {
         "phone": "scan.png",
-        "tablet": "scan.png"
+        "tablet": "scan.png",
+        "foldable-outer": "scan.png",
+        "foldable-inner": "scan.png"
       }
     },
     {
@@ -79,7 +96,9 @@
       "template": "stadig",
       "captures": {
         "phone": "plan.png",
-        "tablet": "plan.png"
+        "tablet": "plan.png",
+        "foldable-outer": "plan.png",
+        "foldable-inner": "plan.png"
       }
     },
     {
@@ -88,7 +107,9 @@
       "template": "stadig",
       "captures": {
         "phone": "progress.png",
-        "tablet": "progress.png"
+        "tablet": "progress.png",
+        "foldable-outer": "progress.png",
+        "foldable-inner": "progress.png"
       }
     },
     {
@@ -97,7 +118,9 @@
       "template": "stadig",
       "captures": {
         "phone": "meal-prep.png",
-        "tablet": "meal-prep.png"
+        "tablet": "meal-prep.png",
+        "foldable-outer": "meal-prep.png",
+        "foldable-inner": "meal-prep.png"
       }
     }
   ],

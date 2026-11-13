@@ -1,7 +1,7 @@
 {
   "id": "stadig",
   "name": "Stadig",
-  "description": "headline-top with a larger device on tablets, so the iPad UI reads at App Store sizes.",
+  "description": "headline-top with a larger device on tablets, so the iPad UI reads at App Store sizes; on landscape canvases the words go over the device, and the Mac's window and Vision Pro's room show unframed.",
   "version": 1,
   "tags": [
     "classic"
@@ -202,24 +202,25 @@
       ]
     },
     {
-      "name": "wide",
+      "name": "landscape",
+      "maxAspect": 1.5,
       "mirrorRtl": true,
       "elements": [
         {
           "type": "text",
           "field": "headline",
           "box": [
+            0.02,
             0.0,
-            0.2,
-            0.4,
-            0.33
+            0.96,
+            0.12
           ],
           "size": [
             0.05,
-            0.092
+            0.08
           ],
           "font": "heading",
-          "align": "left",
+          "align": "center",
           "valign": "bottom",
           "uppercase": false,
           "shadow": false,
@@ -229,13 +230,17 @@
           "type": "text",
           "field": "subhead",
           "box": [
-            0.0,
-            0.56,
-            0.38,
-            0.24
+            0.08,
+            0.135,
+            0.84,
+            0.06
+          ],
+          "size": [
+            0.028,
+            0.04
           ],
           "font": "body",
-          "align": "left",
+          "align": "center",
           "valign": "top",
           "opacity": 0.86,
           "lineHeight": 1.25,
@@ -246,12 +251,76 @@
         {
           "type": "device",
           "box": [
-            0.43,
-            0.0,
-            0.57,
+            0.05,
+            0.215,
+            0.9,
             1.0
           ],
-          "anchor": "center",
+          "anchor": "top",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
+          "bleed": false
+        }
+      ]
+    },
+    {
+      "name": "wide",
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.02,
+            0.0,
+            0.96,
+            0.11
+          ],
+          "size": [
+            0.045,
+            0.072
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "bottom",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.08,
+            0.125,
+            0.84,
+            0.055
+          ],
+          "size": [
+            0.026,
+            0.036
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "top",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.08,
+            0.2,
+            0.84,
+            0.8
+          ],
+          "anchor": "top",
+          "frame": "none",
           "capture": 0,
           "rotate": 0.0,
           "shadow": true,

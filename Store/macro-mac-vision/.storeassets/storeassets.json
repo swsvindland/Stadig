@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/swsvindland/screenshot/main/schemas/manifest.schema.json",
+  "schema": 1,
+  "id": "6cfbf1c6-ace2-4c67-9c2d-dc9155134987",
+  "name": "Stadig Macro",
+  "baseLocale": "en-US",
+  "locales": [
+    "en-US"
+  ],
+  "platforms": [
+    "macos",
+    "visionos"
+  ],
+  "stores": {
+    "apple": {
+      "enabled": true,
+      "appId": "dev.svindland.stadig.macro",
+      "assets": [
+        "mac",
+        "vision-pro"
+      ]
+    }
+  },
+  "brand": {
+    "icon": "brand/icon.png",
+    "colors": {
+      "primary": "#1CA366",
+      "secondary": "#0D6B44",
+      "accent": "#FFE08A",
+      "background": "#07160F",
+      "text": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter",
+      "headingWeight": 800,
+      "bodyWeight": 500
+    }
+  },
+  "slots": [
+    {
+      "id": "today",
+      "uuid": "60be8aed-c3e7-4d26-826d-b9f0e782001a",
+      "template": "stadig",
+      "captures": {
+        "desktop": "today.png",
+        "xr": "today.png"
+      }
+    },
+    {
+      "id": "log",
+      "uuid": "834979c2-175f-489a-a963-fb8770a76dc9",
+      "template": "stadig",
+      "captures": {
+        "desktop": "log.png",
+        "xr": "log.png"
+      }
+    },
+    {
+      "id": "search",
+      "uuid": "c47f9979-dfb0-4dd4-94d6-a5537d10a5d4",
+      "template": "stadig",
+      "captures": {
+        "desktop": "search.png",
+        "xr": "search.png"
+      }
+    },
+    {
+      "id": "plan",
+      "uuid": "1a0f4eaf-9bf8-43aa-aa9b-b747d83ab9bb",
+      "template": "stadig",
+      "captures": {
+        "desktop": "plan.png",
+        "xr": "plan.png"
+      }
+    },
+    {
+      "id": "progress",
+      "uuid": "9926f1ed-12de-4951-8bb6-3c7aee10fac8",
+      "template": "stadig",
+      "captures": {
+        "desktop": "progress.png",
+        "xr": "progress.png"
+      }
+    },
+    {
+      "id": "meal-prep",
+      "uuid": "f060fcdb-2cb6-4d5e-a055-48b0a3245ce9",
+      "template": "stadig",
+      "captures": {
+        "desktop": "meal-prep.png",
+        "xr": "meal-prep.png"
+      }
+    }
+  ],
+  "output": {
+    "format": "png",
+    "jpegQuality": 92
+  }
+}

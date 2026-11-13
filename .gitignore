@@ -10,3 +10,5 @@ __pycache__/
 .claude/settings.local.json
 # Written by Scripts/xcode-cloud.sh during an Xcode Cloud archive
 Apps/*/TestFlight/
+# Screenshots gathered by hand for dragging into App Store Connect (Store/README.md)
+Store/upload/

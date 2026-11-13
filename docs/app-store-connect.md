@@ -1,6 +1,6 @@
 # App Store Connect: purchases and release
 
-> **Both apps are free (since 2026-11-11).** Purchases are off in the code (`enabled: false` in each app's `Purchase/Purchases.swift`), so nothing below is needed for a new version. What's left for you in App Store Connect: set both apps' price to free, and for the products already made (the one-time purchase and the monthly subscription per app), remove them from sale. Nothing in the apps checks them now. The steps below are kept as the record of how it was set up.
+> **Both apps are free (since 2026-11-11).** Purchases are off in the code (`enabled: false` in each app's `Purchase/Purchases.swift`), so nothing below is needed for a new version. On 2026-11-13 both apps' price was set to Free in all 175 countries or regions; neither record had any purchase or subscription products, so there's nothing to remove from sale. The listing as entered (text, categories, age rating, privacy) is in [Store/listing.md](../Store/listing.md). The steps below are kept as the record of how purchases were to be set up.
 
 Everything here happens on the App Store Connect website, once per app unless it says otherwise. The code side is done: each app reads these products by the ids below, and shows whatever prices you set here. [ci-cd.md](ci-cd.md) covers builds and Xcode Cloud; this covers what to sell and how to get it approved.
 

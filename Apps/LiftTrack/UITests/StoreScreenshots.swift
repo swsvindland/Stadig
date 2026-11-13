@@ -1,8 +1,8 @@
 import XCTest
 
 /// The App Store screenshots, not a test of anything: `Scripts/store-screenshots.sh` runs these on
-/// its own iPhone and iPad simulators with STORE_SCREENSHOTS naming a folder, and each saves its
-/// screen there for `storeassets` to frame. Skipped in every other run.
+/// its own iPhone, iPad and iPhone Duo simulators with STORE_SCREENSHOTS naming a folder, and each
+/// saves its screen there for `storeassets` to frame. Skipped in every other run.
 nonisolated final class StoreScreenshots: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -10,14 +10,36 @@ nonisolated final class StoreScreenshots: XCTestCase {
     }
 
     /// Saves the screen as `phone/<name>.png` or `tablet/<name>.png` (the iPhone and iPad run at
-    /// once), once what's on it has stopped moving: scroll indicators fading, a chart's first layout.
+    /// once), or in the device class the script names in STORE_CLASS (the iPhone Duo's
+    /// `foldable-outer` and `foldable-inner`: an iPhone, run folded and then unfolded), once what's on
+    /// it has stopped moving: scroll indicators fading, a chart's first layout.
     @MainActor
     func save(_ name: String) throws {
-        let folder = URL(fileURLWithPath: try XCTUnwrap(ProcessInfo.processInfo.environment["STORE_SCREENSHOTS"]))
-            .appendingPathComponent(XCUIApplication.isPad ? "tablet" : "phone")
+        let environment = ProcessInfo.processInfo.environment
+        let folder = URL(fileURLWithPath: try XCTUnwrap(environment["STORE_SCREENSHOTS"]))
+            .appendingPathComponent(environment["STORE_CLASS"] ?? (XCUIApplication.isPad ? "tablet" : "phone"))
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         Thread.sleep(forTimeInterval: 2)
-        try XCUIScreen.main.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("\(name).png"))
+        let file = folder.appendingPathComponent("\(name).png")
+        if environment["STORE_CLASS"] == nil {
+            try XCUIScreen.main.screenshot().pngRepresentation.write(to: file)
+        } else {
+            try askScriptForScreenshot(file)
+        }
+    }
+
+    /// The iPhone Duo's screenshots are the script's to take, from the display the app is on
+    /// (`simctl io --display`): XCTest's main screen stays the outer display, dark while the app is on
+    /// the inner one, and the inner one's own screenshot comes a pixel short each way. Asks with
+    /// `<name>.wanted` beside the file, which the script deletes once the file is written.
+    @MainActor
+    func askScriptForScreenshot(_ file: URL) throws {
+        let wanted = file.deletingPathExtension().appendingPathExtension("wanted")
+        if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+        try Data().write(to: wanted)
+        let deadline = Date.now.addingTimeInterval(30)
+        while FileManager.default.fileExists(atPath: wanted.path), Date.now < deadline { Thread.sleep(forTimeInterval: 0.25) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path), "The script took no screenshot for \(file.lastPathComponent)")
     }
 
     /// A work set waiting for its rating, with the set before it logged and rated Just right.

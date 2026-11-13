@@ -1,7 +1,7 @@
 {
   "id": "stadig-full",
   "name": "Stadig, whole phone",
-  "description": "centered on phones (the whole device shows, for screens whose point is at the bottom), and Stadig's large-device layout on tablets.",
+  "description": "centered on phones (the whole device shows, for screens whose point is at the bottom), and Stadig's large-device layout on tablets; on landscape canvases the whole device shows under the words, and the Mac's window and Vision Pro's room unframed.",
   "version": 1,
   "tags": [
     "classic"
@@ -202,25 +202,48 @@
       ]
     },
     {
-      "name": "wide",
+      "name": "landscape",
+      "maxAspect": 1.5,
       "mirrorRtl": true,
       "elements": [
         {
           "type": "text",
           "field": "headline",
           "box": [
+            0.02,
             0.0,
-            0.0,
-            1.0,
-            0.15
+            0.96,
+            0.12
           ],
           "size": [
             0.05,
-            0.092
+            0.08
           ],
           "font": "heading",
           "align": "center",
-          "valign": "center",
+          "valign": "bottom",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "text",
+          "field": "subhead",
+          "box": [
+            0.08,
+            0.135,
+            0.84,
+            0.06
+          ],
+          "size": [
+            0.028,
+            0.04
+          ],
+          "font": "body",
+          "align": "center",
+          "valign": "top",
+          "opacity": 0.86,
+          "lineHeight": 1.25,
           "uppercase": false,
           "shadow": false,
           "bleed": false
@@ -228,10 +251,10 @@
         {
           "type": "device",
           "box": [
-            0.12,
-            0.18,
-            0.76,
-            0.66
+            0.05,
+            0.215,
+            0.9,
+            0.785
           ],
           "anchor": "center",
           "capture": 0,
@@ -239,27 +262,69 @@
           "shadow": true,
           "fit": "contain",
           "bleed": false
+        }
+      ]
+    },
+    {
+      "name": "wide",
+      "mirrorRtl": true,
+      "elements": [
+        {
+          "type": "text",
+          "field": "headline",
+          "box": [
+            0.02,
+            0.0,
+            0.96,
+            0.11
+          ],
+          "size": [
+            0.045,
+            0.072
+          ],
+          "font": "heading",
+          "align": "center",
+          "valign": "bottom",
+          "uppercase": false,
+          "shadow": false,
+          "bleed": false
         },
         {
           "type": "text",
           "field": "subhead",
           "box": [
-            0.1,
-            0.87,
-            0.8,
-            0.12
+            0.08,
+            0.125,
+            0.84,
+            0.055
           ],
           "size": [
-            0.027,
-            0.04
+            0.026,
+            0.036
           ],
           "font": "body",
           "align": "center",
-          "valign": "center",
+          "valign": "top",
           "opacity": 0.86,
           "lineHeight": 1.25,
           "uppercase": false,
           "shadow": false,
+          "bleed": false
+        },
+        {
+          "type": "device",
+          "box": [
+            0.08,
+            0.2,
+            0.84,
+            0.8
+          ],
+          "anchor": "top",
+          "frame": "none",
+          "capture": 0,
+          "rotate": 0.0,
+          "shadow": true,
+          "fit": "contain",
           "bleed": false
         }
       ]

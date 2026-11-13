@@ -16,8 +16,19 @@
       "appId": "dev.svindland.stadig.lift",
       "assets": [
         "iphone-6.9",
-        "ipad-13"
-      ]
+        "iphone-6.3",
+        "ipad-13",
+        "iphone-duo-outer",
+        "iphone-duo-inner",
+        "mac",
+        "vision-pro"
+      ],
+      "sizes": {
+        "iphone-duo-inner": [
+          2853,
+          2007
+        ]
+      }
     }
   },
   "brand": {
@@ -43,7 +54,11 @@
       "template": "stadig-full",
       "captures": {
         "phone": "session.png",
-        "tablet": "session.png"
+        "tablet": "session.png",
+        "foldable-outer": "session.png",
+        "foldable-inner": "session.png",
+        "desktop": "session.png",
+        "xr": "session.png"
       }
     },
     {
@@ -52,7 +67,11 @@
       "template": "stadig",
       "captures": {
         "phone": "today.png",
-        "tablet": "today.png"
+        "tablet": "today.png",
+        "foldable-outer": "today.png",
+        "foldable-inner": "today.png",
+        "desktop": "today.png",
+        "xr": "today.png"
       }
     },
     {
@@ -61,7 +80,11 @@
       "template": "stadig",
       "captures": {
         "phone": "plan.png",
-        "tablet": "plan.png"
+        "tablet": "plan.png",
+        "foldable-outer": "plan.png",
+        "foldable-inner": "plan.png",
+        "desktop": "plan.png",
+        "xr": "plan.png"
       }
     },
     {
@@ -70,7 +93,11 @@
       "template": "stadig",
       "captures": {
         "phone": "progress.png",
-        "tablet": "progress.png"
+        "tablet": "progress.png",
+        "foldable-outer": "progress.png",
+        "foldable-inner": "progress.png",
+        "desktop": "progress.png",
+        "xr": "progress.png"
       }
     },
     {
@@ -79,7 +106,11 @@
       "template": "stadig",
       "captures": {
         "phone": "body.png",
-        "tablet": "body.png"
+        "tablet": "body.png",
+        "foldable-outer": "body.png",
+        "foldable-inner": "body.png",
+        "desktop": "body.png",
+        "xr": "body.png"
       }
     }
   ],
