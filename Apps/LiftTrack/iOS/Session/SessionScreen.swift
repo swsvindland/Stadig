@@ -281,10 +281,13 @@ struct SessionScreen: View {
         }
         ToolbarItem(placement: .principal) {
             VStack(spacing: 0) {
-                // The Mac's window title already names the session.
-                if !Platform.isMac { Text(live.plan.title).font(.headline) }
+                // The Mac's window title already names the session, and the scoreboard's tape has its
+                // name and clock at a size read from the bar: the bar keeps only the heart rate.
+                if !Platform.isMac && !showsScoreboard { Text(live.plan.title).font(.headline) }
                 HStack(spacing: 8) {
-                    Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    if !showsScoreboard {
+                        Text(live.startedAt, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
                     if let bpm = model.currentHeartRate {
                         Label("\(Int(bpm))", systemImage: "heart.fill")
                             .font(.caption.weight(.semibold).monospacedDigit())

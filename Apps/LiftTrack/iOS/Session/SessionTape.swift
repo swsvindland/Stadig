@@ -14,6 +14,8 @@ struct SessionTape: View {
 
     /// "6:48", without the AM or PM a glance across the room doesn't need.
     private static let time = Date.FormatStyle().hour(.defaultDigits(amPM: .omitted)).minute()
+    /// Where the ticks start: past the times (52), the now-marker (14) and the gaps between (10 each).
+    private static let trackX: CGFloat = 52 + 10 + 14 + 10
 
     var body: some View {
         TimelineView(.everyMinute) { context in
@@ -27,6 +29,11 @@ struct SessionTape: View {
                                 row(index, item, start: timeline.starts[item.id])
                                     .id(item.id)
                             }
+                        }
+                        // The tape itself: one track down the session, the sets ticked off it.
+                        .background(alignment: .leading) {
+                            Rectangle().fill(Ink.track).frame(width: 2).padding(.leading, Self.trackX - 2).padding(.vertical, -8)
+                                .accessibilityHidden(true)
                         }
                         .padding(.vertical, 16)
                     }
@@ -103,10 +110,11 @@ struct SessionTape: View {
                 .opacity(current ? 1 : 0)
                 .frame(width: 14)
                 .padding(.top, CGFloat(warmups.count) * 8 + CGFloat(nowOffset(item, current: current, work: work)) * 26)
-            VStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(warmups, id: \.self) { set in
-                    RoundedRectangle(cornerRadius: 2).fill(item.sets[set].isOpen ? Ink.track : Color.accentColor.opacity(0.55))
-                        .frame(height: 4)
+                    UnevenRoundedRectangle(bottomTrailingRadius: 2, topTrailingRadius: 2)
+                        .fill(item.sets[set].isOpen ? Ink.track : Color.accentColor.opacity(0.55))
+                        .frame(width: 26, height: 4)
                 }
                 VStack(spacing: 8) {
                     ForEach(work, id: \.self) { set in
@@ -132,7 +140,8 @@ struct SessionTape: View {
         }
         .padding(.vertical, current ? 8 : 0)
         .background {
-            if current { Rectangle().fill(Ink.raised).padding(.horizontal, -24) }
+            // A wash rather than a fill, so the track still runs through the exercise in front of you.
+            if current { Rectangle().fill(Ink.text.opacity(0.06)).padding(.horizontal, -24) }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([exercise.name, detail, current ? "now" : nil].compactMap { $0 }.joined(separator: ", "))
@@ -176,23 +185,31 @@ struct SessionTape: View {
         let rest = model.activeRest
         let after = live.current.map { live.items[$0.item].plan.rest.target } ?? 0
         let seconds = rest.map { Int($0.endsAt.timeIntervalSince($0.started).rounded()) } ?? after
-        return HStack(alignment: .bottom) {
-            if seconds > 0 {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(rest == nil ? "Rest after" : "Resting").font(.subheadline.weight(.semibold)).textCase(.uppercase).tracking(1.2)
-                        .foregroundStyle(Ink.text3)
-                    Text(Format.clock(seconds)).font(.system(size: 48, weight: .heavy)).monospacedDigit().foregroundStyle(Ink.text2)
+        // Two columns of the same width, as the board's foot has them.
+        return HStack(alignment: .bottom, spacing: 16) {
+            Group {
+                if seconds > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(rest == nil ? "Rest after" : "Resting").font(.subheadline.weight(.semibold)).textCase(.uppercase).tracking(1.2)
+                            .foregroundStyle(Ink.text3)
+                        Text(Format.clock(seconds)).font(.system(size: 54, weight: .heavy)).tracking(-2.5).monospacedDigit()
+                            .foregroundStyle(Ink.text2)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
             }
-            Spacer()
-            if !live.isComplete {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Done by").font(.subheadline.weight(.semibold)).textCase(.uppercase).tracking(1.2).foregroundStyle(Ink.text3)
-                    Text(doneBy.formatted(Self.time)).font(.system(size: 48, weight: .heavy)).monospacedDigit().foregroundStyle(Ink.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Group {
+                if !live.isComplete {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Done by").font(.subheadline.weight(.semibold)).textCase(.uppercase).tracking(1.2).foregroundStyle(Ink.text3)
+                        Text(doneBy.formatted(Self.time)).font(.system(size: 54, weight: .heavy)).tracking(-2.5).monospacedDigit()
+                            .foregroundStyle(Ink.text)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .lineLimit(1).minimumScaleFactor(0.6)
     }
@@ -206,7 +223,8 @@ private struct Tick: View {
     let resting: Bool
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
+        // Square against the track, rounded at its free end.
+        let shape = UnevenRoundedRectangle(bottomTrailingRadius: 5, topTrailingRadius: 5, style: .continuous)
         ZStack(alignment: .trailing) {
             if set.logged != nil {
                 shape.fill(Color.accentColor)

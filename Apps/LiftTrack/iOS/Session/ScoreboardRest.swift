@@ -37,7 +37,7 @@ struct BoardRest: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .center) {
                         ViewThatFits(in: .horizontal) {
-                            ForEach([220, 190, 160, 130] as [CGFloat], id: \.self) { size in
+                            ForEach([250, 220, 190, 160, 130] as [CGFloat], id: \.self) { size in
                                 Text(Format.clock(Int(left.rounded(.up))))
                                     .font(.system(size: size, weight: .heavy)).tracking(-size * 0.05)
                                     .monospacedDigit()
@@ -57,7 +57,7 @@ struct BoardRest: View {
                         Spacer()
                         if rest.plan.heartRateGuided, model.currentHeartRate != nil { Text("Ends early when your heart rate recovers") }
                     }
-                    .font(.title3.weight(.medium)).foregroundStyle(Ink.text2)
+                    .font(.system(size: 18, weight: .medium)).foregroundStyle(Ink.text3)
                 }
             }
             .padding(.top, 8)
@@ -139,7 +139,7 @@ struct BoardRest: View {
                     .lineLimit(1)
                 HStack(alignment: .center, spacing: 24) {
                     Text(next.target)
-                        .font(.system(size: 80, weight: .heavy)).tracking(-3)
+                        .font(.system(size: 72, weight: .heavy)).tracking(-3.5)
                         .monospacedDigit()
                         .foregroundStyle(Ink.text)
                         .lineLimit(1).minimumScaleFactor(0.5)
