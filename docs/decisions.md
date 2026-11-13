@@ -2,6 +2,11 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **One composer on every Stadig Macro tab.** On 2026-11-12 you said Today's input looked nothing like the other tabs'. The calls, mine to check:
+  - **The old "Log food" bar is gone.** Log, Plan and Progress have Today's composer at their foot, working in place: the same matches, Return, comma lists, quick adds, estimates and vague words asked about, camera (hold for a photo) and mic, with the usual toast and Undo. Its old icons found homes: barcode is the camera's scanner, describe is the mic, and **weigh-in is Progress's top-bar button**. iPad, the Mac and Vision Pro keep their layouts.
+  - **On the Log tab it logs to the day shown** ("Add food to Tuesday"). Words nothing matches for another day go to the logger, since estimates in place are for today only.
+  - **Today follows its board: header, thread, tiles, composer.** The cards that sat between the thread and the tiles (the phase note, the plan ready, weigh-in, planned meals, supplements and the rest) fold under one quiet line, "More today", which says what's waiting ("Weigh in · 5 supplements"), opens in place, and hides while typing.
+
 - **Counter mode for prep day, and Vision Pro's tab ornament.** The calls, mine to check:
   - **Counter mode runs the Meal plan's prep like a ticket rail** on the iPad and the Mac (wherever the window is regular width), from "Start Prep": the step in enormous type, live timers as draining rulers, Next, and what the scale read. A reading is saved into the plan, so a container logged later is what was cooked; readings outside a quarter to four times the recipe are ignored. A timer starts at its step's Next. A run lives in memory only, and the screen stays awake. **Left out:** voice ("next", a reading said aloud), which would need microphone and speech permissions; the iPhone, which is portrait only.
   - **Vision Pro's tab ornament showed blank buttons** for both apps' tab sections (Food and Review; Training and Records): a section header is now a label with a symbol on Vision Pro, and the iPad's tab bar and the sidebars read as before.
