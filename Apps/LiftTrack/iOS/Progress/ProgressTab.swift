@@ -11,6 +11,9 @@ struct ProgressTab: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Your shape, opened from the header (and by `-yourShape` in DEBUG).
     @State private var showShape = false
+    /// History and a session in it, opened by `-history` and `-sessionDetail` in DEBUG.
+    @State private var showHistory = false
+    @State private var shownSession: SessionRecord?
 
     var body: some View {
         NavigationStack {
@@ -38,8 +41,13 @@ struct ProgressTab: View {
                 if let analysis = model.analysis { YourShapePage(analysis: analysis) }
             }
             #if DEBUG
+            .navigationDestination(isPresented: $showHistory) { HistoryView() }
+            .navigationDestination(item: $shownSession) { record in SessionDetail(record: record) }
             .onAppear {
-                if !sizeClass.isWide, LaunchOptions.current.has("-yourShape") { showShape = true }
+                guard !sizeClass.isWide else { return }
+                if LaunchOptions.current.has("-yourShape") { showShape = true }
+                if LaunchOptions.current.has("-history") { showHistory = true }
+                if LaunchOptions.current.has("-sessionDetail") { shownSession = model.sessions.max { $0.start < $1.start } }
             }
             #endif
         }
@@ -610,6 +618,7 @@ struct RatingsCard: View {
 
 /// Every session and outside activity, newest first.
 struct HistoryView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(AppModel.self) private var model
 
     private enum Entry: Identifiable {
@@ -634,43 +643,59 @@ struct HistoryView: View {
     var body: some View {
         let entries = (model.sessions.map(Entry.session) + model.activities.map(Entry.activity)).sorted { $0.date > $1.date }
         List {
-            ForEach(entries) { entry in
-                switch entry {
-                case .session(let session):
-                    NavigationLink {
-                        SessionDetail(record: session)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(session.title).font(.headline)
-                            Text(
-                                "\(session.start.formatted(date: .abbreviated, time: .shortened)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
+            if !sizeClass.isWide { FormHeading(eyebrow: "Progress", title: "History") }
+            Section {
+                ForEach(entries) { entry in
+                    switch entry {
+                    case .session(let session):
+                        NavigationLink {
+                            SessionDetail(record: session)
+                        } label: {
+                            row(
+                                symbol: "dumbbell", title: session.title,
+                                caption:
+                                    "\(Self.when(session.start)) · \(session.minutes) min · \(session.workSets.count) sets\(session.device == Platform.deviceName ? "" : " · \(session.device)")"
                             )
-                            .font(.caption).foregroundStyle(.secondary)
                         }
+                        .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
+                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
+                        .accessibilityIdentifier("history.session")
+                    case .activity(let log):
+                        row(
+                            symbol: log.type.symbol, title: log.type.label,
+                            caption: "\(Self.when(log.start)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
+                        )
+                        .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
+                        .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
+                        .accessibilityIdentifier("history.activity")
                     }
-                    .swipeActions { Button("Delete", role: .destructive) { model.delete(session: session.id) } }
-                    .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(session: session.id) } }
-                    .accessibilityIdentifier("history.session")
-                case .activity(let log):
-                    HStack {
-                        Image(systemName: log.type.symbol).frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(log.type.label).font(.headline)
-                            Text(
-                                "\(log.start.formatted(date: .abbreviated, time: .shortened)) · \(log.minutes) min · effort \(log.intensity)\(sourceLabel(log))"
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .swipeActions { Button("Delete", role: .destructive) { model.delete(activity: log.id) } }
-                    .contextMenu { Button("Delete", systemImage: "trash", role: .destructive) { model.delete(activity: log.id) } }
-                    .accessibilityIdentifier("history.activity")
                 }
+            } header: {
+                if !entries.isEmpty { Text("\(model.sessions.count) sessions · \(model.activities.count) activities").eyebrow() }
             }
+            .inkRows()
         }
         .inkList()
-        .navigationTitle("History")
+        .detailPage(title: "History", wide: sizeClass.isWide)
         .overlay { if entries.isEmpty { ContentUnavailableView("Nothing yet", systemImage: "clock") } }
+    }
+
+    /// A session or an activity: its symbol in the accent, what it was, and when and how much.
+    private func row(symbol: String, title: String, caption: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).font(.body).foregroundStyle(Color.accentColor).frame(width: 24).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                Text(caption).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "Thu 12 Nov, 17:30": the day first, as the rest of the app names days.
+    private static func when(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
     }
 
     private func sourceLabel(_ log: ActivityLog) -> String {
@@ -680,11 +705,17 @@ struct HistoryView: View {
 }
 
 struct SessionDetail: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let record: SessionRecord
 
     var body: some View {
-        SessionSetsList(record: record, header: false)
-            .navigationTitle(record.title)
+        SessionSetsList(
+            record: record, header: false,
+            heading: sizeClass.isWide
+                ? nil
+                : (eyebrow: "History · \(record.start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))", title: record.title)
+        )
+        .detailPage(title: record.title, wide: sizeClass.isWide)
     }
 }
 
@@ -694,59 +725,114 @@ struct SessionSetsList: View {
     let record: SessionRecord
     /// Its title and when, at the top: for the inspector, where there's no navigation title.
     let header: Bool
+    /// A phone page's own heading over the list: where it was opened from and its title.
+    var heading: (eyebrow: String, title: String)?
+
+    private static let energies = ["Drained", "Low", "OK", "Good", "Great"]
+    private static let soreness = ["None", "A little", "Sore", "Very"]
 
     var body: some View {
         List {
-            if header {
+            if let heading { FormHeading(eyebrow: heading.eyebrow, title: heading.title) }
+            if header || heading != nil {
                 Section {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(record.title).font(.title3.bold())
-                        Text("\(record.start.formatted(date: .abbreviated, time: .shortened)) · \(record.minutes) min · \(record.device)")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        if header {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(record.start.formatted(date: .abbreviated, time: .shortened)).eyebrow()
+                                Text(record.title).font(.title3.bold()).foregroundStyle(Ink.text)
+                            }
+                        }
+                        HStack(alignment: .firstTextBaseline, spacing: 28) {
+                            figure(Measure(value: "\(record.minutes)", unit: "min", size: 30), "minutes")
+                            figure(Measure(value: "\(record.workSets.count)", size: 30), "work sets")
+                            if record.device != Platform.deviceName || header {
+                                figure(Text(record.device).font(.callout.weight(.semibold)).foregroundStyle(Ink.text), "recorded on")
+                            }
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
             }
             if let feedback = record.feedback {
                 Section {
-                    Text(
-                        "Soreness \(feedback.soreness)/3 · energy \(feedback.energy)/5\(feedback.jointPain.isEmpty ? "" : " · pain: \(feedback.jointPain.map(\.label).joined(separator: ", "))")"
-                    )
+                    ValueRow(title: "Energy", value: Self.energies[min(max(feedback.energy, 1), 5) - 1])
+                    ValueRow(title: "Coming in", value: feedback.soreness == 0 ? "Not sore" : Self.soreness[min(max(feedback.soreness, 0), 3)])
+                    ValueRow(
+                        title: "Joint pain", value: feedback.jointPain.isEmpty ? "None" : feedback.jointPain.map(\.label).joined(separator: ", "))
                 } header: {
-                    Text("Feedback").eyebrow()
+                    Text("How it felt").eyebrow()
                 }
             }
             ForEach(record.exercises) { log in
                 let exercise = model.catalog.resolve(log.exerciseID)
-                Section(exercise.name) {
-                    ForEach(log.sets) { set in
-                        HStack {
-                            Text(set.kind == .warmup ? "Warm-up" : set.kind.label).font(.caption).foregroundStyle(.secondary).frame(
-                                width: 90, alignment: .leading)
-                            Text(Format.logged(set, exercise: exercise, unit: model.gym.unit)).monospacedDigit()
-                            Spacer()
-                            RatingMark(rating: set.rating)
+                Section {
+                    ForEach(Array(log.sets.enumerated()), id: \.element.id) { index, set in
+                        HStack(spacing: 12) {
+                            Text(badge(index, in: log.sets))
+                                .font(.caption.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(Ink.text2)
+                                .frame(width: 26, height: 26)
+                                .overlay { Circle().strokeBorder(Ink.track, lineWidth: 1.5) }
+                                .accessibilityHidden(true)
+                            Text(Format.logged(set, exercise: exercise, unit: model.gym.unit))
+                                .font(.callout.weight(set.kind == .warmup ? .regular : .semibold).monospacedDigit())
+                                .foregroundStyle(set.kind == .warmup ? Ink.text2 : Ink.text)
+                            Spacer(minLength: 8)
+                            if let rating = set.rating {
+                                HStack(spacing: 6) {
+                                    RatingMark(rating: rating)
+                                    Text(rating.label).font(.caption).foregroundStyle(Ink.text2)
+                                }
+                            } else if set.kind != .warmup {
+                                Text(set.kind.label).font(.caption).foregroundStyle(Ink.text3)
+                            }
                         }
+                        .accessibilityElement(children: .combine)
                     }
+                } header: {
+                    Text(exercise.name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).textCase(nil)
                 }
             }
             ForEach(record.conditioning, id: \.exerciseID) { c in
-                Section(model.catalog.resolve(c.exerciseID).name) {
-                    Text("\(c.minutes) min\(c.averageHeartRate.map { " · avg \(Int($0)) bpm" } ?? "")")
+                Section {
+                    ValueRow(title: "Done", value: "\(c.minutes) min\(c.averageHeartRate.map { " · avg \(Int($0)) bpm" } ?? "")")
+                } header: {
+                    Text(model.catalog.resolve(c.exerciseID).name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).textCase(nil)
                 }
             }
             ForEach(Array((record.heat ?? []).enumerated()), id: \.offset) { _, heat in
-                Section(model.catalog.resolve(heat.exerciseID).name) {
+                Section {
                     HStack {
                         Text(
                             "\(Format.number(heat.minutes)) min\(heat.temperatureC.map { " at \(Format.temperature($0, fahrenheit: model.fahrenheit))" } ?? "")"
                         )
+                        .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
                         Spacer()
                         RatingMark(rating: heat.rating)
                     }
+                } header: {
+                    Text(model.catalog.resolve(heat.exerciseID).name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).textCase(nil)
                 }
             }
         }
+        .inkRows()
         .inkList()
+    }
+
+    /// A number with what it counts under it, as the summary's are.
+    private func figure(_ value: some View, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            value
+            Text(label).font(.caption).foregroundStyle(Ink.text3)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "W" for a warm-up, then 1, 2, 3 for the rest, as the session numbers them.
+    private func badge(_ index: Int, in sets: [LoggedSet]) -> String {
+        if sets[index].kind == .warmup { return "W" }
+        return "\(sets[...index].filter { $0.kind != .warmup }.count)"
     }
 }
 

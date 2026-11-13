@@ -164,6 +164,16 @@ extension View {
         #endif
     }
 
+    /// A screen that draws its own bar (`SheetBar`): the system's navigation bar goes. The Mac's
+    /// sheets have none to hide.
+    func hidesNavigationBar() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return toolbarVisibility(.hidden, for: .navigationBar)
+        #endif
+    }
+
     func fieldKeyboard(_ keyboard: FieldKeyboard) -> some View {
         #if os(macOS)
         return self

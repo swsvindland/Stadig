@@ -29,6 +29,8 @@ struct LiftTrackApp: App {
         // -openSettings opens Settings (on the Mac, its own window: AppRoot below).
         if launch.has("-openSettings") { model.showSettings = true }
         #endif
+        // -sheet checkIn|logActivity|measurements|nextBlock opens that sheet over the tab.
+        if let sheet = launch.value(after: "-sheet") { model.sheet = AppSheet(rawValue: sheet) }
         // -gymSauna gives the gym a sauna, for the recovery screen.
         if launch.has("-gymSauna") {
             var gym = model.gym

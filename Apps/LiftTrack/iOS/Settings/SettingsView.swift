@@ -12,9 +12,13 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var prompts = DataPrompts()
+    #if DEBUG
+    @State private var debugPage: String?
+    #endif
 
     var body: some View {
         Form {
+            FormHeading(eyebrow: "Stadig Lift", title: "Settings")
             Group {
                 if let profile = model.profile {
                     Section {
@@ -45,10 +49,23 @@ struct SettingsView: View {
         }
         .inkList()
         .dataPrompts($prompts)
+        #if DEBUG
+        // `-settingsPage profile|outside|gym|focus` opens that page of Settings.
+        .navigationDestination(item: $debugPage) { page in
+            switch page {
+            case "profile": if let profile = model.profile { ProfileEditor(profile: profile) }
+            case "outside": if let profile = model.profile { RecurringScreen(profile: profile) }
+            case "gym": GymEditor(gym: model.gym)
+            default: FocusScreen()
+            }
+        }
+        .onAppear { debugPage = LaunchOptions.current.value(after: "-settingsPage") }
+        #endif
         .accessibilityIdentifier("settings.screen")
         .navigationTitle("Settings")
-        .inlineTitle()
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settings.done") } }
+        .inkSheet {
+            SheetBar(label: "Done", identifier: "settings.done") { dismiss() }
+        }
     }
 }
 
@@ -311,59 +328,61 @@ struct ProfileEditor: View {
 
     var body: some View {
         Form {
-            Section {
-                ForEach(OutcomeGoal.allCases) { goal in
-                    Toggle(
-                        goal.label,
-                        isOn: Binding(
-                            get: { edit.value.goals.contains(goal) },
-                            set: { on in
-                                if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
-                            }))
-                }
-            } header: {
-                Text("Goals").eyebrow()
+            if !Platform.isMac {
+                FormHeading(eyebrow: "Settings", title: "About you", detail: "Shared with the other apps in the family, so it's asked once.")
             }
-            Section {
-                Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
-                Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
-                    ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
+            Group {
+                Section {
+                    ForEach(OutcomeGoal.allCases) { goal in
+                        Toggle(
+                            goal.label,
+                            isOn: Binding(
+                                get: { edit.value.goals.contains(goal) },
+                                set: { on in
+                                    if on { edit.value.goals.append(goal) } else { edit.value.goals.removeAll { $0 == goal } }
+                                }))
+                    }
+                } header: {
+                    Text("Goals").eyebrow()
                 }
-                WeekdayPicker(selection: $edit.value.schedule.preferredDays)
-            } header: {
-                Text("Schedule").eyebrow()
+                Section {
+                    Stepper("\(edit.value.schedule.daysPerWeek) days a week", value: $edit.value.schedule.daysPerWeek, in: 1...6)
+                    Picker("Minutes per session", selection: $edit.value.schedule.minutesPerSession) {
+                        ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0)").tag($0) }
+                    }
+                    WeekdayPicker(selection: $edit.value.schedule.preferredDays)
+                } header: {
+                    Text("Schedule").eyebrow()
+                }
+                Section {
+                    Picker("Lifting for", selection: $edit.value.experience) {
+                        ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
+                    }
+                } header: {
+                    Text("Experience").eyebrow()
+                }
+                Section {
+                    Picker("Standards for", selection: $edit.value.sex) {
+                        ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
+                    }
+                    BirthYearField(year: $edit.value.birthYear)
+                    MeasureField(label: "Height", value: $edit.value.heightCm, unit: edit.value.units.length)
+                    UnitRow(
+                        title: "Weight", options: [(value: WeightUnit.kg, label: "kg"), (value: .lb, label: "lb")],
+                        selection: $edit.value.units.weight)
+                    UnitRow(
+                        title: "Length", options: [(value: LengthUnit.cm, label: "cm"), (value: .inch, label: "in")],
+                        selection: $edit.value.units.length)
+                } header: {
+                    Text("Basics").eyebrow()
+                } footer: {
+                    Text("Schedule and goal changes shape the next block. The current block keeps its days.")
+                }
             }
-            Section {
-                Picker("Lifting for", selection: $edit.value.experience) {
-                    ForEach(TrainingExperience.allCases) { Text($0.label).tag($0) }
-                }
-            } header: {
-                Text("Experience").eyebrow()
-            }
-            Section {
-                Picker("Standards for", selection: $edit.value.sex) {
-                    ForEach(BiologicalSex.allCases) { Text($0.label).tag($0) }
-                }
-                BirthYearField(year: $edit.value.birthYear)
-                MeasureField(label: "Height", value: $edit.value.heightCm, unit: edit.value.units.length)
-                Picker("Weight unit", selection: $edit.value.units.weight) {
-                    Text("kg").tag(WeightUnit.kg)
-                    Text("lb").tag(WeightUnit.lb)
-                }
-                Picker("Length unit", selection: $edit.value.units.length) {
-                    Text("cm").tag(LengthUnit.cm)
-                    Text("in").tag(LengthUnit.inch)
-                }
-            } header: {
-                Text("Basics").eyebrow()
-            }
-            Section {
-                Text("Schedule and goal changes shape the next block. The current block keeps its days.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
+            .inkRows()
         }
         .inkList()
-        .navigationTitle("About you")
+        .formPage("About you")
         .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
@@ -371,9 +390,17 @@ struct ProfileEditor: View {
 /// Up to two areas the person wants brought up, whatever the analysis says.
 struct FocusScreen: View {
     @Environment(AppModel.self) private var model
+    /// Where it was opened from: Settings, or Plan's menu on a phone.
+    var from = "Settings"
 
     var body: some View {
         Form {
+            if !Platform.isMac {
+                FormHeading(
+                    eyebrow: from, title: "Focus",
+                    detail:
+                        "Up to two areas to bring up. They get extra sets from your next block on, and the rest of the program makes room for them.")
+            }
             Section {
                 ForEach(PhysiqueRegion.allCases) { region in
                     let on = model.settings.focus.contains(region)
@@ -396,13 +423,17 @@ struct FocusScreen: View {
                     // A disabled toggle barely looks it in a form.
                     .opacity(full ? 0.5 : 1)
                 }
+            } header: {
+                Text("Areas").eyebrow()
             } footer: {
-                Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
+                if Platform.isMac {
+                    Text("Up to two. They get extra sets from your next block on, and the rest of the program makes room for them.")
+                }
             }
+            .inkRows()
         }
         .inkList()
-        .navigationTitle("Focus")
-        .inlineTitle()
+        .formPage("Focus")
     }
 }
 
@@ -441,11 +472,16 @@ struct RecurringScreen: View {
         ScrollView {
             OutsideActivitiesEditor(
                 recurring: $edit.value.recurring, title: "Outside the gym",
-                detail: "Stadig Lift plans around these; they spend the same recovery."
+                detail: "Stadig Lift plans around these; they spend the same recovery.",
+                style: Platform.isMac ? .none : .page(eyebrow: "Settings")
             )
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, Platform.isMac ? 16 : 0)
+            .padding(.bottom, 24)
+            .readableWidth(620)
         }
         .background(.pageBackground)
+        .formPage("Outside the gym")
         .editing($edit, of: model.profile) { edited, original in model.save(profileEdits: edited, from: original) }
     }
 }
@@ -468,79 +504,86 @@ struct GymEditor: View {
 
     var body: some View {
         Form {
-            Section {
-                TextField("Name", text: $edit.value.name)
-                Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
-                    ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
-                }
-                Picker("Plates in", selection: Binding(get: { gym.unit }, set: { gym = gym.converted(to: $0) })) {
-                    Text("kg").tag(WeightUnit.kg)
-                    Text("lb").tag(WeightUnit.lb)
-                }
-                .pickerStyle(.segmented)
+            if !Platform.isMac {
+                FormHeading(eyebrow: "Settings", title: "Gym", detail: "Exercises and loads are chosen from what's here.")
             }
-            Section {
-                ForEach(Equipment.allCases) { item in
-                    Toggle(
-                        item.label,
-                        isOn: Binding(
-                            get: { gym.equipment.contains(item) },
-                            set: { on in
-                                if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
-                            }))
+            Group {
+                Section {
+                    TextField("Name", text: $edit.value.name)
+                    Picker("Kind", selection: Binding(get: { gym.access }, set: { gym = gym.switched(to: $0) })) {
+                        ForEach(EquipmentAccess.allCases) { Text($0.label).tag($0) }
+                    }
+                    UnitRow(
+                        title: "Plates in", options: [(value: WeightUnit.kg, label: "kg"), (value: .lb, label: "lb")],
+                        selection: Binding(get: { gym.unit }, set: { gym = gym.converted(to: $0) }))
+                } header: {
+                    Text("This gym").eyebrow()
                 }
-            } header: {
-                Text("Equipment").eyebrow()
-            }
-            Section {
-                ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
-                    Toggle(
-                        item.label,
-                        isOn: Binding(
-                            get: { gym.apparatus.contains(item) },
-                            set: { on in
-                                if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                            }))
+                Section {
+                    ForEach(Equipment.allCases) { item in
+                        Toggle(
+                            item.label,
+                            isOn: Binding(
+                                get: { gym.equipment.contains(item) },
+                                set: { on in
+                                    if on { gym.equipment.insert(item) } else { gym.equipment.remove(item) }
+                                }))
+                    }
+                } header: {
+                    Text("Equipment").eyebrow()
                 }
-            } header: {
-                Text("Fixtures").eyebrow()
-            } footer: {
-                Text("A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.")
-            }
-            Section {
-                ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { item in
-                    Toggle(
-                        item.label,
-                        isOn: Binding(
-                            get: { gym.apparatus.contains(item) },
-                            set: { on in
-                                if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
-                            }))
+                Section {
+                    ForEach(Apparatus.allCases.filter { !$0.isRecovery }, id: \.self) { item in
+                        Toggle(
+                            item.label,
+                            isOn: Binding(
+                                get: { gym.apparatus.contains(item) },
+                                set: { on in
+                                    if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
+                                }))
+                    }
+                } header: {
+                    Text("Fixtures").eyebrow()
+                } footer: {
+                    Text("A rack with safeties makes barbell bench and squat safe to take to failure, for lifters who've earned it.")
                 }
-            } header: {
-                Text("Recovery").eyebrow()
-            } footer: {
-                Text(
-                    "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt."
-                )
+                Section {
+                    ForEach(Apparatus.allCases.filter(\.isRecovery), id: \.self) { item in
+                        Toggle(
+                            item.label,
+                            isOn: Binding(
+                                get: { gym.apparatus.contains(item) },
+                                set: { on in
+                                    if on { gym.apparatus.insert(item) } else { gym.apparatus.remove(item) }
+                                }))
+                    }
+                } header: {
+                    Text("Recovery").eyebrow()
+                } footer: {
+                    Text(
+                        "Sessions end with an optional sauna or steam room, outside the time you train. Read the thermometer and the minutes follow, moved by how the last one felt."
+                    )
+                }
+                Section {
+                    LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
+                    LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
+                    Stepper(
+                        "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $edit.value.dumbbellMax,
+                        in: gym.dumbbellStep...200,
+                        step: gym.dumbbellStep)
+                    Stepper(
+                        "Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $edit.value.dumbbellStep, in: 0.5...10,
+                        step: 0.5)
+                    Stepper(
+                        "Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
+                } header: {
+                    Text("Loads").eyebrow()
+                }
             }
-            Section {
-                LabeledContent("Bar", value: "\(Format.number(gym.barWeight)) \(gym.unit.symbol)")
-                LabeledContent("Plates", value: gym.plates.map { Format.number($0, digits: 2) }.joined(separator: ", "))
-                Stepper(
-                    "Dumbbells up to \(Format.number(gym.dumbbellMax)) \(gym.unit.symbol)", value: $edit.value.dumbbellMax,
-                    in: gym.dumbbellStep...200,
-                    step: gym.dumbbellStep)
-                Stepper(
-                    "Dumbbell steps of \(Format.number(gym.dumbbellStep)) \(gym.unit.symbol)", value: $edit.value.dumbbellStep, in: 0.5...10,
-                    step: 0.5)
-                Stepper("Stack steps of \(Format.number(gym.machineStep)) \(gym.unit.symbol)", value: $edit.value.machineStep, in: 1...20, step: 0.5)
-            } header: {
-                Text("Loads").eyebrow()
-            }
+            .inkRows()
         }
         .inkList()
-        .navigationTitle("Gym")
+        .formPage("Gym")
         .editing($edit, of: model.gym) { edited, original in model.save(gymEdits: edited, from: original) }
     }
 }
@@ -591,5 +634,23 @@ extension View {
                 guard copy.wrappedValue.isPending, let saved = save(copy.wrappedValue.value, copy.wrappedValue.original) else { return }
                 copy.wrappedValue.saved(saved)
             }
+    }
+}
+
+/// A setting with a couple of choices (kg or lb), its name at the left and the design's segmented
+/// control at the right.
+struct UnitRow<Value: Hashable>: View {
+    let title: String
+    let options: [(value: Value, label: String)]
+    @Binding var selection: Value
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+            Spacer(minLength: 8)
+            InkSegmented(options: options, selection: $selection)
+                .frame(width: 132)
+                .accessibilityLabel(title)
+        }
     }
 }

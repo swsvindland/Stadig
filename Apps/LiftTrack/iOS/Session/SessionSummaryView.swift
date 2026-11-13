@@ -239,9 +239,8 @@ struct SessionSummaryView: View {
     private var sets: some View {
         if !record.exercises.isEmpty || !(record.heat ?? []).isEmpty {
             NavigationLink {
-                SessionSetsList(record: record, header: false)
-                    .navigationTitle("Every set")
-                    .inlineTitle()
+                SessionSetsList(record: record, header: false, heading: (eyebrow: record.title, title: "Every set"))
+                    .formPage("Every set")
                     #if os(iOS)
                 .toolbarVisibility(.visible, for: .navigationBar)
                     #endif
