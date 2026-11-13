@@ -36,7 +36,7 @@ Everything on it is either in the docs or seen in the apps' screens; the sample 
 
 It needs two environment variables in the Vercel project (Production and Preview):
 
-- `FEEDBACK_REPO`: `owner/name` of a **private** repository just for reports, not this one. The issues carry people's email addresses, and this repository is meant to go public.
+- `FEEDBACK_REPO`: `swsvindland/stadig-feedback`, a **private** repository just for reports, not this one. The issues carry people's email addresses, and this repository is meant to go public. It has a label for each app and one for the website; GitHub's own `bug`, `enhancement` and `question` cover the kinds.
 - `FEEDBACK_TOKEN`: a fine-grained personal access token for that repository only, with **Issues: Read and write** and nothing else. Give it an expiry and put the renewal in the calendar: when it lapses, every report lands on the failed page and the function logs `GitHub answered 401`.
 
 Without them every report goes to the failed page, which offers the email instead. `astro dev` and `astro preview` don't run the function; after a deploy, opening `/api/feedback` should land on `/support` (anything but a post is sent there), which shows the function is live.
@@ -51,5 +51,4 @@ Import the repo, set **Root Directory** to `Site`, framework preset Astro. `verc
 - Fill in `appStoreUrl` for each app in `src/content/site.ts` once they're live. Until then each App Store button names the app and says "Coming to the App Store" (a link to the app's page from elsewhere, plain text on the app's own page); with a URL they become "Stadig Lift on the App Store" links on their own.
 - Open source: once the repository is public and licensed, follow the comment on `brand.free` in `src/content/site.ts` (the line under the buttons, a "Read the source" link with the licence in the Free section, and "Source" in the footer). The site doesn't claim it until then.
 - Set up `hello@stadig.dev`.
-- Create the private reports repository and its token, and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above). Then send one report through the live form to see it arrive.
-- Change each app's Support URL in App Store Connect from `/faq` to `https://stadig.dev/support`, and `Store/listing.md` with it.
+- Make the reports repository's token and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above). Then send one report through the live form to see it arrive. Both apps' App Store Support URL already points at `/support`.
