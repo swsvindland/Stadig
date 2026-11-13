@@ -40,7 +40,7 @@ struct MealPlanSetup: View {
                         }
                     }
                 } header: {
-                    Text("Prep which meals?")
+                    Text("Prep which meals?").eyebrow()
                 } footer: {
                     Text("The rest are yours, with room kept for them in your targets.")
                 }
@@ -57,14 +57,16 @@ struct MealPlanSetup: View {
                     }
                 }
 
-                Section("Diet") {
+                Section {
                     Picker("Diet", selection: $preferences.diet) {
                         ForEach(PlanPreferences.Diet.allCases) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                } header: {
+                    Text("Diet").eyebrow()
                 }
 
-                Section("Leave out") {
+                Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], alignment: .leading, spacing: 8) {
                         ForEach(Self.leaveOut, id: \.word) { item in
                             let on = preferences.avoid.contains(item.word)
@@ -80,18 +82,20 @@ struct MealPlanSetup: View {
                         }
                     }
                     .padding(.vertical, 4)
+                } header: {
+                    Text("Leave out").eyebrow()
                 }
 
                 Section {
                     TextField("More spicy, no salmon, cheaper…", text: $request, axis: .vertical)
                         .accessibilityIdentifier("mealPlanSetup.request")
                 } header: {
-                    Text("Anything else?")
+                    Text("Anything else?").eyebrow()
                 } footer: {
                     Text("Read on this \(Platform.deviceName) with Apple Intelligence when it can.")
                 }
 
-                Section("Start") {
+                Section {
                     Picker("Start", selection: $tomorrow) {
                         Text(
                             "\(Format.day(model.planStart(tomorrow: false), style: .dateTime.weekday(.wide).month().day())), prep \(Format.prepDay(model.planStart(tomorrow: false).adding(days: -1), today: model.today))"
@@ -101,6 +105,8 @@ struct MealPlanSetup: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                } header: {
+                    Text("Start").eyebrow()
                 }
             }
             .navigationTitle("Plan a week")
@@ -166,11 +172,15 @@ struct MealPlanSetup: View {
 struct MealPrepCard: View {
     @Environment(AppModel.self) private var model
     @State private var showSetup = false
+    /// A page opened by a launch argument, for checking it.
+    @State private var opened: MealPlanView.Page?
+    /// Once a launch: back on Plan, the card isn't opened again.
+    private static var openedOnLaunch = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Meal prep").font(.headline)
+                Text("Meal prep").font(.callout.weight(.semibold))
                 Spacer()
                 if let plan = model.mealPlan {
                     Text(
@@ -189,7 +199,7 @@ struct MealPrepCard: View {
                             .accessibilityIdentifier("mealPrep.dish")
                     }
                 }
-                Text("\(guide.containers) containers, about \(Format.duration(guide.minutes)) of prep.").font(.caption).foregroundStyle(.secondary)
+                Text("\(guide.containers) containers, about \(Format.duration(guide.minutes)) of prep.").font(.caption).foregroundStyle(Ink.text3)
                 HStack(spacing: 8) {
                     link("Week", .week, plan)
                     link("Groceries", .groceries, plan)
@@ -198,21 +208,33 @@ struct MealPrepCard: View {
             } else {
                 Text("A week of meals sized to your targets, with the grocery list and a timed prep: an hour or two on Sunday and the week is done.")
                     .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Button("Plan a week") { showSetup = true }.primaryAction()
+                Button("Plan a week") { showSetup = true }
+                    .buttonStyle(.solidSmall)
                     .accessibilityIdentifier("mealPrep.planWeek")
             }
         }
         .card()
         .sheet(isPresented: $showSetup) { MealPlanSetup().macSheetSize(width: 560, height: 680) }
+        .navigationDestination(item: $opened) { page in
+            if let plan = model.mealPlan { MealPlanView(planID: plan.id, page: page) }
+        }
+        .task {
+            #if DEBUG
+            // -mealPlan week|groceries|prep, with -seedMealPlan -tab plan: a phone's meal plan on that page.
+            guard !Self.openedOnLaunch, let value = LaunchOptions.current.value(after: "-mealPlan") else { return }
+            Self.openedOnLaunch = true
+            opened = MealPlanView.Page.allCases.first { $0.rawValue.lowercased() == value.lowercased() }
+            #endif
+        }
     }
 
     func link(_ title: String, _ page: MealPlanView.Page, _ plan: MealPlan) -> some View {
         NavigationLink {
             MealPlanView(planID: plan.id, page: page)
         } label: {
-            Text(title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity)
+            Text(title).frame(maxWidth: .infinity)
         }
-        .secondaryAction()
+        .buttonStyle(.ghost)
     }
 }
 
@@ -279,7 +301,7 @@ struct PlannedMealRow: View {
             Image(systemName: meal.slot.symbol).foregroundStyle(Color.accentColor).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(recipe.title).font(.subheadline.weight(.medium)).lineLimit(2)
-                Text("\(meal.slot.label) · \(Format.kcal(n.kcal)) · \(Format.grams(n.protein)) protein\(note)")
+                Text("\(meal.slot.label) · \(Format.kcal(n.kcal)) · \(Format.grams(n.protein)) protein\(Self.note(meal, recipe: recipe))")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -295,7 +317,7 @@ struct PlannedMealRow: View {
     }
 
     /// Where the serving is, and what to add when eating it.
-    var note: String {
+    static func note(_ meal: PlannedMeal, recipe: PlannedRecipe) -> String {
         let topping = recipe.items.filter(\.onTheDay).map { $0.name.lowercased() }
         let add = topping.isEmpty ? "" : " · add \(topping.joined(separator: ", "))"
         switch meal.storage {
