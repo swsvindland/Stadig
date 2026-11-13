@@ -16,6 +16,8 @@ public struct DailyTargets: Hashable, Codable, Sendable {
         case illness
         /// Away: no logging expected.
         case vacation
+        /// The person's own targets (`OwnTargets`): the plan's check-ins leave them as they are.
+        case own
     }
 
     public var mode: Mode
@@ -85,11 +87,17 @@ public enum Targets {
         return (protein, carbs, fat)
     }
 
-    /// Today's targets from the plan, the latest check-in and what life is doing.
+    /// What the day's targets say while the person's own are on.
+    public static let ownNote = "Your own targets. The weekly check-in keeps learning your maintenance and leaves them as they are."
+
+    /// Today's targets from the plan, the latest check-in and what life is doing. A check-in of the
+    /// person's own targets is in force over the assessment, the phase and a deload's diet break,
+    /// but not over a life mode they turned on; with `keepsOwn` false it lends only the plan's
+    /// numbers carried under it, for what the plan would set.
     public static func today(
         day: Day, assessing: Bool, plan: PhasePlan?, override: PhaseKind?, maintenance: MaintenanceEstimate,
         checkIn: CheckIn?, weightKg: Double, heightCm: Double?, waistToHeight: Double?,
-        life: LifeModeEffects, deload: Bool
+        life: LifeModeEffects, deload: Bool, keepsOwn: Bool = true
     ) -> DailyTargets {
         let reference = referenceWeight(kg: weightKg, heightCm: heightCm, waistToHeight: waistToHeight)
         var phase = plan?.phase(on: day)
@@ -115,6 +123,10 @@ public enum Targets {
                 mode: .crunch, kcal: kcal, protein: m.protein, carbs: nil, fat: nil,
                 note: "Busy stretch: protein first, maintenance calories. Rough restaurant estimates are fine.")
         }
+        if keepsOwn, let checkIn, checkIn.isOwn {
+            return DailyTargets(
+                mode: .own, kcal: checkIn.kcal, protein: checkIn.protein, carbs: checkIn.carbs, fat: checkIn.fat, note: ownNote)
+        }
         if assessing {
             let m = macros(kcal: maintenance.kcal, referenceKg: reference, phase: .maintenance)
             return DailyTargets(
@@ -131,12 +143,13 @@ public enum Targets {
 
         // The weekly check-in sets the numbers. Without one, or with one from before this phase began
         // (a late check-in, or the day a diet break starts), they come from the phase and the
-        // maintenance the check-in was built on.
+        // maintenance the check-in was built on. Under the person's own targets, the plan's numbers
+        // are the ones carried with them.
         let kcal: Double
         let m: (protein: Double, carbs: Double, fat: Double)
-        if let checkIn, override == nil, belongs(checkIn, to: phase) {
-            kcal = checkIn.kcal
-            m = (checkIn.protein, checkIn.carbs, checkIn.fat)
+        if let planned = checkIn?.planned, override == nil, belongs(planned, to: phase) {
+            kcal = planned.kcal
+            m = (planned.protein, planned.carbs, planned.fat)
         } else {
             kcal = calories(maintenance: checkIn?.expenditure ?? maintenance.kcal, phase: phase, weightKg: weightKg)
             m = macros(kcal: kcal, referenceKg: reference, phase: phase?.kind)

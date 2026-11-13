@@ -176,9 +176,11 @@ public struct WristToday: Hashable, Sendable {
         suggestedFastStart = Fasting.suggestedStart(entries: state.entries.filter { $0.day >= today.adding(days: -2) }, now: state.now)
     }
 
-    /// The day in a word or two: the assessment's progress, a life mode, or the phase.
+    /// The day in a word or two: the assessment's progress, a life mode, the phase, or the person's
+    /// own targets. The widgets say it too.
     public static func badge(_ targets: DailyTargets, assessment: AssessmentProgress?, phase: PlannedPhase?) -> String? {
         switch targets.mode {
+        case .own: "Your targets"
         case .assessment: assessment.map { "Day \($0.day) of \($0.totalDays)" } ?? "Assessment"
         case .dietBreak: "Diet break"
         case .crunch: "Crunch"

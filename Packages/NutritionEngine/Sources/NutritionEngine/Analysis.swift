@@ -119,6 +119,20 @@ public struct MacroAnalysis: Sendable {
     /// The check-in in force today, and a new one when this week's is due.
     public var checkIn: CheckIn?
     public var dueCheckIn: CheckIn?
+    /// The person's own targets, while they're in force over the plan's (`OwnTargets`).
+    public var own: OwnTargets.InForce?
+    /// The plan's numbers for today, whatever life or a deload is doing and whether or not the
+    /// person's own targets are on: what the targets sheet starts from and shows beside, and what
+    /// Plan says the plan would set. In the assessment, which sets no calories, maintenance so far
+    /// split as the plan would (`planSource`).
+    public var planNumbers = MacroTargets(kcal: 0, protein: 0, carbs: 0, fat: 0)
+    public var planSource = OwnTargets.Source.plan
+    /// How the trend sits against what's aimed for: the phase's rate, or with the person's own
+    /// targets on, what their calories aim for once maintenance rests on data (`PhasePace`).
+    public var pace: PhasePace.Verdict?
+    /// With the person's own targets on, the weekly change in kg their calories aim for from the
+    /// maintenance estimate (0 holds).
+    public var ownAim: Double?
     /// Body weight to scale targets by.
     public var referenceKg: Double
     /// Vitamins and minerals over the last week of complete days.
@@ -241,6 +255,11 @@ public enum MacroAnalyst {
             ? trend : Weight.trend(fastAdjustment.adjusted(state.weighIns), through: today, ignored: ignored.union(fastAdjustment.excluded))
         let maintenance = Energy.estimate(trend: learningTrend, usable: learning, formula: formula, through: today.adding(days: -1))
 
+        let checkIn = state.checkIns.last { $0.day <= today }
+        // The person's own targets don't stop the assessment: it learns maintenance from whatever's
+        // eaten, so its lines say what they're eating to.
+        let ownToday = checkIn?.isOwn == true
+
         // Assessment.
         var assessment: AssessmentProgress?
         if let start = state.settings.assessmentStart {
@@ -252,7 +271,8 @@ public enum MacroAnalyst {
                 let logged = complete.keys.filter { $0 >= start }.count
                 learned.append(
                     logged == 0
-                        ? "Log what you eat today; nothing needs to change yet." : "\(logged) full day\(logged == 1 ? "" : "s") logged so far.")
+                        ? (ownToday ? "Log what you eat today, to your own targets." : "Log what you eat today; nothing needs to change yet.")
+                        : "\(logged) full day\(logged == 1 ? "" : "s") logged so far.")
                 let weighed = Set(weighInDays.filter { $0 >= start }).count
                 if elapsed <= 7 {
                     learned.append("Week 1 weight is mostly water, so it isn't used for the estimate yet.")
@@ -265,7 +285,7 @@ public enum MacroAnalyst {
                     let unit = state.profile.units.weight
                     let value = unit.fromKilograms(change)
                     learned.append(
-                        "Trend: \(value >= 0 ? "+" : "−")\(abs(value).formatted(.number.precision(.fractionLength(2)))) \(unit.symbol) a week while eating as usual."
+                        "Trend: \(value >= 0 ? "+" : "−")\(abs(value).formatted(.number.precision(.fractionLength(2)))) \(unit.symbol) a week \(ownToday ? "on your own targets" : "while eating as usual")."
                     )
                 }
                 let protein = complete.keys.filter { $0 >= start }.compactMap { intakeByDay[$0]?.protein }.mean
@@ -284,7 +304,6 @@ public enum MacroAnalyst {
 
         let life = LifeModes.effects(on: today, periods: state.lifeModes)
         let assessing = state.plan == nil
-        let checkIn = state.checkIns.last { $0.day <= today }
         let referenceKg = Targets.referenceWeight(kg: weight, heightCm: state.profile.heightCm, waistToHeight: input.waistToHeight)
         var dueCheckIn: CheckIn?
         if !assessing, CheckIns.isDue(last: checkIn, today: today) {
@@ -304,6 +323,15 @@ public enum MacroAnalyst {
                 life: LifeModes.effects(on: day, periods: state.lifeModes), deload: state.calendar?.isDeload(day) ?? false)
         }
         let targets = targetsThen(on: today, checkIn: dueCheckIn ?? checkIn, assessing: assessing)
+        // What the plan would set today, apart from life modes and a deload: the reference for the
+        // person's own targets.
+        let planToday = Targets.today(
+            day: today, assessing: assessing, plan: state.plan, override: state.settings.phaseOverride, maintenance: maintenance,
+            checkIn: dueCheckIn ?? checkIn, weightKg: weight, heightCm: state.profile.heightCm, waistToHeight: input.waistToHeight,
+            life: LifeModeEffects(), deload: false, keepsOwn: false)
+        let planNumbers =
+            MacroTargets(planToday)
+            ?? MacroTargets.split((maintenance.kcal / 10).rounded() * 10, referenceKg: referenceKg, phase: .maintenance)
         // Every usable day of the last four weeks (the discipline window and what's published).
         var dayTargets: [Day: DailyTargets] = [:]
         for day in DayRange(today.adding(days: -Discipline.windowDays), today.adding(days: -1)).days where complete[day] != nil {
@@ -343,6 +371,19 @@ public enum MacroAnalyst {
             todayIntake: intakeByDay[today] ?? .zero, intakeByDay: intakeByDay, discipline: discipline,
             loggingRate: loggingRate, actions: [], life: life, plannerInput: input, usable: complete,
             dayTargets: dayTargets, checkIn: checkIn, dueCheckIn: dueCheckIn, referenceKg: referenceKg)
+        analysis.own = OwnTargets.inForce(state.checkIns, due: dueCheckIn, on: today)
+        analysis.planNumbers = planNumbers
+        analysis.planSource = planToday.kcal == nil ? .maintenance : .plan
+        let paceKg = trend.latest?.trend ?? referenceKg
+        if let own = analysis.own {
+            let aim = OwnTargets.aim(kcal: own.numbers.kcal, maintenance: maintenance.kcal)
+            analysis.ownAim = aim
+            // Against the formula alone the aim is a guess either way, so there's no verdict until
+            // the logs and the scale have a say.
+            if maintenance.basis != .formula { analysis.pace = PhasePace.verdict(weeklyChange: analysis.weeklyChange, aim: aim, weightKg: paceKg) }
+        } else {
+            analysis.pace = PhasePace.verdict(weeklyChange: analysis.weeklyChange, phase: analysis.phase, weightKg: paceKg)
+        }
         analysis.micros = MicroAnalyst.report(
             entries: state.entries, supplements: state.supplementLogs, complete: Set(complete.keys),
             profile: state.profile, kcal: targets.kcal ?? maintenance.kcal, today: today)

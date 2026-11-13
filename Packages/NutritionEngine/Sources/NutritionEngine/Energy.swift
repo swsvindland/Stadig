@@ -299,11 +299,16 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
     public var fat: Double
     public var status: Status
     public var reason: String
+    /// With the person's own targets in force (`.manual`), the targets the plan would have set from
+    /// this day, so its weekly steps carry on underneath them (`OwnTargets`). Nil on the plan's own
+    /// check-ins, on the person's set before the plan had calories (the assessment), and in records
+    /// from before own targets: optional, so those read as they are and older builds skip it.
+    public var plan: MacroTargets?
     public var updatedAt: Date
 
     public init(
         id: UUID = UUID(), day: Day, expenditure: Double, kcal: Double, protein: Double, carbs: Double, fat: Double,
-        status: Status, reason: String, updatedAt: Date = Date()
+        status: Status, reason: String, plan: MacroTargets? = nil, updatedAt: Date = Date()
     ) {
         self.id = id
         self.day = day
@@ -314,6 +319,7 @@ public struct CheckIn: Hashable, Codable, Sendable, Identifiable {
         self.fat = fat
         self.status = status
         self.reason = reason
+        self.plan = plan
         self.updatedAt = updatedAt
     }
 
@@ -351,19 +357,35 @@ public enum CheckIns {
     /// In a deficit, when fewer steps explain most of a lower maintenance, it holds once and says
     /// to walk back up before calories come down. During a long fast and the few days after it, it
     /// holds: the fast's days count at what was eaten, but the scale hasn't caught up with them yet.
+    /// With the person's own targets in force, the review runs on the plan's numbers carried under
+    /// them, and the check-in keeps the person's (`OwnTargets`).
     public static func review(
         previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
         weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary? = nil, longFast: FastRun? = nil
     ) -> CheckIn {
+        let planned = reviewPlan(
+            previous: previous, trend: trend, usable: usable, today: today, phase: phase, weightKg: weightKg,
+            referenceKg: referenceKg, fallbackExpenditure: fallbackExpenditure, steps: steps, longFast: longFast)
+        guard let previous, previous.isOwn else { return planned }
+        return OwnTargets.kept(previous, planned: planned)
+    }
+
+    /// The plan's side of the week's review.
+    private static func reviewPlan(
+        previous: CheckIn?, trend: WeightTrend, usable: [Day: Double], today: Day, phase: PlannedPhase?,
+        weightKg: Double, referenceKg: Double, fallbackExpenditure: Double, steps: StepSummary?, longFast: FastRun?
+    ) -> CheckIn {
         let prior = previous?.expenditure ?? fallbackExpenditure
         let window = DayRange(today.adding(days: -21), today.adding(days: -1))
         let observation = Energy.observe(trend: trend, usable: usable, window: window)
+        // The numbers the plan steps from: under the person's own targets, the plan's carried with them.
+        let base = previous?.planned
         func make(_ expenditure: Double, _ status: CheckIn.Status, _ reason: String) -> CheckIn {
             var kcal = Targets.calories(maintenance: expenditure, phase: phase, weightKg: weightKg)
             // The cap smooths a noisy estimate within a phase. A planned change of phase (a diet
             // break, a bulk after a mini-cut) starts at its own calories, as the plan says.
-            if let previous, Targets.belongs(previous, to: phase) {
-                let old = previous.kcal
+            if let base, Targets.belongs(base, to: phase) {
+                let old = base.kcal
                 let step = min(Targets.weeklyStep, old * 0.075)
                 kcal = clamp(kcal, old - step, old + step)
             }
