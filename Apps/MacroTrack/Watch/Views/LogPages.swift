@@ -39,7 +39,8 @@ struct LogAgainPage: View {
                             FoodFace(
                                 eyebrow: "Same as \(when)", marker: usual.entries.prefix(3).map { FoodMarker.of($0.name) }.joined(),
                                 amount: "\(usual.entries.count)", unit: usual.entries.count == 1 ? "food" : "foods", title: names,
-                                nutrients: usual.nutrients, left: today.kcal.left, active: showing && current == Self.usualID,
+                                nutrients: usual.nutrients, left: today.kcal.left, position: 0, count: ids.count,
+                                active: showing && current == Self.usualID,
                                 identifier: "logAgain.usual",
                                 label: "Log the same as \(when): \(names), \(WristFormat.kcal(usual.nutrients.kcal))"
                             ) {
@@ -53,6 +54,7 @@ struct LogAgainPage: View {
                             FoodFace(
                                 eyebrow: "Usually now", marker: FoodMarker.of(food.name), amount: amount.value, unit: amount.unit,
                                 title: FoodLabel.short(food.name), nutrients: food.nutrients, left: today.kcal.left,
+                                position: index + (today.sameAsUsual == nil ? 0 : 1), count: ids.count,
                                 active: showing && current == item.id, identifier: "logAgain.food.\(index)",
                                 label: "Log \(FoodLabel.short(food.name)), \(food.amountLabel), \(WristFormat.kcal(food.nutrients.kcal))"
                             ) {
@@ -65,11 +67,12 @@ struct LogAgainPage: View {
                 }
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $shown)
-                // A face reaches the foot of the screen, so the next one doesn't show under its Log.
-                .ignoresSafeArea(edges: .bottom)
+                // A face is the whole screen, its Log on the foot, its top line beside the time.
+                .ignoresSafeArea()
             }
         }
         .navigationTitle("Log Again")
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     /// "yesterday", or the weekday for a day earlier in the week.
@@ -87,8 +90,8 @@ struct LogAgainPage: View {
 }
 
 /// One food (or meal) to log again, filling the screen: what it is and how much, big, then its
-/// calories and protein, and Log at the foot with what's left after it. Double Tap logs it while
-/// it's the face in view.
+/// calories and protein, where it is in the list at the edge, and Log across the foot with what's
+/// left after it. Double Tap logs it while it's the face in view.
 struct FoodFace: View {
     let eyebrow: String
     let marker: String
@@ -97,69 +100,87 @@ struct FoodFace: View {
     let title: String
     let nutrients: Nutrients
     let left: Double?
+    let position: Int
+    let count: Int
     let active: Bool
     let identifier: String
     let label: String
     let log: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(eyebrow)
-                .font(.caption2.weight(.semibold))
-                .textCase(.uppercase)
-                .tracking(0.6)
-                .foregroundStyle(.tint)
-                .lineLimit(1)
-            HStack(alignment: .center, spacing: 8) {
-                Text(marker)
-                    .font(.title3)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .frame(width: 38, height: 38)
-                    .background(.white.opacity(0.12), in: .rect(cornerRadius: 10, style: .continuous))
-                    .accessibilityHidden(true)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(amount)
-                        .font(.system(size: unit == nil ? 22 : 34, weight: .bold).monospacedDigit())
-                        .tracking(-0.8)
-                    if let unit { Text(unit).font(.footnote.weight(.semibold)).foregroundStyle(.secondary) }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-            }
-            Text(title)
-                .font(.headline)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text("\(WristFormat.kcal(nutrients.kcal)) · \(WristFormat.grams(nutrients.protein)) protein")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Spacer(minLength: 4)
-            Button(action: log) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Log").font(.headline)
-                    Spacer(minLength: 4)
-                    if let left {
-                        let after = left - nutrients.kcal
-                        Text("\(WristFormat.whole(abs(after))) \(after <= -1 ? "over" : "left")").font(.footnote.monospacedDigit())
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(eyebrow)
+                    .faceEyebrow(Color.accentColor)
+                    .faceTopLine()
+                HStack(alignment: .center, spacing: 10) {
+                    Text(marker)
+                        .font(.system(size: 26))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .frame(width: 46, height: 46)
+                        .background(WristInk.surface, in: .rect(cornerRadius: 14, style: .continuous))
+                        .accessibilityHidden(true)
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text(amount)
+                            .faceNumeral(points: (unit == nil ? 24 : 44) * WristFace.scale)
+                            .minimumScaleFactor(0.5)
+                        if let unit {
+                            Text(unit).faceFont(16, weight: .semibold).foregroundStyle(WristInk.text2)
+                        }
                     }
+                    .lineLimit(1)
                 }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 14)
-                .frame(maxWidth: .infinity, minHeight: 46)
-                .background(Color.accentColor, in: .rect(cornerRadius: 23, style: .continuous))
-                .contentShape(.rect(cornerRadius: 23))
+                .padding(.top, WristFace.small ? 6 : 11)
+                Text(title)
+                    .font(.system(size: 23 * min(1, WristFace.scale), weight: .heavy))
+                    .tracking(-0.8)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .padding(.top, WristFace.small ? 6 : 11)
+                Text("\(WristFormat.kcal(nutrients.kcal)) · \(WristFormat.grams(nutrients.protein)) protein")
+                    .faceFont(13)
+                    .foregroundStyle(WristInk.text2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 3)
+                Spacer(minLength: 2)
             }
-            .buttonStyle(.plain)
-            .handGestureShortcut(.primaryAction, isEnabled: active)
-            .accessibilityIdentifier(identifier)
-            .accessibilityLabel(label)
+            .padding(.horizontal, WristFace.margin)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .topTrailing) { PageDots(position: position, count: count).padding(.top, 52).padding(.trailing, 5) }
+            ActionBand(title: "Log", detail: after, doubleTap: active, action: log)
+                .accessibilityIdentifier(identifier)
+                .accessibilityLabel(label)
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 8)
         .containerRelativeFrame(.vertical)
+    }
+
+    /// "1,455 left" after this food, or "120 over".
+    private var after: String? {
+        guard let left else { return nil }
+        let after = left - nutrients.kcal
+        return "\(WristFormat.whole(abs(after))) \(after <= -1 ? "over" : "left")"
+    }
+}
+
+/// Where a face is among the usual foods: a short column at the edge, this one long.
+struct PageDots: View {
+    let position: Int
+    let count: Int
+
+    var body: some View {
+        // Four at most: the window moves on with the faces.
+        let shown = min(count, 4)
+        let first = min(max(0, position - 1), max(0, count - shown))
+        VStack(spacing: 4) {
+            ForEach(first..<(first + shown), id: \.self) { index in
+                Capsule()
+                    .fill(index == position ? WristInk.text : WristInk.text3)
+                    .frame(width: 5, height: index == position ? 13 : 5)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

@@ -3,9 +3,9 @@ import SwiftUI
 import SystemCore
 
 /// What's left today, at a glance: the face is calories left, huge, over a level that fills from
-/// the foot as the day is eaten, with the protein line above it. Scrolled on: carbs and fat, the
-/// life mode's note, the weigh-in until there's been one, and "Day Complete" once something's
-/// logged.
+/// the foot as the day is eaten, with protein's line across it at how much of protein is eaten (it
+/// leads the level on a day that's going well). Scrolled on: carbs and fat, the life mode's note,
+/// Weigh In, and "Day Complete" once something's logged.
 struct TodayPage: View {
     @Environment(WristModel.self) private var model
     let today: WristToday
@@ -38,35 +38,24 @@ struct TodayPage: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if !today.weighedToday {
-                    NavigationLink(value: WristRoute.weighIn) {
-                        Label("Weigh In", systemImage: "scalemass")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.glass)
-                    .accessibilityIdentifier("today.weighIn")
+                NavigationLink(value: WristRoute.weighIn) {
+                    Label(today.weighedToday ? "Weighed In" : "Weigh In", systemImage: "scalemass")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glass)
+                .accessibilityIdentifier("today.weighIn")
                 if today.hasEntries { dayComplete }
             }
             .frame(maxWidth: .infinity)
             .padding(.bottom, 24)
         }
-        // The level reaches the foot of the screen; what's below it is clear of the corners.
-        .ignoresSafeArea(edges: .bottom)
+        // The face is the whole screen, the level from its foot, its top line beside the time.
+        .ignoresSafeArea()
         #if DEBUG
         // `-scrollToEnd` opens Today scrolled down, to look at what's below the face.
         .defaultScrollAnchor(LaunchOptions.current.has("-scrollToEnd") ? .bottom : .top)
         #endif
-        // The face says what it is; the bar keeps only the weigh-in.
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: WristRoute.weighIn) {
-                    Image(systemName: "scalemass")
-                }
-                .accessibilityLabel("Weigh in")
-                .accessibilityIdentifier("today.weighInButton")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     @ViewBuilder private var dayComplete: some View {
@@ -84,27 +73,25 @@ struct TodayPage: View {
     }
 }
 
-/// The face: "kcal left today", the number huge, the protein line, and a level in the accent that
-/// rises from the foot as the day's calories are eaten, saying how many of the target. Whatever the
-/// level has risen over is drawn again in black on it, so it reads at any level.
+/// The face: "kcal left today", the number huge, and a level in the accent rising from the foot as
+/// the day's calories are eaten, saying how many of the target; protein's line crosses the face at
+/// the height of how much protein is eaten, its words above it. Whatever the level has risen over is
+/// drawn again in ink on it, so it reads at any level.
 struct LevelFace: View {
     let kcal: MacroProgress
     let protein: MacroProgress
 
-    /// The foot's band, there from the first bite, so what's eaten has somewhere to be written.
-    static let foot = 40.0
-
     var body: some View {
-        let level = min(1, max(0, kcal.fraction ?? 0))
+        let level = kcal.target == nil ? 0 : min(1, max(0, kcal.fraction ?? 0))
         GeometryReader { geometry in
-            let height = kcal.target == nil ? 0 : Self.foot + (geometry.size.height - Self.foot) * level
+            let height = geometry.size.height * level
             ZStack(alignment: .bottom) {
-                content(onLevel: false)
+                content(geometry.size, level: height, onLevel: false)
                 Rectangle()
                     .fill(Color.accentColor)
                     .frame(height: height)
                     .accessibilityHidden(true)
-                content(onLevel: true)
+                content(geometry.size, level: height, onLevel: true)
                     .mask(alignment: .bottom) { Rectangle().frame(height: height) }
                     .accessibilityHidden(true)
             }
@@ -116,38 +103,77 @@ struct LevelFace: View {
         .accessibilityIdentifier("today.calories")
     }
 
-    /// The words and numbers: in their colours over the ground, in black on the level.
-    private func content(onLevel: Bool) -> some View {
+    /// The words, numbers and lines: in their colours over the ground, in ink on the level.
+    private func content(_ size: CGSize, level: CGFloat, onLevel: Bool) -> some View {
         let left = WristFormat.left(kcal)
-        let ink: Color = onLevel ? .black : .white
-        return VStack(alignment: .leading, spacing: 4) {
-            Text(kcal.target == nil ? "kcal eaten today" : "kcal \(left.label) today")
-                .font(.caption2.weight(.semibold))
-                .textCase(.uppercase)
-                .tracking(0.6)
-                .foregroundStyle(onLevel ? Color.black : Color.accentColor)
-            Text(left.value)
-                .font(.system(size: 54, weight: .bold).monospacedDigit())
-                .tracking(-1.5)
-                .foregroundStyle(ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .contentTransition(.numericText())
-            proteinLine(onLevel: onLevel)
-            Spacer(minLength: 0)
+        let ink: Color = onLevel ? WristInk.onAccent : WristInk.text
+        return ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(kcal.target == nil ? "kcal eaten today" : "kcal \(left.label) today")
+                    .faceEyebrow(onLevel ? WristInk.onAccent : Color.accentColor)
+                    .faceTopLine()
+                BigNumber(value: left.value, points: WristFace.numeralSize(64, fitting: [left.value], besides: WristFace.margin * 2 + 6))
+                    .foregroundStyle(ink)
+                    .contentTransition(.numericText())
+                    .padding(.top, WristFace.small ? 8 : 12)
+                    .padding(.leading, -2)
+            }
+            .padding(.horizontal, WristFace.margin)
+            if protein.target != nil { proteinLine(size, level: level, onLevel: onLevel) }
             if let target = kcal.target {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(WristFormat.whole(kcal.eaten)) eaten")
+                    Text("\(WristFormat.whole(kcal.eaten)) eaten").faceFont(14, weight: .bold)
                     Spacer(minLength: 4)
-                    Text("of \(WristFormat.whole(target))")
+                    Text("of \(WristFormat.whole(target))").faceFont(13, weight: .semibold)
                 }
-                .font(.footnote.weight(.medium).monospacedDigit())
-                .foregroundStyle(onLevel ? Color.black : Color.secondary)
-                .frame(height: Self.foot - 6)
+                .monospacedDigit()
+                .foregroundStyle(onLevel ? WristInk.onAccent : WristInk.text2)
+                .padding(.leading, WristFace.margin + 2)
+                .padding(.trailing, WristFace.margin + 6)
+                .padding(.bottom, Self.footInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 2)
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .overlay(alignment: .trailing) {
+            EdgeTicks(color: onLevel ? WristInk.onAccent.opacity(0.5) : .white.opacity(0.26))
+        }
+    }
+
+    /// How far the foot's "599 eaten" sits from the bottom of the screen.
+    private static let footInset: CGFloat = WristFace.small ? 16 : 21
+
+    /// Protein's line, edge to edge at the height of how much of it is eaten, under "Protein · 102 g
+    /// left". It stays below the big number, and its words stay above the foot's and off the level's
+    /// edge, where they'd be cut in two.
+    private func proteinLine(_ size: CGSize, level: CGFloat, onLevel: Bool) -> some View {
+        let left = WristFormat.left(protein)
+        let color = onLevel ? WristInk.onAccent : MacroColor.protein
+        let top: CGFloat = (WristFace.small ? 100 : 128) * min(1, WristFace.scale)
+        let line = min(size.height - top, size.height * min(1, max(0, protein.fraction ?? 0)))
+        var words = max(line + 7, Self.footInset + 26)
+        if words < level, words + 18 > level { words = min(level + 5, size.height - top + 7) }
+        return ZStack(alignment: .bottom) {
+            // Nothing eaten yet: no line along the very foot of the screen.
+            if line >= 3 {
+                Rectangle()
+                    .fill(color)
+                    .frame(height: 3)
+                    .padding(.bottom, line)
+            }
+            HStack(alignment: .firstTextBaseline) {
+                Text("Protein").faceFont(13, weight: .semibold).foregroundStyle(color)
+                Spacer(minLength: 4)
+                Text("\(left.value) g \(left.label)")
+                    .faceFont(13, weight: .bold)
+                    .monospacedDigit()
+                    .foregroundStyle(onLevel ? WristInk.onAccent : WristInk.text)
+            }
+            .padding(.leading, WristFace.margin)
+            .padding(.trailing, WristFace.margin + 4)
+            .padding(.bottom, words)
+        }
+        .frame(width: size.width, height: size.height, alignment: .bottom)
     }
 
     /// "1,060 kcal left of 2,300. 74 g protein left of 170."
@@ -159,27 +185,6 @@ struct LevelFace: View {
         let left = WristFormat.left(progress)
         guard let target = progress.target else { return "\(left.value) \(unit) eaten." }
         return "\(left.value) \(unit) \(left.label) of \(WristFormat.whole(target))."
-    }
-
-    /// "Protein   102 g left" over a thin line in protein's colour, filled as it's eaten.
-    private func proteinLine(onLevel: Bool) -> some View {
-        let left = WristFormat.left(protein)
-        let color = onLevel ? Color.black : MacroColor.protein
-        return VStack(spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Protein").foregroundStyle(color)
-                Spacer(minLength: 4)
-                Text("\(left.value) g \(left.label)").monospacedDigit().foregroundStyle(onLevel ? Color.black : Color.white)
-            }
-            .font(.footnote.weight(.semibold))
-            GeometryReader { line in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(color.opacity(0.3))
-                    Capsule().fill(color).frame(width: line.size.width * min(1, max(0, protein.fraction ?? 0)))
-                }
-            }
-            .frame(height: 3)
-        }
     }
 }
 
