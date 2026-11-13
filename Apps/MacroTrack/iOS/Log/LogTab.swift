@@ -320,7 +320,8 @@ struct LogHeader: View {
 
     var body: some View {
         VStack(spacing: wide ? 6 : 12) {
-            WeekStrip()
+            // A week's days at the width a phone gives them: across a wide window they'd drift apart.
+            WeekStrip().frame(maxWidth: wide ? 520 : .infinity).frame(maxWidth: .infinity, alignment: .leading)
             DaySummaryLine(day: model.selectedDay, wide: wide)
             if wide { LogColumns.header }
         }
@@ -419,6 +420,7 @@ struct DaySummaryLine: View {
                 .accessibilityIdentifier("catchUp.logAll")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Calories and protein left as numerals with their units, as the canvas has them; calories

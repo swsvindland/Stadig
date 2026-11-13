@@ -118,10 +118,13 @@ struct YourShapeCard: View {
 struct YourShapeRow: View {
     @Environment(AppModel.self) private var model
     @State private var scores = ShapeScores()
+    @State private var opened = false
+    /// Once a launch: back on Progress, the page isn't opened again.
+    private static var openedOnLaunch = false
 
     var body: some View {
-        NavigationLink {
-            YourShapeScreen()
+        Button {
+            opened = true
         } label: {
             HStack(spacing: 14) {
                 ScoreShape(axes: ScoreShape.axes(scores.lines), showsLabels: false)
@@ -144,7 +147,16 @@ struct YourShapeRow: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Your shape. \(line)")
         .accessibilityIdentifier("progress.shape")
+        .navigationDestination(isPresented: $opened) { YourShapeScreen() }
         .task(id: model.analysisVersion) { scores.read(model) }
+        .task {
+            #if DEBUG
+            // -showShape, with -tab progress: a phone's Your shape page, for checking it.
+            guard !Self.openedOnLaunch, LaunchOptions.current.has("-showShape") else { return }
+            Self.openedOnLaunch = true
+            opened = true
+            #endif
+        }
     }
 
     /// "Vitality 92 · Discipline 28".
