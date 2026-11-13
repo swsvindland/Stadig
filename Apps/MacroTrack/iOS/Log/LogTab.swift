@@ -87,7 +87,9 @@ struct LogTab: View {
                 }
             }
             .inlineTitle()
-            .toolbar { toolbar }
+            .toolbar { if wide { toolbar } }
+            // On a phone the title, the day and its button are the page's own, over the cards.
+            .hidesNavigationBar(!wide)
             .sheet(item: Binding(get: { wide ? nil : editing }, set: { editing = $0 })) { entry in EntryEditor(entry: entry) }
             .sheet(isPresented: $choosingDay) { DayChooser().macSheetSize(width: 360, height: 420) }
             .notesWork(editing != nil || choosingDay, covering: choosingDay || (editing != nil && !wide))
@@ -110,14 +112,31 @@ struct LogTab: View {
             foot
         }
         .insetGroupedList()
-        .sectionSpacing(10)
+        .sectionSpacing(12)
+        .contentMargins(.top, 4, for: .scrollContent)
         .safeAreaInset(edge: .top, spacing: 0) {
-            LogHeader(wide: false)
-                .padding(.horizontal, 16)
-                .background(.pageBackground)
-                .overlay(alignment: .bottom) { Divider() }
+            VStack(alignment: .leading, spacing: 12) {
+                PageHeader(eyebrow: eyebrow, title: "Log") {
+                    HStack(spacing: 8) {
+                        if day != model.today {
+                            Button("Today") { model.showToday() }
+                                .buttonStyle(.ghost)
+                                .accessibilityIdentifier("log.backToToday")
+                        }
+                        CircleIconButton(symbol: "calendar", label: "Choose a day", identifier: "log.title") { choosingDay = true }
+                    }
+                }
+                LogHeader(wide: false)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .background(.pageBackground)
         }
     }
+
+    /// The day on screen, over the title: "Thu, Nov 12".
+    var eyebrow: String { Format.day(day, style: .dateTime.weekday(.abbreviated).month(.abbreviated).day()) }
 
     /// The day hour by hour, with each food's macros in columns, or sorted by one of them. The header
     /// sits over the list here too: a section's header has nothing behind it on iPad, so the hours
@@ -295,23 +314,25 @@ struct LogHeader: View {
     let wide: Bool
 
     var body: some View {
-        VStack(spacing: 6) {
-            WeekStrip()
-            DaySummaryLine(day: model.selectedDay)
+        VStack(spacing: wide ? 6 : 12) {
+            // A week's days at the width a phone gives them: across a wide window they'd drift apart.
+            WeekStrip().frame(maxWidth: wide ? 520 : .infinity).frame(maxWidth: .infinity, alignment: .leading)
+            DaySummaryLine(day: model.selectedDay, wide: wide)
             if wide { LogColumns.header }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, wide ? 6 : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("log.header")
     }
 }
 
-/// Five days back, today and tomorrow: a tap each, with a dot on a day with food.
+/// Five days back, today and tomorrow: a tap each, with a dot on a day with food. The day on
+/// screen sits on the card colour; today's date is in the accent when another day is.
 struct WeekStrip: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 4) {
             ForEach(-5...1, id: \.self) { offset in
                 dayButton(model.today.adding(days: offset))
             }
@@ -320,81 +341,63 @@ struct WeekStrip: View {
 
     func dayButton(_ day: Day) -> some View {
         let selected = day == model.selectedDay
+        let logged = !model.allEntries(on: day).isEmpty
         return Button {
             if day == model.today { model.showToday() } else { model.selectedDay = day }
         } label: {
-            VStack(spacing: 2) {
-                Text(Format.day(day, style: .dateTime.weekday(.narrow))).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+            VStack(spacing: 5) {
+                Text(Format.day(day, style: .dateTime.weekday(.narrow))).font(.caption2.weight(.semibold)).foregroundStyle(Ink.text3)
                 Text(Format.day(day, style: .dateTime.day()))
-                    .font(.subheadline.weight(selected ? .bold : .regular).monospacedDigit())
-                    .frame(width: 32, height: 32)
-                    .background(selected ? Color.accentColor.opacity(0.22) : .clear, in: .circle)
-                    .overlay {
-                        if day == model.today { Circle().strokeBorder(Color.accentColor, lineWidth: 1) }
-                    }
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(selected ? Ink.text : day == model.today ? Color.accentColor : Ink.text2)
                 Circle()
-                    .fill(model.allEntries(on: day).isEmpty ? .clear : Color.accentColor)
-                    .frame(width: 4, height: 4)
+                    .fill(logged ? Color.accentColor : .clear)
+                    .frame(width: 8, height: 8)
             }
+            .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
+            .background(selected ? Ink.surface : .clear, in: .rect(cornerRadius: 12, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .hoverHighlight()
         .accessibilityLabel(Format.day(day, style: .dateTime.weekday(.wide).month().day()))
+        .accessibilityValue(logged ? "Logged" : "")
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("log.day")
     }
 }
 
-/// What's left against that day's targets, with what's logged for later beside it, and each macro
-/// under that when carbs and fat are shown. On a past day being caught up, the whole usual day a
-/// tap away.
+/// What's left against that day's targets in a line ("1,601 kcal · 102 g protein left") over a thin
+/// ruler of the day's calories, with what's logged for later beside it. With room, each macro under
+/// it when carbs and fat are shown. On a past day being caught up, the whole usual day a tap away.
 struct DaySummaryLine: View {
     @Environment(AppModel.self) private var model
     let day: Day
+    var wide = false
 
     var body: some View {
         let intake = model.dayIntake(on: day)
         let targets = model.targets(on: day)
         let missing = model.catchUp
         let counted = counted(intake)
-        let allMacros = model.settings.showAllMacros
-        VStack(spacing: 2) {
-            VStack(spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(left(intake, targets)).font(.subheadline.weight(.semibold).monospacedDigit())
-                    if allMacros {
-                        Spacer(minLength: 0)
-                        if let kcal = targets?.kcal {
-                            Text("\(Format.whole(counted.kcal)) of \(Format.kcal(kcal))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                        }
-                    } else {
-                        if let protein = targets?.protein {
-                            Text("\(Format.grams(max(0, protein - counted.protein))) protein left").font(.subheadline.monospacedDigit())
-                                .foregroundStyle(Macro.protein.color)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                if !allMacros, let kcal = targets?.kcal, kcal > 0 {
-                    // The day's calories on the one gauge, as Today has them; with carbs and fat
-                    // shown, each macro has its own below.
+        VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 7) {
+                line(intake, counted: counted, targets: targets)
+                if let kcal = targets?.kcal, kcal > 0 {
                     Ruler.thin(counted.kcal / kcal)
                 }
-                if allMacros {
+                if wide, model.settings.showAllMacros {
                     HStack(spacing: 10) {
                         MacroBar(macro: .protein, eaten: counted.protein, target: targets?.protein)
                         MacroBar(macro: .carbs, eaten: counted.carbs, target: targets?.carbs)
                         MacroBar(macro: .fat, eaten: counted.fat, target: targets?.fat)
                     }
-                    // A third of a phone is tight for "Protein 120 g left".
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 }
             }
+            .padding(.horizontal, wide ? 0 : 4)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("log.left")
             if missing.count > 1 {
@@ -405,23 +408,44 @@ struct DaySummaryLine: View {
                         "Log all \(missing.count) · \(Format.kcal(missing.map(\.latest.nutrients.kcal).reduce(0, +)))",
                         systemImage: "plus.circle"
                     )
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
                 }
                 .hoverHighlight()
                 .accessibilityIdentifier("catchUp.logAll")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Calories and protein left as numerals with their units, as the canvas has them; calories
+    /// eaten (or planned) where there's no calorie target.
+    func line(_ intake: DayIntake, counted: Nutrients, targets: DailyTargets?) -> some View {
+        let later = day == model.today && intake.later.kcal > 0 ? intake.later.kcal : nil
+        let kcal: (value: Double, unit: String)
+        if let target = targets?.kcal {
+            let left = target - counted.kcal
+            kcal = (abs(left), left >= 0 ? (targets?.protein == nil ? "kcal left" : "kcal") : "kcal over")
+        } else {
+            kcal = (counted.kcal, day > model.today ? "kcal planned" : "kcal eaten")
+        }
+        return HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Measure(value: Format.whole(kcal.value), unit: kcal.unit, size: 20)
+            if let protein = targets?.protein {
+                Text("·").font(.callout).foregroundStyle(Ink.text3)
+                let left = protein - counted.protein
+                Measure(value: Format.whole(abs(left)), unit: left >= 0 ? "g protein left" : "g protein over", size: 20)
+            }
+            if let later {
+                Text("· \(Format.whole(later)) later").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+            }
+        }
+        .foregroundStyle(Ink.text)
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
     }
 
     func counted(_ intake: DayIntake) -> Nutrients { intake.counted(on: day, today: model.today) }
-
-    func left(_ intake: DayIntake, _ targets: DailyTargets?) -> String {
-        let later = day == model.today && intake.later.kcal > 0 ? " · \(Format.whole(intake.later.kcal)) later" : ""
-        guard let kcal = targets?.kcal else { return "\(Format.kcal(counted(intake).kcal)) \(day > model.today ? "planned" : "eaten")\(later)" }
-        let left = kcal - counted(intake).kcal
-        return (left >= 0 ? "\(Format.kcal(left)) left" : "\(Format.kcal(-left)) over") + later
-    }
 }
 
 /// Fixed macro columns, the same in the header and every row. A sort of the day is in the Sort menu:
@@ -691,10 +715,16 @@ struct LogAgainChips: View {
                     Button {
                         model.logAgain(item)
                     } label: {
-                        Text(SavedMeals.shortName(item.template.name)).font(.subheadline).lineLimit(1)
+                        Text(SavedMeals.shortName(item.template.name))
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Ink.text)
+                            .lineLimit(1)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 34)
+                            .background(Ink.raised, in: .capsule)
+                            .contentShape(.capsule)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Log \(item.template.name) again")
                     .accessibilityIdentifier("log.again")
                 }

@@ -195,7 +195,7 @@ struct CaffeineCutBackSheet: View {
                             average.map { "You've averaged \(Format.mg($0)) a day this past week." }
                                 ?? "Log your coffee and energy drinks for a few days and this starts from your real average.")
                     }
-                    Section("The plan") {
+                    Section {
                         let plan = CaffeineCutBack(start: model.today, from: from, goal: goal)
                         ForEach(0..<plan.weeks, id: \.self) { week in
                             let day = model.today.adding(weeks: week)
@@ -205,6 +205,8 @@ struct CaffeineCutBackSheet: View {
                             "A fifth less each week (at least 25 mg) keeps withdrawal headaches and fog mild. A coffee is about 95 mg, an energy drink 150–300 mg."
                         )
                         .font(.caption).foregroundStyle(.secondary)
+                    } header: {
+                        Text("The plan").eyebrow()
                     }
                     Section {
                         Button("Start cutting back") {
@@ -214,9 +216,11 @@ struct CaffeineCutBackSheet: View {
                         .disabled(goal >= from)
                     }
                 }
-                Section("Bedtime") {
+                Section {
                     DatePicker("Bedtime", selection: Binding(get: { bedtimeDate }, set: setBedtime), displayedComponents: .hourAndMinute)
                     Text("Caffeine left at bedtime is worked out at an average five-hour half-life.").font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Text("Bedtime").eyebrow()
                 }
             }
             .navigationTitle("Caffeine")

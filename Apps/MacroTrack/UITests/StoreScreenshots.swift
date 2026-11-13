@@ -109,8 +109,8 @@ nonisolated final class StoreScreenshots: XCTestCase {
         } else {
             let app = XCUIApplication.launched(Self.seed + ["-seedMealPlan", "-tab", "plan"])
             app.buttons["Week"].waitToAppear().tap()
-            // The iPhone's meal plan is pages (Week, Groceries, Prep) under a picker.
-            app.element("mealPlan.page").waitToAppear()
+            // The iPhone's meal plan opens on the week, with the grocery list and prep day a row each.
+            app.element("mealPlan.summary").waitToAppear()
         }
         try save("meal-prep")
     }

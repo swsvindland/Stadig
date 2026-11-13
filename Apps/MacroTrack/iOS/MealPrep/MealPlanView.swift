@@ -66,6 +66,15 @@ struct MealPlanView: View {
     enum Page: String, CaseIterable, Identifiable {
         case week = "Week", groceries = "Groceries", prep = "Prep"
         var id: String { rawValue }
+
+        /// The page's title on a phone.
+        var title: String {
+            switch self {
+            case .week: "Meal plan"
+            case .groceries: "Grocery list"
+            case .prep: "Prep day"
+            }
+        }
     }
 
     @Environment(AppModel.self) private var model
@@ -73,7 +82,9 @@ struct MealPlanView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// The plan shown: the one opened, or the one made from here with "New plan…".
     @State private var planID: UUID
-    @State private var page: Page
+    /// What a phone shows: the week, or the grocery list or prep day opened from it.
+    let page: Page
+    @State private var showsPrep = false
     @State private var request = ""
     @State private var working = false
     @State private var changed: String?
@@ -82,7 +93,7 @@ struct MealPlanView: View {
 
     init(planID: UUID, page: Page = .week) {
         _planID = State(initialValue: planID)
-        _page = State(initialValue: page)
+        self.page = page
     }
 
     var body: some View {
@@ -91,7 +102,7 @@ struct MealPlanView: View {
                 // With room, the week, the groceries and prep day side by side; on a phone, one at a time.
                 if sizeClass == .compact { pages(plan) } else { MealPlanBoard(plan: plan, request: requestField(plan)) }
             }
-            .navigationTitle("Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
+            .navigationTitle(sizeClass == .compact ? page.title : "Week of \(Format.day(plan.start, style: .dateTime.month(.abbreviated).day()))")
             .inlineTitle()
             .toolbar {
                 // With room, counter mode is a button away wherever the prep list has scrolled to.
@@ -136,19 +147,10 @@ struct MealPlanView: View {
         }
     }
 
-    /// Week, groceries or prep, behind the segmented picker, as cards on the ink ground; the week
-    /// ends on Start prep, which opens prep day's steps.
+    /// The week as cards on the ink ground, ending on Start prep, which opens prep day's steps; the
+    /// grocery list and prep day are rows that open their own pages.
     func pages(_ plan: MealPlan) -> some View {
         List {
-            Section {
-                Picker("Show", selection: $page) {
-                    ForEach(Page.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("mealPlan.page")
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-            }
             Group {
                 switch page {
                 case .week: week(plan)
@@ -159,20 +161,16 @@ struct MealPlanView: View {
             .listRowBackground(Color.cardBackground)
         }
         .insetGroupedList()
-        .sectionSpacing(14)
+        .sectionSpacing(12)
+        .accessibilityIdentifier("mealPlan.page")
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if page == .week {
                 Button {
-                    withAnimation(.snappy) { page = .prep }
+                    showsPrep = true
                 } label: {
-                    Text("Start prep")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Ink.ground)
-                        .frame(maxWidth: .infinity, minHeight: 54)
-                        .background(Color.accentColor, in: .rect(cornerRadius: 18, style: .continuous))
-                        .contentShape(.rect(cornerRadius: 18))
+                    Text("Start prep").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SolidButtonStyle())
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -180,6 +178,7 @@ struct MealPlanView: View {
                 .accessibilityIdentifier("mealPlan.startPrep")
             }
         }
+        .navigationDestination(isPresented: $showsPrep) { MealPlanView(planID: plan.id, page: .prep) }
     }
 
     /// "No fish, more spicy": read by Apple's model and applied to the dishes still to come.
@@ -219,21 +218,16 @@ struct MealPlanView: View {
             ForEach(plan.recipes) { recipe in
                 DishRow(recipe: recipe, swap: swappable.contains(recipe.id) ? { model.swap(recipe.id, in: plan) } : nil)
             }
-        } header: {
-            Text("Dishes").eyebrow()
         }
 
         Section {
-            pageRow("Grocery list", symbol: "cart", detail: groceries == 1 ? "1 item" : "\(groceries) items", identifier: "mealPlan.groceryList") {
-                page = .groceries
-            }
+            pageRow(
+                "Grocery list", symbol: "cart", detail: groceries == 1 ? "1 item" : "\(groceries) items", page: .groceries, plan: plan,
+                identifier: "mealPlan.groceryList")
             pageRow(
                 "Prep day", symbol: "clock",
-                detail: "\(prep.prefix(1).uppercased() + prep.dropFirst()) · \(Format.duration(guide.minutes))",
-                identifier: "mealPlan.prepDay"
-            ) {
-                page = .prep
-            }
+                detail: "\(prep.prefix(1).uppercased() + prep.dropFirst()) · \(Format.duration(guide.minutes))", page: .prep, plan: plan,
+                identifier: "mealPlan.prepDay")
         }
 
         Section {
@@ -268,21 +262,19 @@ struct MealPlanView: View {
     }
 
     /// A row that opens another page: the grocery list, prep day.
-    func pageRow(_ title: String, symbol: String, detail: String, identifier: String, open: @escaping () -> Void) -> some View {
-        Button {
-            withAnimation(.snappy) { open() }
+    func pageRow(_ title: String, symbol: String, detail: String, page: Page, plan: MealPlan, identifier: String) -> some View {
+        NavigationLink {
+            MealPlanView(planID: plan.id, page: page)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: symbol).foregroundStyle(Ink.text2).frame(width: 22)
+                Image(systemName: symbol).font(.body.weight(.light)).foregroundStyle(Ink.text2).frame(width: 22)
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
                 Spacer(minLength: 8)
                 Text(detail).font(.subheadline).foregroundStyle(Ink.text2).lineLimit(1)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Ink.text3)
             }
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier(identifier)
     }
 
@@ -316,13 +308,12 @@ private struct WeekHeader: View {
             "\(Format.day(plan.start, style: .dateTime.month(.abbreviated).day())) – \(Format.day(plan.end, style: .dateTime.month(.abbreviated).day()))"
         VStack(alignment: .leading, spacing: 6) {
             // Tracked capitals start a point left of the text's frame, which the List cell clips.
-            Text("Meal prep · \(range)").eyebrow(Color.accentColor).padding(.leading, 2)
+            Text("\(when) · \(range)").eyebrow(Color.accentColor).padding(.leading, 2)
             Text(
                 "\(plan.recipes.count) \(plan.recipes.count == 1 ? "dish" : "dishes")\n\(containers) \(containers == 1 ? "container" : "containers")"
             )
-            .font(.system(.largeTitle, weight: .bold))
-            .tracking(-0.6)
-            .foregroundStyle(Ink.text)
+            .pageTitle()
+            .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             Text(
                 "\(Self.list(slots)), \(Format.span(plan.days)). Sized to \(Format.kcal(plan.targets.kcal)) and \(Format.grams(plan.targets.protein)) protein a day; \(Format.kcal(day.kcal)) and \(Format.grams(day.protein)) of it planned."
@@ -341,6 +332,14 @@ private struct WeekHeader: View {
         .accessibilityIdentifier("mealPlan.summary")
     }
 
+    @Environment(AppModel.self) private var model
+
+    /// Whether it's this week's.
+    var when: String {
+        if plan.days.contains(model.today) { return "This week" }
+        return plan.start > model.today ? "Next week" : "Meal prep"
+    }
+
     /// "Lunch and dinner", "Breakfast, lunch and dinner".
     static func list(_ labels: [String]) -> String {
         guard let last = labels.last else { return "" }
@@ -349,10 +348,9 @@ private struct WeekHeader: View {
     }
 }
 
-/// A dish on the phone's week: how many containers of it, big; its calories and protein a portion
-/// and what's in one; and Swap while it's still to come.
+/// A dish on the phone's week: how many containers of it, big; its calories and protein a portion;
+/// and Swap while it's still to come. What's in each container is on prep day's page.
 private struct DishRow: View {
-    @Environment(AppModel.self) private var model
     let recipe: PlannedRecipe
     let swap: (() -> Void)?
 
@@ -360,38 +358,24 @@ private struct DishRow: View {
         let n = recipe.nutrients
         HStack(alignment: .center, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text("\(recipe.servings)").numeral(30).foregroundStyle(Ink.text)
+                Text("\(recipe.servings)").numeral(30, weight: .heavy).foregroundStyle(Ink.text)
                 Text("×").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text2)
             }
-            .frame(width: 46, alignment: .leading)
+            .frame(width: 44, alignment: .leading)
             .accessibilityLabel("\(recipe.servings) containers")
             VStack(alignment: .leading, spacing: 3) {
-                Text(recipe.title).font(.body.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
-                Text("\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.protein)) a portion")
-                    .font(.caption.monospacedDigit()).foregroundStyle(Ink.text2)
+                Text(recipe.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).fixedSize(horizontal: false, vertical: true)
                 Text(
-                    recipe.items.filter { !$0.onTheDay }.map { "\(Format.portion($0.grams, unit: model.units.weight)) \($0.name.lowercased())" }
-                        .joined(separator: " · ")
+                    "\(Format.kcal(n.kcal)) · \(Text("\(Format.whole(n.protein)) P").foregroundStyle(Ink.protein)) a portion\(recipe.madeOnTheDay ? " · made on the day" : "")"
                 )
-                .font(.caption2).foregroundStyle(Ink.text3).lineLimit(2)
-                let topping = recipe.items.filter(\.onTheDay)
-                if !topping.isEmpty {
-                    Text("When eating: \(topping.map { "\(Int($0.grams)) g \($0.name.lowercased())" }.joined(separator: ", "))")
-                        .font(.caption2).foregroundStyle(Ink.text3)
-                }
-                if recipe.madeOnTheDay || recipe.items.contains(where: { $0.fermented == true }) {
-                    HStack(spacing: 8) {
-                        if recipe.madeOnTheDay { Text("Made on the day").font(.caption2.weight(.medium)).foregroundStyle(Ink.text2) }
-                        if recipe.items.contains(where: { $0.fermented == true }) { FoodQualityTags(processing: nil, fermented: true) }
-                    }
-                }
+                .font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let swap {
                 Button(action: swap) {
-                    Text("Swap").font(.subheadline.weight(.semibold)).foregroundStyle(Ink.text)
+                    Text("Swap").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text)
                         .padding(.horizontal, 14)
-                        .frame(minHeight: 40)
+                        .frame(minHeight: 44)
                         .background(Ink.raised, in: .rect(cornerRadius: 14, style: .continuous))
                         .contentShape(.rect(cornerRadius: 14))
                 }
@@ -479,8 +463,10 @@ struct GroceryPage: View {
         ForEach(Aisle.allCases) { aisle in
             let rows = items.filter { $0.aisle == aisle && !$0.pantry }
             if !rows.isEmpty {
-                Section(aisle.label) {
+                Section {
                     ForEach(rows) { row(item: $0, unit: unit) }
+                } header: {
+                    Text(aisle.label).eyebrow()
                 }
             }
         }
@@ -489,7 +475,7 @@ struct GroceryPage: View {
             Section {
                 ForEach(pantry) { row(item: $0, unit: unit) }
             } header: {
-                Text("Check you have")
+                Text("Check you have").eyebrow()
             }
         }
     }
@@ -563,7 +549,7 @@ struct PrepPage: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }
-        Section("Steps") {
+        Section {
             ForEach(guide.steps) { step in
                 HStack(alignment: .top, spacing: 12) {
                     Text(Format.clock(step.minute)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
@@ -580,6 +566,8 @@ struct PrepPage: View {
                 .padding(.vertical, 2)
                 .accessibilityElement(children: .combine)
             }
+        } header: {
+            Text("Steps").eyebrow()
         }
         Section {
             ForEach(guide.packing) { pack in
@@ -607,7 +595,7 @@ struct PrepPage: View {
                 .padding(.vertical, 2)
             }
         } header: {
-            Text("Containers")
+            Text("Containers").eyebrow()
         } footer: {
             Text("Cooked food keeps 3–4 days in the fridge; frozen, it keeps for months. Reheat until steaming hot.")
         }

@@ -51,12 +51,18 @@ struct SupplementsTab: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
             } else {
-                Section("Taking") {
+                Section {
                     ForEach(model.activeSupplements) { row($0) }
+                } header: {
+                    Text("Taking").eyebrow()
                 }
                 let paused = model.supplements.filter(\.paused)
                 if !paused.isEmpty {
-                    Section("Paused") { ForEach(paused) { row($0) } }
+                    Section {
+                        ForEach(paused) { row($0) }
+                    } header: {
+                        Text("Paused").eyebrow()
+                    }
                 }
                 RemindersSection()
             }

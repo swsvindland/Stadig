@@ -200,7 +200,7 @@ struct SupplementsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Supplements").font(.headline)
+                Text("Supplements").font(.callout.weight(.semibold))
                 Spacer()
                 if !model.activeSupplements.isEmpty {
                     Text("\(model.activeSupplements.count) in your stack").font(.caption).foregroundStyle(.secondary)

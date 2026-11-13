@@ -84,7 +84,7 @@ struct QualityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Food quality").font(.headline)
+                Text("Food quality").font(.callout.weight(.semibold))
                 Spacer()
                 if !report.days.isEmpty {
                     Text("Last \(report.days.count) complete day\(report.days.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)

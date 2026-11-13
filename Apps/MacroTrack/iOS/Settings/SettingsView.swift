@@ -94,7 +94,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.menuBar")
             #endif
         } header: {
-            Text("Logging")
+            Text("Logging").eyebrow()
         } footer: {
             Text("Other hours stay a tap away under Earlier and Later, and food logged in them always shows.")
         }
@@ -137,7 +137,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.fastAlerts")
             }
         } header: {
-            Text("Tracking")
+            Text("Tracking").eyebrow()
         } footer: {
             Text(
                 "Drinks puts water and caffeine on Today: a glass or a coffee is one tap, and caffeine is counted against a limit, with what's still active at bedtime. Off, drinks are simply food. Water a day is what to drink; food covers the rest. Meal timing shows the time since your last meal, the gaps between meals and the overnight fast, all from what you log, and lets you run a fast toward a goal."
@@ -191,7 +191,7 @@ struct SettingsView: View {
             }
             if let reason = model.ai.availability.reason, !model.ai.canDescribe { Text(reason).font(.footnote).foregroundStyle(.secondary) }
         } header: {
-            Text("Photo and description logging")
+            Text("Photo and description logging").eyebrow()
         } footer: {
             Text(
                 MealAIAvailability.privateCloudEntitled
@@ -216,7 +216,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.saveToHealth")
             }
         } header: {
-            Text("Health")
+            Text("Health").eyebrow()
         } footer: {
             if Platform.isMac { Text(HealthWords.notOnThisDevice) }
         }
@@ -258,7 +258,7 @@ struct SettingsView: View {
             }
             .accessibilityIdentifier("settings.startLifeMode")
         } header: {
-            Text("Life")
+            Text("Life").eyebrow()
         } footer: {
             Text(
                 "Shared with Stadig Lift. Vacation and illness expect no logging and don't count against you; the first days back aren't read as fat gain. Crunch asks only for protein and maintenance calories."
@@ -269,7 +269,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     var data: some View {
-        Section("Your data") {
+        Section {
             Button("Export CSV files", systemImage: "tablecells") {
                 do { exportURLs = try model.exportCSV() } catch { message = error.localizedDescription }
             }
@@ -301,6 +301,8 @@ struct SettingsView: View {
                 }
             }
             SyncStatusRows(records: model.store.syncState, shared: model.family?.syncState)
+        } header: {
+            Text("Your data").eyebrow()
         }
 
         Section {
@@ -322,7 +324,7 @@ struct SettingsView: View {
                 Text("Packaged foods and barcodes aren't installed in this build.").font(.footnote).foregroundStyle(.secondary)
             }
         } header: {
-            Text("Food data")
+            Text("Food data").eyebrow()
         } footer: {
             Text(
                 "Open Food Facts data is available under the Open Database License (opendatacommons.org/licenses/odbl). USDA FoodData Central is in the public domain."

@@ -12,7 +12,7 @@ struct MealTimingCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Meal timing").font(.headline)
+                Text("Meal timing").font(.callout.weight(.semibold))
                 Spacer()
                 Text("Last 7 days").font(.caption).foregroundStyle(.secondary)
             }

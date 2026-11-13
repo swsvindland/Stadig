@@ -61,6 +61,10 @@ nonisolated final class AppUITests: XCTestCase {
         XCTAssertFalse(connect.isEnabled)
         app.element("onboarding.notNow").tap()
 
+        // The starting point, from the answers and the weight typed.
+        app.element("onboarding.kcal").waitToAppear()
+        app.element("onboarding.start").tap()
+
         app.element("today.calories").waitToAppear()
         XCTAssertTrue(app.todayLogging.exists)
         // On a phone the weigh-in is under More today, whose line says the day's weight.

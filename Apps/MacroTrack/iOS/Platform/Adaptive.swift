@@ -160,6 +160,25 @@ enum FieldKeyboard {
 
 extension View {
     /// The small, centred title of a pushed screen or a sheet. The Mac's window or sheet title already is one.
+    /// Hides the navigation bar where the screen sets its own title on the page, as the design does
+    /// on a phone. The Mac's window has no bar to hide.
+    func hidesNavigationBar(_ hidden: Bool) -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return toolbarVisibility(hidden ? .hidden : .automatic, for: .navigationBar)
+        #endif
+    }
+
+    /// The title large under the back button, where a pushed page is a place of its own.
+    func largeTitle() -> some View {
+        #if os(macOS)
+        return self
+        #else
+        return navigationBarTitleDisplayMode(.large)
+        #endif
+    }
+
     func inlineTitle() -> some View {
         #if os(macOS)
         return self
