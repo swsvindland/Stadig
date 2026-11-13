@@ -82,23 +82,39 @@ struct MenuBarToday: View {
     // MARK: The field
 
     private var field: some View {
-        TextField("Add food, or say what you ate", text: $composer.text)
-            .textFieldStyle(.plain)
-            .font(.title3)
-            .foregroundStyle(Ink.text)
-            .focused($typing)
-            .autocorrectionDisabled()
-            .onSubmit(submit)
-            // The matches rise from the field, best first: ↑ goes up them, ↓ comes back.
-            .onKeyPress(.upArrow) { pick(by: 1) }
-            .onKeyPress(.downArrow) { pick(by: -1) }
-            .accessibilityIdentifier("menuBar.composer")
-            .padding(.horizontal, 16)
-            .frame(height: 50)
-            .background(Color.cardBackground, in: .rect(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16).stroke(typing ? Color.accentColor : Ink.hairline, lineWidth: typing ? 1.5 : 1)
+        HStack(spacing: 8) {
+            TextField("Add food, or say what you ate", text: $composer.text)
+                .textFieldStyle(.plain)
+                .font(.title3)
+                .foregroundStyle(Ink.text)
+                .focused($typing)
+                .autocorrectionDisabled()
+                .onSubmit(submit)
+                // The matches rise from the field, best first: ↑ goes up them, ↓ comes back.
+                .onKeyPress(.upArrow) { pick(by: 1) }
+                .onKeyPress(.downArrow) { pick(by: -1) }
+                .accessibilityIdentifier("menuBar.composer")
+            // Said rather than typed, where Apple's model can read it: the window's describe.
+            if model.ai.canDescribe {
+                Button {
+                    model.openLogger(.describe)
+                } label: {
+                    Image(systemName: "mic").font(.body.weight(.medium)).foregroundStyle(Ink.text2).frame(width: 30, height: 30)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .help("Say what you ate")
+                .accessibilityLabel("Say what you ate")
+                .accessibilityIdentifier("menuBar.describe")
             }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .frame(height: 50)
+        .background(Color.cardBackground, in: .rect(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16).stroke(typing ? Color.accentColor : Ink.hairline, lineWidth: typing ? 1.5 : 1)
+        }
     }
 
     private var keys: some View {
@@ -477,7 +493,8 @@ private struct MenuBarMatches: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: picked ? 52 : 44)
-        .background(picked ? Color.accentColor.opacity(0.12) : Color.clear, in: .rect(cornerRadius: 14))
+        // The picked one a card outlined in the accent, as Today's best match is.
+        .background(picked ? Color.cardBackground : Color.clear, in: .rect(cornerRadius: 14))
         .overlay {
             if picked { RoundedRectangle(cornerRadius: 14).stroke(Color.accentColor, lineWidth: 1.5) }
         }
