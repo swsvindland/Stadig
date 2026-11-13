@@ -99,9 +99,10 @@ struct DayItemView: View {
     }
 }
 
-/// A meal: what it's called, when, what it adds up to and its +, then its foods. A tap on the name
-/// picks out the meal, and holding it offers what's done with a meal. While foods are picked out,
-/// the + takes them into this meal.
+/// A meal: what it's called and when, its protein, carbs and fat, what it adds up to and its menu,
+/// then its foods. A tap on the name picks out the meal, and the menu (or holding the name) has
+/// adding to it and what's done with a meal. While foods are picked out, the menu's place is a
+/// button that takes them into this meal.
 struct MealCard: View {
     let meal: Moment
     let gap: MealGap?
@@ -110,9 +111,14 @@ struct MealCard: View {
     var body: some View {
         Section {
             MealHeader(meal: meal, gap: gap)
-                .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 8))
-                .listRowSeparator(.hidden)
-            ForEach(meal.entries) { LogEntryRow(entry: $0, wide: false, editing: $editing) }
+                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 6))
+                .listRowSeparatorTint(Ink.hairline)
+                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+            ForEach(meal.entries) { entry in
+                LogEntryRow(entry: entry, wide: false, editing: $editing)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparatorTint(Ink.hairline)
+            }
         }
     }
 }
@@ -125,75 +131,126 @@ struct MealHeader: View {
 
     var body: some View {
         let time = DayCards.addTime(to: meal, now: Date())
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 6) {
             Button {
                 model.toggleSelection(meal)
             } label: {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.headline).foregroundStyle(allSelected ? Color.accentColor : .primary).lineLimit(1)
-                    Text(detail).font(.caption.monospacedDigit()).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(
+                        "\(Text(title).font(.callout.weight(.semibold)).foregroundStyle(allSelected ? Color.accentColor : Ink.text)) \(Text(when).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3))"
+                    )
+                    .lineLimit(1)
+                    HStack(spacing: 10) {
+                        MacroDot(macro: .protein, grams: meal.nutrients.protein)
+                        if model.settings.showAllMacros {
+                            MacroDot(macro: .carbs, grams: meal.nutrients.carbs)
+                            MacroDot(macro: .fat, grams: meal.nutrients.fat)
+                        }
+                        if let gap { GapBadge(gap: gap).accessibilityIdentifier("log.gap") }
+                    }
                 }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Select \(title), \(detail)")
             .accessibilityIdentifier("log.meal")
-            .contextMenu {
-                Button("Repeat Now", systemImage: "arrow.clockwise") { model.logAgain(meal, at: Date()) }
-                    .accessibilityIdentifier("log.hourMenu.repeat")
-                MomentMealButton(moment: meal) { naming = true }
-                Button("Remove", systemImage: "trash", role: .destructive) { model.delete(entries: meal.entries.map(\.id)) }
-                    .accessibilityIdentifier("log.hourMenu.remove")
+            .contextMenu { actions(time) }
+            Measure(value: Format.whole(meal.nutrients.kcal), unit: "kcal", size: 20)
+                .foregroundStyle(Ink.text)
+            if model.selection.isEmpty {
+                Menu {
+                    actions(time)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Ink.text3)
+                        .frame(width: 40, height: 30)
+                        .contentShape(.rect)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title) options")
+                .accessibilityIdentifier("log.mealMenu")
+            } else {
+                LogPlus(symbol: model.placeSymbol, label: model.placeLabel(at: time), identifier: "log.addToMeal", solid: true) {
+                    model.logOrPlace(at: time)
+                }
+                .padding(.vertical, -7)
             }
-            if let gap { GapBadge(gap: gap).accessibilityIdentifier("log.gap") }
-            LogPlus(symbol: model.placeSymbol, label: addLabel(time), identifier: "log.addToMeal", solid: true) { model.logOrPlace(at: time) }
         }
         .accessibilityElement(children: .contain)
         .saveMealPrompt(isPresented: $naming, entries: meal.entries)
     }
 
-    var title: String { SavedMeals.meal(for: meal.entries, in: model.savedMeals)?.name ?? MealName.of(meal) }
-
-    var detail: String {
-        let upcoming = meal.entries.allSatisfy(model.foodLog.isUpcoming)
-        return [
-            Format.time(meal.start), upcoming ? "later" : nil, Format.kcal(meal.nutrients.kcal), "\(Format.grams(meal.nutrients.protein)) P",
-        ].compactMap { $0 }.joined(separator: " · ")
+    @ViewBuilder
+    func actions(_ time: Date) -> some View {
+        Button("Add to \(title)", systemImage: "plus") { model.logOrPlace(at: time) }
+            .accessibilityIdentifier("log.addToMeal")
+        Button(allSelected ? "Deselect" : "Select to Move or Copy", systemImage: "checkmark.circle") { model.toggleSelection(meal) }
+        Button("Repeat Now", systemImage: "arrow.clockwise") { model.logAgain(meal, at: Date()) }
+            .accessibilityIdentifier("log.hourMenu.repeat")
+        MomentMealButton(moment: meal) { naming = true }
+        Button("Remove", systemImage: "trash", role: .destructive) { model.delete(entries: meal.entries.map(\.id)) }
+            .accessibilityIdentifier("log.hourMenu.remove")
     }
 
-    func addLabel(_ time: Date) -> String { model.selection.isEmpty ? "Add to \(title)" : model.placeLabel(at: time) }
+    var title: String { SavedMeals.meal(for: meal.entries, in: model.savedMeals)?.name ?? MealName.of(meal) }
+
+    /// Its time, and that it's still to come.
+    var when: String {
+        let upcoming = meal.entries.allSatisfy(model.foodLog.isUpcoming)
+        return upcoming ? "\(Format.time(meal.start)) · later" : Format.time(meal.start)
+    }
+
+    var detail: String {
+        [when, Format.kcal(meal.nutrients.kcal), "\(Format.grams(meal.nutrients.protein)) protein"].joined(separator: ", ")
+    }
 
     var allSelected: Bool { meal.entries.allSatisfy { model.selection.ids.contains($0.id) } }
 }
 
-/// A food in its card: its marker, the name it's said by, and its numbers. The full name is on its
-/// amount panel.
+/// A macro's grams beside its colour's dot: "● 62 P".
+struct MacroDot: View {
+    let macro: Macro
+    let grams: Double
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().fill(macro.color).frame(width: 6, height: 6)
+            Text("\(Format.whole(grams)) \(macro.label.prefix(1))").font(.caption.monospacedDigit()).foregroundStyle(Ink.text3)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Format.whole(grams)) grams \(macro.label.lowercased())")
+    }
+}
+
+/// A food in its card: the name it's said by and its amount, and its calories. The full name and
+/// its marker are on its amount panel.
 struct MealFoodRow: View {
     @Environment(AppModel.self) private var model
     let entry: FoodEntry
 
     var body: some View {
         let later = model.foodLog.isUpcoming(entry)
-        let label = FoodLabel.parts(of: entry.name)
         HStack(spacing: 10) {
             if later { LaterMark() }
-            FoodTile(name: entry.name)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label.title).lineLimit(1)
-                Text([entry.amountLabel, entry.brand, label.detail].compactMap { $0 }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-            Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))").monospacedDigit()
-                Text("\(Format.grams(entry.nutrients.protein)) P").font(.caption.monospacedDigit()).foregroundStyle(Macro.protein.color)
-            }
+            Text(
+                "\(Text(FoodLabel.short(entry.name)).foregroundStyle(Ink.text)) \(Text(entry.amountLabel).font(.caption).foregroundStyle(Ink.text3))"
+            )
+            .lineLimit(1)
+            Spacer(minLength: 8)
+            Text("\(entry.isEstimate ? "≈" : "")\(Format.whole(entry.nutrients.kcal))")
+                .font(.body.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Ink.text)
         }
+        .frame(minHeight: 44)
         // Dimmed until its time: it's in the day's log, but it doesn't count yet.
         .opacity(later ? 0.55 : 1)
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(entry.name), \(entry.amountLabel)\(later ? ", later" : "")")
+        .accessibilityValue("\(entry.isEstimate ? "about " : "")\(Format.whole(entry.nutrients.kcal)) calories")
     }
 }
 
@@ -240,7 +297,7 @@ struct HourSlots: View {
         } label: {
             Label(group.start.formatted(.dateTime.hour()), systemImage: model.placeSymbol)
                 .labelStyle(SlotLabel())
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(maxWidth: .infinity, minHeight: 40)
                 .background(.cardBackground, in: .capsule)
                 .contentShape(.capsule)
         }
@@ -254,7 +311,7 @@ private struct SlotLabel: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 3) {
             configuration.icon.font(.caption2.weight(.bold)).foregroundStyle(Color.accentColor)
-            configuration.title.font(.subheadline.monospacedDigit()).foregroundStyle(.primary)
+            configuration.title.font(.footnote.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text2)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.7)
@@ -271,7 +328,7 @@ struct NowRow: View {
         Section {
             VStack(spacing: 2) {
                 HStack(spacing: 8) {
-                    Text("Now").font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                    Text("Now").eyebrow(Color.accentColor)
                     Capsule().fill(Color.accentColor.opacity(0.35)).frame(height: 1)
                     LogPlus(symbol: model.placeSymbol, label: model.placeLabel(at: time), identifier: "log.add.\(group.hour)", solid: true) {
                         model.logOrPlace(at: time)
@@ -293,12 +350,47 @@ struct HeldCards: View {
         ForEach(model.catchUp.filter { group.start <= $0.time && $0.time < group.end }) { usual in
             UsualCard(usual: usual).modifier(OnThePage())
         }
-        let planned = model.plannedMeals(in: group)
-        if !planned.isEmpty {
+        ForEach(model.plannedMeals(in: group), id: \.meal.id) { planned in
             Section {
-                ForEach(planned, id: \.meal.id) { PlannedMealRow(meal: $0.meal, recipe: $0.recipe, plan: $0.plan) }
+                PlanMealCard(meal: planned.meal, recipe: planned.recipe, plan: planned.plan)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 12))
+                    // The list's own section corner, so the line isn't clipped where the section's is.
+                    .listRowBackground(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1))
             }
         }
+    }
+}
+
+/// A meal from the week's meal prep where it falls in the day, outlined rather than filled since
+/// it isn't eaten yet: which meal, the dish and its numbers, and Log, or a tick once it's logged.
+struct PlanMealCard: View {
+    @Environment(AppModel.self) private var model
+    let meal: PlannedMeal
+    let recipe: PlannedRecipe
+    let plan: MealPlan
+
+    var body: some View {
+        let n = recipe.nutrients
+        let note = PlannedMealRow.note(meal, recipe: recipe)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(meal.slot.label) · From your plan").eyebrow()
+                Text(recipe.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text).lineLimit(2)
+                Text("\(Format.kcal(n.kcal)) · \(Format.grams(n.protein)) protein\(note)")
+                    .font(.caption).foregroundStyle(Ink.text3).lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if model.isLogged(meal, in: plan) {
+                Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(Ink.good).accessibilityLabel("Logged")
+            } else {
+                Button("Log") { model.logPlanned(meal, in: plan) }
+                    .buttonStyle(.solidSmall)
+                    .frame(minWidth: 72)
+                    .accessibilityLabel("Log \(recipe.title)")
+                    .accessibilityIdentifier("mealPrep.logMeal")
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 
