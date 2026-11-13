@@ -312,6 +312,39 @@ extension View {
     }
 }
 
+extension Platform {
+    /// A sheet's close (`SheetBar`): the round × at the top left on iPhone, iPad and Vision Pro,
+    /// where a sheet also swipes down to close; on the Mac, which has no swipe, a button at the top
+    /// right that says what it does (Cancel, Done), and Escape.
+    static var closesSheetsInWords: Bool { isMac }
+}
+
+extension View {
+    /// A sheet's own bar and foot around what scrolls in it (`inkSheet`), in place of the system's
+    /// navigation bar. On iPhone, iPad and Vision Pro what scrolls passes under them; on the Mac they
+    /// sit above and below it, since a Mac form under an inset bar still started its first lines (the
+    /// eyebrow over the title) beneath it.
+    @ViewBuilder
+    func sheetChrome<Bar: View, Foot: View>(bar: Bar, foot: Foot?) -> some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            bar
+            // On the ground the bar and foot stand on, not the window's grey.
+            scrollContentBackground(.hidden).frame(maxHeight: .infinity)
+            if let foot { foot }
+        }
+        #else
+        if let foot {
+            hidesNavigationBar()
+                .safeAreaInset(edge: .top, spacing: 0) { bar }
+                .safeAreaInset(edge: .bottom, spacing: 0) { foot }
+        } else {
+            hidesNavigationBar().safeAreaInset(edge: .top, spacing: 0) { bar }
+        }
+        #endif
+    }
+}
+
 extension ToolbarItemPlacement {
     /// The trailing end of the navigation bar; on the Mac, the toolbar's primary spot.
     static var barTrailing: ToolbarItemPlacement {
