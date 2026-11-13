@@ -37,7 +37,7 @@ struct SessionSummaryView: View {
                             ForEach(Array(learned.enumerated()), id: \.offset) { index, line in
                                 if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
                                 HStack(spacing: 12) {
-                                    Circle().fill(line.color).frame(width: 8, height: 8)
+                                    Circle().fill(line.tone.color).frame(width: 8, height: 8)
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(line.title).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
                                         Text(line.detail).font(.caption).foregroundStyle(Ink.text3)
@@ -50,6 +50,7 @@ struct SessionSummaryView: View {
                             }
                         }
                         .tightCard()
+                        .accessibilityIdentifier("summary.lessons")
                     }
                     sets
                 }
@@ -324,45 +325,24 @@ struct SessionSummaryView: View {
         return (Format.number(was), Format.number(now))
     }
 
-    private struct Lesson {
-        var title: String
-        var detail: String
-        var color: Color
+    /// What the session taught, worked out as it ended (`SummaryBaseline.lessons`): next time's
+    /// loads, the rests and the ratings. Without that (never, as summaries are shown), what the record
+    /// alone says: the ratings, misses and weights found.
+    private var learned: [SessionLesson] {
+        if let baseline = model.finishedBaseline, baseline.sessionID == record.id { return baseline.lessons }
+        return SessionLessons.lessons(record: record, plan: nil, next: [:], rest: nil, catalog: model.catalog, unit: model.gym.unit)
     }
+}
 
-    /// Plain-language lessons, each a line and what's behind it, with a dot in what it means: rating
-    /// checks, misses as data, working weights found.
-    private var learned: [Lesson] {
-        var lines: [Lesson] = []
-        let checks = record.exercises.flatMap { Calibration.observations(sets: $0.sets, exercise: model.catalog.resolve($0.exerciseID)) }
-        let counted = "\(checks.count) rating check\(checks.count == 1 ? "" : "s") this session"
-        if !checks.isEmpty {
-            let right = checks.filter { $0.error == 0 }.count
-            if right == checks.count {
-                lines.append(Lesson(title: "Your ratings were right on", detail: counted, color: Ink.good))
-            } else if checks.contains(where: { $0.error > 0 }) {
-                lines.append(
-                    Lesson(
-                        title: "You had more left than you said", detail: "\(counted) · the next sets push a little to confirm", color: .accentColor))
-            } else {
-                lines.append(
-                    Lesson(title: "You had less left than you said", detail: "\(counted) · estimates stay conservative for now", color: Ink.ok))
-            }
+extension SessionLesson.Tone {
+    /// The dot: green for a load going up or a weight found, amber held, red a miss, the accent rest.
+    var color: Color {
+        switch self {
+        case .good: Ink.good
+        case .ok: Ink.ok
+        case .bad: Ink.bad
+        case .accent: .accentColor
         }
-        for log in record.exercises {
-            let exercise = model.catalog.resolve(log.exerciseID)
-            if log.sets.contains(where: { $0.rating == .red }) {
-                lines.append(Lesson(title: "\(exercise.name): a missed set", detail: "That's data; next time adjusts", color: Ink.bad))
-            }
-            if log.sets.contains(where: { $0.kind == .findingWeight }), let working = log.sets.last(where: { $0.rating == .orange }) {
-                lines.append(
-                    Lesson(
-                        title: "\(exercise.name): working weight found",
-                        detail: "\(Format.load(working.loadKg, unit: model.gym.unit, basis: exercise.loadBasis)) for \(working.reps)", color: Ink.good
-                    ))
-            }
-        }
-        return Array(lines.prefix(6))
     }
 }
 
@@ -394,12 +374,14 @@ struct GainRuler: View {
 }
 
 /// What a finished session is set against, taken as it ends: the plan's minutes and work sets, and
-/// Strength before it was saved.
+/// Strength before it was saved; and what it taught, with it saved.
 struct SummaryBaseline: Equatable {
     var sessionID: UUID
     var plannedMinutes: Int
     var plannedSets: Int
     var strength: Double?
+    /// What it taught, once it's saved (`AppModel.lessons(for:session:)`).
+    var lessons: [SessionLesson] = []
 
     init(record: SessionRecord, plan: SessionPlan, strength: Double?) {
         sessionID = record.id

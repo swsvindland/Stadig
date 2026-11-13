@@ -1216,8 +1216,20 @@ final class AppModel {
         LiveActivityBridge.end()
         finishedBaseline = SummaryBaseline(record: record, plan: live.plan, strength: analysis?.strength.overall)
         keep(record, savedByWatch: watchSaves)
+        finishedBaseline?.lessons = lessons(for: record, session: live)
         if watchSaves { handWorkoutToWatch(record) }
         if record.hasContent { finished = record }
+    }
+
+    /// What a finished session taught, with it saved (`SessionLessons`): what the next session with
+    /// each lift asks of it, as Today will plan that day; its rests against the plan, with the heart
+    /// rate the Watch sent; and its ratings.
+    private func lessons(for record: SessionRecord, session: LiveSession) -> [SessionLesson] {
+        guard record.hasContent else { return [] }
+        let next = state.flatMap { state in analysis.map { NextTime.items(after: record, state: state, analysis: $0) } } ?? [:]
+        return SessionLessons.lessons(
+            record: record, plan: session.plan, next: next, rest: RestReview(session: session, zones: heartRateZones), catalog: catalog,
+            unit: gym.unit)
     }
 
     /// Asks the Watch to save its workout under the session's id, over the workout alone: a copy over
@@ -1315,6 +1327,7 @@ final class AppModel {
         try? FileManager.default.removeItem(at: liveURL)
         finishedBaseline = SummaryBaseline(record: record, plan: session.plan, strength: analysis?.strength.overall)
         keep(record)
+        finishedBaseline?.lessons = lessons(for: record, session: session)
         if record.hasContent { finished = record }
     }
 

@@ -201,6 +201,23 @@ struct AppModelTests {
             return last.e1rm > earlier * 1.01
         }
         #expect(moved, "a main lift's estimate rose")
+
+        // What it taught: what next time does with the main lifts' loads, as the planner has it, and the
+        // rests the Watch's heart rate ended early (which day of the program it is, and so whether the
+        // sets after them held up, goes by the weekday).
+        #expect(record.averageHeartRate != nil)
+        let lessons = baseline.lessons
+        #expect((2...SessionLessons.limit).contains(lessons.count), "\(lessons.map(\.title))")
+        #expect(lessons.contains { [.up, .held, .down].contains($0.kind) }, "\(lessons.map(\.title))")
+        let rest = try #require(lessons.first { $0.kind == .rest }, "\(lessons.map(\.title))")
+        #expect(rest.detail.hasPrefix("Heart rate recovered early on ") || rest.title == "Short rests cost reps", "\(rest.detail)")
+        let state = try #require(model.state)
+        let next = NextTime.items(after: record, state: state, analysis: after)
+        for lesson in lessons where lesson.kind == .up || lesson.kind == .held {
+            let id = try #require(lesson.exerciseID)
+            let load = try #require(next[id]?.workSets.first?.loadKg)
+            #expect(lesson.detail.contains(Format.number(load, digits: 2)), "\(lesson.title): \(lesson.detail), next time \(load)")
+        }
     }
 
     @Test("Plan, start, log and finish records a session that's there after a relaunch")
