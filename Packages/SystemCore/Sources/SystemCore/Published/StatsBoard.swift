@@ -8,6 +8,11 @@ public struct StatLine: Hashable, Sendable, Identifiable {
         public var app: AppID
         public var label: String
         public var score: Int?
+        /// The score as the app published it, unrounded: what a change is measured with.
+        public var exact: Double?
+        /// The app's dated readings of it (`ScoreHistory`), oldest first: what a change is measured
+        /// from. Empty when the app hasn't recorded any (an older copy of it publishes none).
+        public var history: [ScorePoint] = []
 
         public var id: AppID { app }
     }
@@ -20,12 +25,34 @@ public struct StatLine: Hashable, Sendable, Identifiable {
     public var sources: [Source]
     /// The app it's coloured by: the first that publishes it, or the one that would.
     public var app: AppID
+    /// How far it has moved this month (`ScoreWindow.month`): nil with nothing recorded to measure
+    /// from, such as for someone new.
+    public var change: ScoreChange?
 
     public var id: StatKind { stat }
     public var isKnown: Bool { !sources.isEmpty }
     /// The apps it comes from: Stadig Lift, Stadig Macro or both, in that order. Empty until one has
     /// published it, when `app` says which would.
     public var apps: [AppID] { sources.map(\.app) }
+
+    /// How far it has moved over a window, from what each app that publishes it recorded; for a stat
+    /// two apps publish, the average of their changes (`ScoreChange.measure`).
+    public func change(over window: ScoreWindow, today: Day) -> ScoreChange? {
+        ScoreChange.measure(sources.map { ($0.history, $0.exact) }, over: window, today: today)
+    }
+}
+
+/// Your shape as it stood some time ago, drawn dashed behind the shape now.
+public struct EarlierShape: Hashable, Sendable {
+    /// The scores then, for the stats that had one.
+    public var scores: [StatKind: Int]
+    /// When: "since August" names it August.
+    public var period: ScoreChange.Period
+
+    public init(scores: [StatKind: Int], period: ScoreChange.Period) {
+        self.scores = scores
+        self.period = period
+    }
 }
 
 /// The stats as both apps show them: each app's own, and the other's once that one is set up too,
@@ -37,6 +64,11 @@ public enum StatsBoard {
     public static let shown: [StatKind] = [.strength, .physique, .endurance, .vitality, .agility, .discipline]
     /// A summary older than this says nothing about now: the app may be gone.
     public static let staleDays = 28
+    /// How far back Your shape's dashed outline and Body's Physique look: since the start of the
+    /// month three before this one, "since August" in November.
+    public static let lookBackMonths = 3
+
+    public static func lookBack(today: Day) -> ScoreWindow { .since(month: today.adding(months: -lookBackMonths)) }
 
     /// The app that speaks for a stat before any has published it.
     static func owner(_ stat: StatKind) -> AppID { stat == .vitality ? .macroTrack : .liftTrack }
@@ -51,8 +83,11 @@ public enum StatsBoard {
     }
 
     /// Every stat shown, in the same order every time, including the ones nothing has published yet,
-    /// from summaries in hand: an app passes its own, fresh, and what it read of the other's.
-    public static func lines(lift: AppSummary?, macro: AppSummary?, today: Day, timeZone: TimeZone = .current) -> [StatLine] {
+    /// from summaries in hand: an app passes its own, fresh, and what it read of the other's, with
+    /// the score histories they've recorded (`ScoreHistory`) for how each has moved this month.
+    public static func lines(
+        lift: AppSummary?, macro: AppSummary?, histories: [ScoreHistory] = [], today: Day, timeZone: TimeZone = .current
+    ) -> [StatLine] {
         let summaries = fresh(lift: lift, macro: macro, today: today, timeZone: timeZone)
         return shown.map { stat in
             let readings = summaries.flatMap { summary in summary.stats.filter { $0.stat == stat }.map { (app: summary.app, reading: $0) } }
@@ -63,12 +98,34 @@ public enum StatsBoard {
             }
             let scores = readings.compactMap(\.reading.score)
             let score = scores.isEmpty ? nil : Int((scores.reduce(0, +) / Double(scores.count)).rounded())
-            return StatLine(
+            var line = StatLine(
                 stat: stat, score: score.map { min(100, max(0, $0)) }, label: joined(readings.map(\.reading.label)),
                 trend: worst(readings.map(\.reading.trend)),
-                sources: readings.map { StatLine.Source(app: $0.app, label: $0.reading.label, score: $0.reading.score.map { Int($0.rounded()) }) },
+                sources: readings.map { source in
+                    StatLine.Source(
+                        app: source.app, label: source.reading.label, score: source.reading.score.map { Int($0.rounded()) },
+                        exact: source.reading.score, history: histories.first { $0.app == source.app }?.points(stat) ?? [])
+                },
                 app: first.app)
+            line.change = line.change(over: .month, today: today)
+            return line
         }
+    }
+
+    /// Your shape's dashed outline: the scores as they stood when the look-back began (`lookBack`),
+    /// or when they were first recorded where that's later, and the month that names it ("August").
+    /// A score first recorded in a later month than the others has no corner on it, rather than one
+    /// the name would get wrong. Nil when nothing was recorded before this month: an outline from
+    /// last week wouldn't say much.
+    public static func earlier(_ lines: [StatLine], today: Day) -> EarlierShape? {
+        let window = lookBack(today: today)
+        let changes = lines.compactMap { line in line.change(over: window, today: today).map { (stat: line.stat, change: $0) } }
+        guard let from = changes.map(\.change.from).min() else { return nil }
+        let period = window.period(from: from, today: today)
+        guard period != .thisMonth else { return nil }
+        var scores: [StatKind: Int] = [:]
+        for (stat, change) in changes where change.period == period { scores[stat] = min(100, max(0, Int(change.then.rounded()))) }
+        return EarlierShape(scores: scores, period: period)
     }
 
     /// Whether both apps are publishing: the point at which each shows all the stats, not only its own.

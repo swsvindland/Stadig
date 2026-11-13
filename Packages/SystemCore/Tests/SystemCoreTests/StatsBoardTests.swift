@@ -71,4 +71,78 @@ struct StatsBoardTests {
         let edge = AppSummary(app: .liftTrack, updated: now.addingTimeInterval(-28 * 86_400), stats: [reading(.strength, 62, "Intermediate")])
         #expect(lines(lift: edge).filter(\.isKnown).map(\.stat) == [.strength])
     }
+
+    // MARK: How each has moved
+
+    func history(_ app: AppID, _ stats: [StatKind: [(back: Int, score: Double)]]) -> ScoreHistory {
+        ScoreHistory(app: app, stats: stats.mapValues { $0.map { ScorePoint(day: monday.adding(days: -$0.back), score: $0.score) } })
+    }
+
+    /// Each line carries how far it moved this month, from the histories the apps recorded; a stat
+    /// with nothing recorded, or only today, has none.
+    @Test func linesSayHowFarEachMovedThisMonth() throws {
+        let lift = AppSummary(
+            app: .liftTrack, updated: now,
+            stats: [reading(.strength, 57.2, "Novice"), reading(.agility, 61.3, "Mobile"), reading(.physique, 64, "Proportions")])
+        let recorded = history(.liftTrack, [.strength: [(40, 50), (31, 55), (0, 57.2)], .agility: [(31, 61), (0, 61.3)], .physique: [(0, 64)]])
+        let lines = StatsBoard.lines(lift: lift, macro: nil, histories: [recorded], today: monday, timeZone: utc)
+        let strength = try #require(lines.first { $0.stat == .strength })
+        #expect(strength.change?.short == "+2")
+        #expect(strength.change?.from == monday.adding(days: -31))
+        #expect(lines.first { $0.stat == .agility }?.change?.short == "steady")
+        #expect(lines.first { $0.stat == .physique }?.change == nil, "only today's reading")
+        #expect(lines.first { $0.stat == .endurance }?.change == nil, "nothing published")
+        // Without histories, as from an app that records none, no line has a change.
+        #expect(self.lines(lift: lift).allSatisfy { $0.change == nil })
+        // Another app's history doesn't speak for this one's stats.
+        let wrongApp = StatsBoard.lines(
+            lift: lift, macro: nil, histories: [history(.macroTrack, [.strength: [(31, 40)]])], today: monday, timeZone: utc)
+        #expect(wrongApp.allSatisfy { $0.change == nil })
+    }
+
+    /// Discipline from both apps moves by the average of their changes.
+    @Test func sharedDisciplineMovesByBothApps() throws {
+        let lift = AppSummary(app: .liftTrack, updated: now, stats: [reading(.discipline, 88, "Training 88%")])
+        let macro = AppSummary(app: .macroTrack, updated: now, stats: [reading(.discipline, 84, "Nutrition 84%")])
+        let lines = StatsBoard.lines(
+            lift: lift, macro: macro,
+            histories: [history(.liftTrack, [.discipline: [(35, 82)]]), history(.macroTrack, [.discipline: [(35, 82)]])],
+            today: monday, timeZone: utc)
+        let discipline = try #require(lines.first { $0.stat == .discipline })
+        #expect(discipline.score == 86)
+        #expect(discipline.change?.points == 4)
+        #expect(discipline.change?.then == 82)
+    }
+
+    /// Your shape's dashed outline: the scores as August began, named August; a score first recorded
+    /// in October has no corner on it. Readings from this month only draw none.
+    @Test func theOutlineIsTheShapeAMonthNamed() throws {
+        let today = Day(year: 2026, month: 11, day: 11)
+        let at = today.at(hour: 10, minute: 0, timeZone: utc)
+        let lift = AppSummary(
+            app: .liftTrack, updated: at,
+            stats: [
+                StatReading(stat: .strength, score: 57, label: "", trend: .onPace, updated: at),
+                StatReading(stat: .endurance, score: 48, label: "", trend: .onPace, updated: at),
+            ])
+        let macro = AppSummary(
+            app: .macroTrack, updated: at, stats: [StatReading(stat: .vitality, score: 72, label: "", trend: .onPace, updated: at)])
+        let july = Day(year: 2026, month: 7, day: 31)
+        let histories = [
+            ScoreHistory(app: .liftTrack, stats: [.strength: [ScorePoint(day: july, score: 52.4)], .endurance: [ScorePoint(day: july, score: 45)]]),
+            ScoreHistory(app: .macroTrack, stats: [.vitality: [ScorePoint(day: Day(year: 2026, month: 10, day: 2), score: 73)]]),
+        ]
+        let lines = StatsBoard.lines(lift: lift, macro: macro, histories: histories, today: today, timeZone: utc)
+        let earlier = try #require(StatsBoard.earlier(lines, today: today))
+        #expect(earlier.period == .since(month: Day(year: 2026, month: 8, day: 1), withYear: false))
+        #expect(earlier.period.monthName(calendar: Calendar(identifier: .gregorian)) != nil)
+        #expect(earlier.scores == [.strength: 52, .endurance: 45])
+        #expect(
+            lines.first { $0.stat == .vitality }?.change(over: StatsBoard.lookBack(today: today), today: today)?.period
+                == .since(month: Day(year: 2026, month: 10, day: 1), withYear: false))
+
+        let recent = [ScoreHistory(app: .liftTrack, stats: [.strength: [ScorePoint(day: Day(year: 2026, month: 11, day: 2), score: 55)]])]
+        #expect(StatsBoard.earlier(StatsBoard.lines(lift: lift, macro: nil, histories: recent, today: today, timeZone: utc), today: today) == nil)
+        #expect(StatsBoard.earlier(StatsBoard.lines(lift: lift, macro: nil, today: today, timeZone: utc), today: today) == nil)
+    }
 }

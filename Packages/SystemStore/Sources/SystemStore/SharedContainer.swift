@@ -346,6 +346,14 @@ extension SharedKey where T == AppSummary {
     }
 }
 
+extension SharedKey where T == ScoreHistory {
+    /// Each app's scores day by day, beside its summary, for how each has moved
+    /// (`SharedContainer.recordScores`).
+    public static func scores(_ app: AppID) -> SharedKey<ScoreHistory> {
+        SharedKey(path: "apps/\(app.rawValue)/scores.json", schemaVersion: ScoreHistory.schemaVersion)
+    }
+}
+
 /// A libnotify registration, cancelled when released.
 final class DarwinObservation {
     private var token: Int32 = 0

@@ -128,6 +128,23 @@ public struct Day: Hashable, Comparable, Sendable, Strideable, CustomStringConve
 
     public func adding(days: Int) -> Day { Day(ordinal: ordinal + days) }
     public func adding(weeks: Int) -> Day { adding(days: weeks * 7) }
+
+    /// The same day of the month so many months on (or back), or that month's last day where it's
+    /// shorter: a month before 31 March is the last day of February.
+    public func adding(months: Int) -> Day {
+        let c = components
+        let total = c.year * 12 + c.month - 1 + months
+        let year = total >= 0 ? total / 12 : (total - 11) / 12
+        let month = total - year * 12 + 1
+        let length = Day(year: year, month: month, day: 1).days(until: Day(year: year, month: month, day: 1).adding(days: 31).firstOfMonth)
+        return Day(year: year, month: month, day: min(c.day, length))
+    }
+
+    /// The first day of this day's month.
+    public var firstOfMonth: Day {
+        let c = components
+        return Day(year: c.year, month: c.month, day: 1)
+    }
     public func days(until other: Day) -> Int { other.ordinal - ordinal }
 
     public func distance(to other: Day) -> Int { other.ordinal - ordinal }
