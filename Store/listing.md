@@ -12,7 +12,7 @@ Both apps share these:
 | Regulated medical device | No |
 | Privacy Policy URL | https://stadig.dev/privacy |
 | App Privacy | Data Not Collected (saved, waiting to be published) |
-| Support URL | https://stadig.dev/faq (every page's footer has the email) |
+| Support URL | https://stadig.dev/support (the site's support form, which files a GitHub issue; every page's footer has the email) |
 | Copyright | 2026 Sam Svindland |
 | Sign-in required | No |
 | Release | Manually, after approval |
