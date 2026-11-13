@@ -17,6 +17,7 @@ export const GET: APIRoute = () => {
     ``,
     `- [Principles](${brand.domain}/principles): The seven rules both apps follow, and what moves each score.`,
     `- [FAQ](${brand.domain}/faq): Cost, the six scores, offline use, privacy, devices, and the ideas behind the apps.`,
+    `- [Support](${brand.domain}/support): Report a problem, suggest an idea or ask a question.`,
     `- [Privacy](${brand.domain}/privacy): No accounts, no analytics, no third-party SDKs.`,
     ``,
     `## Optional`,

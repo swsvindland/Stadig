@@ -7,5 +7,6 @@ export default defineConfig({
   trailingSlash: "never",
   compressHTML: true,
   build: { format: "file", inlineStylesheets: "always" },
-  integrations: [sitemap()],
+  // The support form's sent and failed pages are only reached by sending it.
+  integrations: [sitemap({ filter: (page) => !page.includes("/support/") })],
 });

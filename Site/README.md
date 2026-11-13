@@ -1,10 +1,11 @@
 # stadig.dev
 
-The marketing site for Stadig (Stadig Lift and Stadig Macro). Astro, static output, zero client-side JavaScript, deployed on Vercel.
+The marketing site for Stadig (Stadig Lift and Stadig Macro). Astro, static output, zero client-side JavaScript, deployed on Vercel, with one Vercel function behind the support form.
 
 ```sh
 pnpm install
 pnpm dev        # http://localhost:4321
+pnpm test       # the support form's function (Node's own test runner)
 pnpm build      # dist/
 pnpm preview
 ```
@@ -29,6 +30,17 @@ pnpm preview
 
 Everything on it is either in the docs or seen in the apps' screens; the sample scores are labelled as samples. Scores carry a trend word ("rising", "steady"…), never "+2 this month", because the apps don't keep a score's history yet ([docs/decisions.md](../docs/decisions.md)). Both apps are free, so there are no prices anywhere.
 
+## The support form
+
+`/support` (`src/pages/support.astro`) is a plain HTML form that posts to `/api/feedback`. That's `api/feedback.ts`, which Vercel deploys as a function because it sits in `api/`; Astro never sees it except to import the form's choices and limits, so the page offers exactly what the function accepts. The function checks the post came from the site's own host, drops anything that filled the hidden `homepage` field (a honeypot, the only spam defence; there's no store for rate limiting), re-checks every field, and files a GitHub issue: the one-line summary as the title, the app, kind, device, version and reply address as a list, and the person's words in a code block, so nothing they type can @mention anyone or pull in an image. Labels are the app (`Stadig Lift`, `Stadig Macro`, `website`) and the kind (`bug`, `enhancement`, `question`); if GitHub refuses them the issue is filed without. Then it redirects (303) to `/support/sent` or `/support/failed`, both kept out of search and the sitemap. Its log names what went wrong but never what the person wrote or their address. `tests/feedback.test.ts` covers all of this against a stand-in GitHub, and `Site` CI runs it.
+
+It needs two environment variables in the Vercel project (Production and Preview):
+
+- `FEEDBACK_REPO`: `owner/name` of a **private** repository just for reports, not this one. The issues carry people's email addresses, and this repository is meant to go public.
+- `FEEDBACK_TOKEN`: a fine-grained personal access token for that repository only, with **Issues: Read and write** and nothing else. Give it an expiry and put the renewal in the calendar: when it lapses, every report lands on the failed page and the function logs `GitHub answered 401`.
+
+Without them every report goes to the failed page, which offers the email instead. `astro dev` and `astro preview` don't run the function; after a deploy, opening `/api/feedback` should land on `/support` (anything but a post is sent there), which shows the function is live.
+
 ## Deploying on Vercel
 
 Import the repo, set **Root Directory** to `Site`, framework preset Astro. `vercel.json` adds `cleanUrls` (so `/faq` serves `faq.html`), immutable caching for images, security headers, and permanent redirects from the pre-rename paths (`/lift-track`, `/macro-track` and their OG images) and the retired ones (`/mind`, `/mind-track`). Set the production domain to `stadig.dev`; `astro.config.mjs` has `site` set to that, which the sitemap, canonical URLs and OG tags use.
@@ -39,3 +51,5 @@ Import the repo, set **Root Directory** to `Site`, framework preset Astro. `verc
 - Fill in `appStoreUrl` for each app in `src/content/site.ts` once they're live. Until then each App Store button names the app and says "Coming to the App Store" (a link to the app's page from elsewhere, plain text on the app's own page); with a URL they become "Stadig Lift on the App Store" links on their own.
 - Open source: once the repository is public and licensed, follow the comment on `brand.free` in `src/content/site.ts` (the line under the buttons, a "Read the source" link with the licence in the Free section, and "Source" in the footer). The site doesn't claim it until then.
 - Set up `hello@stadig.dev`.
+- Create the private reports repository and its token, and set `FEEDBACK_REPO` and `FEEDBACK_TOKEN` in Vercel (the support form, above). Then send one report through the live form to see it arrive.
+- Change each app's Support URL in App Store Connect from `/faq` to `https://stadig.dev/support`, and `Store/listing.md` with it.

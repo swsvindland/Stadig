@@ -15,7 +15,12 @@ const jsonLd = [
     <Rule label="FAQ" aside={`${faq.length} questions`} />
     <div class="intro">
       <h1 class="h1" id="faq-title">Questions, answered plainly.</h1>
-      <p class="lede">Something else? Write to <a class="inline-link" href={`mailto:${brand.email}`}>{brand.email}</a>.</p>
+      <p class="lede">
+        Something else, or something broken? Tell us on the <a class="inline-link" href="/support">support page</a>, or write to <a
+          class="inline-link"
+          href={`mailto:${brand.email}`}>{brand.email}</a
+        >.
+      </p>
     </div>
     <div class="qa">
       {faq.map((f, i) => (

@@ -2,6 +2,13 @@
 
 Stadig Mind and the hub app left this repo on 2026-11-11 (the first two entries). The entries that were only about either went with them; where an older entry below still names one beside the other apps ("all three apps", Mind's price, the hub's name), that's the record of the call as it was made.
 
+- **The site's support form files GitHub issues in a private repository of its own.** 2026-11-13, you asked for a support page whose form opens GitHub issues. How it works is in `Site/README.md`. The calls, yours to check:
+  - **A separate private repository**, named by `FEEDBACK_REPO`, not this one: reports carry people's email addresses, and this repository is meant to go public.
+  - **What it asks:** the app (or the website), the kind (Something's broken, preselected; An idea; A question), device and version (both optional), a one-line summary, the details, and an email "only if you'd like a reply". No name and no screenshots (an upload needs somewhere to keep the file). The apps don't show their version anywhere, so the field rarely gets filled.
+  - **Spam:** a honeypot field and the same-host check, nothing more. No CAPTCHA (third-party code) and no rate limit (nothing to keep counts in). If spam arrives, a rate limit rule in Vercel's firewall is the next step.
+  - **The privacy page** says the form is the one thing on the site that sends anything, that GitHub stores it, and that an issue is deleted on request: a promise kept by hand.
+  - **Not done:** the App Store's Support URL still says `/faq` until it's changed in App Store Connect, and neither app links to the page (neither has a support or feedback row yet).
+
 - **Stadig Macro's tab bar stays whole on scrolling.** 2026-11-13, from your report that the search bar and the tabs cut off the foot of the screens other than Today. Log's list never had room for the composer (Plan and Progress did), so a past day's foot, How complete is this day?, stayed under the field; that's fixed. The tab bar also shrank to a button when Log scrolled down while the composer stayed where it was, leaving an empty band under the field, so it no longer shrinks (`.never`, where it was `.onScrollDown`). Mine to check: keeping the bar whole rather than moving the composer down beside the shrunk bar, as Apple's bottom accessory does, which our composer can't be, since it grows with its matches, tiles and rows. Stadig Lift's bar still shrinks: it has no composer. The older entries on the selection bar and the log bar with the tab bar minimised are about a state Stadig Macro no longer reaches.
 
 - **The App Store listings.** 2026-11-13, you asked for both apps' listings set up in App Store Connect. What went in is in `Store/listing.md`. The calls, yours to check:

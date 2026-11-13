@@ -1,0 +1,112 @@
+---
+import Base from "../layouts/Base.astro";
+import Rule from "../components/Rule.astro";
+import { brand } from "../content/site";
+import { choices, limits, trap } from "../../api/feedback";
+// A plain form posting to api/feedback.ts, which files it as an issue in a private repository.
+// The choices and limits come from the function, so the page offers exactly what it accepts.
+---
+<Base
+  title="Support"
+  description={`Report a problem with Stadig Lift or Stadig Macro, suggest an idea or ask a question. It goes straight to ${brand.publisher}, who makes them.`}
+>
+  <section class="wrap page" aria-labelledby="support-title">
+    <Rule label="Support" />
+    <div class="intro">
+      <h1 class="h1" id="support-title">Tell us what happened.</h1>
+      <p class="lede">
+        Something broken, an idea, or a question the <a class="inline-link" href="/faq">FAQ</a> doesn't answer. It goes straight to {brand.publisher},
+        who makes the apps. Leave an email if you'd like a reply.
+      </p>
+    </div>
+
+    <form class="form" method="post" action="/api/feedback">
+      <fieldset class="frow">
+        <legend class="flab"><span class="h4">Which app</span></legend>
+        <div class="choices">
+          {
+            choices.app.map((c) => (
+              <label class:list={["choice", c.value === "macro" && "macro"]}>
+                <input type="radio" name="app" value={c.value} required />
+                <span>{c.label}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <fieldset class="frow">
+        <legend class="flab"><span class="h4">What kind</span></legend>
+        <div class="choices">
+          {
+            choices.kind.map((c, i) => (
+              <label class="choice">
+                <input type="radio" name="kind" value={c.value} required checked={i === 0} />
+                <span>{c.label}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <div class="frow">
+        <div class="flab">
+          <span class="h4">Device and version</span>
+          <p class="small">Both optional. For a problem, they help.</p>
+        </div>
+        <div class="pair">
+          <label class="sub">
+            <span class="eye">Device</span>
+            <select class="input" name="device">
+              <option value="">Choose one</option>
+              {choices.device.map((c) => <option value={c.value}>{c.label}</option>)}
+            </select>
+          </label>
+          <label class="sub">
+            <span class="eye">App version</span>
+            <input class="input" name="version" maxlength={limits.version} pattern="[\w .\(\)\-]*" placeholder="e.g. 1.0" autocomplete="off" />
+          </label>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="flab">
+          <label class="h4" for="summary">In one line</label>
+          <p class="small" id="summary-hint">It becomes the report's title.</p>
+        </div>
+        <input class="input" id="summary" name="summary" required maxlength={limits.summary} aria-describedby="summary-hint" autocomplete="off" />
+      </div>
+
+      <div class="frow">
+        <div class="flab">
+          <label class="h4" for="details">The details</label>
+          <p class="small" id="details-hint">For a problem: what you did, what you expected, and what happened instead.</p>
+        </div>
+        <textarea class="input" id="details" name="details" required maxlength={limits.details} rows="8" aria-describedby="details-hint"></textarea>
+      </div>
+
+      <div class="frow">
+        <div class="flab">
+          <label class="h4" for="email">Your email</label>
+          <p class="small" id="email-hint">Optional. Only if you'd like a reply; it's used for nothing else.</p>
+        </div>
+        <input class="input" id="email" name="email" type="email" maxlength={limits.email} autocomplete="email" aria-describedby="email-hint" />
+      </div>
+
+      <div class="trap" aria-hidden="true">
+        <label>Leave this empty <input name={trap} tabindex="-1" autocomplete="off" /></label>
+      </div>
+
+      <div class="frow">
+        <span></span>
+        <div class="stack">
+          <div class="cta"><button class="btn" type="submit">Send</button></div>
+          <p class="fine">
+            It's filed in a private tracker on GitHub that only {brand.publisher} reads (<a class="inline-link" href="/privacy">privacy</a>). Rather
+            write? <a class="inline-link" href={`mailto:${brand.email}`}>{brand.email}</a>.
+          </p>
+        </div>
+      </div>
+    </form>
+  </section>
+</Base>

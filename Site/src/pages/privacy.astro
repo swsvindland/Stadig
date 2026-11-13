@@ -28,7 +28,7 @@ const apps = [
 ---
 <Base title="Privacy" description={`How ${brand.name}'s apps and website handle your data: no accounts, no analytics, no third-party SDKs, everything on your devices and in your iCloud.`}>
   <section class="wrap page" aria-labelledby="privacy-title">
-    <Rule label="Privacy" aside="Last updated 12 November 2026" />
+    <Rule label="Privacy" aside="Last updated 13 November 2026" />
     <div class="intro">
       <h1 class="h1" id="privacy-title">Your data stays yours.</h1>
       <p class="lede">The short version: there is no account, no analytics, and no third-party code in either app. Your data lives on your devices and in your private iCloud database. We never see it.</p>
@@ -46,6 +46,14 @@ const apps = [
     <h2 class="sr" id="privacy-site">This website</h2>
     <div class="terms" style="margin-top:0">
       <div><h3 class="h3">Static files</h3><p class="lede">No cookies, no analytics scripts, no trackers. The hosting provider may keep standard server logs for security.</p></div>
+      <div>
+        <h3 class="h3">The support form</h3>
+        <p class="lede">
+          The one thing here that sends anything. What you write on the <a href="/support">support page</a>, and your email if you give one, is filed
+          as an issue in a private GitHub repository that only {brand.publisher} reads, so GitHub stores it. Your email is used only to reply to you.
+          Ask and the issue is deleted.
+        </p>
+      </div>
       <div><h3 class="h3">Contact</h3><p class="lede">Questions about your data: <a href={`mailto:${brand.email}`}>{brand.email}</a>.</p></div>
     </div>
   </section>

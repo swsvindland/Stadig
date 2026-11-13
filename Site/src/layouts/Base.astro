@@ -13,8 +13,10 @@ interface Props {
   titleSuffix?: boolean;
   /** The app whose accent the page wears: "lift" (the default) or "macro". */
   accent?: "lift" | "macro";
+  /** Kept out of search: pages only reached by doing something (the support form's replies). */
+  noindex?: boolean;
 }
-const { title, description, jsonLd = [], ogImage = "/og.png", titleSuffix = true, accent = "lift" } = Astro.props;
+const { title, description, jsonLd = [], ogImage = "/og.png", titleSuffix = true, accent = "lift", noindex = false } = Astro.props;
 // With build.format "file" the path ends in .html, which cleanUrls redirects away from.
 const canonical = new URL(cleanPath(Astro.url.pathname), Astro.site);
 const fullTitle = titleSuffix ? `${title} · ${brand.name}` : title;
@@ -55,7 +57,7 @@ const ld = [organization, website, ...jsonLd];
     <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
     <meta name="theme-color" content="#0d0e10" />
     <meta name="color-scheme" content="dark" />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="robots" content={noindex ? "noindex" : "index, follow, max-image-preview:large, max-snippet:-1"} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={brand.name} />
     <meta property="og:title" content={fullTitle} />
