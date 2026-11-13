@@ -399,7 +399,13 @@ struct CircleIcon: View {
             .font(.system(size: 17, weight: .medium))
             .foregroundStyle(Ink.text)
             .frame(width: 44, height: 44)
-            .background(Ink.surface, in: .circle)
+            // The card colour is a black disc on Vision Pro's glass: there, the system's material, as
+            // a card has.
+            #if os(visionOS)
+        .background(.regularMaterial, in: .circle)
+            #else
+        .background(Ink.surface, in: .circle)
+            #endif
             .contentShape(.circle)
     }
 }
@@ -537,7 +543,7 @@ struct InkSegmented<Value: Hashable>: View {
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .background {
                             if on {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Ink.surface)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(ControlFill.chosen)
                                     .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
                             }
                         }
@@ -548,8 +554,29 @@ struct InkSegmented<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(Ink.raised, in: .rect(cornerRadius: 13, style: .continuous))
+        .background(ControlFill.track, in: .rect(cornerRadius: 13, style: .continuous))
         .animation(.snappy(duration: 0.2), value: selection)
+    }
+}
+
+/// What a segmented control and a chip are drawn on: the raised grey, the chosen one lifted onto the
+/// card colour. On Vision Pro's glass those greys are black slabs, so there they're the system's
+/// material and a brighter wash of white, as a round button's there.
+enum ControlFill {
+    static var track: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(.regularMaterial)
+        #else
+        AnyShapeStyle(Ink.raised)
+        #endif
+    }
+
+    static var chosen: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(Color.white.opacity(0.3))
+        #else
+        AnyShapeStyle(Ink.surface)
+        #endif
     }
 }
 
@@ -931,7 +958,7 @@ struct ChoiceChip: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(isOn ? Color.accentColor : Ink.raised, in: .rect(cornerRadius: 12, style: .continuous))
+                .background(isOn ? AnyShapeStyle(Color.accentColor) : ControlFill.track, in: .rect(cornerRadius: 12, style: .continuous))
                 .foregroundStyle(isOn ? Ink.onAccent : Ink.text)
                 .contentShape(.rect)
         }
