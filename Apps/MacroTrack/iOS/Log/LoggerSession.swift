@@ -69,7 +69,9 @@ final class LoggerSession {
         guard !Task.isCancelled else { return }
         let catalog = model.catalog
         let personal = model.personal
-        let found = await Task.detached(priority: .userInitiated) { catalog.search(text, personal: personal, limit: 60) }.value
+        // "chick 200" finds chicken: the amount is for logging it, not for finding it.
+        let words = typedPart?.query ?? text
+        let found = await Task.detached(priority: .userInitiated) { catalog.search(words, personal: personal, limit: 60) }.value
         guard !Task.isCancelled else { return }
         results = model.corrected(found)
         searching = false
@@ -134,8 +136,26 @@ final class LoggerSession {
         guard finding == nil, !typedQuery.text.isEmpty else { return nil }
         if let typed = quickAddPart { return Nutrients(kcal: typed.kcal, protein: 0, carbs: 0, fat: 0) }
         guard let food = results.first?.food else { return nil }
-        let suggestion = Self.portion(of: food, model)
+        let suggestion = portion(of: food, model)
         return FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
+    }
+
+    /// What's typed, read as the composer reads it, when it names an amount: "chick 200", "2 eggs",
+    /// "oats 1 cup". One part only, as for a quick add, and not while finding a food for a review,
+    /// whose amount is the review's.
+    var typedPart: AddFoodPart? {
+        guard finding == nil else { return nil }
+        let parts = AddFoodText.parse(query)
+        guard parts.count == 1, parts[0].kind == .food, parts[0].amount != nil, !parts[0].words.isEmpty else { return nil }
+        return parts[0]
+    }
+
+    /// A found food's portion as + and Return log it: the amount typed, as the composer reads it for
+    /// that food, else the suggested one.
+    func portion(of food: Food, _ model: AppModel) -> (unit: PortionUnit, count: Double) {
+        let usual = Self.portion(of: food, model)
+        guard let amount = typedPart?.amount else { return usual }
+        return TodayComposer.portion(amount, food: food, usual: usual)
     }
 
     /// A food's suggested portion: the person's last one, else its natural one.
@@ -144,14 +164,14 @@ final class LoggerSession {
         return FoodUnits.suggested(for: food, lastUnitID: p?.lastUnitID, lastCount: p?.lastCount, lastAmount: p?.lastAmount)
     }
 
-    /// A food at its suggested (or last-used) portion, logged now, and the search cleared for the
-    /// next one. While the AI's review is finding a food, this is the one.
+    /// A food at the amount typed, else its suggested (or last-used) portion, logged now, and the
+    /// search cleared for the next one. While the AI's review is finding a food, this is the one.
     func add(_ food: Food, _ model: AppModel) {
         guard finding == nil else {
             use(food)
             return
         }
-        let suggestion = Self.portion(of: food, model)
+        let suggestion = portion(of: food, model)
         model.log([model.entry(for: food, count: suggestion.count, unit: suggestion.unit, source: .search)])
         query = ""
         focusSearch()

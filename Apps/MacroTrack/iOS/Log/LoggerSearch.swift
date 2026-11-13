@@ -150,7 +150,9 @@ struct SearchLogView: View {
         case .meal(let meal):
             mealRow(meal)
         case .food(let food, let best):
-            FoodRow(food: food, personal: model.personalFood(food.id), best: best, add: { quickAdd(food) }, open: { open(food) })
+            FoodRow(
+                food: food, personal: model.personalFood(food.id), portion: session.portion(of: food, model), best: best,
+                add: { quickAdd(food) }, open: { open(food) })
         case .again(let item):
             RecentRow(item: item, add: { session.addAgain(item, model: model) }, open: { open(item) })
         case .favorite(let p):
@@ -310,13 +312,17 @@ struct AddDisc: View {
 struct FoodRow: View {
     let food: Food
     let personal: PersonalFood?
+    /// The amount + logs, where it isn't the suggested one: what's typed with the words.
+    var portion: (unit: PortionUnit, count: Double)? = nil
     var best = false
     let add: () -> Void
     let open: () -> Void
 
     var body: some View {
-        let suggestion = FoodUnits.suggested(
-            for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
+        let suggestion =
+            portion
+            ?? FoodUnits.suggested(
+                for: food, lastUnitID: personal?.lastUnitID, lastCount: personal?.lastCount, lastAmount: personal?.lastAmount)
         let n = FoodUnits.nutrients(food, count: suggestion.count, unit: suggestion.unit)
         let amount = FoodUnits.label(count: suggestion.count, unit: suggestion.unit)
         let spoken = FoodLabel.spoken(food.name)

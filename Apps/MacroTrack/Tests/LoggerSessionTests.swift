@@ -479,6 +479,44 @@ struct LoggerSessionTests {
         #expect(session.adding(model)?.kcal == 200)
     }
 
+    /// An amount typed with the words is read as the composer reads it: "banana raw 150" finds
+    /// bananas, and + or Return logs 150 g of them, which the header's "→" says first.
+    @Test func anAmountTypedIsTheAmountLogged() async throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        session.query = "banana raw 150"
+        await session.search(model)
+
+        let food = try #require(session.results.first?.food)
+        #expect(food.name.contains("Bananas"), "the number isn't searched for")
+        let grams = try model.requireUnit(food, "g")
+        #expect(session.adding(model) == FoodUnits.nutrients(food, count: 150, unit: grams))
+
+        session.pressedReturn(model)
+
+        let entry = try #require(model.entries(on: model.today).first)
+        #expect(entry.nutrients == FoodUnits.nutrients(food, count: 150, unit: grams))
+        #expect(session.query.isEmpty)
+    }
+
+    /// Without an amount, and finding a food for a review, the amount is the usual one.
+    @Test func noAmountTypedIsTheUsualPortion() throws {
+        let model = TestEnvironment().model()
+        model.onboard()
+        let session = LoggerSession(mode: .search)
+        let banana = try model.requireFood(Foods.bananaID)
+        session.query = "banana"
+        #expect(session.typedPart == nil)
+        #expect(session.portion(of: banana, model) == LoggerSession.portion(of: banana, model))
+        session.query = "banana 150, rice"
+        #expect(session.typedPart == nil, "one food at a time")
+        session.review = try review(model)
+        let unmatched = try #require(session.review?.items[1])
+        session.find("banana 150", for: unmatched.id)
+        #expect(session.typedPart == nil, "the review's amount is its own")
+    }
+
     /// Holds a read open until the test lets it go, whether or not it's been stopped: the model may
     /// be slow to notice.
     final class Gate {
