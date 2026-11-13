@@ -926,7 +926,9 @@ struct ExerciseAboutSheet: View {
             PushedExerciseDetail(exerciseID: exerciseID)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
+                        // In the text's colour, as the exercise page's back button is, not the accent.
                         Button(role: .close) { dismiss() }
+                            .tint(Ink.text)
                             .accessibilityIdentifier("library.close")
                     }
                 }
