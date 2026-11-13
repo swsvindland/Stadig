@@ -27,6 +27,8 @@ struct LibraryView: View {
     @State private var filters = LibraryFilters()
     @State private var selection: Exercise.ID?
     @State private var results: [Exercise] = []
+    /// The search field has the keyboard: ⌘F gives it it.
+    @FocusState private var searching: Bool
 
     /// What the list depends on: a change to any of it filters again.
     private struct Key: Hashable {
@@ -66,6 +68,11 @@ struct LibraryView: View {
             selection = focus
             model.libraryFocus = nil
         }
+        .onChange(of: model.searchRequested, initial: true) { _, requested in
+            guard requested, model.tab == .library else { return }
+            searching = true
+            model.searchRequested = false
+        }
     }
 
     @ViewBuilder
@@ -91,6 +98,7 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 10) {
                 PageHeader(eyebrow: "\(results.count) of \(model.catalog.all.count) exercises", title: "Library")
                 InkSearchField(text: $query, prompt: "Exercises, muscles, equipment", identifier: "library.search")
+                    .focused($searching)
                 chips
             }
             .padding(.horizontal, 16)

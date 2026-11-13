@@ -35,6 +35,8 @@ struct HistoryTable: View {
     @State private var tableWidth: CGFloat = 0
     /// Rows waiting on "Delete?": a key press or several at once is easy to make by accident.
     @State private var confirming: [HistoryRow] = []
+    /// The search field has the keyboard: ⌘F gives it it.
+    @FocusState private var searching: Bool
 
     private struct Key: Equatable {
         var rows: [HistoryRow]
@@ -47,6 +49,7 @@ struct HistoryTable: View {
             VStack(alignment: .leading, spacing: 10) {
                 PageHeader(eyebrow: "\(model.sessions.count) sessions · \(model.activities.count) activities", title: "History")
                 InkSearchField(text: $query, prompt: "Sessions, exercises, activities", identifier: "history.search")
+                    .focused($searching)
                     .frame(maxWidth: 420)
             }
             .padding(.horizontal, 16)
@@ -89,6 +92,11 @@ struct HistoryTable: View {
             .accessibilityIdentifier("history.confirmDelete")
         } message: {
             Text("Sessions leave Apple Health too. This can't be undone.")
+        }
+        .onChange(of: model.searchRequested, initial: true) { _, requested in
+            guard requested, model.tab == .history else { return }
+            searching = true
+            model.searchRequested = false
         }
         .task(id: Key(rows: model.historyRows, sortOrder: sortOrder, query: query)) {
             rows = model.historyRows.filter { query.isEmpty || $0.matches(query) }.sorted(using: sortOrder)

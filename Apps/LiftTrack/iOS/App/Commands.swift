@@ -71,6 +71,13 @@ struct LiftCommands: Commands {
                 .disabled(!canPresent)
             Button("Show Library") { go(.library) }
                 .disabled(!canPresent)
+            Button(model?.tab == .history ? "Search History" : "Search Library") {
+                guard let model, canPresent else { return }
+                showMain()
+                model.search()
+            }
+            .keyboardShortcut("f")
+            .disabled(!canPresent)
         }
         CommandMenu("Go") {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in

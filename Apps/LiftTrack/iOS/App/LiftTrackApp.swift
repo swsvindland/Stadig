@@ -25,6 +25,8 @@ struct LiftTrackApp: App {
         if let tab = launch.value(after: "-tab") { model.tab = AppTab(rawValue: tab) ?? .today }
         // -exercise <id> opens Library on that exercise.
         if let exercise = launch.value(after: "-exercise") { model.show(inLibrary: exercise) }
+        // -search puts the keyboard in Library's search (History's, with -tab history), as ⌘F does.
+        if launch.has("-search") { model.search() }
         #if !os(macOS)
         // -openSettings opens Settings (on the Mac, its own window: AppRoot below).
         if launch.has("-openSettings") { model.showSettings = true }

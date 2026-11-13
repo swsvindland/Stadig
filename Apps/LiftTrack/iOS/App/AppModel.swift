@@ -151,6 +151,8 @@ final class AppModel {
     var sessionRequest: SessionRequest?
     /// The exercise Library shows next, when another screen sent the person there.
     var libraryFocus: String?
+    /// ⌘F: the search of the destination showing (History's, or else Library's) takes the keyboard.
+    var searchRequested = false
     /// Sessions and outside activities as the History table shows them, newest first: rebuilt when
     /// either changes, not on every redraw.
     private(set) var historyRows: [HistoryRow] = []
@@ -768,6 +770,13 @@ final class AppModel {
     func show(inLibrary exerciseID: String) {
         libraryFocus = exerciseID
         tab = .library
+    }
+
+    /// ⌘F: History's search where History is showing, Library's from anywhere else, as the system's
+    /// search fields had it before the pages drew their own.
+    func search() {
+        if tab != .history { tab = .library }
+        searchRequested = true
     }
 
     /// The person's own history with an exercise.
