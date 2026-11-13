@@ -54,6 +54,12 @@ struct OnboardingView: View {
             } else {
                 profile.units = .regional
             }
+            #if DEBUG
+            // `-onboardingStep goals` opens on that step, to check it without tapping through.
+            if let name = LaunchOptions.current.value(after: "-onboardingStep"), let shown = Step.allCases.first(where: { "\($0)" == name }) {
+                step = shown
+            }
+            #endif
         }
     }
 
@@ -81,6 +87,7 @@ struct OnboardingView: View {
     private var topBar: some View {
         // By order, so a step that dropped out of the list (Stadig Macro took the phase) still has a place.
         let position = steps.lastIndex { $0.rawValue <= step.rawValue } ?? 0
+        let count = steps.count - 1
         return HStack(spacing: 14) {
             Button {
                 move(-1)
@@ -90,19 +97,50 @@ struct OnboardingView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Back")
             .accessibilityIdentifier("onboarding.back")
-            Text("\(position) of \(steps.count - 1)")
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(Ink.text2)
-                .accessibilityLabel("Step \(position) of \(steps.count - 1)")
-            Spacer()
+            Ruler.thin(Double(position) / Double(max(1, count)))
+                .accessibilityHidden(true)
+            Text("\(position) of \(count)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(Ink.text3)
+                .frame(minWidth: 44, alignment: .trailing)
+                .accessibilityLabel("Step \(position) of \(count)")
         }
         .padding(.horizontal)
         .padding(.top, 8)
         .readableWidth(620)
     }
 
-    /// The one way on, full width at the foot, on the ground.
+    /// The one way on, full width at the foot, on the ground, under what the answers add up to.
     private var footer: some View {
+        VStack(spacing: 12) {
+            if step == .goals, let summary = goalsSummary {
+                summary.font(.subheadline).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboarding.goalsSummary")
+            }
+            continueButton
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .readableWidth(620)
+    }
+
+    /// "Stronger and leaner. Your plan will balance both."
+    private var goalsSummary: Text? {
+        let picked = OutcomeGoal.cardOrder.filter(profile.goals.contains).map(\.label)
+        guard let first = picked.first else { return nil }
+        let rest = picked.dropFirst().map { $0.lowercased() }
+        let names = rest.isEmpty ? first : "\(([first] + rest.dropLast()).joined(separator: ", ")) and \(rest.last ?? "")"
+        let lead = Text("\(names).").foregroundStyle(Ink.text).fontWeight(.semibold)
+        let plan = Text(
+            picked.count == 1
+                ? " Your plan is built around it." : (picked.count == 2 ? " Your plan will balance both." : " Your plan will balance them.")
+        )
+        .foregroundStyle(Ink.text2)
+        return Text("\(lead)\(plan)")
+    }
+
+    private var continueButton: some View {
         Button {
             if step == .ready { finish() } else { move(1) }
         } label: {
@@ -113,10 +151,6 @@ struct OnboardingView: View {
         .disabled(!canContinue)
         // One identifier for every step, so a test can walk through them.
         .accessibilityIdentifier("onboarding.next")
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
-        .readableWidth(620)
     }
 
     private var canContinue: Bool {
@@ -142,8 +176,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.tint)
                 .padding(.top, 40)
                 .accessibilityHidden(true)
-            Text("Stadig Lift").font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
-                .accessibilityAddTraits(.isHeader)
+            PageTitle("Stadig Lift", size: 36)
             Text("Every session prescribed, every set adjusted to how it went, and a plan that tells you what to do next.")
                 .font(.title3).foregroundStyle(Ink.text)
             VStack(alignment: .leading, spacing: 14) {
@@ -165,8 +198,8 @@ struct OnboardingView: View {
 
     private var goals: some View {
         VStack(alignment: .leading, spacing: 16) {
-            header("What are you after?", "Outcomes only. Stadig Lift picks the program, and Stadig Macro (if you use it) picks the diet phase.")
-            let goals = OutcomeGoal.allCases
+            header("What are you training for?", "Pick any that matter. You can change them later.")
+            let goals = OutcomeGoal.cardOrder
             if dynamicType.isAccessibilitySize {
                 ForEach(goals) { goal in goalCard(goal, stacked: false) }
             } else {
@@ -185,7 +218,7 @@ struct OnboardingView: View {
     private func goalCard(_ goal: OutcomeGoal, stacked: Bool) -> some View {
         let selected = profile.goals.contains(goal)
         return ChoiceCard(
-            title: goal.label, detail: goal.detail, symbol: goal.symbol, selected: selected, stacked: stacked,
+            title: goal.label, detail: stacked ? goal.shortDetail : goal.detail, symbol: goal.cardSymbol, selected: selected, stacked: stacked,
             identifier: "onboarding.goal\(goal.rawValue.identifierSuffix)"
         ) {
             if selected { profile.goals.removeAll { $0 == goal } } else { profile.goals.append(goal) }
@@ -404,13 +437,12 @@ struct OnboardingView: View {
 
     private func header(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.largeTitle.bold()).tracking(-1).foregroundStyle(Ink.text)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            Text(detail).font(.subheadline).foregroundStyle(Ink.text2)
+            PageTitle(title, size: 36)
+            Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.horizontal, 4)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
     }
 
     private func finish() {
@@ -462,15 +494,15 @@ struct ChoiceCard: View {
                     }
                 }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(stacked ? 14 : 16)
+            .frame(maxWidth: .infinity, minHeight: stacked ? 138 : nil, alignment: .leading)
             .background(
-                selected ? AnyShapeStyle(Color.accentColor.opacity(0.14)) : AnyShapeStyle(.cardBackground),
-                in: .rect(cornerRadius: 20, style: .continuous)
+                selected ? AnyShapeStyle(Color.accentColor.opacity(0.16)) : AnyShapeStyle(.cardBackground),
+                in: .rect(cornerRadius: 22, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2)
             }
             .contentShape(.rect)
         }
@@ -481,21 +513,33 @@ struct ChoiceCard: View {
     }
 
     private func icon(_ symbol: String) -> some View {
-        Image(systemName: symbol).font(.title2).foregroundStyle(selected ? Color.accentColor : Ink.text2).accessibilityHidden(true)
+        Image(systemName: symbol).font(.title3).foregroundStyle(selected ? Color.accentColor : Ink.text2).frame(height: 26)
+            .accessibilityHidden(true)
     }
 
     private var words: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.headline).foregroundStyle(Ink.text)
-            if let detail { Text(detail).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true) }
+            Text(title).font(stacked ? .system(size: 18, weight: .bold) : .headline).tracking(stacked ? -0.3 : 0).foregroundStyle(Ink.text)
+                .fixedSize(horizontal: false, vertical: true)
+            if let detail {
+                Text(detail).font(stacked ? .caption : .subheadline).foregroundStyle(selected || !stacked ? Ink.text2 : Ink.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
+    /// The design's check: a filled accent circle with a tick when picked, an empty ring when not.
     private var check: some View {
-        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-            .font(.title2)
-            .foregroundStyle(selected ? Color.accentColor : Ink.text3)
-            .accessibilityHidden(true)
+        ZStack {
+            if selected {
+                Circle().fill(Color.accentColor)
+                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(Ink.onAccent)
+            } else {
+                Circle().strokeBorder(Ink.track, lineWidth: 2)
+            }
+        }
+        .frame(width: 26, height: 26)
+        .accessibilityHidden(true)
     }
 }
 
@@ -627,6 +671,35 @@ struct WeightField: View {
             .multilineTextAlignment(.trailing)
             .frame(width: 80)
             Text(unit.symbol).foregroundStyle(.secondary)
+        }
+    }
+}
+
+extension OutcomeGoal {
+    /// The order the design lays the goals out in, two by two: strength and fitness first.
+    static let cardOrder: [OutcomeGoal] = [.stronger, .fitter, .leaner, .biggerAndStronger, .healthier, .moreMobile]
+
+    /// The goal in a few words, for its card in the grid.
+    var shortDetail: String {
+        switch self {
+        case .stronger: "Heavier lifts, steadily"
+        case .fitter: "Heart and lungs that last"
+        case .leaner: "Lose fat, keep muscle"
+        case .biggerAndStronger: "Add muscle and size"
+        case .healthier: "Feel good, age well"
+        case .moreMobile: "Move freely, without pain"
+        }
+    }
+
+    /// The goal's symbol on its card, as the design draws them.
+    var cardSymbol: String {
+        switch self {
+        case .stronger: "dumbbell"
+        case .fitter: "waveform.path.ecg"
+        case .leaner: "arrow.down.right.and.arrow.up.left"
+        case .biggerAndStronger: "cellularbars"
+        case .healthier: "heart"
+        case .moreMobile: "figure.flexibility"
         }
     }
 }

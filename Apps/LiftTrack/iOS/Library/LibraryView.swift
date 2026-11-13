@@ -250,7 +250,9 @@ struct ExerciseDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
-                status
+                // Set aside or an injury's say matter before anything else; where it is in the block
+                // is a quiet line at the foot.
+                if isAside || !injuries.isEmpty { status }
                 if sizeClass.isWide {
                     HStack(alignment: .top, spacing: 16) {
                         VStack(spacing: 12) {
@@ -259,6 +261,7 @@ struct ExerciseDetailView: View {
                         }
                         VStack(spacing: 12) {
                             substitutes
+                            if !isAside && injuries.isEmpty { status }
                             ExerciseFacts(exercise: exercise, showsCueAndMuscles: false).card()
                         }
                     }
@@ -266,6 +269,7 @@ struct ExerciseDetailView: View {
                     estimate
                     bestSets
                     substitutes
+                    if !isAside && injuries.isEmpty { status }
                     ExerciseFacts(exercise: exercise, showsCueAndMuscles: false).card()
                 }
             }
@@ -279,11 +283,14 @@ struct ExerciseDetailView: View {
         .navigationTitle(exercise.name)
         .inlineTitle()
         #if os(iOS)
-        // The page sets the name large under its eyebrow; the bar keeps only back and Set aside.
+        // The page sets the name large under its eyebrow; the bar keeps only back and Set aside, and
+        // the tab bar goes, as on the design's detail screens.
         .toolbar(removing: sizeClass.isWide ? nil : .title)
+        .toolbarVisibility(sizeClass.isWide ? .automatic : .hidden, for: .tabBar)
         #endif
         .toolbar {
-            ToolbarItem(placement: .primaryAction) { asideButton }
+            // A quiet action in the text's colour, as the design has it, not the accent.
+            ToolbarItem(placement: .primaryAction) { asideButton.tint(Ink.text) }
         }
         .task(id: key) { shown = ExerciseDetailContent(exercise: exercise, model: model) }
         .accessibilityIdentifier("library.detail")
@@ -307,10 +314,6 @@ struct ExerciseDetailView: View {
                 .accessibilityAddTraits(.isHeader)
             if !exercise.cue.isEmpty {
                 Text(exercise.cue).font(.subheadline).foregroundStyle(Ink.text2).fixedSize(horizontal: false, vertical: true)
-            }
-            if !exercise.aliases.isEmpty {
-                Text("Also called \(exercise.aliases.joined(separator: ", "))").font(.caption).foregroundStyle(Ink.text3)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             if !exercise.muscles.isEmpty {
                 FlowLayout(spacing: 6) {
@@ -351,14 +354,21 @@ struct ExerciseDetailView: View {
         }
     }
 
+    private var isAside: Bool { model.settings.avoid.contains(exercise.id) }
+
+    /// The injuries that have a say on it.
+    private var injuries: [(LifeModePeriod, Injury)] {
+        model.activeInjuries.compactMap { period -> (LifeModePeriod, Injury)? in
+            if case .injury(let injury) = period.kind, injury.affects(exercise) || injury.removed.contains(exercise.id) { return (period, injury) }
+            return nil
+        }
+    }
+
     /// Set aside, ruled out by an injury, or in this block, with what to do about it.
     @ViewBuilder
     private var status: some View {
         let days = model.currentMesocycle?.days.filter { $0.strengthSlots.contains { $0.exerciseID == exercise.id } } ?? []
-        let injuries = model.activeInjuries.compactMap { period -> (LifeModePeriod, Injury)? in
-            if case .injury(let injury) = period.kind, injury.affects(exercise) || injury.removed.contains(exercise.id) { return (period, injury) }
-            return nil
-        }
+        let injuries = self.injuries
         if !days.isEmpty || model.settings.avoid.contains(exercise.id) || !injuries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 if !days.isEmpty {
@@ -484,25 +494,27 @@ struct ExerciseDetailView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Best sets").eyebrow()
                     Spacer()
-                    Text(sessionsLine(record)).font(.caption).foregroundStyle(Ink.text2)
+                    Text(sessionsLine(record)).font(.caption).foregroundStyle(Ink.text3)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 2)
                 ForEach(Array(record.bestSets.enumerated()), id: \.element.set.id) { index, best in
                     if index > 0 { Rectangle().fill(Ink.hairline).frame(height: 1) }
                     HStack(spacing: 8) {
-                        Text(Format.logged(best.set, exercise: exercise, unit: unit))
-                            .font(.system(size: 20, weight: .bold)).monospacedDigit().tracking(-0.4)
-                            .foregroundStyle(Ink.text)
-                        RatingMark(rating: best.set.rating)
+                        SetValue(
+                            load: best.set.loadKg, reps: best.set.reps, seconds: best.set.seconds, plus: false, exercise: exercise, unit: unit,
+                            quiet: false)
                         Spacer()
-                        Text(Format.day(Day(best.set.date), style: .dateTime.month(.abbreviated).day().year())).font(.caption)
-                            .foregroundStyle(Ink.text2)
+                        Text(Format.day(Day(best.set.date), style: .dateTime.day().month(.abbreviated))).font(.caption)
+                            .foregroundStyle(Ink.text3)
                     }
-                    .frame(minHeight: 40)
+                    .frame(minHeight: 36)
                     .accessibilityElement(children: .combine)
                 }
             }
-            .card(padding: 16)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.cardBackground, in: .rect(cornerRadius: 18, style: .continuous))
         }
     }
 

@@ -185,11 +185,7 @@ struct SessionScreen: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        if live.progress == 0 {
-                            ForEach(Array(live.plan.notes.enumerated()), id: \.offset) { _, note in
-                                Text(note).font(.subheadline).foregroundStyle(Ink.text2).padding(.horizontal, 4)
-                            }
-                        }
+                        // The plan's notes for the day are with the whole session, under the exercise.
                         if let index, live.items.indices.contains(index) {
                             FocusedExercise(
                                 live: live, index: index, swap: { swapping = SwapTarget(index: $0) },
@@ -684,6 +680,7 @@ struct BottomPanel: View {
 struct RestPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.sessionScale) private var scale
+    @Environment(\.showExercise) private var showExercise
     @Environment(\.dynamicTypeSize) private var dynamicType
     let rest: RestState
     let message: String?
@@ -691,20 +688,22 @@ struct RestPanel: View {
     var body: some View {
         let total = max(1, rest.endsAt.timeIntervalSince(rest.started))
         let logged = model.justLogged(after: rest)
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(logged.map { "Rest · \($0.name) logged" } ?? "Rest").eyebrow()
                     Spacer(minLength: 8)
                     if let logged, logged.undoable { UndoButton(logged: logged, identifier: "rest.undo") }
                 }
-                if let message {
+                // The phone says it under the set it changed, in the list above the dock.
+                if let message, scale.isLarge {
                     Text(message).font(.footnote).foregroundStyle(Ink.text2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .padding(.horizontal, 4)
             HStack(alignment: .lastTextBaseline) {
                 Text(timerInterval: Date()...max(Date(), rest.endsAt), countsDown: true)
-                    .numeral(scale.isLarge ? 120 : 84, weight: .heavy)
+                    .numeral(scale.isLarge ? 120 : 116, weight: .heavy)
                     .foregroundStyle(Ink.text)
                     .accessibilityLabel("Rest left")
                 Spacer(minLength: 8)
@@ -760,18 +759,34 @@ struct RestPanel: View {
             VStack(spacing: 0) {
                 if let filler = rest.filler {
                     Rectangle().fill(Ink.hairline).frame(height: 1)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Use the rest").font(.caption).foregroundStyle(Ink.text2)
-                        Text(model.catalog.resolve(filler).name).font(.body.weight(.semibold)).foregroundStyle(Ink.text)
+                    // Opens the drill's own page: how to do it.
+                    Button {
+                        showExercise?(filler)
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Use the rest").font(.caption).foregroundStyle(Ink.text3)
+                                Text(model.catalog.resolve(filler).name).font(.callout.weight(.semibold)).foregroundStyle(Ink.text)
+                            }
+                            Spacer(minLength: 4)
+                            if showExercise != nil {
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Ink.text3)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                        .contentShape(.rect)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                    .buttonStyle(.plain)
+                    .disabled(showExercise == nil)
                     .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("rest.filler")
                 }
                 if let next = nextSet {
                     Rectangle().fill(Ink.hairline).frame(height: 1)
-                    next.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                    next.frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
                 }
             }
+            .padding(.horizontal, 4)
         }
         .sessionDock()
     }
@@ -788,12 +803,12 @@ struct RestPanel: View {
         let layout = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
         return AnyView(
             layout {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label).font(.caption).foregroundStyle(Ink.text2).lineLimit(large ? 2 : 1)
-                    Text(next.target).font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label).font(.caption).foregroundStyle(Ink.text3).lineLimit(large ? 2 : 1)
+                    Text(next.target).font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(Ink.text)
                 }
                 if !large { Spacer() }
-                if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text2).lineLimit(1) }
+                if let plates { Text(plates).font(.caption.monospacedDigit()).foregroundStyle(Ink.text3).lineLimit(1) }
             }
             .accessibilityElement(children: .combine))
     }

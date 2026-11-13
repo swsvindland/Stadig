@@ -66,6 +66,7 @@ struct ExerciseFacts: View {
                     row("Each set", Format.duration(seconds))
                 }
                 if exercise.unilateral { row("Sides", "One at a time") }
+                if !exercise.aliases.isEmpty { row("Also called", exercise.aliases.joined(separator: ", ")) }
                 if !exercise.mobilityTargets.isEmpty { row("Also helps", exercise.mobilityTargets.map(\.label).joined(separator: ", ")) }
             }
             .font(.subheadline)

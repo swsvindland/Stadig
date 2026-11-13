@@ -29,7 +29,7 @@ enum AppTab: String, Hashable, CaseIterable {
 
     var symbol: String {
         switch self {
-        case .today: "figure.strengthtraining.traditional"
+        case .today: "dumbbell"
         case .plan: "calendar"
         case .program: "list.bullet.rectangle"
         case .library: "books.vertical"
@@ -142,6 +142,8 @@ final class AppModel {
     @ObservationIgnored private var restTimerEnds: Date?
     var showSession = false
     var finished: SessionRecord?
+    /// What the finished session's summary sets it against, taken as it ended.
+    var finishedBaseline: SummaryBaseline?
     var tab: AppTab = .today
     var showSettings = false
     var sheet: AppSheet?
@@ -1153,6 +1155,7 @@ final class AppModel {
         showSession = false
         RestAlerts.shared.cancel()
         LiveActivityBridge.end()
+        finishedBaseline = SummaryBaseline(record: record, plan: live.plan, strength: analysis?.strength.overall)
         keep(record, savedByWatch: watchSaves)
         if watchSaves { handWorkoutToWatch(record) }
         if record.hasContent { finished = record }
@@ -1251,6 +1254,7 @@ final class AppModel {
         }
         let record = session.record(feedback: nil, now: session.updatedAt)
         try? FileManager.default.removeItem(at: liveURL)
+        finishedBaseline = SummaryBaseline(record: record, plan: session.plan, strength: analysis?.strength.overall)
         keep(record)
         if record.hasContent { finished = record }
     }
